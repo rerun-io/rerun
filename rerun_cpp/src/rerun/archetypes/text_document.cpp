@@ -11,7 +11,7 @@ namespace rerun {
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::TextDocument>::serialize(
         const archetypes::TextDocument& archetype
-    ) const {
+    ) {
         using namespace archetypes;
         std::vector<SerializedComponentBatch> cells;
         cells.reserve(2);

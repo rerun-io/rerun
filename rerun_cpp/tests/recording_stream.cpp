@@ -43,9 +43,9 @@ struct BadArchetype {
 namespace rerun {
     template <>
     struct AsComponents<BadArchetype> {
-        rerun::Result<std::vector<rerun::SerializedComponentBatch>> serialize(
+        static rerun::Result<std::vector<rerun::SerializedComponentBatch>> serialize(
             const BadArchetype& archetype
-        ) const {
+        ) {
             return BadComponent::error;
         }
     };

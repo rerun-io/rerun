@@ -10,8 +10,7 @@ namespace rerun {
     }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
-        archetypes::TimeSeriesScalar>::serialize(const archetypes::TimeSeriesScalar& archetype
-    ) const {
+        archetypes::TimeSeriesScalar>::serialize(const archetypes::TimeSeriesScalar& archetype) {
         using namespace archetypes;
         std::vector<SerializedComponentBatch> cells;
         cells.reserve(5);

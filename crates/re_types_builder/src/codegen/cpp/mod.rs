@@ -345,7 +345,7 @@ impl QuotedObject {
         let type_ident = format_ident!("{}", &obj.name); // The PascalCase name of the object type.
         let quoted_docs = quote_obj_docs(obj);
 
-        let mut cpp_includes = Includes::new(obj.fqname.clone());
+        let cpp_includes = Includes::new(obj.fqname.clone());
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
 
@@ -456,8 +456,7 @@ impl QuotedObject {
             });
         }
 
-        let serialize_method =
-            archetype_serialize(&type_ident, obj, &mut hpp_includes, &mut cpp_includes);
+        let serialize_method = archetype_serialize(&type_ident, obj, &mut hpp_includes);
         let serialize_hpp = serialize_method.to_hpp_tokens();
         let serialize_cpp =
             serialize_method.to_cpp_tokens(&quote!(AsComponents<archetypes::#type_ident>));
@@ -497,7 +496,8 @@ impl QuotedObject {
                     #NEWLINE_TOKEN
                 }
 
-                template<typename TComponent>
+                // Instead of including as_components.hpp, simply re-declare the template since it's trivial.
+                template<typename T>
                 struct AsComponents;
 
                 template<>
@@ -1283,14 +1283,8 @@ fn component_to_data_cell_method(
     }
 }
 
-fn archetype_serialize(
-    type_ident: &Ident,
-    obj: &Object,
-    hpp_includes: &mut Includes,
-    cpp_includes: &mut Includes,
-) -> Method {
+fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Includes) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
-    hpp_includes.insert_rerun("arrow.hpp");
     hpp_includes.insert_rerun("component_batch.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
@@ -1350,9 +1344,9 @@ fn archetype_serialize(
     Method {
         docs: "Serialize all set component batches.".into(),
         declaration: MethodDeclaration {
-            is_static: false,
+            is_static: true,
             return_type: quote!(Result<std::vector<SerializedComponentBatch>>),
-            name_and_parameters: quote!(serialize(const archetypes::#type_ident& archetype) const),
+            name_and_parameters: quote!(serialize(const archetypes::#type_ident& archetype)),
         },
         definition_body: quote! {
             using namespace archetypes;

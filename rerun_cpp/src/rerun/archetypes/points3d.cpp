@@ -10,7 +10,7 @@ namespace rerun {
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Points3D>::serialize(
         const archetypes::Points3D& archetype
-    ) const {
+    ) {
         using namespace archetypes;
         std::vector<SerializedComponentBatch> cells;
         cells.reserve(7);

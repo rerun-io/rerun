@@ -11,7 +11,7 @@ namespace rerun {
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::AffixFuzzer2>::serialize(
         const archetypes::AffixFuzzer2& archetype
-    ) const {
+    ) {
         using namespace archetypes;
         std::vector<SerializedComponentBatch> cells;
         cells.reserve(18);

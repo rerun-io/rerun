@@ -134,7 +134,7 @@ namespace rerun {
         /// @see try_log
         template <typename T>
         void log(const char* entity_path, const T& archetype_or_component_batch) {
-            const auto serialized = AsComponents<T>().serialize(archetype_or_component_batch);
+            const auto serialized = AsComponents<T>::serialize(archetype_or_component_batch);
             serialized.error.log_on_failure();
             try_log_serialized_batches(entity_path, serialized.value.size(), {serialized.value})
                 .log_on_failure();
@@ -149,7 +149,7 @@ namespace rerun {
         /// @see log_component_batch, log_component_batches, try_log_component_batches
         template <typename T>
         Error try_log(const char* entity_path, const T& archetype_or_component_batch) {
-            const auto serialized = AsComponents<T>().serialize(archetype_or_component_batch);
+            const auto serialized = AsComponents<T>::serialize(archetype_or_component_batch);
             RR_RETURN_NOT_OK(serialized.error);
             return try_log_serialized_batches(
                 entity_path,

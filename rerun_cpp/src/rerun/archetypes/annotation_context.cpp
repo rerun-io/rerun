@@ -10,8 +10,7 @@ namespace rerun {
     }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
-        archetypes::AnnotationContext>::serialize(const archetypes::AnnotationContext& archetype
-    ) const {
+        archetypes::AnnotationContext>::serialize(const archetypes::AnnotationContext& archetype) {
         using namespace archetypes;
         std::vector<SerializedComponentBatch> cells;
         cells.reserve(1);

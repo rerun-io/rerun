@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
@@ -137,14 +136,14 @@ namespace rerun {
         };
 
     } // namespace archetypes
-    template <typename TComponent>
+    template <typename T>
     struct AsComponents;
 
     template <>
     struct AsComponents<archetypes::LineStrips3D> {
         /// Serialize all set component batches.
-        Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<SerializedComponentBatch>> serialize(
             const archetypes::LineStrips3D& archetype
-        ) const;
+        );
     };
 } // namespace rerun

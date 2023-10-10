@@ -10,8 +10,7 @@ namespace rerun {
     }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
-        archetypes::SegmentationImage>::serialize(const archetypes::SegmentationImage& archetype
-    ) const {
+        archetypes::SegmentationImage>::serialize(const archetypes::SegmentationImage& archetype) {
         using namespace archetypes;
         std::vector<SerializedComponentBatch> cells;
         cells.reserve(2);

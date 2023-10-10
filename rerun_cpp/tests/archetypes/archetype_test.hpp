@@ -10,8 +10,8 @@
 template <typename T>
 void test_serialization_for_manual_and_builder(const T& from_manual, const T& from_builder) {
     THEN("convert to component lists") {
-        auto from_builder_serialized_result = rerun::AsComponents<T>().serialize(from_builder);
-        auto from_manual_serialized_result = rerun::AsComponents<T>().serialize(from_manual);
+        auto from_builder_serialized_result = rerun::AsComponents<T>::serialize(from_builder);
+        auto from_manual_serialized_result = rerun::AsComponents<T>::serialize(from_manual);
 
         AND_THEN("serializing each list succeeds") {
             REQUIRE(from_builder_serialized_result.is_ok());

@@ -26,7 +26,6 @@
 #include "../components/affix_fuzzer9.hpp"
 
 #include <cstdint>
-#include <rerun/arrow.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/data_cell.hpp>
 #include <rerun/indicator_component.hpp>
@@ -140,14 +139,14 @@ namespace rerun {
         };
 
     } // namespace archetypes
-    template <typename TComponent>
+    template <typename T>
     struct AsComponents;
 
     template <>
     struct AsComponents<archetypes::AffixFuzzer1> {
         /// Serialize all set component batches.
-        Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<SerializedComponentBatch>> serialize(
             const archetypes::AffixFuzzer1& archetype
-        ) const;
+        );
     };
 } // namespace rerun

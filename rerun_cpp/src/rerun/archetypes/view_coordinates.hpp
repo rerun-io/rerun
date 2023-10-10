@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/view_coordinates.hpp"
 #include "../data_cell.hpp"
@@ -143,14 +142,14 @@ namespace rerun {
         };
 
     } // namespace archetypes
-    template <typename TComponent>
+    template <typename T>
     struct AsComponents;
 
     template <>
     struct AsComponents<archetypes::ViewCoordinates> {
         /// Serialize all set component batches.
-        Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<SerializedComponentBatch>> serialize(
             const archetypes::ViewCoordinates& archetype
-        ) const;
+        );
     };
 } // namespace rerun

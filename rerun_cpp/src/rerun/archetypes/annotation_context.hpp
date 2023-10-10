@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/annotation_context.hpp"
 #include "../data_cell.hpp"
@@ -47,14 +46,14 @@ namespace rerun {
         };
 
     } // namespace archetypes
-    template <typename TComponent>
+    template <typename T>
     struct AsComponents;
 
     template <>
     struct AsComponents<archetypes::AnnotationContext> {
         /// Serialize all set component batches.
-        Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<SerializedComponentBatch>> serialize(
             const archetypes::AnnotationContext& archetype
-        ) const;
+        );
     };
 } // namespace rerun

@@ -10,8 +10,7 @@ namespace rerun {
     }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
-        archetypes::DisconnectedSpace>::serialize(const archetypes::DisconnectedSpace& archetype
-    ) const {
+        archetypes::DisconnectedSpace>::serialize(const archetypes::DisconnectedSpace& archetype) {
         using namespace archetypes;
         std::vector<SerializedComponentBatch> cells;
         cells.reserve(1);

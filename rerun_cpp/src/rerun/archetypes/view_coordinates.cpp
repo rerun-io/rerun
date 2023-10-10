@@ -10,8 +10,7 @@ namespace rerun {
     }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
-        archetypes::ViewCoordinates>::serialize(const archetypes::ViewCoordinates& archetype
-    ) const {
+        archetypes::ViewCoordinates>::serialize(const archetypes::ViewCoordinates& archetype) {
         using namespace archetypes;
         std::vector<SerializedComponentBatch> cells;
         cells.reserve(1);

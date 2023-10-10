@@ -7,14 +7,14 @@ namespace rerun {
     /// It is implemented for various built-in types as well as collections of components.
     /// You can build your own archetypes by implementing this trait.
     /// Anything that implements `AsComponents` can be logged to a recording stream.
-    template <typename TComponent>
+    template <typename T>
     struct AsComponents {
-        template <typename T>
+        template <typename T2>
         struct NoAsComponentsFor : std::false_type {};
 
         // TODO(andreas): This should also mention an example of how to implement this.
         static_assert(
-            NoAsComponentsFor<TComponent>::value,
+            NoAsComponentsFor<T>::value,
             "AsComponents is not implemented for this type. "
             "It is implemented for all built-in archetypes as well as std::vector, std::array, and "
             "c-arrays of components. "
@@ -25,9 +25,9 @@ namespace rerun {
     /// AsComponents for a std::vector of components.
     template <typename TComponent>
     struct AsComponents<std::vector<TComponent>> {
-        Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<SerializedComponentBatch>> serialize(
             const std::vector<TComponent>& components
-        ) const {
+        ) {
             const auto result = ComponentBatch<TComponent>(components).serialize();
             RR_RETURN_NOT_OK(result.error);
             return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
@@ -37,9 +37,9 @@ namespace rerun {
     /// AsComponents for an std::array of components.
     template <typename TComponent, size_t NumInstances>
     struct AsComponents<std::array<TComponent, NumInstances>> {
-        Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<SerializedComponentBatch>> serialize(
             const std::array<TComponent, NumInstances>& components
-        ) const {
+        ) {
             const auto result = ComponentBatch<TComponent>(components).serialize();
             RR_RETURN_NOT_OK(result.error);
             return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
@@ -49,8 +49,8 @@ namespace rerun {
     /// AsComponents for an c-array of components.
     template <typename TComponent, size_t NumInstances>
     struct AsComponents<TComponent[NumInstances]> {
-        Result<std::vector<SerializedComponentBatch>> serialize(const TComponent (&array
-        )[NumInstances]) const {
+        static Result<std::vector<SerializedComponentBatch>> serialize(const TComponent (&array
+        )[NumInstances]) {
             const auto result = ComponentBatch<TComponent>(array).serialize();
             RR_RETURN_NOT_OK(result.error);
             return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
@@ -60,9 +60,9 @@ namespace rerun {
     /// AsComponents for an ComponentBatch.
     template <typename TComponent>
     struct AsComponents<ComponentBatch<TComponent>> {
-        Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<SerializedComponentBatch>> serialize(
             const ComponentBatch<TComponent>& components
-        ) const {
+        ) {
             const auto result = components.serialize();
             RR_RETURN_NOT_OK(result.error);
             return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
@@ -72,9 +72,9 @@ namespace rerun {
     /// AsComponents for single indicators
     template <const char Name[]>
     struct AsComponents<components::IndicatorComponent<Name>> {
-        Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<SerializedComponentBatch>> serialize(
             const components::IndicatorComponent<Name>& indicator
-        ) const {
+        ) {
             const auto result =
                 ComponentBatch<components::IndicatorComponent<Name>>(indicator).serialize();
             RR_RETURN_NOT_OK(result.error);

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/clear_is_recursive.hpp"
 #include "../data_cell.hpp"
@@ -101,13 +100,14 @@ namespace rerun {
         };
 
     } // namespace archetypes
-    template <typename TComponent>
+    template <typename T>
     struct AsComponents;
 
     template <>
     struct AsComponents<archetypes::Clear> {
         /// Serialize all set component batches.
-        Result<std::vector<SerializedComponentBatch>> serialize(const archetypes::Clear& archetype
-        ) const;
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::Clear& archetype
+        );
     };
 } // namespace rerun

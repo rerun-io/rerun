@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/pinhole_projection.hpp"
 #include "../components/resolution.hpp"
@@ -187,13 +186,14 @@ namespace rerun {
         };
 
     } // namespace archetypes
-    template <typename TComponent>
+    template <typename T>
     struct AsComponents;
 
     template <>
     struct AsComponents<archetypes::Pinhole> {
         /// Serialize all set component batches.
-        Result<std::vector<SerializedComponentBatch>> serialize(const archetypes::Pinhole& archetype
-        ) const;
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::Pinhole& archetype
+        );
     };
 } // namespace rerun
