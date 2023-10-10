@@ -2,9 +2,7 @@
 
 use std::path::Path;
 
-use re_build_tools::{
-    is_tracked_env_var_set, iter_dir, read_versioning_hash, rerun_if_changed, write_versioning_hash,
-};
+use re_build_tools::{iter_dir, read_versioning_hash, rerun_if_changed, write_versioning_hash};
 use re_types_builder::{compute_re_types_hash, SourceLocations};
 
 // ---
@@ -41,7 +39,7 @@ fn main() {
         // Only run if we are in the rerun workspace, not on users machines.
         return;
     }
-    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
+    if re_build_tools::is_publishing_crates() {
         // We don't need to rebuild - we should have done so beforehand!
         // See `RELEASES.md`
         return;

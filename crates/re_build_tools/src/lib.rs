@@ -70,6 +70,14 @@ pub fn is_on_ci() -> bool {
     std::env::var("CI").is_ok()
 }
 
+/// Are we currently in the process of publishing crates?
+///
+/// This is usually done on CI.
+pub fn is_publishing_crates() -> bool {
+    // "RERUN_IS_PUBLISHING" is set by `scripts/ci/crates.py`
+    is_tracked_env_var_set("RERUN_IS_PUBLISHING")
+}
+
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 ///
 /// Use this crate together with the `re_build_info` crate.

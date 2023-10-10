@@ -19,7 +19,7 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
         // Only run if we are in the rerun workspace, not on users machines.
         return;
     }
-    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
+    if crate::is_publishing_crates() {
         // We cannot run this during publishing.
         // We don't need to, and it can also can cause a Cargo.lock file to be generated.
         return;

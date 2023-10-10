@@ -230,9 +230,7 @@ fn write_examples_manifest() -> Result<()> {
 }
 
 fn write_examples_manifest_if_necessary() {
-    if !re_build_tools::is_in_rerun_workspace()
-        || re_build_tools::is_tracked_env_var_set("RERUN_IS_PUBLISHING")
-    {
+    if !re_build_tools::is_in_rerun_workspace() || re_build_tools::is_publishing_crates() {
         return;
     }
     re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);

@@ -4,9 +4,7 @@ use std::path::Path;
 
 use xshell::{cmd, Shell};
 
-use re_build_tools::{
-    compute_file_hash, is_tracked_env_var_set, read_versioning_hash, write_versioning_hash,
-};
+use re_build_tools::{compute_file_hash, read_versioning_hash, write_versioning_hash};
 
 // ---
 
@@ -25,7 +23,7 @@ fn main() {
         // Only run if we are in the rerun workspace, not on users machines.
         return;
     }
-    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
+    if re_build_tools::is_publishing_crates() {
         // We don't need to rebuild - we should have done so beforehand!
         // See `RELEASES.md`
         return;
