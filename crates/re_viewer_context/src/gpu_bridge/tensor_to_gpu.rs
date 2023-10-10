@@ -1,19 +1,13 @@
 //! Upload tensors to [`re_renderer`].
 
-use anyhow::Context;
-use re_data_store::VersionedInstancePathHash;
-use re_types::{
-    components::ClassId,
-    datatypes::{TensorBuffer, TensorData},
-    tensor_data::TensorDataMeaning,
-};
-
 use std::borrow::Cow;
 
+use anyhow::Context;
 use bytemuck::{allocation::pod_collect_to_vec, cast_slice, Pod};
 use egui::util::hash;
 use wgpu::TextureFormat;
 
+use re_log_types::RowId;
 use re_renderer::{
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture},
@@ -21,6 +15,11 @@ use re_renderer::{
     RenderContext,
 };
 use re_types::tensor_data::DecodedTensor;
+use re_types::{
+    components::ClassId,
+    datatypes::{TensorBuffer, TensorData},
+    tensor_data::TensorDataMeaning,
+};
 
 use crate::{Annotations, DefaultColor, TensorStats};
 
@@ -37,7 +36,7 @@ use super::{get_or_create_texture, try_get_or_create_texture};
 pub fn tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     meaning: TensorDataMeaning,
     tensor_stats: &TensorStats,
@@ -54,14 +53,14 @@ pub fn tensor_to_gpu(
         TensorDataMeaning::Unknown => color_tensor_to_gpu(
             render_ctx,
             debug_name,
-            tensor_path_hash,
+            tensor_data_row_id,
             tensor,
             tensor_stats,
         ),
         TensorDataMeaning::ClassId => class_id_tensor_to_gpu(
             render_ctx,
             debug_name,
-            tensor_path_hash,
+            tensor_data_row_id,
             tensor,
             tensor_stats,
             annotations,
@@ -69,7 +68,7 @@ pub fn tensor_to_gpu(
         TensorDataMeaning::Depth => depth_tensor_to_gpu(
             render_ctx,
             debug_name,
-            tensor_path_hash,
+            tensor_data_row_id,
             tensor,
             tensor_stats,
         ),
@@ -82,12 +81,12 @@ pub fn tensor_to_gpu(
 pub fn color_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
-    let texture_key = hash(tensor_path_hash.row_id);
+    let texture_key = hash(tensor_data_row_id);
     let [height, width, depth] = height_width_depth(tensor)?;
 
     let texture_handle = try_get_or_create_texture(render_ctx, texture_key, || {
@@ -163,13 +162,13 @@ pub fn color_tensor_to_gpu(
 pub fn class_id_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
-    let texture_key = hash(tensor_path_hash.row_id);
+    let texture_key = hash(tensor_data_row_id);
 
     let [_height, _width, depth] = height_width_depth(tensor)?;
     anyhow::ensure!(
@@ -238,12 +237,12 @@ pub fn class_id_tensor_to_gpu(
 pub fn depth_tensor_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
-    let texture_key = hash(tensor_path_hash.row_id);
+    let texture_key = hash(tensor_data_row_id);
 
     let [_height, _width, depth] = height_width_depth(tensor)?;
     anyhow::ensure!(

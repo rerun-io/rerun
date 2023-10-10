@@ -621,7 +621,7 @@ pub fn picking(
                             ui_clip_rect,
                             coords,
                             space_from_ui,
-                            tensor_path_hash,
+                            tensor_path_hash.row_id,
                             annotations,
                             meaning,
                             meter,
@@ -682,7 +682,7 @@ fn image_hover_ui(
     ui_clip_rect: egui::Rect,
     coords: [u32; 2],
     space_from_ui: egui::emath::RectTransform,
-    tensor_path_hash: re_data_store::VersionedInstancePathHash,
+    tensor_data_row_id: re_log_types::RowId,
     annotations: &AnnotationSceneContext,
     meaning: TensorDataMeaning,
     meter: Option<f32>,
@@ -720,17 +720,17 @@ fn image_hover_ui(
 
             let decoded_tensor = ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash.row_id, tensor.0));
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0));
             match decoded_tensor {
                 Ok(decoded_tensor) => {
                     let annotations = annotations.0.find(&instance_path.entity_path);
                     let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| {
-                        c.entry(tensor_path_hash.row_id, &decoded_tensor)
+                        c.entry(tensor_data_row_id, &decoded_tensor)
                     });
                     show_zoomed_image_region(
                         ctx.render_ctx,
                         ui,
-                        tensor_path_hash,
+                        tensor_data_row_id,
                         &decoded_tensor,
                         &tensor_stats,
                         &annotations,

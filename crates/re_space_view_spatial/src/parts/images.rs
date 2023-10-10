@@ -5,8 +5,8 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
-use re_log_types::EntityPathHash;
+use re_data_store::{EntityPath, EntityProperties};
+use re_log_types::{EntityPathHash, RowId};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
@@ -57,7 +57,7 @@ fn to_textured_rect(
     ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
@@ -71,12 +71,12 @@ fn to_textured_rect(
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
         .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash.row_id, tensor));
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
 
     match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
-        tensor_path_hash,
+        tensor_data_row_id,
         tensor,
         meaning,
         &tensor_stats,
@@ -240,9 +240,7 @@ impl ImagesPart {
             }
 
             let tensor_data_row_id = arch_view.primary_row_id();
-            // NOTE: Tensors don't support batches at the moment so always splat.
-            let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(tensor_data_row_id);
+
             let tensor = match ctx
                 .cache
                 .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
@@ -269,7 +267,7 @@ impl ImagesPart {
                 ctx,
                 ent_path,
                 ent_context,
-                tensor_path_hash,
+                tensor_data_row_id,
                 &tensor,
                 meaning,
                 color.into(),
@@ -332,9 +330,7 @@ impl ImagesPart {
             }
 
             let tensor_data_row_id = arch_view.primary_row_id();
-            // NOTE: Tensors don't support batches at the moment so always splat.
-            let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(tensor_data_row_id);
+
             let tensor = match ctx
                 .cache
                 .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
@@ -358,7 +354,7 @@ impl ImagesPart {
                         transforms,
                         ent_context,
                         ent_props,
-                        tensor_path_hash,
+                        tensor_data_row_id,
                         &tensor,
                         ent_path,
                         parent_pinhole_path,
@@ -390,7 +386,7 @@ impl ImagesPart {
                 ctx,
                 ent_path,
                 ent_context,
-                tensor_path_hash,
+                tensor_data_row_id,
                 &tensor,
                 meaning,
                 color.into(),
@@ -450,9 +446,7 @@ impl ImagesPart {
             }
 
             let tensor_data_row_id = arch_view.primary_row_id();
-            // NOTE: Tensors don't support batches at the moment so always splat.
-            let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
+
             let tensor = match ctx
                 .cache
                 .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
@@ -479,7 +473,7 @@ impl ImagesPart {
                 ctx,
                 ent_path,
                 ent_context,
-                tensor_path_hash,
+                tensor_data_row_id,
                 &tensor,
                 meaning,
                 color.into(),
@@ -506,7 +500,7 @@ impl ImagesPart {
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
-        tensor_path_hash: VersionedInstancePathHash,
+        tensor_data_row_id: RowId,
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
@@ -546,11 +540,11 @@ impl ImagesPart {
         let debug_name = ent_path.to_string();
         let tensor_stats = ctx
             .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash.row_id, tensor));
+            .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
         let depth_texture = re_viewer_context::gpu_bridge::depth_tensor_to_gpu(
             ctx.render_ctx,
             &debug_name,
-            tensor_path_hash,
+            tensor_data_row_id,
             tensor,
             &tensor_stats,
         )?;
