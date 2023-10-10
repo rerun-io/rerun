@@ -11,6 +11,7 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -42,7 +43,7 @@ namespace rerun {
         ///     std::vector<std::string> args(argv, argv + argc);
         ///
         ///     if (args.size() <2) {
-        ///         std::cerr <<"Usage: " <<args[0] <<" <path_to_asset.[gltf|glb]>" <<std::endl;
+        ///         std::cerr <<"Usage: " <<args[0] <<" <path_to_asset.[gltf|glb|obj]>" <<std::endl;
         ///         return 1;
         ///     }
         ///
@@ -87,6 +88,7 @@ namespace rerun {
             ) {
                 std::filesystem::path file_path(path);
                 std::string ext = file_path.extension().string();
+                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
                 if (ext == ".glb") {
                     return rerun::components::MediaType::glb();
