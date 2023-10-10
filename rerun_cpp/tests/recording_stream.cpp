@@ -146,9 +146,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 // worse since we'd have to implement the base `AsComponents` template for this.
                 //
                 // THEN("single components can be logged") {
-                //     stream.log_component_batches(
+                //     stream.log(
                 //         "single-components",
-                //         2,
                 //         rrc::Position2D{1.0, 2.0},
                 //         rrc::Color(0x00FF00FF)
                 //     );
@@ -172,9 +171,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     );
                 }
                 THEN("components as std::vector can be logged") {
-                    stream.log_component_batches(
+                    stream.log(
                         "as-vector",
-                        2,
                         std::vector<rrc::Position2D>{
                             rr::datatypes::Vec2D{1.0, 2.0},
                             rr::datatypes::Vec2D{4.0, 5.0},
@@ -187,9 +185,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         rrc::Text("friend"),
                         rrc::Text("yo"),
                     };
-                    stream.log_component_batches(
+                    stream.log(
                         "as-mix",
-                        3,
                         std::vector{
                             rrc::Position2D(rr::datatypes::Vec2D{0.0, 0.0}),
                             rrc::Position2D(rr::datatypes::Vec2D{1.0, 3.0}),
@@ -205,9 +202,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 }
 
                 THEN("components with splatting some of them can be logged") {
-                    stream.log_component_batches(
-                        "log_component_batches-splat",
-                        2,
+                    stream.log(
+                        "log-splat",
                         std::vector{
                             rrc::Position2D(rr::datatypes::Vec2D{0.0, 0.0}),
                             rrc::Position2D(rr::datatypes::Vec2D{1.0, 3.0}),
