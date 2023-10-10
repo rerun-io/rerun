@@ -8,19 +8,37 @@
 #include "result.hpp"
 
 namespace rerun {
-    // TODO: doc
+    /// The ComponentBatchAdaptor trait is responsible for mapping a list of input arguments to a
+    /// ComponentBatch.
+    ///
+    /// There are default implementations for standard containers of components, as well as single
+    /// components.
+    ///
+    /// An adapter may choose to either produce a owned or borrowed component batch.
+    /// Borrowed component batches required that a pointer to the passed in ("adapted") data
+    /// outlives the component batch. Owned component batches on the other hand take ownership by
+    /// allocating a std::vector and moving the data into it. This is typically only required when
+    /// passing in temporary objects into an adapter.
+    ///
+    /// By implementing your own adapters for certain component types, you can map your data to
+    /// Rerun types which then can be logged.
+    /// TODO(andreas): Point to an example.
     template <typename TComponent, typename... TInputArgs>
-    struct ComponentBatchAdapter;
+    struct ComponentBatchAdapter {
+        template <typename... Ts>
+        struct NoAdapterFor : std::false_type {};
 
-    namespace detail {
-        template <class T, std::size_t = sizeof(T)>
-        std::true_type is_complete_impl(T*);
-
-        std::false_type is_complete_impl(...);
-
-        template <class T>
-        using is_complete = decltype(is_complete_impl(std::declval<T*>()));
-    } // namespace detail
+        // TODO(andreas): This should also mention an example of how to implement this.
+        static_assert(
+            NoAdapterFor<TComponent, TInputArgs...>::value,
+            "ComponentBatchAdapter is not implemented for this type. "
+            "It is implemented for for single components as well as std::vector, std::array, and "
+            "c-arrays of components. "
+            "You can add your own implementation by specializing "
+            "ComponentBatchAdapter<TComponent, T> for a given "
+            "component and your input type T."
+        );
+    };
 
     /// Generic list of components that are contiguous in memory.
     ///
@@ -58,9 +76,7 @@ namespace rerun {
         }
 
         /// Construct using a `ComponentBatchAdapter` if there's a fitting specialization.
-        template <
-            typename... Ts,
-            typename = std::enable_if_t<detail::is_complete<TAdapter<Ts...>>::value>>
+        template <typename... Ts>
         ComponentBatch(Ts&&... args)
             : ComponentBatch(TAdapter<Ts...>()(std::forward<Ts>(args)...)) {}
 

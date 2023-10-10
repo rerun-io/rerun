@@ -90,7 +90,7 @@ namespace rerun {
             Clear() = default;
             Clear(Clear&& other) = default;
 
-            Clear(rerun::components::ClearIsRecursive _is_recursive)
+            explicit Clear(rerun::components::ClearIsRecursive _is_recursive)
                 : is_recursive(std::move(_is_recursive)) {}
 
             /// Returns the number of primary instances of this archetype.

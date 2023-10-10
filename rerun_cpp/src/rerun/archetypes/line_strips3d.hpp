@@ -92,7 +92,7 @@ namespace rerun {
             LineStrips3D() = default;
             LineStrips3D(LineStrips3D&& other) = default;
 
-            LineStrips3D(ComponentBatch<rerun::components::LineStrip3D> _strips)
+            explicit LineStrips3D(ComponentBatch<rerun::components::LineStrip3D> _strips)
                 : strips(std::move(_strips)) {}
 
             /// Optional radii for the line strips.

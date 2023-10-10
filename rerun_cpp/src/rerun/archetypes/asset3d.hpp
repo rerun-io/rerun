@@ -140,7 +140,7 @@ namespace rerun {
             Asset3D() = default;
             Asset3D(Asset3D&& other) = default;
 
-            Asset3D(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
+            explicit Asset3D(rerun::components::Blob _blob) : blob(std::move(_blob)) {}
 
             /// The Media Type of the asset.
             ///

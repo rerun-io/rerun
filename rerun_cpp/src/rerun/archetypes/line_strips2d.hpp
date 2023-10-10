@@ -91,7 +91,7 @@ namespace rerun {
             LineStrips2D() = default;
             LineStrips2D(LineStrips2D&& other) = default;
 
-            LineStrips2D(ComponentBatch<rerun::components::LineStrip2D> _strips)
+            explicit LineStrips2D(ComponentBatch<rerun::components::LineStrip2D> _strips)
                 : strips(std::move(_strips)) {}
 
             /// Optional radii for the line strips.

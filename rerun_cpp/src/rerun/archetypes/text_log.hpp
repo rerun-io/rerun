@@ -40,7 +40,7 @@ namespace rerun {
             TextLog() = default;
             TextLog(TextLog&& other) = default;
 
-            TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
+            explicit TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
 
             /// The verbosity level of the message.
             ///

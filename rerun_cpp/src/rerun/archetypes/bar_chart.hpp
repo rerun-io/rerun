@@ -32,7 +32,7 @@ namespace rerun {
             BarChart() = default;
             BarChart(BarChart&& other) = default;
 
-            BarChart(rerun::components::TensorData _values) : values(std::move(_values)) {}
+            explicit BarChart(rerun::components::TensorData _values) : values(std::move(_values)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

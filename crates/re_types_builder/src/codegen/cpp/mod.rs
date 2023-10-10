@@ -398,8 +398,10 @@ impl QuotedObject {
                 .unzip();
 
             methods.push(Method {
+                // Making the constructor explicit prevents all sort of strange errors.
+                // (e.g. `Points3D({{0.0f, 0.0f, 0.0f}})` would previously be ambiguous with the move constructor?!)
                 declaration: MethodDeclaration::constructor(quote! {
-                    #type_ident(#(#parameters),*) : #(#assignments),*
+                    explicit #type_ident(#(#parameters),*) : #(#assignments),*
                 }),
                 ..Method::default()
             });

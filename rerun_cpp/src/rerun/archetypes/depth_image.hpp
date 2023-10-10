@@ -47,7 +47,7 @@ namespace rerun {
             DepthImage() = default;
             DepthImage(DepthImage&& other) = default;
 
-            DepthImage(rerun::components::TensorData _data) : data(std::move(_data)) {}
+            explicit DepthImage(rerun::components::TensorData _data) : data(std::move(_data)) {}
 
             /// An optional floating point value that specifies how long a meter is in the native
             /// depth units.

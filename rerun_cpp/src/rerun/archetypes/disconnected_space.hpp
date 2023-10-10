@@ -56,7 +56,7 @@ namespace rerun {
             DisconnectedSpace() = default;
             DisconnectedSpace(DisconnectedSpace&& other) = default;
 
-            DisconnectedSpace(rerun::components::DisconnectedSpace _disconnected_space)
+            explicit DisconnectedSpace(rerun::components::DisconnectedSpace _disconnected_space)
                 : disconnected_space(std::move(_disconnected_space)) {}
 
             /// Returns the number of primary instances of this archetype.

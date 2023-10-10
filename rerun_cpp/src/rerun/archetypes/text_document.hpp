@@ -42,7 +42,7 @@ namespace rerun {
             TextDocument() = default;
             TextDocument(TextDocument&& other) = default;
 
-            TextDocument(rerun::components::Text _text) : text(std::move(_text)) {}
+            explicit TextDocument(rerun::components::Text _text) : text(std::move(_text)) {}
 
             /// The Media Type of the text.
             ///

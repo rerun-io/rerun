@@ -78,7 +78,7 @@ namespace rerun {
             AffixFuzzer2() = default;
             AffixFuzzer2(AffixFuzzer2&& other) = default;
 
-            AffixFuzzer2(
+            explicit AffixFuzzer2(
                 ComponentBatch<rerun::components::AffixFuzzer1> _fuzz1101,
                 ComponentBatch<rerun::components::AffixFuzzer2> _fuzz1102,
                 ComponentBatch<rerun::components::AffixFuzzer3> _fuzz1103,

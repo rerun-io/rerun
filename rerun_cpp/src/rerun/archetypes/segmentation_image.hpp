@@ -42,7 +42,8 @@ namespace rerun {
             SegmentationImage() = default;
             SegmentationImage(SegmentationImage&& other) = default;
 
-            SegmentationImage(rerun::components::TensorData _data) : data(std::move(_data)) {}
+            explicit SegmentationImage(rerun::components::TensorData _data)
+                : data(std::move(_data)) {}
 
             /// An optional floating point value that specifies the 2D drawing order.
             ///

@@ -244,7 +244,7 @@ namespace rerun {
             Transform3D() = default;
             Transform3D(Transform3D&& other) = default;
 
-            Transform3D(rerun::components::Transform3D _transform)
+            explicit Transform3D(rerun::components::Transform3D _transform)
                 : transform(std::move(_transform)) {}
 
             /// Returns the number of primary instances of this archetype.

@@ -133,7 +133,8 @@ namespace rerun {
             ViewCoordinates() = default;
             ViewCoordinates(ViewCoordinates&& other) = default;
 
-            ViewCoordinates(rerun::components::ViewCoordinates _xyz) : xyz(std::move(_xyz)) {}
+            explicit ViewCoordinates(rerun::components::ViewCoordinates _xyz)
+                : xyz(std::move(_xyz)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {

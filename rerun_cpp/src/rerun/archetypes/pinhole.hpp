@@ -126,7 +126,7 @@ namespace rerun {
             Pinhole() = default;
             Pinhole(Pinhole&& other) = default;
 
-            Pinhole(rerun::components::PinholeProjection _image_from_camera)
+            explicit Pinhole(rerun::components::PinholeProjection _image_from_camera)
                 : image_from_camera(std::move(_image_from_camera)) {}
 
             /// Pixel resolution (usually integers) of child image space. Width and height.

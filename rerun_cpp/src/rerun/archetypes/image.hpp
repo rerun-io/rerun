@@ -44,7 +44,7 @@ namespace rerun {
             Image() = default;
             Image(Image&& other) = default;
 
-            Image(rerun::components::TensorData _data) : data(std::move(_data)) {}
+            explicit Image(rerun::components::TensorData _data) : data(std::move(_data)) {}
 
             /// An optional floating point value that specifies the 2D drawing order.
             ///

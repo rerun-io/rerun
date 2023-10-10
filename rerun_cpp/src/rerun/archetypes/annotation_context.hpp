@@ -36,7 +36,7 @@ namespace rerun {
             AnnotationContext() = default;
             AnnotationContext(AnnotationContext&& other) = default;
 
-            AnnotationContext(rerun::components::AnnotationContext _context)
+            explicit AnnotationContext(rerun::components::AnnotationContext _context)
                 : context(std::move(_context)) {}
 
             /// Returns the number of primary instances of this archetype.

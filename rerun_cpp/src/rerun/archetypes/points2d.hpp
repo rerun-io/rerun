@@ -108,7 +108,7 @@ namespace rerun {
             Points2D() = default;
             Points2D(Points2D&& other) = default;
 
-            Points2D(ComponentBatch<rerun::components::Position2D> _positions)
+            explicit Points2D(ComponentBatch<rerun::components::Position2D> _positions)
                 : positions(std::move(_positions)) {}
 
             /// Optional radii for the points, effectively turning them into circles.

@@ -80,7 +80,8 @@ namespace rerun {
             TimeSeriesScalar() = default;
             TimeSeriesScalar(TimeSeriesScalar&& other) = default;
 
-            TimeSeriesScalar(rerun::components::Scalar _scalar) : scalar(std::move(_scalar)) {}
+            explicit TimeSeriesScalar(rerun::components::Scalar _scalar)
+                : scalar(std::move(_scalar)) {}
 
             /// An optional radius for the point.
             ///

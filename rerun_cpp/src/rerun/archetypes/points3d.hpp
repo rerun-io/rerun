@@ -99,7 +99,7 @@ namespace rerun {
             Points3D() = default;
             Points3D(Points3D&& other) = default;
 
-            Points3D(ComponentBatch<rerun::components::Position3D> _positions)
+            explicit Points3D(ComponentBatch<rerun::components::Position3D> _positions)
                 : positions(std::move(_positions)) {}
 
             /// Optional radii for the points, effectively turning them into circles.

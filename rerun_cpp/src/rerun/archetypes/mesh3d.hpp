@@ -103,7 +103,7 @@ namespace rerun {
             Mesh3D() = default;
             Mesh3D(Mesh3D&& other) = default;
 
-            Mesh3D(ComponentBatch<rerun::components::Position3D> _vertex_positions)
+            explicit Mesh3D(ComponentBatch<rerun::components::Position3D> _vertex_positions)
                 : vertex_positions(std::move(_vertex_positions)) {}
 
             /// Optional properties for the mesh as a whole (including indexed drawing).

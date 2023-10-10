@@ -29,7 +29,7 @@ namespace rerun {
             Tensor() = default;
             Tensor(Tensor&& other) = default;
 
-            Tensor(rerun::components::TensorData _data) : data(std::move(_data)) {}
+            explicit Tensor(rerun::components::TensorData _data) : data(std::move(_data)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
