@@ -14,7 +14,9 @@ class _Node(Generic[_T]):
     def __init__(self, value: _T):
         self.value = value
         self.counter: int = 0
+        """The number of this node's dependencies which have not yet been processed"""
         self.dependents: list[_Node[_T]] = []
+        """The list of dependents which are waiting for this node to be processed"""
 
 
 class DAG(Generic[_T]):
@@ -37,25 +39,7 @@ class DAG(Generic[_T]):
 
         self._queue.extend(node.value for node in self._nodes.values() if node.counter == 0)
 
-    def _get_or_insert(self, node: _T) -> _Node[_T]:
-        if node not in self._nodes:
-            self._nodes[node] = _Node(node)
-        return self._nodes[node]
-
-    def _finish(self, node: _T) -> None:
-        # mark the `node` as finished, which decrements the pending dependency counter on its dependents
-        # once a node reaches `0` on its counter, it is marked ready and put in the queue for processing
-        for dependent in self._nodes[node].dependents:
-            dependent.counter -= 1
-            if dependent.counter == 0:
-                self._queue.append(dependent.value)
-        self._num_finished += 1
-
-    def _is_done(self) -> bool:
-        # the number of nodes in the graph should never change
-        return self._num_finished == len(self._nodes)
-
-    def walk(self, f: Callable[[_T], None], max_tokens: int, refill_interval_s: float) -> None:
+    def walk_parallel(self, f: Callable[[_T], None], max_tokens: int, refill_interval_s: float) -> None:
         """
         Process the graph in parallel.
 
@@ -136,6 +120,24 @@ class DAG(Generic[_T]):
 
             shutdown.set()
 
+    def _get_or_insert(self, node: _T) -> _Node[_T]:
+        if node not in self._nodes:
+            self._nodes[node] = _Node(node)
+        return self._nodes[node]
+
+    def _finish(self, node: _T) -> None:
+        # mark the `node` as finished, which decrements the pending dependency counter on its dependents
+        # once a node reaches `0` on its counter, it is marked ready and put in the queue for processing
+        for dependent in self._nodes[node].dependents:
+            dependent.counter -= 1
+            if dependent.counter == 0:
+                self._queue.append(dependent.value)
+        self._num_finished += 1
+
+    def _is_done(self) -> bool:
+        # the number of nodes in the graph should never change
+        return self._num_finished == len(self._nodes)
+
 
 # example:
 def main() -> None:
@@ -158,7 +160,7 @@ def main() -> None:
             "C": [],
             "D": ["A", "B", "C"],
         }
-    ).walk(
+    ).walk_parallel(
         process,
         max_tokens=2,
         refill_interval_s=1,
