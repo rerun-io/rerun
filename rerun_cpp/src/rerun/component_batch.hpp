@@ -4,8 +4,8 @@
 #include <utility>
 #include <vector>
 
-#include "data_cell.hpp"
 #include "result.hpp"
+#include "serialized_component_batch.hpp"
 
 namespace rerun {
     /// The ComponentBatchAdaptor trait is responsible for mapping a list of input arguments to a
