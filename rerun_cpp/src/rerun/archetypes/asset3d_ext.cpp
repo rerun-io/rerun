@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -17,6 +18,7 @@ namespace rerun {
         ) {
             std::filesystem::path file_path(path);
             std::string ext = file_path.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
             if (ext == ".glb") {
                 return rerun::components::MediaType::glb();

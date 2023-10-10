@@ -123,7 +123,7 @@ fn test_parse_instance_path() {
 /// Hashes of the components of an [`InstancePath`].
 ///
 /// This is unique to either a specific instance of an entity, or the whole entity (splat).
-#[derive(Clone, Copy, Debug, Eq)]
+#[derive(Clone, Copy, Eq)]
 pub struct InstancePathHash {
     pub entity_path_hash: EntityPathHash,
 
@@ -133,6 +133,21 @@ pub struct InstancePathHash {
     ///
     /// Note that this is NOT hashed, because we don't need to (it's already small).
     pub instance_key: InstanceKey,
+}
+
+impl std::fmt::Debug for InstancePathHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            entity_path_hash,
+            instance_key,
+        } = self;
+        write!(
+            f,
+            "InstancePathHash({:016X}, {})",
+            entity_path_hash.hash64(),
+            instance_key.0
+        )
+    }
 }
 
 impl std::hash::Hash for InstancePathHash {

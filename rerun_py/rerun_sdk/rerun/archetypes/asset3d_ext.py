@@ -15,7 +15,7 @@ def guess_media_type(path: str) -> MediaType | None:
 
     from ..components import MediaType
 
-    ext = Path(path).suffix
+    ext = Path(path).suffix.lower()
     if ext == ".glb":
         return MediaType.GLB
     elif ext == ".gltf":
