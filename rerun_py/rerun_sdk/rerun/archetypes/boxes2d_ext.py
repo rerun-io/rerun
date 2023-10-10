@@ -106,8 +106,10 @@ class Boxes2DExt:
                 if centers is not None:
                     raise ValueError("Cannot specify both `array` and `centers` at the same time.")
 
+                if type(array) is not np.ndarray:
+                    array = np.array(array)
+
                 if np.any(array):
-                    array = np.asarray(array, dtype="float32")
                     if array.ndim == 1:
                         array = np.expand_dims(array, axis=0)
                 else:

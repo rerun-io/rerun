@@ -73,13 +73,12 @@ fn image_indicator_cell() -> DataCell {
     use re_types::Archetype as _;
 
     let indicator = re_types::archetypes::Image::indicator();
-    let indicator_cell = DataCell::from_arrow(
+    DataCell::from_arrow(
         indicator.name(),
         indicator
             .to_arrow()
             .expect("Serializing an indicator component should always work"),
-    );
-    indicator_cell
+    )
 }
 
 pub fn data_cells_from_file_contents(

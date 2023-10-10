@@ -20,7 +20,7 @@ impl SpaceViewEntityPicker {
     pub fn ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
+        ui: &egui::Ui,
         space_view: &mut SpaceViewBlueprint,
     ) -> bool {
         // This function fakes a modal window, since egui doesn't have them yet: https://github.com/emilk/egui/issues/686
@@ -295,9 +295,9 @@ struct EntityAddInfo {
 }
 
 fn create_entity_add_info(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     tree: &EntityTree,
-    space_view: &mut SpaceViewBlueprint,
+    space_view: &SpaceViewBlueprint,
     spaces_info: &SpaceInfoCollection,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();

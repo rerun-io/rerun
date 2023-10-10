@@ -9,7 +9,7 @@ mod client;
 use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "client")]
-pub use client::Connection;
+pub use client::viewer_to_server;
 
 #[cfg(feature = "server")]
 mod server;
@@ -30,21 +30,21 @@ pub const PROTOCOL: &str = "ws";
 
 #[derive(thiserror::Error, Debug)]
 pub enum RerunServerError {
-    #[error("failed to bind to port {0}: {1}")]
+    #[error("Failed to bind to WebSocket port {0}: {1}")]
     BindFailed(RerunServerPort, std::io::Error),
 
-    #[error("received an invalid message")]
+    #[error("Received an invalid message")]
     InvalidMessagePrefix,
 
-    #[error("received an invalid message")]
+    #[error("Received an invalid message")]
     InvalidMessage(#[from] bincode::Error),
 
     #[cfg(feature = "server")]
-    #[error("failed to join web viewer server task: {0}")]
+    #[error("Failed to join web viewer server task: {0}")]
     JoinError(#[from] tokio::task::JoinError),
 
     #[cfg(feature = "server")]
-    #[error("tokio error: {0}")]
+    #[error("Tokio error: {0}")]
     TokioIoError(#[from] tokio::io::Error),
 }
 

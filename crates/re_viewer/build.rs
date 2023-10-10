@@ -138,20 +138,32 @@ struct Example {
 
 fn examples() -> Result<Vec<Example>> {
     let mut examples = vec![];
-    for folder in std::fs::read_dir("../../examples/python")? {
+    let dir = "../../examples/python";
+    assert!(std::path::Path::new(dir).exists(), "Failed to find {dir}");
+    assert!(
+        std::path::Path::new(dir).is_dir(),
+        "{dir} is not a directory"
+    );
+    for folder in std::fs::read_dir(dir)? {
         let folder = folder?;
         let metadata = folder.metadata()?;
         let name = folder.file_name().to_string_lossy().to_string();
         let readme = folder.path().join("README.md");
         if metadata.is_dir() && readme.exists() {
             let readme = parse_frontmatter(readme)?;
-            let Some(readme) = readme else { continue };
-            if !readme.demo {
-                continue;
+            if let Some(readme) = readme {
+                if readme.demo {
+                    eprintln!("Adding example {name:?}");
+                    examples.push(Example { name, readme });
+                } else {
+                    eprintln!("Skipping example {name:?} because 'demo' is set to 'false'");
+                }
+            } else {
+                eprintln!("Skipping example {name:?} because it has no frontmatter");
             }
-            examples.push(Example { name, readme });
         }
     }
+    assert!(!examples.is_empty(), "No examples found in {dir}");
     examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     Ok(examples)
 }
@@ -159,6 +171,7 @@ fn examples() -> Result<Vec<Example>> {
 fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
     let path = path.as_ref();
     let content = std::fs::read_to_string(path)?;
+    let content = content.replace('\r', ""); // Windows, god damn you
     re_build_tools::rerun_if_changed(path);
     let Some(content) = content.strip_prefix("---\n") else {
         return Ok(None);
@@ -209,6 +222,7 @@ fn write_examples_manifest() -> Result<()> {
     for example in examples()? {
         manifest.push(ManifestEntry::new(example, &base_url));
     }
+    assert!(!manifest.is_empty(), "No examples found!");
     re_build_tools::write_file_if_necessary(
         MANIFEST_PATH,
         serde_json::to_string_pretty(&manifest)?.as_bytes(),

@@ -8,7 +8,7 @@ import pyarrow as pa
 from .._validators import find_non_empty_dim_indices
 from ..datatypes import TensorBufferType
 from ..datatypes.tensor_data_ext import _build_buffer_array
-from ..error_utils import _send_warning, catch_and_log_exceptions
+from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from ..components import TensorDataBatch
@@ -43,7 +43,7 @@ class SegmentationImageExt:
 
         # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
         if num_non_empty_dims != 2:
-            _send_warning(f"Expected segmentation image, got array of shape {shape_dims}", 1, recording=None)
+            _send_warning_or_raise(f"Expected segmentation image, got array of shape {shape_dims}", 1, recording=None)
 
         tensor_data_type = TensorDataType().storage_type
         shape_data_type = TensorDimensionType().storage_type

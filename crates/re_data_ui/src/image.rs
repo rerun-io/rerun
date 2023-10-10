@@ -421,7 +421,7 @@ pub fn tensor_summary_ui(
 #[allow(clippy::too_many_arguments)]
 fn show_zoomed_image_region_tooltip(
     render_ctx: &mut re_renderer::RenderContext,
-    parent_ui: &mut egui::Ui,
+    parent_ui: &egui::Ui,
     response: egui::Response,
     tensor_path_hash: VersionedInstancePathHash,
     tensor: &DecodedTensor,

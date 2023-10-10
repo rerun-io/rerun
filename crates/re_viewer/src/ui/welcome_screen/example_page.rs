@@ -33,8 +33,13 @@ struct ExampleDesc {
 
 // TODO(#3190): we should attempt to update the manifest based on the online version
 fn load_example_manifest() -> Vec<ExampleDesc> {
-    serde_json::from_str(include_str!("../../../data/examples_manifest.json"))
-        .expect("Failed to parse data/examples_manifest.json")
+    let examples: Vec<ExampleDesc> =
+        serde_json::from_str(include_str!("../../../data/examples_manifest.json"))
+            .expect("Failed to parse data/examples_manifest.json");
+    if examples.is_empty() {
+        re_log::warn_once!("No examples found in examples_manifest.json");
+    }
+    examples
 }
 
 // TODO(ab): use design tokens
@@ -107,6 +112,11 @@ impl ExamplePage {
         rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) -> WelcomeScreenResponse {
+        if self.examples.is_empty() {
+            ui.label("No examples found.");
+            return WelcomeScreenResponse::default();
+        }
+
         // vertical spacing isn't homogeneous so it's handled manually
         let grid_spacing = egui::vec2(COLUMN_HSPACE, 0.0);
         let column_count = (((ui.available_width() + grid_spacing.x)

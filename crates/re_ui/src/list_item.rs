@@ -267,7 +267,7 @@ impl<'a> ListItem<'a> {
         /// Compute the "ideal" desired width of the item, accounting for text and icon(s) (but not
         /// buttons).
         fn icons_and_label_width(
-            ui: &mut egui::Ui,
+            ui: &egui::Ui,
             item: &ListItem<'_>,
             collapse_extra: f32,
             icon_extra: f32,

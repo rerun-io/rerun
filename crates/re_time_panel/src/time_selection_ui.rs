@@ -10,7 +10,7 @@ pub fn loop_selection_ui(
     store_db: &StoreDb,
     time_ctrl: &mut TimeControl,
     time_ranges_ui: &TimeRangesUi,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     time_area_painter: &egui::Painter,
     timeline_rect: &Rect,
 ) {
@@ -205,7 +205,7 @@ fn initial_time_selection(
 }
 
 fn drag_right_loop_selection_edge(
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
     selected_range: &mut TimeRangeF,
     right_edge_id: Id,
@@ -233,7 +233,7 @@ fn drag_right_loop_selection_edge(
 }
 
 fn drag_left_loop_selection_edge(
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
     selected_range: &mut TimeRangeF,
     left_edge_id: Id,
@@ -261,7 +261,7 @@ fn drag_left_loop_selection_edge(
 }
 
 fn on_drag_loop_selection(
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     time_ranges_ui: &TimeRangesUi,
     selected_range: &mut TimeRangeF,
 ) -> Option<()> {
@@ -290,9 +290,9 @@ fn on_drag_loop_selection(
 }
 
 fn paint_range_text(
-    time_ctrl: &mut TimeControl,
+    time_ctrl: &TimeControl,
     selected_range: TimeRangeF,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     painter: &egui::Painter,
     selection_rect: Rect,
 ) {

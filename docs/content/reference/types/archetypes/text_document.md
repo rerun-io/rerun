@@ -13,8 +13,8 @@ Supports raw text and markdown.
 **Optional**: [`MediaType`](../components/media_type.md)
 
 ## Links
- * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/nightly/common/archetypes#rerun.archetypes.TextDocument)
- * 🦀 [Rust API docs for `TextDocument`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/archetypes/struct.TextDocument.html)
+ * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextDocument)
+ * 🦀 [Rust API docs for `TextDocument`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TextDocument.html)
 
 ## Example
 

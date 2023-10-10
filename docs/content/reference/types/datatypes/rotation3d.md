@@ -10,8 +10,8 @@ A 3D rotation.
 * AxisAngle: [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
 
 ## Links
- * 🐍 [Python API docs for `Rotation3D`](https://ref.rerun.io/docs/python/nightly/common/datatypes#rerun.datatypes.Rotation3D)
- * 🦀 [Rust API docs for `Rotation3D`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/datatypes/enum.Rotation3D.html)
+ * 🐍 [Python API docs for `Rotation3D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Rotation3D)
+ * 🦀 [Rust API docs for `Rotation3D`](https://docs.rs/rerun/latest/rerun/datatypes/enum.Rotation3D.html)
 
 
 ## Used by

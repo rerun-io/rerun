@@ -39,6 +39,10 @@ def test_expected_warnings() -> None:
                 rr.log("test_transform", rr.Transform3D(mat3x3=[1, 2, 3, 4, 5])),
                 "cannot reshape array of size 5 into shape (3,3))",
             ),
+            (
+                rr.log("test_transform", rr.TranslationAndMat3x3(translation=[1, 0, 0])),  # type: ignore[arg-type]
+                "Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, but got",
+            ),
         ]
 
         assert len(warnings) == len(expected_warnings)

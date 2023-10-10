@@ -160,19 +160,17 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         putln!(page);
         putln!(page, "## Links");
         // TODO(#2919): link to C++ docs
-        // TODO(#3651): s/nightly/stable
         putln!(
             page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/nightly/common/{}#rerun.{}.{})",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}#rerun.{}.{})",
             object.name,
             object.kind.plural_snake_case(),
             object.kind.plural_snake_case(),
             object.name
         );
-        // TODO(#3651): s/0.9.0-alpha.10/latest
         putln!(
             page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/{}/{}.{}.html)",
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html)",
             object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },

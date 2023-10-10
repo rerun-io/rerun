@@ -80,7 +80,7 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
 }
 
 fn annotation_info(
-    ctx: &mut re_viewer_context::ViewerContext<'_>,
+    ctx: &re_viewer_context::ViewerContext<'_>,
     entity_path: &re_log_types::EntityPath,
     query: &re_arrow_store::LatestAtQuery,
     keypoint_id: KeypointId,

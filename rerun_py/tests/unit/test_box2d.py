@@ -3,8 +3,11 @@ from __future__ import annotations
 import itertools
 from typing import Optional, cast
 
+import numpy as np
+import numpy.typing as npt
 import pytest
 import rerun as rr
+import torch
 from rerun.components import (
     DrawOrderLike,
     HalfSizes2DBatch,
@@ -135,6 +138,19 @@ def test_with_array_xcycwh() -> None:
 
 def test_with_array_xcycw2h2() -> None:
     assert rr.Boxes2D(mins=[1, 1], sizes=[2, 4]) == rr.Boxes2D(array=[2, 3, 1, 2], array_format=rr.Box2DFormat.XCYCW2H2)
+
+
+@pytest.mark.parametrize(
+    "array",
+    [
+        [1, 2, 3, 4],
+        [1, 2, 3, 4],
+        np.array([1, 2, 3, 4], dtype=np.float32),
+        torch.asarray([1, 2, 3, 4], dtype=torch.float32),
+    ],
+)
+def test_with_array_types(array: npt.ArrayLike) -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[3, 4]) == rr.Boxes2D(array=array, array_format=rr.Box2DFormat.XYWH)
 
 
 def test_invalid_parameter_combinations() -> None:

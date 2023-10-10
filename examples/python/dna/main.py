@@ -44,7 +44,6 @@ entities are children of [helix/structure](recording://helix/structure) they wil
 You can visualize this rotation by selecting the two entities on the left-hand side and activating `Show transform` in
 the Blueprint settings on the right-hand side. You will see one static frame (i.e., the frame of
 [helix](recording://helix)) and the rotating frame (i.e., the frame of [structure](recording://helix/structure)).
-```
 """.strip()
 
 

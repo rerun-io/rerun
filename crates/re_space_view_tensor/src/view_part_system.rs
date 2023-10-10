@@ -65,7 +65,7 @@ impl ViewPartSystem for TensorSystem {
 impl TensorSystem {
     fn load_tensor_entity(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ent_path: &EntityPath,
         row_id: RowId,
         _props: &EntityProperties,

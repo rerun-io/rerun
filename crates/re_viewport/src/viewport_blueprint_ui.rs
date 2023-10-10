@@ -88,7 +88,7 @@ impl ViewportBlueprint<'_> {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
-        container: &mut egui_tiles::Container,
+        container: &egui_tiles::Container,
     ) {
         if let Some(child_id) = container.only_child() {
             // Maybe a tab container with only one child - collapse it in the tree view to make it more easily understood.

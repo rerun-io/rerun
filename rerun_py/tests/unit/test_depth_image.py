@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 import pytest
 import rerun as rr
+import torch
 from rerun.components import DepthMeter
 from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
 
@@ -47,6 +48,7 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     # Assorted Extra Dimensions
     rng.uniform(0.0, 1.0, (1, 10, 20)),
     rng.uniform(0.0, 1.0, (10, 20, 1)),
+    torch.rand(10, 20, 1),
 ]
 
 BAD_IMAGE_INPUTS: list[TensorDataLike] = [
@@ -72,5 +74,5 @@ def test_depth_image_shapes() -> None:
         rr.DepthImage(img)
 
     for img in BAD_IMAGE_INPUTS:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             rr.DepthImage(img)

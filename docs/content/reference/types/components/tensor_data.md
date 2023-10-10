@@ -9,8 +9,8 @@ A multi-dimensional `Tensor` with optionally named arguments.
 * data: [`TensorData`](../datatypes/tensor_data.md)
 
 ## Links
- * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/nightly/common/components#rerun.components.TensorData)
- * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/0.9.0-alpha.10/rerun/components/struct.TensorData.html)
+ * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TensorData)
+ * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/latest/rerun/components/struct.TensorData.html)
 
 
 ## Used by

@@ -6,6 +6,7 @@ from typing import Any
 import numpy as np
 import pytest
 import rerun as rr
+import torch
 from PIL import Image as PILImage
 from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
 from rerun.datatypes.tensor_data import TensorDataBatch
@@ -69,6 +70,9 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     rng.uniform(0.0, 1.0, (10, 20, 1)),
     rng.uniform(0.0, 1.0, (10, 20, 3, 1)),
     rng.uniform(0.0, 1.0, (10, 20, 4, 1)),
+    # Torch tensors
+    torch.rand(10, 20, 1),
+    torch.rand(10, 20, 3),
 ]
 
 BAD_IMAGE_INPUTS: list[TensorDataLike] = [
@@ -88,7 +92,7 @@ def test_image_shapes() -> None:
         rr.Image(img)
 
     for img in BAD_IMAGE_INPUTS:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             rr.Image(img)
 
 
