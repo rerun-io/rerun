@@ -31,7 +31,7 @@ fn main() -> Result<(), std::io::Error> {
         &["proto"],
     )?;
 
-    let out_dir = std::env::var("OUT_DIR").unwrap();
+    let out_dir = re_build_tools::get_and_track_env_var("OUT_DIR").unwrap();
     let src_path = PathBuf::from(out_dir).join("objectron.proto.rs");
     let dst_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/objectron.rs");
 

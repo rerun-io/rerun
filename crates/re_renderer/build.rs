@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{bail, ensure, Context as _};
 use walkdir::{DirEntry, WalkDir};
 
-use re_build_tools::{rerun_if_changed, write_file_if_necessary};
+use re_build_tools::{get_and_track_env_var, rerun_if_changed, write_file_if_necessary};
 
 // ---
 
@@ -124,7 +124,7 @@ fn main() {
     // We're packing at that level rather than at the workspace level because we lose all workspace
     // layout information when publishing the crates.
     // This means all the shaders we pack must live under `re_renderer/shader` for now.
-    let manifest_path = Path::new(&std::env::var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
+    let manifest_path = Path::new(&get_and_track_env_var("CARGO_MANIFEST_DIR").unwrap()).to_owned();
     let shader_dir = manifest_path.join("shader");
 
     // On windows at least, it's been shown that the paths we get out of these env-vars can
@@ -201,7 +201,7 @@ pub fn init() {
 
         let is_release = cfg!(not(debug_assertions));
         // DO NOT USE `cfg!` for this, that would give you the host's platform!
-        let targets_wasm = std::env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "wasm";
+        let targets_wasm = get_and_track_env_var("CARGO_CFG_TARGET_FAMILY").unwrap() == "wasm";
 
         // Make sure we're not referencing anything outside of the workspace!
         //

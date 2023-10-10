@@ -40,7 +40,7 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
     }
 }
 
-/// Call from `build.rs` to trigger a rebuild whenever an environment variable changes.
+/// Read the environment variable and trigger a rebuild whenever the environment variable changes.
 pub fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::VarError> {
     if should_output_cargo_build_instructions() {
         println!("cargo:rerun-if-env-changed={env_var_name}");
@@ -48,8 +48,9 @@ pub fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::Var
     std::env::var(env_var_name)
 }
 
-/// Call from `build.rs` to trigger a rebuild whenever an environment variable changes, and returns
-/// true if that variable has been set to a truthy value.
+/// Read the environment variable and trigger a rebuild whenever the environment variable changes.
+///
+/// Returns `true` if that variable has been set to a truthy value.
 pub fn is_tracked_env_var_set(env_var_name: &str) -> bool {
     let var = get_and_track_env_var(env_var_name).map(|v| v.to_lowercase());
     var == Ok("1".to_owned()) || var == Ok("yes".to_owned()) || var == Ok("true".to_owned())

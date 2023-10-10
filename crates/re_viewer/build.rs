@@ -190,7 +190,7 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
 }
 
 fn get_base_url() -> Result<String> {
-    let mut base_url = std::env::var("EXAMPLES_MANIFEST_BASE_URL")
+    let mut base_url = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL")
         .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
 
     if re_build_tools::is_on_ci() {

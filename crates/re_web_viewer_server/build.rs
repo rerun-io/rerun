@@ -32,7 +32,7 @@ fn main() {
         // This feature is set on CI (hence the name), but also with `--all-features`, which is set by rust analyzer, bacon, etc.
         eprintln!("__ci feature detected: Skipping building of web viewer wasm.");
     } else {
-        let release = std::env::var("PROFILE").unwrap() == "release";
+        let release = re_build_tools::get_and_track_env_var("PROFILE").unwrap() == "release";
         if let Err(err) =
             re_build_web_viewer::build(release, is_tracked_env_var_set("RERUN_BUILD_WEBGPU"))
         {
