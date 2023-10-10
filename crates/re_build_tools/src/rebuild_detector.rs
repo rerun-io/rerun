@@ -52,8 +52,16 @@ pub fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::Var
 ///
 /// Returns `true` if that variable has been set to a truthy value.
 pub fn is_tracked_env_var_set(env_var_name: &str) -> bool {
-    let var = get_and_track_env_var(env_var_name).map(|v| v.to_lowercase());
-    var == Ok("1".to_owned()) || var == Ok("yes".to_owned()) || var == Ok("true".to_owned())
+    match get_and_track_env_var(env_var_name) {
+        Err(_) => false,
+        Ok(value) => match value.to_lowercase().as_str() {
+            "1" | "yes" | "true" => true,
+            "0" | "no" | "false" => false,
+            _ => {
+                panic!("Failed to understand boolean env-var {env_var_name}={value}");
+            }
+        },
+    }
 }
 
 /// Call from `build.rs` to trigger a rebuild whenever the file at `path` changes.
