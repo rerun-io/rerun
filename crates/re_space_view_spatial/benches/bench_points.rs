@@ -6,7 +6,7 @@ use re_space_view_spatial::LoadedPoints;
 use re_types::{
     archetypes::Points3D,
     components::{Color, InstanceKey, Position3D},
-    AsComponents, Loggable as _,
+    Loggable as _,
 };
 use re_viewer_context::Annotations;
 
