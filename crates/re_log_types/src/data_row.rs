@@ -267,7 +267,7 @@ pub struct DataRow {
 
 impl DataRow {
     /// Builds a new `DataRow` from anything implementing [`AsComponents`].
-    pub fn from_component_batches(
+    pub fn from_archetype(
         row_id: RowId,
         timepoint: TimePoint,
         entity_path: EntityPath,
@@ -275,19 +275,35 @@ impl DataRow {
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let data_cells = as_components
-            .as_component_batches()
-            .into_iter()
-            .map(|batch| DataCell::from_component_batch(batch.as_ref()))
-            .collect::<Result<Vec<DataCell>, _>>()?;
-
-        let mut row = DataRow::from_cells(
+        let batches = as_components.as_component_batches();
+        Self::from_component_batches(
             row_id,
             timepoint,
             entity_path,
-            as_components.num_instances() as _,
-            data_cells,
-        )?;
+            batches.iter().map(|batch| batch.as_ref()),
+        )
+    }
+
+    /// Builds a new `DataRow` from anything implementing [`AsComponents`].
+    pub fn from_component_batches<'a>(
+        row_id: RowId,
+        timepoint: TimePoint,
+        entity_path: EntityPath,
+        comp_batches: impl IntoIterator<Item = &'a dyn re_types::ComponentBatch>,
+    ) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
+
+        let data_cells = comp_batches
+            .into_iter()
+            .map(|batch| DataCell::from_component_batch(batch))
+            .collect::<Result<Vec<DataCell>, _>>()?;
+
+        // TODO(emilk): should `DataRow::from_cells` calculate `num_instances` instead?
+        let num_instances = data_cells.iter().map(|cell| cell.num_instances()).max();
+        let num_instances = num_instances.unwrap_or(0);
+
+        let mut row =
+            DataRow::from_cells(row_id, timepoint, entity_path, num_instances, data_cells)?;
         row.compute_all_size_bytes();
         Ok(row)
     }

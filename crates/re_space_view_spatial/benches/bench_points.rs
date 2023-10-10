@@ -6,7 +6,7 @@ use re_space_view_spatial::LoadedPoints;
 use re_types::{
     archetypes::Points3D,
     components::{Color, InstanceKey, Position3D},
-    Loggable as _,
+    AsComponents, Loggable as _,
 };
 use re_viewer_context::Annotations;
 
@@ -41,8 +41,7 @@ fn bench_points(c: &mut criterion::Criterion) {
         let mut timepoint = TimePoint::default();
         timepoint.insert(timeline, TimeInt::from_seconds(0));
         let data_row =
-            DataRow::from_component_batches(RowId::random(), timepoint, ent_path.clone(), &points)
-                .unwrap();
+            DataRow::from_archetype(RowId::random(), timepoint, ent_path.clone(), &points).unwrap();
         store.insert_row(&data_row).unwrap();
         store
     };
