@@ -11,7 +11,7 @@ SimpleRecon is a back-to-basics approach for 3D scene reconstruction from posed 
 
 https://vimeo.com/865974318?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:7627
 
-SimpleRecon's key contributions include using a 2D CNN with a cost volume, incorporating metadata via MLP, and avoiding computational costs of 3D convolutions. The different frustrums in the visualization show each source frame used to compute the cost volume. These source frames have their features extracted and back-projected into the current frames depth plane hypothesis.
+SimpleRecon's key contributions include using a 2D CNN with a cost volume, incorporating metadata via MLP, and avoiding computational costs of 3D convolutions. The different frustums in the visualization show each source frame used to compute the cost volume. These source frames have their features extracted and back-projected into the current frames depth plane hypothesis.
 
 
 https://vimeo.com/865974327?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:6522
