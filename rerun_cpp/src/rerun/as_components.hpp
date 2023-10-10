@@ -2,10 +2,11 @@
 #include "indicator_component.hpp"
 
 namespace rerun {
-    // TODO: general docs
-    // TODO: can we not put single component into the unspecialized one?
-
-    /// AsComponents for a single component.
+    /// The AsComponents trait is used to convert a type into a list of serialized component.
+    ///
+    /// It is implemented for various built-in types as well as collections of components.
+    /// You can build your own archetypes by implementing this trait.
+    /// Anything that implements `AsComponents` can be logged to a recording stream.
     template <typename TComponent>
     struct AsComponents {
         template <typename T>
