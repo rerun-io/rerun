@@ -44,3 +44,15 @@ parking_lot.workspace = true
 rayon.workspace = true
 serde = "1"
 smallvec = { workspace = true, features = ["serde"] }
+
+
+[dev-dependencies]
+criterion.workspace = true
+mimalloc.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "bench_points"
+harness = false

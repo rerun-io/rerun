@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use arrow2::datatypes::DataType;
-use re_types::{Component, ComponentName, DeserializationError};
+use re_types::{Component, ComponentBatch, ComponentName, DeserializationError};
 
 use crate::SizeBytes;
 
@@ -164,6 +164,14 @@ pub struct DataCellInner {
 // TODO(#1696): Check that the array is indeed a leaf / component type when building a cell from an
 // arrow payload.
 impl DataCell {
+    /// Builds a new `DataCell` from a component batch.
+    #[inline]
+    pub fn from_component_batch(batch: &dyn ComponentBatch) -> re_types::SerializationResult<Self> {
+        batch
+            .to_arrow()
+            .map(|arrow| DataCell::from_arrow(batch.name(), arrow))
+    }
+
     /// Builds a new `DataCell` from a uniform iterable of native component values.
     ///
     /// Fails if the given iterable cannot be serialized to arrow, which should never happen when
