@@ -241,12 +241,19 @@ impl ViewportBlueprint<'_> {
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
+            let entity_has_data_in_selected_timeline = ctx
+                .entity_has_data_in_selected_timeline(entity_path)
+                .unwrap_or(false);
+
             let mut properties = space_view
                 .contents
                 .data_blueprints_individual()
                 .get(entity_path);
             let name = entity_path.iter().last().unwrap().to_string();
-            let label = format!("🔹 {name}");
+            let mut label = egui::RichText::new(format!("🔹 {name}"));
+            if !entity_has_data_in_selected_timeline {
+                label = label.italics();
+            }
             let response = ListItem::new(ctx.re_ui, label)
                 .selected(is_selected)
                 .subdued(!group_is_visible || !properties.visible)
@@ -278,6 +285,22 @@ impl ViewportBlueprint<'_> {
         }
 
         for child_group_handle in &children {
+            let mut group_has_data_logged_to_current_timeline = false;
+            space_view.contents.visit_group_entities_recursively(
+                *child_group_handle,
+                &mut |entity_path| {
+                    if group_has_data_logged_to_current_timeline {
+                        return;
+                    }
+                    if ctx
+                        .entity_has_data_in_selected_timeline(entity_path)
+                        .unwrap_or(false)
+                    {
+                        group_has_data_logged_to_current_timeline = true;
+                    }
+                },
+            );
+
             let Some(child_group) = space_view.contents.group_mut(*child_group_handle) else {
                 debug_assert!(
                     false,
@@ -294,8 +317,13 @@ impl ViewportBlueprint<'_> {
             let mut remove_group = false;
             let default_open = Self::default_open_for_group(child_group);
 
+            let mut label = egui::RichText::new(child_group.display_name.clone());
+            if !group_has_data_logged_to_current_timeline {
+                label = label.italics();
+            }
+
             let mut child_group_visible = child_group.properties_individual.visible;
-            let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
+            let response = ListItem::new(ctx.re_ui, label)
                 .selected(is_selected)
                 .subdued(!child_group_visible || !group_is_visible)
                 .force_hovered(is_item_hovered)

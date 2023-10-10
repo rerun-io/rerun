@@ -92,19 +92,38 @@ impl<'a> ViewerContext<'a> {
         self.rec_cfg.time_ctrl.current_query()
     }
 
-    /// Returns whether the given tree has any data logged in the current timeline.
+    /// Returns whether the given tree has any timeless data or data logged in the current timeline.
     pub fn tree_has_data_in_current_timeline(&self, tree: &EntityTree) -> bool {
         tree.prefix_times
             .has_timeline(self.rec_cfg.time_ctrl.timeline())
             || tree.num_timeless_messages() > 0
     }
 
-    /// Returns whether the given component has any data logged in the current timeline.
+    /// Returns whether the given component has any timeless data or data logged in the current
+    /// timeline.
     pub fn component_has_data_in_current_timeline(&self, component_stat: &ComponentStats) -> bool {
         component_stat
             .times
             .has_timeline(self.rec_cfg.time_ctrl.timeline())
             || component_stat.num_timeless_messages() > 0
+    }
+
+    /// Returns whether the given component has any timeless data or data logged in the current
+    /// timeline.
+    ///
+    /// Returns `None` if the entity is not found in the current recording.
+    pub fn entity_has_data_in_selected_timeline(
+        &self,
+        entity_path: &re_log_types::EntityPath,
+    ) -> Option<bool> {
+        self.store_context
+            .recording
+            .and_then(|recording| recording.entity_db.tree.subtree(entity_path))
+            .map(|tree| {
+                tree.prefix_times
+                    .has_timeline(self.rec_cfg.time_ctrl.timeline())
+                    || tree.num_timeless_messages() > 0
+            })
     }
 }
 

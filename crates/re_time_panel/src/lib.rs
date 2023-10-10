@@ -443,6 +443,12 @@ impl TimePanel {
         clip_rect.max.x = tree_max_y;
         ui.set_clip_rect(clip_rect);
 
+        // style the item to provide feedback on whether it has data in the current timeline
+        let mut text = egui::RichText::new(text);
+        if !tree_has_data_in_current_timeline {
+            text = text.italics();
+        }
+
         let re_ui::list_item::ShowCollapsingResponse {
             item_response: response,
             body_response,
@@ -551,9 +557,14 @@ impl TimePanel {
                 clip_rect.max.x = tree_max_y;
                 ui.set_clip_rect(clip_rect);
 
+                // style the item to provide feedback on whether it has data in the current timeline
+                let mut text = egui::RichText::new(short_component_name);
+                if !component_has_data_in_current_timeline {
+                    text = text.italics();
+                }
                 let response =
                     re_data_ui::temporary_style_ui_for_component(ui, component_name, |ui| {
-                        ListItem::new(ctx.re_ui, short_component_name)
+                        ListItem::new(ctx.re_ui, text)
                             .selected(ctx.selection().contains(&item))
                             .width_allocation_mode(WidthAllocationMode::Compact)
                             .force_hovered(
