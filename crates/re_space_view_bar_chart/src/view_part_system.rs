@@ -2,7 +2,11 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
-use re_types::{archetypes::BarChart, datatypes::TensorData, Archetype, ComponentNameSet};
+use re_types::{
+    archetypes::{BarChart, Tensor},
+    datatypes::TensorData,
+    Archetype, ComponentNameSet,
+};
 use re_viewer_context::{
     default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
@@ -29,7 +33,12 @@ impl ViewPartSystem for BarChartViewPartSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(BarChart::indicator().name()).collect()
+        // TODO(#3342): For now, we relax the indicator component heuristics on bar charts so that
+        // logging a 1D tensor also results in a bar chart view, rather than a broken viewer (see #3709).
+        // Ideally though, this should be implemented using an heuristic fallback mechanism.
+        [BarChart::indicator().name(), Tensor::indicator().name()]
+            .into_iter()
+            .collect()
     }
 
     fn heuristic_filter(
