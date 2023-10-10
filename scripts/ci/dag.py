@@ -35,7 +35,7 @@ class DAG(Generic[_T]):
 
         Concurrency is limited by the following bucket rate limiting algorithm:
         * Processing may not begin until a token can be acquired from the bucket.
-        * There are at most `max_tokens - in_progress_tasks` in the bucket at any time.
+        * There are at most `max_tokens - num_in_progress` in the bucket at any time.
         * Tokens are refreshed every `refill_interval_s`.
         """
 
@@ -62,7 +62,7 @@ class DAG(Generic[_T]):
                 p.submit(worker, n)
 
             tokens = max_tokens
-            in_progress = 0
+            num_in_progress = 0
             last_refill = time.time()
             while not state._is_done():
                 # This loop has two parts, `push` and `pull`.
@@ -87,20 +87,20 @@ class DAG(Generic[_T]):
                 while len(state._queue) > 0:  # push loop
                     now = time.time()
                     if now - last_refill > refill_interval_s:
-                        tokens = max_tokens - in_progress
+                        tokens = max_tokens - num_in_progress
                         last_refill = now
 
                     if len(state._queue) == 0 or tokens == 0:
                         break
 
                     tokens -= 1
-                    in_progress += 1
+                    num_in_progress += 1
                     task_queue.put(state._queue.pop())
 
                 try:
                     while True:  # pull loop
                         state._finish(done_queue.get_nowait())
-                        in_progress -= 1
+                        num_in_progress -= 1
                 except Empty:
                     time.sleep(0)  # yield here to prevent busy-looping
 
