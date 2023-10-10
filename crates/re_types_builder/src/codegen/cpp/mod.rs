@@ -477,6 +477,9 @@ impl QuotedObject {
                     #(#methods_hpp)*
             }
         };
+
+        let indicator_comment = quote_doc_comment("Indicator component, used to identify the archetype when converting to a list of components.");
+
         let hpp = quote! {
             #hpp_includes
 
@@ -488,6 +491,8 @@ impl QuotedObject {
 
                         #(#constants_hpp;)*
 
+                        #NEWLINE_TOKEN
+                        #indicator_comment
                         using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
                         #hpp_type_extensions
