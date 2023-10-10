@@ -4,14 +4,26 @@ use re_build_tools::{
     get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
 };
 
-fn main() {
-    if !re_build_tools::is_in_rerun_workspace() {
-        // Only run if we are in the rerun workspace, not on users machines.
-        return;
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use re_build_tools::Environment;
+
+    match Environment::detect() {
+        // We should build the web viewer before starting crate publishing
+        Environment::PublishingCrates => false,
+
+        // We only build the web viewer explicitly on CI
+        Environment::CI => false,
+
+        Environment::DeveloperInWorkspace => true,
+
+        // Definetly not
+        Environment::ProbablyUserMachine => false,
     }
-    if re_build_tools::is_publishing_crates() {
-        // We don't need to rebuild - we should have done so beforehand!
-        // See `RELEASES.md`
+}
+
+fn main() {
+    if !should_run() {
         return;
     }
 

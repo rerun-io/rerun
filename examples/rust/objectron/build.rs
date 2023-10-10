@@ -2,14 +2,28 @@ use std::path::PathBuf;
 
 use re_build_tools::write_file_if_necessary;
 
-fn main() -> Result<(), std::io::Error> {
-    if re_build_tools::is_on_ci() {
-        // No need to run this on CI (which means setting up `protoc` etc) since the code is committed
-        // anyway.
-        return Ok(());
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use re_build_tools::Environment;
+
+    match Environment::detect() {
+        // The code (which is commited) should hopefully already be up-to-date.
+        Environment::PublishingCrates => false,
+
+        // No need to run this on CI (which means setting up `protoc` etc)
+        // since the code is committed anyway.
+        Environment::CI => false,
+
+        // Sure - let's keep it up-to-date.
+        Environment::DeveloperInWorkspace => true,
+
+        // Definetly not
+        Environment::ProbablyUserMachine => false,
     }
-    if !re_build_tools::is_in_rerun_workspace() {
-        // Only run if we are in the rerun workspace, not on users machines (if we ever publish the example).
+}
+
+fn main() -> Result<(), std::io::Error> {
+    if !should_run() {
         return Ok(());
     }
 

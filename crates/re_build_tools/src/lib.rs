@@ -57,10 +57,41 @@ pub(crate) fn should_output_cargo_build_instructions() -> bool {
     OUTPUT_CARGO_BUILD_INSTRUCTIONS.load(Ordering::Relaxed)
 }
 
+pub enum Environment {
+    /// We are running `cargo publish` (via `scripts/ci/crates.py`); _probably_ on CI.
+    PublishingCrates,
+
+    /// We are running on CI, but NOT publishing crates
+    CI,
+
+    /// Are we a developer running inside the workspace of <https://github.com/rerun-io/rerun> ?
+    DeveloperInWorkspace,
+
+    /// We are likely running on a users machine.
+    ///
+    /// Try to do as little work as possible.
+    ProbablyUserMachine,
+}
+
+impl Environment {
+    /// Detect what environment we are running in.
+    pub fn detect() -> Self {
+        if is_publishing_crates() {
+            Self::PublishingCrates
+        } else if is_on_ci() {
+            Self::CI
+        } else if is_in_rerun_workspace() {
+            Self::DeveloperInWorkspace
+        } else {
+            Self::ProbablyUserMachine
+        }
+    }
+}
+
 /// Are we running inside the workspace of <https://github.com/rerun-io/rerun> ?
 ///
 /// Otherwise we might be running on users machines.
-pub fn is_in_rerun_workspace() -> bool {
+fn is_in_rerun_workspace() -> bool {
     is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE")
 }
 
@@ -73,7 +104,7 @@ pub fn is_on_ci() -> bool {
 /// Are we currently in the process of publishing crates?
 ///
 /// This is usually done on CI.
-pub fn is_publishing_crates() -> bool {
+fn is_publishing_crates() -> bool {
     // "RERUN_IS_PUBLISHING" is set by `scripts/ci/crates.py`
     is_tracked_env_var_set("RERUN_IS_PUBLISHING")
 }

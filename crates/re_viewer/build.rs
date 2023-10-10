@@ -230,13 +230,20 @@ fn write_examples_manifest() -> Result<()> {
 }
 
 fn write_examples_manifest_if_necessary() {
-    if !re_build_tools::is_in_rerun_workspace() || re_build_tools::is_publishing_crates() {
-        return;
-    }
-    re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);
+    use re_build_tools::Environment;
+    let should_run = match Environment::detect() {
+        // Can't run in thsese sitatuions, because we can't find `examples/python`.
+        Environment::PublishingCrates | Environment::ProbablyUserMachine => false,
 
-    if let Err(err) = write_examples_manifest() {
-        panic!("{err}");
+        // Make sure the manifest reflects what is in `examples/python`.
+        Environment::CI | Environment::DeveloperInWorkspace => true,
+    };
+
+    if should_run {
+        re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);
+        if let Err(err) = write_examples_manifest() {
+            panic!("{err}");
+        }
     }
 }
 

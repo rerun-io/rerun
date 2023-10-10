@@ -101,21 +101,25 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
 
 // ---
 
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use re_build_tools::Environment;
+
+    match Environment::detect() {
+        // we should have been run before publishing
+        Environment::PublishingCrates => false,
+
+        // The code we're generating here is actual source code that gets committed into the repository.
+        Environment::CI => false,
+
+        Environment::DeveloperInWorkspace => true,
+
+        Environment::ProbablyUserMachine => false,
+    }
+}
+
 fn main() {
-    if re_build_tools::is_on_ci() {
-        // Don't run on CI!
-        //
-        // The code we're generating here is actual source code that gets committed into the
-        // repository.
-        return;
-    }
-    if !re_build_tools::is_in_rerun_workspace() {
-        // Only run if we are in the rerun workspace, not on users machines.
-        return;
-    }
-    if re_build_tools::is_publishing_crates() {
-        // We don't need to rebuild - we should have done so beforehand!
-        // See `RELEASES.md`
+    if !should_run() {
         return;
     }
 

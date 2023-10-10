@@ -9,19 +9,33 @@ use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 
 use crate::should_output_cargo_build_instructions;
 
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use super::Environment;
+
+    match Environment::detect() {
+        // We cannot run this during publishing,
+        // we don't need to,
+        // and it can also can cause a Cargo.lock file to be generated.
+        Environment::PublishingCrates => false,
+
+        // Dependencies shouldn't change on CI, but who knows 🤷‍♂️
+        Environment::CI => true,
+
+        Environment::DeveloperInWorkspace => true,
+
+        // Definetly not
+        Environment::ProbablyUserMachine => false,
+    }
+}
+
 /// Call from `build.rs` to trigger a rebuild whenever any source file of the given package
 /// _or any of its dependencies_ changes, recursively.
 ///
 /// This will work even if the package depends on crates that are outside of the workspace,
 /// included with `path = …`
 pub fn rebuild_if_crate_changed(pkg_name: &str) {
-    if !crate::is_in_rerun_workspace() {
-        // Only run if we are in the rerun workspace, not on users machines.
-        return;
-    }
-    if crate::is_publishing_crates() {
-        // We cannot run this during publishing.
-        // We don't need to, and it can also can cause a Cargo.lock file to be generated.
+    if !should_run() {
         return;
     }
 
