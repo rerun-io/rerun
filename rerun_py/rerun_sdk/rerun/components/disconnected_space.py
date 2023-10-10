@@ -41,6 +41,9 @@ class DisconnectedSpace(DisconnectedSpaceExt):
         self.__attrs_init__(is_disconnected=is_disconnected)
 
     is_disconnected: bool = field(converter=bool)
+    # Whether the entity path at which this is logged is disconnected from its parent.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
