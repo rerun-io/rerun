@@ -274,9 +274,9 @@ impl ImagesPart {
                 color.into(),
             ) {
                 // Only update the bounding box if the image_plane_distance is not auto.
-                // This is because in auto mode the bounds will change the image plane heuristic,
-                // and there's no good reason to grow the size of the bounds only to the shrink
-                // the image plane as a result.
+                // This is avoids a cyclic relationship where the image plane grows the bounds
+                // which in turn influence the size of the image plane.
+                // See: https://github.com/rerun-io/rerun/issues/3728
                 if !ent_props.pinhole_image_plane_distance.is_auto() {
                     self.extend_bbox(&textured_rect);
                 }
@@ -400,9 +400,9 @@ impl ImagesPart {
                 color.into(),
             ) {
                 // Only update the bounding box if the image_plane_distance is not auto.
-                // This is because in auto mode the bounds will change the image plane heuristic,
-                // and there's no good reason to grow the size of the bounds only to the shrink
-                // the image plane as a result.
+                // This is avoids a cyclic relationship where the image plane grows the bounds
+                // which in turn influence the size of the image plane.
+                // See: https://github.com/rerun-io/rerun/issues/3728
                 if !ent_props.pinhole_image_plane_distance.is_auto() {
                     self.extend_bbox(&textured_rect);
                 }
@@ -494,9 +494,9 @@ impl ImagesPart {
                 color.into(),
             ) {
                 // Only update the bounding box if the image_plane_distance is not auto.
-                // This is because in auto mode the bounds will change the image plane heuristic,
-                // and there's no good reason to grow the size of the bounds only to the shrink
-                // the image plane as a result.
+                // This is avoids a cyclic relationship where the image plane grows the bounds
+                // which in turn influence the size of the image plane.
+                // See: https://github.com/rerun-io/rerun/issues/3728
                 if !ent_props.pinhole_image_plane_distance.is_auto() {
                     self.extend_bbox(&textured_rect);
                 }
