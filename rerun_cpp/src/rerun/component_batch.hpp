@@ -46,6 +46,15 @@ namespace rerun {
         /// TODO(andreas): Optimize this to not allocate a vector.
         ComponentBatch(TComponent&& one_and_only) : ComponentBatch(std::vector{one_and_only}) {}
 
+        /// Construct from a single temporary component with type conversion from one or more
+        /// parameters.
+        ///
+        /// Takes ownership of the data and moves it into the component batch.
+        template <
+            typename... Ts, typename = std::enable_if_t<std::is_constructible_v<TComponent, Ts...>>>
+        ComponentBatch(Ts&&... construction_args)
+            : ComponentBatch(std::move(TComponent(std::forward<Ts>(construction_args)...))) {}
+
         /// Construct from a raw pointer and size.
         ///
         /// Naturally, this does not take ownership of the data.
@@ -204,3 +213,5 @@ namespace rerun {
         ComponentBatchStorage<TComponent> storage;
     };
 } // namespace rerun
+
+// TODO: add tests for when things are owned or not.
