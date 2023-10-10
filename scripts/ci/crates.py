@@ -361,7 +361,6 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
         except:
             print(f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}")
             raise
-    print()
 
 
 def publish(dry_run: bool, token: str) -> None:
