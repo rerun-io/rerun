@@ -64,6 +64,12 @@ pub fn is_in_rerun_workspace() -> bool {
     is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE")
 }
 
+/// Are we running on a CI machine?
+pub fn is_on_ci() -> bool {
+    // `CI` is an env-var set by GitHub actions.
+    std::env::var("CI").is_ok()
+}
+
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 ///
 /// Use this crate together with the `re_build_info` crate.
@@ -86,9 +92,8 @@ fn export_build_info_env_vars() {
     // We need to check `IS_IN_RERUN_WORKSPACE` in the build-script (here),
     // because otherwise it won't show up when compiling through maturin.
     // We must also make an exception for when we build actual wheels (on CI) for release.
-    if std::env::var("CI").is_ok() {
-        // Probably building wheels on CI.
-        // `CI` is an env-var set by GitHub actions.
+    if is_on_ci() {
+        // e.g. building wheels on CI.
         set_env("RE_BUILD_IS_IN_RERUN_WORKSPACE", "no");
     } else {
         set_env(

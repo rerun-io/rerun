@@ -193,8 +193,7 @@ fn get_base_url() -> Result<String> {
     let mut base_url = std::env::var("EXAMPLES_MANIFEST_BASE_URL")
         .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
 
-    if std::env::var("CI").is_ok() {
-        // We're in CI:
+    if re_build_tools::is_on_ci() {
         let sh = Shell::new()?;
         let branch = git_branch_name(&sh)?;
         // If we are on `main`, leave the base url at `version/nightly`

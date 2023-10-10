@@ -80,7 +80,7 @@ fn main() {
     // Detect desyncs between definitions and generated when running on CI, and
     // crash the build accordingly.
     #[allow(clippy::manual_assert)]
-    if std::env::var("CI").is_ok() {
+    if re_build_tools::is_on_ci() {
         panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 

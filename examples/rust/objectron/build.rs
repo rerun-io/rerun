@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use re_build_tools::write_file_if_necessary;
 
 fn main() -> Result<(), std::io::Error> {
-    if std::env::var("CI").is_ok() {
+    if re_build_tools::is_on_ci() {
         // No need to run this on CI (which means setting up `protoc` etc) since the code is committed
         // anyway.
         return Ok(());

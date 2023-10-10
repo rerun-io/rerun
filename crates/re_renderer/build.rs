@@ -102,7 +102,7 @@ fn check_hermeticity(root_path: impl AsRef<Path>, file_path: impl AsRef<Path>) {
 // ---
 
 fn main() {
-    if std::env::var("CI").is_ok() {
+    if re_build_tools::is_on_ci() {
         // Don't run on CI!
         //
         // The code we're generating here is actual source code that gets committed into the
