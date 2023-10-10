@@ -81,9 +81,8 @@ class DAG(Generic[_T]):
                 # the iterations of the `push` loop.
                 #
                 # It's important to always use non-blocking `get`
-                # with the task and done queues.
-                # This is so that both the push and pull loops
-                # can eventually make progress.
+                # with the task queue and done queue, so that both
+                # the push and pull loops can eventually make progress.
                 while len(state._queue) > 0:  # push loop
                     now = time.time()
                     if now - last_refill > refill_interval_s:
