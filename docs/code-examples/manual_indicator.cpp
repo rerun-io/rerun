@@ -22,14 +22,13 @@ int main() {
 
     // Specify both a Mesh3D and a Points3D indicator component so that the data is shown as both a
     // 3D mesh _and_ a point cloud by default.
-    // TODO:
-    // rec.log_component_batches(
-    //     "points_and_mesh",
-    //     3,
-    //     rr::Points3D::indicator(),
-    //     rr::Mesh3D::indicator(),
-    //     positions,
-    //     colors,
-    //     radii
-    // );
+    rec.log_component_batches(
+        "points_and_mesh",
+        3,
+        rr::Points3D::IndicatorComponent(),
+        rr::Mesh3D::IndicatorComponent(),
+        positions,
+        colors,
+        radii
+    );
 }
