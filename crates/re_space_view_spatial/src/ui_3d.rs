@@ -325,6 +325,8 @@ pub fn view_3d(
     let view_coordinates = ctx
         .store_db
         .store()
+        // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
+        // See https://github.com/rerun-io/rerun/issues/3538        
         .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
         .map(|(_, c)| c.value);
 
