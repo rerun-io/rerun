@@ -16,7 +16,8 @@ pub use transform_context::TransformContext;
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    Annotations, NamedViewSystem, SpaceViewClassRegistryError, ViewContextSystem,
+    Annotations, NamedViewSystem, SpaceViewClassName, SpaceViewClassRegistryError,
+    ViewContextSystem,
 };
 
 /// Context objects for a single entity in a spatial scene.
@@ -27,6 +28,7 @@ pub struct SpatialSceneEntityContext<'a> {
     pub shared_render_builders: &'a SharedRenderBuilders,
 
     pub highlight: &'a re_viewer_context::SpaceViewOutlineMasks, // Not part of the context, but convenient to have here.
+    pub space_view_class_name: SpaceViewClassName,
 }
 
 #[derive(Default)]

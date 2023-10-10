@@ -3,7 +3,8 @@ use ahash::HashMap;
 use re_types::ComponentNameSet;
 
 use crate::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewQuery, ViewSystemName, ViewerContext,
+    NamedViewSystem, SpaceViewClassName, SpaceViewSystemExecutionError, ViewQuery, ViewSystemName,
+    ViewerContext,
 };
 
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
@@ -28,8 +29,10 @@ pub trait ViewContextSystem {
     fn as_any(&self) -> &dyn std::any::Any;
 }
 
+// TODO(jleibs): This probably needs a better name now that it includes class name
 pub struct ViewContextCollection {
     pub(crate) systems: HashMap<ViewSystemName, Box<dyn ViewContextSystem>>,
+    pub(crate) space_view_class_name: SpaceViewClassName,
 }
 
 impl ViewContextCollection {
@@ -46,5 +49,9 @@ impl ViewContextCollection {
         &self,
     ) -> impl Iterator<Item = (ViewSystemName, &dyn ViewContextSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
+    }
+
+    pub fn space_view_class_name(&self) -> SpaceViewClassName {
+        self.space_view_class_name
     }
 }
