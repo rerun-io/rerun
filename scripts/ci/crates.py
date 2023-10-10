@@ -90,22 +90,35 @@ class DependencyKind(Enum):
             return f"{self.value}-dependencies"
 
 
-def crate_deps(member: dict[str, dict[str, Any]]) -> Generator[tuple[str, DependencyKind], None, None]:
-    def get_deps_in(d: dict[str, dict[str, Any]]) -> Generator[tuple[str, DependencyKind], None, None]:
+class Dependency:
+    def __init__(self, name: str, manifest_key: list[str], kind: DependencyKind):
+        self.name = name
+        self.manifest_key = manifest_key
+        self.kind = kind
+
+    def get_info_in_manifest(self, manifest: dict[str, Any]) -> Any:
+        info = manifest
+        for key in self.manifest_key:
+            info = info[key]
+        return info
+
+
+def crate_deps(member: dict[str, dict[str, Any]]) -> Generator[Dependency, None, None]:
+    def get_deps_in(d: dict[str, dict[str, Any]], base_key: list[str]) -> Generator[Dependency, None, None]:
         if "dependencies" in d:
             for v in d["dependencies"].keys():
-                yield (v, DependencyKind.DIRECT)
+                yield Dependency(v, base_key + ["dependencies", v], DependencyKind.DIRECT)
         if "dev-dependencies" in d:
             for v in d["dev-dependencies"].keys():
-                yield (v, DependencyKind.DEV)
+                yield Dependency(v, base_key + ["dev-dependencies", v], DependencyKind.DEV)
         if "build-dependencies" in d:
             for v in d["build-dependencies"].keys():
-                yield (v, DependencyKind.BUILD)
+                yield Dependency(v, base_key + ["build-dependencies", v], DependencyKind.BUILD)
 
-    yield from get_deps_in(member)
+    yield from get_deps_in(member, [])
     if "target" in member:
         for target in member["target"].keys():
-            yield from get_deps_in(member["target"][target])
+            yield from get_deps_in(member["target"][target], ["target", target])
 
 
 def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dict[str, Crate]:
@@ -123,12 +136,12 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
         visited: dict[str, bool],
     ) -> None:
         crate = crates[name]
-        for dependency, _ in crate_deps(crate.manifest):
-            if dependency not in crates:
+        for dependency in crate_deps(crate.manifest):
+            if dependency.name not in crates:
                 continue
-            if dependency in visited:
+            if dependency.name in visited:
                 continue
-            helper(ctx, crates, dependency, output, visited)
+            helper(ctx, crates, dependency.name, output, visited)
         # Insert only after all dependencies have been traversed
         if name not in visited:
             visited[name] = True
@@ -245,21 +258,21 @@ def bump_dependency_versions(
 ) -> None:
     # ensure `+metadata` is not included in dependency versions
     new_version = new_version.replace(build=None)
-    for dependency, kind in crate_deps(manifest):
-        if dependency not in crates:
+    for dependency in crate_deps(manifest):
+        if dependency.name not in crates:
             continue
 
-        info = manifest[kind.manifest_key()][dependency]
+        info = dependency.get_info_in_manifest(manifest)
         if isinstance(info, str):
             ctx.error(
-                f"{crate}.{dependency} should be specified as:",
-                f'  {dependency} = {{ version = "' + info + '" }',
+                f"{crate}.{dependency.name} should be specified as:",
+                f'  {dependency.name} = {{ version = "' + info + '" }',
             )
         elif "version" in info:
             pin_prefix = "=" if new_version.prerelease is not None else ""
             update_to = pin_prefix + str(new_version)
             ctx.bump(
-                f"{crate}.{dependency}",
+                f"{crate}.{dependency.name}",
                 info["version"],
                 update_to,
             )
@@ -368,7 +381,7 @@ def publish(dry_run: bool, token: str) -> None:
         dependency_graph: dict[str, list[str]] = {}
         for name, crate in crates.items():
             dependency_graph[name] = [
-                dependency for dependency, _ in crate_deps(crate.manifest) if dependency in crates
+                dependency.name for dependency in crate_deps(crate.manifest) if dependency.name in crates
             ]
         print(dependency_graph)
         env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
