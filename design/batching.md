@@ -901,7 +901,7 @@ At some point we're gonna want to have a fully dedicated storage & query path fo
 
 Recursive clears are currently handled in `StoreDb`, which is an issue for (at least) two reasons:
 - Once we start saving the store in a native format, rather than a collection of `LogMsg`, we'll lose the recursive clears when dumping then reloading the recording.
-- The recursive clears aren't even arrow-ified yet.
+- The recursive clears aren't even arrowified yet.
 
 ### Native file format for writing the store to disk
 
