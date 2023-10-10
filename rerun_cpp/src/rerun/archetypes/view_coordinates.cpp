@@ -7,23 +7,30 @@ namespace rerun {
     namespace archetypes {
         const char ViewCoordinates::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.ViewCoordinatesIndicator";
+    }
 
-        Result<std::vector<SerializedComponentBatch>> ViewCoordinates::serialize() const {
-            std::vector<SerializedComponentBatch> cells;
-            cells.reserve(1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<
+        archetypes::ViewCoordinates>::serialize(const archetypes::ViewCoordinates& archetype
+    ) const {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
 
-            {
-                auto result = ComponentBatch<rerun::components::ViewCoordinates>(xyz).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-
-            return cells;
+        {
+            auto result =
+                ComponentBatch<rerun::components::ViewCoordinates>(archetype.xyz).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
-    } // namespace archetypes
+        {
+            auto result = ComponentBatch<ViewCoordinates::IndicatorComponent>(
+                              ViewCoordinates::IndicatorComponent()
+            )
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+
+        return cells;
+    }
 } // namespace rerun

@@ -456,18 +456,11 @@ impl QuotedObject {
             });
         }
 
-        // methods.push(archetype_indicator(
-        //     &type_ident,
-        //     &mut hpp_includes,
-        //     &mut cpp_includes,
-        // ));
-
-        methods.push(archetype_serialize(
-            &type_ident,
-            obj,
-            &mut hpp_includes,
-            &mut cpp_includes,
-        ));
+        let serialize_method =
+            archetype_serialize(&type_ident, obj, &mut hpp_includes, &mut cpp_includes);
+        let serialize_hpp = serialize_method.to_hpp_tokens();
+        let serialize_cpp =
+            serialize_method.to_cpp_tokens(&quote!(AsComponents<archetypes::#type_ident>));
 
         let hpp_method_section = if methods.is_empty() {
             quote! {}
@@ -500,11 +493,23 @@ impl QuotedObject {
 
                         #hpp_method_section
                     };
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
                 }
+
+                template<typename TComponent>
+                struct AsComponents;
+
+                template<>
+                struct AsComponents<archetypes::#type_ident> {
+                    #serialize_hpp
+                };
             }
         };
 
-        let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&type_ident));
+        let methods_cpp = methods
+            .iter()
+            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
         let cpp = quote! {
             #cpp_includes
 
@@ -513,7 +518,9 @@ impl QuotedObject {
                     #(#constants_cpp;)*
 
                     #(#methods_cpp)*
+
                 }
+                #serialize_cpp
             }
         };
 
@@ -627,7 +634,9 @@ impl QuotedObject {
             }
         };
 
-        let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&type_ident));
+        let methods_cpp = methods
+            .iter()
+            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
         let cpp = quote! {
             #cpp_includes
 
@@ -980,7 +989,9 @@ impl QuotedObject {
             }
         };
 
-        let cpp_methods = methods.iter().map(|m| m.to_cpp_tokens(&pascal_case_ident));
+        let cpp_methods = methods
+            .iter()
+            .map(|m| m.to_cpp_tokens(&quote!(#pascal_case_ident)));
         let cpp = quote! {
             #cpp_includes
 
@@ -1288,11 +1299,12 @@ fn archetype_serialize(
         // TODO: trait will simplify these things (RIGHT?!)
 
         let field_name = format_ident!("{}", field.name);
+        let field_accessor = quote!(archetype.#field_name);
         if field.typ.is_plural() {
             if field.is_nullable {
                 quote! {
-                    if (#field_name.has_value()) {
-                        auto result = #field_name.value().serialize();
+                    if (#field_accessor.has_value()) {
+                        auto result = #field_accessor.value().serialize();
                         RR_RETURN_NOT_OK(result.error);
                         cells.emplace_back(std::move(result.value));
                     }
@@ -1300,12 +1312,13 @@ fn archetype_serialize(
             } else {
                 quote! {
                     {
-                        auto result = #field_name.serialize();
+                        auto result = #field_accessor.serialize();
                         RR_RETURN_NOT_OK(result.error);
                         cells.emplace_back(std::move(result.value));
                     }
                 }
             }
+            // TODO: why are mono components different
         } else {
             // put on hpp_includes where it's already in
             let field_type = quote_fqname_as_type_path(
@@ -1318,8 +1331,8 @@ fn archetype_serialize(
 
             if field.is_nullable {
                 quote! {
-                    if (#field_name.has_value()) {
-                        auto result = ComponentBatch<#field_type>(#field_name.value()).serialize();
+                    if (#field_accessor.has_value()) {
+                        auto result = ComponentBatch<#field_type>(#field_accessor.value()).serialize();
                         RR_RETURN_NOT_OK(result.error);
                         cells.emplace_back(std::move(result.value));
                     }
@@ -1327,7 +1340,7 @@ fn archetype_serialize(
             } else {
                 quote! {
                     {
-                        auto result = ComponentBatch<#field_type>(#field_name).serialize();
+                        auto result = ComponentBatch<#field_type>(#field_accessor).serialize();
                         RR_RETURN_NOT_OK(result.error);
                         cells.emplace_back(std::move(result.value));
                     }
@@ -1337,20 +1350,22 @@ fn archetype_serialize(
     });
 
     Method {
-        docs: "TODO: move to trait".into(),
+        docs: "Serialize all set component batches.".into(),
         declaration: MethodDeclaration {
             is_static: false,
             return_type: quote!(Result<std::vector<SerializedComponentBatch>>),
-            name_and_parameters: quote!(serialize() const),
+            name_and_parameters: quote!(serialize(const archetypes::#type_ident& archetype) const),
         },
         definition_body: quote! {
+            using namespace archetypes;
+            #NEWLINE_TOKEN
             std::vector<SerializedComponentBatch> cells;
             cells.reserve(#num_fields);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
             #(#push_batches)*
             {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
+                auto result = ComponentBatch<#type_ident::IndicatorComponent>(#type_ident::IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

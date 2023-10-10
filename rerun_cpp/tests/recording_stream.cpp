@@ -38,11 +38,18 @@ struct BadArchetype {
     size_t num_instances() const {
         return 1;
     }
-
-    rerun::Result<std::vector<rerun::SerializedComponentBatch>> serialize() const {
-        return BadComponent::error;
-    }
 };
+
+namespace rerun {
+    template <>
+    struct AsComponents<BadArchetype> {
+        rerun::Result<std::vector<rerun::SerializedComponentBatch>> serialize(
+            const BadArchetype& archetype
+        ) const {
+            return BadComponent::error;
+        }
+    };
+} // namespace rerun
 
 namespace rerun {
     std::ostream& operator<<(std::ostream& os, StoreKind kind) {
@@ -150,10 +157,10 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         rr::datatypes::Vec2D{4.0, 5.0},
                     };
 
-                    stream.log_component_batch("as-carray", c_style_array);
+                    stream.log("as-carray", c_style_array);
                 }
                 THEN("components as std::array can be logged") {
-                    stream.log_component_batch(
+                    stream.log(
                         "as-array",
                         std::array<rrc::Position2D, 2>{
                             rr::datatypes::Vec2D{1.0, 2.0},
@@ -207,7 +214,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 }
 
                 THEN("an archetype can be logged") {
-                    stream.log_archetype(
+                    stream.log(
                         "log_archetype-splat",
                         rr::archetypes::Points2D(
                             {rr::datatypes::Vec2D{1.0, 2.0}, rr::datatypes::Vec2D{4.0, 5.0}}
@@ -265,7 +272,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
 
                         WHEN("logging a component to the second stream") {
                             check_logged_error([&] {
-                                stream1->log_component_batch(
+                                stream1->log(
                                     "as-array",
                                     std::array<rrc::Position2D, 2>{
                                         rr::datatypes::Vec2D{1.0, 2.0},
@@ -282,7 +289,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                         }
                         WHEN("logging an archetype to the second stream") {
                             check_logged_error([&] {
-                                stream1->log_archetype(
+                                stream1->log(
                                     "archetype",
                                     rr::archetypes::Points2D({
                                         rr::datatypes::Vec2D{1.0, 2.0},
@@ -324,7 +331,7 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
 
             WHEN("logging a component and then flushing") {
                 check_logged_error([&] {
-                    stream.log_component_batch(
+                    stream.log(
                         "as-array",
                         std::array<rrc::Position2D, 2>{
                             rr::datatypes::Vec2D{1.0, 2.0},
@@ -340,7 +347,7 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
             }
             WHEN("logging an archetype and then flushing") {
                 check_logged_error([&] {
-                    stream.log_archetype(
+                    stream.log(
                         "archetype",
                         rr::archetypes::Points2D({
                             rr::datatypes::Vec2D{1.0, 2.0},
@@ -394,30 +401,20 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 CHECK(stream.try_log_data_row(path, 0, 0, nullptr).code == error);
             }
             THEN("try_log_component_batch returns the correct error") {
-                CHECK(
-                    stream.try_log_component_batch(path, std::array<rrc::Position2D, 1>{v}).code ==
-                    error
-                );
+                CHECK(stream.try_log(path, std::array<rrc::Position2D, 1>{v}).code == error);
             }
             THEN("try_log_archetypes returns the correct error") {
-                CHECK(stream.try_log_archetype(path, rr::archetypes::Points2D(v)).code == error);
+                CHECK(stream.try_log(path, rr::archetypes::Points2D(v)).code == error);
             }
             THEN("log_component_batch logs the correct error") {
                 check_logged_error(
-                    [&] {
-                        stream.log_component_batch(
-                            std::get<0>(variant),
-                            std::array<rrc::Position2D, 1>{v}
-                        );
-                    },
+                    [&] { stream.log(std::get<0>(variant), std::array<rrc::Position2D, 1>{v}); },
                     error
                 );
             }
             THEN("log_archetypes logs the correct error") {
                 check_logged_error(
-                    [&] {
-                        stream.log_archetype(std::get<0>(variant), rr::archetypes::Points2D(v));
-                    },
+                    [&] { stream.log(std::get<0>(variant), rr::archetypes::Points2D(v)); },
                     error
                 );
             }
@@ -484,7 +481,7 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
             THEN("calling log_component_batch with an array logs the serialization error") {
                 check_logged_error(
                     [&] {
-                        stream.log_component_batch(path, std::array{component, component});
+                        stream.log(path, std::array{component, component});
                     },
                     component.error.code
                 );
@@ -492,34 +489,25 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
             THEN("calling log_component_batch with a vector logs the serialization error") {
                 check_logged_error(
                     [&] {
-                        stream.log_component_batch(path, std::vector{component, component});
+                        stream.log(path, std::vector{component, component});
                     },
                     component.error.code
                 );
             }
             THEN("calling log_component_batch with a c array logs the serialization error") {
                 const BadComponent components[] = {component, component};
-                check_logged_error(
-                    [&] { stream.log_component_batch(path, components); },
-                    component.error.code
-                );
+                check_logged_error([&] { stream.log(path, components); }, component.error.code);
             }
             THEN("calling try_log_component_batch with an array forwards the serialization error") {
-                CHECK(
-                    stream.try_log_component_batch(path, std::array{component, component}) ==
-                    component.error
-                );
+                CHECK(stream.try_log(path, std::array{component, component}) == component.error);
             }
             THEN("calling try_log_component_batch with a vector forwards the serialization error") {
-                CHECK(
-                    stream.try_log_component_batch(path, std::vector{component, component}) ==
-                    component.error
-                );
+                CHECK(stream.try_log(path, std::vector{component, component}) == component.error);
             }
             THEN("calling try_log_component_batch with a c array forwards the serialization error"
             ) {
                 const BadComponent components[] = {component, component};
-                CHECK(stream.try_log_component_batch(path, components) == component.error);
+                CHECK(stream.try_log(path, components) == component.error);
             }
         }
         AND_GIVEN("an archetype that fails serialization") {
@@ -528,13 +516,10 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
                 GENERATE(rr::ErrorCode::Unknown, rr::ErrorCode::ArrowStatusCode_TypeError);
 
             THEN("calling log_archetype logs the serialization error") {
-                check_logged_error(
-                    [&] { stream.log_archetype(path, archetype); },
-                    BadComponent::error.code
-                );
+                check_logged_error([&] { stream.log(path, archetype); }, BadComponent::error.code);
             }
             THEN("calling log_archetype forwards the serialization error") {
-                CHECK(stream.try_log_archetype(path, archetype) == BadComponent::error);
+                CHECK(stream.try_log(path, archetype) == BadComponent::error);
             }
         }
     }

@@ -6,59 +6,63 @@
 namespace rerun {
     namespace archetypes {
         const char Boxes2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Boxes2DIndicator";
+    }
 
-        Result<std::vector<SerializedComponentBatch>> Boxes2D::serialize() const {
-            std::vector<SerializedComponentBatch> cells;
-            cells.reserve(8);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Boxes2D>::serialize(
+        const archetypes::Boxes2D& archetype
+    ) const {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(8);
 
-            {
-                auto result = half_sizes.serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (centers.has_value()) {
-                auto result = centers.value().serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (colors.has_value()) {
-                auto result = colors.value().serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (radii.has_value()) {
-                auto result = radii.value().serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (labels.has_value()) {
-                auto result = labels.value().serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (draw_order.has_value()) {
-                auto result =
-                    ComponentBatch<rerun::components::DrawOrder>(draw_order.value()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (class_ids.has_value()) {
-                auto result = class_ids.value().serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (instance_keys.has_value()) {
-                auto result = instance_keys.value().serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-
-            return cells;
+        {
+            auto result = archetype.half_sizes.serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
-    } // namespace archetypes
+        if (archetype.centers.has_value()) {
+            auto result = archetype.centers.value().serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.colors.has_value()) {
+            auto result = archetype.colors.value().serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.radii.has_value()) {
+            auto result = archetype.radii.value().serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.labels.has_value()) {
+            auto result = archetype.labels.value().serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.draw_order.has_value()) {
+            auto result = ComponentBatch<rerun::components::DrawOrder>(archetype.draw_order.value())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.class_ids.has_value()) {
+            auto result = archetype.class_ids.value().serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.instance_keys.has_value()) {
+            auto result = archetype.instance_keys.value().serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<Boxes2D::IndicatorComponent>(Boxes2D::IndicatorComponent())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+
+        return cells;
+    }
 } // namespace rerun

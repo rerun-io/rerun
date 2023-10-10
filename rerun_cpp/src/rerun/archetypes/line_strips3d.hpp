@@ -134,9 +134,17 @@ namespace rerun {
             size_t num_instances() const {
                 return strips.size();
             }
-
-            /// TODO: move to trait
-            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
+
     } // namespace archetypes
+    template <typename TComponent>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::LineStrips3D> {
+        /// Serialize all set component batches.
+        Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::LineStrips3D& archetype
+        ) const;
+    };
 } // namespace rerun

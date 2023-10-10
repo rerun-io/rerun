@@ -38,7 +38,7 @@ impl MethodDeclaration {
         }
     }
 
-    pub fn to_cpp_tokens(&self, class_or_struct_name: &Ident) -> TokenStream {
+    pub fn to_cpp_tokens(&self, class_or_struct_name: &TokenStream) -> TokenStream {
         let Self {
             is_static: _,
             return_type,
@@ -140,7 +140,7 @@ impl Method {
         }
     }
 
-    pub fn to_cpp_tokens(&self, class_or_struct_name: &Ident) -> TokenStream {
+    pub fn to_cpp_tokens(&self, class_or_struct_name: &TokenStream) -> TokenStream {
         let Self {
             docs: _,
             declaration,

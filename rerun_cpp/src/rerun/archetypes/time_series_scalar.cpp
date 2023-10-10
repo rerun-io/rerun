@@ -7,44 +7,54 @@ namespace rerun {
     namespace archetypes {
         const char TimeSeriesScalar::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.TimeSeriesScalarIndicator";
+    }
 
-        Result<std::vector<SerializedComponentBatch>> TimeSeriesScalar::serialize() const {
-            std::vector<SerializedComponentBatch> cells;
-            cells.reserve(5);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<
+        archetypes::TimeSeriesScalar>::serialize(const archetypes::TimeSeriesScalar& archetype
+    ) const {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(5);
 
-            {
-                auto result = ComponentBatch<rerun::components::Scalar>(scalar).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (radius.has_value()) {
-                auto result = ComponentBatch<rerun::components::Radius>(radius.value()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (color.has_value()) {
-                auto result = ComponentBatch<rerun::components::Color>(color.value()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (label.has_value()) {
-                auto result = ComponentBatch<rerun::components::Text>(label.value()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (scattered.has_value()) {
-                auto result = ComponentBatch<rerun::components::ScalarScattering>(scattered.value())
-                                  .serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-
-            return cells;
+        {
+            auto result = ComponentBatch<rerun::components::Scalar>(archetype.scalar).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
-    } // namespace archetypes
+        if (archetype.radius.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Radius>(archetype.radius.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.color.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Color>(archetype.color.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.label.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Text>(archetype.label.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.scattered.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::ScalarScattering>(archetype.scattered.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<TimeSeriesScalar::IndicatorComponent>(
+                              TimeSeriesScalar::IndicatorComponent()
+            )
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+
+        return cells;
+    }
 } // namespace rerun

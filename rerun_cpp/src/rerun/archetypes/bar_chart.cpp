@@ -6,23 +6,29 @@
 namespace rerun {
     namespace archetypes {
         const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
+    }
 
-        Result<std::vector<SerializedComponentBatch>> BarChart::serialize() const {
-            std::vector<SerializedComponentBatch> cells;
-            cells.reserve(1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::BarChart>::serialize(
+        const archetypes::BarChart& archetype
+    ) const {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
 
-            {
-                auto result = ComponentBatch<rerun::components::TensorData>(values).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-
-            return cells;
+        {
+            auto result =
+                ComponentBatch<rerun::components::TensorData>(archetype.values).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
-    } // namespace archetypes
+        {
+            auto result =
+                ComponentBatch<BarChart::IndicatorComponent>(BarChart::IndicatorComponent())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+
+        return cells;
+    }
 } // namespace rerun

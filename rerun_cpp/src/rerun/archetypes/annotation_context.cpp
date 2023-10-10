@@ -7,24 +7,30 @@ namespace rerun {
     namespace archetypes {
         const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.AnnotationContextIndicator";
+    }
 
-        Result<std::vector<SerializedComponentBatch>> AnnotationContext::serialize() const {
-            std::vector<SerializedComponentBatch> cells;
-            cells.reserve(1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<
+        archetypes::AnnotationContext>::serialize(const archetypes::AnnotationContext& archetype
+    ) const {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
 
-            {
-                auto result =
-                    ComponentBatch<rerun::components::AnnotationContext>(context).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-
-            return cells;
+        {
+            auto result =
+                ComponentBatch<rerun::components::AnnotationContext>(archetype.context).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
-    } // namespace archetypes
+        {
+            auto result = ComponentBatch<AnnotationContext::IndicatorComponent>(
+                              AnnotationContext::IndicatorComponent()
+            )
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+
+        return cells;
+    }
 } // namespace rerun

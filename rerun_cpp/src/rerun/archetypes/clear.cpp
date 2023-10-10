@@ -6,24 +6,29 @@
 namespace rerun {
     namespace archetypes {
         const char Clear::INDICATOR_COMPONENT_NAME[] = "rerun.components.ClearIndicator";
+    }
 
-        Result<std::vector<SerializedComponentBatch>> Clear::serialize() const {
-            std::vector<SerializedComponentBatch> cells;
-            cells.reserve(1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Clear>::serialize(
+        const archetypes::Clear& archetype
+    ) const {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
 
-            {
-                auto result =
-                    ComponentBatch<rerun::components::ClearIsRecursive>(is_recursive).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-
-            return cells;
+        {
+            auto result =
+                ComponentBatch<rerun::components::ClearIsRecursive>(archetype.is_recursive)
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
-    } // namespace archetypes
+        {
+            auto result =
+                ComponentBatch<Clear::IndicatorComponent>(Clear::IndicatorComponent()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+
+        return cells;
+    }
 } // namespace rerun

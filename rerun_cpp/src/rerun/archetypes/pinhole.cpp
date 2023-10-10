@@ -6,37 +6,43 @@
 namespace rerun {
     namespace archetypes {
         const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
+    }
 
-        Result<std::vector<SerializedComponentBatch>> Pinhole::serialize() const {
-            std::vector<SerializedComponentBatch> cells;
-            cells.reserve(3);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Pinhole>::serialize(
+        const archetypes::Pinhole& archetype
+    ) const {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(3);
 
-            {
-                auto result =
-                    ComponentBatch<rerun::components::PinholeProjection>(image_from_camera)
-                        .serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (resolution.has_value()) {
-                auto result =
-                    ComponentBatch<rerun::components::Resolution>(resolution.value()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (camera_xyz.has_value()) {
-                auto result = ComponentBatch<rerun::components::ViewCoordinates>(camera_xyz.value())
-                                  .serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-
-            return cells;
+        {
+            auto result =
+                ComponentBatch<rerun::components::PinholeProjection>(archetype.image_from_camera)
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
-    } // namespace archetypes
+        if (archetype.resolution.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Resolution>(archetype.resolution.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.camera_xyz.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::ViewCoordinates>(archetype.camera_xyz.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<Pinhole::IndicatorComponent>(Pinhole::IndicatorComponent())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+
+        return cells;
+    }
 } // namespace rerun

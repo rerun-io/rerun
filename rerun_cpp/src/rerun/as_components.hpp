@@ -2,6 +2,7 @@
 
 namespace rerun {
     // TODO: general docs
+    // TODO: can we not put single component into the unspecialized one?
 
     /// AsComponents for a single component.
     template <typename TComponent>

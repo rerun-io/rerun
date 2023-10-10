@@ -11,7 +11,7 @@ SCENARIO("clear archetype can be serialized" TEST_TAG) {
         auto from_builder = Clear(true);
 
         THEN("serialization succeeds") {
-            CHECK(from_builder.serialize().is_ok());
+            CHECK(rerun::AsComponents<Clear>().serialize(from_builder).is_ok());
         }
     }
 }

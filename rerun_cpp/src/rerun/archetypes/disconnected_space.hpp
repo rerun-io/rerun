@@ -64,9 +64,17 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
-
-            /// TODO: move to trait
-            Result<std::vector<SerializedComponentBatch>> serialize() const;
         };
+
     } // namespace archetypes
+    template <typename TComponent>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::DisconnectedSpace> {
+        /// Serialize all set component batches.
+        Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::DisconnectedSpace& archetype
+        ) const;
+    };
 } // namespace rerun

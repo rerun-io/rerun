@@ -6,36 +6,40 @@
 namespace rerun {
     namespace archetypes {
         const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";
+    }
 
-        Result<std::vector<SerializedComponentBatch>> Asset3D::serialize() const {
-            std::vector<SerializedComponentBatch> cells;
-            cells.reserve(3);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Asset3D>::serialize(
+        const archetypes::Asset3D& archetype
+    ) const {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(3);
 
-            {
-                auto result = ComponentBatch<rerun::components::Blob>(blob).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (media_type.has_value()) {
-                auto result =
-                    ComponentBatch<rerun::components::MediaType>(media_type.value()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            if (transform.has_value()) {
-                auto result =
-                    ComponentBatch<rerun::components::OutOfTreeTransform3D>(transform.value())
-                        .serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-            {
-                auto result = ComponentBatch<IndicatorComponent>(IndicatorComponent()).serialize();
-                RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
-            }
-
-            return cells;
+        {
+            auto result = ComponentBatch<rerun::components::Blob>(archetype.blob).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
-    } // namespace archetypes
+        if (archetype.media_type.has_value()) {
+            auto result = ComponentBatch<rerun::components::MediaType>(archetype.media_type.value())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.transform.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::OutOfTreeTransform3D>(archetype.transform.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<Asset3D::IndicatorComponent>(Asset3D::IndicatorComponent())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+
+        return cells;
+    }
 } // namespace rerun
