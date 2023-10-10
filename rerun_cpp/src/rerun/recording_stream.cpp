@@ -95,18 +95,18 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_serialized_batches(
-        const char* entity_path, size_t num_instances,
-        const std::vector<SerializedComponentBatch>& batches
+        const char* entity_path, const std::vector<SerializedComponentBatch>& batches
     ) {
-        if (num_instances == 0) {
-            return Error::ok();
+        size_t num_instances_max = 0;
+        for (const auto& batch : batches) {
+            num_instances_max = std::max(num_instances_max, batch.num_instances);
         }
 
         std::vector<DataCell> instanced;
         std::vector<DataCell> splatted;
 
         for (const auto& batch : batches) {
-            if (num_instances > 1 && batch.num_instances == 1) {
+            if (num_instances_max > 1 && batch.num_instances == 1) {
                 splatted.push_back(batch.data_cell);
             } else {
                 instanced.push_back(batch.data_cell);
@@ -121,7 +121,7 @@ namespace rerun {
             }
         }
 
-        return try_log_data_row(entity_path, num_instances, instanced.size(), instanced.data());
+        return try_log_data_row(entity_path, num_instances_max, instanced.size(), instanced.data());
     }
 
     Error RecordingStream::try_log_data_row(

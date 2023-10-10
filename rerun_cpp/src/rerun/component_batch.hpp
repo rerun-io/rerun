@@ -122,8 +122,7 @@ namespace rerun {
 
         /// Move constructor.
         ComponentBatch(ComponentBatch<TComponent>&& other) {
-            ownership = other.ownership;
-            switch (ownership) {
+            switch (other.ownership) {
                 case BatchOwnership::Borrowed:
                     storage.borrowed = other.storage.borrowed;
                     break;
@@ -137,6 +136,7 @@ namespace rerun {
                     // This shouldn't happen but is well defined. We're now also moved!
                     break;
             }
+            ownership = other.ownership;
             other.ownership = BatchOwnership::Moved;
         }
 

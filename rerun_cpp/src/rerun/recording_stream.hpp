@@ -136,8 +136,7 @@ namespace rerun {
         void log(const char* entity_path, const T& archetype_or_component_batch) {
             const auto serialized = AsComponents<T>::serialize(archetype_or_component_batch);
             serialized.error.log_on_failure();
-            try_log_serialized_batches(entity_path, serialized.value.size(), {serialized.value})
-                .log_on_failure();
+            try_log_serialized_batches(entity_path, serialized.value).log_on_failure();
         }
 
         /// Tries to log a single archetype or component batch.
@@ -151,11 +150,7 @@ namespace rerun {
         Error try_log(const char* entity_path, const T& archetype_or_component_batch) {
             const auto serialized = AsComponents<T>::serialize(archetype_or_component_batch);
             RR_RETURN_NOT_OK(serialized.error);
-            return try_log_serialized_batches(
-                entity_path,
-                serialized.value.size(),
-                {serialized.value}
-            );
+            return try_log_serialized_batches(entity_path, serialized.value);
         }
 
         /// Logs several component batches.
@@ -225,20 +220,16 @@ namespace rerun {
             );
             RR_RETURN_NOT_OK(err);
 
-            return try_log_serialized_batches(entity_path, num_instances, serialized_batches);
+            return try_log_serialized_batches(entity_path, serialized_batches);
         }
 
         /// Logs several serialized batches batches, returning an error on failure.
         ///
-        /// @param num_instances
-        /// Specify the expected number of component instances present in each
-        /// list. Each can have either:
-        /// - exactly `num_instances` instances,
-        /// - a single instance (splat),
-        /// - or zero instance (clear).
+        /// The number of instances in each batch must either be equal to each other or:
+        /// - zero instances - implies a clear
+        /// - single instance (but other instances have more) - causes a splat
         Error try_log_serialized_batches(
-            const char* entity_path, size_t num_instances,
-            const std::vector<SerializedComponentBatch>& batches
+            const char* entity_path, const std::vector<SerializedComponentBatch>& batches
         );
 
         /// Low level API that logs raw data cells to the recording stream.
