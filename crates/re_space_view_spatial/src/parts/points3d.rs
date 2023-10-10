@@ -256,9 +256,10 @@ impl LoadedPoints {
         arch_view: &ArchetypeView<Points3D>,
     ) -> DeserializationResult<Vec<glam::Vec3>> {
         re_tracing::profile_function!();
-        arch_view
-            .iter_required_component::<Position3D>()
-            .map(|p| p.map(glam::Vec3::from).collect())
+        arch_view.iter_required_component::<Position3D>().map(|p| {
+            re_tracing::profile_scope!("collect");
+            p.map(glam::Vec3::from).collect()
+        })
     }
 
     pub fn load_radii(
@@ -266,7 +267,10 @@ impl LoadedPoints {
         ent_path: &EntityPath,
     ) -> Result<Vec<re_renderer::Size>, QueryError> {
         re_tracing::profile_function!();
-        process_radii(arch_view, ent_path).map(|radii| radii.collect())
+        process_radii(arch_view, ent_path).map(|radii| {
+            re_tracing::profile_scope!("collect");
+            radii.collect()
+        })
     }
 
     pub fn load_colors(
@@ -275,15 +279,20 @@ impl LoadedPoints {
         annotation_infos: &ResolvedAnnotationInfos,
     ) -> Result<Vec<re_renderer::Color32>, QueryError> {
         re_tracing::profile_function!();
-        process_colors(arch_view, ent_path, annotation_infos).map(|colors| colors.collect())
+        process_colors(arch_view, ent_path, annotation_infos).map(|colors| {
+            re_tracing::profile_scope!("collect");
+            colors.collect()
+        })
     }
 
     pub fn load_picking_ids(arch_view: &ArchetypeView<Points3D>) -> Vec<PickingLayerInstanceId> {
         re_tracing::profile_function!();
-        arch_view
+        let iterator = arch_view
             .iter_instance_keys()
-            .map(picking_id_from_instance_key)
-            .collect()
+            .map(picking_id_from_instance_key);
+
+        re_tracing::profile_scope!("collect");
+        iterator.collect()
     }
 }
 
