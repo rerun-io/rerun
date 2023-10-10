@@ -147,10 +147,3 @@ SCENARIO(
         }
     }
 }
-
-MyVec2Container container;
-container.vecs = {0.0f, 1.0f, 2.0f, 3.0f};
-
-const rerun::archetypes::Points2D from_custom_container(container);
-CHECK(from_custom_container.positions.size() == 2);
-CHECK(from_custom_container.positions.get_ownership() == rerun::BatchOwnership::Borrowed);
