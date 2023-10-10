@@ -24,7 +24,7 @@ fn should_run() -> bool {
 
         Environment::DeveloperInWorkspace => true,
 
-        // Definetly not
+        // Definitely not
         Environment::ProbablyUserMachine => false,
     }
 }

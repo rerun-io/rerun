@@ -232,7 +232,7 @@ fn write_examples_manifest() -> Result<()> {
 fn write_examples_manifest_if_necessary() {
     use re_build_tools::Environment;
     let should_run = match Environment::detect() {
-        // Can't run in thsese sitatuions, because we can't find `examples/python`.
+        // Can't run in thsese situations, because we can't find `examples/python`.
         Environment::PublishingCrates | Environment::ProbablyUserMachine => false,
 
         // Make sure the manifest reflects what is in `examples/python`.

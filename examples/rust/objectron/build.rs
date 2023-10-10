@@ -7,7 +7,7 @@ fn should_run() -> bool {
     use re_build_tools::Environment;
 
     match Environment::detect() {
-        // The code (which is commited) should hopefully already be up-to-date.
+        // The code (which is committed) should hopefully already be up-to-date.
         Environment::PublishingCrates => false,
 
         // No need to run this on CI (which means setting up `protoc` etc)
@@ -17,7 +17,7 @@ fn should_run() -> bool {
         // Sure - let's keep it up-to-date.
         Environment::DeveloperInWorkspace => true,
 
-        // Definetly not
+        // Definitely not
         Environment::ProbablyUserMachine => false,
     }
 }
