@@ -21,6 +21,7 @@ jobs:
           config: "docs/cspell.json"
           files: "**/*.md"
           strict: true
+          incremental_files_only: false
   linkinator:
     name: linkinator
     runs-on: ubuntu-latest
