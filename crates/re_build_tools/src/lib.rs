@@ -1,29 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
 //! This crate is to be used from `build.rs` build scripts.
-//!
-//! Situations to consider
-//! ----------------------
-//!
-//! # Using the published crate
-//!
-//! The published crate carries its version around, which in turns gives us the git tag, which makes
-//! the commit hash irrelevant.
-//! We still need to compute _something_ so that we can actually build, but that value will be
-//! ignored when the crate is built by the end user anyhow.
-//!
-//! # Working directly within the workspace
-//!
-//! When working within the workspace, we can simply try and call `git` and we're done.
-//!
-//! # Using an unpublished crate (e.g. `path = "…"` or `git = "…"` or `[patch.crates-io]`)
-//!
-//! In these cases we may or may not have access to the workspace (e.g. a `path = …` import likely
-//! will, while a crate patch won't).
-//!
-//! This is not an issue however, as we can simply try and see what we get.
-//! If we manage to compute a commit hash, great, otherwise we still have the crate version to
-//! fallback on.
 
 use anyhow::Context as _;
 
@@ -117,6 +94,27 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
     export_build_info_env_vars();
 }
 
+/// # Situations to consider regarding git
+///
+/// ## Using the published crate
+///
+/// The published crate carries its version around, which in turns gives us the git tag, which makes
+/// the commit hash irrelevant.
+/// We still need to compute _something_ so that we can actually build, but that value will be
+/// ignored when the crate is built by the end user anyhow.
+///
+/// ## Working directly within the workspace
+///
+/// When working within the workspace, we can simply try and call `git` and we're done.
+///
+/// ## Using an unpublished crate (e.g. `path = "…"` or `git = "…"` or `[patch.crates-io]`)
+///
+/// In these cases we may or may not have access to the workspace (e.g. a `path = …` import likely
+/// will, while a crate patch won't).
+///
+/// This is not an issue however, as we can simply try and see what we get.
+/// If we manage to compute a commit hash, great, otherwise we still have the crate version to
+/// fallback on.
 fn export_build_info_env_vars() {
     // target triple
     set_env("RE_BUILD_TARGET_TRIPLE", &std::env::var("TARGET").unwrap());
