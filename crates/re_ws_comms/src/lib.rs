@@ -28,6 +28,7 @@ pub const PROTOCOL: &str = "ws";
 
 // ----------------------------------------------------------------------------
 
+/// Failure to host the Rerun WebSocket server.
 #[derive(thiserror::Error, Debug)]
 pub enum RerunServerError {
     #[error("Failed to bind to WebSocket port {0}: {1}")]

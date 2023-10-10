@@ -58,14 +58,19 @@ pub enum RecordingStreamError {
     /// Error spawning one of the background threads.
     #[error("Failed to spawn background thread '{name}': {err}")]
     SpawnThread {
+        /// Name of the thread
         name: &'static str,
-        err: Box<dyn std::error::Error + Send + Sync>,
+
+        /// Inner error explaining why the thread failed to spawn.
+        err: std::io::Error,
     },
 
+    /// Failure to host a web viewer and/or Rerun server.
     #[cfg(feature = "web_viewer")]
     #[error(transparent)]
-    WebSink(anyhow::Error),
+    WebSink(#[from] crate::web_viewer::WebViewerSinkError),
 
+    /// An error that can occur because a row in the store has inconsistent columns.
     #[error(transparent)]
     DataReadError(#[from] re_log_types::DataReadError),
 }
@@ -343,8 +348,7 @@ impl RecordingStreamBuilder {
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)
-                .map_err(RecordingStreamError::WebSink)?;
+            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)?;
             RecordingStream::new(store_info, batcher_config, sink)
         } else {
             re_log::debug!("Rerun disabled - call to serve() ignored");
@@ -501,10 +505,7 @@ impl RecordingStreamInner {
                     let batcher = batcher.clone();
                     move || forwarding_thread(info, sink, cmds_rx, batcher.tables())
                 })
-                .map_err(|err| RecordingStreamError::SpawnThread {
-                    name: NAME,
-                    err: Box::new(err),
-                })?
+                .map_err(|err| RecordingStreamError::SpawnThread { name: NAME, err })?
         };
 
         Ok(RecordingStreamInner {
