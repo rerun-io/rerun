@@ -1,11 +1,9 @@
 use re_arrow_store::{LatestAtQuery, VersionedComponent};
-use re_data_store::{EntityPath, EntityProperties, InstancePath};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::RowId;
 use re_types::{
-    archetypes::Tensor,
-    components::{InstanceKey, TensorData},
-    tensor_data::DecodedTensor,
-    Archetype, ComponentNameSet,
+    archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor, Archetype,
+    ComponentNameSet,
 };
 use re_viewer_context::{
     NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
@@ -14,7 +12,7 @@ use re_viewer_context::{
 
 #[derive(Default)]
 pub struct TensorSystem {
-    pub tensors: std::collections::BTreeMap<InstancePath, (RowId, DecodedTensor)>,
+    pub tensors: std::collections::BTreeMap<EntityPath, (RowId, DecodedTensor)>,
 }
 
 impl NamedViewSystem for TensorSystem {
@@ -75,9 +73,8 @@ impl TensorSystem {
             .entry(|c: &mut TensorDecodeCache| c.entry(tensor.row_id, tensor.value.0))
         {
             Ok(decoded_tensor) => {
-                let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));
                 self.tensors
-                    .insert(instance_path, (tensor.row_id, decoded_tensor));
+                    .insert(ent_path.clone(), (tensor.row_id, decoded_tensor));
             }
             Err(err) => {
                 re_log::warn_once!("Failed to decode decoding tensor at path {ent_path}: {err}");
