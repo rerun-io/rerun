@@ -1,4 +1,4 @@
-//! High-level benchmark of the CPU-side of our Points3D rendering.
+//! High-level benchmark of the CPU-side of our `Points3D` rendering.
 
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
