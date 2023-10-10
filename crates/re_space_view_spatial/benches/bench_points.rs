@@ -1,4 +1,4 @@
-//! Keeping track of performance issues/regressions in `arrow2` that directly affect us.
+//! High-level benchmark of the CPU-side of our Points3D rendering.
 
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, RowId, TimeInt, TimePoint, Timeline};
