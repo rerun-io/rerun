@@ -8,7 +8,7 @@
 #include "serialized_component_batch.hpp"
 
 namespace rerun {
-    /// The ComponentBatchAdaptor trait is responsible for mapping a list of input arguments to a
+    /// The ComponentBatchAdaptor trait is responsible for mapping an input argument to a
     /// ComponentBatch.
     ///
     /// There are default implementations for standard containers of components, as well as single
@@ -18,19 +18,19 @@ namespace rerun {
     /// Borrowed component batches required that a pointer to the passed in ("adapted") data
     /// outlives the component batch. Owned component batches on the other hand take ownership by
     /// allocating a std::vector and moving the data into it. This is typically only required when
-    /// passing in temporary objects into an adapter.
+    /// passing in temporary objects into an adapter or non-trivial data conversion is necessary.
     ///
     /// By implementing your own adapters for certain component types, you can map your data to
     /// Rerun types which then can be logged.
-    /// TODO(andreas): Point to an example.
-    template <typename TComponent, typename... TInputArgs>
+    ///
+    /// TODO(andreas): Point to an example here and in the assert.
+    template <typename TComponent, typename TInput>
     struct ComponentBatchAdapter {
         template <typename... Ts>
         struct NoAdapterFor : std::false_type {};
 
-        // TODO(andreas): This should also mention an example of how to implement this.
         static_assert(
-            NoAdapterFor<TComponent, TInputArgs...>::value,
+            NoAdapterFor<TComponent, TInput>::value,
             "ComponentBatchAdapter is not implemented for this type. "
             "It is implemented for for single components as well as std::vector, std::array, and "
             "c-arrays of components. "
@@ -76,11 +76,9 @@ namespace rerun {
         using TComponentType = TComponent;
 
         /// Type of an adapter given input types Ts.
-        ///
-        /// This type may not exist for all combinations of Ts.
-        template <typename... Ts>
+        template <typename T>
         using TAdapter =
-            ComponentBatchAdapter<TComponent, std::remove_cv_t<std::remove_reference_t<Ts>>...>;
+            ComponentBatchAdapter<TComponent, std::remove_cv_t<std::remove_reference_t<T>>>;
 
         /// Creates a new empty component batch.
         ///
@@ -92,10 +90,9 @@ namespace rerun {
             storage.borrowed.num_instances = 0;
         }
 
-        /// Construct using a `ComponentBatchAdapter` if there's a fitting specialization.
-        template <typename... Ts>
-        ComponentBatch(Ts&&... args)
-            : ComponentBatch(TAdapter<Ts...>()(std::forward<Ts>(args)...)) {}
+        /// Construct using a `ComponentBatchAdapter`.
+        template <typename T>
+        ComponentBatch(T&& input) : ComponentBatch(TAdapter<T>()(std::forward<T>(input))) {}
 
         /// Construct from a temporary list of components.
         ///
