@@ -86,9 +86,11 @@ pub fn color_tensor_to_gpu(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
+    re_tracing::profile_function!();
+    let texture_key = hash(tensor_path_hash.row_id);
     let [height, width, depth] = height_width_depth(tensor)?;
 
-    let texture_handle = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
+    let texture_handle = try_get_or_create_texture(render_ctx, texture_key, || {
         let (data, format) = match (depth, &tensor.buffer) {
             // Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
             // Why? Because premul must happen _before_ sRGB decode, so we can't
@@ -166,6 +168,9 @@ pub fn class_id_tensor_to_gpu(
     tensor_stats: &TensorStats,
     annotations: &Annotations,
 ) -> anyhow::Result<ColormappedTexture> {
+    re_tracing::profile_function!();
+    let texture_key = hash(tensor_path_hash.row_id);
+
     let [_height, _width, depth] = height_width_depth(tensor)?;
     anyhow::ensure!(
         depth == 1,
@@ -212,7 +217,7 @@ pub fn class_id_tensor_to_gpu(
         })
         .context("Failed to create class_id_colormap.")?;
 
-    let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
+    let main_texture_handle = try_get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })
     .map_err(|err| anyhow::anyhow!("Failed to create texture for class id tensor: {err}"))?;
@@ -237,6 +242,9 @@ pub fn depth_tensor_to_gpu(
     tensor: &DecodedTensor,
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
+    re_tracing::profile_function!();
+    let texture_key = hash(tensor_path_hash.row_id);
+
     let [_height, _width, depth] = height_width_depth(tensor)?;
     anyhow::ensure!(
         depth == 1,
@@ -245,7 +253,7 @@ pub fn depth_tensor_to_gpu(
     );
     let (min, max) = depth_tensor_range(tensor, tensor_stats)?;
 
-    let texture = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
+    let texture = try_get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })
     .map_err(|err| anyhow::anyhow!("Failed to create depth tensor texture: {err}"))?;

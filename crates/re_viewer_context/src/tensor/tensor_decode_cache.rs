@@ -1,4 +1,5 @@
 use re_data_store::VersionedInstancePathHash;
+use re_log_types::RowId;
 use re_types::{
     datatypes::TensorData,
     tensor_data::{DecodedTensor, TensorImageLoadError},
@@ -17,11 +18,11 @@ struct DecodedTensorResult {
     last_use_generation: u64,
 }
 
-/// Caches decoded tensors using a [`VersionedInstancePathHash`], i.e. a specific instance of
-/// a specific entity path for a specific row in the store.
+/// Caches decoded tensors using a [`RowId`], i.e. a specific instance of
+/// a `TensorData` component.
 #[derive(Default)]
 pub struct TensorDecodeCache {
-    cache: ahash::HashMap<VersionedInstancePathHash, DecodedTensorResult>,
+    cache: ahash::HashMap<RowId, DecodedTensorResult>,
     memory_used: u64,
     generation: u64,
 }
@@ -39,6 +40,8 @@ impl TensorDecodeCache {
         maybe_encoded_tensor: TensorData,
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!();
+
+        let key = key.row_id;
 
         match DecodedTensor::try_from(maybe_encoded_tensor) {
             Ok(decoded_tensor) => Ok(decoded_tensor),
