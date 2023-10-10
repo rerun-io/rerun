@@ -113,7 +113,7 @@ pub fn color_tensor_to_gpu(
             height,
         })
     })
-    .map_err(|err| anyhow::anyhow!("Failed to create texture for color tensor: {err}"))?;
+    .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     let texture_format = texture_handle.format();
 
@@ -215,7 +215,7 @@ pub fn class_id_tensor_to_gpu(
     let main_texture_handle = try_get_or_create_texture(render_ctx, hash(tensor_path_hash), || {
         general_texture_creation_desc_from_tensor(debug_name, tensor)
     })
-    .map_err(|err| anyhow::anyhow!("Failed to create texture for class id tensor: {err}"))?;
+    .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     Ok(ColormappedTexture {
         texture: main_texture_handle,

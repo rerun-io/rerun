@@ -121,7 +121,7 @@ fn to_textured_rect(
             })
         }
         Err(err) => {
-            re_log::error_once!("Failed to create texture from tensor for {debug_name:?}: {err}");
+            re_log::error_once!("Failed to create texture for {debug_name:?}: {err}");
             None
         }
     }
