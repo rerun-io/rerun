@@ -142,14 +142,17 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
             WHEN("creating a new stream") {
                 rr::RecordingStream stream("test", kind);
 
-                THEN("single components can be logged") {
-                    stream.log_component_batches(
-                        "single-components",
-                        2,
-                        rrc::Position2D{1.0, 2.0},
-                        rrc::Color(0x00FF00FF)
-                    );
-                }
+                // We can make single components work, but this would make error messages a lot
+                // worse since we'd have to implement the base `AsComponents` template for this.
+                //
+                // THEN("single components can be logged") {
+                //     stream.log_component_batches(
+                //         "single-components",
+                //         2,
+                //         rrc::Position2D{1.0, 2.0},
+                //         rrc::Color(0x00FF00FF)
+                //     );
+                // }
 
                 THEN("components as c-array can be logged") {
                     rrc::Position2D c_style_array[2] = {
@@ -209,7 +212,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                             rrc::Position2D(rr::datatypes::Vec2D{0.0, 0.0}),
                             rrc::Position2D(rr::datatypes::Vec2D{1.0, 3.0}),
                         },
-                        rrc::Color(0xFF0000FF)
+                        std::array{rrc::Color(0xFF0000FF)}
                     );
                 }
 

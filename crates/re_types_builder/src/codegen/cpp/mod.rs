@@ -1296,8 +1296,6 @@ fn archetype_serialize(
 
     let num_fields = quote_integer(obj.fields.len());
     let push_batches = obj.fields.iter().map(|field| {
-        // TODO: trait will simplify these things (RIGHT?!)
-
         let field_name = format_ident!("{}", field.name);
         let field_accessor = quote!(archetype.#field_name);
         if field.typ.is_plural() {

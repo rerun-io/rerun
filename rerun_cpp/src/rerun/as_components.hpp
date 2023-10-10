@@ -1,4 +1,5 @@
 #include "component_batch.hpp"
+#include "indicator_component.hpp"
 
 namespace rerun {
     // TODO: general docs
@@ -7,12 +8,17 @@ namespace rerun {
     /// AsComponents for a single component.
     template <typename TComponent>
     struct AsComponents {
-        Result<std::vector<SerializedComponentBatch>> serialize(const TComponent& single_component
-        ) const {
-            const auto result = ComponentBatch<TComponent>(single_component).serialize();
-            RR_RETURN_NOT_OK(result.error);
-            return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
-        }
+        template <typename T>
+        struct NoAsComponentsFor : std::false_type {};
+
+        // TODO(andreas): This should also mention an example of how to implement this.
+        static_assert(
+            NoAsComponentsFor<TComponent>::value,
+            "AsComponents is not implemented for this type. "
+            "It is implemented for all built-in archetypes as well as std::vector, std::array, and "
+            "c-arrays of components. "
+            "You can add your own implementation by specializing AsComponents<T> for your type T."
+        );
     };
 
     /// AsComponents for a std::vector of components.
@@ -44,7 +50,7 @@ namespace rerun {
     struct AsComponents<TComponent[NumInstances]> {
         Result<std::vector<SerializedComponentBatch>> serialize(const TComponent (&array
         )[NumInstances]) const {
-            const auto result = ComponentBatch<TComponent>().serialize();
+            const auto result = ComponentBatch<TComponent>(array).serialize();
             RR_RETURN_NOT_OK(result.error);
             return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
         }
@@ -61,4 +67,18 @@ namespace rerun {
             return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
         }
     };
+
+    /// AsComponents for single indicators
+    template <const char Name[]>
+    struct AsComponents<components::IndicatorComponent<Name>> {
+        Result<std::vector<SerializedComponentBatch>> serialize(
+            const components::IndicatorComponent<Name>& indicator
+        ) const {
+            const auto result =
+                ComponentBatch<components::IndicatorComponent<Name>>(indicator).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
+        }
+    };
+
 } // namespace rerun
