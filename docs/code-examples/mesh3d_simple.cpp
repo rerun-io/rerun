@@ -25,7 +25,7 @@ int main() {
     rec.log(
         "triangle",
         rr::Mesh3D(vertex_positions)
-            .with_vertex_normals({0.0, 0.0, 1.0})
+            .with_vertex_normals({{0.0f, 0.0f, 1.0f}})
             .with_vertex_colors(vertex_colors)
     );
 }

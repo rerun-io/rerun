@@ -3,27 +3,32 @@
 
 #include "clear.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Clear::INDICATOR_COMPONENT_NAME[] = "rerun.components.ClearIndicator";
+    }
 
-        AnonymousComponentBatch Clear::indicator() {
-            return ComponentBatch<components::IndicatorComponent<Clear::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Clear>::serialize(
+        const archetypes::Clear& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
+
+        {
+            auto result =
+                ComponentBatch<rerun::components::ClearIsRecursive>(archetype.is_recursive)
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result =
+                ComponentBatch<Clear::IndicatorComponent>(Clear::IndicatorComponent()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> Clear::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
-
-            comp_batches.emplace_back(is_recursive);
-            comp_batches.emplace_back(Clear::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

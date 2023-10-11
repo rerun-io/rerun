@@ -25,12 +25,13 @@ namespace rerun {
             const float u_cen = _resolution.x() / 2.0f;
             const float v_cen = _resolution.y() / 2.0f;
 
-            return Pinhole(datatypes::Mat3x3(
-                               {{focal_length.x(), 0.0f, 0.0f},
-                                {0.0f, focal_length.y(), 0.0f},
-                                {u_cen, v_cen, 1.0f}}
-                           )
-            ).with_resolution(_resolution);
+            auto pinhole = Pinhole(datatypes::Mat3x3(
+                {{focal_length.x(), 0.0f, 0.0f},
+                 {0.0f, focal_length.y(), 0.0f},
+                 {u_cen, v_cen, 1.0f}}
+            ));
+            pinhole.resolution = _resolution;
+            return pinhole;
         }
 
     } // namespace archetypes

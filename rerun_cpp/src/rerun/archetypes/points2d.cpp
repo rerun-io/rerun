@@ -3,46 +3,67 @@
 
 #include "points2d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Points2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points2DIndicator";
+    }
 
-        AnonymousComponentBatch Points2D::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<Points2D::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Points2D>::serialize(
+        const archetypes::Points2D& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(8);
+
+        {
+            auto result = (archetype.positions).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.radii.has_value()) {
+            auto result = (archetype.radii.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.colors.has_value()) {
+            auto result = (archetype.colors.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.labels.has_value()) {
+            auto result = (archetype.labels.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.draw_order.has_value()) {
+            auto result = ComponentBatch<rerun::components::DrawOrder>(archetype.draw_order.value())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.class_ids.has_value()) {
+            auto result = (archetype.class_ids.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.keypoint_ids.has_value()) {
+            auto result = (archetype.keypoint_ids.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.instance_keys.has_value()) {
+            auto result = (archetype.instance_keys.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result =
+                ComponentBatch<Points2D::IndicatorComponent>(Points2D::IndicatorComponent())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> Points2D::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(8);
-
-            comp_batches.emplace_back(positions);
-            if (radii.has_value()) {
-                comp_batches.emplace_back(radii.value());
-            }
-            if (colors.has_value()) {
-                comp_batches.emplace_back(colors.value());
-            }
-            if (labels.has_value()) {
-                comp_batches.emplace_back(labels.value());
-            }
-            if (draw_order.has_value()) {
-                comp_batches.emplace_back(draw_order.value());
-            }
-            if (class_ids.has_value()) {
-                comp_batches.emplace_back(class_ids.value());
-            }
-            if (keypoint_ids.has_value()) {
-                comp_batches.emplace_back(keypoint_ids.value());
-            }
-            if (instance_keys.has_value()) {
-                comp_batches.emplace_back(instance_keys.value());
-            }
-            comp_batches.emplace_back(Points2D::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

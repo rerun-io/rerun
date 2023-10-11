@@ -3,31 +3,46 @@
 
 #include "pinhole.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
+    }
 
-        AnonymousComponentBatch Pinhole::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<Pinhole::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Pinhole>::serialize(
+        const archetypes::Pinhole& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(3);
+
+        {
+            auto result =
+                ComponentBatch<rerun::components::PinholeProjection>(archetype.image_from_camera)
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.resolution.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Resolution>(archetype.resolution.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.camera_xyz.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::ViewCoordinates>(archetype.camera_xyz.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<Pinhole::IndicatorComponent>(Pinhole::IndicatorComponent())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> Pinhole::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(3);
-
-            comp_batches.emplace_back(image_from_camera);
-            if (resolution.has_value()) {
-                comp_batches.emplace_back(resolution.value());
-            }
-            if (camera_xyz.has_value()) {
-                comp_batches.emplace_back(camera_xyz.value());
-            }
-            comp_batches.emplace_back(Pinhole::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

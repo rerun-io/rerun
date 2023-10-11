@@ -7,6 +7,7 @@ namespace arrow {
 }
 
 namespace rerun {
+    /// Equivalent to `rr_data_cell` from the C API.
     struct DataCell {
         /// Name of the logged component.
         const char* component_name;

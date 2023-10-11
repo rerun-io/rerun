@@ -3,25 +3,32 @@
 
 #include "bar_chart.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
+    }
 
-        AnonymousComponentBatch BarChart::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<BarChart::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::BarChart>::serialize(
+        const archetypes::BarChart& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
+
+        {
+            auto result =
+                ComponentBatch<rerun::components::TensorData>(archetype.values).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result =
+                ComponentBatch<BarChart::IndicatorComponent>(BarChart::IndicatorComponent())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> BarChart::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
-
-            comp_batches.emplace_back(values);
-            comp_batches.emplace_back(BarChart::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

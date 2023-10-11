@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/color.hpp"
 #include "../components/text.hpp"
 #include "../components/text_log_level.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -34,41 +34,46 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             TextLog() = default;
+            TextLog(TextLog&& other) = default;
 
-            TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
+            explicit TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
 
             /// The verbosity level of the message.
             ///
             /// This can be used to filter the log messages in the Rerun Viewer.
-            TextLog& with_level(rerun::components::TextLogLevel _level) {
+            TextLog with_level(rerun::components::TextLogLevel _level) && {
                 level = std::move(_level);
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional color to use for the log line in the Rerun Viewer.
-            TextLog& with_color(rerun::components::Color _color) {
+            TextLog with_color(rerun::components::Color _color) && {
                 color = std::move(_color);
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return 1;
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::TextLog> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::TextLog& archetype
+        );
+    };
 } // namespace rerun
