@@ -23,6 +23,11 @@ namespace rerun {
     /// By implementing your own adapters for certain component types, you can map your data to
     /// Rerun types which then can be logged.
     ///
+    /// To implement an adapter for a type T, specialize `ComponentBatchAdapter<TComponent, T>` and
+    /// define `ComponentBatch<TComponent> operator()(const T& input)`.
+    /// It is *highly recommended* to also specify `ComponentBatch<TComponent> operator()(T&&
+    /// input)` in order to to accidentally borrow data that is passed in as a temporary!
+    ///
     /// TODO(andreas): Point to an example here and in the assert.
     template <typename TComponent, typename TInput>
     struct ComponentBatchAdapter {
