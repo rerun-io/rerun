@@ -157,7 +157,7 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         set_env("RE_BUILD_TARGET_TRIPLE", &std::env::var("TARGET").unwrap());
 
         // rust version
-        let (rustc, llvm) = rust_version().unwrap_or_default();
+        let (rustc, llvm) = rust_llvm_versions().unwrap_or_default();
         set_env("RE_BUILD_RUSTC_VERSION", &rustc);
         set_env("RE_BUILD_LLVM_VERSION", &llvm);
 
@@ -214,7 +214,7 @@ fn run_command(cmd: &str, args: &[&str]) -> anyhow::Result<String> {
 ///
 /// Defaults to `"unknown"` if, for whatever reason, the output from `rustc -vV` did not contain
 /// version information and/or the output format underwent breaking changes.
-fn rust_version() -> anyhow::Result<(String, String)> {
+fn rust_llvm_versions() -> anyhow::Result<(String, String)> {
     let cmd = std::env::var("RUSTC").unwrap_or("rustc".into());
     let args = &["-vV"];
 
