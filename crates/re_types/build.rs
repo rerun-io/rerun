@@ -38,6 +38,11 @@ fn should_run() -> bool {
         return false;
     }
 
+    if re_build_tools::get_and_track_env_var("CARGO_FEATURE___OPT_OUT_OF_AUTO_REBUILD").is_ok() {
+        eprintln!("__opt_out_of_auto_rebuild feature detected: Skipping re_types/build.rs");
+        return false;
+    }
+
     match Environment::detect() {
         // we should have been run before publishing
         Environment::PublishingCrates => false,
@@ -67,11 +72,6 @@ fn should_run() -> bool {
 
 fn main() {
     if !should_run() {
-        return;
-    }
-
-    if re_build_tools::get_and_track_env_var("CARGO_FEATURE___OPT_OUT_OF_AUTO_REBUILD").is_ok() {
-        eprintln!("__opt_out_of_auto_rebuild feature detected: Skipping re_types/build.rs");
         return;
     }
 
