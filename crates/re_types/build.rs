@@ -42,10 +42,23 @@ fn should_run() -> bool {
         // we should have been run before publishing
         Environment::PublishingCrates => false,
 
-        // YES! We run it to verify that the generated code is up-to-date.
-        Environment::CI => true,
+        // No - we run a manual `cargo codegen` on CI in `.github/workflows/contrib_checks.yml`
+        // (`no-codegen-changes`) to check out that the generated files are in-sync with the input.
+        Environment::CI => false,
 
-        Environment::DeveloperInWorkspace => true,
+        Environment::DeveloperInWorkspace => {
+            // This `build.rs` depends on having a bunch of tools installed (`clang-format`, …)
+            // and when some random contributor clones our repository,
+            // they likely won't have it, and we shouldn't need it.
+            // We really only need this `build.rs` for the convenience of
+            // developers who changes the input files (*.fbs) who then don't want to manually
+            // run `cargo codegen`.
+            // So: we only run this `build.rs` automatically after a developer
+            // has once run the codegen MANUALLY first using `cargo codegen`.
+            // That will produce the `source_hash.txt` file.
+
+            Path::new(SOURCE_HASH_PATH).exists()
+        }
 
         // We ship pre-built source files for users
         Environment::UsedAsDependency => false,
@@ -54,11 +67,6 @@ fn should_run() -> bool {
 
 fn main() {
     if !should_run() {
-        return;
-    }
-
-    // Only re-build if source-hash exists
-    if !Path::new(SOURCE_HASH_PATH).exists() {
         return;
     }
 
@@ -85,13 +93,6 @@ fn main() {
             // to do anything at this point.
             return;
         }
-    }
-
-    // Detect desyncs between definitions and generated when running on CI, and
-    // crash the build accordingly.
-    #[allow(clippy::manual_assert)]
-    if re_build_tools::is_on_ci() {
-        panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
     let (report, reporter) = re_types_builder::report::init();
