@@ -30,7 +30,7 @@ ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
 
 any_todo_pattern = re.compile(r"TODO\(.*\)")
 legal_todo_inner_pattern = re.compile(
-    r"TODO\(((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+)(?:,\s*((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+))*\)"
+    r"TODO\(((?:[a-zA-Z\-_/]+[a-zA-Z\-_/\d]+)?#\d+|[a-zA-Z]+)(?:,\s*((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+))*\)"
 )
 
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
@@ -132,6 +132,7 @@ def test_lint_line() -> None:
         "TODO(#42):",
         "TODO(#42,#43):",
         "TODO(#42, #43):",
+        "TODO(n4m3/w1th-numb3r5#42)",
         "TODO(rust-lang/rust#42):",
         "TODO(rust-lang/rust#42,rust-lang/rust#43):",
         "TODO(rust-lang/rust#42, rust-lang/rust#43):",
