@@ -191,7 +191,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 ///     "definitions/rerun/archetypes.fbs",
 /// );
 /// ```
-fn compile_binary_schemas(
+pub fn compile_binary_schemas(
     include_dir_path: impl AsRef<Utf8Path>,
     output_dir_path: impl AsRef<Utf8Path>,
     entrypoint_path: impl AsRef<Utf8Path>,
