@@ -398,8 +398,8 @@ def new_recording(
 
         To create distinct recordings from the same process, specify distinct recording IDs:
         ```
-        rr.init("my_app", recording_id="recording1")
-        rr.init("my_app", recording_id="recording2")
+        rec1 = rr.new_recording("my_app", recording_id="recording1")
+        rec2 = rr.new_recording("my_app", recording_id="recording2")
         ```
 
     Parameters
