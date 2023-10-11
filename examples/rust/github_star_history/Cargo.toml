@@ -11,7 +11,7 @@ re_log.workspace = true
 rerun.workspace = true
 
 anyhow.workspace = true
-chrono = { workspace = true, features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 clap.workspace = true
 gh-token = "0.1"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
