@@ -1005,7 +1005,7 @@ impl DataTable {
                 .downcast_ref::<ListArray<i32>>()
                 .ok_or(DataTableError::NotAColumn(component.to_string()))?
                 .iter()
-                // TODO(#1805): Schema metadata gets cloned in every single array.
+                // TODO(#3741): Schema metadata gets cloned in every single array.
                 // This'll become a problem as soon as we enable batching.
                 .map(|array| array.map(|values| DataCell::from_arrow(component, values)))
                 .collect(),
