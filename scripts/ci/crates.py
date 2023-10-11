@@ -342,10 +342,15 @@ def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> N
 
 
 def is_already_published(version: str, crate: Crate) -> bool:
+    name = crate.manifest["package"]["name"]
     res = requests.get(
-        f"https://crates.io/api/v1/crates/{crate}",
+        f"https://crates.io/api/v1/crates/{name}",
         headers={"user-agent": "rerun-publishing-script (rerun.io)"},
     ).json()
+
+    # the request failed
+    if "errors" in res:
+        raise Exception(f"failed to get crate {name}: {res['errors'][0]['detail']}")
 
     # crate has not been uploaded yet
     if "versions" not in res:
@@ -391,7 +396,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
                 retry_attempts -= 1
                 time.sleep(retry_delay + 1)
             else:
-                print(f"{R}Failed to publish{X} {B}{name}{X}")
+                print(f"{R}Failed to publish{X} {B}{name}{X}:\n{error_message}")
                 raise
 
 
