@@ -416,10 +416,10 @@ def actually_publish(all_crates: dict[str, Crate], version: str, token: str) -> 
     print("Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
     for name, crate in all_crates.items():
-        if not is_already_published(version, crate):
-            unpublished_crates[name] = crate
-        else:
+        if is_already_published(version, crate):
             print(f"{G}Already published{X} {B}{name}{X}@{B}{version}{X}")
+        else:
+            unpublished_crates[name] = crate
 
     # collect dependency graph (adjancency list of `crate -> dependencies`)
     print("Building dependency graph…")
