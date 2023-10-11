@@ -7,8 +7,8 @@ license.workspace = true
 publish = false
 
 [dependencies]
-re_log.workspace = true
-rerun.workspace = true
+re_log = { path = "../../../crates/re_log" }
+rerun = { path = "../../../crates/rerun" }
 
 anyhow.workspace = true
 chrono = { version = "0.4", features = ["serde"] }

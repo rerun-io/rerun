@@ -3,10 +3,7 @@
 //! Code based on <https://github.com/dtolnay/star-history>,
 //! with some simplifications and improvements.
 
-use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
-    process::ExitCode,
-};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use serde::{Deserialize, Serialize};
 
@@ -186,27 +183,23 @@ struct PageInfo {
     end_cursor: Cursor,
 }
 
-fn main() -> anyhow::Result<ExitCode> {
+fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
     use clap::Parser as _;
     let args = Args::parse();
 
     if args.repos.is_empty() {
-        eprintln!("You need to specify at least one repository");
-        return Ok(ExitCode::FAILURE);
+        panic!("You need to specify at least one repository");
     }
-
-    let mut session = rerun::Session::init("github_star_history", true);
-
-    let should_spawn = args.rerun.on_startup(&mut session);
-    if should_spawn {
-        session.spawn(move |mut session| run(&mut session, &args))?;
-    } else {
-        run(&mut session, &args)?;
-        args.rerun.on_teardown(&mut session)?;
-    }
-    Ok(ExitCode::SUCCESS)
+    let default_enabled = true;
+    args.rerun.clone().run(
+        "rerun_example_github_star_history",
+        default_enabled,
+        move |rec| {
+            run(&rec, &args).unwrap();
+        },
+    )
 }
 
 fn deserialize_data<'de, D>(deserializer: D) -> Result<VecDeque<Data>, D::Error>
@@ -289,7 +282,7 @@ where
     deserializer.deserialize_seq(visitor)
 }
 
-fn run(session: &mut rerun::Session, args: &Args) -> anyhow::Result<()> {
+fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     let serieses: Vec<Series> = args
         .repos
         .iter()
@@ -310,20 +303,15 @@ fn run(session: &mut rerun::Session, args: &Args) -> anyhow::Result<()> {
 
     let stars = requests(&serieses)?;
 
-    fn to_rerun_timepoint(time: chrono::DateTime<chrono::Utc>) -> rerun::time::TimePoint {
-        let timeline = rerun::time::Timeline::new("time", rerun::time::TimeType::Time);
-        let time = rerun::time::Time::from_ns_since_epoch(time.timestamp_nanos());
-        [(timeline, time.into())].into()
-    }
-
     for (series, stars) in &stars {
         for (count, star) in stars.iter().enumerate() {
-            rerun::MsgSender::new(format!("\"{}\"", series))
-                .with_timepoint(to_rerun_timepoint(star.time))
-                .with_component(&[rerun::components::Scalar(count as _)])
-                .unwrap()
-                .send(session)
-                .unwrap();
+            rec.set_time_nanos("time", star.time.timestamp_nanos());
+
+            let ent_path = format!("\"{}\"", series);
+            rec.log(
+                ent_path,
+                &rerun::TimeSeriesScalar::new(rerun::components::Scalar(count as f64)),
+            )?;
         }
     }
 
