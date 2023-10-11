@@ -27,7 +27,7 @@ import shutil
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
@@ -44,6 +44,7 @@ from semver import VersionInfo
 
 CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
+MAX_PUBLISH_WORKERS = 3
 
 
 R = Fore.RED
@@ -52,11 +53,19 @@ B = Fore.BLUE
 X = Fore.RESET
 
 
-def cargo(args: str, *, cwd: str | Path | None = None, env: dict[str, Any] = {}, dry_run: bool = False) -> Any:
+def cargo(
+    args: str,
+    *,
+    cwd: str | Path | None = None,
+    env: dict[str, Any] = {},
+    dry_run: bool = False,
+    capture: bool = False,
+) -> Any:
     cmd = [CARGO_PATH] + args.split()
     # print(f"> {subprocess.list2cmdline(cmd)}")
     if not dry_run:
-        subprocess.check_output(cmd, cwd=cwd, env=env)
+        stderr = subprocess.STDOUT if capture else None
+        subprocess.check_output(cmd, cwd=cwd, env=env, stderr=stderr)
 
 
 class Crate:
@@ -352,7 +361,7 @@ def is_already_published(version: str, crate: Crate) -> bool:
 
 def get_retry_delay(error_message: str) -> float | None:
     RETRY_AFTER_START = "Please try again after "
-    RETRY_AFTER_END = " or email help@crates.io"
+    RETRY_AFTER_END = " GMT or email help@crates.io"
     start = error_message.find(RETRY_AFTER_START)
     if start == -1:
         return None
@@ -360,8 +369,8 @@ def get_retry_delay(error_message: str) -> float | None:
     end = error_message.find(RETRY_AFTER_END, start)
     if end == -1:
         return None
-    retry_after = datetime.strptime(error_message[start:end], "%a, %d %b %Y %H:%M:%S GMT")
-    return (retry_after - datetime.now()).total_seconds()
+    retry_after = datetime.strptime(error_message[start:end], "%a, %d %b %Y %H:%M:%S")
+    return (retry_after - datetime.now(timezone.utc)).total_seconds() * MAX_PUBLISH_WORKERS
 
 
 def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
@@ -372,7 +381,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     retry_attempts = 3
     while True:
         try:
-            cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False)
+            cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False, capture=True)
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
             break
         except subprocess.CalledProcessError as e:
@@ -416,7 +425,7 @@ def actually_publish(all_crates: dict[str, Crate], version: str, token: str) -> 
         max_tokens=25,
         refill_interval_sec=60,
         # publishing already uses all cores, don't start too many publishes at once
-        num_workers=min(3, cpu_count()),
+        num_workers=min(MAX_PUBLISH_WORKERS, cpu_count()),
     )
 
 
