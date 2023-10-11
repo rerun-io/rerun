@@ -196,9 +196,7 @@ namespace rerun {
 
         /// Serializes the component batch into a rerun datacell that can be sent to a store.
         Result<SerializedComponentBatch> serialize() const {
-            // TODO(andreas): For improved error messages we should add a static_assert that
-            // TComponent implements `to_data_cell`.
-            // TODO(andreas): Invert this relationship - a user of this *container* should call
+            // TODO(#3794): Invert this relationship - a user of this *container* should call
             // TComponent::serialize (or similar) passing in this container.
             switch (ownership) {
                 case BatchOwnership::Borrowed: {
