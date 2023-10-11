@@ -502,6 +502,8 @@ impl QuotedObject {
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                 }
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
 
                 // Instead of including as_components.hpp, simply re-declare the template since it's trivial.
                 template<typename T>
@@ -525,8 +527,9 @@ impl QuotedObject {
                     #(#constants_cpp;)*
 
                     #(#methods_cpp)*
-
                 }
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
                 #serialize_cpp
             }
         };

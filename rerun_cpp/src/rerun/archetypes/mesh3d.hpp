@@ -157,6 +157,7 @@ namespace rerun {
         };
 
     } // namespace archetypes
+
     template <typename T>
     struct AsComponents;
 
