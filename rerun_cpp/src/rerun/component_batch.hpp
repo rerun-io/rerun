@@ -147,12 +147,16 @@ namespace rerun {
 
         /// Move constructor.
         ComponentBatch(ComponentBatch<TComponent>&& other) : ComponentBatch() {
-            *this = std::move(other);
+            swap(other);
         }
 
         /// Move assignment
         void operator=(ComponentBatch<TComponent>&& other) {
-            // Perform a swap with `other`.
+            this->swap(other);
+        }
+
+        /// Swaps the content of this component batch with another.
+        void swap(ComponentBatch<TComponent>& other) {
             // (writing out this-> here to make it less confusing!)
             switch (this->ownership) {
                 case BatchOwnership::Borrowed: {
@@ -162,9 +166,10 @@ namespace rerun {
                             break;
 
                         case BatchOwnership::VectorOwned: {
-                            auto this_borrowed_data_old = this->storage.borrowed.data;
-                            this->storage.vector_owned = std::move(other.storage.vector_owned);
-                            other.storage.borrowed.data = this_borrowed_data_old;
+                            auto this_borrowed_data_old = this->storage.borrowed;
+                            new (&this->storage.vector_owned)
+                                std::vector<TComponent>(std::move(other.storage.vector_owned));
+                            other.storage.borrowed = this_borrowed_data_old;
                             break;
                         }
                     }
@@ -174,9 +179,10 @@ namespace rerun {
                 case BatchOwnership::VectorOwned: {
                     switch (other.ownership) {
                         case BatchOwnership::Borrowed: {
-                            auto other_borrowed_data_old = other.storage.borrowed.data;
-                            other.storage.vector_owned = std::move(this->storage.vector_owned);
-                            this->storage.borrowed.data = other_borrowed_data_old;
+                            auto other_borrowed_data_old = other.storage.borrowed;
+                            new (&other.storage.vector_owned)
+                                std::vector<TComponent>(std::move(this->storage.vector_owned));
+                            this->storage.borrowed = other_borrowed_data_old;
                             break;
                         }
 
