@@ -177,7 +177,7 @@ impl ViewPartSystem for Lines2DPart {
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &EntityPath,
-        _ctx: HeuristicFilterContext,
+        ctx: HeuristicFilterContext,
         _query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
@@ -185,7 +185,8 @@ impl ViewPartSystem for Lines2DPart {
             return false;
         }
 
-        if _ctx.class == "3D" && !_ctx.has_parent_pinhole {
+        // If this is a 3D view and there's no parent pinhole, do not include this part.
+        if ctx.class == "3D" && !ctx.has_parent_pinhole {
             return false;
         }
 

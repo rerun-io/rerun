@@ -681,7 +681,7 @@ impl ViewPartSystem for ImagesPart {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
-        _ctx: HeuristicFilterContext,
+        ctx: HeuristicFilterContext,
         query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
@@ -689,7 +689,8 @@ impl ViewPartSystem for ImagesPart {
             return false;
         }
 
-        if _ctx.class == "3D" && !_ctx.has_parent_pinhole {
+        // If this is a 3D view and there's no parent pinhole, do not include this part.
+        if ctx.class == "3D" && !ctx.has_parent_pinhole {
             return false;
         }
 
