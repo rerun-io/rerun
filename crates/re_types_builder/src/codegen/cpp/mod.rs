@@ -1847,7 +1847,7 @@ fn quote_archetype_field_type(hpp_includes: &mut Includes, obj_field: &ObjectFie
             let elem_type = quote_element_type(hpp_includes, elem_type);
             quote! { ComponentBatch<#elem_type> }
         }
-        // TODO(andreas): This should emit `MonoComponentBatch` which will be a constrainted version of `ComponentBatch`.
+        // TODO(andreas): This should emit `MonoComponentBatch` which will be a constrained version of `ComponentBatch`.
         // (simply adapting `MonoComponentBatch` breaks some existing code, so this not entirely trivial to do.
         //  Designing constraints for `MonoComponentBatch` is harder still)
         Type::Object(fqname) => quote_fqname_as_type_path(hpp_includes, fqname),
