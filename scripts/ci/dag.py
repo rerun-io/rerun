@@ -7,6 +7,38 @@ from multiprocessing.synchronize import Event as EventClass
 from queue import Empty, Queue
 from typing import Callable, Generic, Hashable, TypeVar
 
+
+class RateLimiter:
+    """
+    Burst rate limiter.
+
+    Starts at `max_tokens`, and refills one token every `refill_interval_sec / max_tokens`.
+    """
+
+    def __init__(self, max_tokens: int, refill_interval_sec: float):
+        self.max_tokens = max_tokens
+        self.tokens = max_tokens
+        self.refill_rate = refill_interval_sec / max_tokens
+        self.next_refill = time.time() + self.refill_rate
+
+    def get(self) -> bool:
+        """Returns `true` if a token can be acquired."""
+
+        now = time.time()
+        if now >= self.next_refill:
+            time_past_refill = now - self.next_refill
+            gain = int(time_past_refill // self.refill_rate) + 1
+            remainder = time_past_refill % self.refill_rate
+            self.tokens += gain
+            self.last_refill = now + self.refill_rate - remainder
+
+        if self.tokens > 0:
+            self.tokens -= 1
+            return True
+        else:
+            return False
+
+
 _T = TypeVar("_T", bound=Hashable)
 
 
@@ -39,6 +71,25 @@ class DAG(Generic[_T]):
         * Tokens are refreshed every `refill_interval_sec`.
         """
 
+        # This loop has two parts, `push` and `pull`.
+        #
+        # The `push` loop attempts to push tasks
+        # onto the `task_queue` while there are
+        # some tasks ready to go, and some tokens left.
+        # It is also responsible for refreshing the bucket.
+        #
+        # The `pull` loop attempts to retrieve done
+        # tasks and decrement the dependency counter on
+        # their dependents.
+        #
+        # Once a node has no pending dependencies left,
+        # it becomes ready and will be queued in one of
+        # the iterations of the `push` loop.
+        #
+        # It's important to always use non-blocking `get`
+        # with the task queue and done queue, so that both
+        # the push and pull loops can eventually make progress.
+
         state = _State(self)
 
         with ThreadPoolExecutor(max_workers=num_workers) as p:
@@ -65,50 +116,22 @@ class DAG(Generic[_T]):
             for n in range(0, num_workers):  # start all workers
                 p.submit(worker, n)
 
-            tokens = max_tokens
-            num_in_progress = 0
-            last_refill = time.time()
+            rate_limit = RateLimiter(max_tokens, refill_interval_sec)
             while not shutdown.is_set():
                 if state._is_done():
                     shutdown.set()
                     state._sanity_check()
                     break
 
-                # This loop has two parts, `push` and `pull`.
-                #
-                # The `push` loop attempts to push tasks
-                # onto the `task_queue` while there are
-                # some tasks ready to go, and some tokens left.
-                # It is also responsible for refreshing the bucket.
-                #
-                # The `pull` loop attempts to retrieve done
-                # tasks and decrement the dependency counter on
-                # their dependents.
-                #
-                # Once a node has no pending dependencies left,
-                # it becomes ready and will be queued in one of
-                # the iterations of the `push` loop.
-                #
-                # It's important to always use non-blocking `get`
-                # with the task queue and done queue, so that both
-                # the push and pull loops can eventually make progress.
                 while len(state._queue) > 0:  # push loop
-                    now = time.time()
-                    if now - last_refill > refill_interval_sec:
-                        tokens = max_tokens - num_in_progress
-                        last_refill = now
-
-                    if len(state._queue) == 0 or tokens == 0:
+                    if len(state._queue) == 0 or not rate_limit.get():
                         break
 
-                    tokens -= 1
-                    num_in_progress += 1
                     task_queue.put(state._queue.pop())
 
                 try:
                     while True:  # pull loop
                         state._finish(done_queue.get_nowait())
-                        num_in_progress -= 1
                 except Empty:
                     time.sleep(0)  # yield here to prevent busy-looping
 
