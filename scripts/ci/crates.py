@@ -407,7 +407,6 @@ def publish(dry_run: bool, token: str) -> None:
             dependency_graph[name] = [
                 dependency.name for dependency in crate_deps(crate.manifest) if dependency.name in crates
             ]
-        print(dependency_graph)
         env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
         job = lambda id: publish_crate(crates[id], token, version, env)  # noqa: E731
         DAG(dependency_graph).walk_parallel(
