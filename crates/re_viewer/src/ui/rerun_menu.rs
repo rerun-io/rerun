@@ -126,20 +126,8 @@ impl App {
 
         ui.style_mut().wrap = Some(false);
 
-        let rustc_version = if rustc_version.is_empty() {
-            "unknown"
-        } else {
-            rustc_version
-        };
-
-        let llvm_version = if llvm_version.is_empty() {
-            "unknown"
-        } else {
-            llvm_version
-        };
-
         let git_hash_suffix = if git_hash.is_empty() {
-            "".to_owned()
+            String::new()
         } else {
             let short_git_hash = &git_hash[..std::cmp::min(git_hash.len(), 7)];
             format!("({short_git_hash})")
@@ -147,13 +135,18 @@ impl App {
 
         let mut label = format!(
             "{crate_name} {version} {git_hash_suffix}\n\
-            {target_triple}\n\
-            rustc {rustc_version}\n\
-            LLVM {llvm_version}"
+            {target_triple}"
         );
 
+        if !rustc_version.is_empty() {
+            label += &format!("\nrustc {rustc_version}");
+            if !llvm_version.is_empty() {
+                label += &format!(", LLVM {llvm_version}");
+            }
+        }
+
         if !datetime.is_empty() {
-            label += &format!("\nBuilt {datetime}");
+            label += &format!("\nbuilt {datetime}");
         }
 
         ui.label(label);
