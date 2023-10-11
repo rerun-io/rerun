@@ -36,7 +36,7 @@ fn should_run() -> bool {
 /// This will work even if the package depends on crates that are outside of the workspace,
 /// included with `path = …`
 ///
-/// However, this is a complex things, and may have bugs in it.
+/// However, this is a complex beast, and may have bugs in it.
 /// Maybe it is even causing spurious re-compiles (<https://github.com/rerun-io/rerun/issues/3266>).
 pub fn rebuild_if_crate_changed(pkg_name: &str) {
     if !should_run() {
