@@ -159,8 +159,21 @@ pub struct OrbitEye {
     pub world_from_view_rot: Quat,
     pub fov_y: f32,
 
-    /// Zero = no up (3dof rotation)
-    pub up: Vec3,
+    /// The up-axis of the scene we're looking at, if defined by its [`ViewCoordinates`].
+    ///
+    /// This is used to track changes to the scene's view coordinates reactively.
+    pub scene_up: Option<Vec3>,
+
+    /// The up-axis of the eye itself.
+    ///
+    /// Initially, the up-axis of the eye will be the same as the up-axis of the scene (or +Z if
+    /// the scene has no up axis defined).
+    /// Rolling the camera (e.g. middle-click) will permanently modify the eye's up axis, until the
+    /// next reset.
+    ///
+    /// A value of `Vec3::ZERO` is valid and will result in 3 degrees of freedom, although we never
+    /// use it at the moment.
+    pub eye_up: Vec3,
 
     /// For controlling the eye with WSAD in a smooth way.
     pub velocity: Vec3,
@@ -169,13 +182,20 @@ pub struct OrbitEye {
 impl OrbitEye {
     const MAX_PITCH: f32 = 0.999 * 0.25 * std::f32::consts::TAU;
 
-    pub fn new(orbit_center: Vec3, orbit_radius: f32, world_from_view_rot: Quat, up: Vec3) -> Self {
+    pub fn new(
+        orbit_center: Vec3,
+        orbit_radius: f32,
+        world_from_view_rot: Quat,
+        scene_up: Option<Vec3>,
+        eye_up: Vec3,
+    ) -> Self {
         OrbitEye {
             orbit_center,
             orbit_radius,
             world_from_view_rot,
             fov_y: Eye::DEFAULT_FOV_Y,
-            up,
+            eye_up,
+            scene_up,
             velocity: Vec3::ZERO,
         }
     }
@@ -219,7 +239,14 @@ impl OrbitEye {
                 orbit_radius: lerp(self.orbit_radius..=other.orbit_radius, t),
                 world_from_view_rot: self.world_from_view_rot.slerp(other.world_from_view_rot, t),
                 fov_y: egui::lerp(self.fov_y..=other.fov_y, t),
-                up: self.up.lerp(other.up, t).normalize_or_zero(),
+                eye_up: self.eye_up.lerp(other.eye_up, t).normalize_or_zero(),
+                scene_up: other.scene_up, // TODO: crazy interp bug
+                // scene_up: other.scene_up.map(|scene_up| {
+                //     self.scene_up
+                //         .unwrap_or(glam::Vec3::Z)
+                //         .lerp(scene_up, t)
+                //         .normalize_or_zero()
+                // }),
                 velocity: self.velocity.lerp(other.velocity, t),
             }
         }
@@ -234,10 +261,10 @@ impl OrbitEye {
     ///
     /// `[-tau/4, +tau/4]`
     fn pitch(&self) -> Option<f32> {
-        if self.up == Vec3::ZERO {
+        if self.eye_up == Vec3::ZERO {
             None
         } else {
-            Some(self.fwd().dot(self.up).clamp(-1.0, 1.0).asin())
+            Some(self.fwd().dot(self.eye_up).clamp(-1.0, 1.0).asin())
         }
     }
 
@@ -245,13 +272,13 @@ impl OrbitEye {
         if let Some(pitch) = self.pitch() {
             let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
 
-            let fwd = project_onto(fwd, self.up).normalize(); // Remove pitch
-            let right = fwd.cross(self.up).normalize();
+            let fwd = project_onto(fwd, self.eye_up).normalize(); // Remove pitch
+            let right = fwd.cross(self.eye_up).normalize();
             let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
             let fwd = fwd.normalize(); // Prevent drift
 
             let world_from_view_rot =
-                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
+                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.eye_up).inverse());
 
             if world_from_view_rot.is_finite() {
                 self.world_from_view_rot = world_from_view_rot;
@@ -263,9 +290,9 @@ impl OrbitEye {
 
     #[allow(unused)]
     pub fn set_up(&mut self, up: Vec3) {
-        self.up = up.normalize_or_zero();
+        self.eye_up = up.normalize_or_zero();
 
-        if self.up != Vec3::ZERO {
+        if self.eye_up != Vec3::ZERO {
             self.set_fwd(self.fwd()); // this will clamp the rotation
         }
     }
@@ -388,25 +415,25 @@ impl OrbitEye {
         let sensitivity = 0.004; // radians-per-point. TODO(emilk): take fov_y and canvas size into account
         let delta = sensitivity * delta;
 
-        if self.up == Vec3::ZERO {
+        if self.eye_up == Vec3::ZERO {
             // 3-dof rotation
             let rot_delta = Quat::from_rotation_y(-delta.x) * Quat::from_rotation_x(-delta.y);
             self.world_from_view_rot *= rot_delta;
         } else {
             // 2-dof rotation
-            let fwd = Quat::from_axis_angle(self.up, -delta.x) * self.fwd();
+            let fwd = Quat::from_axis_angle(self.eye_up, -delta.x) * self.fwd();
             let fwd = fwd.normalize(); // Prevent drift
 
             let pitch = self.pitch().unwrap() - delta.y;
             let pitch = pitch.clamp(-Self::MAX_PITCH, Self::MAX_PITCH);
 
-            let fwd = project_onto(fwd, self.up).normalize(); // Remove pitch
-            let right = fwd.cross(self.up).normalize();
+            let fwd = project_onto(fwd, self.eye_up).normalize(); // Remove pitch
+            let right = fwd.cross(self.eye_up).normalize();
             let fwd = Quat::from_axis_angle(right, pitch) * fwd; // Tilt up/down
             let fwd = fwd.normalize(); // Prevent drift
 
             let new_world_from_view_rot =
-                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.up).inverse());
+                Quat::from_affine3(&Affine3A::look_at_rh(Vec3::ZERO, fwd, self.eye_up).inverse());
 
             if new_world_from_view_rot.is_finite() {
                 self.world_from_view_rot = new_world_from_view_rot;
@@ -424,7 +451,11 @@ impl OrbitEye {
         let rot_delta = Quat::from_rotation_z(delta_angle);
         self.world_from_view_rot *= rot_delta;
 
-        self.up = Vec3::ZERO; // forget about this until user resets the eye
+        // Permanently change our up-axis, at least until the user resets the view!
+        self.eye_up = self
+            .world_from_view_rot
+            .mul_vec3(self.scene_up.unwrap_or(glam::Vec3::Z)) // default to RFU
+            .normalize_or_zero();
     }
 
     /// Translate based on a certain number of pixel delta.

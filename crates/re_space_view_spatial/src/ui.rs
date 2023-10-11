@@ -7,8 +7,9 @@ use re_entity_db::EntityPath;
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::components::{DepthMeter, InstanceKey, TensorData};
+use re_types::components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates};
 use re_types::tensor_data::TensorDataMeaning;
+use re_types::view_coordinates::SignedAxis3;
 use re_viewer_context::{
     HoverHighlight, Item, SelectedSpaceContext, SelectionHighlight, SpaceViewHighlights,
     SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache,
@@ -97,10 +98,10 @@ impl SpatialSpaceViewState {
     ) {
         let re_ui = ctx.re_ui;
 
-        let view_coordinates = ctx
+        let scene_view_coordinates = ctx
             .entity_db
             .store()
-            .query_latest_component(space_origin, &ctx.current_query())
+            .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
             .map(|c| c.value);
 
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
@@ -145,7 +146,7 @@ impl SpatialSpaceViewState {
                         .clicked()
                     {
                         self.bounding_boxes.accumulated = self.bounding_boxes.current;
-                        self.state_3d.reset_camera(&self.bounding_boxes.accumulated, &view_coordinates);
+                        self.state_3d.reset_camera(&self.bounding_boxes.accumulated, scene_view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
                     if re_ui.checkbox(ui, &mut spin, "Spin")
@@ -160,16 +161,18 @@ impl SpatialSpaceViewState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view");
                 ui.vertical(|ui|{
-                    let up_description = if let Some(up) = view_coordinates.and_then(|v| v.up()) {
-                        format!("Up is {up}")
+                    // TODO(#3816): We should also display the current eye's up axis.
+                    let up_description = if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
+                        format!("Scene up is {scene_up}")
                     } else {
-                        "Up is unspecified".to_owned()
+                        let scene_up = SignedAxis3::POSITIVE_Z; // defauls to RUF
+                        format!("Scene up is unspecified (defaulting to {scene_up})")
                     };
                     ui.label(up_description).on_hover_ui(|ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 0.0;
                             ui.label("Set with ");
-                            ui.code("rerun.log_view_coordinates");
+                            ui.code("rerun.ViewCoordinates");
                             ui.label(".");
                         });
                     });
