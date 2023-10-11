@@ -117,6 +117,7 @@ enum {
     _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
     RR_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
+    RR_ERROR_CODE_RECORDING_STREAM_INVALID_TIMELINE_TYPE,
 
     // Arrow data processing errors.
     _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
@@ -203,6 +204,57 @@ extern void rr_recording_stream_save(rr_recording_stream stream, const char* pat
 /// See `rr_recording_stream` docs for ordering semantics and multithreading guarantees.
 /// No-op for destroyed/non-existing streams.
 extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
+
+/// Set the current time of the recording, for the current calling thread.
+///
+/// Used for all subsequent logging performed from this same thread, until the next call
+/// to one of the time setting methods.
+///
+/// For example:
+/// `rr_recording_stream_set_time_sequence(stream, "frame_nr", &frame_nr, &err)`.
+///
+/// You can remove a timeline again using
+/// `rr_recording_stream_set_time_sequence(stream, "sim_time", NULL, &err)`.
+extern void rr_recording_stream_set_time_sequence(
+    rr_recording_stream stream, const char* timeline_name, int64_t* sequence, rr_error* error
+);
+
+/// Set the current time of the recording, for the current calling thread.
+///
+/// Used for all subsequent logging performed from this same thread, until the next call
+/// to one of the time setting methods.
+///
+/// For example:
+/// `rr_recording_stream_set_time_seconds(stream, "sim_time", &sim_time_secs, &err)`.
+///
+/// You can remove a timeline again using
+/// `rr_recording_stream_set_time_seconds(stream, "sim_time", NULL, &err)`.
+extern void rr_recording_stream_set_time_seconds(
+    rr_recording_stream stream, const char* timeline_name, double* seconds, rr_error* error
+);
+
+/// Set the current time of the recording, for the current calling thread.
+///
+/// Used for all subsequent logging performed from this same thread, until the next call
+/// to one of the time setting methods.
+///
+/// For example:
+/// `rr_recording_stream_set_time_nanos(stream, "sim_time", &sim_time_nanos, &err)`.
+///
+/// You can remove a timeline again using
+/// `rr_recording_stream_set_time_nanos(stream, "sim_time", NULL, &err)`.
+extern void rr_recording_stream_set_time_nanos(
+    rr_recording_stream stream, const char* timeline_name, int64_t* ns, rr_error* error
+);
+
+/// Clears out the current time of the recording, for the current calling thread.
+/// TODO(#3743): Time is thread local per stream!
+///
+/// Used for all subsequent logging performed from this same thread, until the next call
+/// to one of the time setting methods.
+///
+/// No-op for destroyed/non-existing streams.
+extern void rr_recording_stream_reset_time(rr_recording_stream stream);
 
 /// Log the given data to the given stream.
 ///

@@ -1335,9 +1335,9 @@ impl RecordingStream {
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the time setting methods.
     ///
-    /// For example: `rec.set_time_seconds("sim_time", sim_time_nanos)`.
+    /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
     ///
-    /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    /// You can remove a timeline again using `rec.set_time_nanos("sim_time", None)`.
     ///
     /// See also:
     /// - [`Self::set_timepoint`]
