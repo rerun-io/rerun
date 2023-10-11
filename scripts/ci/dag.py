@@ -14,6 +14,8 @@ class RateLimiter:
     Burst rate limiter.
 
     Starts at `max_tokens`, and refills one token every `refill_interval_sec / max_tokens`.
+
+    This implementation attempts to mimic https://github.com/rust-lang/crates.io/blob/e66c852d3db3f0dfafa1f9a01e7806f0b2ad1465/src/rate_limiter.rs
     """
 
     def __init__(self, max_tokens: int, refill_interval_sec: float):
