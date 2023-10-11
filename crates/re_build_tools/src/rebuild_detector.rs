@@ -22,6 +22,7 @@ fn should_run() -> bool {
         // Dependencies shouldn't change on CI, but who knows 🤷‍♂️
         Environment::CI => true,
 
+        // Yes - this is what we want tracking for.
         Environment::DeveloperInWorkspace => true,
 
         // Definitely not

@@ -42,6 +42,8 @@ pub struct BuildInfo {
     /// ISO 8601 / RFC 3339 build time.
     ///
     /// Example: `"2023-02-23T19:33:26Z"`
+    ///
+    /// Empty if unknown.
     pub datetime: &'static str,
 }
 
@@ -83,7 +85,9 @@ impl std::fmt::Display for BuildInfo {
             write!(f, "]")?;
         }
 
-        write!(f, " {target_triple}")?;
+        if !target_triple.is_empty() {
+            write!(f, " {target_triple}")?;
+        }
 
         if !git_branch.is_empty() {
             write!(f, " {git_branch}")?;
@@ -93,7 +97,9 @@ impl std::fmt::Display for BuildInfo {
             write!(f, " {git_hash}")?;
         }
 
-        write!(f, ", built {datetime}")?;
+        if !datetime.is_empty() {
+            write!(f, ", built {datetime}")?;
+        }
 
         Ok(())
     }

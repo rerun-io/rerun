@@ -138,15 +138,25 @@ impl App {
             llvm_version
         };
 
-        let short_git_hash = &git_hash[..std::cmp::min(git_hash.len(), 7)];
+        let git_hash_suffix = if git_hash.is_empty() {
+            "".to_owned()
+        } else {
+            let short_git_hash = &git_hash[..std::cmp::min(git_hash.len(), 7)];
+            format!("({short_git_hash})")
+        };
 
-        ui.label(format!(
-            "{crate_name} {version} ({short_git_hash})\n\
-        {target_triple}\n\
-        rustc {rustc_version}\n\
-        LLVM {llvm_version}\n\
-        Built {datetime}",
-        ));
+        let mut label = format!(
+            "{crate_name} {version} {git_hash_suffix}\n\
+            {target_triple}\n\
+            rustc {rustc_version}\n\
+            LLVM {llvm_version}"
+        );
+
+        if !datetime.is_empty() {
+            label += &format!("\nBuilt {datetime}");
+        }
+
+        ui.label(label);
     }
 
     fn options_menu_ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
