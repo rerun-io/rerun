@@ -401,7 +401,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
             break
         except subprocess.CalledProcessError as e:
-            error_message = e.stdout.decode("utf-8").rstrip("\r\n")
+            error_message = e.stdout.decode("utf-8").strip()
             if (retry_delay := parse_retry_delay_secs(error_message)) is not None and retry_attempts > 0:
                 print(f"{R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
                 retry_attempts -= 1
