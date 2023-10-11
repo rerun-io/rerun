@@ -365,7 +365,7 @@ def get_retry_delay(error_message: str) -> float | None:
     start = error_message.find(RETRY_AFTER_START)
     if start == -1:
         return None
-    start += len(RETRY_AFTER_START)  # todo: finish this
+    start += len(RETRY_AFTER_START)
     end = error_message.find(RETRY_AFTER_END, start)
     if end == -1:
         return None
