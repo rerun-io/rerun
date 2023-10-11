@@ -19,5 +19,6 @@ struct DisconnectedSpace (
   "attr.python.array_aliases": "bool, npt.NDArray[np.bool_]",
   "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
+  /// Whether the entity path at which this is logged is disconnected from its parent.
   is_disconnected: bool (order: 100);
 }

@@ -20,7 +20,10 @@
 ///
 /// If a transform or pinhole is logged on the same path, this component will be ignored.
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
-pub struct DisconnectedSpace(pub bool);
+pub struct DisconnectedSpace(
+    /// Whether the entity path at which this is logged is disconnected from its parent.
+    pub bool,
+);
 
 impl From<bool> for DisconnectedSpace {
     #[inline]

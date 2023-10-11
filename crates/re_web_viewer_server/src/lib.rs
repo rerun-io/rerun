@@ -31,6 +31,7 @@ mod data {
     pub const VIEWER_WASM: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
 }
 
+/// Failure to host the web viewer.
 #[derive(thiserror::Error, Debug)]
 pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]

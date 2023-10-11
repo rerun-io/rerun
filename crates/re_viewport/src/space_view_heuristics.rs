@@ -458,7 +458,10 @@ pub fn identify_entities_per_system_per_class(
         .map(|(class_name, entry)| {
             (
                 *class_name,
-                (entry.new_context_collection(), entry.new_part_collection()),
+                (
+                    entry.new_context_collection(*class_name),
+                    entry.new_part_collection(),
+                ),
             )
         })
         .collect();
