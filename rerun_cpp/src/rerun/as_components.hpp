@@ -1,3 +1,5 @@
+#pragma once
+
 #include "component_batch.hpp"
 #include "indicator_component.hpp"
 
@@ -69,7 +71,9 @@ namespace rerun {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             const components::IndicatorComponent<Name>& indicator
         ) {
-            return AsComponents<components::IndicatorComponent<Name>>::serialize(indicator);
+            return AsComponents<ComponentBatch<components::IndicatorComponent<Name>>>::serialize(
+                indicator
+            );
         }
     };
 
