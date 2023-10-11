@@ -190,11 +190,10 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
 }
 
 fn get_base_url() -> Result<String> {
-    let mut base_url = std::env::var("EXAMPLES_MANIFEST_BASE_URL")
+    let mut base_url = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL")
         .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
 
-    if std::env::var("CI").is_ok() {
-        // We're in CI:
+    if re_build_tools::is_on_ci() {
         let sh = Shell::new()?;
         let branch = git_branch_name(&sh)?;
         // If we are on `main`, leave the base url at `version/nightly`
@@ -231,21 +230,25 @@ fn write_examples_manifest() -> Result<()> {
 }
 
 fn write_examples_manifest_if_necessary() {
-    if !re_build_tools::is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE")
-        || re_build_tools::is_tracked_env_var_set("RERUN_IS_PUBLISHING")
-    {
-        return;
-    }
-    re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);
+    use re_build_tools::Environment;
+    let should_run = match Environment::detect() {
+        // Can't run in thsese situations, because we can't find `examples/python`.
+        Environment::PublishingCrates | Environment::UsedAsDependency => false,
 
-    if let Err(err) = write_examples_manifest() {
-        panic!("{err}");
+        // Make sure the manifest reflects what is in `examples/python`.
+        Environment::CI | Environment::DeveloperInWorkspace => true,
+    };
+
+    if should_run {
+        re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);
+        if let Err(err) = write_examples_manifest() {
+            panic!("{err}");
+        }
     }
 }
 
 fn main() {
-    re_build_tools::rebuild_if_crate_changed("re_viewer");
-    re_build_tools::export_env_vars();
+    re_build_tools::export_build_info_vars_for_crate("re_viewer");
 
     write_examples_manifest_if_necessary();
 }
