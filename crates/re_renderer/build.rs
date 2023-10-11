@@ -114,7 +114,7 @@ fn should_run() -> bool {
 
         Environment::DeveloperInWorkspace => true,
 
-        Environment::ProbablyUserMachine => false,
+        Environment::UsedAsDependency => false,
     }
 }
 

@@ -34,6 +34,7 @@ pub(crate) fn should_output_cargo_build_instructions() -> bool {
     OUTPUT_CARGO_BUILD_INSTRUCTIONS.load(Ordering::Relaxed)
 }
 
+/// Where is this `build.rs` build script running?
 pub enum Environment {
     /// We are running `cargo publish` (via `scripts/ci/crates.py`); _probably_ on CI.
     PublishingCrates,
@@ -44,10 +45,14 @@ pub enum Environment {
     /// Are we a developer running inside the workspace of <https://github.com/rerun-io/rerun> ?
     DeveloperInWorkspace,
 
-    /// We are likely running on a users machine.
+    /// We are not on CI, and not in the Rerun workspace.
     ///
-    /// Try to do as little work as possible.
-    ProbablyUserMachine,
+    /// This is _most likely_ a Rerun user who is compiling a `re_` crate
+    /// because they depend on it either directly or indirectly in their `Cargo.toml`,
+    /// or they running `cargo install rerun-cli` or other tool that depend on a `re_` crate.
+    ///
+    /// In these cases we should do as little shenanigans in the `build.rs` as possible.
+    UsedAsDependency,
 }
 
 impl Environment {
@@ -60,14 +65,14 @@ impl Environment {
         } else if is_in_rerun_workspace() {
             Self::DeveloperInWorkspace
         } else {
-            Self::ProbablyUserMachine
+            Self::UsedAsDependency
         }
     }
 }
 
 /// Are we running inside the workspace of <https://github.com/rerun-io/rerun> ?
 ///
-/// Otherwise we might be running on users machines.
+/// Otherwise we are probably a user of the `re_` crates.
 fn is_in_rerun_workspace() -> bool {
     is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE")
 }

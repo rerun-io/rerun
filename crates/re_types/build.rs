@@ -48,7 +48,7 @@ fn should_run() -> bool {
         Environment::DeveloperInWorkspace => true,
 
         // We ship pre-built source files for users
-        Environment::ProbablyUserMachine => false,
+        Environment::UsedAsDependency => false,
     }
 }
 
