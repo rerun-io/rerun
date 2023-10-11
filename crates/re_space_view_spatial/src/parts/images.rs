@@ -30,7 +30,7 @@ use crate::{
     parts::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
-    SpatialSpaceView2D,
+    SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
 use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
@@ -214,7 +214,13 @@ impl ImagesPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let parent_pinhole_path = transforms.parent_pinhole(ent_path);
+        // Parent pinhole should only be relevant to 3D views
+        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
+        {
+            transforms.parent_pinhole(ent_path)
+        } else {
+            None
+        };
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
@@ -323,7 +329,13 @@ impl ImagesPart {
         }
         let meaning = TensorDataMeaning::Depth;
 
-        let parent_pinhole_path = transforms.parent_pinhole(ent_path);
+        // Parent pinhole should only be relevant to 3D views
+        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
+        {
+            transforms.parent_pinhole(ent_path)
+        } else {
+            None
+        };
 
         // Instance ids of tensors refer to entries inside the tensor.
         for (tensor, color, draw_order) in itertools::izip!(
@@ -439,7 +451,13 @@ impl ImagesPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let parent_pinhole_path = transforms.parent_pinhole(ent_path);
+        // Parent pinhole should only be relevant to 3D views
+        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
+        {
+            transforms.parent_pinhole(ent_path)
+        } else {
+            None
+        };
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
