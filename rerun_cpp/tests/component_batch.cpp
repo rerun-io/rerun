@@ -26,7 +26,7 @@ SCENARIO("ComponentBatch creation via common adaptors", TEST_TAG) {
             CHECK(batch.get_ownership() == rerun::BatchOwnership::VectorOwned);
         }
     }
-    // todo: add explicit move test
+
     GIVEN("a temporary vector of components") {
         THEN("a component batch created from it owns its data") {
             const rerun::ComponentBatch<rerun::components::Position2D> batch(
@@ -131,7 +131,9 @@ namespace rerun {
             );
         }
 
-        // TODO: fill in rvalue version and document when it's needed (almost always!)
+        ComponentBatch<components::Position2D> operator()(MyVec2Container&& container) {
+            throw std::runtime_error("Not implemented for temporaries");
+        }
     };
 } // namespace rerun
 
