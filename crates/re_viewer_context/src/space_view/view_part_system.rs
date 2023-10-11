@@ -9,6 +9,10 @@ use crate::{
     ViewQuery, ViewSystemName, ViewerContext,
 };
 
+/// This is additional context made available to the `heuristic_filter`.
+/// It includes tree-context information such as whether certain components
+/// exist in the parent hierarchy which are better computed once than having
+/// each entity do their own tree-walk.
 #[derive(Clone, Copy, Debug)]
 pub struct HeuristicFilterContext {
     pub class: SpaceViewClassName,

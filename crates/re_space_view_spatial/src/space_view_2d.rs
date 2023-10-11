@@ -72,7 +72,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         _space_origin: &EntityPath,
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
-        let score = auto_spawn_heuristic(
+        let mut score = auto_spawn_heuristic(
             &self.name(),
             ctx,
             per_system_entities,
@@ -100,6 +100,16 @@ impl SpaceViewClass for SpatialSpaceView2D {
                         }
                     }
                 }
+            }
+        }
+
+        if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score) = &mut score {
+            // If a 2D view contains nothing inherently 2D in nature, don't
+            // spawn it, though in all other cases default to 2D over 3D as a tie-breaker.
+            if *score == 0.0 {
+                return AutoSpawnHeuristic::NeverSpawn;
+            } else {
+                *score += 0.1;
             }
         }
 
