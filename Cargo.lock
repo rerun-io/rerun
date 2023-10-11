@@ -4805,6 +4805,7 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_renderer",
+ "re_sdk",
  "re_smart_channel",
  "re_space_view_bar_chart",
  "re_space_view_spatial",

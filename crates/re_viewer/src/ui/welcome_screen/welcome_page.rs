@@ -1,11 +1,12 @@
-use super::{large_text_button, status_strings, url_large_text_button, WelcomeScreenResponse};
+use super::{
+    large_text_button, python_quick_start::python_quick_start, status_strings,
+    url_large_text_button, WelcomeScreenResponse,
+};
 use egui::{NumExt, Ui};
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
 use re_ui::UICommandSender;
 
-//const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
-const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/python";
 const RUST_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/rust";
 const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
@@ -60,7 +61,11 @@ fn onboarding_content_ui(
             add_buttons: Box::new(|ui: &mut egui::Ui| {
                 // TODO(ab): activate when C++ is ready!
                 // url_large_text_button(ui, "C++", CPP_QUICKSTART);
-                url_large_text_button(ui, "Python", PYTHON_QUICKSTART);
+                if large_text_button(ui, "Python").clicked() {
+                    if let Err(err) = python_quick_start(command_sender) {
+                        re_log::error!("Failed to load Python quick start: {}", err);
+                    }
+                }
                 url_large_text_button(ui, "Rust", RUST_QUICKSTART);
 
                 false

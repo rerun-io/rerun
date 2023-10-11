@@ -1,4 +1,5 @@
 mod example_page;
+mod python_quick_start;
 mod welcome_page;
 
 use egui::Widget;
