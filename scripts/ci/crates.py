@@ -26,11 +26,12 @@ import os.path
 import shutil
 import subprocess
 import sys
+import time
+from datetime import datetime
 from enum import Enum
 from glob import glob
 from multiprocessing import cpu_count
 from pathlib import Path
-import time
 from typing import Any, Generator
 
 import git
@@ -345,7 +346,7 @@ def is_already_uploaded(version: str, crate: Crate) -> bool:
     return False
 
 
-def get_retry_after(error_message: str) -> float | None:
+def get_retry_delay(error_message: str) -> float | None:
     RETRY_AFTER_START = "Please try again after "
     RETRY_AFTER_END = " or email help@crates.io"
     start = error_message.find(RETRY_AFTER_START)
@@ -355,9 +356,8 @@ def get_retry_after(error_message: str) -> float | None:
     end = error_message.find(RETRY_AFTER_END, start)
     if end == -1:
         return None
-    print(error_message[start:end])
-
-    return time.time() + 2
+    retry_after = datetime.strptime(error_message[start:end], "%a, %d %b %Y %H:%M:%S GMT")
+    return (retry_after - datetime.now()).total_seconds()
 
 
 def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
@@ -371,30 +371,18 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
         print(f"{Fore.GREEN}Already published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
     else:
         print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}…")
-        retry_attempts = 5
+        retry_attempts = 3
         while True:
             try:
-                # cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False)
-                time.sleep(1)
-                subprocess.check_output(
-                    [
-                        "/bin/sh",
-                        "-c",
-                        "echo 'error: failed to publish to registry at https://crates.io\n\nCaused by:\n  the remote server responded with an error (status 429 Too Many Requests): You have published too many updates to existing crates in a short period of time. Please try again after Tue, 10 Oct 2023 15:52:48 GMT or email help@crates.io to have your limit increased.' ; exit 1",
-                    ],
-                    cwd=crate.path,
-                    env=env,
-                    stderr=subprocess.STDOUT,
-                )
+                cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False)
                 print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
                 break
             except subprocess.CalledProcessError as e:
                 error_message = e.stdout.decode("utf-8").rstrip("\r|\n")
-                if retry_after := get_retry_after(error_message) and retry_attempts > 0:
-                    print("retry-after:", retry_after)
+                if (retry_delay := get_retry_delay(error_message)) is not None and retry_attempts > 0:
                     print(f"{Fore.RED}Failed to publish{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}, retrying…")
                     retry_attempts -= 1
-                    time.sleep(retry_after - time.time())
+                    time.sleep(retry_delay + 1)
                 else:
                     print(f"{Fore.RED}Failed to publish{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
                     raise
