@@ -367,7 +367,15 @@ def is_already_published(version: str, crate: Crate) -> bool:
     return False
 
 
-def get_retry_delay(error_message: str) -> float | None:
+def parse_retry_delay_secs(error_message: str) -> float | None:
+    """Parses the retry-after datetime from a `cargo publish` error message, and returns the seconds remaining until that time."""
+
+    # Example:
+    #   the remote server responded with an error (status 429 Too Many Requests):
+    #   You have published too many crates in a short period of time.
+    #   Please try again after Tue, 27 Dec 2022 17:25:13 GMT or email help@crates.io
+    #   to have your limit increased.
+
     RETRY_AFTER_START = "Please try again after "
     RETRY_AFTER_END = " GMT or email help@crates.io"
     start = error_message.find(RETRY_AFTER_START)
@@ -394,7 +402,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
             break
         except subprocess.CalledProcessError as e:
             error_message = e.stdout.decode("utf-8").rstrip("\r|\n")
-            if (retry_delay := get_retry_delay(error_message)) is not None and retry_attempts > 0:
+            if (retry_delay := parse_retry_delay_secs(error_message)) is not None and retry_attempts > 0:
                 print(f"{R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
                 retry_attempts -= 1
                 time.sleep(retry_delay + 1)
