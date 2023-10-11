@@ -22,6 +22,24 @@ pub use self::rebuild_detector::{
     rerun_if_changed_glob, rerun_if_changed_or_doesnt_exist, write_file_if_necessary,
 };
 
+// ------------------
+
+/// Should we export the build datetime for developers in the workspace?
+///
+/// It will be visible in analytics, in the viewer's about-menu, and with `rerun --version`.
+///
+/// To do so accurately may incur unnecessary recompiles, so only turn this on if you really need it.
+const EXPORT_BUILD_TIME_FOR_DEVELOPERS: bool = false;
+
+/// Should we export the current git hash/branch for developers in the workspace?
+///
+/// It will be visible in analytics, in the viewer's about-menu, and with `rerun --version`.
+///
+/// To do so accurately may incur unnecessary recompiles, so only turn this on if you really need it.
+const EXPORT_GIT_FOR_DEVELOPERS: bool = false;
+
+// ------------------
+
 /// Atomic bool indicating whether or not to print the cargo build instructions
 pub(crate) static OUTPUT_CARGO_BUILD_INSTRUCTIONS: AtomicBool = AtomicBool::new(true);
 
@@ -34,6 +52,8 @@ pub fn set_output_cargo_build_instructions(output_instructions: bool) {
 pub(crate) fn should_output_cargo_build_instructions() -> bool {
     OUTPUT_CARGO_BUILD_INSTRUCTIONS.load(Ordering::Relaxed)
 }
+
+// ------------------
 
 /// Where is this `build.rs` build script running?
 pub enum Environment {
@@ -88,8 +108,26 @@ pub fn is_on_ci() -> bool {
 ///
 /// Use this crate together with the `re_build_info` crate.
 pub fn export_build_info_vars_for_crate(crate_name: &str) {
-    let export_datetime = true; // TODO(emilk): make configurable
-    let export_git_info = true; // TODO(emilk): make configurable
+    let environment = Environment::detect();
+
+    let export_datetime = match environment {
+        Environment::PublishingCrates | Environment::CI => true,
+
+        Environment::DeveloperInWorkspace => EXPORT_BUILD_TIME_FOR_DEVELOPERS,
+
+        // Datetime won't always be accurate unless we rebuild as soon as a dependency changes,
+        // and we don't want to add that burden to our users.
+        Environment::UsedAsDependency => false,
+    };
+
+    let export_git_info = match environment {
+        Environment::PublishingCrates | Environment::CI => true,
+
+        Environment::DeveloperInWorkspace => EXPORT_GIT_FOR_DEVELOPERS,
+
+        // We shouldn't show the users git hash/branch in the rerun viewer.
+        Environment::UsedAsDependency => false,
+    };
 
     if export_datetime {
         set_env("RE_BUILD_DATETIME", &date_time());
