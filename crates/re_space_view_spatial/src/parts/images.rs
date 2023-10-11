@@ -19,7 +19,7 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, gpu_bridge, DefaultColor, SpaceViewClass,
+    default_heuristic_filter, gpu_bridge, DefaultColor, HeuristicFilterContext, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
@@ -681,10 +681,15 @@ impl ViewPartSystem for ImagesPart {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        _ctx: HeuristicFilterContext,
         query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+            return false;
+        }
+
+        if _ctx.class == "3D" && !_ctx.has_parent_pinhole {
             return false;
         }
 

@@ -5,9 +5,33 @@ use re_log_types::EntityPath;
 use re_types::ComponentNameSet;
 
 use crate::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewSystemName, ViewerContext,
+    NamedViewSystem, SpaceViewClassName, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewSystemName, ViewerContext,
 };
+
+#[derive(Clone, Copy, Debug)]
+pub struct HeuristicFilterContext {
+    pub class: SpaceViewClassName,
+    pub has_parent_pinhole: bool,
+}
+
+impl Default for HeuristicFilterContext {
+    fn default() -> HeuristicFilterContext {
+        Self {
+            class: SpaceViewClassName::invalid(),
+            has_parent_pinhole: false,
+        }
+    }
+}
+
+impl HeuristicFilterContext {
+    pub fn with_class(&self, class: SpaceViewClassName) -> Self {
+        Self {
+            class,
+            has_parent_pinhole: self.has_parent_pinhole,
+        }
+    }
+}
 
 /// Element of a scene derived from a single archetype query.
 ///
@@ -46,6 +70,7 @@ pub trait ViewPartSystem {
         &self,
         _store: &re_arrow_store::DataStore,
         _ent_path: &EntityPath,
+        _ctx: HeuristicFilterContext,
         _query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
@@ -80,7 +105,7 @@ pub trait ViewPartSystem {
 
 /// The default implementation for [`ViewPartSystem::heuristic_filter`].
 ///
-/// Returns true if eiher `indicator_components` is empty or `entity_components` contains at least one
+/// Returns true if either `indicator_components` is empty or `entity_components` contains at least one
 /// of these indicator components.
 ///
 /// Exported as a standalone function to simplify the implementation of custom filters.
