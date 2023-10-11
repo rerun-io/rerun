@@ -46,6 +46,12 @@ CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
 
 
+R = Fore.RED
+G = Fore.GREEN
+B = Fore.BLUE
+X = Fore.RESET
+
+
 def cargo(args: str, *, cwd: str | Path | None = None, env: dict[str, Any] = {}, dry_run: bool = False) -> Any:
     cmd = [CARGO_PATH] + args.split()
     # print(f"> {subprocess.list2cmdline(cmd)}")
@@ -149,9 +155,7 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
             visited[name] = True
             publish = crate.manifest["package"].get("publish")
             if publish is None:
-                ctx.error(
-                    f"Crate {Fore.BLUE}{name}{Fore.RESET} does not have {Fore.BLUE}package.publish{Fore.RESET} set."
-                )
+                ctx.error(f"Crate {B}{name}{X} does not have {B}package.publish{X} set.")
                 return
 
             if publish:
@@ -203,9 +207,9 @@ class Context:
     def bump(self, path: str, prev: str, new: VersionInfo) -> None:
         # fmt: off
         op = " ".join([
-            f"bump {Fore.BLUE}{path}{Fore.RESET}",
-            f"from {Fore.GREEN}{prev}{Fore.RESET}",
-            f"to {Fore.GREEN}{new}{Fore.RESET}",
+            f"bump {B}{path}{X}",
+            f"from {G}{prev}{X}",
+            f"to {G}{new}{X}",
         ])
         # fmt: on
         self.ops.append(op)
@@ -213,8 +217,8 @@ class Context:
     def publish(self, crate: str, version: str) -> None:
         # fmt: off
         op = " ".join([
-            f"publish {Fore.BLUE}{crate}{Fore.RESET}",
-            f"version {Fore.GREEN}{version}{Fore.RESET}",
+            f"publish {B}{crate}{X}",
+            f"version {G}{version}{X}",
         ])
         # fmt: on
         self.ops.append(op)
@@ -328,7 +332,7 @@ def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> N
     cargo("update --workspace", dry_run=dry_run)
 
 
-def is_already_uploaded(version: str, crate: Crate) -> bool:
+def is_already_published(version: str, crate: Crate) -> bool:
     res = requests.get(
         f"https://crates.io/api/v1/crates/{crate}",
         headers={"user-agent": "rerun-publishing-script (rerun.io)"},
@@ -363,37 +367,65 @@ def get_retry_delay(error_message: str) -> float | None:
 def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
     package = crate.manifest["package"]
     name = package["name"]
-    crate_version = crate.manifest["package"].get("version") or version
-    if "workspace" in crate_version:
-        crate_version = version
 
-    if is_already_uploaded(crate_version, crate.manifest["package"]["name"]):
-        print(f"{Fore.GREEN}Already published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-    else:
-        print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}…")
-        retry_attempts = 3
-        while True:
-            try:
-                cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False)
-                print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-                break
-            except subprocess.CalledProcessError as e:
-                error_message = e.stdout.decode("utf-8").rstrip("\r|\n")
-                if (retry_delay := get_retry_delay(error_message)) is not None and retry_attempts > 0:
-                    print(f"{Fore.RED}Failed to publish{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}, retrying…")
-                    retry_attempts -= 1
-                    time.sleep(retry_delay + 1)
-                else:
-                    print(f"{Fore.RED}Failed to publish{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
-                    raise
+    print(f"{G}Publishing{X} {B}{name}{X}…")
+    retry_attempts = 3
+    while True:
+        try:
+            cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False)
+            print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
+            break
+        except subprocess.CalledProcessError as e:
+            error_message = e.stdout.decode("utf-8").rstrip("\r|\n")
+            if (retry_delay := get_retry_delay(error_message)) is not None and retry_attempts > 0:
+                print(f"{R}Failed to publish{X} {B}{name}{X}, retrying in {retry_delay} seconds…")
+                retry_attempts -= 1
+                time.sleep(retry_delay + 1)
+            else:
+                print(f"{R}Failed to publish{X} {B}{name}{X}")
+                raise
+
+
+def actually_publish(all_crates: dict[str, Crate], version: str, token: str) -> None:
+    # filter all_crates for any that are already published
+    print("Collecting unpublished crates…")
+    unpublished_crates: dict[str, Crate] = {}
+    for name, crate in all_crates.items():
+        if not is_already_published(version, crate):
+            unpublished_crates[name] = crate
+        else:
+            print(f"{G}Already published{X} {B}{name}{X}@{B}{version}{X}")
+
+    # collect dependency graph (adjancency list of `crate -> dependencies`)
+    print("Building dependency graph…")
+    dependency_graph: dict[str, list[str]] = {}
+    for name, crate in unpublished_crates.items():
+        dependencies = []
+        for dependency in crate_deps(crate.manifest):
+            if dependency.name in unpublished_crates:
+                dependencies.append(dependency.name)
+        dependency_graph[name] = dependencies
+
+    # walk the dependency graph in parallel and publish each crate
+    print("Publishing crates…")
+    env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
+    DAG(dependency_graph).walk_parallel(
+        lambda name: publish_crate(unpublished_crates[name], token, version, env),  # noqa: E731
+        # 30 tokens per minute (burst limit in crates.io)
+        # undershoot a bit to make space
+        max_tokens=25,
+        refill_interval_sec=60,
+        # publishing already uses all cores, don't start too many publishes at once
+        num_workers=min(3, cpu_count()),
+    )
 
 
 def publish(dry_run: bool, token: str) -> None:
     ctx = Context()
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
-    version = root["workspace"]["package"]["version"]
-    print("Gather publishable crates…")
+    version: str = root["workspace"]["package"]["version"]
+    print("Collecting publishable crates…")
     crates = get_sorted_publishable_crates(ctx, get_workspace_crates(root))
 
     for name in crates.keys():
@@ -401,23 +433,7 @@ def publish(dry_run: bool, token: str) -> None:
     ctx.finish(dry_run)
 
     if not dry_run:
-        print("Publishing crates…")
-        dependency_graph: dict[str, list[str]] = {}
-        for name, crate in crates.items():
-            dependency_graph[name] = [
-                dependency.name for dependency in crate_deps(crate.manifest) if dependency.name in crates
-            ]
-        env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
-        job = lambda id: publish_crate(crates[id], token, version, env)  # noqa: E731
-        DAG(dependency_graph).walk_parallel(
-            job,
-            # 30 tokens per minute (burst limit in crates.io)
-            # undershoot a bit to make space
-            max_tokens=25,
-            refill_interval_sec=60,
-            # publishing already uses all cores, don't start too many publishes at once
-            num_workers=min(3, cpu_count()),
-        )
+        actually_publish(crates, version, token)
 
 
 def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
