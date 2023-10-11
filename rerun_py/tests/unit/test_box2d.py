@@ -3,7 +3,11 @@ from __future__ import annotations
 import itertools
 from typing import Optional, cast
 
+import numpy as np
+import numpy.typing as npt
+import pytest
 import rerun as rr
+import torch
 from rerun.components import (
     DrawOrderLike,
     HalfSizes2DBatch,
@@ -11,7 +15,7 @@ from rerun.components import (
     Position2DBatch,
     RadiusArrayLike,
 )
-from rerun.datatypes import ClassIdArrayLike, ColorArrayLike, Utf8ArrayLike, Vec2DArrayLike
+from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -60,7 +64,7 @@ def test_boxes2d() -> None:
         half_sizes = cast(Vec2DArrayLike, half_sizes)
         centers = cast(Vec2DArrayLike, centers)
         radii = cast(Optional[RadiusArrayLike], radii)
-        colors = cast(Optional[ColorArrayLike], colors)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         draw_order = cast(Optional[DrawOrderLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
@@ -134,6 +138,45 @@ def test_with_array_xcycwh() -> None:
 
 def test_with_array_xcycw2h2() -> None:
     assert rr.Boxes2D(mins=[1, 1], sizes=[2, 4]) == rr.Boxes2D(array=[2, 3, 1, 2], array_format=rr.Box2DFormat.XCYCW2H2)
+
+
+@pytest.mark.parametrize(
+    "array",
+    [
+        [1, 2, 3, 4],
+        [1, 2, 3, 4],
+        np.array([1, 2, 3, 4], dtype=np.float32),
+        torch.asarray([1, 2, 3, 4], dtype=torch.float32),
+    ],
+)
+def test_with_array_types(array: npt.ArrayLike) -> None:
+    assert rr.Boxes2D(mins=[1, 2], sizes=[3, 4]) == rr.Boxes2D(array=array, array_format=rr.Box2DFormat.XYWH)
+
+
+def test_invalid_parameter_combinations() -> None:
+    rr.set_strict_mode(True)
+
+    # invalid size/position combinations
+    with pytest.raises(ValueError):
+        rr.Boxes2D(half_sizes=[1, 2], sizes=[3, 4])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(centers=[1, 2], mins=[3, 4])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(mins=[3, 4])
+
+    # with array
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, half_sizes=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, sizes=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, mins=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format=rr.Box2DFormat.XYWH, centers=[1, 2])
+    with pytest.raises(ValueError):
+        rr.Boxes2D(array=[3, 4, 5, 6], array_format="bonkers")  # type: ignore[arg-type]
 
 
 if __name__ == "__main__":

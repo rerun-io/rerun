@@ -20,6 +20,9 @@ mod ui_3d;
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
 
+#[doc(hidden)] // Public for benchmarks
+pub use parts::LoadedPoints;
+
 // ---
 
 mod view_kind {

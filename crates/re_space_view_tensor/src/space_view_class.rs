@@ -4,21 +4,18 @@ use eframe::emath::Align2;
 use egui::{epaint::TextShape, NumExt as _, Vec2};
 use ndarray::Axis;
 
-use re_data_store::InstancePath;
-use re_data_store::VersionedInstancePathHash;
 use re_data_ui::tensor_summary_ui_grid_contents;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, RowId};
 use re_renderer::Colormap;
 use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_types::{
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},
 };
-use re_viewer_context::gpu_bridge::colormap_dropdown_button_ui;
 use re_viewer_context::{
-    gpu_bridge, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewSystemExecutionError, TensorStatsCache, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    gpu_bridge, gpu_bridge::colormap_dropdown_button_ui, SpaceViewClass, SpaceViewClassName,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+    TensorStatsCache, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 
 use crate::{tensor_dimension_mapper::dimension_mapping_ui, view_part_system::TensorSystem};
@@ -29,9 +26,9 @@ pub struct TensorSpaceView;
 #[derive(Default)]
 pub struct ViewTensorState {
     /// Selects in [`Self::state_tensors`].
-    pub selected_tensor: Option<InstancePath>,
+    pub selected_tensor: Option<EntityPath>,
 
-    pub state_tensors: ahash::HashMap<InstancePath, PerTensorState>,
+    pub state_tensors: ahash::HashMap<EntityPath, PerTensorState>,
 }
 
 impl SpaceViewState for ViewTensorState {
@@ -66,14 +63,11 @@ pub struct PerTensorState {
 
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
-    tensor: Option<(VersionedInstancePathHash, DecodedTensor)>,
+    tensor: Option<(RowId, DecodedTensor)>,
 }
 
 impl PerTensorState {
-    pub fn create(
-        tensor_path_hash: VersionedInstancePathHash,
-        tensor: &DecodedTensor,
-    ) -> PerTensorState {
+    pub fn create(tensor_data_row_id: RowId, tensor: &DecodedTensor) -> PerTensorState {
         Self {
             slice: SliceSelection {
                 dim_mapping: DimensionMapping::create(tensor.shape()),
@@ -81,7 +75,7 @@ impl PerTensorState {
             },
             color_mapping: ColorMapping::default(),
             texture_settings: TextureSettings::default(),
-            tensor: Some((tensor_path_hash, tensor.clone())),
+            tensor: Some((tensor_data_row_id, tensor.clone())),
         }
     }
 
@@ -94,14 +88,14 @@ impl PerTensorState {
     }
 
     pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
-        let Some((tensor_path_hash, tensor)) = &self.tensor else {
+        let Some((tensor_data_row_id, tensor)) = &self.tensor else {
             ui.label("No Tensor shown in this Space View.");
             return;
         };
 
         let tensor_stats = ctx
             .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(*tensor_path_hash, tensor));
+            .entry(|c: &mut TensorStatsCache| c.entry(*tensor_data_row_id, tensor));
         ctx.re_ui
             .selection_grid(ui, "tensor_selection_ui")
             .show(ui, |ui| {
@@ -224,13 +218,12 @@ impl SpaceViewClass for TensorSpaceView {
             }
 
             if let Some(selected_tensor) = &state.selected_tensor {
-                if let Some((row_id, tensor)) = tensors.get(selected_tensor) {
-                    let tensor_path_hash = selected_tensor.hash().versioned(*row_id);
+                if let Some((tensor_data_row_id, tensor)) = tensors.get(selected_tensor) {
                     let state_tensor = state
                         .state_tensors
                         .entry(selected_tensor.clone())
-                        .or_insert_with(|| PerTensorState::create(tensor_path_hash, tensor));
-                    view_tensor(ctx, ui, state_tensor, tensor_path_hash, tensor);
+                        .or_insert_with(|| PerTensorState::create(*tensor_data_row_id, tensor));
+                    view_tensor(ctx, ui, state_tensor, *tensor_data_row_id, tensor);
                 }
             }
         }
@@ -243,12 +236,12 @@ fn view_tensor(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut PerTensorState,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
 ) {
     re_tracing::profile_function!();
 
-    state.tensor = Some((tensor_path_hash, tensor.clone()));
+    state.tensor = Some((tensor_data_row_id, tensor.clone()));
 
     if !state.slice.dim_mapping.is_valid(tensor.num_dim()) {
         state.slice.dim_mapping = DimensionMapping::create(tensor.shape());
@@ -290,7 +283,7 @@ fn view_tensor(
 
     egui::ScrollArea::both().show(ui, |ui| {
         if let Err(err) =
-            tensor_slice_ui(ctx, ui, state, tensor_path_hash, tensor, dimension_labels)
+            tensor_slice_ui(ctx, ui, state, tensor_data_row_id, tensor, dimension_labels)
         {
             ui.label(ctx.re_ui.error_text(err.to_string()));
         }
@@ -300,13 +293,13 @@ fn view_tensor(
 fn tensor_slice_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut PerTensorState,
-    tensor_path_hash: VersionedInstancePathHash,
+    state: &PerTensorState,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     dimension_labels: [(String, bool); 2],
 ) -> anyhow::Result<()> {
     let (response, painter, image_rect) =
-        paint_tensor_slice(ctx, ui, state, tensor_path_hash, tensor)?;
+        paint_tensor_slice(ctx, ui, state, tensor_data_row_id, tensor)?;
 
     if !response.hovered() {
         let font_id = egui::TextStyle::Body.resolve(ui.style());
@@ -319,18 +312,18 @@ fn tensor_slice_ui(
 fn paint_tensor_slice(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut PerTensorState,
-    tensor_path_hash: VersionedInstancePathHash,
+    state: &PerTensorState,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
 ) -> anyhow::Result<(egui::Response, egui::Painter, egui::Rect)> {
     re_tracing::profile_function!();
 
     let tensor_stats = ctx
         .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
     let colormapped_texture = super::tensor_slice_to_gpu::colormapped_texture(
         ctx.render_ctx,
-        tensor_path_hash,
+        tensor_data_row_id,
         tensor,
         &tensor_stats,
         state,
@@ -573,7 +566,7 @@ fn dimension_name(shape: &[TensorDimension], dim_idx: usize) -> String {
 }
 
 fn paint_axis_names(
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     painter: &egui::Painter,
     rect: egui::Rect,
     font_id: egui::FontId,

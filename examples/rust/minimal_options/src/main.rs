@@ -5,9 +5,7 @@
 //!  cargo run -p minimal_options -- --help
 //! ```
 
-use rerun::archetypes::Points3D;
-use rerun::components::Color;
-use rerun::{external::re_log, RecordingStream};
+use rerun::external::re_log;
 
 use rerun::demo_util::grid;
 
@@ -24,28 +22,6 @@ struct Args {
     radius: f32,
 }
 
-fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
-    let points = grid(
-        glam::Vec3::splat(-args.radius),
-        glam::Vec3::splat(args.radius),
-        args.num_points_per_axis,
-    );
-    let colors = grid(
-        glam::Vec3::ZERO,
-        glam::Vec3::splat(255.0),
-        args.num_points_per_axis,
-    )
-    .map(|v| Color::from_rgb(v.x as u8, v.y as u8, v.z as u8));
-
-    rec.set_time_sequence("keyframe", 0);
-    rec.log(
-        "my_points",
-        &Points3D::new(points).with_colors(colors).with_radii([0.5]),
-    )?;
-
-    Ok(())
-}
-
 fn main() -> anyhow::Result<()> {
     re_log::setup_native_logging();
 
@@ -60,4 +36,28 @@ fn main() -> anyhow::Result<()> {
             run(&rec, &args).unwrap();
         },
     )
+}
+
+fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
+    let points = grid(
+        glam::Vec3::splat(-args.radius),
+        glam::Vec3::splat(args.radius),
+        args.num_points_per_axis,
+    );
+    let colors = grid(
+        glam::Vec3::ZERO,
+        glam::Vec3::splat(255.0),
+        args.num_points_per_axis,
+    )
+    .map(|v| rerun::Color::from_rgb(v.x as u8, v.y as u8, v.z as u8));
+
+    rec.set_time_sequence("keyframe", 0);
+    rec.log(
+        "my_points",
+        &rerun::Points3D::new(points)
+            .with_colors(colors)
+            .with_radii([0.5]),
+    )?;
+
+    Ok(())
 }

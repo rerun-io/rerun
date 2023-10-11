@@ -99,13 +99,13 @@ def log_mesh_file(
     recording = RecordingStream.to_native(recording)
 
     if mesh_path is not None:
-        asset3d = Asset3D.from_file(str(mesh_path))
+        asset3d = Asset3D(path=mesh_path)
     elif mesh_bytes is not None:
         if mesh_format == MeshFormat.GLB:
             media_type = MediaType.GLB
         else:
             media_type = MediaType.OBJ
-        asset3d = Asset3D.from_bytes(mesh_bytes, media_type)
+        asset3d = Asset3D(contents=mesh_bytes, media_type=media_type)
     else:
         raise ValueError("must specify either `mesh_path` or `mesh_bytes`")
 
@@ -113,7 +113,7 @@ def log_mesh_file(
         transform = np.require(transform, dtype="float32")
         translation = transform[..., -1]
         mat = [transform[..., 0], transform[..., 1], transform[..., 2]]
-        asset3d.transform = OutOfTreeTransform3DBatch(TranslationAndMat3x3(translation=translation, matrix=mat))
+        asset3d.transform = OutOfTreeTransform3DBatch(TranslationAndMat3x3(translation=translation, mat3x3=mat))
 
     return log(entity_path, asset3d, timeless=timeless, recording=recording)
 

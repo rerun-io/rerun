@@ -7,12 +7,14 @@ import numpy.typing as npt
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import Boxes3D
 from rerun.datatypes import Quaternion
 from rerun.log_deprecated import (
     Color,
     Colors,
     OptionalClassIds,
+    _radii_from_stroke_width,
 )
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
@@ -176,11 +178,7 @@ def log_obbs(
     else:
         rotations = None
 
-    if stroke_widths is not None:
-        radii = np.asarray(stroke_widths, dtype="float32")
-        radii /= 2.0
-    else:
-        radii = None
+    radii = _radii_from_stroke_width(stroke_widths)
 
     arch = Boxes3D(
         half_sizes=half_sizes,
@@ -191,4 +189,4 @@ def log_obbs(
         labels=labels,
         class_ids=class_ids,
     )
-    return log(entity_path, arch, ext=ext, timeless=timeless, recording=recording)
+    return log(entity_path, arch, AnyValues(**(ext or {})), timeless=timeless, recording=recording)

@@ -19,7 +19,7 @@ __all__ = ["Rotation3D", "Rotation3DArrayLike", "Rotation3DBatch", "Rotation3DLi
 
 @define
 class Rotation3D(Rotation3DExt):
-    """A 3D rotation."""
+    """**Datatype**: A 3D rotation."""
 
     # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
 
@@ -100,11 +100,3 @@ class Rotation3DBatch(BaseBatch[Rotation3DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Rotation3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Rotation3DExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Rotation3DType())
-
-
-if hasattr(Rotation3DExt, "deferred_patch_class"):
-    Rotation3DExt.deferred_patch_class(Rotation3D)

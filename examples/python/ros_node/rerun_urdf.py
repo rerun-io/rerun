@@ -40,13 +40,11 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None, timeless
         # Log the transform between this node and its direct parent (if it has one!).
         if parent:
             world_from_mesh = node_data[0]
-            rr.log_transform3d(
+            rr.log(
                 path,
-                rr.Translation3D(
-                    rr.TranslationAndMat3(
-                        translation=trimesh.transformations.translation_from_matrix(world_from_mesh),
-                        matrix=world_from_mesh[0:3, 0:3],
-                    )
+                rr.Transform3D(
+                    translation=world_from_mesh[3, 0:3],
+                    mat3x3=world_from_mesh[0:3, 0:3],
                 ),
                 timeless=timeless,
             )
@@ -76,12 +74,14 @@ def log_scene(scene: trimesh.Scene, node: str, path: str | None = None, timeless
 
             albedo_factor = vertex_colors if vertex_colors is not None else visual_color
 
-            rr.log_mesh(
+            rr.log(
                 path,
-                mesh.vertices,
-                indices=mesh.faces,
-                normals=mesh.vertex_normals,
-                albedo_factor=albedo_factor,
+                rr.Mesh3D(
+                    vertex_positions=mesh.vertices,
+                    indices=mesh.faces,
+                    vertex_normals=mesh.vertex_normals,
+                    mesh_material=rr.Material(albedo_factor=albedo_factor),
+                ),
                 timeless=timeless,
             )
 

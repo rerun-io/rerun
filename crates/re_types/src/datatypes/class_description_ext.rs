@@ -1,4 +1,4 @@
-use super::{AnnotationInfo, ClassDescription, Color};
+use super::{AnnotationInfo, ClassDescription, Rgba32};
 
 impl From<(u16, &str)> for ClassDescription {
     fn from(value: (u16, &str)) -> Self {
@@ -9,8 +9,8 @@ impl From<(u16, &str)> for ClassDescription {
     }
 }
 
-impl From<(u16, &str, Color)> for ClassDescription {
-    fn from(value: (u16, &str, Color)) -> Self {
+impl From<(u16, &str, Rgba32)> for ClassDescription {
+    fn from(value: (u16, &str, Rgba32)) -> Self {
         Self {
             info: value.into(),
             ..Default::default()

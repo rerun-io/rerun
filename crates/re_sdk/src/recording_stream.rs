@@ -58,14 +58,19 @@ pub enum RecordingStreamError {
     /// Error spawning one of the background threads.
     #[error("Failed to spawn background thread '{name}': {err}")]
     SpawnThread {
+        /// Name of the thread
         name: &'static str,
-        err: Box<dyn std::error::Error + Send + Sync>,
+
+        /// Inner error explaining why the thread failed to spawn.
+        err: std::io::Error,
     },
 
+    /// Failure to host a web viewer and/or Rerun server.
     #[cfg(feature = "web_viewer")]
     #[error(transparent)]
-    WebSink(anyhow::Error),
+    WebSink(#[from] crate::web_viewer::WebViewerSinkError),
 
+    /// An error that can occur because a row in the store has inconsistent columns.
     #[error(transparent)]
     DataReadError(#[from] re_log_types::DataReadError),
 }
@@ -343,8 +348,7 @@ impl RecordingStreamBuilder {
     ) -> RecordingStreamResult<RecordingStream> {
         let (enabled, store_info, batcher_config) = self.into_args();
         if enabled {
-            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)
-                .map_err(RecordingStreamError::WebSink)?;
+            let sink = crate::web_viewer::new_sink(open_browser, bind_ip, web_port, ws_port)?;
             RecordingStream::new(store_info, batcher_config, sink)
         } else {
             re_log::debug!("Rerun disabled - call to serve() ignored");
@@ -501,10 +505,7 @@ impl RecordingStreamInner {
                     let batcher = batcher.clone();
                     move || forwarding_thread(info, sink, cmds_rx, batcher.tables())
                 })
-                .map_err(|err| RecordingStreamError::SpawnThread {
-                    name: NAME,
-                    err: Box::new(err),
-                })?
+                .map_err(|err| RecordingStreamError::SpawnThread { name: NAME, err })?
         };
 
         Ok(RecordingStreamInner {
@@ -577,14 +578,30 @@ impl RecordingStream {
 }
 
 impl RecordingStream {
-    /// Logs the contents of a [component bundle] into Rerun.
+    /// Log data to Rerun.
+    ///
+    /// This is the main entry point for logging data to rerun. It can be used to log anything
+    /// that implements the [`AsComponents`], such as any [archetype][crate::archetypes].
     ///
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
-    /// See `RecordingStream::set_time_*` family of methods for more information.
+    /// See [`RecordingStream::set_time_sequence`] etc for more information.
+    ///
+    /// See also: [`Self::log_timeless`] for logging timeless data.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
+    ///
+    /// # Example:
+    /// ```
+    /// # use re_sdk as rerun;
+    /// # let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_points3d_simple").memory()?;
+    /// rec.log(
+    ///     "my/points",
+    ///     &rerun::Points3D::new([(0.0, 0.0, 0.0), (1.0, 1.0, 1.0)]),
+    /// )?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
@@ -597,15 +614,23 @@ impl RecordingStream {
         self.log_with_timeless(ent_path, false, arch)
     }
 
-    /// Logs the contents of a [component bundle] into Rerun as timeless data.
+    /// Log data to Rerun.
+    ///
+    /// It can be used to log anything
+    /// that implements the [`AsComponents`], such as any [archetype][crate::archetypes].
     ///
     /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
     /// into the past.
     /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
     ///
+    /// This is most often used for [`re_types::components::ViewCoordinates`] and
+    /// [`re_types::components::AnnotationContext`].
+    ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
+    ///
+    /// See also [`Self::log`].
     ///
     /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
     /// [component bundle]: [`AsComponents`]
@@ -945,7 +970,7 @@ impl RecordingStream {
         let tick = this.tick.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         if inject_time {
             // Get the current time on all timelines, for the current recording, on the current
-            // thread...
+            // thread…
             let mut now = self.now();
             // ...and then also inject the current recording tick into it.
             now.insert(Timeline::log_tick(), tick.into());

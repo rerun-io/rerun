@@ -24,7 +24,7 @@ re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_query.workspace = true
-re_renderer = { workspace = true, features = ["import-gltf"] }
+re_renderer = { workspace = true, features = ["import-gltf", "import-obj"] }
 re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_tracing.workspace = true
 re_ui.workspace = true
@@ -44,3 +44,15 @@ parking_lot.workspace = true
 rayon.workspace = true
 serde = "1"
 smallvec = { workspace = true, features = ["serde"] }
+
+
+[dev-dependencies]
+criterion.workspace = true
+mimalloc.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "bench_points"
+harness = false

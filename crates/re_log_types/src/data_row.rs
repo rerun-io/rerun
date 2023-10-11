@@ -1,6 +1,6 @@
 use ahash::HashSetExt;
 use nohash_hasher::IntSet;
-use re_types::ComponentName;
+use re_types::{AsComponents, ComponentName};
 use smallvec::SmallVec;
 
 use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint};
@@ -266,6 +266,48 @@ pub struct DataRow {
 }
 
 impl DataRow {
+    /// Builds a new `DataRow` from anything implementing [`AsComponents`].
+    pub fn from_archetype(
+        row_id: RowId,
+        timepoint: TimePoint,
+        entity_path: EntityPath,
+        as_components: &dyn AsComponents,
+    ) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
+
+        let batches = as_components.as_component_batches();
+        Self::from_component_batches(
+            row_id,
+            timepoint,
+            entity_path,
+            batches.iter().map(|batch| batch.as_ref()),
+        )
+    }
+
+    /// Builds a new `DataRow` from anything implementing [`AsComponents`].
+    pub fn from_component_batches<'a>(
+        row_id: RowId,
+        timepoint: TimePoint,
+        entity_path: EntityPath,
+        comp_batches: impl IntoIterator<Item = &'a dyn re_types::ComponentBatch>,
+    ) -> anyhow::Result<Self> {
+        re_tracing::profile_function!();
+
+        let data_cells = comp_batches
+            .into_iter()
+            .map(|batch| DataCell::from_component_batch(batch))
+            .collect::<Result<Vec<DataCell>, _>>()?;
+
+        // TODO(emilk): should `DataRow::from_cells` calculate `num_instances` instead?
+        let num_instances = data_cells.iter().map(|cell| cell.num_instances()).max();
+        let num_instances = num_instances.unwrap_or(0);
+
+        let mut row =
+            DataRow::from_cells(row_id, timepoint, entity_path, num_instances, data_cells)?;
+        row.compute_all_size_bytes();
+        Ok(row)
+    }
+
     /// Builds a new `DataRow` from an iterable of [`DataCell`]s.
     ///
     /// Fails if:
@@ -546,7 +588,12 @@ impl std::fmt::Display for DataRow {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Row #{} @ '{}'", self.row_id, self.entity_path)?;
         for (timeline, time) in &self.timepoint {
-            writeln!(f, "- {}: {}", timeline.name(), timeline.typ().format(*time))?;
+            writeln!(
+                f,
+                "- {}: {}",
+                timeline.name(),
+                timeline.typ().format_utc(*time)
+            )?;
         }
 
         re_format::arrow::format_table(

@@ -3,15 +3,16 @@ include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
 include "rerun/attributes.fbs";
+include "rerun/datatypes/rgba32.fbs";
 
 namespace rerun.datatypes;
 
 // ---
 
-// Material properties of a mesh.
+/// Material properties of a mesh.
 struct Material (
   "attr.rust.derive": "Copy, PartialEq, Eq, Hash"
 ) {
   /// Optional color multiplier.
-  albedo_factor: rerun.datatypes.Color (nullable, order: 100);
+  albedo_factor: rerun.datatypes.Rgba32 (nullable, order: 100);
 }

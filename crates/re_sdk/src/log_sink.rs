@@ -128,8 +128,14 @@ pub struct MemorySinkStorage {
 
 impl Drop for MemorySinkStorage {
     fn drop(&mut self) {
-        if !self.msgs.read().is_empty() {
-            re_log::warn!("Dropping data in MemorySink");
+        for msg in self.msgs.read().iter() {
+            // Sinks intentionally end up with pending SetStoreInfo messages
+            // these are fine to drop safely. Anything else should produce a
+            // warning.
+            if !matches!(msg, LogMsg::SetStoreInfo(_)) {
+                re_log::warn!("Dropping data in MemorySink");
+                return;
+            }
         }
     }
 }

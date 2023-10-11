@@ -22,44 +22,99 @@ DATASET_DIR: Final = EXAMPLE_DIR / "dataset" / "pose_movement"
 DATASET_URL_BASE: Final = "https://storage.googleapis.com/rerun-example-datasets/pose_movement"
 
 
+DESCRIPTION = """
+# Human Pose Tracking
+This example uses Rerun to visualize the output of [MediaPipe](https://developers.google.com/mediapipe)-based tracking
+of a human pose in 2D and 3D.
+
+## How it was made
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/human_pose_tracking/main.py).
+
+### Input Video
+The input video is logged as a sequence of
+[rr.Image objects](https://www.rerun.io/docs/reference/types/archetypes/image) to the [video entity](recording://video).
+
+### Segmentation
+The [segmentation result](recording://video/mask) is logged through a combination of two archetypes. The segmentation
+image itself is logged as an
+[rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
+contains the id for each pixel. The color is determined by the
+[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
+logged with `rr.log(..., timeless=True` as it should apply to the whole sequence.
+
+### Skeletons
+The [2D](recording://video/pose/points) and [3D skeletons](recording://person/pose/points) are also logged through a
+similar combination of two entities.
+
+First, a timeless
+[rr.ClassDescription](https://www.rerun.io/docs/reference/types/datatypes/class_description) is logged (note, that
+this is equivalent to logging an
+[rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) as in the
+segmentation case). The class description contains the information which maps keypoint ids to labels and how to connect
+the keypoints to a skeleton.
+
+Second, the actual keypoint positions are logged in 2D
+nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/types/archetypes/points2d) and
+[rr.Points3D](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetypes, respectively.
+""".strip()
+
+
 def track_pose(video_path: str, segment: bool) -> None:
     mp_pose = mp.solutions.pose
 
-    rr.log_annotation_context(
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+
+    rr.log(
         "/",
-        rr.ClassDescription(
-            info=rr.AnnotationInfo(id=0, label="Person"),
-            keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
-            keypoint_connections=mp_pose.POSE_CONNECTIONS,
+        rr.AnnotationContext(
+            rr.ClassDescription(
+                info=rr.AnnotationInfo(id=0, label="Person"),
+                keypoint_annotations=[rr.AnnotationInfo(id=lm.value, label=lm.name) for lm in mp_pose.PoseLandmark],
+                keypoint_connections=mp_pose.POSE_CONNECTIONS,
+            )
         ),
+        timeless=True,
     )
     # Use a separate annotation context for the segmentation mask.
-    rr.log_annotation_context(
+    rr.log(
         "video/mask",
-        [rr.AnnotationInfo(id=0, label="Background"), rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0))],
+        rr.AnnotationContext(
+            [
+                rr.AnnotationInfo(id=0, label="Background"),
+                rr.AnnotationInfo(id=1, label="Person", color=(0, 0, 0)),
+            ]
+        ),
+        timeless=True,
     )
-    rr.log_view_coordinates("person", up="-Y", timeless=True)
+    rr.log("person", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
 
     with closing(VideoSource(video_path)) as video_source, mp_pose.Pose(enable_segmentation=segment) as pose:
         for bgr_frame in video_source.stream_bgr():
             rgb = cv2.cvtColor(bgr_frame.data, cv2.COLOR_BGR2RGB)
             rr.set_time_seconds("time", bgr_frame.time)
             rr.set_time_sequence("frame_idx", bgr_frame.idx)
-            rr.log_image("video/rgb", rgb, jpeg_quality=75)
+            rr.log("video/rgb", rr.Image(rgb).compress(jpeg_quality=75))
 
             results = pose.process(rgb)
             h, w, _ = rgb.shape
             landmark_positions_2d = read_landmark_positions_2d(results, w, h)
             if landmark_positions_2d is not None:
-                rr.log_points("video/pose/points", landmark_positions_2d, keypoint_ids=mp_pose.PoseLandmark)
+                rr.log(
+                    "video/pose/points",
+                    rr.Points2D(landmark_positions_2d, class_ids=0, keypoint_ids=mp_pose.PoseLandmark),
+                )
 
             landmark_positions_3d = read_landmark_positions_3d(results)
             if landmark_positions_3d is not None:
-                rr.log_points("person/pose/points", landmark_positions_3d, keypoint_ids=mp_pose.PoseLandmark)
+                rr.log(
+                    "person/pose/points",
+                    rr.Points3D(landmark_positions_3d, class_ids=0, keypoint_ids=mp_pose.PoseLandmark),
+                )
 
             segmentation_mask = results.segmentation_mask
             if segmentation_mask is not None:
-                rr.log_segmentation_image("video/mask", segmentation_mask)
+                rr.log("video/mask", rr.SegmentationImage(segmentation_mask.astype(np.uint8)))
 
 
 def read_landmark_positions_2d(

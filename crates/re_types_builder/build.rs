@@ -4,9 +4,7 @@ use std::path::Path;
 
 use xshell::{cmd, Shell};
 
-use re_build_tools::{
-    compute_file_hash, is_tracked_env_var_set, read_versioning_hash, write_versioning_hash,
-};
+use re_build_tools::{compute_file_hash, read_versioning_hash, write_versioning_hash};
 
 // ---
 
@@ -15,19 +13,31 @@ use re_build_tools::{
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const FBS_REFLECTION_DEFINITION_PATH: &str = "./definitions/reflection.fbs";
 
-fn main() {
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use re_build_tools::Environment;
+
     if cfg!(target_os = "windows") {
-        // TODO(#2591): Codegen is temporarily disabled on Windows due to hashing issues.
-        return;
+        // TODO(#2591): Codegen is currently disabled on Windows due to hashing issues, likely because of `\r` in files
+        return false;
     }
 
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
-        // Only run if we are in the rerun workspace, not on users machines.
-        return;
+    match Environment::detect() {
+        // we should have been run before publishing
+        Environment::PublishingCrates => false,
+
+        // The code we're generating here is actual source code that gets committed into the repository.
+        Environment::CI => false,
+
+        Environment::DeveloperInWorkspace => true,
+
+        // We ship pre-built source files for users
+        Environment::UsedAsDependency => false,
     }
-    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
-        // We don't need to rebuild - we should have done so beforehand!
-        // See `RELEASES.md`
+}
+
+fn main() {
+    if !should_run() {
         return;
     }
 

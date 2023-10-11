@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// The description of a semantic Class.
+/// **Datatype**: The description of a semantic Class.
 ///
 /// If an entity is annotated with a corresponding `ClassId`, rerun will use
 /// the attached `AnnotationInfo` to derive labels and colors.

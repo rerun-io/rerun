@@ -1,16 +1,21 @@
-use re_data_store::VersionedInstancePathHash;
+use re_log_types::RowId;
 use re_types::datatypes::TensorData;
 
 use super::TensorStats;
 use crate::Cache;
 
-/// Caches tensor stats using a [`VersionedInstancePathHash`], i.e. a specific instance of
-/// a specific entity path for a specific row in the store.
+/// Caches tensor stats using a [`RowId`], i.e. a specific instance of
+/// a `TensorData` component
 #[derive(Default)]
-pub struct TensorStatsCache(ahash::HashMap<VersionedInstancePathHash, TensorStats>);
+pub struct TensorStatsCache(ahash::HashMap<RowId, TensorStats>);
 
 impl TensorStatsCache {
-    pub fn entry(&mut self, key: VersionedInstancePathHash, tensor: &TensorData) -> TensorStats {
+    /// The key should be the `RowId` of the `TensorData`.
+    /// NOTE: `TensorData` is never batched (they are mono-components),
+    /// so we don't need the instance id here.
+    pub fn entry(&mut self, key: RowId, tensor: &TensorData) -> TensorStats {
+        re_tracing::profile_function!();
+
         *self
             .0
             .entry(key)

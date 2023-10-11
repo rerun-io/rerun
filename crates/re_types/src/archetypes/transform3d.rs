@@ -14,65 +14,61 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 3D transform.
+/// **Archetype**: A 3D transform.
 ///
 /// ## Example
 ///
+/// ### Variety of 3D transforms
 /// ```ignore
 /// //! Log some transforms.
 ///
-/// use rerun::{
-///     archetypes::{Arrows3D, Transform3D},
-///     datatypes::{
-///         Angle, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
-///     },
-///     RecordingStreamBuilder,
-/// };
-/// use std::f32::consts::PI;
+/// use std::f32::consts::TAU;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_transform3d").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_transform3d").memory()?;
 ///
 ///     rec.log(
 ///         "base",
-///         &Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
+///         &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
 ///     )?;
 ///
 ///     rec.log(
 ///         "base/translated",
-///         &Transform3D::new(TranslationAndMat3x3::translation([1.0, 0.0, 0.0])),
+///         &rerun::Transform3D::from_translation([1.0, 0.0, 0.0]),
 ///     )?;
 ///
 ///     rec.log(
 ///         "base/translated",
-///         &Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
+///         &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
 ///     )?;
 ///
 ///     rec.log(
 ///         "base/rotated_scaled",
-///         &Transform3D::new(TranslationRotationScale3D {
-///             rotation: Some(RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::Radians(PI / 4.)).into()),
-///             scale: Some(Scale3D::from(2.0)),
-///             ..Default::default()
-///         }),
+///         &rerun::Transform3D::from_rotation_scale(
+///             rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::Radians(TAU / 8.0)),
+///             rerun::Scale3D::from(2.0),
+///         ),
 ///     )?;
 ///
 ///     rec.log(
 ///         "base/rotated_scaled",
-///         &Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
+///         &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
 ///     )?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png">
-///   <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png">
+///   <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transform3D {
     /// The transform

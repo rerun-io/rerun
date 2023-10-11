@@ -6,12 +6,13 @@ from typing import Any, Optional, cast
 import numpy as np
 import pytest
 import rerun as rr
+import torch
 from rerun.components.instance_key import InstanceKeyArrayLike
 from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
 from rerun.components.radius import RadiusArrayLike
 from rerun.datatypes import Vec3D
 from rerun.datatypes.class_id import ClassIdArrayLike
-from rerun.datatypes.color import ColorArrayLike
+from rerun.datatypes.rgba32 import Rgba32ArrayLike
 from rerun.datatypes.utf8 import Utf8ArrayLike
 
 from .common_arrays import (
@@ -31,21 +32,24 @@ from .common_arrays import (
 # fmt: off
 strips_arrays: list[LineStrip3DArrayLike] = [
     [],
+    np.array([]),
+    [
+        [[0, 0, 2], [1, 0, 2], [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
+        [[0, 0, 0], [0, 0, 1], [1, 0, 0], (1, 0, 1),
+                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], # type: ignore[list-item]
+    ],
     [
         [Vec3D([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], # type: ignore[list-item]
         [Vec3D([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1),
-                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)]], # type: ignore[list-item]
-    [
-        [0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2],
-        [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1],
+                   [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], # type: ignore[list-item]
     ],
     [
         np.array([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=np.float32),
         np.array([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], dtype=np.float32), # noqa
     ],
     [
-        np.array([0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2], dtype=np.float32),
-        np.array([0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, ], dtype=np.float32),
+        torch.tensor([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=torch.float32),
+        torch.tensor([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], dtype=torch.float32), # noqa
     ],
     # NOTE: Not legal -- non-homogeneous.
     # np.array([
@@ -83,7 +87,7 @@ def test_line_strips3d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         strips = cast(LineStrip3DArrayLike, strips)
         radii = cast(Optional[RadiusArrayLike], radii)
-        colors = cast(Optional[ColorArrayLike], colors)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         instance_keys = cast(Optional[InstanceKeyArrayLike], instance_keys)
@@ -140,6 +144,62 @@ def test_line_segments3d(data: LineStrip3DArrayLike) -> None:
     assert arch.strips == LineStrip3DBatch(
         [[[0, 0, 0], [0, 0, 1]], [[1, 0, 0], [1, 0, 1]], [[1, 1, 0], [1, 1, 1]], [[0, 1, 0], [0, 1, 1]]],
     )
+
+
+def test_single_line_strip2d() -> None:
+    # Regression test for #3643
+    # Single linestrip can be passed and is not interpreted as batch of zero sized line strips.
+    reference = rr.LineStrips3D([rr.components.LineStrip3D([[0, 0, 0], [1, 1, 1]])])
+    assert len(reference.strips) == 1
+    assert reference == rr.LineStrips3D(rr.components.LineStrip3D([[0, 0, 0], [1, 1, 1]]))
+    assert reference == rr.LineStrips3D([[[0, 0, 0], [1, 1, 1]]])
+    assert reference == rr.LineStrips3D([[0, 0, 0], [1, 1, 1]])
+    assert reference == rr.LineStrips3D(np.array([[0, 0, 0], [1, 1, 1]]))
+    assert reference == rr.LineStrips3D([np.array([0, 0, 0]), np.array([1, 1, 1])])
+
+
+def test_line_strip2d_invalid_shapes() -> None:
+    rr.set_strict_mode(True)
+
+    # We used to support flat arrays but this becomes too ambiguous when passing a single strip.
+    with pytest.raises(ValueError):
+        rr.LineStrips3D(
+            [
+                [0, 0, 2, 1, 4, -1, 6, 0],
+                [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1],
+            ],
+        )
+    # fmt: off
+    with pytest.raises(ValueError):
+        rr.LineStrips3D(
+            [
+                np.array([0, 0, 2, 1, 0, 2, 1, 1, 2, 0, 1, 2], dtype=np.float32),
+                np.array([0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, ], dtype=np.float32),
+            ],
+        )
+    # fmt: on
+
+    # not homogeneous numpy arrays
+    with pytest.raises(ValueError):
+        rr.LineStrips3D(
+            np.array(
+                np.array(
+                    [
+                        [([0, 0, 2]), [1, 0, 2], [1, 1, 2], [0, 1, 2]],
+                        [([0, 0, 0]), [0, 0, 1], [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1], [0, 1, 0], [0, 1, 1]],
+                    ]
+                ),
+            )
+        )
+    with pytest.raises(ValueError):
+        rr.LineStrips3D(
+            np.array(
+                [
+                    [0, 0, 2, 1, 4, -1, 6, 0],
+                    [0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1],
+                ]
+            ),
+        )
 
 
 if __name__ == "__main__":

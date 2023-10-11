@@ -23,6 +23,8 @@ __all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
 
 @define(init=False)
 class Blob(BlobExt):
+    """**Component**: A binary blob of data."""
+
     def __init__(self: Any, data: BlobLike):
         """Create a new instance of the Blob component."""
 
@@ -59,11 +61,3 @@ class BlobBatch(BaseBatch[BlobArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
         return BlobExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(BlobType())
-
-
-if hasattr(BlobExt, "deferred_patch_class"):
-    BlobExt.deferred_patch_class(Blob)

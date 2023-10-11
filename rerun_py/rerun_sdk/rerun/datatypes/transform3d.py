@@ -19,7 +19,7 @@ __all__ = ["Transform3D", "Transform3DArrayLike", "Transform3DBatch", "Transform
 
 @define
 class Transform3D(Transform3DExt):
-    """Representation of a 3D affine transform."""
+    """**Datatype**: Representation of a 3D affine transform."""
 
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
@@ -68,7 +68,7 @@ class Transform3DType(BaseExtensionType):
                                     metadata={},
                                 ),
                                 pa.field(
-                                    "matrix",
+                                    "mat3x3",
                                     pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
                                     nullable=True,
                                     metadata={},
@@ -191,11 +191,3 @@ class Transform3DBatch(BaseBatch[Transform3DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Transform3DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Transform3DExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Transform3DType())
-
-
-if hasattr(Transform3DExt, "deferred_patch_class"):
-    Transform3DExt.deferred_patch_class(Transform3D)

@@ -27,20 +27,19 @@ __all__ = [
 @define(init=False)
 class DisconnectedSpace(DisconnectedSpaceExt):
     """
-    Specifies that the entity path at which this is logged is disconnected from its parent.
+    **Component**: Specifies that the entity path at which this is logged is disconnected from its parent.
 
     This is useful for specifying that a subgraph is independent of the rest of the scene.
 
     If a transform or pinhole is logged on the same path, this component will be ignored.
     """
 
-    def __init__(self: Any, is_disconnected: DisconnectedSpaceLike):
-        """Create a new instance of the DisconnectedSpace component."""
-
-        # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
-        self.__attrs_init__(is_disconnected=is_disconnected)
+    # __init__ can be found in disconnected_space_ext.py
 
     is_disconnected: bool = field(converter=bool)
+    # Whether the entity path at which this is logged is disconnected from its parent.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
@@ -64,11 +63,3 @@ class DisconnectedSpaceBatch(BaseBatch[DisconnectedSpaceArrayLike], ComponentBat
     @staticmethod
     def _native_to_pa_array(data: DisconnectedSpaceArrayLike, data_type: pa.DataType) -> pa.Array:
         return DisconnectedSpaceExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(DisconnectedSpaceType())
-
-
-if hasattr(DisconnectedSpaceExt, "deferred_patch_class"):
-    DisconnectedSpaceExt.deferred_patch_class(DisconnectedSpace)

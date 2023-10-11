@@ -390,6 +390,9 @@ def run(args: argparse.Namespace) -> None:
         uploader = Uploader(not args.skip_pngcrush, args.auto_accept)
 
         if args.single:
+            if args.path is None:
+                raise RuntimeError("Path is required when uploading a single image")
+
             object_name = uploader.upload_file(args.path)
             print(f"\nhttps://static.rerun.io/{object_name}")
         else:

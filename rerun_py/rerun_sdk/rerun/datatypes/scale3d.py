@@ -20,7 +20,7 @@ __all__ = ["Scale3D", "Scale3DArrayLike", "Scale3DBatch", "Scale3DLike", "Scale3
 @define
 class Scale3D(Scale3DExt):
     """
-    3D scaling factor, part of a transform representation.
+    **Datatype**: 3D scaling factor, part of a transform representation.
 
     Example
     -------
@@ -87,11 +87,3 @@ class Scale3DBatch(BaseBatch[Scale3DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Scale3DArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in scale3d_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Scale3DType())
-
-
-if hasattr(Scale3DExt, "deferred_patch_class"):
-    Scale3DExt.deferred_patch_class(Scale3D)

@@ -14,10 +14,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A connection between two `Keypoints`.
+/// **Datatype**: A connection between two `Keypoints`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeypointPair {
+    /// The first point of the pair.
     pub keypoint0: crate::datatypes::KeypointId,
+
+    /// The second point of the pair.
     pub keypoint1: crate::datatypes::KeypointId,
 }
 

@@ -28,21 +28,23 @@ import subprocess
 import sys
 from enum import Enum
 from glob import glob
+from multiprocessing import cpu_count
 from pathlib import Path
-from time import sleep, time
 from typing import Any, Generator
 
+import git
 import requests
 import tomlkit
 from colorama import Fore
 from colorama import init as colorama_init
+from dag import DAG
 from semver import VersionInfo
 
 CARGO_PATH = shutil.which("cargo") or "cargo"
 DEFAULT_PRE_ID = "alpha"
 
 
-def cargo(dry_run: bool, args: str, cwd: str | Path | None = None, env: dict[str, Any] = {}) -> Any:
+def cargo(args: str, *, cwd: str | Path | None = None, env: dict[str, Any] = {}, dry_run: bool = False) -> Any:
     cmd = [CARGO_PATH] + args.split()
     # print(f"> {subprocess.list2cmdline(cmd)}")
     if not dry_run:
@@ -53,6 +55,9 @@ class Crate:
     def __init__(self, manifest: dict[str, Any], path: Path):
         self.manifest = manifest
         self.path = path
+
+    def __str__(self) -> str:
+        return f"{self.manifest['package']['name']}@{self.path}"
 
 
 def get_workspace_crates(root: dict[str, Any]) -> dict[str, Crate]:
@@ -86,15 +91,21 @@ class DependencyKind(Enum):
 
 
 def crate_deps(member: dict[str, dict[str, Any]]) -> Generator[tuple[str, DependencyKind], None, None]:
-    if "dependencies" in member:
-        for v in member["dependencies"].keys():
-            yield (v, DependencyKind.DIRECT)
-    if "dev-dependencies" in member:
-        for v in member["dev-dependencies"].keys():
-            yield (v, DependencyKind.DEV)
-    if "build-dependencies" in member:
-        for v in member["build-dependencies"].keys():
-            yield (v, DependencyKind.BUILD)
+    def get_deps_in(d: dict[str, dict[str, Any]]) -> Generator[tuple[str, DependencyKind], None, None]:
+        if "dependencies" in d:
+            for v in d["dependencies"].keys():
+                yield (v, DependencyKind.DIRECT)
+        if "dev-dependencies" in d:
+            for v in d["dev-dependencies"].keys():
+                yield (v, DependencyKind.DEV)
+        if "build-dependencies" in d:
+            for v in d["build-dependencies"].keys():
+                yield (v, DependencyKind.BUILD)
+
+    yield from get_deps_in(member)
+    if "target" in member:
+        for target in member["target"].keys():
+            yield from get_deps_in(member["target"][target])
 
 
 def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dict[str, Crate]:
@@ -114,6 +125,8 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
         crate = crates[name]
         for dependency, _ in crate_deps(crate.manifest):
             if dependency not in crates:
+                continue
+            if dependency in visited:
                 continue
             helper(ctx, crates, dependency, output, visited)
         # Insert only after all dependencies have been traversed
@@ -297,7 +310,7 @@ def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> N
         for name, crate in crates.items():
             with Path(f"{crate.path}/Cargo.toml").open("w") as f:
                 tomlkit.dump(crate.manifest, f)
-    cargo(dry_run, "update --workspace")
+    cargo("update --workspace", dry_run=dry_run)
 
 
 def is_already_uploaded(version: str, crate: Crate) -> bool:
@@ -318,7 +331,7 @@ def is_already_uploaded(version: str, crate: Crate) -> bool:
     return False
 
 
-def publish_crate(dry_run: bool, crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
+def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -> None:
     package = crate.manifest["package"]
     name = package["name"]
     crate_version = crate.manifest["package"].get("version") or version
@@ -330,7 +343,7 @@ def publish_crate(dry_run: bool, crate: Crate, token: str, version: str, env: di
     else:
         print(f"{Fore.GREEN}Publishing{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}…")
         try:
-            cargo(dry_run, f"publish --quiet --token {token}", cwd=crate.path, env=env)
+            cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False)
             print(f"{Fore.GREEN}Published{Fore.RESET} {Fore.BLUE}{name}{Fore.RESET}")
         except:
             print(f"Failed to publish {Fore.BLUE}{name}{Fore.RESET}")
@@ -351,23 +364,46 @@ def publish(dry_run: bool, token: str) -> None:
     ctx.finish(dry_run)
 
     if not dry_run:
+        print("Publishing crates…")
+        dependency_graph: dict[str, list[str]] = {}
+        for name, crate in crates.items():
+            dependency_graph[name] = [
+                dependency for dependency, _ in crate_deps(crate.manifest) if dependency in crates
+            ]
+        print(dependency_graph)
         env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
-        for crate in crates.values():
-            start_s = time()
-            publish_crate(dry_run, crate, token, version, env)
-            elapsed_s = time() - start_s
-            if elapsed_s < 1:
-                sleep(1 - elapsed_s)
+        job = lambda id: publish_crate(crates[id], token, version, env)  # noqa: E731
+        DAG(dependency_graph).walk_parallel(
+            job,
+            max_tokens=30,  # 30 tokens per minute (burst limit in crates.io)
+            refill_interval_sec=60,
+            # publishing already uses all cores, don't start too many publishes at once
+            num_workers=min(3, cpu_count()),
+        )
 
 
-def get_version(finalize: bool) -> None:
-    root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
-    current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
+def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
+    if from_git:
+        branch_name = git.Repo().active_branch.name.lstrip("release-")
+        try:
+            current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
+        except ValueError:
+            print(f"the current branch `{branch_name}` does not specify a valid version.")
+            print("this script expects the format `release-x.y.z-meta.N`")
+            exit(1)
+    else:
+        root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
+        current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
+
     if finalize:
         current_version = current_version.finalize_version()
 
-    sys.stdout.write(str(current_version))
-    sys.stdout.flush()
+    if pre_id:
+        sys.stdout.write(str(current_version.prerelease.split(".", 1)[0]))
+        sys.stdout.flush()
+    else:
+        sys.stdout.write(str(current_version))
+        sys.stdout.flush()
 
 
 def main() -> None:
@@ -403,10 +439,12 @@ def main() -> None:
     get_version_parser.add_argument(
         "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
     )
+    get_version_parser.add_argument("--from-git", action="store_true", help="Get version from branch name")
+    get_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
     args = parser.parse_args()
 
     if args.cmd == "get-version":
-        get_version(args.finalize)
+        get_version(args.finalize, args.from_git, args.pre_id)
     if args.cmd == "version":
         if args.dev and args.pre_id != "alpha":
             parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")

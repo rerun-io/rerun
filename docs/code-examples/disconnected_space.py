@@ -8,5 +8,5 @@ rr.log("world/room1/point", rr.Points3D([[0, 0, 0]]))
 rr.log("world/room2/point", rr.Points3D([[1, 1, 1]]))
 
 # ..but this one lives in a completely separate space!
-rr.log("world/wormhole", rr.DisconnectedSpace(True))
+rr.log("world/wormhole", rr.DisconnectedSpace())
 rr.log("world/wormhole/point", rr.Points3D([[2, 2, 2]]))

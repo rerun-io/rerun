@@ -47,10 +47,23 @@ impl std::fmt::Display for VersionedInstancePath {
 ///
 /// The easiest way to construct this type is to use either [`crate::InstancePathHash::versioned`]
 /// or [`crate::VersionedInstancePath::hash`].
-#[derive(Clone, Copy, Debug, Eq)]
+#[derive(Clone, Copy, Eq)]
 pub struct VersionedInstancePathHash {
     pub instance_path_hash: InstancePathHash,
     pub row_id: RowId,
+}
+
+impl std::fmt::Debug for VersionedInstancePathHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            instance_path_hash,
+            row_id,
+        } = self;
+        write!(
+            f,
+            "VersionedInstancePathHash({instance_path_hash:?}, {row_id})"
+        )
+    }
 }
 
 impl std::hash::Hash for VersionedInstancePathHash {

@@ -19,7 +19,8 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+        /// **Datatype**: Representation of an affine transform via a 3x3 affine matrix paired with
+        /// a translation.
         ///
         /// First applies the matrix, then the translation.
         struct TranslationAndMat3x3 {
@@ -27,10 +28,13 @@ namespace rerun {
             std::optional<rerun::datatypes::Vec3D> translation;
 
             /// 3x3 matrix for scale, rotation & shear.
-            std::optional<rerun::datatypes::Mat3x3> matrix;
+            std::optional<rerun::datatypes::Mat3x3> mat3x3;
 
-            /// If true, the transform maps from the parent space to the space where the transform
-            /// was logged. Otherwise, the transform maps from the space to its parent.
+            /// If true, this transform is from the parent space to the space where the transform
+            /// was logged.
+            ///
+            /// If false (default), the transform maps from this space to its parent,
+            /// i.e. the translation is the position in the parent space.
             bool from_parent;
 
           public:
@@ -44,18 +48,18 @@ namespace rerun {
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationAndMat3x3(
-                const std::optional<Vec3D>& _translation, const std::optional<Mat3x3>& _matrix,
+                const std::optional<Vec3D>& _translation, const std::optional<Mat3x3>& _mat3x3,
                 bool _from_parent
             )
-                : translation(_translation), matrix(_matrix), from_parent(_from_parent) {}
+                : translation(_translation), mat3x3(_mat3x3), from_parent(_from_parent) {}
 
             /// From rotation only.
             ///
             /// @param _from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
-            TranslationAndMat3x3(const Mat3x3& _matrix, bool _from_parent = false)
-                : translation(std::nullopt), matrix(_matrix), from_parent(_from_parent) {}
+            TranslationAndMat3x3(const Mat3x3& _mat3x3, bool _from_parent = false)
+                : translation(std::nullopt), mat3x3(_mat3x3), from_parent(_from_parent) {}
 
             /// From translation only.
             ///
@@ -63,7 +67,7 @@ namespace rerun {
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationAndMat3x3(const Vec3D& _translation, bool _from_parent = false)
-                : translation(_translation), matrix(std::nullopt), from_parent(_from_parent) {}
+                : translation(_translation), mat3x3(std::nullopt), from_parent(_from_parent) {}
 
           public:
             TranslationAndMat3x3() = default;

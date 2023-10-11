@@ -43,7 +43,7 @@ impl RerunServer {
         };
 
         re_log::info!(
-            "Listening for websocket traffic on {}. Connect with a Rerun Web Viewer.",
+            "Listening for WebSocket traffic on {}. Connect with a Rerun Web Viewer.",
             slf.server_url()
         );
 
@@ -70,6 +70,7 @@ impl RerunServer {
             let (tcp_stream, _) = tokio::select! {
                 res = self.listener.accept() => res?,
                 _ = shutdown_rx.recv() => {
+                    re_log::debug!("Shutting down WebSocket server");
                     return Ok(());
                 }
             };

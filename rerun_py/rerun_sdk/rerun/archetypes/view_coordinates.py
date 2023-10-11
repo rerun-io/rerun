@@ -20,7 +20,7 @@ __all__ = ["ViewCoordinates"]
 @define(str=False, repr=False, init=False)
 class ViewCoordinates(ViewCoordinatesExt, Archetype):
     """
-    How we interpret the coordinate system of an entity/space.
+    **Archetype**: How we interpret the coordinate system of an entity/space.
 
     For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 
@@ -31,6 +31,7 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
 
     Example
     -------
+    ### View coordinates for adjusting the eye camera:
     ```python
 
     import rerun as rr
@@ -46,6 +47,15 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
         ),
     )
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png">
+      <img src="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/full.png" width="640">
+    </picture>
+    </center>
     """
 
     def __init__(self: Any, xyz: components.ViewCoordinatesLike):
@@ -78,5 +88,4 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     __repr__ = Archetype.__repr__
 
 
-if hasattr(ViewCoordinatesExt, "deferred_patch_class"):
-    ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)
+ViewCoordinatesExt.deferred_patch_class(ViewCoordinates)

@@ -20,7 +20,7 @@ __all__ = ["InstanceKey", "InstanceKeyArrayLike", "InstanceKeyBatch", "InstanceK
 
 @define(init=False)
 class InstanceKey(InstanceKeyExt):
-    """A unique numeric identifier for each individual instance within a batch."""
+    """**Component**: A unique numeric identifier for each individual instance within a batch."""
 
     def __init__(self: Any, value: InstanceKeyLike):
         """Create a new instance of the InstanceKey component."""
@@ -59,11 +59,3 @@ class InstanceKeyBatch(BaseBatch[InstanceKeyArrayLike], ComponentBatchMixin):
     @staticmethod
     def _native_to_pa_array(data: InstanceKeyArrayLike, data_type: pa.DataType) -> pa.Array:
         return InstanceKeyExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(InstanceKeyType())
-
-
-if hasattr(InstanceKeyExt, "deferred_patch_class"):
-    InstanceKeyExt.deferred_patch_class(InstanceKey)

@@ -19,7 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// Camera projection, from image coordinates to view coordinates.
+        /// **Component**: Camera projection, from image coordinates to view coordinates.
         ///
         /// Child from parent.
         /// Image coordinates from camera view coordinates.

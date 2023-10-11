@@ -26,6 +26,23 @@ def test_expected_warnings() -> None:
                 rr.log("points", rr.Points2D([1, 2, 3, 4, 5])),
                 "Expected either a flat array with a length multiple of 2 elements, or an array with shape (`num_elements`, 2). Shape of passed array was (5,).",
             ),
+            (
+                rr.log("test_transform", rr.Transform3D(translation=[1, 2, 3, 4])),
+                "translation must be compatible with Vec3D",
+            ),
+            (
+                rr.log("test_transform", rr.Transform3D(rotation=[1, 2, 3, 4, 5])),
+                "rotation must be compatible with Rotation3D",
+            ),
+            (
+                # TODO(jleibs): This should ideally capture the field name as mat3x3 as above
+                rr.log("test_transform", rr.Transform3D(mat3x3=[1, 2, 3, 4, 5])),
+                "cannot reshape array of size 5 into shape (3,3))",
+            ),
+            (
+                rr.log("test_transform", rr.TranslationAndMat3x3(translation=[1, 0, 0])),  # type: ignore[arg-type]
+                "Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, but got",
+            ),
         ]
 
         assert len(warnings) == len(expected_warnings)

@@ -54,17 +54,25 @@ fn git_short_hash(sh: &Shell) -> Result<String> {
 }
 
 fn parse_release_version(branch: &str) -> Option<&str> {
-    // release-\d+.\d+.\d+
+    // release-\d+.\d+.\d+(-alpha.\d+)?
 
     let version = branch.strip_prefix("release-")?;
 
-    let mut version_parts = version.split('.');
-    version_parts.next()?.parse::<u8>().ok()?;
-    version_parts.next()?.parse::<u8>().ok()?;
-    version_parts.next()?.parse::<u8>().ok()?;
+    let (major, rest) = version.split_once('.')?;
+    major.parse::<u8>().ok()?;
+    let (minor, rest) = rest.split_once('.')?;
+    minor.parse::<u8>().ok()?;
+    let (patch, meta) = rest
+        .split_once('-')
+        .map_or((rest, None), |(p, m)| (p, Some(m)));
+    patch.parse::<u8>().ok()?;
 
-    if version_parts.next().is_some() {
-        return None;
+    if let Some(meta) = meta {
+        let (kind, n) = meta.split_once('.')?;
+        if kind != "alpha" && kind != "rc" {
+            return None;
+        }
+        n.parse::<u8>().ok()?;
     }
 
     Some(version)
@@ -130,20 +138,32 @@ struct Example {
 
 fn examples() -> Result<Vec<Example>> {
     let mut examples = vec![];
-    for folder in std::fs::read_dir("../../examples/python")? {
+    let dir = "../../examples/python";
+    assert!(std::path::Path::new(dir).exists(), "Failed to find {dir}");
+    assert!(
+        std::path::Path::new(dir).is_dir(),
+        "{dir} is not a directory"
+    );
+    for folder in std::fs::read_dir(dir)? {
         let folder = folder?;
         let metadata = folder.metadata()?;
         let name = folder.file_name().to_string_lossy().to_string();
         let readme = folder.path().join("README.md");
         if metadata.is_dir() && readme.exists() {
             let readme = parse_frontmatter(readme)?;
-            let Some(readme) = readme else { continue };
-            if !readme.demo {
-                continue;
+            if let Some(readme) = readme {
+                if readme.demo {
+                    eprintln!("Adding example {name:?}");
+                    examples.push(Example { name, readme });
+                } else {
+                    eprintln!("Skipping example {name:?} because 'demo' is set to 'false'");
+                }
+            } else {
+                eprintln!("Skipping example {name:?} because it has no frontmatter");
             }
-            examples.push(Example { name, readme });
         }
     }
+    assert!(!examples.is_empty(), "No examples found in {dir}");
     examples.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     Ok(examples)
 }
@@ -151,6 +171,7 @@ fn examples() -> Result<Vec<Example>> {
 fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
     let path = path.as_ref();
     let content = std::fs::read_to_string(path)?;
+    let content = content.replace('\r', ""); // Windows, god damn you
     re_build_tools::rerun_if_changed(path);
     let Some(content) = content.strip_prefix("---\n") else {
         return Ok(None);
@@ -169,11 +190,10 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
 }
 
 fn get_base_url() -> Result<String> {
-    let mut base_url = std::env::var("EXAMPLES_MANIFEST_BASE_URL")
+    let mut base_url = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL")
         .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
 
-    if std::env::var("CI").is_ok() {
-        // We're in CI:
+    if re_build_tools::is_on_ci() {
         let sh = Shell::new()?;
         let branch = git_branch_name(&sh)?;
         // If we are on `main`, leave the base url at `version/nightly`
@@ -201,6 +221,7 @@ fn write_examples_manifest() -> Result<()> {
     for example in examples()? {
         manifest.push(ManifestEntry::new(example, &base_url));
     }
+    assert!(!manifest.is_empty(), "No examples found!");
     re_build_tools::write_file_if_necessary(
         MANIFEST_PATH,
         serde_json::to_string_pretty(&manifest)?.as_bytes(),
@@ -209,21 +230,25 @@ fn write_examples_manifest() -> Result<()> {
 }
 
 fn write_examples_manifest_if_necessary() {
-    if !re_build_tools::is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE")
-        || re_build_tools::is_tracked_env_var_set("RERUN_IS_PUBLISHING")
-    {
-        return;
-    }
-    re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);
+    use re_build_tools::Environment;
+    let should_run = match Environment::detect() {
+        // Can't run in thsese situations, because we can't find `examples/python`.
+        Environment::PublishingCrates | Environment::UsedAsDependency => false,
 
-    if let Err(err) = write_examples_manifest() {
-        panic!("{err}");
+        // Make sure the manifest reflects what is in `examples/python`.
+        Environment::CI | Environment::DeveloperInWorkspace => true,
+    };
+
+    if should_run {
+        re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);
+        if let Err(err) = write_examples_manifest() {
+            panic!("{err}");
+        }
     }
 }
 
 fn main() {
-    re_build_tools::rebuild_if_crate_changed("re_viewer");
-    re_build_tools::export_env_vars();
+    re_build_tools::export_build_info_vars_for_crate("re_viewer");
 
     write_examples_manifest_if_necessary();
 }

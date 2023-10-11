@@ -9,6 +9,8 @@ from ..error_utils import catch_and_log_exceptions
 
 
 class Mesh3DExt:
+    """Extension for [Mesh3D][rerun.archetypes.Mesh3D]."""
+
     def __init__(
         self: Any,
         *,
@@ -16,7 +18,7 @@ class Mesh3DExt:
         indices: npt.ArrayLike | None = None,
         mesh_properties: datatypes.MeshPropertiesLike | None = None,
         vertex_normals: datatypes.Vec3DArrayLike | None = None,
-        vertex_colors: datatypes.ColorArrayLike | None = None,
+        vertex_colors: datatypes.Rgba32ArrayLike | None = None,
         mesh_material: datatypes.MaterialLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,

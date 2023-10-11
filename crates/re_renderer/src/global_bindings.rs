@@ -125,7 +125,7 @@ impl GlobalBindings {
     /// Creates a bind group that follows the global bind group layout.
     pub fn create_bind_group(
         &self,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
         frame_uniform_buffer_binding: BindGroupEntry,
     ) -> GpuBindGroup {

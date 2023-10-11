@@ -18,7 +18,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A string of text, encoded as UTF-8.
+        /// **Datatype**: A string of text, encoded as UTF-8.
         struct Utf8 {
             std::string value;
 

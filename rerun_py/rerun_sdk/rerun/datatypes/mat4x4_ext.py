@@ -5,19 +5,21 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import pyarrow as pa
 
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 
 if TYPE_CHECKING:
     from . import Mat4x4ArrayLike, Mat4x4Like
 
 
 class Mat4x4Ext:
+    """Extension for [Mat4x4][rerun.datatypes.Mat4x4]."""
+
     def __init__(self: Any, rows: Mat4x4Like | None = None, *, columns: Mat4x4Like | None = None) -> None:
         from . import Mat4x4
 
         if rows is not None:
             if columns is not None:
-                _send_warning("Can't specify both columns and rows of matrix.", 1, recording=None)
+                _send_warning_or_raise("Can't specify both columns and rows of matrix.", 1, recording=None)
 
             if isinstance(rows, Mat4x4):
                 self.flat_columns = rows.flat_columns
@@ -30,7 +32,7 @@ class Mat4x4Ext:
             arr = np.array(columns, dtype=np.float32).reshape(4, 4)
             self.flat_columns = arr.flatten()
         else:
-            _send_warning("Need to specify either columns or columns of matrix.", 1, recording=None)
+            _send_warning_or_raise("Need to specify either columns or columns of matrix.", 1, recording=None)
             self.flat_columns = np.identity(4, dtype=np.float32).flatten()
 
     @staticmethod

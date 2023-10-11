@@ -94,7 +94,7 @@ pub enum ColorMapper {
     /// Look up the color in this texture.
     ///
     /// The texture is indexed in a row-major fashion, so that the top left pixel
-    /// corresponds to the the normalized value of 0.0, and the
+    /// corresponds to the normalized value of 0.0, and the
     /// bottom right pixel is 1.0.
     ///
     /// The texture must have the format [`wgpu::TextureFormat::Rgba8UnormSrgb`].

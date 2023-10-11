@@ -20,7 +20,7 @@ namespace rerun {
             std::vector<AnonymousComponentBatch> comp_batches;
             comp_batches.reserve(1);
 
-            comp_batches.emplace_back(recursive);
+            comp_batches.emplace_back(is_recursive);
             comp_batches.emplace_back(Clear::indicator());
 
             return comp_batches;

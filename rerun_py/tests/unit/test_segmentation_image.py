@@ -5,7 +5,8 @@ from typing import Any
 import numpy as np
 import pytest
 import rerun as rr
-from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
+import torch
+from rerun.datatypes import TensorBuffer, TensorBufferType, TensorData, TensorDataLike, TensorDimension
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.integers(0, 255, size=(10, 20))
@@ -44,6 +45,8 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     # Assorted Extra Dimensions
     rng.integers(0, 255, (1, 10, 20)),
     rng.integers(0, 255, (10, 20, 1)),
+    # Torch tensors
+    torch.randint(0, 255, (10, 20)),
 ]
 
 BAD_IMAGE_INPUTS: list[TensorDataLike] = [
@@ -69,5 +72,16 @@ def test_segmentation_image_shapes() -> None:
         rr.DepthImage(img)
 
     for img in BAD_IMAGE_INPUTS:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             rr.DepthImage(img)
+
+
+def test_segmentation_coercion() -> None:
+    # TODO(#3609): pass segmentation images unmolested to the viewer
+    seg_img = np.require(RANDOM_IMAGE_SOURCE, np.float32)
+
+    seg = rr.SegmentationImage(seg_img)
+
+    U16_TYPE_ID = list(f.name for f in TensorBufferType().storage_type).index("U16")
+
+    assert seg.data.as_arrow_array().storage.field(1)[0].type_code == U16_TYPE_ID

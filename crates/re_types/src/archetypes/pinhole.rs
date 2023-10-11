@@ -14,42 +14,41 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Camera perspective projection (a.k.a. intrinsics).
+/// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 ///
 /// ## Example
 ///
+/// ### Simple Pinhole Camera
 /// ```ignore
 /// //! Log a pinhole and a random image.
 ///
 /// use ndarray::{Array, ShapeBuilder};
-/// use rerun::{
-///     archetypes::{Image, Pinhole},
-///     RecordingStreamBuilder,
-/// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_pinhole").memory()?;
+///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_pinhole").memory()?;
 ///
 ///     let mut image = Array::<u8, _>::default((3, 3, 3).f());
 ///     image.map_inplace(|x| *x = rand::random());
 ///
 ///     rec.log(
 ///         "world/image",
-///         &Pinhole::from_focal_length_and_resolution([3., 3.], [3., 3.]),
+///         &rerun::Pinhole::from_focal_length_and_resolution([3., 3.], [3., 3.]),
 ///     )?;
-///     rec.log("world/image", &Image::try_from(image)?)?;
+///     rec.log("world/image", &rerun::Image::try_from(image)?)?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png">
-///   <img src="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png">
+///   <img src="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Pinhole {
     /// Camera projection, from image coordinates to view coordinates.

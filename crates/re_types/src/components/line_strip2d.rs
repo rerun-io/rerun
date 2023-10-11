@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A line strip in 2D space.
+/// **Component**: A line strip in 2D space.
 ///
 /// A line strip is a list of points connected by line segments. It can be used to draw
 /// approximations of smooth curves.

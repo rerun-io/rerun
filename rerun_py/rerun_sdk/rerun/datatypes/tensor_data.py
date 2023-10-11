@@ -28,7 +28,7 @@ def _tensor_data__buffer__special_field_converter_override(x: datatypes.TensorBu
 @define(init=False)
 class TensorData(TensorDataExt):
     """
-    A multi-dimensional `Tensor` of data.
+    **Datatype**: A multi-dimensional `Tensor` of data.
 
     The number of dimensions and their respective lengths is specified by the `shape` field.
     The dimensions are ordered from outermost to innermost. For example, in the common case of
@@ -172,11 +172,3 @@ class TensorDataBatch(BaseBatch[TensorDataArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: TensorDataArrayLike, data_type: pa.DataType) -> pa.Array:
         return TensorDataExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TensorDataType())
-
-
-if hasattr(TensorDataExt, "deferred_patch_class"):
-    TensorDataExt.deferred_patch_class(TensorData)

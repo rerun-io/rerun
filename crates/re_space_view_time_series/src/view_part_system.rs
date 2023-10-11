@@ -110,7 +110,7 @@ impl ViewPartSystem for TimeSeriesSystem {
 impl TimeSeriesSystem {
     fn load_scalars(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
@@ -147,8 +147,7 @@ impl TimeSeriesSystem {
                     arch_view.iter_optional_component::<Radius>()?,
                     arch_view.iter_optional_component::<Text>()?,
                 ) {
-                    let color =
-                        annotation_info.color(color.map(|c| c.to_array()).as_ref(), default_color);
+                    let color = annotation_info.color(color.map(|c| c.to_array()), default_color);
                     let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
 
                     const DEFAULT_RADIUS: f32 = 0.75;

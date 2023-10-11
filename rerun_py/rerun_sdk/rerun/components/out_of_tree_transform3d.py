@@ -13,7 +13,7 @@ __all__ = ["OutOfTreeTransform3D", "OutOfTreeTransform3DBatch", "OutOfTreeTransf
 
 class OutOfTreeTransform3D(datatypes.Transform3D):
     """
-    An out-of-tree affine transform between two 3D spaces, represented in a given direction.
+    **Component**: An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 
     "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
     """
@@ -30,7 +30,3 @@ class OutOfTreeTransform3DType(datatypes.Transform3DType):
 
 class OutOfTreeTransform3DBatch(datatypes.Transform3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = OutOfTreeTransform3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(OutOfTreeTransform3DType())

@@ -62,7 +62,7 @@ const CRATES_AT_WARN_LEVEL: &[&str] = &[
 ];
 
 /// Never log anything less serious than a `INFO` from these crates.
-const CRATES_FORCED_TO_INFO: &[&str] = &[
+const CRATES_AT_INFO_LEVEL: &[&str] = &[
     // These are quite spammy on debug, drowning out what we care about:
     "h2",
     "hyper",
@@ -88,7 +88,7 @@ fn is_log_enabled(filter: log::LevelFilter, metadata: &log::Metadata<'_>) -> boo
         return metadata.level() <= log::LevelFilter::Warn;
     }
 
-    if CRATES_FORCED_TO_INFO
+    if CRATES_AT_INFO_LEVEL
         .iter()
         .any(|crate_name| metadata.target().starts_with(crate_name))
     {

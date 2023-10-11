@@ -17,7 +17,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A 4x4 Matrix.
+        /// **Datatype**: A 4x4 Matrix.
         ///
         /// Matrices in Rerun are stored as flat list of coefficients in column-major order:
         /// ```text

@@ -308,7 +308,7 @@ pub fn create_labels(
     labels: &[UiLabel],
     ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
-    parent_ui: &mut egui::Ui,
+    parent_ui: &egui::Ui,
     highlights: &SpaceViewHighlights,
     spatial_kind: SpatialSpaceViewKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
@@ -454,7 +454,7 @@ pub fn picking(
     mut response: egui::Response,
     space_from_ui: egui::emath::RectTransform,
     ui_clip_rect: egui::Rect,
-    parent_ui: &mut egui::Ui,
+    parent_ui: &egui::Ui,
     eye: Eye,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
@@ -598,10 +598,8 @@ pub fn picking(
             // thing as an up-front archetype query somewhere.
             if meaning == TensorDataMeaning::Depth {
                 if let Some(meter) = meter {
-                    if let Some(raw_value) = tensor.get(&[
-                        picking_context.pointer_in_space2d.y.round() as _,
-                        picking_context.pointer_in_space2d.x.round() as _,
-                    ]) {
+                    let [x, y] = coords;
+                    if let Some(raw_value) = tensor.get(&[y as _, x as _]) {
                         let raw_value = raw_value.as_f64();
                         let depth_in_meters = raw_value / meter as f64;
                         depth_at_pointer = Some(depth_in_meters as f32);
@@ -613,60 +611,21 @@ pub fn picking(
                 .on_hover_cursor(egui::CursorIcon::Crosshair)
                 .on_hover_ui_at_pointer(|ui| {
                     ui.set_max_width(320.0);
-
                     ui.vertical(|ui| {
-                        ui.label(instance_path.to_string());
-                        instance_path.data_ui(
-                            ctx,
+                        image_hover_ui(
                             ui,
-                            UiVerbosity::Small,
-                            &ctx.current_query(),
+                            &instance_path,
+                            ctx,
+                            tensor.value,
+                            spatial_kind,
+                            ui_clip_rect,
+                            coords,
+                            space_from_ui,
+                            tensor_path_hash.row_id,
+                            annotations,
+                            meaning,
+                            meter,
                         );
-
-                        if let Some([h, w, ..]) = tensor.image_height_width_channels() {
-                            ui.separator();
-                            ui.horizontal(|ui| {
-                                let (w, h) = (w as f32, h as f32);
-                                if spatial_kind == SpatialSpaceViewKind::TwoD {
-                                    let rect = egui::Rect::from_min_size(
-                                        egui::Pos2::ZERO,
-                                        egui::vec2(w, h),
-                                    );
-                                    show_zoomed_image_region_area_outline(
-                                        ui.ctx(),
-                                        ui_clip_rect,
-                                        &tensor.0,
-                                        [coords[0] as _, coords[1] as _],
-                                        space_from_ui.inverse().transform_rect(rect),
-                                    );
-                                }
-
-                                let tensor_name = instance_path.to_string();
-
-                                let decoded_tensor = ctx.cache.entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.value.0));
-                                match decoded_tensor {
-                                    Ok(decoded_tensor) => {
-                                        let annotations = annotations.0.find(&instance_path.entity_path);
-                                        let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, &decoded_tensor));
-                                        show_zoomed_image_region(
-                                            ctx.render_ctx,
-                                            ui,
-                                            tensor_path_hash,
-                                            &decoded_tensor,
-                                            &tensor_stats,
-                                            &annotations,
-                                            meaning,
-                                            meter,
-                                            &tensor_name,
-                                            [coords[0] as _, coords[1] as _],
-                                        );
-                                    }
-                                    Err(err) => re_log::warn_once!(
-                                            "Encountered problem decoding tensor at path {tensor_name}: {err}"
-                                        ),
-                                }
-                            });
-                        }
                     });
                 })
         } else {
@@ -711,6 +670,82 @@ pub fn picking(
     ctx.selection_state_mut().set_hovered_space(hovered_space);
 
     Ok(response)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn image_hover_ui(
+    ui: &mut egui::Ui,
+    instance_path: &re_data_store::InstancePath,
+    ctx: &mut ViewerContext<'_>,
+    tensor: TensorData,
+    spatial_kind: SpatialSpaceViewKind,
+    ui_clip_rect: egui::Rect,
+    coords: [u32; 2],
+    space_from_ui: egui::emath::RectTransform,
+    tensor_data_row_id: re_log_types::RowId,
+    annotations: &AnnotationSceneContext,
+    meaning: TensorDataMeaning,
+    meter: Option<f32>,
+) {
+    ui.label(instance_path.to_string());
+    if true {
+        // Only show the `TensorData` component, to keep the hover UI small; see https://github.com/rerun-io/rerun/issues/3573
+        use re_types::Loggable as _;
+        let component_path = re_log_types::ComponentPath::new(
+            instance_path.entity_path.clone(),
+            re_types::components::TensorData::name(),
+        );
+        component_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+    } else {
+        // Show it all, like we do for any other thing we hover
+        instance_path.data_ui(ctx, ui, UiVerbosity::Small, &ctx.current_query());
+    }
+
+    if let Some([h, w, ..]) = tensor.image_height_width_channels() {
+        ui.separator();
+        ui.horizontal(|ui| {
+            let (w, h) = (w as f32, h as f32);
+            if spatial_kind == SpatialSpaceViewKind::TwoD {
+                let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
+                show_zoomed_image_region_area_outline(
+                    ui.ctx(),
+                    ui_clip_rect,
+                    &tensor.0,
+                    [coords[0] as _, coords[1] as _],
+                    space_from_ui.inverse().transform_rect(rect),
+                );
+            }
+
+            let tensor_name = instance_path.to_string();
+
+            let decoded_tensor = ctx
+                .cache
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0));
+            match decoded_tensor {
+                Ok(decoded_tensor) => {
+                    let annotations = annotations.0.find(&instance_path.entity_path);
+                    let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| {
+                        c.entry(tensor_data_row_id, &decoded_tensor)
+                    });
+                    show_zoomed_image_region(
+                        ctx.render_ctx,
+                        ui,
+                        tensor_data_row_id,
+                        &decoded_tensor,
+                        &tensor_stats,
+                        &annotations,
+                        meaning,
+                        meter,
+                        &tensor_name,
+                        [coords[0] as _, coords[1] as _],
+                    );
+                }
+                Err(err) => re_log::warn_once!(
+                    "Encountered problem decoding tensor at path {tensor_name}: {err}"
+                ),
+            }
+        });
+    }
 }
 
 fn hit_ui(ui: &mut egui::Ui, hit: &crate::picking::PickingRayHit) {

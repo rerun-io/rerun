@@ -12,7 +12,7 @@ __all__ = ["Rotation3D", "Rotation3DBatch", "Rotation3DType"]
 
 
 class Rotation3D(datatypes.Rotation3D):
-    """A 3D rotation, represented either by a quaternion or a rotation around axis."""
+    """**Component**: A 3D rotation, represented either by a quaternion or a rotation around axis."""
 
     # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
 
@@ -26,7 +26,3 @@ class Rotation3DType(datatypes.Rotation3DType):
 
 class Rotation3DBatch(datatypes.Rotation3DBatch, ComponentBatchMixin):
     _ARROW_TYPE = Rotation3DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Rotation3DType())

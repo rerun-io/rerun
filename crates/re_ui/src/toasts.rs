@@ -107,9 +107,7 @@ impl Toasts {
                 })
                 .response;
 
-            let response = response
-                .interact(egui::Sense::click())
-                .on_hover_text("Click to close and copy contents");
+            let response = response.on_hover_text("Click to close and copy contents");
 
             if !response.hovered() {
                 toast.options.ttl_sec -= dt;
@@ -130,7 +128,7 @@ impl Toasts {
     }
 }
 
-fn default_toast_contents(ui: &mut egui::Ui, toast: &mut Toast) -> egui::Response {
+fn default_toast_contents(ui: &mut egui::Ui, toast: &Toast) -> egui::Response {
     egui::Frame::window(ui.style())
         .inner_margin(10.0)
         .show(ui, |ui| {

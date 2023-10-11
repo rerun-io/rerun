@@ -14,6 +14,9 @@ table ClassDescriptionMapElem (
   "attr.python.aliases": "datatypes.ClassDescriptionLike",
   "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
+  /// The key: the class ID.
   class_id: rerun.datatypes.ClassId (order: 100);
+
+  /// The value: class name, color, etc.
   class_description: rerun.datatypes.ClassDescription (order: 200);
 }

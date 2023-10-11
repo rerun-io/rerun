@@ -14,7 +14,9 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A text element intended to be displayed in its own text-box.
+/// **Archetype**: A text element intended to be displayed in its own text-box.
+///
+/// Supports raw text and markdown.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextDocument {
     /// Contents of the text document.

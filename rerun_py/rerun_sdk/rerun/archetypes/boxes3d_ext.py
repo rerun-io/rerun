@@ -5,10 +5,12 @@ from typing import Any
 import numpy as np
 
 from .. import components, datatypes
-from ..error_utils import _send_warning, catch_and_log_exceptions
+from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 
 class Boxes3DExt:
+    """Extension for [Boxes3D][rerun.archetypes.Boxes3D]."""
+
     def __init__(
         self: Any,
         *,
@@ -17,7 +19,7 @@ class Boxes3DExt:
         half_sizes: datatypes.Vec3DArrayLike | None = None,
         centers: datatypes.Vec3DArrayLike | None = None,
         rotations: datatypes.Rotation3DArrayLike | None = None,
-        colors: datatypes.ColorArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
         radii: components.RadiusArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
@@ -57,18 +59,18 @@ class Boxes3DExt:
         with catch_and_log_exceptions(context=self.__class__.__name__):
             if sizes is not None:
                 if half_sizes is not None:
-                    _send_warning("Cannot specify both `sizes` and `half_sizes` at the same time.", 1)
+                    _send_warning_or_raise("Cannot specify both `sizes` and `half_sizes` at the same time.", 1)
 
                 sizes = np.asarray(sizes, dtype=np.float32)
                 half_sizes = sizes / 2.0
 
             if mins is not None:
                 if centers is not None:
-                    _send_warning("Cannot specify both `mins` and `centers` at the same time.", 1)
+                    _send_warning_or_raise("Cannot specify both `mins` and `centers` at the same time.", 1)
 
                 # already converted `sizes` to `half_sizes`
                 if half_sizes is None:
-                    _send_warning("Cannot specify `mins` without `sizes` or `half_sizes`.", 1)
+                    _send_warning_or_raise("Cannot specify `mins` without `sizes` or `half_sizes`.", 1)
                     half_sizes = np.asarray([1, 1, 1], dtype=np.float32)
 
                 mins = np.asarray(mins, dtype=np.float32)

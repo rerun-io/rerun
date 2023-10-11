@@ -30,7 +30,7 @@ use crate::Index;
 pub enum EntityPathPart {
     /// Corresponds to the name of a struct field.
     ///
-    /// Only a limited set of characters are allowed in a name.
+    /// Names must match the regex: `[a-zA-z0-9_-]+`
     Name(InternedString),
 
     /// Array/table/map member.
@@ -72,12 +72,13 @@ impl From<Index> for EntityPathPart {
 /// Build a `Vec<EntityPathPart>`:
 /// ```
 /// # use re_log_types::*;
-/// entity_path_vec!("foo", Index::Sequence(123));
+/// let parts: Vec<EntityPathPart> = entity_path_vec!("foo", Index::Sequence(123));
 /// ```
 #[macro_export]
 macro_rules! entity_path_vec {
     () => {
-        vec![]
+        // A vector of no elements that nevertheless has the expected concrete type.
+        ::std::vec::Vec::<$crate::EntityPathPart>::new()
     };
     ($($part: expr),* $(,)?) => {
         vec![ $($crate::EntityPathPart::from($part),)+ ]
@@ -87,14 +88,23 @@ macro_rules! entity_path_vec {
 /// Build a `EntityPath`:
 /// ```
 /// # use re_log_types::*;
-/// entity_path!("foo", Index::Sequence(123));
+/// let path: EntityPath = entity_path!("foo", Index::Sequence(123));
 /// ```
 #[macro_export]
 macro_rules! entity_path {
-    () => {
-        vec![]
-    };
     ($($part: expr),* $(,)?) => {
-        $crate::EntityPath::from(vec![ $($crate::EntityPathPart::from($part),)+ ])
+        $crate::EntityPath::from($crate::entity_path_vec![ $($part,)* ])
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entity_path_macros_empty() {
+        // If the type weren't constrained, this would be an ambiguous type error.
+        assert_eq!(entity_path_vec!(), vec![]);
+        assert_eq!(entity_path!(), EntityPath::from(vec![]));
+    }
 }

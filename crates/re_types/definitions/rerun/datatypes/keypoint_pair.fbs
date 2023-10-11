@@ -12,6 +12,9 @@ table KeypointPair (
   "attr.python.aliases": "Sequence[datatypes.KeypointIdLike]",
   "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
+  /// The first point of the pair.
   keypoint0: rerun.datatypes.KeypointId (order: 100);
+
+  /// The second point of the pair.
   keypoint1: rerun.datatypes.KeypointId (order: 200);
 }

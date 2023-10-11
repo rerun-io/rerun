@@ -23,10 +23,12 @@ table TranslationAndMat3x3 (
   //
   // NOTE: Nullable rather than defaulting to an identity-like value because we want to be able
   // to differentiate between no value vs. default value in the backend.
-  matrix: Mat3x3 (nullable, order: 200);
+  mat3x3: Mat3x3 (nullable, order: 200);
 
   // TODO(#2641): make this field non-nullable when default values are supported
-  /// If true, the transform maps from the parent space to the space where the transform was logged.
-  /// Otherwise, the transform maps from the space to its parent.
+  /// If true, this transform is from the parent space to the space where the transform was logged.
+  ///
+  /// If false (default), the transform maps from this space to its parent,
+  /// i.e. the translation is the position in the parent space.
   from_parent: bool = false (order: 300);
 }

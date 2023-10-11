@@ -139,6 +139,7 @@ def main() -> None:
     # Sections:
     analytics = []
     bugs = []
+    cpp = []
     dependencies = []
     dev_experience = []
     docs = []
@@ -198,6 +199,9 @@ def main() -> None:
             added = False
 
             # Some PRs can show up underm multiple sections:
+            if "C/C++ SDK" in labels:
+                cpp.append(summary)
+                added = True
             if "🐍 python API" in labels:
                 python.append(summary)
                 added = True
@@ -243,6 +247,7 @@ def main() -> None:
     # Most interesting first:
     print_section("🐍 Python SDK", python)
     print_section("🦀 Rust SDK", rust)
+    print_section("🌊 C++ SDK (experimental!)", cpp)
     print_section("🪳 Bug Fixes", bugs)
     print_section("🌁 Viewer Improvements", viewer)
     print_section("🚀 Performance Improvements", performance)

@@ -5,24 +5,16 @@ use std::f32::consts::TAU;
 use itertools::Itertools as _;
 
 use rerun::{
-    archetypes::{LineStrips3D, Points3D, Transform3D},
-    components::{Color, Position3D},
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
-    RecordingStream, RecordingStreamResult,
 };
 
 const NUM_POINTS: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let store_info = rerun::new_store_info("DNA Abacus");
-    rerun::native_viewer::spawn(store_info, Default::default(), |rec| {
-        run(&rec).unwrap();
-    })?;
-    Ok(())
-}
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
+        .connect(rerun::default_server_addr(), rerun::default_flush_timeout())?;
 
-fn run(rec: &RecordingStream) -> RecordingStreamResult<()> {
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
 
@@ -30,13 +22,13 @@ fn run(rec: &RecordingStream) -> RecordingStreamResult<()> {
 
     rec.log(
         "dna/structure/left",
-        &Points3D::new(points1.iter().copied())
+        &rerun::Points3D::new(points1.iter().copied())
             .with_colors(colors1)
             .with_radii([0.08]),
     )?;
     rec.log(
         "dna/structure/right",
-        &Points3D::new(points2.iter().copied())
+        &rerun::Points3D::new(points2.iter().copied())
             .with_colors(colors2)
             .with_radii([0.08]),
     )?;
@@ -51,8 +43,8 @@ fn run(rec: &RecordingStream) -> RecordingStreamResult<()> {
 
     rec.log(
         "dna/structure/scaffolding",
-        &LineStrips3D::new(points_interleaved.iter().cloned())
-            .with_colors([Color::from([128, 128, 128, 255])]),
+        &rerun::LineStrips3D::new(points_interleaved.iter().cloned())
+            .with_colors([rerun::Color::from([128, 128, 128, 255])]),
     )?;
 
     use rand::Rng as _;
@@ -71,22 +63,24 @@ fn run(rec: &RecordingStream) -> RecordingStreamResult<()> {
             .map(|(n, &[p1, p2])| {
                 let c = bounce_lerp(80.0, 230.0, times[n] * 2.0) as u8;
                 (
-                    Position3D::from(bounce_lerp(p1, p2, times[n])),
-                    Color::from_rgb(c, c, c),
+                    rerun::Position3D::from(bounce_lerp(p1, p2, times[n])),
+                    rerun::Color::from_rgb(c, c, c),
                 )
             })
             .unzip();
 
         rec.log(
             "dna/structure/scaffolding/beads",
-            &Points3D::new(beads).with_colors(colors).with_radii([0.06]),
+            &rerun::Points3D::new(beads)
+                .with_colors(colors)
+                .with_radii([0.06]),
         )?;
 
         rec.log(
             "dna/structure",
-            &Transform3D::new(rerun::transform::RotationAxisAngle::new(
+            &rerun::archetypes::Transform3D::new(rerun::RotationAxisAngle::new(
                 glam::Vec3::Z,
-                rerun::transform::Angle::Radians(time / 4.0 * TAU),
+                rerun::Angle::Radians(time / 4.0 * TAU),
             )),
         )?;
     }

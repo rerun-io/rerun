@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// An image made up of integer class-ids
+/// **Archetype**: An image made up of integer class-ids
 ///
 /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
 /// Each pixel corresponds to a depth value in units specified by meter.
@@ -22,21 +22,19 @@
 /// Leading and trailing unit-dimensions are ignored, so that
 /// `1x640x480x1` is treated as a `640x480` image.
 ///
+/// See also [`AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
+///
 /// ## Example
 ///
+/// ### Simple segmentation image
 /// ```ignore
 /// //! Create and log a segmentation image.
 ///
 /// use ndarray::{s, Array, ShapeBuilder};
-/// use rerun::{
-///     archetypes::{AnnotationContext, SegmentationImage},
-///     datatypes::Color,
-///     RecordingStreamBuilder,
-/// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
 ///
 ///     // create a segmentation image
 ///     let mut image = Array::<u8, _>::zeros((8, 12).f());
@@ -44,33 +42,36 @@
 ///     image.slice_mut(s![4..8, 6..12]).fill(2);
 ///
 ///     // create an annotation context to describe the classes
-///     let annotation = AnnotationContext::new([
-///         (1, "red", Color::from(0xFF0000FF)),
-///         (2, "green", Color::from(0x00FF00FF)),
+///     let annotation = rerun::AnnotationContext::new([
+///         (1, "red", rerun::Rgba32::from(0xFF0000FF)),
+///         (2, "green", rerun::Rgba32::from(0x00FF00FF)),
 ///     ]);
 ///
 ///     // log the annotation and the image
-///     rec.log("/", &annotation)?;
+///     rec.log_timeless("/", &annotation)?;
 ///
-///     rec.log("image", &SegmentationImage::try_from(image)?)?;
+///     rec.log("image", &rerun::SegmentationImage::try_from(image)?)?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png">
-///   <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png">
+///   <img src="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct SegmentationImage {
     /// The image data. Should always be a rank-2 tensor.
     pub data: crate::components::TensorData,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 }

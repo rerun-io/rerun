@@ -11,15 +11,15 @@ from rerun.datatypes import (
     ClassDescription,
     ClassDescriptionArrayLike,
     ClassDescriptionMapElem,
-    Color,
     KeypointPair,
     KeypointPairLike,
+    Rgba32,
     Utf8,
 )
 
 ANNOTATION_INFO_INPUTS: list[AnnotationInfoLike] = [
-    AnnotationInfo(1, "label", Color([1, 2, 3])),
-    AnnotationInfo(1, color=Color([1, 2, 3])),
+    AnnotationInfo(1, "label", Rgba32([1, 2, 3])),
+    AnnotationInfo(1, color=Rgba32([1, 2, 3])),
     (1, "label"),
     (1, "label", [1, 2, 3]),
 ]
@@ -36,8 +36,8 @@ KEYPOINT_MAP_INPUTS: list[Sequence[AnnotationInfoLike] | None] = [
         (2, "label2", [4, 5, 6]),
     ],
     [
-        AnnotationInfo(1, "label1", Color([1, 2, 3])),
-        AnnotationInfo(2, "label2", Color([4, 5, 6])),
+        AnnotationInfo(1, "label1", Rgba32([1, 2, 3])),
+        AnnotationInfo(2, "label2", Rgba32([4, 5, 6])),
     ],
 ]
 
@@ -61,11 +61,11 @@ def assert_correct_class_description(desc: ClassDescription) -> None:
     if desc.info.label:
         assert desc.info.label == Utf8("label")
     if desc.info.color:
-        assert desc.info.color == Color([1, 2, 3])
+        assert desc.info.color == Rgba32([1, 2, 3])
     if desc.keypoint_annotations:
         expected_annotations = [
-            AnnotationInfo(1, "label1", Color([1, 2, 3])),
-            AnnotationInfo(2, "label2", Color([4, 5, 6])),
+            AnnotationInfo(1, "label1", Rgba32([1, 2, 3])),
+            AnnotationInfo(2, "label2", Rgba32([4, 5, 6])),
         ]
         for i, kp in enumerate(desc.keypoint_annotations):
             assert kp.id == expected_annotations[i].id

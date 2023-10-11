@@ -8,10 +8,10 @@ use re_types::{
 fn roundtrip() {
     let all_expected = [
         Clear {
-            recursive: ClearIsRecursive(true),
+            is_recursive: ClearIsRecursive(true),
         }, //
         Clear {
-            recursive: ClearIsRecursive(false),
+            is_recursive: ClearIsRecursive(false),
         },
     ];
 

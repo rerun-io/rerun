@@ -81,5 +81,6 @@ doc-valid-idents = [
   "sRGB",
   "sRGBA",
   "WebGL",
+  "WebSocket",
   "WebSockets",
 ]

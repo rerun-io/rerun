@@ -47,7 +47,6 @@ struct Mat4x4 (
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   "attr.rust.tuple_struct"
 ) {
-  /// \py Flat list of matrix coefficients in column-major order.
-  /// \cpp Flat list of matrix coefficients in column-major order.
+  /// Flat list of matrix coefficients in column-major order.
   flat_columns: [float32: 16] (order: 100);
 }

@@ -12,7 +12,7 @@ namespace rerun.datatypes;
 /// Color and label will be used to annotate entities/keypoints which reference the id.
 /// The id refers either to a class or key-point id
 table AnnotationInfo (
-  "attr.python.aliases": "int, Tuple[int, str], Tuple[int, str, datatypes.ColorLike]",
+  "attr.python.aliases": "int, Tuple[int, str], Tuple[int, str, datatypes.Rgba32Like]",
   "attr.rust.derive": "Default, Eq, PartialEq"
 ) {
   /// `ClassId` or `KeypointId` to which this annotation info belongs.
@@ -23,5 +23,5 @@ table AnnotationInfo (
   label: rerun.datatypes.Utf8 (nullable, order: 200);
 
   /// The color that will be applied to the annotated entity.
-  color: rerun.datatypes.Color (nullable, order: 300);
+  color: rerun.datatypes.Rgba32 (nullable, order: 300);
 }

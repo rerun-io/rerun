@@ -102,7 +102,10 @@ impl std::fmt::Display for IndexedTable {
             f.write_str(&indent::indent_all_by(4, "IndexedBucket {\n"))?;
             f.write_str(&indent::indent_all_by(
                 8,
-                format!("index time bound: >= {}\n", timeline.typ().format(*time),),
+                format!(
+                    "index time bound: >= {}\n",
+                    timeline.typ().format_utc(*time)
+                ),
             ))?;
             f.write_str(&indent::indent_all_by(8, bucket.to_string()))?;
             f.write_str(&indent::indent_all_by(4, "}\n"))?;
@@ -124,7 +127,7 @@ impl std::fmt::Display for IndexedBucket {
         let time_range = {
             let time_range = &self.inner.read().time_range;
             if time_range.min.as_i64() != i64::MAX && time_range.max.as_i64() != i64::MIN {
-                self.timeline.format_time_range(time_range)
+                self.timeline.format_time_range_utc(time_range)
             } else {
                 "time range: N/A\n".to_owned()
             }

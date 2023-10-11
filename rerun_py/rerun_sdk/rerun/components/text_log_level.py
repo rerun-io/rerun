@@ -14,7 +14,7 @@ __all__ = ["TextLogLevel", "TextLogLevelBatch", "TextLogLevelType"]
 
 class TextLogLevel(TextLogLevelExt, datatypes.Utf8):
     """
-    The severity level of a text log message.
+    **Component**: The severity level of a text log message.
 
     Recommended to be one of:
     * `"CRITICAL"`
@@ -39,9 +39,4 @@ class TextLogLevelBatch(datatypes.Utf8Batch, ComponentBatchMixin):
     _ARROW_TYPE = TextLogLevelType()
 
 
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TextLogLevelType())
-
-
-if hasattr(TextLogLevelExt, "deferred_patch_class"):
-    TextLogLevelExt.deferred_patch_class(TextLogLevel)
+TextLogLevelExt.deferred_patch_class(TextLogLevel)

@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Representation of an affine transform via separate translation, rotation & scale.
+/// **Datatype**: Representation of an affine transform via separate translation, rotation & scale.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct TranslationRotationScale3D {
     /// 3D translation vector, applied last.
@@ -26,8 +26,10 @@ pub struct TranslationRotationScale3D {
     /// 3D scale, applied first.
     pub scale: Option<crate::datatypes::Scale3D>,
 
-    /// If true, the transform maps from the parent space to the space where the transform was logged.
-    /// Otherwise, the transform maps from the space to its parent.
+    /// If true, this transform is from the parent space to the space where the transform was logged.
+    ///
+    /// If false (default), the transform maps from this space to its parent,
+    /// i.e. the translation is the position in the parent space.
     pub from_parent: bool,
 }
 
