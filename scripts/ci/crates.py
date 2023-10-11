@@ -339,6 +339,8 @@ def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> N
             with Path(f"{crate.path}/Cargo.toml").open("w") as f:
                 tomlkit.dump(crate.manifest, f)
     cargo("update --workspace", dry_run=dry_run)
+    if shutil.which("taplo") is not None:
+        subprocess.check_output(["taplo", "fmt"])
 
 
 def is_already_published(version: str, crate: Crate) -> bool:
