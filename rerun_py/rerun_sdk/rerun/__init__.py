@@ -247,6 +247,7 @@ def _init_recording_stream() -> None:
 _init_recording_stream()
 
 
+# TODO(#3793): defaulting recording_id to authkey should be opt-in
 def init(
     application_id: str,
     *,
@@ -265,6 +266,25 @@ def init(
     Without an active recording, all methods of the SDK will turn into no-ops.
 
     For more advanced use cases, e.g. multiple recordings setups, see [`rerun.new_recording`][].
+
+    !!! Warning
+        If you don't specify a `recording_id`, it will default to a random value that is generated once
+        at the start of the process.
+        That value will be kept around for the whole lifetime of the process, and even inherited by all
+        its subprocesses, if any.
+
+        This makes it trivial to log data to the same recording in a multiprocess setup, but it also means
+        that the following code will _not_ create two distinct recordings:
+        ```
+        rr.init("my_app")
+        rr.init("my_app")
+        ```
+
+        To create distinct recordings from the same process, specify distinct recording IDs:
+        ```
+        rr.init("my_app", recording_id="recording1")
+        rr.init("my_app", recording_id="recording2")
+        ```
 
     Parameters
     ----------
@@ -348,6 +368,7 @@ def init(
         _spawn()
 
 
+# TODO(#3793): defaulting recording_id to authkey should be opt-in
 def new_recording(
     *,
     application_id: str,
@@ -361,6 +382,25 @@ def new_recording(
     Creates a new recording with a user-chosen application id (name) that can be used to log data.
 
     If you only need a single global recording, [`rerun.init`][] might be simpler.
+
+    !!! Warning
+        If you don't specify a `recording_id`, it will default to a random value that is generated once
+        at the start of the process.
+        That value will be kept around for the whole lifetime of the process, and even inherited by all
+        its subprocesses, if any.
+
+        This makes it trivial to log data to the same recording in a multiprocess setup, but it also means
+        that the following code will _not_ create two distinct recordings:
+        ```
+        rr.init("my_app")
+        rr.init("my_app")
+        ```
+
+        To create distinct recordings from the same process, specify distinct recording IDs:
+        ```
+        rr.init("my_app", recording_id="recording1")
+        rr.init("my_app", recording_id="recording2")
+        ```
 
     Parameters
     ----------
