@@ -17,7 +17,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// An image made up of integer class-ids
+        /// **Archetype**: An image made up of integer class-ids
         ///
         /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
         /// Each pixel corresponds to a depth value in units specified by meter.
@@ -29,6 +29,7 @@ namespace rerun {
             rerun::components::TensorData data;
 
             /// An optional floating point value that specifies the 2D drawing order.
+            ///
             /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
 
@@ -42,6 +43,7 @@ namespace rerun {
             SegmentationImage(rerun::components::TensorData _data) : data(std::move(_data)) {}
 
             /// An optional floating point value that specifies the 2D drawing order.
+            ///
             /// Objects with higher values are drawn on top of those with lower values.
             SegmentationImage& with_draw_order(rerun::components::DrawOrder _draw_order) {
                 draw_order = std::move(_draw_order);

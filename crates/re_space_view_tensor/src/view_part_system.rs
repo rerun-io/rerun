@@ -1,11 +1,9 @@
-use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
+use re_arrow_store::{LatestAtQuery, VersionedComponent};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::RowId;
 use re_types::{
-    archetypes::Tensor,
-    components::{InstanceKey, TensorData},
-    tensor_data::DecodedTensor,
-    Archetype, ComponentNameSet,
+    archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor, Archetype,
+    ComponentNameSet,
 };
 use re_viewer_context::{
     default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
@@ -14,7 +12,7 @@ use re_viewer_context::{
 
 #[derive(Default)]
 pub struct TensorSystem {
-    pub tensors: std::collections::BTreeMap<InstancePath, (RowId, DecodedTensor)>,
+    pub tensors: std::collections::BTreeMap<EntityPath, (RowId, DecodedTensor)>,
 }
 
 impl NamedViewSystem for TensorSystem {
@@ -35,7 +33,6 @@ impl ViewPartSystem for TensorSystem {
         std::iter::once(Tensor::indicator().name()).collect()
     }
 
-    /// Tensor view doesn't handle 2D images, see [`TensorSystem::load_tensor_entity`]
     fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
@@ -47,11 +44,11 @@ impl ViewPartSystem for TensorSystem {
             return false;
         }
 
-        // NOTE: We want to make sure we query at the right time, otherwise we might take into
-        // account a `Clear()` that actually only applies into the future, and then
-        // `is_shaped_like_an_image` will righfully fail because of the empty tensor.
-        if let Some(tensor) = store.query_latest_component::<TensorData>(ent_path, query) {
-            !tensor.is_shaped_like_an_image() && !tensor.is_vector()
+        // The tensor view can't display anything with less than two dimensions.
+        if let Some(tensor) =
+            store.query_latest_component::<re_types::components::TensorData>(ent_path, query)
+        {
+            !tensor.is_vector()
         } else {
             false
         }
@@ -72,7 +69,7 @@ impl ViewPartSystem for TensorSystem {
             if let Some(tensor) =
                 store.query_latest_component::<TensorData>(ent_path, &timeline_query)
             {
-                self.load_tensor_entity(ctx, ent_path, tensor.row_id, &props, tensor.value);
+                self.load_tensor_entity(ctx, ent_path, &props, tensor);
             }
         }
 
@@ -87,28 +84,21 @@ impl ViewPartSystem for TensorSystem {
 impl TensorSystem {
     fn load_tensor_entity(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ent_path: &EntityPath,
-        row_id: RowId,
         _props: &EntityProperties,
-        tensor: TensorData,
+        tensor: VersionedComponent<TensorData>,
     ) {
-        if !tensor.is_shaped_like_an_image() {
-            // NOTE: Tensors don't support batches at the moment so always splat.
-            let tensor_path_hash = InstancePathHash::entity_splat(ent_path).versioned(row_id);
-            match ctx
-                .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
-            {
-                Ok(tensor) => {
-                    let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));
-                    self.tensors.insert(instance_path, (row_id, tensor));
-                }
-                Err(err) => {
-                    re_log::warn_once!(
-                        "Failed to decode decoding tensor at path {ent_path}: {err}"
-                    );
-                }
+        match ctx
+            .cache
+            .entry(|c: &mut TensorDecodeCache| c.entry(tensor.row_id, tensor.value.0))
+        {
+            Ok(decoded_tensor) => {
+                self.tensors
+                    .insert(ent_path.clone(), (tensor.row_id, decoded_tensor));
+            }
+            Err(err) => {
+                re_log::warn_once!("Failed to decode decoding tensor at path {ent_path}: {err}");
             }
         }
     }

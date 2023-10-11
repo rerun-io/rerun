@@ -14,10 +14,13 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A single dimension within a multi-dimensional tensor.
+/// **Datatype**: A single dimension within a multi-dimensional tensor.
 #[derive(Clone, Default, Eq, PartialEq)]
 pub struct TensorDimension {
+    /// The length of this dimension.
     pub size: u64,
+
+    /// The name of this dimension, e.g. "width", "height", "channel", "batch', ….
     pub name: Option<crate::ArrowString>,
 }
 

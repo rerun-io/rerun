@@ -23,7 +23,7 @@ __all__ = ["Vec2D", "Vec2DArrayLike", "Vec2DBatch", "Vec2DLike", "Vec2DType"]
 
 @define(init=False)
 class Vec2D(Vec2DExt):
-    """A vector in 2D space."""
+    """**Datatype**: A vector in 2D space."""
 
     def __init__(self: Any, xy: Vec2DLike):
         """Create a new instance of the Vec2D datatype."""
@@ -63,11 +63,3 @@ class Vec2DBatch(BaseBatch[Vec2DArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Vec2DArrayLike, data_type: pa.DataType) -> pa.Array:
         return Vec2DExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(Vec2DType())
-
-
-if hasattr(Vec2DExt, "deferred_patch_class"):
-    Vec2DExt.deferred_patch_class(Vec2D)

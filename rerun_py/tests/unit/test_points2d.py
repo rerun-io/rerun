@@ -14,7 +14,7 @@ from rerun.components import (
     Position2DBatch,
     RadiusArrayLike,
 )
-from rerun.datatypes import ClassIdArrayLike, ColorArrayLike, KeypointIdArrayLike, Utf8ArrayLike, Vec2DArrayLike
+from rerun.datatypes import ClassIdArrayLike, KeypointIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -58,7 +58,7 @@ def test_points2d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         positions = cast(Vec2DArrayLike, positions)
         radii = cast(Optional[RadiusArrayLike], radii)
-        colors = cast(Optional[ColorArrayLike], colors)
+        colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         draw_order = cast(Optional[DrawOrderLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
@@ -109,7 +109,7 @@ def test_points2d() -> None:
         np.array((0.0, 0.5, 0.0, 1.0)),
     ],
 )
-def test_point2d_single_color(data: ColorArrayLike) -> None:
+def test_point2d_single_color(data: Rgba32ArrayLike) -> None:
     pts = rr.Points2D(positions=np.zeros((5, 2)), colors=data)
 
     assert pts.colors == ColorBatch(Color([0, 128, 0, 255]))
@@ -135,7 +135,7 @@ def test_point2d_single_color(data: ColorArrayLike) -> None:
         [8388863, 2147483903],
     ],
 )
-def test_point2d_multiple_colors(data: ColorArrayLike) -> None:
+def test_point2d_multiple_colors(data: Rgba32ArrayLike) -> None:
     pts = rr.Points2D(positions=np.zeros((5, 2)), colors=data)
 
     assert pts.colors == ColorBatch(

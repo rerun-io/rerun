@@ -13,7 +13,7 @@ __all__ = ["PinholeProjection", "PinholeProjectionBatch", "PinholeProjectionType
 
 class PinholeProjection(datatypes.Mat3x3):
     """
-    Camera projection, from image coordinates to view coordinates.
+    **Component**: Camera projection, from image coordinates to view coordinates.
 
     Child from parent.
     Image coordinates from camera view coordinates.
@@ -39,7 +39,3 @@ class PinholeProjectionType(datatypes.Mat3x3Type):
 
 class PinholeProjectionBatch(datatypes.Mat3x3Batch, ComponentBatchMixin):
     _ARROW_TYPE = PinholeProjectionType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(PinholeProjectionType())

@@ -19,12 +19,14 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A helper type for mapping class IDs to class descriptions.
+        /// **Datatype**: A helper type for mapping class IDs to class descriptions.
         ///
         /// This is internal to the `AnnotationContext` structure.
         struct ClassDescriptionMapElem {
+            /// The key: the class ID.
             rerun::datatypes::ClassId class_id;
 
+            /// The value: class name, color, etc.
             rerun::datatypes::ClassDescription class_description;
 
           public:

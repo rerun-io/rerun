@@ -11,6 +11,7 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -21,7 +22,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc).
+        /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
         ///
         /// ## Example
         ///
@@ -42,7 +43,7 @@ namespace rerun {
         ///     std::vector<std::string> args(argv, argv + argc);
         ///
         ///     if (args.size() <2) {
-        ///         std::cerr <<"Usage: " <<args[0] <<" <path_to_asset.[gltf|glb]>" <<std::endl;
+        ///         std::cerr <<"Usage: " <<args[0] <<" <path_to_asset.[gltf|glb|obj]>" <<std::endl;
         ///         return 1;
         ///     }
         ///
@@ -61,9 +62,10 @@ namespace rerun {
 
             /// The Media Type of the asset.
             ///
-            /// For instance:
+            /// Supported values:
             /// * `model/gltf-binary`
-            /// * `model/obj`
+            /// * `model/obj` (.mtl material files are not supported yet, references are silently
+            /// ignored)
             ///
             /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.
@@ -86,6 +88,7 @@ namespace rerun {
             ) {
                 std::filesystem::path file_path(path);
                 std::string ext = file_path.extension().string();
+                std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
 
                 if (ext == ".glb") {
                     return rerun::components::MediaType::glb();
@@ -141,9 +144,10 @@ namespace rerun {
 
             /// The Media Type of the asset.
             ///
-            /// For instance:
+            /// Supported values:
             /// * `model/gltf-binary`
-            /// * `model/obj`
+            /// * `model/obj` (.mtl material files are not supported yet, references are silently
+            /// ignored)
             ///
             /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.

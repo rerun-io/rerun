@@ -11,9 +11,9 @@ from .._baseclasses import ComponentBatchMixin
 __all__ = ["Color", "ColorBatch", "ColorType"]
 
 
-class Color(datatypes.Color):
+class Color(datatypes.Rgba32):
     """
-    An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+    **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
 
     The color is stored as a 32-bit integer, where the most significant
     byte is `R` and the least significant byte is `A`.
@@ -25,17 +25,13 @@ class Color(datatypes.Color):
 
     # You can define your own __init__ function as a member of ColorExt in color_ext.py
 
-    # Note: there are no fields here because Color delegates to datatypes.Color
+    # Note: there are no fields here because Color delegates to datatypes.Rgba32
     pass
 
 
-class ColorType(datatypes.ColorType):
+class ColorType(datatypes.Rgba32Type):
     _TYPE_NAME: str = "rerun.components.Color"
 
 
-class ColorBatch(datatypes.ColorBatch, ComponentBatchMixin):
+class ColorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
     _ARROW_TYPE = ColorType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ColorType())

@@ -645,7 +645,7 @@ impl ReUi {
     ///
     /// Alternative to [`egui::collapsing_header::paint_default_icon`].
     pub fn paint_collapsing_triangle(
-        ui: &mut egui::Ui,
+        ui: &egui::Ui,
         openness: f32,
         rect: Rect,
         response: &egui::Response,
@@ -706,7 +706,7 @@ impl ReUi {
 
     /// Draws a shadow into the given rect with the shadow direction given from dark to light
     #[allow(clippy::unused_self)]
-    pub fn draw_shadow_line(&self, ui: &mut egui::Ui, rect: Rect, direction: egui::Direction) {
+    pub fn draw_shadow_line(&self, ui: &egui::Ui, rect: Rect, direction: egui::Direction) {
         let color_dark = self.design_tokens.shadow_gradient_dark_start;
         let color_bright = Color32::TRANSPARENT;
 

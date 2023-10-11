@@ -13,7 +13,7 @@ __all__ = ["HalfSizes2D", "HalfSizes2DBatch", "HalfSizes2DType"]
 
 class HalfSizes2D(datatypes.Vec2D):
     """
-    Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
+    **Component**: Half-sizes (extents) of a 2D box along its local axis, starting at its local origin/center.
 
     The box extends both in negative and positive direction along each axis.
     Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
@@ -31,7 +31,3 @@ class HalfSizes2DType(datatypes.Vec2DType):
 
 class HalfSizes2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
     _ARROW_TYPE = HalfSizes2DType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(HalfSizes2DType())

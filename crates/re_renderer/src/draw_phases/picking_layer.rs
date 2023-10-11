@@ -259,7 +259,7 @@ impl PickingLayerProcessor {
         );
 
         let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
-            &mut ctx.gpu_resources,
+            &ctx.gpu_resources,
             &ctx.device,
             frame_uniform_buffer,
         );

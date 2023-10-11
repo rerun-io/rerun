@@ -34,7 +34,7 @@ def _translation_and_mat3x3__translation__special_field_converter_override(
         return datatypes.Vec3D(x)
 
 
-def _translation_and_mat3x3__matrix__special_field_converter_override(
+def _translation_and_mat3x3__mat3x3__special_field_converter_override(
     x: datatypes.Mat3x3Like | None,
 ) -> datatypes.Mat3x3 | None:
     if x is None:
@@ -48,7 +48,7 @@ def _translation_and_mat3x3__matrix__special_field_converter_override(
 @define(init=False)
 class TranslationAndMat3x3(TranslationAndMat3x3Ext):
     """
-    Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+    **Datatype**: Representation of an affine transform via a 3x3 affine matrix paired with a translation.
 
     First applies the matrix, then the translation.
     """
@@ -56,24 +56,26 @@ class TranslationAndMat3x3(TranslationAndMat3x3Ext):
     # __init__ can be found in translation_and_mat3x3_ext.py
 
     from_parent: bool = field(converter=bool)
-    """
-    If true, the transform maps from the parent space to the space where the transform was logged.
-    Otherwise, the transform maps from the space to its parent.
-    """
+    # If true, this transform is from the parent space to the space where the transform was logged.
+    #
+    # If false (default), the transform maps from this space to its parent,
+    # i.e. the translation is the position in the parent space.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     translation: datatypes.Vec3D | None = field(
         default=None, converter=_translation_and_mat3x3__translation__special_field_converter_override
     )
-    """
-    3D translation, applied after the matrix.
-    """
+    # 3D translation, applied after the matrix.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
-    matrix: datatypes.Mat3x3 | None = field(
-        default=None, converter=_translation_and_mat3x3__matrix__special_field_converter_override
+    mat3x3: datatypes.Mat3x3 | None = field(
+        default=None, converter=_translation_and_mat3x3__mat3x3__special_field_converter_override
     )
-    """
-    3x3 matrix for scale, rotation & shear.
-    """
+    # 3x3 matrix for scale, rotation & shear.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 TranslationAndMat3x3Like = TranslationAndMat3x3
@@ -98,7 +100,7 @@ class TranslationAndMat3x3Type(BaseExtensionType):
                         metadata={},
                     ),
                     pa.field(
-                        "matrix",
+                        "mat3x3",
                         pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9),
                         nullable=True,
                         metadata={},
@@ -116,11 +118,3 @@ class TranslationAndMat3x3Batch(BaseBatch[TranslationAndMat3x3ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: TranslationAndMat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in translation_and_mat3x3_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TranslationAndMat3x3Type())
-
-
-if hasattr(TranslationAndMat3x3Ext, "deferred_patch_class"):
-    TranslationAndMat3x3Ext.deferred_patch_class(TranslationAndMat3x3)

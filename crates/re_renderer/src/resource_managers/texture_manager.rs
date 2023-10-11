@@ -93,6 +93,13 @@ pub enum TextureCreationError {
     #[error("Texture with debug label {0:?} has zero width or height!")]
     ZeroSize(DebugLabel),
 
+    #[error("Texture was {width}x{height}, larger than the max of {max_texture_dimension_2d}")]
+    TooLarge {
+        width: u32,
+        height: u32,
+        max_texture_dimension_2d: u32,
+    },
+
     #[error(
         "Texture with debug label {label:?} has a format {format:?} that data can't be transferred to!"
     )]
@@ -151,10 +158,8 @@ pub struct TextureManager2D {
 
 #[derive(Default)]
 struct Inner {
-    /// Caches textures using a `VersionedInstancePathHash`, i.e. a specific instance of a specific
-    /// entity path for a specific row in the store.
-    ///
-    /// For dependency reasons, the versioned path has to be provided pre-hashed as a u64 by the user.
+    /// Caches textures using a unique id, which in practice is the hash of the
+    /// row id of the tensor data (`tensor_data_row_id`).
     ///
     /// Any texture which wasn't accessed on the previous frame is ejected from the cache
     /// during [`Self::begin_frame`].
@@ -235,7 +240,7 @@ impl TextureManager2D {
         //     );
         // }
 
-        // Currently we don't store any data in the the texture manager.
+        // Currently we don't store any data in the texture manager.
         // In the future we might handle (lazy?) mipmap generation in here or keep track of lazy upload processing.
 
         Self::create_and_upload_texture(&self.device, &self.queue, texture_pool, creation_desc)
@@ -337,6 +342,17 @@ impl TextureManager2D {
 
         if creation_desc.width == 0 || creation_desc.height == 0 {
             return Err(TextureCreationError::ZeroSize(creation_desc.label.clone()));
+        }
+
+        let max_texture_dimension_2d = device.limits().max_texture_dimension_2d;
+        if creation_desc.width > max_texture_dimension_2d
+            || creation_desc.height > max_texture_dimension_2d
+        {
+            return Err(TextureCreationError::TooLarge {
+                width: creation_desc.width,
+                height: creation_desc.height,
+                max_texture_dimension_2d,
+            });
         }
 
         let size = wgpu::Extent3d {

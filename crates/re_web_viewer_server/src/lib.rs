@@ -27,32 +27,23 @@ mod data {
     pub const INDEX_HTML: &[u8] = include_bytes!("../web_viewer/index_bundled.html");
     pub const FAVICON: &[u8] = include_bytes!("../web_viewer/favicon.svg");
     pub const SW_JS: &[u8] = include_bytes!("../web_viewer/sw.js");
-
-    #[cfg(debug_assertions)]
-    pub const VIEWER_JS_DEBUG: &[u8] = include_bytes!("../web_viewer/re_viewer_debug.js");
-
-    #[cfg(debug_assertions)]
-    pub const VIEWER_WASM_DEBUG: &[u8] = include_bytes!("../web_viewer/re_viewer_debug_bg.wasm");
-
-    #[cfg(not(debug_assertions))]
-    pub const VIEWER_JS_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
-
-    #[cfg(not(debug_assertions))]
-    pub const VIEWER_WASM_RELEASE: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
+    pub const VIEWER_JS: &[u8] = include_bytes!("../web_viewer/re_viewer.js");
+    pub const VIEWER_WASM: &[u8] = include_bytes!("../web_viewer/re_viewer_bg.wasm");
 }
 
+/// Failure to host the web viewer.
 #[derive(thiserror::Error, Debug)]
 pub enum WebViewerServerError {
     #[error("Could not parse address: {0}")]
     AddrParseFailed(#[from] std::net::AddrParseError),
 
-    #[error("failed to bind to port {0}: {1}")]
+    #[error("Failed to bind to port {0} for HTTP: {1}")]
     BindFailed(WebViewerServerPort, hyper::Error),
 
-    #[error("failed to join web viewer server task: {0}")]
+    #[error("Failed to join web viewer server task: {0}")]
     JoinError(#[from] tokio::task::JoinError),
 
-    #[error("failed to serve web viewer: {0}")]
+    #[error("Failed to serve web viewer: {0}")]
     ServeFailed(hyper::Error),
 }
 
@@ -117,25 +108,11 @@ impl Service<Request<Body>> for Svc {
             "/" | "/index.html" => ("text/html", data::INDEX_HTML),
             "/favicon.svg" => ("image/svg+xml", data::FAVICON),
             "/sw.js" => ("text/javascript", data::SW_JS),
-
-            #[cfg(debug_assertions)]
-            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS_DEBUG),
-            #[cfg(not(debug_assertions))]
-            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS_RELEASE),
-
+            "/re_viewer.js" => ("text/javascript", data::VIEWER_JS),
             "/re_viewer_bg.wasm" => {
                 #[cfg(feature = "analytics")]
                 self.on_serve_wasm();
-
-                #[cfg(debug_assertions)]
-                {
-                    re_log::info_once!("Serving DEBUG web-viewer");
-                    ("application/wasm", data::VIEWER_WASM_DEBUG)
-                }
-                #[cfg(not(debug_assertions))]
-                {
-                    ("application/wasm", data::VIEWER_WASM_RELEASE)
-                }
+                ("application/wasm", data::VIEWER_WASM)
             }
             _ => {
                 re_log::warn!("404 path: {}", req.uri().path());

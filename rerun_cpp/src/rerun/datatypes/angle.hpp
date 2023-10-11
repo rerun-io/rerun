@@ -50,7 +50,7 @@ namespace rerun {
             };
         } // namespace detail
 
-        /// Angle in either radians or degrees.
+        /// **Datatype**: Angle in either radians or degrees.
         struct Angle {
             Angle() : _tag(detail::AngleTag::NONE) {}
 

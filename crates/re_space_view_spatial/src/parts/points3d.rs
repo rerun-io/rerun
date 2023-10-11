@@ -1,16 +1,16 @@
 use re_data_store::{EntityPath, InstancePathHash};
+use re_log_types::TimeInt;
 use re_query::{ArchetypeView, QueryError};
+use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points3D,
     components::{Position3D, Text},
-    Archetype as _, ComponentNameSet,
+    Archetype as _, ComponentNameSet, DeserializationResult,
 };
 use re_viewer_context::{
-    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    Annotations, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
-
-use itertools::Itertools as _;
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
@@ -21,7 +21,7 @@ use crate::{
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::{picking_id_from_instance_key, SpatialViewPartData};
+use super::{picking_id_from_instance_key, Keypoints, SpatialViewPartData};
 
 pub struct Points3DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
@@ -82,16 +82,58 @@ impl Points3DPart {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let (annotation_infos, keypoints) =
-            process_annotations_and_keypoints::<Position3D, Points3D>(
-                query,
-                arch_view,
-                &ent_context.annotations,
-                |p| (*p).into(),
-            )?;
+        let LoadedPoints {
+            annotation_infos,
+            keypoints,
+            positions,
+            radii,
+            colors,
+            picking_instance_ids,
+        } = LoadedPoints::load(
+            arch_view,
+            ent_path,
+            query.latest_at,
+            &ent_context.annotations,
+        )?;
 
-        let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
+        {
+            re_tracing::profile_scope!("to_gpu");
+
+            let mut point_builder = ent_context.shared_render_builders.points();
+            let point_batch = point_builder
+                .batch("3d points")
+                .world_from_obj(ent_context.world_from_entity)
+                .outline_mask_ids(ent_context.highlight.overall)
+                .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
+
+            let mut point_range_builder =
+                point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
+
+            // Determine if there's any sub-ranges that need extra highlighting.
+            {
+                re_tracing::profile_scope!("marking additional highlight points");
+                for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
+                    // TODO(andreas, jeremy): We can do this much more efficiently
+                    let highlighted_point_index = arch_view
+                        .iter_instance_keys()
+                        .position(|key| *highlighted_key == key);
+                    if let Some(highlighted_point_index) = highlighted_point_index {
+                        point_range_builder = point_range_builder
+                            .push_additional_outline_mask_ids_for_range(
+                                highlighted_point_index as u32..highlighted_point_index as u32 + 1,
+                                *instance_mask_ids,
+                            );
+                    }
+                }
+            }
+        }
+
+        self.data.extend_bounding_box_with_points(
+            positions.iter().copied(),
+            ent_context.world_from_entity,
+        );
+
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         if arch_view.num_instances() <= self.max_labels {
             re_tracing::profile_scope!("labels");
@@ -116,69 +158,6 @@ impl Points3DPart {
                 ent_context.world_from_entity,
             )?);
         }
-
-        {
-            let mut point_builder = ent_context.shared_render_builders.points();
-            let point_batch = point_builder
-                .batch("3d points")
-                .world_from_obj(ent_context.world_from_entity)
-                .outline_mask_ids(ent_context.highlight.overall)
-                .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-
-            let (positions, radii, colors, picking_instance_ids) = join4(
-                || {
-                    re_tracing::profile_scope!("positions");
-                    arch_view
-                        .iter_required_component::<Position3D>()
-                        .map(|p| p.map(glam::Vec3::from).collect_vec())
-                },
-                || {
-                    re_tracing::profile_scope!("radii");
-                    radii.collect_vec()
-                },
-                || {
-                    re_tracing::profile_scope!("colors");
-                    colors.collect_vec()
-                },
-                || {
-                    re_tracing::profile_scope!("picking_ids");
-                    arch_view
-                        .iter_instance_keys()
-                        .map(picking_id_from_instance_key)
-                        .collect_vec()
-                },
-            );
-
-            let positions = positions?;
-
-            let mut point_range_builder =
-                point_batch.add_points(&positions, &radii, &colors, &picking_instance_ids);
-
-            // Determine if there's any sub-ranges that need extra highlighting.
-            {
-                re_tracing::profile_scope!("marking additional highlight points");
-                for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
-                    // TODO(andreas, jeremy): We can do this much more efficiently
-                    let highlighted_point_index = arch_view
-                        .iter_instance_keys()
-                        .position(|key| *highlighted_key == key);
-                    if let Some(highlighted_point_index) = highlighted_point_index {
-                        point_range_builder = point_range_builder
-                            .push_additional_outline_mask_ids_for_range(
-                                highlighted_point_index as u32..highlighted_point_index as u32 + 1,
-                                *instance_mask_ids,
-                            );
-                    }
-                }
-            }
-
-            self.data.extend_bounding_box_with_points(
-                positions.iter().copied(),
-                ent_context.world_from_entity,
-            );
-        }
-
-        load_keypoint_connections(ent_context, ent_path, &keypoints);
 
         Ok(())
     }
@@ -227,6 +206,98 @@ impl ViewPartSystem for Points3DPart {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+}
+
+#[doc(hidden)] // Public for benchmarks
+pub struct LoadedPoints {
+    pub annotation_infos: ResolvedAnnotationInfos,
+    pub keypoints: Keypoints,
+    pub positions: Vec<glam::Vec3>,
+    pub radii: Vec<re_renderer::Size>,
+    pub colors: Vec<re_renderer::Color32>,
+    pub picking_instance_ids: Vec<PickingLayerInstanceId>,
+}
+
+impl LoadedPoints {
+    #[inline]
+    pub fn load(
+        arch_view: &ArchetypeView<Points3D>,
+        ent_path: &EntityPath,
+        latest_at: TimeInt,
+        annotations: &Annotations,
+    ) -> Result<Self, QueryError> {
+        re_tracing::profile_function!();
+
+        let (annotation_infos, keypoints) = process_annotations_and_keypoints::<
+            Position3D,
+            Points3D,
+        >(latest_at, arch_view, annotations, |p| {
+            (*p).into()
+        })?;
+
+        let (positions, radii, colors, picking_instance_ids) = join4(
+            || Self::load_positions(arch_view),
+            || Self::load_radii(arch_view, ent_path),
+            || Self::load_colors(arch_view, ent_path, &annotation_infos),
+            || Self::load_picking_ids(arch_view),
+        );
+
+        Ok(Self {
+            annotation_infos,
+            keypoints,
+            positions: positions?,
+            radii: radii?,
+            colors: colors?,
+            picking_instance_ids,
+        })
+    }
+
+    #[inline]
+    pub fn load_positions(
+        arch_view: &ArchetypeView<Points3D>,
+    ) -> DeserializationResult<Vec<glam::Vec3>> {
+        re_tracing::profile_function!();
+        arch_view.iter_required_component::<Position3D>().map(|p| {
+            re_tracing::profile_scope!("collect");
+            p.map(glam::Vec3::from).collect()
+        })
+    }
+
+    #[inline]
+    pub fn load_radii(
+        arch_view: &ArchetypeView<Points3D>,
+        ent_path: &EntityPath,
+    ) -> Result<Vec<re_renderer::Size>, QueryError> {
+        re_tracing::profile_function!();
+        process_radii(arch_view, ent_path).map(|radii| {
+            re_tracing::profile_scope!("collect");
+            radii.collect()
+        })
+    }
+
+    #[inline]
+    pub fn load_colors(
+        arch_view: &ArchetypeView<Points3D>,
+        ent_path: &EntityPath,
+        annotation_infos: &ResolvedAnnotationInfos,
+    ) -> Result<Vec<re_renderer::Color32>, QueryError> {
+        re_tracing::profile_function!();
+        process_colors(arch_view, ent_path, annotation_infos).map(|colors| {
+            re_tracing::profile_scope!("collect");
+            colors.collect()
+        })
+    }
+
+    #[inline]
+    pub fn load_picking_ids(arch_view: &ArchetypeView<Points3D>) -> Vec<PickingLayerInstanceId> {
+        re_tracing::profile_function!();
+        let iterator = arch_view
+            .iter_instance_keys()
+            .map(picking_id_from_instance_key);
+
+        re_tracing::profile_scope!("collect");
+        iterator.collect()
     }
 }
 

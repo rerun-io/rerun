@@ -32,25 +32,29 @@ def _annotation_info__label__special_field_converter_override(x: datatypes.Utf8L
         return datatypes.Utf8(x)
 
 
-def _annotation_info__color__special_field_converter_override(x: datatypes.ColorLike | None) -> datatypes.Color | None:
+def _annotation_info__color__special_field_converter_override(
+    x: datatypes.Rgba32Like | None,
+) -> datatypes.Rgba32 | None:
     if x is None:
         return None
-    elif isinstance(x, datatypes.Color):
+    elif isinstance(x, datatypes.Rgba32):
         return x
     else:
-        return datatypes.Color(x)
+        return datatypes.Rgba32(x)
 
 
 @define(init=False)
 class AnnotationInfo(AnnotationInfoExt):
     """
-    Annotation info annotating a class id or key-point id.
+    **Datatype**: Annotation info annotating a class id or key-point id.
 
     Color and label will be used to annotate entities/keypoints which reference the id.
     The id refers either to a class or key-point id
     """
 
-    def __init__(self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.ColorLike | None = None):
+    def __init__(
+        self: Any, id: int, label: datatypes.Utf8Like | None = None, color: datatypes.Rgba32Like | None = None
+    ):
         """
         Create a new instance of the AnnotationInfo datatype.
 
@@ -68,27 +72,27 @@ class AnnotationInfo(AnnotationInfoExt):
         self.__attrs_init__(id=id, label=label, color=color)
 
     id: int = field(converter=int)
-    """
-    `ClassId` or `KeypointId` to which this annotation info belongs.
-    """
+    # `ClassId` or `KeypointId` to which this annotation info belongs.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     label: datatypes.Utf8 | None = field(
         default=None, converter=_annotation_info__label__special_field_converter_override
     )
-    """
-    The label that will be shown in the UI.
-    """
+    # The label that will be shown in the UI.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
-    color: datatypes.Color | None = field(
+    color: datatypes.Rgba32 | None = field(
         default=None, converter=_annotation_info__color__special_field_converter_override
     )
-    """
-    The color that will be applied to the annotated entity.
-    """
+    # The color that will be applied to the annotated entity.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = Union[AnnotationInfo, int, Tuple[int, str], Tuple[int, str, datatypes.ColorLike]]
+    AnnotationInfoLike = Union[AnnotationInfo, int, Tuple[int, str], Tuple[int, str, datatypes.Rgba32Like]]
 else:
     AnnotationInfoLike = Any
 
@@ -121,11 +125,3 @@ class AnnotationInfoBatch(BaseBatch[AnnotationInfoArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
         return AnnotationInfoExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AnnotationInfoType())
-
-
-if hasattr(AnnotationInfoExt, "deferred_patch_class"):
-    AnnotationInfoExt.deferred_patch_class(AnnotationInfo)

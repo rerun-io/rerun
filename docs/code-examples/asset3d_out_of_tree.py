@@ -15,16 +15,16 @@ rr.init("rerun_example_asset3d_out_of_tree", spawn=True)
 rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)  # Set an up-axis
 
 rr.set_time_sequence("frame", 0)
-rr.log("world/asset", rr.Asset3D.from_file(sys.argv[1]))
+rr.log("world/asset", rr.Asset3D(path=sys.argv[1]))
 # Those points will not be affected by their parent's out-of-tree transform!
 rr.log(
     "world/asset/points",
     rr.Points3D(np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T),
 )
 
-asset = rr.Asset3D.from_file(sys.argv[1])
+asset = rr.Asset3D(path=sys.argv[1])
 for i in range(1, 20):
     rr.set_time_sequence("frame", i)
 
     translation = TranslationRotationScale3D(translation=[0, 0, i - 10.0])
-    rr.log_components("asset", [OutOfTreeTransform3DBatch(translation)])
+    rr.log_components("world/asset", [OutOfTreeTransform3DBatch(translation)])

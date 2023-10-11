@@ -10,6 +10,8 @@ if TYPE_CHECKING:
 
 
 class MeshPropertiesExt:
+    """Extension for [MeshProperties][rerun.datatypes.MeshProperties]."""
+
     @staticmethod
     def native_to_pa_array_override(data: MeshPropertiesArrayLike, data_type: pa.DataType) -> pa.Array:
         from . import MeshProperties

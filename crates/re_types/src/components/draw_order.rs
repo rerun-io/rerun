@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Draw order used for the display order of 2D elements.
+/// **Component**: Draw order used for the display order of 2D elements.
 ///
 /// Higher values are drawn on top of lower values.
 /// An entity can have only a single draw order component.

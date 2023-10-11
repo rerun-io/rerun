@@ -52,25 +52,12 @@ def log_timing_decorator(objpath: str, level: str):  # type: ignore[no-untyped-d
             now = timer()
             result = func(*args, **kwargs)
             elapsed_ms = (timer() - now) * 1_000.0
-            rr.log_text_entry(objpath, f"execution took {elapsed_ms:.1f}ms", level=level)
+            rr.log(objpath, rr.TextLog(f"execution took {elapsed_ms:.1f}ms", level=level))
             return result
 
         return wrapper
 
     return inner
-
-
-# TODO(cmc): This really should be the job of the SDK.
-def get_mesh_format(mesh: Trimesh) -> rr.MeshFormat:
-    ext = Path(mesh.metadata["file_name"]).suffix.lower()
-    try:
-        return {
-            ".glb": rr.MeshFormat.GLB,
-            # ".gltf": rr.MeshFormat.GLTF,
-            ".obj": rr.MeshFormat.OBJ,
-        }[ext]
-    except Exception:
-        raise ValueError(f"unknown file extension: {ext}")
 
 
 def read_mesh(path: Path) -> Trimesh:
@@ -101,35 +88,40 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
     # that `mesh_to_sdf` returns.
     bs1 = mesh.bounding_sphere
     bs2 = mesh_to_sdf.scale_to_unit_sphere(mesh).bounding_sphere
-    mesh_format = get_mesh_format(mesh)
 
     scale = bs2.scale / bs1.scale
     center = bs2.center - bs1.center * scale
-    rr.log_mesh_file(
-        "world/mesh",
-        mesh_format,
-        mesh_path=path,
-        transform=np.array([[scale, 0, 0, center[0]], [0, scale, 0, center[1]], [0, 0, scale, center[2]]]),
-    )
+
+    mesh3d = rr.Asset3D(path=path)
+    mesh3d.transform = rr.OutOfTreeTransform3DBatch(rr.TranslationRotationScale3D(translation=center, scale=scale))
+    rr.log("world/mesh", mesh3d)
 
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
-    # rr.log_view_coordinates("world", up="+Y", timeless=True # TODO(cmc): depends on the mesh really
-    rr.log_annotation_context("world/sdf", [(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))], timeless=False)
-    rr.log_points("world/sdf/points", points, class_ids=np.array(sdf > 0, dtype=np.uint8))
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+    rr.log("world/sdf", rr.AnnotationContext([(0, "inside", (255, 0, 0)), (1, "outside", (0, 255, 0))]), timeless=False)
+    rr.log("world/sdf/points", rr.Points3D(points, class_ids=np.array(sdf > 0, dtype=np.uint8)))
 
     outside = points[sdf > 0]
-    rr.log_text_entry(
+    rr.log(
         "world/sdf/inside/logs",
-        f"{len(points) - len(outside)} points inside ({len(points)} total)",
-        level="TRACE",
+        rr.TextLog(
+            f"{len(points) - len(outside)} points inside ({len(points)} total)",
+            level=rr.TextLogLevel.TRACE,
+        ),
     )
-    rr.log_text_entry("world/sdf/outside/logs", f"{len(outside)} points outside ({len(points)} total)", level="TRACE")
+    rr.log(
+        "world/sdf/outside/logs",
+        rr.TextLog(
+            f"{len(outside)} points outside ({len(points)} total)",
+            level=rr.TextLogLevel.TRACE,
+        ),
+    )
 
 
 def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     names = ["width", "height", "depth"]
-    rr.log_tensor("tensor", voxvol, names=names)
+    rr.log("tensor", rr.Tensor(voxvol, dim_names=names))
 
 
 @log_timing_decorator("global/log_mesh", "DEBUG")  # type: ignore[misc]
@@ -140,7 +132,7 @@ def compute_and_log_volumetric_sdf(mesh_path: Path, mesh: Trimesh, resolution: i
     try:
         with open(voxvol_path, "rb") as f:
             voxvol = np.load(voxvol_path)
-            rr.log_text_entry("global", "loading volumetric SDF from cache")
+            rr.log("global", rr.TextLog("loading volumetric SDF from cache"))
     except Exception:
         voxvol = compute_voxel_sdf(mesh, resolution)
 
@@ -148,7 +140,7 @@ def compute_and_log_volumetric_sdf(mesh_path: Path, mesh: Trimesh, resolution: i
 
     with open(voxvol_path, "wb+") as f:
         np.save(f, voxvol)
-        rr.log_text_entry("global", "writing volumetric SDF to cache", level="DEBUG")
+        rr.log("global", rr.TextLog("writing volumetric SDF to cache", level=rr.TextLogLevel.DEBUG))
 
 
 @log_timing_decorator("global/log_mesh", "DEBUG")  # type: ignore[misc]
@@ -161,10 +153,10 @@ def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) 
     try:
         with open(sdf_path, "rb") as f:
             sdf = np.load(sdf_path)
-            rr.log_text_entry("global", "loading sampled SDF from cache")
+            rr.log("global", rr.TextLog("loading sampled SDF from cache"))
         with open(points_path, "rb") as f:
             points = np.load(points_path)
-            rr.log_text_entry("global", "loading point cloud from cache")
+            rr.log("global", rr.TextLog("loading point cloud from cache"))
     except Exception:
         (points, sdf) = compute_sample_sdf(mesh, num_points)
 
@@ -173,10 +165,10 @@ def compute_and_log_sample_sdf(mesh_path: Path, mesh: Trimesh, num_points: int) 
 
     with open(points_path, "wb+") as f:
         np.save(f, points)
-        rr.log_text_entry("global", "writing sampled SDF to cache", level="DEBUG")
+        rr.log("global", rr.TextLog("writing sampled SDF to cache", level=rr.TextLogLevel.DEBUG))
     with open(sdf_path, "wb+") as f:
         np.save(f, sdf)
-        rr.log_text_entry("global", "writing point cloud to cache", level="DEBUG")
+        rr.log("global", rr.TextLog("writing point cloud to cache", level=rr.TextLogLevel.DEBUG))
 
 
 def main() -> None:

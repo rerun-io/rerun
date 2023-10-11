@@ -148,10 +148,6 @@ name = "segmentation_image_simple"
 path = "segmentation_image_simple.rs"
 
 [[bin]]
-name = "tensor_one_dim"
-path = "tensor_one_dim.rs"
-
-[[bin]]
 name = "tensor_simple"
 path = "tensor_simple.rs"
 

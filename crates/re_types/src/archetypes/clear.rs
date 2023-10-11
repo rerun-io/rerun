@@ -14,23 +14,19 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Empties all the components of an entity.
+/// **Archetype**: Empties all the components of an entity.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ### Flat
 /// ```ignore
 /// //! Log a batch of 3D arrows.
 ///
-/// use rerun::{
-///     archetypes::{Arrows3D, Clear},
-///     components::Color,
-///     external::glam,
-///     RecordingStreamBuilder,
-/// };
+/// use rerun::external::glam;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_clear_simple").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_clear_simple").memory()?;
 ///
 ///     #[rustfmt::skip]
 ///     let (vectors, origins, colors) = (
@@ -43,63 +39,33 @@
 ///     for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
 ///         rec.log(
 ///             format!("arrows/{i}"),
-///             &Arrows3D::from_vectors([vector])
+///             &rerun::Arrows3D::from_vectors([vector])
 ///                 .with_origins([origin])
-///                 .with_colors([Color::from_rgb(color.0, color.1, color.2)]),
+///                 .with_colors([rerun::Color::from_rgb(color.0, color.1, color.2)]),
 ///         )?;
 ///     }
 ///
 ///     // Now clear them, one by one on each tick.
 ///     for i in 0..vectors.len() {
-///         rec.log(format!("arrows/{i}"), &Clear::flat())?;
+///         rec.log(format!("arrows/{i}"), &rerun::Clear::flat())?;
 ///     }
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
-///
-/// ### Recursive
-/// ```ignore
-/// //! Log a batch of 3D arrows.
-///
-/// use rerun::{
-///     archetypes::{Arrows3D, Clear},
-///     components::Color,
-///     external::glam,
-///     RecordingStreamBuilder,
-/// };
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_clear_recursive").memory()?;
-///
-///     #[rustfmt::skip]
-///     let (vectors, origins, colors) = (
-///         [glam::Vec3::X,    glam::Vec3::NEG_Y, glam::Vec3::NEG_X, glam::Vec3::Y],
-///         [(-0.5, 0.5, 0.0), (0.5, 0.5, 0.0),   (0.5, -0.5, 0.0),  (-0.5, -0.5, 0.0)],
-///         [(200, 0, 0),      (0, 200, 0),       (0, 0, 200),       (200, 0, 200)],
-///     );
-///
-///     // Log a handful of arrows.
-///     for (i, ((vector, origin), color)) in vectors.into_iter().zip(origins).zip(colors).enumerate() {
-///         rec.log(
-///             format!("arrows/{i}"),
-///             &Arrows3D::from_vectors([vector])
-///                 .with_origins([origin])
-///                 .with_colors([Color::from_rgb(color.0, color.1, color.2)]),
-///         )?;
-///     }
-///
-///     // Now clear all of them at once.
-///     rec.log("arrows", &Clear::recursive())?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png">
+///   <img src="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clear {
-    pub recursive: crate::components::ClearIsRecursive,
+    pub is_recursive: crate::components::ClearIsRecursive,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
@@ -173,20 +139,20 @@ impl crate::Archetype for Clear {
             .into_iter()
             .map(|(field, array)| (field.name, array))
             .collect();
-        let recursive = {
+        let is_recursive = {
             let array = arrays_by_name
                 .get("rerun.components.ClearIsRecursive")
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#recursive")?;
+                .with_context("rerun.archetypes.Clear#is_recursive")?;
             <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Clear#recursive")?
+                .with_context("rerun.archetypes.Clear#is_recursive")?
                 .into_iter()
                 .next()
                 .flatten()
                 .ok_or_else(crate::DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#recursive")?
+                .with_context("rerun.archetypes.Clear#is_recursive")?
         };
-        Ok(Self { recursive })
+        Ok(Self { is_recursive })
     }
 }
 
@@ -196,7 +162,7 @@ impl crate::AsComponents for Clear {
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.recursive as &dyn crate::ComponentBatch).into()),
+            Some((&self.is_recursive as &dyn crate::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -210,9 +176,9 @@ impl crate::AsComponents for Clear {
 }
 
 impl Clear {
-    pub fn new(recursive: impl Into<crate::components::ClearIsRecursive>) -> Self {
+    pub fn new(is_recursive: impl Into<crate::components::ClearIsRecursive>) -> Self {
         Self {
-            recursive: recursive.into(),
+            is_recursive: is_recursive.into(),
         }
     }
 }

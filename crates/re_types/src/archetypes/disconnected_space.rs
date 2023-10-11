@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// Specifies that the entity path at which this is logged is disconnected from its parent.
+/// **Archetype**: Specifies that the entity path at which this is logged is disconnected from its parent.
 ///
 /// This is useful for specifying that a subgraph is independent of the rest of the scene.
 ///
@@ -23,30 +23,44 @@
 ///
 /// ## Example
 ///
+/// ### Disconnected Space
 /// ```ignore
 /// //! Disconnect two spaces.
 ///
-/// use rerun::{
-///     archetypes::{DisconnectedSpace, Points3D},
-///     RecordingStreamBuilder,
-/// };
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_disconnected_space").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").memory()?;
 ///
 ///     // These two points can be projected into the same space..
-///     rec.log("world/room1/point", &Points3D::new([(0.0, 0.0, 0.0)]))?;
-///     rec.log("world/room2/point", &Points3D::new([(1.0, 1.0, 1.0)]))?;
+///     rec.log(
+///         "world/room1/point",
+///         &rerun::Points3D::new([(0.0, 0.0, 0.0)]),
+///     )?;
+///     rec.log(
+///         "world/room2/point",
+///         &rerun::Points3D::new([(1.0, 1.0, 1.0)]),
+///     )?;
 ///
 ///     // ..but this one lives in a completely separate space!
-///     rec.log("world/wormhole", &DisconnectedSpace::new(true))?;
-///     rec.log("world/wormhole/point", &Points3D::new([(2.0, 2.0, 2.0)]))?;
+///     rec.log("world/wormhole", &rerun::DisconnectedSpace::new(true))?;
+///     rec.log(
+///         "world/wormhole/point",
+///         &rerun::Points3D::new([(2.0, 2.0, 2.0)]),
+///     )?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1200w.png">
+///   <img src="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct DisconnectedSpace {
     pub disconnected_space: crate::components::DisconnectedSpace,

@@ -1,4 +1,3 @@
-use anyhow::Context as _;
 use smallvec::SmallVec;
 
 use crate::debug_label::DebugLabel;
@@ -104,8 +103,9 @@ pub struct RenderPipelineDesc {
 
 #[derive(thiserror::Error, Debug)]
 pub enum RenderPipelineError {
-    // #[error("referenced pipeline layout not found")]
-    // PipelineLayoutNotFound(),
+    #[error("referenced pipeline layout not found")]
+    PipelineLayoutNotPresent(),
+
     #[error("referenced vertex shader not found")]
     VertexShaderNotFound(),
 
@@ -124,8 +124,7 @@ impl RenderPipelineDesc {
             if let Ok(pipeline_layout) = pipeline_layouts.get_resource(self.pipeline_layout) {
                 Some(&pipeline_layout.layout)
             } else {
-                re_log::error!("referenced pipeline layout not found");
-                None
+                return Err(RenderPipelineError::PipelineLayoutNotPresent());
             };
 
         let Ok(vertex_shader_module) = shader_modules.get(self.vertex_handle) else {
@@ -193,8 +192,8 @@ impl GpuRenderPipelinePool {
         &mut self,
         device: &wgpu::Device,
         frame_index: u64,
-        shader_modules: &mut GpuShaderModulePool,
-        pipeline_layouts: &mut GpuPipelineLayoutPool,
+        shader_modules: &GpuShaderModulePool,
+        pipeline_layouts: &GpuPipelineLayoutPool,
     ) {
         re_tracing::profile_function!();
         self.pool.current_frame_index = frame_index;
@@ -227,13 +226,7 @@ impl GpuRenderPipelinePool {
                     re_log::info!(label = desc.label.get(), "recompiled render pipeline");
                     Some(sm)
                 }
-                Err(err) => {
-                    // re_log::error!(
-                    //     err = re_error::format(err),
-                    //     "couldn't recompile render pipeline"
-                    // );
-                    None
-                }
+                Err(_) => None,
             }
         });
     }

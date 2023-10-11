@@ -4,7 +4,7 @@
 #include "color.hpp"
 
 #include "../arrow.hpp"
-#include "../datatypes/color.hpp"
+#include "../datatypes/rgba32.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/table.h>
@@ -15,7 +15,7 @@ namespace rerun {
         const char Color::NAME[] = "rerun.components.Color";
 
         const std::shared_ptr<arrow::DataType> &Color::arrow_datatype() {
-            static const auto datatype = rerun::datatypes::Color::arrow_datatype();
+            static const auto datatype = rerun::datatypes::Rgba32::arrow_datatype();
             return datatype;
         }
 
@@ -26,7 +26,7 @@ namespace rerun {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
-            return Result(rerun::datatypes::Color::new_arrow_array_builder(memory_pool).value);
+            return Result(rerun::datatypes::Rgba32::new_arrow_array_builder(memory_pool).value);
         }
 
         Error Color::fill_arrow_array_builder(
@@ -42,10 +42,10 @@ namespace rerun {
                 );
             }
 
-            static_assert(sizeof(rerun::datatypes::Color) == sizeof(Color));
-            RR_RETURN_NOT_OK(rerun::datatypes::Color::fill_arrow_array_builder(
+            static_assert(sizeof(rerun::datatypes::Rgba32) == sizeof(Color));
+            RR_RETURN_NOT_OK(rerun::datatypes::Rgba32::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Color *>(elements),
+                reinterpret_cast<const rerun::datatypes::Rgba32 *>(elements),
                 num_elements
             ));
 

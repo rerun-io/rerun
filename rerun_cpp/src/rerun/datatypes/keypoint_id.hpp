@@ -21,7 +21,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// A 16-bit ID representing a type of semantic keypoint within a class.
+        /// **Datatype**: A 16-bit ID representing a type of semantic keypoint within a class.
         struct KeypointId {
             uint16_t id;
 

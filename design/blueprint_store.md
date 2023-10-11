@@ -48,19 +48,19 @@ App:
                 DataGroup:
                     Data
                     Data
-                    ...
+                    …
             Container:
                 SpaceView:
                     DataGroup:
                         Data
                         Data
-                        ...
+                        …
                 SpaceView:
                     DataGroup:
                         Data
                         Data
-                        ...
-            ...
+                        …
+            …
 ```
 
 A theoretical python API might look like:
@@ -135,7 +135,7 @@ This means a trivial expression like: `rr.show(rrb.Points3D("points"))` is still
 
 As a further simplification, the Blueprint will allow for the direct inclusion of static data, allowing users to bypass
 the data-logging APIs entirely for simple use-cases that don't require temporal information.  This will be accomplished
-by allowing `rrb.Data` objects to be constructured from any Rerun-loggable object.
+by allowing `rrb.Data` objects to be constructed from any Rerun-loggable object.
 
 Data that is a *query* from the recording store references an entity path used seprately by the logging APIs:
 ```python
@@ -143,7 +143,7 @@ Data that is a *query* from the recording store references an entity path used s
 for t in range(100):
     rr.set_time('step', t)
     rr.log("world/points", rr.Points3D(points))
-...
+…
 # Construct Blueprint
 rrb.Auto("/world/points")
 ```
@@ -195,13 +195,13 @@ For example:
         .eye: View3d::Eye(…)
         .contents: [BlueprintId("/data_groups/b117f5b9"), BlueprintId("/data_groups/8ee750a4")]
     /e9f36821
-        ...
+        …
 /data_group
     /b117f5b9
         .contents: [EntityPath(RecordingStore, "/world/points")]
         /overrides
             .radius: 0.1
-        ...
+        …
     /8ee750a4
         .contents: [EntityPath(BlueprintStore, "/static/7db713c0")]
 /static

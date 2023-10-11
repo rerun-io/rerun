@@ -19,6 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
+        /// **Component**: A binary blob of data.
         struct Blob {
             std::vector<uint8_t> data;
 

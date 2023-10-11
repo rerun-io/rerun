@@ -22,7 +22,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A double-precision scalar.
+        /// **Component**: A double-precision scalar.
         ///
         /// Used for time series plots.
         struct Scalar {

@@ -75,7 +75,10 @@ impl SpaceViewSystemRegistry {
         }
     }
 
-    pub fn new_context_collection(&self) -> ViewContextCollection {
+    pub fn new_context_collection(
+        &self,
+        space_view_class_name: SpaceViewClassName,
+    ) -> ViewContextCollection {
         ViewContextCollection {
             systems: self
                 .contexts
@@ -85,6 +88,7 @@ impl SpaceViewSystemRegistry {
                     (*name, part)
                 })
                 .collect(),
+            space_view_class_name,
         }
     }
 

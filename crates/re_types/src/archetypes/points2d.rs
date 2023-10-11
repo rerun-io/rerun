@@ -14,76 +14,45 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A 2D point cloud with positions and optional colors, radii, labels, etc.
+/// **Archetype**: A 2D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// ## Examples
+/// ## Example
 ///
-/// ```ignore
-/// //! Log some very simple points.
-///
-/// use rerun::{
-///     archetypes::{Boxes2D, Points2D},
-///     RecordingStreamBuilder,
-/// };
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
-///
-///     rec.log("points", &Points2D::new([(0.0, 0.0), (1.0, 1.0)]))?;
-///
-///     // Log an extra rect to set the view bounds
-///     rec.log("bounds", &Boxes2D::from_half_sizes([(2.0, 1.5)]))?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/1200w.png">
-///   <img src="https://static.rerun.io/point2d_simple/a8e801958bce5aa4e080659c033630f86ce95f71/full.png">
-/// </picture>
-///
+/// ### Randomly distributed 2D points with varying color and radius
 /// ```ignore
 /// //! Log some random points with color and radii.
 ///
-/// use rand::distributions::Uniform;
-/// use rand::Rng;
-/// use rerun::{
-///     archetypes::{Boxes2D, Points2D},
-///     components::Color,
-///     RecordingStreamBuilder,
-/// };
+/// use rand::{distributions::Uniform, Rng as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
+///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
 ///
 ///     let mut rng = rand::thread_rng();
 ///     let dist = Uniform::new(-3., 3.);
 ///
 ///     rec.log(
 ///         "random",
-///         &Points2D::new((0..10).map(|_| (rng.sample(dist), rng.sample(dist))))
-///             .with_colors((0..10).map(|_| Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))
+///         &rerun::Points2D::new((0..10).map(|_| (rng.sample(dist), rng.sample(dist))))
+///             .with_colors((0..10).map(|_| rerun::Color::from_rgb(rng.gen(), rng.gen(), rng.gen())))
 ///             .with_radii((0..10).map(|_| rng.gen::<f32>())),
 ///     )?;
 ///
 ///     // Log an extra rect to set the view bounds
-///     rec.log("bounds", &Boxes2D::from_half_sizes([(4., 3.)]))?;
+///     rec.log("bounds", &rerun::Boxes2D::from_half_sizes([(4., 3.)]))?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png">
-///   <img src="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png">
+///   <img src="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Points2D {
     /// All the 2D positions at which the point cloud shows points.
@@ -99,6 +68,7 @@ pub struct Points2D {
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 

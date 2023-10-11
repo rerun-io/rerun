@@ -12,7 +12,7 @@ impl TranslationRotationScale3D {
 
     /// From a translation.
     #[inline]
-    pub fn translation<T: Into<Vec3D>>(translation: T) -> Self {
+    pub fn from_translation(translation: impl Into<Vec3D>) -> Self {
         Self {
             translation: Some(translation.into()),
             rotation: None,
@@ -23,7 +23,10 @@ impl TranslationRotationScale3D {
 
     /// From a translation applied after a rotation, known as a rigid transformation.
     #[inline]
-    pub fn rigid<T: Into<Vec3D>, R: Into<Rotation3D>>(translation: T, rotation: R) -> Self {
+    pub fn from_translation_rotation(
+        translation: impl Into<Vec3D>,
+        rotation: impl Into<Rotation3D>,
+    ) -> Self {
         Self {
             translation: Some(translation.into()),
             rotation: Some(rotation.into()),
@@ -32,12 +35,23 @@ impl TranslationRotationScale3D {
         }
     }
 
+    /// From a rotation & scale
+    #[inline]
+    pub fn from_rotation_scale(rotation: impl Into<Rotation3D>, scale: impl Into<Scale3D>) -> Self {
+        Self {
+            translation: None,
+            rotation: Some(rotation.into()),
+            scale: Some(scale.into()),
+            from_parent: false,
+        }
+    }
+
     /// From a translation, applied after a rotation & scale, known as an affine transformation.
     #[inline]
-    pub fn affine<T: Into<Vec3D>, R: Into<Rotation3D>, S: Into<Scale3D>>(
-        translation: T,
-        rotation: R,
-        scale: S,
+    pub fn from_translation_rotation_scale(
+        translation: impl Into<Vec3D>,
+        rotation: impl Into<Rotation3D>,
+        scale: impl Into<Scale3D>,
     ) -> Self {
         Self {
             translation: Some(translation.into()),
@@ -47,6 +61,8 @@ impl TranslationRotationScale3D {
         }
     }
 
+    /// Indicate that this transform is from parent to child.
+    /// This is the oppositve of the default, which is from child to parent.
     #[inline]
     #[allow(clippy::wrong_self_convention)]
     pub fn from_parent(mut self) -> Self {

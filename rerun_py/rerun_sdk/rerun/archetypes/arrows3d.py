@@ -17,10 +17,11 @@ __all__ = ["Arrows3D"]
 @define(str=False, repr=False, init=False)
 class Arrows3D(Arrows3DExt, Archetype):
     """
-    A batch of 3D arrows with optional colors, radii, labels, etc.
+    **Archetype**: 3D arrows with optional colors, radii, labels, etc.
 
     Example
     -------
+    ### Simple batch of 3D Arrows:
     ```python
     from math import tau
 
@@ -37,13 +38,15 @@ class Arrows3D(Arrows3DExt, Archetype):
 
     rr.log("arrows", rr.Arrows3D(origins=origins, vectors=vectors, colors=colors))
     ```
+    <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1200w.png">
-      <img src="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/full.png">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1200w.png">
+      <img src="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/full.png" width="640">
     </picture>
+    </center>
     """
 
     # __init__ can be found in arrows3d_ext.py
@@ -71,74 +74,70 @@ class Arrows3D(Arrows3DExt, Archetype):
         metadata={"component": "required"},
         converter=components.Vector3DBatch._required,  # type: ignore[misc]
     )
-    """
-    All the vectors for each arrow in the batch.
-    """
+    # All the vectors for each arrow in the batch.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
-    origins: components.Origin3DBatch | None = field(
+    origins: components.Position3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.Origin3DBatch._optional,  # type: ignore[misc]
+        converter=components.Position3DBatch._optional,  # type: ignore[misc]
     )
-    """
-    All the origin points for each arrow in the batch.
-
-    If no origins are set, (0, 0, 0) is used as the origin for each arrow.
-    """
+    # All the origin (base) positions for each arrow in the batch.
+    #
+    # If no origins are set, (0, 0, 0) is used as the origin for each arrow.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional radii for the arrows.
-
-    The shaft is rendered as a line with `radius = 0.5 * radius`.
-    The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
-    """
+    # Optional radii for the arrows.
+    #
+    # The shaft is rendered as a line with `radius = 0.5 * radius`.
+    # The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional colors for the points.
-    """
+    # Optional colors for the points.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     labels: components.TextBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional text labels for the arrows.
-    """
+    # Optional text labels for the arrows.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     class_ids: components.ClassIdBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ClassIdBatch._optional,  # type: ignore[misc]
     )
-    """
-    Optional class Ids for the points.
-
-    The class ID provides colors and labels if not specified explicitly.
-    """
+    # Optional class Ids for the points.
+    #
+    # The class ID provides colors and labels if not specified explicitly.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     instance_keys: components.InstanceKeyBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.InstanceKeyBatch._optional,  # type: ignore[misc]
     )
-    """
-    Unique identifiers for each individual point in the batch.
-    """
+    # Unique identifiers for each individual point in the batch.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(Arrows3DExt, "deferred_patch_class"):
-    Arrows3DExt.deferred_patch_class(Arrows3D)

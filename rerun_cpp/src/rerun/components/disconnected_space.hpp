@@ -18,12 +18,14 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// Specifies that the entity path at which this is logged is disconnected from its parent.
+        /// **Component**: Specifies that the entity path at which this is logged is disconnected
+        /// from its parent.
         ///
         /// This is useful for specifying that a subgraph is independent of the rest of the scene.
         ///
         /// If a transform or pinhole is logged on the same path, this component will be ignored.
         struct DisconnectedSpace {
+            /// Whether the entity path at which this is logged is disconnected from its parent.
             bool is_disconnected;
 
             /// Name of the component, used for serialization.

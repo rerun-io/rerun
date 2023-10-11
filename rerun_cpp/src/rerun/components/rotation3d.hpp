@@ -19,7 +19,8 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A 3D rotation, represented either by a quaternion or a rotation around axis.
+        /// **Component**: A 3D rotation, represented either by a quaternion or a rotation around
+        /// axis.
         struct Rotation3D {
             /// Representation of the rotation.
             rerun::datatypes::Rotation3D repr;

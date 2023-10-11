@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import collections
-from io import BytesIO
 from math import prod
 from typing import TYPE_CHECKING, Any, Final, Protocol, Sequence, Union
 
 import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
-from PIL import Image
 
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 
 from .._unions import build_dense_union
 
@@ -42,6 +40,8 @@ def _to_numpy(tensor: TensorLike) -> npt.NDArray[Any]:
 
 
 class TensorDataExt:
+    """Extension for [TensorData][rerun.datatypes.TensorData]."""
+
     # TODO(jleibs): Should also provide custom converters for shape / buffer
     # assignment that prevent the user from putting the TensorData into an
     # inconsistent state.
@@ -53,7 +53,6 @@ class TensorDataExt:
         buffer: TensorBufferLike | None = None,
         array: TensorLike | None = None,
         dim_names: Sequence[str | None] | None = None,
-        jpeg_quality: int | None = None,
     ) -> None:
         """
         Construct a `TensorData` object.
@@ -78,14 +77,6 @@ class TensorDataExt:
             A numpy array (or The array of the tensor. If None, the array will be inferred from the buffer.
         dim_names: Sequence[str] | None
             The names of the tensor dimensions when generating the shape from an array.
-        jpeg_quality:
-            If set, encode the image as a JPEG to save storage space.
-            Higher quality = larger file size.
-            A quality of 95 still saves a lot of space, but is visually very similar.
-            JPEG compression works best for photographs.
-            Only RGB images are supported.
-            Note that compressing to JPEG costs a bit of CPU time, both when logging
-            and later when viewing them.
         """
         if array is None and buffer is None:
             raise ValueError("Must provide one of 'array' or 'buffer'")
@@ -112,7 +103,7 @@ class TensorDataExt:
             if resolved_shape:
                 shape_tuple = tuple(d.size for d in resolved_shape)
                 if shape_tuple != array.shape:
-                    _send_warning(
+                    _send_warning_or_raise(
                         (
                             f"Provided array ({array.shape}) does not match shape argument ({shape_tuple}). "
                             + "Ignoring shape argument."
@@ -124,7 +115,7 @@ class TensorDataExt:
             if resolved_shape is None:
                 if dim_names:
                     if len(array.shape) != len(dim_names):
-                        _send_warning(
+                        _send_warning_or_raise(
                             (
                                 f"len(array.shape) = {len(array.shape)} != "
                                 + f"len(dim_names) = {len(dim_names)}. Dropping tensor dimension names."
@@ -140,25 +131,6 @@ class TensorDataExt:
         else:
             # This shouldn't be possible but typing can't figure it out
             raise ValueError("No shape provided.")
-
-        if jpeg_quality is not None:
-            if array is None:
-                _send_warning("Can only compress JPEG if an array is provided", 2)
-            else:
-                if array.dtype not in ["uint8", "sint32", "float32"]:
-                    # Convert to a format supported by Image.fromarray
-                    array = array.astype("float32")
-
-                pil_image = Image.fromarray(array)
-                output = BytesIO()
-                pil_image.save(output, format="JPEG", quality=jpeg_quality)
-                jpeg_bytes = output.getvalue()
-                output.close()
-                jpeg_array = np.frombuffer(jpeg_bytes, dtype=np.uint8)
-                # self.buffer = TensorBuffer(inner=jpeg_array, kind="jpeg") # TODO(emilk): something like this should work?
-                self.buffer = TensorBuffer(jpeg_array)
-                self.buffer.kind = "jpeg"
-                return
 
         if buffer is not None:
             self.buffer = _tensor_data__buffer__special_field_converter_override(buffer)

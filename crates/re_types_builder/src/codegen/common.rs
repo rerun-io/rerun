@@ -6,7 +6,7 @@ use anyhow::Context as _;
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 
-use crate::Docs;
+use crate::{Docs, Reporter};
 
 fn is_blank<T: AsRef<str>>(line: T) -> bool {
     line.as_ref().chars().all(char::is_whitespace)
@@ -53,6 +53,9 @@ pub struct ExampleInfo<'a> {
 
     /// A screenshot of the example.
     pub image: Option<ImageUrl<'a>>,
+
+    /// If true, use this example only for the manual, not for documentation embedded in the emitted code.
+    pub exclude_from_api_docs: bool,
 }
 
 impl<'a> ExampleInfo<'a> {
@@ -86,10 +89,18 @@ impl<'a> ExampleInfo<'a> {
                 .split_once(' ')
                 .map_or((tag_content, None), |(a, b)| (a, Some(b)));
 
-            let (mut title, mut image) = (None, None);
+            let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
 
             if let Some(args) = args {
                 let args = args.trim();
+
+                exclude_from_api_docs = args.contains("!api");
+                let args = if let Some(args_without_api_prefix) = args.strip_prefix("!api") {
+                    args_without_api_prefix.trim()
+                } else {
+                    args
+                };
+
                 if args.starts_with('"') {
                     // \example example_name "Example Title"
                     title = args.strip_prefix('"').and_then(|v| v.strip_suffix('"'));
@@ -100,7 +111,12 @@ impl<'a> ExampleInfo<'a> {
                 }
             }
 
-            ExampleInfo { name, title, image }
+            ExampleInfo {
+                name,
+                title,
+                image,
+                exclude_from_api_docs,
+            }
         }
 
         mono(tag_content.as_ref())
@@ -173,6 +189,9 @@ impl RerunImageUrl<'_> {
     pub fn image_stack(&self) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
 
+        // Don't let the images take up too much space on the page.
+        let desired_with = Some(640);
+
         let RerunImageUrl {
             name,
             hash,
@@ -180,7 +199,7 @@ impl RerunImageUrl<'_> {
             extension,
         } = *self;
 
-        let mut stack = vec!["<picture>".into()];
+        let mut stack = vec!["<center>".into(), "<picture>".into()];
         if let Some(max_width) = max_width {
             for width in WIDTHS {
                 if width > max_width {
@@ -191,10 +210,18 @@ impl RerunImageUrl<'_> {
                 ));
             }
         }
-        stack.push(format!(
-            r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}">"#
-        ));
+
+        if let Some(desired_with) = desired_with {
+            stack.push(format!(
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" width="{desired_with}">"#
+            ));
+        } else {
+            stack.push(format!(
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}">"#
+            ));
+        }
         stack.push("</picture>".into());
+        stack.push("</center>".into());
 
         stack
     }
@@ -205,7 +232,7 @@ pub struct Example<'a> {
     pub lines: Vec<String>,
 }
 
-pub fn collect_examples<'a>(
+pub fn collect_examples_for_api_docs<'a>(
     docs: &'a Docs,
     extension: &str,
     required: bool,
@@ -215,7 +242,16 @@ pub fn collect_examples<'a>(
     if let Some(examples) = docs.tagged_docs.get("example") {
         let base_path = crate::rerun_workspace_path().join("docs/code-examples");
 
-        for base @ ExampleInfo { name, .. } in examples.iter().map(ExampleInfo::parse) {
+        for base @ ExampleInfo {
+            name,
+            exclude_from_api_docs,
+            ..
+        } in examples.iter().map(ExampleInfo::parse)
+        {
+            if exclude_from_api_docs {
+                continue;
+            }
+
             let path = base_path.join(format!("{name}.{extension}"));
             let content = match std::fs::read_to_string(&path) {
                 Ok(content) => content,
@@ -260,7 +296,11 @@ impl StringExt for String {
 }
 
 /// Remove all files in the given folder that are not in the given set.
-pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeSet<Utf8PathBuf>) {
+pub fn remove_old_files_from_folder(
+    reporter: &Reporter,
+    folder_path: Utf8PathBuf,
+    filepaths: &BTreeSet<Utf8PathBuf>,
+) {
     re_tracing::profile_function!();
     re_log::debug!("Checking for old files in {folder_path}");
     for entry in std::fs::read_dir(folder_path).unwrap().flatten() {
@@ -271,28 +311,37 @@ pub fn remove_old_files_from_folder(folder_path: Utf8PathBuf, filepaths: &BTreeS
 
         if let Some(stem) = filepath.as_str().strip_suffix("_ext.rs") {
             let generated_path = Utf8PathBuf::try_from(format!("{stem}.rs")).unwrap();
-            assert!(
-                generated_path.exists(),
-                "Found orphaned {filepath} with no matching {generated_path}"
-            );
+            if !generated_path.exists() {
+                reporter.error(
+                    filepath.as_str(),
+                    "",
+                    format!("Found orphaned {filepath} with no matching {generated_path}"),
+                );
+            }
             continue;
         }
 
         if let Some(stem) = filepath.as_str().strip_suffix("_ext.py") {
             let generated_path = Utf8PathBuf::try_from(format!("{stem}.py")).unwrap();
-            assert!(
-                generated_path.exists(),
-                "Found orphaned {filepath} with no matching {generated_path}"
-            );
+            if !generated_path.exists() {
+                reporter.error(
+                    filepath.as_str(),
+                    "",
+                    format!("Found orphaned {filepath} with no matching {generated_path}"),
+                );
+            }
             continue;
         }
 
         if let Some(stem) = filepath.as_str().strip_suffix("_ext.cpp") {
             let generated_hpp_path = Utf8PathBuf::try_from(format!("{stem}.hpp")).unwrap();
-            assert!(
-                generated_hpp_path.exists(),
-                "Found orphaned {filepath} with no matching {generated_hpp_path}"
-            );
+            if !generated_hpp_path.exists() {
+                reporter.error(
+                    filepath.as_str(),
+                    "",
+                    format!("Found orphaned {filepath} with no matching {generated_hpp_path}"),
+                );
+            }
             continue;
         }
 

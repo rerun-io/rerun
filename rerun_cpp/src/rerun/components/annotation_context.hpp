@@ -20,7 +20,8 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// The `AnnotationContext` provides additional information on how to display entities.
+        /// **Component**: The `AnnotationContext` provides additional information on how to display
+        /// entities.
         ///
         /// Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
         /// the labels and colors will be looked up in the appropriate
@@ -28,6 +29,7 @@ namespace rerun {
         /// path-hierarchy when searching up through the ancestors of a given entity
         /// path.
         struct AnnotationContext {
+            /// List of class descriptions, mapping class indices to class names, colors etc.
             std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map;
 
             /// Name of the component, used for serialization.

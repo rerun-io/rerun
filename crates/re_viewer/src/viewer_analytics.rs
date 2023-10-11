@@ -200,8 +200,8 @@ impl ViewerAnalytics {
                     rustc_version,
                     llvm_version,
                 } => {
-                    self.register("rust_version", rustc_version.to_string()); // Rust/LLVM version of the the code compiling the Rust SDK
-                    self.register("llvm_version", llvm_version.to_string()); // Rust/LLVM version of the the code compiling the Rust SDK
+                    self.register("rust_version", rustc_version.to_string()); // Rust/LLVM version of the code compiling the Rust SDK
+                    self.register("llvm_version", llvm_version.to_string()); // Rust/LLVM version of the code compiling the Rust SDK
                     self.deregister("python_version"); // can't be both!
                 }
                 StoreSource::PythonSdk(version) => {

@@ -128,7 +128,7 @@ impl DataStore {
             id = self.insert_id,
             cluster_key = %self.cluster_key,
             timelines = ?timepoint.iter()
-                .map(|(timeline, time)| (timeline.name(), timeline.typ().format(*time)))
+                .map(|(timeline, time)| (timeline.name(), timeline.typ().format_utc(*time)))
                 .collect::<Vec<_>>(),
             entity = %ent_path,
             components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
@@ -216,10 +216,10 @@ impl DataStore {
         } else {
             // Cache miss! Craft a new instance keys from the ground up.
 
-            // TODO(#1712): That's exactly how one should create a cell of instance keys...
+            // TODO(#1712): That's exactly how one should create a cell of instance keys…
             // but it turns out that running `TryIntoArrow` on a primitive type is orders of
             // magnitude slower than manually creating the equivalent primitive array for some
-            // reason...
+            // reason…
             // let cell = DataCell::from_component::<InstanceKey>(0..len as u64);
 
             // ...so we create it manually instead.
@@ -303,11 +303,11 @@ impl IndexedTable {
                 trace!(
                     kind = "insert",
                     timeline = %timeline.name(),
-                    time = timeline.typ().format(time),
+                    time = timeline.typ().format_utc(time),
                     entity = %ent_path,
                     len_limit = config.indexed_bucket_num_rows,
                     len, len_overflow,
-                    new_time_bound = timeline.typ().format(min),
+                    new_time_bound = timeline.typ().format_utc(min),
                     "splitting off indexed bucket following overflow"
                 );
 
@@ -353,11 +353,11 @@ impl IndexedTable {
                     debug!(
                         kind = "insert",
                         timeline = %timeline.name(),
-                        time = timeline.typ().format(time),
+                        time = timeline.typ().format_utc(time),
                         entity = %ent_path,
                         len_limit = config.indexed_bucket_num_rows,
                         len, len_overflow,
-                        new_time_bound = timeline.typ().format(new_time_bound.into()),
+                        new_time_bound = timeline.typ().format_utc(new_time_bound.into()),
                         "creating brand new indexed bucket following overflow"
                     );
 
@@ -388,7 +388,7 @@ impl IndexedTable {
 
                 re_log::debug_once!(
                     "Failed to split bucket on timeline {}",
-                    bucket.timeline.format_time_range(&bucket_time_range)
+                    bucket.timeline.format_time_range_utc(&bucket_time_range)
                 );
 
                 if 1 < config.indexed_bucket_num_rows
@@ -398,7 +398,7 @@ impl IndexedTable {
                         "Found over {} rows with the same timepoint {:?}={} - perhaps you forgot to update or remove the timeline?",
                         config.indexed_bucket_num_rows,
                         bucket.timeline.name(),
-                        bucket.timeline.typ().format(bucket_time_range.min)
+                        bucket.timeline.typ().format_utc(bucket_time_range.min)
                     );
                 }
             }
@@ -407,7 +407,7 @@ impl IndexedTable {
         trace!(
             kind = "insert",
             timeline = %timeline.name(),
-            time = timeline.typ().format(time),
+            time = timeline.typ().format_utc(time),
             entity = %ent_path,
             ?components,
             "inserted into indexed tables"

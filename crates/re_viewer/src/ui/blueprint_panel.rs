@@ -25,7 +25,7 @@ pub fn blueprint_panel_ui(
 
 fn reset_button_ui(
     blueprint: &mut ViewportBlueprint<'_>,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
 ) {

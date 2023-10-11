@@ -5,21 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
 from .. import components
 from .._baseclasses import Archetype
-from ..error_utils import catch_and_log_exceptions
+from .disconnected_space_ext import DisconnectedSpaceExt
 
 __all__ = ["DisconnectedSpace"]
 
 
 @define(str=False, repr=False, init=False)
-class DisconnectedSpace(Archetype):
+class DisconnectedSpace(DisconnectedSpaceExt, Archetype):
     """
-    Specifies that the entity path at which this is logged is disconnected from its parent.
+    **Archetype**: Specifies that the entity path at which this is logged is disconnected from its parent.
 
     This is useful for specifying that a subgraph is independent of the rest of the scene.
 
@@ -28,6 +26,7 @@ class DisconnectedSpace(Archetype):
 
     Example
     -------
+    ### Disconnected Space:
     ```python
     import rerun as rr
 
@@ -38,19 +37,21 @@ class DisconnectedSpace(Archetype):
     rr.log("world/room2/point", rr.Points3D([[1, 1, 1]]))
 
     # ..but this one lives in a completely separate space!
-    rr.log("world/wormhole", rr.DisconnectedSpace(True))
+    rr.log("world/wormhole", rr.DisconnectedSpace())
     rr.log("world/wormhole/point", rr.Points3D([[2, 2, 2]]))
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/1200w.png">
+      <img src="https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png" width="640">
+    </picture>
+    </center>
     """
 
-    def __init__(self: Any, disconnected_space: components.DisconnectedSpaceLike):
-        """Create a new instance of the DisconnectedSpace archetype."""
-
-        # You can define your own __init__ function as a member of DisconnectedSpaceExt in disconnected_space_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(disconnected_space=disconnected_space)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in disconnected_space_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

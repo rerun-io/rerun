@@ -6,7 +6,7 @@ import numpy as np
 import pyarrow as pa
 
 from .._validators import find_non_empty_dim_indices
-from ..error_utils import _send_warning, catch_and_log_exceptions
+from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from ..components import TensorDataBatch
@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 
 class DepthImageExt:
+    """Extension for [DepthImage][rerun.archetypes.DepthImage]."""
+
     @staticmethod
     @catch_and_log_exceptions("DepthImage converter")
     def data__field_converter_override(data: TensorDataArrayLike) -> TensorDataBatch:
@@ -34,7 +36,7 @@ class DepthImageExt:
 
         # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
         if num_non_empty_dims != 2:
-            _send_warning(f"Expected depth image, got array of shape {shape_dims}", 1, recording=None)
+            _send_warning_or_raise(f"Expected depth image, got array of shape {shape_dims}", 1, recording=None)
 
         # IF no labels are set, add them
         # TODO(jleibs): Again, needing to do this at the arrow level is awful

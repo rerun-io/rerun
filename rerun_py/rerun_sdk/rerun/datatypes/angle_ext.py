@@ -9,6 +9,8 @@ if TYPE_CHECKING:
 
 
 class AngleExt:
+    """Extension for [Angle][rerun.datatypes.Angle]."""
+
     def __init__(self: Any, rad: float | None = None, deg: float | None = None) -> None:
         """
         Create a new instance of the Angle datatype.

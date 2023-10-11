@@ -1,6 +1,6 @@
 //! Tests running assertions on the internal state of the datastore.
 //!
-//! They're awful, but sometimes you just have to...
+//! They're awful, but sometimes you just have to…
 
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 
@@ -18,7 +18,7 @@ use re_types::{components::InstanceKey, datagen::build_some_instances, Loggable 
 // integration query benchmarks.
 //
 // In the current state of things, though, it is much easier to test for it that way… so we
-// make an exception, for now...
+// make an exception, for now…
 #[test]
 fn pathological_bucket_topology() {
     init_logs();

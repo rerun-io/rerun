@@ -6,11 +6,11 @@ description: How to log data that isn't valid for the whole recording
 In order to create coherent views of streaming data, the Rerun Viewer shows the latest values for each visible entity at the current timepoint. But some data may not be valid for the entire recording even if there are no updated values. How do you tell Rerun that something you've logged should no longer be shown?
 
 ## Log entities as cleared
-The most straight forward option is to explicitly log that an entity has been cleared. Rerun allows you to do this by logging a special `ClearEntity` to any path. The timepoint at which the `ClearEntity` is logged is the time point after which that entity will no longer be visible in your views.
+The most straight forward option is to explicitly log that an entity has been cleared. Rerun allows you to do this by logging a special `Clear` to any path. The timepoint at which the `Clear` is logged is the time point after which that entity will no longer be visible in your views.
 
 For example, if you have an object tracking application, your code might look something like this:
 ```python
-...
+…
 for frame in sensors.read():
     # Associate the following logs with `frame == frame.id`
     rr.set_time_sequence("frame", frame.id)
@@ -19,7 +19,7 @@ for frame in sensors.read():
     if tracker.is_lost:
         # Clear everything on or below `tracked/{tracker.id}`
         # and that happened on or before `frame == frame.id`
-        rr.log(f"tracked/{tracker.id}", rr.ClearEntity(recursive=True))
+        rr.log(f"tracked/{tracker.id}", rr.Clear(recursive=True))
     else:
         # Log data to the main entity and a child entity
         rr.log(f"tracked/{tracker.id}", rr.Rect2D(tracker.bounds))
@@ -30,7 +30,7 @@ for frame in sensors.read():
 In some cases, the best approach may be to rethink how you log data to better express what is actually happening. Take the following example where update frequencies don't match:
 
 ```python
-...
+…
 for frame in sensors.read():
     # Associate the following logs with `frame = frame.id`
     rr.set_time_sequence("frame", frame.id)
@@ -44,12 +44,12 @@ for frame in sensors.read():
         # same frequency as the input data and thus look strange
         rr.log("input/detections", rr.Rect2D(detection.bounds))
 ```
-You could fix this example by logging `rr.ClearEntity`, but in this case it makes more sense to change what you log to better express what is happening. Re-logging the image to another namespace on only the frames where the detection runs makes it explicit which frame was used as the input to the detector. This will create a second view in the viewer that always allows you to see the frame that was used for the current detection input.
+You could fix this example by logging `rr.Clear`, but in this case it makes more sense to change what you log to better express what is happening. Re-logging the image to another namespace on only the frames where the detection runs makes it explicit which frame was used as the input to the detector. This will create a second view in the viewer that always allows you to see the frame that was used for the current detection input.
 
 Here is an example fix:
 ```python
 class Detector:
-    ...
+    …
     def detect(self, frame):
         downscaled = self.downscale(frame.image)
         # Log the downscaled image
@@ -60,7 +60,7 @@ class Detector:
         # Image and detections will update at the same frequency
         rr.log("downscaled/detections", rr.Rect2D(detection.bounds))
         return detection
-...
+…
 for frame in sensors.read():
     # Associate the following logs with `frame = frame.id`
     rr.set_time_sequence("frame", frame.id)
@@ -88,5 +88,5 @@ rr.log("short_lived", rr.Tensor(one_second_tensor))
 rr.set_time_seconds("time", start_time + 1.0)
 # Set the time back so other data isn't accidentally logged in the future.
 rr.set_time_seconds("time", start_time)
-rr.log("short_lived", rr.ClearEntity())
+rr.log("short_lived", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
 ```

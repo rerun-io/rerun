@@ -210,7 +210,7 @@ impl DataStore {
         let mut deleted = Deleted::default();
 
         // The algorithm is straightforward:
-        // 1. Find the the oldest `RowId` that is not protected
+        // 1. Find the oldest `RowId` that is not protected
         // 2. Find all tables that potentially hold data associated with that `RowId`
         // 3. Drop the associated row and account for the space we got back
 

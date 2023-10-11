@@ -81,7 +81,7 @@ impl<'a> ViewportBlueprint<'a> {
     }
 
     /// Reset the blueprint to a default state using some heuristics.
-    pub fn reset(&mut self, ctx: &mut ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
+    pub fn reset(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
         // TODO(jleibs): When using blueprint API, "reset" should go back to the initially transmitted
         // blueprint, not the default blueprint.
         re_tracing::profile_function!();

@@ -3,7 +3,7 @@
 
 #include "material.hpp"
 
-#include "color.hpp"
+#include "rgba32.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -12,7 +12,7 @@ namespace rerun {
     namespace datatypes {
         const std::shared_ptr<arrow::DataType> &Material::arrow_datatype() {
             static const auto datatype = arrow::struct_({
-                arrow::field("albedo_factor", rerun::datatypes::Color::arrow_datatype(), true),
+                arrow::field("albedo_factor", rerun::datatypes::Rgba32::arrow_datatype(), true),
             });
             return datatype;
         }
@@ -28,7 +28,7 @@ namespace rerun {
                 arrow_datatype(),
                 memory_pool,
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    rerun::datatypes::Color::new_arrow_array_builder(memory_pool).value,
+                    rerun::datatypes::Rgba32::new_arrow_array_builder(memory_pool).value,
                 })
             ));
         }
@@ -52,7 +52,7 @@ namespace rerun {
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     const auto &element = elements[elem_idx];
                     if (element.albedo_factor.has_value()) {
-                        RR_RETURN_NOT_OK(rerun::datatypes::Color::fill_arrow_array_builder(
+                        RR_RETURN_NOT_OK(rerun::datatypes::Rgba32::fill_arrow_array_builder(
                             field_builder,
                             &element.albedo_factor.value(),
                             1

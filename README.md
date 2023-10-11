@@ -34,7 +34,13 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 ```
 
 <p align="center">
-  <img width="800" alt="Rerun Viewer" src="https://github.com/rerun-io/rerun/assets/2624717/c4900538-fc3a-43b8-841a-8d226e7b5a2e">
+  <picture>
+    <img src="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/full.png" alt="">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/opf_screenshot/bee51040cba93c0bae62ef6c57fa703704012a41/1200w.png">
+  </picture>
 </p>
 
 ## Getting started
@@ -52,7 +58,7 @@ You should now be able to run `rerun --help` in any terminal.
 
 ### Documentation
 - 📚 [High-level docs](http://rerun.io/docs)
-- ⚙️ [Examples](examples)
+- ⚙️ [Examples](http://rerun.io/examples)
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python)
 - 🦀 [Rust API docs](https://docs.rs/rerun/)
 - ⁉️ [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)

@@ -19,10 +19,11 @@ __all__ = ["TextLog"]
 @define(str=False, repr=False, init=False)
 class TextLog(Archetype):
     """
-    A log entry in a text log, comprised of a text body and its log level.
+    **Archetype**: A log entry in a text log, comprised of a text body and its log level.
 
     Example
     -------
+    ### `text_log_integration`:
     ```python
     import logging
 
@@ -38,13 +39,15 @@ class TextLog(Archetype):
     logging.getLogger().setLevel(-1)
     logging.info("This INFO log got added through the standard logging interface")
     ```
+    <center>
     <picture>
       <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/480w.png">
       <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/768w.png">
       <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1024w.png">
       <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png">
-      <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png">
+      <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" width="640">
     </picture>
+    </center>
     """
 
     def __init__(
@@ -52,9 +55,22 @@ class TextLog(Archetype):
         text: datatypes.Utf8Like,
         *,
         level: datatypes.Utf8Like | None = None,
-        color: datatypes.ColorLike | None = None,
+        color: datatypes.Rgba32Like | None = None,
     ):
-        """Create a new instance of the TextLog archetype."""
+        """
+        Create a new instance of the TextLog archetype.
+
+        Parameters
+        ----------
+        text:
+             The body of the message.
+        level:
+             The verbosity level of the message.
+
+             This can be used to filter the log messages in the Rerun Viewer.
+        color:
+             Optional color to use for the log line in the Rerun Viewer.
+        """
 
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
@@ -81,15 +97,29 @@ class TextLog(Archetype):
         metadata={"component": "required"},
         converter=components.TextBatch._required,  # type: ignore[misc]
     )
+    # The body of the message.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     level: components.TextLogLevelBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.TextLogLevelBatch._optional,  # type: ignore[misc]
     )
+    # The verbosity level of the message.
+    #
+    # This can be used to filter the log messages in the Rerun Viewer.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     color: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
+    # Optional color to use for the log line in the Rerun Viewer.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__

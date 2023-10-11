@@ -127,7 +127,7 @@ impl AppState {
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
             re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            viewport.blueprint.reset(&mut ctx, &spaces_info);
+            viewport.blueprint.reset(&ctx, &spaces_info);
         }
 
         viewport.on_frame_start(&mut ctx, &spaces_info);

@@ -53,7 +53,7 @@ namespace rerun {
             };
         } // namespace detail
 
-        /// 3D scaling factor, part of a transform representation.
+        /// **Datatype**: 3D scaling factor, part of a transform representation.
         struct Scale3D {
             Scale3D() : _tag(detail::Scale3DTag::NONE) {}
 

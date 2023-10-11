@@ -13,9 +13,9 @@ __all__ = ["Resolution", "ResolutionBatch", "ResolutionType"]
 
 class Resolution(datatypes.Vec2D):
     """
-    Pixel resolution width & height, e.g. of a camera sensor.
+    **Component**: Pixel resolution width & height, e.g. of a camera sensor.
 
-    Typically in integer units, but for some usecases floating point may be used.
+    Typically in integer units, but for some use cases floating point may be used.
     """
 
     # You can define your own __init__ function as a member of ResolutionExt in resolution_ext.py
@@ -30,7 +30,3 @@ class ResolutionType(datatypes.Vec2DType):
 
 class ResolutionBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
     _ARROW_TYPE = ResolutionType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ResolutionType())

@@ -39,4 +39,4 @@ Some examples will download a small datasets before they run. They will do so th
 ## Contributions welcome
 Feel free to open a PR to add a new example!
 
-See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for details on how to contribute.
+See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for details on how to contribute.

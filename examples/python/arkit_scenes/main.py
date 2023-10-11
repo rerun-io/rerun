@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
-from pathlib import Path, PosixPath
+from pathlib import Path
 from typing import Any, Tuple
 
 import cv2
@@ -30,6 +30,59 @@ ORIENTATION = {
 }
 assert len(ORIENTATION) == len(AVAILABLE_RECORDINGS)
 assert set(ORIENTATION.keys()) == set(AVAILABLE_RECORDINGS)
+
+
+DESCRIPTION = """
+# ARKit Scenes
+This example visualizes the [ARKitScenes dataset](https://github.com/apple/ARKitScenes/) using Rerun. The dataset
+contains color images, depth images, the reconstructed mesh, and labeled bounding boxes around furniture.
+
+## How it was made
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/arkit_scenes/main.py).
+
+### Moving RGB-D camera
+To log a moving RGB-D camera we need to log four objects: the pinhole camera (intrinsics), the camera pose
+(extrinsics), the color image and the depth image.
+
+The [rr.Pinhole archetype](https://www.rerun.io/docs/reference/types/archetypes/pinhole) is logged to
+[world/camera_lowres](recording://world/camera_lowres) to define the intrinsics of the camera. This
+determines how to go from the 3D camera frame to the 2D image plane.  The extrinsics are logged as an
+[rr.Transform3D archetype](https://www.rerun.io/docs/reference/types/archetypes/transform3d) to the
+[same entity world/camera_lowres](recording://world/camera_lowres). Note that we could also log the extrinsics to
+`world/camera` and the intrinsics to `world/camera/image` instead. Here, we log both on the same entity path to keep
+the paths shorter.
+
+The RGB image is logged as an
+[rr.Image archetype](https://www.rerun.io/docs/reference/types/archetypes/image) to the
+[world/camera_lowres/rgb entity](recording://world/camera_lowres/rgb) as a child of the intrinsics + extrinsics
+entity described in the previous paragraph. Similarly the depth image is logged as an
+[rr.DepthImage archetype](https://www.rerun.io/docs/reference/types/archetypes/depth_image) to
+[world/camera_lowres/depth](recording://world/camera_lowres/depth).
+
+### Ground-truth mesh
+The mesh is logged as an [rr.Mesh3D archetype](https://www.rerun.io/docs/reference/types/archetypes/mesh3d).
+In this case the mesh is composed of mesh vertices, indices (i.e., which vertices belong to the same face), and vertex
+colors. Given a `trimesh.Trimesh` the following call is used to log it to Rerun
+```python
+rr.log(
+    "world/mesh",
+    rr.Mesh3D(
+        vertex_positions=mesh.vertices,
+        vertex_colors=mesh.visual.vertex_colors,
+        indices=mesh.faces,
+    ),
+    timeless=True,
+)
+```
+Here, the mesh is logged to the [world/mesh entity](recording://world/mesh) and is marked as timeless, since it does not
+change in the context of this visualization.
+
+### 3D bounding boxes
+The bounding boxes around the furniture is visualized by logging the
+[rr.Boxes3D archetype](https://www.rerun.io/docs/reference/types/archetypes/boxes3d). In this example, each
+bounding box is logged as a separate entity to the common [world/annotations](recording://world/annotations) parent.
+""".strip()
 
 
 def load_json(js_path: Path) -> dict[str, Any]:
@@ -70,13 +123,15 @@ def log_annotated_bboxes(annotation: dict[str, Any]) -> tuple[npt.NDArray[np.flo
 
         rot = R.from_matrix(rotation).inv()
 
-        rr.log_obb(
+        rr.log(
             f"world/annotations/box-{uid}-{label}",
-            half_size=half_size,
-            position=centroid,
-            rotation_q=rot.as_quat(),
-            label=label,
-            color=colors[i],
+            rr.Boxes3D(
+                half_sizes=half_size,
+                centers=centroid,
+                rotations=rr.Quaternion(xyzw=rot.as_quat()),
+                labels=label,
+                colors=colors[i],
+            ),
             timeless=True,
         )
 
@@ -137,32 +192,29 @@ def log_line_segments(entity_path: str, bboxes_2d_filtered: npt.NDArray[np.float
     # log centroid and add label so that object label is visible in the 2d view
     if valid_points.size > 0:
         centroid = valid_points.mean(axis=0)
-        rr.log_point(f"{entity_path}/centroid", centroid, color=color, label=label)
+        rr.log(f"{entity_path}/centroid", rr.Points2D(centroid, colors=color, labels=label))
     else:
         pass
 
-    # fmt: off
-    segments = np.array([
+    segments = [
         # bottom of bbox
-        bboxes_2d_filtered[0], bboxes_2d_filtered[1],
-        bboxes_2d_filtered[1], bboxes_2d_filtered[2],
-        bboxes_2d_filtered[2], bboxes_2d_filtered[3],
-        bboxes_2d_filtered[3], bboxes_2d_filtered[0],
-
+        [bboxes_2d_filtered[0], bboxes_2d_filtered[1]],
+        [bboxes_2d_filtered[1], bboxes_2d_filtered[2]],
+        [bboxes_2d_filtered[2], bboxes_2d_filtered[3]],
+        [bboxes_2d_filtered[3], bboxes_2d_filtered[0]],
         # top of bbox
-        bboxes_2d_filtered[4], bboxes_2d_filtered[5],
-        bboxes_2d_filtered[5], bboxes_2d_filtered[6],
-        bboxes_2d_filtered[6], bboxes_2d_filtered[7],
-        bboxes_2d_filtered[7], bboxes_2d_filtered[4],
-
+        [bboxes_2d_filtered[4], bboxes_2d_filtered[5]],
+        [bboxes_2d_filtered[5], bboxes_2d_filtered[6]],
+        [bboxes_2d_filtered[6], bboxes_2d_filtered[7]],
+        [bboxes_2d_filtered[7], bboxes_2d_filtered[4]],
         # sides of bbox
-        bboxes_2d_filtered[0], bboxes_2d_filtered[4],
-        bboxes_2d_filtered[1], bboxes_2d_filtered[5],
-        bboxes_2d_filtered[2], bboxes_2d_filtered[6],
-        bboxes_2d_filtered[3], bboxes_2d_filtered[7]
-                         ], dtype=np.float32)
+        [bboxes_2d_filtered[0], bboxes_2d_filtered[4]],
+        [bboxes_2d_filtered[1], bboxes_2d_filtered[5]],
+        [bboxes_2d_filtered[2], bboxes_2d_filtered[6]],
+        [bboxes_2d_filtered[3], bboxes_2d_filtered[7]],
+    ]
 
-    rr.log_line_segments(entity_path, segments, color=color)
+    rr.log(entity_path, rr.LineStrips2D(segments, colors=color))
 
 
 def project_3d_bboxes_to_2d_keypoints(
@@ -193,7 +245,7 @@ def project_3d_bboxes_to_2d_keypoints(
     translation, rotation_q = camera_from_world.translation, camera_from_world.rotation
     # We know we stored the rotation as a quaternion, so extract it again.
     # TODO(#3467): This shouldn't directly access rotation.inner
-    rotation = R.from_quat(np.array(rotation_q.inner))  # type: ignore[union-attr]
+    rotation = R.from_quat(rotation_q.inner)  # type: ignore[union-attr]
 
     # Transform 3D keypoints from world to camera frame
     world_to_camera_rotation = rotation.as_matrix()
@@ -247,16 +299,17 @@ def log_camera(
     # TODO(#3412): once resolved this can be removed
     # Project 3D bounding boxes into 2D image
     bboxes_2d = project_3d_bboxes_to_2d_keypoints(bboxes, camera_from_world, intrinsic, img_width=w, img_height=h)
+
     # clear previous centroid labels
-    rr.log_cleared(f"{entity_id}/bbox-2d-segments", recursive=True)
+    rr.log(f"{entity_id}/bbox-2d-segments", rr.Clear(recursive=True))
+
     # Log line segments for each bounding box in the image
     for i, (label, bbox_2d) in enumerate(zip(bbox_labels, bboxes_2d)):
         log_line_segments(f"{entity_id}/bbox-2d-segments/{label}", bbox_2d.reshape(-1, 2), colors[i], label)
 
     # pathlib makes it easy to get the parent, but log methods requires a string
-    camera_path = str(PosixPath(entity_id).parent)
-    rr.log_transform3d(camera_path, camera_from_world, from_parent=True)
-    rr.log_pinhole(entity_id, width=w, height=h, child_from_parent=intrinsic)
+    rr.log(entity_id, rr.Transform3D(transform=camera_from_world))
+    rr.log(entity_id, rr.Pinhole(image_from_camera=intrinsic, resolution=[w, h]))
 
 
 def read_camera_from_world(traj_string: str) -> tuple[str, rr.TranslationRotationScale3D]:
@@ -296,7 +349,9 @@ def read_camera_from_world(traj_string: str) -> tuple[str, rr.TranslationRotatio
     translation = np.asarray([float(tokens[4]), float(tokens[5]), float(tokens[6])])
 
     # Create tuple in format log_transform3d expects
-    camera_from_world = rr.TranslationRotationScale3D(translation, rr.Quaternion(xyzw=rotation.as_quat()))
+    camera_from_world = rr.TranslationRotationScale3D(
+        translation, rr.Quaternion(xyzw=rotation.as_quat()), from_parent=True
+    )
 
     return (ts, camera_from_world)
 
@@ -324,6 +379,8 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     -------
     None
     """
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+
     video_id = recording_path.stem
     lowres_image_dir = recording_path / "lowres_wide"
     image_dir = recording_path / "wide"
@@ -351,17 +408,19 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
         timestamp = f"{round(float(timestamp), 3):.3f}"
         camera_from_world_dict[timestamp] = camera_from_world
 
-    rr.log_view_coordinates("world", up="+Z", right_handed=True, timeless=True)
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
     ply_path = recording_path / f"{recording_path.stem}_3dod_mesh.ply"
     print(f"Loading {ply_path}…")
     assert os.path.isfile(ply_path), f"Failed to find {ply_path}"
 
-    mesh_ply = trimesh.load(str(ply_path))
-    rr.log_mesh(
+    mesh = trimesh.load(str(ply_path))
+    rr.log(
         "world/mesh",
-        positions=mesh_ply.vertices,
-        indices=mesh_ply.faces,
-        vertex_colors=mesh_ply.visual.vertex_colors,
+        rr.Mesh3D(
+            vertex_positions=mesh.vertices,
+            vertex_colors=mesh.visual.vertex_colors,
+            indices=mesh.faces,
+        ),
         timeless=True,
     )
 
@@ -370,8 +429,8 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
     annotation = load_json(bbox_annotations_path)
     bboxes_3d, bbox_labels, colors_list = log_annotated_bboxes(annotation)
 
-    lowres_posed_entity_id = "world/camera_posed_lowres/image_posed_lowres"
-    highres_entity_id = "world/camera_highres/image_highres"
+    lowres_posed_entity_id = "world/camera_lowres"
+    highres_entity_id = "world/camera_highres"
 
     print("Processing frames…")
     for frame_timestamp in tqdm(lowres_frame_ids):
@@ -397,8 +456,8 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
                 colors_list,
             )
 
-            rr.log_image(f"{lowres_posed_entity_id}/rgb", rgb, jpeg_quality=95)
-            rr.log_depth_image(f"{lowres_posed_entity_id}/depth", depth, meter=1000)
+            rr.log(f"{lowres_posed_entity_id}/rgb", rr.Image(rgb).compress(jpeg_quality=95))
+            rr.log(f"{lowres_posed_entity_id}/depth", rr.DepthImage(depth, meter=1000))
 
         # log the high res camera
         if high_res_exists:
@@ -421,8 +480,9 @@ def log_arkit(recording_path: Path, include_highres: bool) -> None:
             highres_depth = cv2.imread(f"{depth_dir}/{video_id}_{frame_timestamp}.png", cv2.IMREAD_ANYDEPTH)
 
             highres_rgb = cv2.cvtColor(highres_bgr, cv2.COLOR_BGR2RGB)
-            rr.log_image(f"{highres_entity_id}/rgb", highres_rgb, jpeg_quality=75)
-            rr.log_depth_image(f"{highres_entity_id}/depth", highres_depth, meter=1000)
+
+            rr.log(f"{highres_entity_id}/rgb", rr.Image(highres_rgb).compress(jpeg_quality=75))
+            rr.log(f"{highres_entity_id}/depth", rr.DepthImage(highres_depth, meter=1000))
 
 
 def main() -> None:

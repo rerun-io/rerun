@@ -14,91 +14,24 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of line strips with positions and optional colors, radii, labels, etc.
+/// **Archetype**: 2D line strips with positions and optional colors, radii, labels, etc.
 ///
-/// ## Examples
+/// ## Example
 ///
-/// ```ignore
-/// //! Log a simple line strip.
-///
-/// use rerun::{
-///     archetypes::{Boxes2D, LineStrips2D},
-///     RecordingStreamBuilder,
-/// };
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
-///
-///     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
-///     rec.log("strip", &LineStrips2D::new([points]))?;
-///
-///     // Log an extra rect to set the view bounds
-///     rec.log(
-///         "bounds",
-///         &Boxes2D::from_centers_and_sizes([(3., 0.)], [(8., 6.)]),
-///     )?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1200w.png">
-///   <img src="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/full.png">
-/// </picture>
-///
-/// ```ignore
-/// //! Log a couple 2D line segments using 2D line strips.
-///
-/// use rerun::{
-///     archetypes::{Boxes2D, LineStrips2D},
-///     RecordingStreamBuilder,
-/// };
-///
-/// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_segments2d").memory()?;
-///
-///     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
-///     rec.log("segments", &LineStrips2D::new(points.chunks(2)))?;
-///
-///     // Log an extra rect to set the view bounds
-///     rec.log(
-///         "bounds",
-///         &Boxes2D::from_centers_and_sizes([(3.0, 0.0)], [(8.0, 6.0)]),
-///     )?;
-///
-///     rerun::native_viewer::show(storage.take())?;
-///     Ok(())
-/// }
-/// ```
-/// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1200w.png">
-///   <img src="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/full.png">
-/// </picture>
-///
+/// ### `line_strip2d_batch`:
 /// ```ignore
 /// //! Log a batch of 2d line strips.
 ///
-/// use rerun::{
-///     archetypes::{Boxes2D, LineStrips2D},
-///     RecordingStreamBuilder,
-/// };
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
 ///
 ///     let strip1 = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
 ///     #[rustfmt::skip]
 ///     let strip2 = [[0., 3.], [1., 4.], [2., 2.], [3., 4.], [4., 2.], [5., 4.], [6., 3.]];
 ///     rec.log(
 ///         "strips",
-///         &LineStrips2D::new([strip1.to_vec(), strip2.to_vec()])
+///         &rerun::LineStrips2D::new([strip1.to_vec(), strip2.to_vec()])
 ///             .with_colors([0xFF0000FF, 0x00FF00FF])
 ///             .with_radii([0.025, 0.005])
 ///             .with_labels(["one strip here", "and one strip there"]),
@@ -107,20 +40,22 @@
 ///     // Log an extra rect to set the view bounds
 ///     rec.log(
 ///         "bounds",
-///         &Boxes2D::from_centers_and_sizes([(3.0, 1.5)], [(8.0, 9.0)]),
+///         &rerun::Boxes2D::from_centers_and_sizes([(3.0, 1.5)], [(8.0, 9.0)]),
 ///     )?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/1200w.png">
-///   <img src="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png">
+///   <img src="https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct LineStrips2D {
     /// All the actual 2D line strips that make up the batch.
@@ -136,6 +71,7 @@ pub struct LineStrips2D {
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order of each line strip.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     pub draw_order: Option<crate::components::DrawOrder>,
 

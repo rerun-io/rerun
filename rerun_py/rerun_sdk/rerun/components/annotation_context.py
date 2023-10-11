@@ -26,7 +26,7 @@ __all__ = [
 @define(init=False)
 class AnnotationContext(AnnotationContextExt):
     """
-    The `AnnotationContext` provides additional information on how to display entities.
+    **Component**: The `AnnotationContext` provides additional information on how to display entities.
 
     Entities can use `ClassId`s and `KeypointId`s to provide annotations, and
     the labels and colors will be looked up in the appropriate
@@ -36,7 +36,14 @@ class AnnotationContext(AnnotationContextExt):
     """
 
     def __init__(self: Any, class_map: AnnotationContextLike):
-        """Create a new instance of the AnnotationContext component."""
+        """
+        Create a new instance of the AnnotationContext component.
+
+        Parameters
+        ----------
+        class_map:
+             List of class descriptions, mapping class indices to class names, colors etc.
+        """
 
         # You can define your own __init__ function as a member of AnnotationContextExt in annotation_context_ext.py
         self.__attrs_init__(class_map=class_map)
@@ -44,6 +51,9 @@ class AnnotationContext(AnnotationContextExt):
     class_map: list[datatypes.ClassDescriptionMapElem] = field(
         converter=AnnotationContextExt.class_map__field_converter_override,  # type: ignore[misc]
     )
+    # List of class descriptions, mapping class indices to class names, colors etc.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
@@ -149,11 +159,3 @@ class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBat
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:
         return AnnotationContextExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(AnnotationContextType())
-
-
-if hasattr(AnnotationContextExt, "deferred_patch_class"):
-    AnnotationContextExt.deferred_patch_class(AnnotationContext)

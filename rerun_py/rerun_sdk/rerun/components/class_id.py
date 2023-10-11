@@ -12,7 +12,7 @@ __all__ = ["ClassId", "ClassIdBatch", "ClassIdType"]
 
 
 class ClassId(datatypes.ClassId):
-    """A 16-bit ID representing a type of semantic class."""
+    """**Component**: A 16-bit ID representing a type of semantic class."""
 
     # You can define your own __init__ function as a member of ClassIdExt in class_id_ext.py
 
@@ -26,7 +26,3 @@ class ClassIdType(datatypes.ClassIdType):
 
 class ClassIdBatch(datatypes.ClassIdBatch, ComponentBatchMixin):
     _ARROW_TYPE = ClassIdType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ClassIdType())

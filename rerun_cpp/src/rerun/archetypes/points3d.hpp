@@ -22,25 +22,11 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A 3D point cloud with positions and optional colors, radii, labels, etc.
+        /// **Archetype**: A 3D point cloud with positions and optional colors, radii, labels, etc.
         ///
-        /// ## Examples
+        /// ## Example
         ///
-        /// ```cpp,ignore
-        /// // Log some very simple points.
-        ///
-        /// #include <rerun.hpp>
-        ///
-        /// namespace rr = rerun;
-        ///
-        /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_points3d_simple");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
-        ///
-        ///     rec.log("points", rr::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
-        /// }
-        /// ```
-        ///
+        /// ### Randomly distributed 3D points with varying color and radius
         /// ```cpp,ignore
         /// // Log some random points with color and radii.
         ///

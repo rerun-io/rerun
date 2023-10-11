@@ -218,6 +218,22 @@ impl ObjectKind {
             ObjectKind::Archetype => "archetypes",
         }
     }
+
+    pub fn singular_name(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "Datatype",
+            ObjectKind::Component => "Component",
+            ObjectKind::Archetype => "Archetype",
+        }
+    }
+
+    pub fn plural_name(&self) -> &'static str {
+        match self {
+            ObjectKind::Datatype => "Datatypes",
+            ObjectKind::Component => "Components",
+            ObjectKind::Archetype => "Archetypes",
+        }
+    }
 }
 
 /// A high-level representation of a flatbuffers object's documentation.
@@ -329,7 +345,8 @@ impl Docs {
                     cur_tag.clone(),
                     tagged_lines
                         .iter()
-                        .filter_map(|(tag, line)| (cur_tag == tag).then(|| line.clone()))
+                        .filter(|(tag, _)| cur_tag == tag)
+                        .map(|(_, line)| line.clone())
                         .collect(),
                 );
             }
@@ -826,6 +843,11 @@ impl ObjectField {
         crate::to_pascal_case(&self.name)
     }
 
+    /// Returns true if this object is part of testing and not to be used in the production SDK.
+    pub fn is_testing(&self) -> bool {
+        is_testing_fqname(&self.fqname)
+    }
+
     pub fn kind(&self) -> Option<FieldKind> {
         if self.has_attr(crate::ATTR_RERUN_COMPONENT_REQUIRED) {
             Some(FieldKind::Required)
@@ -958,7 +980,7 @@ impl Type {
             FbsBaseType::None | FbsBaseType::UType | FbsBaseType::Vector64 => {
                 unimplemented!("{typ:#?}")
             }
-            // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants...
+            // NOTE: `FbsBaseType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{typ:#?}"),
         }
     }
@@ -1104,7 +1126,7 @@ impl ElementType {
             | FbsBaseType::Array
             | FbsBaseType::Vector
             | FbsBaseType::Vector64 => unreachable!("{outer_type:#?} into {inner_type:#?}"),
-            // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants...
+            // NOTE: `FbsType` isn't actually an enum, it's just a bunch of constants…
             _ => unreachable!("{inner_type:#?}"),
         }
     }

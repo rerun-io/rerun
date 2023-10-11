@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// How we interpret the coordinate system of an entity/space.
+/// **Archetype**: How we interpret the coordinate system of an entity/space.
 ///
 /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
 ///
@@ -25,20 +25,18 @@
 ///
 /// ## Example
 ///
+/// ### View coordinates for adjusting the eye camera
 /// ```ignore
 /// //! Change the view coordinates for the scene.
-/// use rerun::{
-///     archetypes::{Arrows3D, ViewCoordinates},
-///     RecordingStreamBuilder,
-/// };
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_view_coordinates").memory()?;
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_view_coordinates").memory()?;
 ///
-///     rec.log_timeless("world", &ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
+///     rec.log_timeless("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 ///     rec.log(
 ///         "world/xyz",
-///         &Arrows3D::from_vectors(
+///         &rerun::Arrows3D::from_vectors(
 ///             [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]], //
 ///         )
 ///         .with_colors([[255, 0, 0], [0, 255, 0], [0, 0, 255]]),
@@ -48,6 +46,15 @@
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png">
+///   <img src="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct ViewCoordinates {

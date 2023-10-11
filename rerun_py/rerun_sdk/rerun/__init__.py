@@ -1,4 +1,3 @@
-"""The Rerun Python SDK, which is a wrapper around the re_sdk crate."""
 from __future__ import annotations
 
 import functools
@@ -13,6 +12,7 @@ import numpy as np
 __all__ = [
     "AnnotationContext",
     "AnnotationInfo",
+    "AnyValues",
     "Arrows3D",
     "AsComponents",
     "Asset3D",
@@ -32,9 +32,14 @@ __all__ = [
     "LineStrips2D",
     "LineStrips3D",
     "LoggingHandler",
+    "Material",
     "MediaType",
+    "MemoryRecording",
     "Mesh3D",
     "MeshFormat",
+    "MeshProperties",
+    "OutOfTreeTransform3D",
+    "OutOfTreeTransform3DBatch",
     "Pinhole",
     "Points2D",
     "Points3D",
@@ -46,6 +51,7 @@ __all__ = [
     "Scale3D",
     "SegmentationImage",
     "Tensor",
+    "TensorData",
     "TextDocument",
     "TextLog",
     "TextLogLevel",
@@ -56,6 +62,7 @@ __all__ = [
     "TranslationAndMat3x3",
     "TranslationRotationScale3D",
     "ViewCoordinates",
+    "archetypes",
     "bindings",
     "components",
     "connect",
@@ -117,6 +124,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from ._image import ImageEncoded, ImageFormat
 from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
+from .any_value import AnyValues
 from .archetypes import (
     AnnotationContext,
     Arrows3D,
@@ -143,8 +151,22 @@ from .archetypes import (
     ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import Box2DFormat
-from .components import MediaType, TextLogLevel
-from .datatypes import Quaternion, RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D
+from .components import (
+    Material,
+    MediaType,
+    MeshProperties,
+    OutOfTreeTransform3D,
+    OutOfTreeTransform3DBatch,
+    TextLogLevel,
+)
+from .datatypes import (
+    Quaternion,
+    RotationAxisAngle,
+    Scale3D,
+    TensorData,
+    TranslationAndMat3x3,
+    TranslationRotationScale3D,
+)
 from .error_utils import set_strict_mode
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
@@ -170,6 +192,7 @@ from .log_deprecated.transform import (
     log_view_coordinates,
 )
 from .logging_handler import LoggingHandler
+from .recording import MemoryRecording
 from .recording_stream import (
     RecordingStream,
     get_application_id,

@@ -26,16 +26,32 @@ __all__ = [
 
 @define(init=False)
 class TensorDimension:
-    """A single dimension within a multi-dimensional tensor."""
+    """**Datatype**: A single dimension within a multi-dimensional tensor."""
 
     def __init__(self: Any, size: int, name: str | None = None):
-        """Create a new instance of the TensorDimension datatype."""
+        """
+        Create a new instance of the TensorDimension datatype.
+
+        Parameters
+        ----------
+        size:
+             The length of this dimension.
+        name:
+             The name of this dimension, e.g. "width", "height", "channel", "batch', ….
+        """
 
         # You can define your own __init__ function as a member of TensorDimensionExt in tensor_dimension_ext.py
         self.__attrs_init__(size=size, name=name)
 
     size: int = field(converter=int)
+    # The length of this dimension.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
     name: str | None = field(default=None, converter=str_or_none)
+    # The name of this dimension, e.g. "width", "height", "channel", "batch', ….
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 TensorDimensionLike = TensorDimension
@@ -67,7 +83,3 @@ class TensorDimensionBatch(BaseBatch[TensorDimensionArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionArrayLike, data_type: pa.DataType) -> pa.Array:
         raise NotImplementedError  # You need to implement native_to_pa_array_override in tensor_dimension_ext.py
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(TensorDimensionType())

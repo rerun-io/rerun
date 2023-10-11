@@ -7,6 +7,7 @@ import numpy.typing as npt
 from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun._log import log
+from rerun.any_value import AnyValues
 from rerun.archetypes import DepthImage, Image, SegmentationImage
 from rerun.datatypes import TensorData
 from rerun.datatypes.tensor_data import TensorDataLike
@@ -83,9 +84,17 @@ def log_image(
 
     """
 
-    tensor_data = TensorData(array=image, jpeg_quality=jpeg_quality)
+    img = Image(image, draw_order=draw_order)
+    if jpeg_quality is not None:
+        img = img.compress(jpeg_quality=jpeg_quality)  # type: ignore[assignment]
 
-    log(entity_path, Image(tensor_data, draw_order=draw_order), ext=ext, timeless=timeless, recording=recording)
+    log(
+        entity_path,
+        img,
+        AnyValues(**(ext or {})),
+        timeless=timeless,
+        recording=recording,
+    )
 
 
 @deprecated(
@@ -147,7 +156,7 @@ def log_depth_image(
     log(
         entity_path,
         DepthImage(tensor_data, draw_order=draw_order, meter=meter),
-        ext=ext,
+        AnyValues(**(ext or {})),
         timeless=timeless,
         recording=recording,
     )
@@ -214,7 +223,7 @@ def log_segmentation_image(
     log(
         entity_path,
         SegmentationImage(tensor_data, draw_order=draw_order),
-        ext=ext,
+        AnyValues(**(ext or {})),
         timeless=timeless,
         recording=recording,
     )

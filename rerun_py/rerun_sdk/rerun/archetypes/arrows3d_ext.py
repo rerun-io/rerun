@@ -7,13 +7,15 @@ from ..error_utils import catch_and_log_exceptions
 
 
 class Arrows3DExt:
+    """Extension for [Arrows3D][rerun.archetypes.Arrows3D]."""
+
     def __init__(
         self: Any,
         *,
         vectors: datatypes.Vec3DArrayLike,
         origins: datatypes.Vec3DArrayLike | None = None,
         radii: components.RadiusArrayLike | None = None,
-        colors: datatypes.ColorArrayLike | None = None,
+        colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         class_ids: datatypes.ClassIdArrayLike | None = None,
         instance_keys: components.InstanceKeyArrayLike | None = None,

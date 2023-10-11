@@ -16,6 +16,6 @@ rr.script_setup(args, "rerun_example_minimal_options")
 positions = np.vstack([xyz.ravel() for xyz in np.mgrid[3 * [slice(-10, 10, 10j)]]]).T
 colors = np.vstack([rgb.ravel() for rgb in np.mgrid[3 * [slice(0, 255, 10j)]]]).astype(np.uint8).T
 
-rr.log_points("my_points", positions=positions, colors=colors, radii=0.5)
+rr.log("my_points", rr.Points3D(positions, colors=colors, radii=0.5))
 
 rr.script_teardown(args)

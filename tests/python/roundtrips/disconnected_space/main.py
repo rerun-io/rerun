@@ -16,7 +16,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_disconnected_space")
 
-    rr.log("disconnected_space", rr.DisconnectedSpace(True))
+    rr.log("disconnected_space", rr.DisconnectedSpace())
 
     rr.script_teardown(args)
 

@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../result.hpp"
-#include "color.hpp"
+#include "rgba32.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -19,17 +19,18 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
+        /// **Datatype**: Material properties of a mesh.
         struct Material {
             /// Optional color multiplier.
-            std::optional<rerun::datatypes::Color> albedo_factor;
+            std::optional<rerun::datatypes::Rgba32> albedo_factor;
 
           public:
             Material() = default;
 
-            Material(std::optional<rerun::datatypes::Color> _albedo_factor)
+            Material(std::optional<rerun::datatypes::Rgba32> _albedo_factor)
                 : albedo_factor(std::move(_albedo_factor)) {}
 
-            Material& operator=(std::optional<rerun::datatypes::Color> _albedo_factor) {
+            Material& operator=(std::optional<rerun::datatypes::Rgba32> _albedo_factor) {
                 albedo_factor = std::move(_albedo_factor);
                 return *this;
             }

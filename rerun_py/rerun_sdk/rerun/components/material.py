@@ -12,6 +12,8 @@ __all__ = ["Material", "MaterialBatch", "MaterialType"]
 
 
 class Material(datatypes.Material):
+    """**Component**: Material properties of a mesh."""
+
     # You can define your own __init__ function as a member of MaterialExt in material_ext.py
 
     # Note: there are no fields here because Material delegates to datatypes.Material
@@ -24,7 +26,3 @@ class MaterialType(datatypes.MaterialType):
 
 class MaterialBatch(datatypes.MaterialBatch, ComponentBatchMixin):
     _ARROW_TYPE = MaterialType()
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(MaterialType())

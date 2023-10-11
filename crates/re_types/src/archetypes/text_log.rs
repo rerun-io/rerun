@@ -14,23 +14,25 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A log entry in a text log, comprised of a text body and its log level.
+/// **Archetype**: A log entry in a text log, comprised of a text body and its log level.
 ///
 /// ## Example
 ///
+/// ### `text_log_integration`:
 /// ```ignore
 /// //! Shows integration of Rerun's `TextLog` with the native logging interface.
 ///
-/// use rerun::{archetypes::TextLog, components::TextLogLevel, external::log, RecordingStreamBuilder};
+/// use rerun::external::log;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
-///         RecordingStreamBuilder::new("rerun_example_text_log_integration").memory()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_text_log_integration").memory()?;
 ///
 ///     // Log a text entry directly:
 ///     rec.log(
 ///         "logs",
-///         &TextLog::new("this entry has loglevel TRACE").with_level(TextLogLevel::TRACE),
+///         &rerun::TextLog::new("this entry has loglevel TRACE")
+///             .with_level(rerun::TextLogLevel::TRACE),
 ///     )?;
 ///
 ///     // Or log via a logging handler:
@@ -45,17 +47,26 @@
 ///     Ok(())
 /// }
 /// ```
+/// <center>
 /// <picture>
 ///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/480w.png">
 ///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/768w.png">
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png">
-///   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png">
+///   <img src="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png" width="640">
 /// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextLog {
+    /// The body of the message.
     pub text: crate::components::Text,
+
+    /// The verbosity level of the message.
+    ///
+    /// This can be used to filter the log messages in the Rerun Viewer.
     pub level: Option<crate::components::TextLogLevel>,
+
+    /// Optional color to use for the log line in the Rerun Viewer.
     pub color: Option<crate::components::Color>,
 }
 

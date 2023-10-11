@@ -4,14 +4,26 @@ use re_build_tools::{
     get_and_track_env_var, is_tracked_env_var_set, rebuild_if_crate_changed, rerun_if_changed,
 };
 
-fn main() {
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
-        // Only run if we are in the rerun workspace, not on users machines.
-        return;
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use re_build_tools::Environment;
+
+    match Environment::detect() {
+        // We should build the web viewer before starting crate publishing
+        Environment::PublishingCrates => false,
+
+        // TODO(emilk): only build the web viewer explicitly on CI
+        Environment::CI => true,
+
+        Environment::DeveloperInWorkspace => true,
+
+        // Definitely not
+        Environment::UsedAsDependency => false,
     }
-    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
-        // We don't need to rebuild - we should have done so beforehand!
-        // See `RELEASES.md`
+}
+
+fn main() {
+    if !should_run() {
         return;
     }
 
@@ -32,7 +44,7 @@ fn main() {
         // This feature is set on CI (hence the name), but also with `--all-features`, which is set by rust analyzer, bacon, etc.
         eprintln!("__ci feature detected: Skipping building of web viewer wasm.");
     } else {
-        let release = std::env::var("PROFILE").unwrap() == "release";
+        let release = re_build_tools::get_and_track_env_var("PROFILE").unwrap() == "release";
         if let Err(err) =
             re_build_web_viewer::build(release, is_tracked_env_var_set("RERUN_BUILD_WEBGPU"))
         {

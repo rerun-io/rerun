@@ -19,7 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A position in 3D space.
+        /// **Component**: A position in 3D space.
         struct Position3D {
             rerun::datatypes::Vec3D xyz;
 

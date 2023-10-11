@@ -1,4 +1,4 @@
-use super::{AnnotationInfo, Color};
+use super::{AnnotationInfo, Rgba32};
 
 impl From<u16> for AnnotationInfo {
     fn from(id: u16) -> Self {
@@ -20,8 +20,8 @@ impl From<(u16, &str)> for AnnotationInfo {
     }
 }
 
-impl From<(u16, &str, Color)> for AnnotationInfo {
-    fn from((id, label, color): (u16, &str, Color)) -> Self {
+impl From<(u16, &str, Rgba32)> for AnnotationInfo {
+    fn from((id, label, color): (u16, &str, Rgba32)) -> Self {
         Self {
             id,
             label: Some(label.into()),

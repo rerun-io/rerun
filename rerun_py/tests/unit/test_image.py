@@ -1,12 +1,16 @@
 from __future__ import annotations
 
+import io
 from typing import Any
 
 import numpy as np
 import pytest
 import rerun as rr
+import torch
+from PIL import Image as PILImage
 from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
 from rerun.datatypes.tensor_data import TensorDataBatch
+from rerun.error_utils import RerunWarning
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20, 3))
@@ -66,6 +70,9 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     rng.uniform(0.0, 1.0, (10, 20, 1)),
     rng.uniform(0.0, 1.0, (10, 20, 3, 1)),
     rng.uniform(0.0, 1.0, (10, 20, 4, 1)),
+    # Torch tensors
+    torch.rand(10, 20, 1),
+    torch.rand(10, 20, 3),
 ]
 
 BAD_IMAGE_INPUTS: list[TensorDataLike] = [
@@ -85,5 +92,45 @@ def test_image_shapes() -> None:
         rr.Image(img)
 
     for img in BAD_IMAGE_INPUTS:
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             rr.Image(img)
+
+
+def test_image_compress() -> None:
+    rr.set_strict_mode(False)
+
+    # RGB Supported
+    image_data = np.asarray(rng.uniform(0, 255, (10, 20, 3)), dtype=np.uint8)
+
+    compressed = rr.Image(image_data).compress(jpeg_quality=80)
+    assert type(compressed) == rr.ImageEncoded
+
+    # Mono Supported
+    image_data = np.asarray(rng.uniform(0, 255, (10, 20)), dtype=np.uint8)
+
+    compressed = rr.Image(image_data).compress(jpeg_quality=80)
+    assert type(compressed) == rr.ImageEncoded
+
+    # RGBA Not supported
+    with pytest.warns(RerunWarning) as warnings:
+        image_data = np.asarray(rng.uniform(0, 255, (10, 20, 4)), dtype=np.uint8)
+        compressed = rr.Image(data=TensorData(array=image_data)).compress(jpeg_quality=80)
+
+        assert len(warnings) == 1
+        assert "Only RGB or Mono images are supported for JPEG compression" in str(warnings[0])
+
+        # Should still be an Image
+        assert type(compressed) == rr.Image
+
+    bin = io.BytesIO()
+    image = PILImage.new("RGB", (300, 200), color=(0, 0, 0))
+    image.save(bin, format="jpeg")
+
+    # Jump through some hoops to make a pre-compressed image
+    img_encoded = rr.ImageEncoded(contents=bin)
+    img = rr.Image(img_encoded.data)
+
+    with pytest.warns(RerunWarning) as warnings:
+        img.compress()
+        assert len(warnings) == 1
+        assert "Image is already compressed as JPEG" in str(warnings[0])

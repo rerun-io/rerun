@@ -23,7 +23,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// A 16-bit ID representing a type of semantic keypoint within a class.
+        /// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
         struct KeypointId {
             rerun::datatypes::KeypointId id;
 

@@ -2,7 +2,7 @@
 
 These examples showcase common usage of each individual Rerun `Archetype`s.
 
-Most of these examples are automatically used as docstrings for the `Archetype` APIs in their respective SDKs, as well as the [Archetypes](https://www.rerun.io/docs/reference/data_types) section of the high-level documentation.
+Most of these examples are automatically used as docstrings for the `Archetype` APIs in their respective SDKs, as well as the [Archetypes](https://www.rerun.io/docs/reference/types) section of the high-level documentation.
 
 ## Usage
 

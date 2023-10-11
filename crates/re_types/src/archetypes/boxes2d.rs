@@ -14,7 +14,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-/// A batch of 2d boxes with half-extents and optional center, rotations, rotations, colors etc.
+/// **Archetype**: 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// ## Example
 ///
@@ -22,23 +22,30 @@
 /// ```ignore
 /// //! Log some very simple 2D boxes.
 ///
-/// use rerun::{archetypes::Boxes2D, RecordingStreamBuilder};
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
+///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
 ///
 ///     rec.log(
 ///         "simple",
-///         &Boxes2D::from_mins_and_sizes([(-1., -1.)], [(2., 2.)]),
+///         &rerun::Boxes2D::from_mins_and_sizes([(-1., -1.)], [(2., 2.)]),
 ///     )?;
 ///
 ///     // Log an extra rect to set the view bounds
-///     rec.log("bounds", &Boxes2D::from_sizes([(4., 3.)]))?;
+///     rec.log("bounds", &rerun::Boxes2D::from_sizes([(4., 3.)]))?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/1200w.png">
+///   <img src="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct Boxes2D {
     /// All half-extents that make up the batch of boxes.
@@ -57,6 +64,7 @@ pub struct Boxes2D {
     pub labels: Option<Vec<crate::components::Text>>,
 
     /// An optional floating point value that specifies the 2D drawing order.
+    ///
     /// Objects with higher values are drawn on top of those with lower values.
     ///
     /// The default for 2D boxes is 10.0.

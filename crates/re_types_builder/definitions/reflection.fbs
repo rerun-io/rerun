@@ -4,7 +4,7 @@
 // This schema defines objects that represent a parsed schema, like
 // the binary version of a .fbs file.
 // This could be used to operate on unknown FlatBuffers at runtime.
-// It can even ... represent itself (!)
+// It can even … represent itself (!)
 
 namespace reflection;
 

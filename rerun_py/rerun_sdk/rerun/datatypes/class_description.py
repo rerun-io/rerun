@@ -26,7 +26,7 @@ __all__ = [
 @define(init=False)
 class ClassDescription(ClassDescriptionExt):
     """
-    The description of a semantic Class.
+    **Datatype**: The description of a semantic Class.
 
     If an entity is annotated with a corresponding `ClassId`, rerun will use
     the attached `AnnotationInfo` to derive labels and colors.
@@ -40,6 +40,10 @@ class ClassDescription(ClassDescriptionExt):
     defined, and both keypoints exist within the instance of the class, then the
     keypoints should be connected with an edge. The edge should be labeled and
     colored as described by the class's `AnnotationInfo`.
+
+    Note that a `ClassDescription` can be directly logged using `rerun.log`.
+    This is equivalent to logging a `rerun.AnnotationContext` containing
+    a single `ClassDescription`.
     """
 
     # __init__ can be found in class_description_ext.py
@@ -47,23 +51,23 @@ class ClassDescription(ClassDescriptionExt):
     info: datatypes.AnnotationInfo = field(
         converter=ClassDescriptionExt.info__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The `AnnotationInfo` for the class.
-    """
+    # The `AnnotationInfo` for the class.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     keypoint_annotations: list[datatypes.AnnotationInfo] = field(
         converter=ClassDescriptionExt.keypoint_annotations__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The `AnnotationInfo` for all of the keypoints.
-    """
+    # The `AnnotationInfo` for all of the keypoints.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     keypoint_connections: list[datatypes.KeypointPair] = field(
         converter=ClassDescriptionExt.keypoint_connections__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The connections between keypoints.
-    """
+    # The connections between keypoints.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 if TYPE_CHECKING:
@@ -146,11 +150,3 @@ class ClassDescriptionBatch(BaseBatch[ClassDescriptionArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:
         return ClassDescriptionExt.native_to_pa_array_override(data, data_type)
-
-
-# TODO(cmc): bring back registration to pyarrow once legacy types are gone
-# pa.register_extension_type(ClassDescriptionType())
-
-
-if hasattr(ClassDescriptionExt, "deferred_patch_class"):
-    ClassDescriptionExt.deferred_patch_class(ClassDescription)

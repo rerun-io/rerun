@@ -18,12 +18,17 @@
 
 namespace rerun {
     namespace archetypes {
-        /// A log entry in a text log, comprised of a text body and its log level.
+        /// **Archetype**: A log entry in a text log, comprised of a text body and its log level.
         struct TextLog {
+            /// The body of the message.
             rerun::components::Text text;
 
+            /// The verbosity level of the message.
+            ///
+            /// This can be used to filter the log messages in the Rerun Viewer.
             std::optional<rerun::components::TextLogLevel> level;
 
+            /// Optional color to use for the log line in the Rerun Viewer.
             std::optional<rerun::components::Color> color;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
@@ -35,11 +40,15 @@ namespace rerun {
 
             TextLog(rerun::components::Text _text) : text(std::move(_text)) {}
 
+            /// The verbosity level of the message.
+            ///
+            /// This can be used to filter the log messages in the Rerun Viewer.
             TextLog& with_level(rerun::components::TextLogLevel _level) {
                 level = std::move(_level);
                 return *this;
             }
 
+            /// Optional color to use for the log line in the Rerun Viewer.
             TextLog& with_color(rerun::components::Color _color) {
                 color = std::move(_color);
                 return *this;

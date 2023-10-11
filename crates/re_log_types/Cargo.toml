@@ -63,7 +63,7 @@ num-traits.workspace = true
 similar-asserts.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
-time = { workspace = true, features = ["formatting", "macros"] }
+time = { workspace = true, features = ["formatting", "macros", "local-offset"] }
 typenum.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 web-time.workspace = true

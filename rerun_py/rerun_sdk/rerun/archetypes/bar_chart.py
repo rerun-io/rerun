@@ -20,12 +20,13 @@ __all__ = ["BarChart"]
 @define(str=False, repr=False, init=False)
 class BarChart(BarChartExt, Archetype):
     """
-    A bar chart.
+    **Archetype**: A bar chart.
 
     The x values will be the indices of the array, and the bar heights will be the provided values.
 
     Example
     -------
+    ### Simple bar chart:
     ```python
 
     import rerun as rr
@@ -33,6 +34,15 @@ class BarChart(BarChartExt, Archetype):
     rr.init("rerun_example_bar_chart", spawn=True)
     rr.log("bar_chart", rr.BarChart([8, 4, 0, 9, 1, 4, 1, 6, 9, 0]))
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/1200w.png">
+      <img src="https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/full.png" width="640">
+    </picture>
+    </center>
     """
 
     def __init__(self: Any, values: datatypes.TensorDataLike):
@@ -68,13 +78,9 @@ class BarChart(BarChartExt, Archetype):
         metadata={"component": "required"},
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
-    """
-    The values. Should always be a rank-1 tensor.
-    """
+    # The values. Should always be a rank-1 tensor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
     __str__ = Archetype.__str__
     __repr__ = Archetype.__repr__
-
-
-if hasattr(BarChartExt, "deferred_patch_class"):
-    BarChartExt.deferred_patch_class(BarChart)

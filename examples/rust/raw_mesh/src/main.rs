@@ -12,11 +12,9 @@ use std::path::PathBuf;
 
 use bytes::Bytes;
 use rerun::{
-    archetypes::{Mesh3D, ViewCoordinates},
-    components::{Color, MeshProperties, Transform3D},
+    components::{MeshProperties, Transform3D},
     external::{ecolor, re_log, re_memory::AccountingAllocator},
-    transform::TranslationRotationScale3D,
-    RecordingStream,
+    Color, Mesh3D, RecordingStream,
 };
 
 // TODO(cmc): This example needs to support animations to showcase Rerun's time capabilities.
@@ -66,11 +64,11 @@ impl From<GltfPrimitive> for Mesh3D {
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
 impl From<GltfTransform> for Transform3D {
     fn from(transform: GltfTransform) -> Self {
-        Transform3D::new(TranslationRotationScale3D::affine(
+        Transform3D::from_translation_rotation_scale(
             transform.t,
             rerun::datatypes::Quaternion::from_xyzw(transform.r),
             transform.s,
-        ))
+        )
     }
 }
 
@@ -169,7 +167,7 @@ fn run(rec: &RecordingStream, args: &Args) -> anyhow::Result<()> {
     // Log raw glTF nodes and their transforms with Rerun
     for root in nodes {
         re_log::info!(scene = root.name, "logging glTF scene");
-        rec.log_timeless(root.name.as_str(), &ViewCoordinates::RIGHT_HAND_Y_UP)?;
+        rec.log_timeless(root.name.as_str(), &rerun::ViewCoordinates::RIGHT_HAND_Y_UP)?;
         log_node(rec, root)?;
     }
 

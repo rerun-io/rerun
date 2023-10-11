@@ -3,7 +3,7 @@ use quote::quote;
 
 use crate::Docs;
 
-use super::{quote_doc_comment, quote_docstrings, NEWLINE_TOKEN};
+use super::{lines_from_docs, quote_doc_comment, quote_doc_lines, NEWLINE_TOKEN};
 
 #[derive(Default)]
 pub struct MethodDeclaration {
@@ -84,7 +84,10 @@ impl quote::ToTokens for MethodDocumentation {
             Self::String(s) => {
                 tokens.extend(quote_doc_comment(s));
             }
-            Self::Docs(docs) => tokens.extend(quote_docstrings(docs)),
+            Self::Docs(docs) => {
+                let lines = lines_from_docs(docs);
+                tokens.extend(quote_doc_lines(&lines));
+            }
         }
     }
 }
