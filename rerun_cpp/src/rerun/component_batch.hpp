@@ -190,6 +190,7 @@ namespace rerun {
                 case BatchOwnership::Moved:
                     return 0;
             }
+            return 0;
         }
 
         /// Serializes the component batch into a rerun datacell that can be sent to a store.
@@ -230,6 +231,8 @@ namespace rerun {
                         "ComponentBatch was already moved and is now invalid."
                     );
             }
+
+            return Error(ErrorCode::Unknown, "Invalid ownership state");
         }
 
         /// Returns the ownership of the component batch.
