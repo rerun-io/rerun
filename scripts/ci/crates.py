@@ -345,21 +345,22 @@ def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> N
 
 def is_already_published(version: str, crate: Crate) -> bool:
     name = crate.manifest["package"]["name"]
-    res = requests.get(
+    resp = requests.get(
         f"https://crates.io/api/v1/crates/{name}",
         headers={"user-agent": "rerun-publishing-script (rerun.io)"},
-    ).json()
+    )
+    body = resp.json()
 
     # the request failed
-    if "errors" in res:
-        raise Exception(f"failed to get crate {name}: {res['errors'][0]['detail']}")
+    if resp.ok:
+        raise Exception(f"failed to get crate {name}: {body['errors'][0]['detail']}")
 
     # crate has not been uploaded yet
-    if "versions" not in res:
+    if "versions" not in body:
         return False
 
     # crate has been uploaded, check every version against what we're uploading
-    versions: list[str] = [version["num"] for version in res["versions"]]
+    versions: list[str] = [version["num"] for version in body["versions"]]
     for uploaded_version in versions:
         if uploaded_version == version:
             return True
