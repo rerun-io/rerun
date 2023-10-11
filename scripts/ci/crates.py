@@ -39,7 +39,7 @@ import requests
 import tomlkit
 from colorama import Fore
 from colorama import init as colorama_init
-from dag import DAG
+from dag import DAG, RateLimiter
 from semver import VersionInfo
 
 CARGO_PATH = shutil.which("cargo") or "cargo"
@@ -437,9 +437,7 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
     DAG(dependency_graph).walk_parallel(
         lambda name: publish_crate(unpublished_crates[name], token, version, env),  # noqa: E731
         # 30 tokens per minute (burst limit in crates.io)
-        # undershoot a bit to make space
-        max_tokens=25,
-        refill_interval_sec=60,
+        rate_limiter=RateLimiter(max_tokens=30, refill_interval_sec=60),
         # publishing already uses all cores, don't start too many publishes at once
         num_workers=min(MAX_PUBLISH_WORKERS, cpu_count()),
     )
