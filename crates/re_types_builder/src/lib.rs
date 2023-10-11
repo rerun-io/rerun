@@ -191,7 +191,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 ///     "definitions/rerun/archetypes.fbs",
 /// );
 /// ```
-pub fn compile_binary_schemas(
+fn compile_binary_schemas(
     include_dir_path: impl AsRef<Utf8Path>,
     output_dir_path: impl AsRef<Utf8Path>,
     entrypoint_path: impl AsRef<Utf8Path>,
@@ -266,7 +266,7 @@ pub fn generate_lang_agnostic(
 }
 
 /// Generates a .gitattributes file that marks up all generated files as generated
-pub fn generate_gitattributes_for_generated_files(
+fn generate_gitattributes_for_generated_files(
     output_path: &impl AsRef<Utf8Path>,
     files: impl Iterator<Item = Utf8PathBuf>,
 ) {
@@ -292,6 +292,7 @@ pub fn generate_gitattributes_for_generated_files(
     codegen::write_file(&path, &content);
 }
 
+/// This will automatically emit a `rerun-if-changed` clause for all the files that were hashed.
 pub fn compute_re_types_builder_hash() -> String {
     compute_crate_hash("re_types_builder")
 }
@@ -303,6 +304,7 @@ pub struct SourceLocations<'a> {
     pub cpp_output_dir: &'a str,
 }
 
+/// Also triggers a re-build if anything that affects the hash changes.
 pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
     // NOTE: We need to hash both the flatbuffers definitions as well as the source code of the
     // code generator itself!

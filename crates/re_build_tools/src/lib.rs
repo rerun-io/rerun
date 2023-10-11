@@ -1,4 +1,5 @@
 #![allow(clippy::unwrap_used)]
+#![warn(missing_docs)]
 
 //! This crate is to be used from `build.rs` build scripts.
 
