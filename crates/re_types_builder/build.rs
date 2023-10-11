@@ -29,7 +29,19 @@ fn should_run() -> bool {
         // The code we're generating here is actual source code that gets committed into the repository.
         Environment::CI => false,
 
-        Environment::DeveloperInWorkspace => true,
+        Environment::DeveloperInWorkspace => {
+            // This `build.rs` depends on having `flatc` installed,
+            // and when some random contributor clones our repository,
+            // they likely won't have it, and we shouldn't need it.
+            // We really only need this `build.rs` for the convenience of
+            // developers who changes the input file (reflection.fbs),
+            // which again is rare.
+            // So: we only run this `build.rs` automatically after a developer
+            // has once run the codegen MANUALLY first using `cargo codegen`.
+            // That will produce the `source_hash.txt` file.
+
+            Path::new(SOURCE_HASH_PATH).exists()
+        }
 
         // We ship pre-built source files for users
         Environment::UsedAsDependency => false,
@@ -38,11 +50,6 @@ fn should_run() -> bool {
 
 fn main() {
     if !should_run() {
-        return;
-    }
-
-    // Only re-build if source-hash exists
-    if !Path::new(SOURCE_HASH_PATH).exists() {
         return;
     }
 
