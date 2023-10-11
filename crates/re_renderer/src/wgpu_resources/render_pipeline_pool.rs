@@ -104,7 +104,7 @@ pub struct RenderPipelineDesc {
 #[derive(thiserror::Error, Debug)]
 pub enum RenderPipelineError {
     #[error("referenced pipeline layout not found")]
-    PipelineLayoutNotFound(),
+    PipelineLayoutNotPresent(),
 
     #[error("referenced vertex shader not found")]
     VertexShaderNotFound(),
@@ -124,7 +124,7 @@ impl RenderPipelineDesc {
             if let Ok(pipeline_layout) = pipeline_layouts.get_resource(self.pipeline_layout) {
                 Some(&pipeline_layout.layout)
             } else {
-                return Err(RenderPipelineError::PipelineLayoutNotFound());
+                return Err(RenderPipelineError::PipelineLayoutNotPresent());
             };
 
         let Ok(vertex_shader_module) = shader_modules.get(self.vertex_handle) else {
