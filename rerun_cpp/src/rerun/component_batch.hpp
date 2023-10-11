@@ -56,11 +56,6 @@ namespace rerun {
 
         /// The component batch owns the data via an std::vector.
         VectorOwned,
-
-        /// The component batch was moved.
-        /// This could be achieved by other means, but this makes it easiest to follow and
-        /// debug.
-        Moved,
     };
 
     /// Generic list of components that are contiguous in memory.
@@ -147,34 +142,53 @@ namespace rerun {
         }
 
         /// Move constructor.
-        ComponentBatch(ComponentBatch<TComponent>&& other) {
-            switch (other.ownership) {
-                case BatchOwnership::Borrowed:
-                    storage.borrowed = other.storage.borrowed;
-                    break;
-                case BatchOwnership::VectorOwned:
-                    // Don't assign, since the vector is in an undefined state and assigning may
-                    // attempt to free data.
-                    new (&storage.vector_owned)
-                        std::vector<TComponent>(std::move(other.storage.vector_owned));
-                    break;
-                case BatchOwnership::Moved:
-                    // This shouldn't happen but is well defined. We're now also moved!
-                    break;
-            }
-            ownership = other.ownership;
-            other.ownership = BatchOwnership::Moved;
+        ComponentBatch(ComponentBatch<TComponent>&& other) : ComponentBatch() {
+            *this = std::move(other);
         }
 
         /// Move assignment
         void operator=(ComponentBatch<TComponent>&& other) {
-            this->~ComponentBatch();
-            new (this) ComponentBatch(std::move(other));
+            // Perform a swap with `other`.
+            // (writing out this-> here to make it less confusing!)
+            switch (this->ownership) {
+                case BatchOwnership::Borrowed: {
+                    switch (other.ownership) {
+                        case BatchOwnership::Borrowed:
+                            std::swap(this->storage.borrowed, other.storage.borrowed);
+                            break;
+
+                        case BatchOwnership::VectorOwned: {
+                            auto this_borrowed_data_old = this->storage.borrowed.data;
+                            this->storage.vector_owned = std::move(other.storage.vector_owned);
+                            other.storage.borrowed.data = this_borrowed_data_old;
+                            break;
+                        }
+                    }
+                    break;
+                }
+
+                case BatchOwnership::VectorOwned: {
+                    switch (other.ownership) {
+                        case BatchOwnership::Borrowed: {
+                            auto other_borrowed_data_old = other.storage.borrowed.data;
+                            other.storage.vector_owned = std::move(this->storage.vector_owned);
+                            this->storage.borrowed.data = other_borrowed_data_old;
+                            break;
+                        }
+
+                        case BatchOwnership::VectorOwned:
+                            std::swap(storage.vector_owned, other.storage.vector_owned);
+                            break;
+                    }
+                    break;
+                }
+            }
+
+            std::swap(ownership, other.ownership);
         }
 
         ~ComponentBatch() {
             switch (ownership) {
-                case BatchOwnership::Moved:
                 case BatchOwnership::Borrowed:
                     break; // nothing to do.
                 case BatchOwnership::VectorOwned:
@@ -193,8 +207,6 @@ namespace rerun {
                     return storage.borrowed.num_instances;
                 case BatchOwnership::VectorOwned:
                     return storage.vector_owned.size();
-                case BatchOwnership::Moved:
-                    return 0;
             }
             return 0;
         }
@@ -227,12 +239,6 @@ namespace rerun {
                         std::move(cell_result.value)
                     );
                 }
-
-                case BatchOwnership::Moved:
-                    return Error(
-                        ErrorCode::InvalidOperationOnMovedObject,
-                        "ComponentBatch was already moved and is now invalid."
-                    );
             }
 
             return Error(ErrorCode::Unknown, "Invalid ownership state");
