@@ -6,9 +6,9 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{register_contexts, PrimitiveCounter},
+    contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_parts, CamerasPart},
+    parts::{calculate_bounding_box, register_3d_spatial_parts, CamerasPart},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
 };
@@ -35,8 +35,9 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        register_contexts(system_registry)?;
-        register_parts(system_registry)?;
+        register_spatial_contexts(system_registry)?;
+        register_3d_spatial_parts(system_registry)?;
+
         Ok(())
     }
 

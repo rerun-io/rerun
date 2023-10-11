@@ -59,7 +59,7 @@ impl ViewContextSystem for PrimitiveCounter {
     }
 }
 
-pub fn register_contexts(
+pub fn register_spatial_contexts(
     system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
     system_registry.register_context_system::<TransformContext>()?;
