@@ -30,7 +30,8 @@ namespace rerun {
         struct NoAdapterFor : std::false_type {};
 
         static_assert(
-            NoAdapterFor<TComponent, TInput>::value,
+            NoAdapterFor<TComponent, TInput>::value, // Always evaluate to false, but in a way that
+                                                     // requires template instantiation.
             "ComponentBatchAdapter is not implemented for this type. "
             "It is implemented for for single components as well as std::vector, std::array, and "
             "c-arrays of components. "
@@ -195,11 +196,10 @@ namespace rerun {
 
         /// Serializes the component batch into a rerun datacell that can be sent to a store.
         Result<SerializedComponentBatch> serialize() const {
-            // TODO(andreas): `to_data_cell` should actually get our storage representation passed
-            // in which we'll allow "type adaptors" in the future (for e.g. setting a stride or
-            // similar).
             // TODO(andreas): For improved error messages we should add a static_assert that
             // TComponent implements `to_data_cell`.
+            // TODO(andreas): Invert this relationship - a user of this *container* should call
+            // TComponent::serialize (or similar) passing in this container.
             switch (ownership) {
                 case BatchOwnership::Borrowed: {
                     auto cell_result = TComponent::to_data_cell(
@@ -243,8 +243,6 @@ namespace rerun {
         }
 
       private:
-        BatchOwnership ownership;
-
         template <typename T>
         union ComponentBatchStorage {
             struct {
@@ -259,6 +257,7 @@ namespace rerun {
             ~ComponentBatchStorage() {}
         };
 
+        BatchOwnership ownership;
         ComponentBatchStorage<TComponent> storage;
     };
 

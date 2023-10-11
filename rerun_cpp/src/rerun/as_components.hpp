@@ -16,7 +16,8 @@ namespace rerun {
 
         // TODO(andreas): This should also mention an example of how to implement this.
         static_assert(
-            NoAsComponentsFor<T>::value,
+            NoAsComponentsFor<T>::value, // Always evaluate to false, but in a way that requires
+                                         // template instantiation.
             "AsComponents is not implemented for this type. "
             "It is implemented for all built-in archetypes as well as std::vector, std::array, and "
             "c-arrays of components. "
