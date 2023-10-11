@@ -223,7 +223,7 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
         prev_line = prev_line.strip()
 
         if "template<" in prev_line:
-            return False  # C++ template in code generation code.
+            return False  # C++ template inside Rust code that generates C++ code.
 
         if is_empty(prev_line) or prev_line.strip().startswith("```"):
             return False
@@ -303,7 +303,7 @@ def test_lint_vertical_spacing() -> None:
         """
         template<typename T>
         struct AsComponents;
-        """,  # C++ template in code generation code.
+        """,  # C++ template inside Rust code that generates C++ code.
     ]
 
     should_fail = [
