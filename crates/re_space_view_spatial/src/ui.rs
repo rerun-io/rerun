@@ -125,7 +125,7 @@ impl SpatialSpaceViewState {
             .store_db
             .store()
             .query_latest_component(space_origin, &ctx.current_query())
-            .map(|c| c.value);
+            .map_or(re_types::components::ViewCoordinates::DEFAULT, |c| c.value);
 
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
@@ -177,7 +177,7 @@ impl SpatialSpaceViewState {
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
-                        self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
+                        self.state_3d.reset_camera(&self.scene_bbox_accum, view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
                     if re_ui.checkbox(ui, &mut spin, "Spin")
@@ -192,7 +192,8 @@ impl SpatialSpaceViewState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view");
                 ui.vertical(|ui|{
-                    let up_description = if let Some(up) = view_coordinates.and_then(|v| v.up()) {
+                    // TODO(#3816): This should display something else when the user is in free-roll mode :/
+                    let up_description = if let Some(up) = view_coordinates.up() {
                         format!("Up is {up}")
                     } else {
                         "Up is unspecified".to_owned()
@@ -201,7 +202,7 @@ impl SpatialSpaceViewState {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 0.0;
                             ui.label("Set with ");
-                            ui.code("rerun.log_view_coordinates");
+                            ui.code("rerun.ViewCoordinates");
                             ui.label(".");
                         });
                     });

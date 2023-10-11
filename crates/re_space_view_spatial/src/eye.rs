@@ -6,6 +6,7 @@ use re_space_view::controls::{
     RuntimeModifiers, DRAG_PAN3D_BUTTON, ROLL_MOUSE, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER,
     ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER,
 };
+use re_types::components::ViewCoordinates;
 
 use crate::space_camera_3d::SpaceCamera3D;
 
@@ -168,6 +169,10 @@ pub struct OrbitEye {
     /// Left over scroll delta that still needs to be applied (smoothed out over several frames)
     #[serde(skip)]
     unprocessed_scroll_delta: f32,
+
+    /// The current view coordinates. Used to detect changes and reconfigure the eye reactively.
+    #[serde(skip)]
+    pub(crate) view_coordinates: ViewCoordinates,
 }
 
 impl OrbitEye {
@@ -184,7 +189,13 @@ impl OrbitEye {
     /// * macbook trackpad is typically at max 1.0 in every given frame
     const MAX_SCROLL_DELTA_PER_SECOND: f32 = 1000.0;
 
-    pub fn new(orbit_center: Vec3, orbit_radius: f32, world_from_view_rot: Quat, up: Vec3) -> Self {
+    pub fn new(
+        view_coordinates: ViewCoordinates,
+        orbit_center: Vec3,
+        orbit_radius: f32,
+        world_from_view_rot: Quat,
+        up: Vec3,
+    ) -> Self {
         OrbitEye {
             orbit_center,
             orbit_radius,
@@ -193,6 +204,7 @@ impl OrbitEye {
             up,
             velocity: Vec3::ZERO,
             unprocessed_scroll_delta: 0.0,
+            view_coordinates,
         }
     }
 
@@ -235,6 +247,7 @@ impl OrbitEye {
                 self.unprocessed_scroll_delta..=other.unprocessed_scroll_delta,
                 t,
             ),
+            view_coordinates: other.view_coordinates,
         }
     }
 
@@ -454,7 +467,9 @@ impl OrbitEye {
         let rot_delta = Quat::from_rotation_z(delta_angle);
         self.world_from_view_rot *= rot_delta;
 
-        self.up = Vec3::ZERO; // forget about this until user resets the eye
+        // Permanently change our up-axis, at least until the user resets the view!
+        let up = self.view_coordinates.up().map_or(glam::Vec3::Y, Into::into);
+        self.up = self.world_from_view_rot.mul_vec3(up).normalize_or_zero();
     }
 
     /// Translate based on a certain number of pixel delta.

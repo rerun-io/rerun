@@ -6,7 +6,16 @@ use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3, ViewDir};
 
 use super::ViewCoordinates;
 
+impl Default for ViewCoordinates {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
 impl ViewCoordinates {
+    /// The `ViewCoordinates` used when none have been specified.
+    pub const DEFAULT: Self = Self::RUB;
+
     /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.
     pub const fn new(x: ViewDir, y: ViewDir, z: ViewDir) -> Self {
         Self([x as u8, y as u8, z as u8])
