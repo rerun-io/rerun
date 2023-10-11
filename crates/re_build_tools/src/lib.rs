@@ -58,37 +58,29 @@ pub enum Environment {
 impl Environment {
     /// Detect what environment we are running in.
     pub fn detect() -> Self {
-        if is_publishing_crates() {
+        if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
+            // "RERUN_IS_PUBLISHING" is set by `scripts/ci/crates.py`
+            eprintln!("Environment: env-var RERUN_IS_PUBLISHING is set");
             Self::PublishingCrates
         } else if is_on_ci() {
+            // `CI` is an env-var set by GitHub actions.
+            eprintln!("Environment: env-var CI is set");
             Self::CI
-        } else if is_in_rerun_workspace() {
+        } else if is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
+            // IS_IN_RERUN_WORKSPACE is set by `.cargo/config.toml` and also in the Rust-analyzer settings in `.vscode/settings.json`
+            eprintln!("Environment: env-var IS_IN_RERUN_WORKSPACE is set");
             Self::DeveloperInWorkspace
         } else {
+            eprintln!("Environment: Not on CI anmd not in workspace");
             Self::UsedAsDependency
         }
     }
-}
-
-/// Are we running inside the workspace of <https://github.com/rerun-io/rerun> ?
-///
-/// Otherwise we are probably a user of the `re_` crates.
-fn is_in_rerun_workspace() -> bool {
-    is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE")
 }
 
 /// Are we running on a CI machine?
 pub fn is_on_ci() -> bool {
     // `CI` is an env-var set by GitHub actions.
     std::env::var("CI").is_ok()
-}
-
-/// Are we currently in the process of publishing crates?
-///
-/// This is usually done on CI.
-fn is_publishing_crates() -> bool {
-    // "RERUN_IS_PUBLISHING" is set by `scripts/ci/crates.py`
-    is_tracked_env_var_set("RERUN_IS_PUBLISHING")
 }
 
 /// Call from the `build.rs` file of any crate you want to generate build info for.
