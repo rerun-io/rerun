@@ -8,7 +8,7 @@ use re_viewer_context::{
 use crate::{
     contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_2d_spatial_parts},
+    parts::{calculate_bounding_box, register_2d_spatial_parts, SpatialViewPartData},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
 };
@@ -70,9 +70,40 @@ impl SpaceViewClass for SpatialSpaceView2D {
         &self,
         ctx: &ViewerContext<'_>,
         _space_origin: &EntityPath,
-        ent_paths: &PerSystemEntities,
+        per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
-        auto_spawn_heuristic(&self.name(), ctx, ent_paths, SpatialSpaceViewKind::TwoD)
+        let score = auto_spawn_heuristic(
+            &self.name(),
+            ctx,
+            per_system_entities,
+            SpatialSpaceViewKind::TwoD,
+        );
+
+        // If this is the root space view, and it contains a part that would
+        // prefer to be 3D, don't spawn the 2D view. This is because it's never
+        // possible to correctly project 3d objects to a root 2d view since the
+        // the pinhole would go past the root.
+        if _space_origin.is_root() {
+            let parts = ctx
+                .space_view_class_registry
+                .get_system_registry_or_log_error(&self.name())
+                .new_part_collection();
+
+            for part in per_system_entities.keys() {
+                if let Ok(part) = parts.get_by_name(*part) {
+                    if let Some(part_data) = part
+                        .data()
+                        .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
+                    {
+                        if part_data.preferred_view_kind == Some(SpatialSpaceViewKind::ThreeD) {
+                            return AutoSpawnHeuristic::NeverSpawn;
+                        }
+                    }
+                }
+            }
+        }
+
+        score
     }
 
     fn selection_ui(
