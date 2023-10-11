@@ -3,46 +3,65 @@
 
 #include "boxes3d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Boxes3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Boxes3DIndicator";
+    }
 
-        AnonymousComponentBatch Boxes3D::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<Boxes3D::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Boxes3D>::serialize(
+        const archetypes::Boxes3D& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(8);
+
+        {
+            auto result = (archetype.half_sizes).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.centers.has_value()) {
+            auto result = (archetype.centers.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.rotations.has_value()) {
+            auto result = (archetype.rotations.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.colors.has_value()) {
+            auto result = (archetype.colors.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.radii.has_value()) {
+            auto result = (archetype.radii.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.labels.has_value()) {
+            auto result = (archetype.labels.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.class_ids.has_value()) {
+            auto result = (archetype.class_ids.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.instance_keys.has_value()) {
+            auto result = (archetype.instance_keys.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<Boxes3D::IndicatorComponent>(Boxes3D::IndicatorComponent())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> Boxes3D::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(8);
-
-            comp_batches.emplace_back(half_sizes);
-            if (centers.has_value()) {
-                comp_batches.emplace_back(centers.value());
-            }
-            if (rotations.has_value()) {
-                comp_batches.emplace_back(rotations.value());
-            }
-            if (colors.has_value()) {
-                comp_batches.emplace_back(colors.value());
-            }
-            if (radii.has_value()) {
-                comp_batches.emplace_back(radii.value());
-            }
-            if (labels.has_value()) {
-                comp_batches.emplace_back(labels.value());
-            }
-            if (class_ids.has_value()) {
-                comp_batches.emplace_back(class_ids.value());
-            }
-            if (instance_keys.has_value()) {
-                comp_batches.emplace_back(instance_keys.value());
-            }
-            comp_batches.emplace_back(Boxes3D::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

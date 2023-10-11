@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/pinhole_projection.hpp"
 #include "../components/resolution.hpp"
 #include "../components/view_coordinates.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -105,6 +105,9 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             // Extensions to generated type defined in 'pinhole_ext.cpp'
@@ -123,8 +126,9 @@ namespace rerun {
 
           public:
             Pinhole() = default;
+            Pinhole(Pinhole&& other) = default;
 
-            Pinhole(rerun::components::PinholeProjection _image_from_camera)
+            explicit Pinhole(rerun::components::PinholeProjection _image_from_camera)
                 : image_from_camera(std::move(_image_from_camera)) {}
 
             /// Pixel resolution (usually integers) of child image space. Width and height.
@@ -135,9 +139,9 @@ namespace rerun {
             /// ```
             ///
             /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
-            Pinhole& with_resolution(rerun::components::Resolution _resolution) {
+            Pinhole with_resolution(rerun::components::Resolution _resolution) && {
                 resolution = std::move(_resolution);
-                return *this;
+                return std::move(*this);
             }
 
             /// Sets the view coordinates for the camera.
@@ -172,26 +176,27 @@ namespace rerun {
             /// The pinhole matrix (the `image_from_camera` argument) always project along the third
             /// (Z) axis, but will be re-oriented to project along the forward axis of the
             /// `camera_xyz` argument.
-            Pinhole& with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) {
+            Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
                 camera_xyz = std::move(_camera_xyz);
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return 1;
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::Pinhole> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::Pinhole& archetype
+        );
+    };
 } // namespace rerun
