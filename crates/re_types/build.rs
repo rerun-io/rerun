@@ -2,9 +2,7 @@
 
 use std::path::Path;
 
-use re_build_tools::{
-    is_tracked_env_var_set, iter_dir, read_versioning_hash, rerun_if_changed, write_versioning_hash,
-};
+use re_build_tools::{iter_dir, read_versioning_hash, rerun_if_changed, write_versioning_hash};
 use re_types_builder::{compute_re_types_hash, SourceLocations};
 
 // ---
@@ -31,19 +29,31 @@ macro_rules! join {
     }}
 }
 
-fn main() {
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use re_build_tools::Environment;
+
     if cfg!(target_os = "windows") {
-        // TODO(#2591): Codegen is temporarily disabled on Windows due to hashing issues.
-        return;
+        // TODO(#2591): Codegen is currently disabled on Windows due to hashing issues, likely because of `\r` in files
+        return false;
     }
 
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
-        // Only run if we are in the rerun workspace, not on users machines.
-        return;
+    match Environment::detect() {
+        // we should have been run before publishing
+        Environment::PublishingCrates => false,
+
+        // YES! We run it to verify that the generated code is up-to-date.
+        Environment::CI => true,
+
+        Environment::DeveloperInWorkspace => true,
+
+        // We ship pre-built source files for users
+        Environment::UsedAsDependency => false,
     }
-    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
-        // We don't need to rebuild - we should have done so beforehand!
-        // See `RELEASES.md`
+}
+
+fn main() {
+    if !should_run() {
         return;
     }
 
@@ -80,7 +90,7 @@ fn main() {
     // Detect desyncs between definitions and generated when running on CI, and
     // crash the build accordingly.
     #[allow(clippy::manual_assert)]
-    if std::env::var("CI").is_ok() {
+    if re_build_tools::is_on_ci() {
         panic!("re_types' fbs definitions and generated code are out-of-sync!");
     }
 
