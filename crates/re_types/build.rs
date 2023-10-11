@@ -70,6 +70,11 @@ fn main() {
         return;
     }
 
+    if re_build_tools::get_and_track_env_var("CARGO_FEATURE___OPT_OUT_OF_AUTO_REBUILD").is_ok() {
+        eprintln!("__opt_out_of_auto_rebuild feature detected: Skipping re_types/build.rs");
+        return;
+    }
+
     rerun_if_changed(SOURCE_HASH_PATH);
     for path in iter_dir(DEFINITIONS_DIR_PATH, Some(&["fbs"])) {
         rerun_if_changed(&path);
