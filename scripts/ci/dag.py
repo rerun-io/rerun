@@ -18,7 +18,7 @@ class RateLimiter:
 
     def __init__(self, max_tokens: int, refill_interval_sec: float):
         self.start_tokens = max_tokens
-        self.tokens_per_second = max_tokens / refill_interval_sec
+        self.tokens_per_second = 1.0 / refill_interval_sec
         self.start_time = time.time()
         self.used_tokens = 0
 
