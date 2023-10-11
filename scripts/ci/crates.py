@@ -411,7 +411,7 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
                 raise
 
 
-def actually_publish(all_crates: dict[str, Crate], version: str, token: str) -> None:
+def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version: str, token: str) -> None:
     # filter all_crates for any that are already published
     print("Collecting unpublished crates…")
     unpublished_crates: dict[str, Crate] = {}
@@ -458,7 +458,7 @@ def publish(dry_run: bool, token: str) -> None:
     ctx.finish(dry_run)
 
     if not dry_run:
-        actually_publish(crates, version, token)
+        publish_unpublished_crates_in_parallel(crates, version, token)
 
 
 def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
