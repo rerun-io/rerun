@@ -298,6 +298,17 @@ namespace rerun {
         ComponentBatch<TComponent> operator()(const TComponent (&array)[NumInstances]) {
             return ComponentBatch<TComponent>::borrow(array, NumInstances);
         }
+
+        ComponentBatch<TComponent> operator()(TComponent (&&array)[NumInstances]) {
+            std::vector<TComponent> components;
+            components.reserve(NumInstances);
+            components.insert(
+                components.end(),
+                std::make_move_iterator(array),
+                std::make_move_iterator(array + NumInstances)
+            );
+            return ComponentBatch<TComponent>::take_ownership(std::move(components));
+        }
     };
 
     /// Adapter for a single component, temporary or reference.

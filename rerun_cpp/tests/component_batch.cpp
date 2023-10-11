@@ -20,7 +20,13 @@ SCENARIO("ComponentBatch creation via common adaptors", TEST_TAG) {
             CHECK(batch.size() == components.size());
             CHECK(batch.get_ownership() == rerun::BatchOwnership::Borrowed);
         }
+        THEN("a component batch created from it moving it owns the data") {
+            const rerun::ComponentBatch<rerun::components::Position2D> batch(std::move(components));
+            CHECK(batch.size() == 2);
+            CHECK(batch.get_ownership() == rerun::BatchOwnership::VectorOwned);
+        }
     }
+    // todo: add explicit move test
     GIVEN("a temporary vector of components") {
         THEN("a component batch created from it owns its data") {
             const rerun::ComponentBatch<rerun::components::Position2D> batch(
@@ -42,8 +48,13 @@ SCENARIO("ComponentBatch creation via common adaptors", TEST_TAG) {
 
         THEN("a component batch created from it borrows its data") {
             const rerun::ComponentBatch<rerun::components::Position2D> batch(components);
-            CHECK(batch.size() == 2);
+            CHECK(batch.size() == components.size());
             CHECK(batch.get_ownership() == rerun::BatchOwnership::Borrowed);
+        }
+        THEN("a component batch created from it moving it owns the data") {
+            const rerun::ComponentBatch<rerun::components::Position2D> batch(std::move(components));
+            CHECK(batch.size() == 2);
+            CHECK(batch.get_ownership() == rerun::BatchOwnership::VectorOwned);
         }
     }
     GIVEN("a temporary std::array of components") {
@@ -70,8 +81,12 @@ SCENARIO("ComponentBatch creation via common adaptors", TEST_TAG) {
             CHECK(batch.size() == 2);
             CHECK(batch.get_ownership() == rerun::BatchOwnership::Borrowed);
         }
+        THEN("a component batch created from moving it owns the data") {
+            const rerun::ComponentBatch<rerun::components::Position2D> batch(std::move(components));
+            CHECK(batch.size() == 2);
+            CHECK(batch.get_ownership() == rerun::BatchOwnership::VectorOwned);
+        }
     }
-    // Temporary c-array isn't possible I believe.
 
     GIVEN("a single components") {
         rerun::components::Position2D component = rerun::components::Position2D(0.0f, 1.0f);
@@ -80,6 +95,11 @@ SCENARIO("ComponentBatch creation via common adaptors", TEST_TAG) {
             const rerun::ComponentBatch<rerun::components::Position2D> batch(component);
             CHECK(batch.size() == 1);
             CHECK(batch.get_ownership() == rerun::BatchOwnership::Borrowed);
+        }
+        THEN("a component batch created from it moving it owns the data") {
+            const rerun::ComponentBatch<rerun::components::Position2D> batch(std::move(component));
+            CHECK(batch.size() == 1);
+            CHECK(batch.get_ownership() == rerun::BatchOwnership::VectorOwned);
         }
     }
     GIVEN("a single temporary component") {
@@ -101,6 +121,7 @@ namespace rerun {
     template <>
     struct ComponentBatchAdapter<components::Position2D, MyVec2Container> {
         ComponentBatch<components::Position2D> operator()(const MyVec2Container& container) {
+            // Sanity check that this is binary compatible.
             static_assert(sizeof(components::Position2D) == sizeof(float) * 2);
             static_assert(alignof(components::Position2D) <= sizeof(float));
 
@@ -109,6 +130,8 @@ namespace rerun {
                 container.vecs.size() / 2
             );
         }
+
+        // TODO: fill in rvalue version and document when it's needed (almost always!)
     };
 } // namespace rerun
 
