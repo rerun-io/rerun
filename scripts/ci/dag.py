@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from math import floor
 from multiprocessing import Event, cpu_count
 from multiprocessing.synchronize import Event as EventClass
 from queue import Empty, Queue
@@ -16,24 +17,18 @@ class RateLimiter:
     """
 
     def __init__(self, max_tokens: int, refill_interval_sec: float):
-        self.max_tokens = max_tokens
-        self.tokens = max_tokens
-        self.refill_rate = refill_interval_sec / max_tokens
-        self.next_refill = time.time() + self.refill_rate
+        self.start_tokens = max_tokens
+        self.tokens_per_second = max_tokens / refill_interval_sec
+        self.start_time = time.time()
+        self.used_tokens = 0
 
     def get(self) -> bool:
-        """Returns `true` if a token can be acquired."""
+        seconds_since_start = time.time() - self.start_time
+        num_refilled_tokens = int(floor(self.tokens_per_second * seconds_since_start))
+        total_tokens = self.start_tokens + num_refilled_tokens
 
-        now = time.time()
-        if now >= self.next_refill:
-            time_past_refill = now - self.next_refill
-            gain = int(time_past_refill // self.refill_rate) + 1
-            remainder = time_past_refill % self.refill_rate
-            self.tokens += gain
-            self.last_refill = now + self.refill_rate - remainder
-
-        if self.tokens > 0:
-            self.tokens -= 1
+        if self.used_tokens < total_tokens:
+            self.used_tokens += 1
             return True
         else:
             return False
@@ -56,8 +51,7 @@ class DAG(Generic[_T]):
         self,
         f: Callable[[_T], None],
         *,
-        max_tokens: int,
-        refill_interval_sec: float,
+        rate_limiter: RateLimiter,
         num_workers: int = max(1, cpu_count() - 1),
     ) -> None:
         """
@@ -116,7 +110,6 @@ class DAG(Generic[_T]):
             for n in range(0, num_workers):  # start all workers
                 p.submit(worker, n)
 
-            rate_limit = RateLimiter(max_tokens, refill_interval_sec)
             while not shutdown.is_set():
                 if state._is_done():
                     shutdown.set()
@@ -124,7 +117,7 @@ class DAG(Generic[_T]):
                     break
 
                 while len(state._queue) > 0:  # push loop
-                    if len(state._queue) == 0 or not rate_limit.get():
+                    if len(state._queue) == 0 or not rate_limiter.get():
                         break
 
                     task_queue.put(state._queue.pop())
@@ -203,8 +196,8 @@ def main() -> None:
     # The output should be:
     #   Processed A at T+0
     #   Processed C at T+0
-    #   Processed B at T+1
-    #   Processed D at T+1.5
+    #   Processed B at T+0.5
+    #   Processed D at T+1
     # `A` and `C` may swap places.
     dag = DAG(
         {
@@ -218,13 +211,7 @@ def main() -> None:
     # `walk_parallel` can be called multiple times
     dag.walk_parallel(
         process,
-        max_tokens=2,
-        refill_interval_sec=1,
-    )
-    dag.walk_parallel(
-        process,
-        max_tokens=2,
-        refill_interval_sec=1,
+        rate_limiter=RateLimiter(max_tokens=2, refill_interval_sec=1),
     )
 
 
