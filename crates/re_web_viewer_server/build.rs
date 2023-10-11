@@ -12,8 +12,8 @@ fn should_run() -> bool {
         // We should build the web viewer before starting crate publishing
         Environment::PublishingCrates => false,
 
-        // We only build the web viewer explicitly on CI
-        Environment::CI => false,
+        // TODO(emilk): only build the web viewer explicitly on CI
+        Environment::CI => true,
 
         Environment::DeveloperInWorkspace => true,
 
