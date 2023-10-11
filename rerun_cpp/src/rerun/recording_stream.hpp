@@ -156,7 +156,7 @@ namespace rerun {
                         return;
                     }
 
-                    const auto serialization_result =
+                    const Result<std::vector<SerializedComponentBatch>> serialization_result =
                         AsComponents<Ts>().serialize(archetypes_or_component_batches);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
