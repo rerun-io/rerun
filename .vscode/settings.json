@@ -8,13 +8,6 @@
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
     "files.autoGuessEncoding": true,
-    "python.formatting.provider": "black",
-    "python.formatting.blackArgs": [
-        "--config",
-        "rerun_py/pyproject.toml"
-    ],
-    "python.linting.mypyEnabled": true,
-    "python.linting.enabled": true,
     "cSpell.words": [
         "andreas",
         "bbox",
@@ -75,11 +68,19 @@
     "python.analysis.extraPaths": [
         "rerun_py/rerun_sdk"
     ],
-    "ruff.args": [
-        "--config",
-        "rerun_py/pyproject.toml"
+    "ruff.lint.arg": [
+        "--config=rerun_py/pyproject.toml"
     ],
     "cmake.buildDirectory": "${workspaceRoot}/build/",
     "C_Cpp.autoAddFileAssociations": false,
-    "rust-analyzer.showUnlinkedFileNotification": false
+    "rust-analyzer.showUnlinkedFileNotification": false,
+    "black-formatter.args": [
+        "--config=rerun_py/pyproject.toml"
+    ],
+    "ruff.format.args": [
+        "--config=rerun_py/pyproject.toml"
+    ],
+    "ruff.lint.args": [
+        "--config=rerun_py/pyproject.toml"
+    ]
 }
