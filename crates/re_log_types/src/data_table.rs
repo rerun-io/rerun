@@ -926,7 +926,7 @@ impl DataTable {
             (&**chunk.get(control_index(COLUMN_ROW_ID)?).unwrap()).try_into_collection()?;
         let col_entity_path =
             (&**chunk.get(control_index(COLUMN_ENTITY_PATH)?).unwrap()).try_into_collection()?;
-        // TODO(#1712): This is unnecessarily slow…
+        // TODO(#3741): This is unnecessarily slow…
         let col_num_instances =
             (&**chunk.get(control_index(COLUMN_NUM_INSTANCES)?).unwrap()).try_into_collection()?;
 
