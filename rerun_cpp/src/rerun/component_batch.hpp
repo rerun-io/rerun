@@ -60,17 +60,21 @@ namespace rerun {
 
     /// Generic list of components that are contiguous in memory.
     ///
-    /// Any creation from a non-temporary will neither copy the data nor take ownership of it.
-    /// This means that any data passed in (unless temporary) must outlive the component batch!
+    /// Data in the component batch can either be borrowed or owned.
+    /// * Borrowed: If data is borrowed it *must* outlive its source (in particular, the pointer to
+    /// the source musn't invalidate)
+    /// * Owned: Owned data is copied into an internal std::vector
     ///
-    /// However, when created from a temporary, the component batch will take ownership of the data.
-    /// For details, refer to the documentation of the respective constructor.
+    /// ComponentBatches are either filled explicitly using `ComponentBatch::borrow` or
+    /// `ComponentBatch::take_ownership` or (most commonly) implicitly using the
+    /// `ComponentBatchAdapter` trait (see its documentation for more information on how data can be
+    /// adapted).
     ///
-    /// Implementation notes:
+    /// ## Implementation notes:
     ///
     /// Does intentionally not implement copy construction since this for the owned case this may
-    /// be expensive.Typically, there should be no need to copy component batches, so this more than
-    /// likely indicates a bug inside the Rerun SDK.
+    /// be expensive. Typically, there should be no need to copy component batches, so this more
+    /// than likely indicates a bug inside the Rerun SDK.
     template <typename TComponent>
     class ComponentBatch {
       public:
