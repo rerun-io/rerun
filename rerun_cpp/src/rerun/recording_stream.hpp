@@ -183,7 +183,7 @@ namespace rerun {
 
         /// Logs several serialized batches batches, returning an error on failure.
         ///
-        /// The number of instances in each batch must either be equal to each other or:
+        /// The number of instances in each batch must either be equal to the maximum or:
         /// - zero instances - implies a clear
         /// - single instance (but other instances have more) - causes a splat
         Error try_log_serialized_batches(
