@@ -30,7 +30,6 @@ namespace rerun {
         Ok = 0x0000'0000,
         OutOfMemory = 0x0000'0001,
         NotImplemented = 0x0000'0002,
-        InvalidOperationOnMovedObject = 0x0000'0003,
 
         // Invalid argument errors.
         _CategoryArgument = 0x0000'0010,
