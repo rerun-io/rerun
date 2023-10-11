@@ -24,7 +24,7 @@ namespace rerun {
         );
     };
 
-    /// AsComponents for an ComponentBatch.
+    /// AsComponents for a ComponentBatch.
     template <typename TComponent>
     struct AsComponents<ComponentBatch<TComponent>> {
         static Result<std::vector<SerializedComponentBatch>> serialize(
