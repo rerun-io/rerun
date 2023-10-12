@@ -105,7 +105,7 @@ impl AppEnvironment {
 
             StoreSource::File { .. }
             | StoreSource::Unknown
-            | StoreSource::InAppGuides
+            | StoreSource::Viewer
             | StoreSource::Other(_) => {
                 // We should not really get here
 

@@ -2,10 +2,7 @@ use super::{large_text_button, status_strings, url_large_text_button, WelcomeScr
 use egui::{NumExt, Ui};
 use itertools::Itertools;
 use re_data_store::StoreDb;
-use re_log_types::{
-    ApplicationId, DataRow, EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource,
-    Time, TimePoint,
-};
+use re_log_types::{DataRow, EntityPath, LogMsg, RowId, TimePoint};
 use re_smart_channel::ReceiveSet;
 use re_ui::UICommandSender;
 use re_viewer_context::{SystemCommand, SystemCommandSender};
@@ -293,17 +290,7 @@ fn open_markdown_recording(
         &text_doc,
     )?;
 
-    let store_info = StoreInfo {
-        application_id: ApplicationId::from(app_id.as_ref()),
-        store_id: StoreId::random(StoreKind::Recording),
-        is_official_example: true,
-        started: Time::now(),
-        store_source: StoreSource::InAppGuides,
-        store_kind: StoreKind::Recording,
-    };
-
-    let store_db = StoreDb::from_info_and_rows(store_info, [row])?;
-
+    let store_db = StoreDb::from_rows(app_id.as_ref(), [row])?;
     command_sender.send_system(SystemCommand::LoadStoreDb(store_db));
 
     Ok(())
