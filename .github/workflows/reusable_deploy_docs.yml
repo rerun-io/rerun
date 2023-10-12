@@ -169,6 +169,10 @@ jobs:
     runs-on: ubuntu-latest
     if: inputs.UPDATE_LATEST
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha) }}
+
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
