@@ -122,7 +122,7 @@ impl RenderPipelineDesc {
     ) -> Result<wgpu::RenderPipeline, RenderPipelineError> {
         let pipeline_layout = pipeline_layouts
             .get_resource(self.pipeline_layout)
-            .map_err(RenderPipelineError::PipelineLayoutNotPresent);
+            .map_err(RenderPipelineError::PipelineLayout);
 
         let Ok(vertex_shader_module) = shader_modules
             .get(self.vertex_handle)
