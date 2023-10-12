@@ -9,7 +9,8 @@ use re_viewer_context::{
 use crate::{
     space_info::SpaceInfoCollection,
     space_view_heuristics::{
-        is_entity_processed_by_class, reachable_entities_from_root, EntitiesPerSystem,
+        compute_heuristic_context_for_entities, is_entity_processed_by_class,
+        reachable_entities_from_root, EntitiesPerSystem,
     },
 };
 
@@ -255,12 +256,18 @@ impl SpaceViewBlueprint {
     ) {
         re_tracing::profile_function!();
 
+        let heuristic_context = compute_heuristic_context_for_entities(ctx);
+
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
             if is_entity_processed_by_class(
                 ctx,
                 &self.class_name,
                 entity_path,
+                heuristic_context
+                    .get(entity_path)
+                    .copied()
+                    .unwrap_or_default(),
                 &ctx.current_query(),
             ) && !self.contents.contains_entity(entity_path)
                 && spaces_info
