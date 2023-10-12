@@ -4,6 +4,66 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
+## [0.9.1](https://github.com/rerun-io/rerun/compare/0.9.0...0.9.1) - Bug fixes and performance improvements - 2023-10-12
+
+[Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
+
+* Python: `pip install rerun-sdk`
+* Rust: `cargo add rerun` and `cargo install rerun-cli`
+* Online demo: <https://app.rerun.io/version/0.9.0/>
+
+### Overview & Highlights
+- A bunch of bug fixes
+- Fix big performance regression when hovering images
+- The Rerun Viewer should now be visible to the system accessibility system
+
+#### 🐍 Python SDK
+- Added support for PyTorch array to `Boxes2D`'s `array` convenience argument [#3719](https://github.com/rerun-io/rerun/pull/3719)
+- Fix default stroke width handling in `log_line_strip_Xd` and `log_obbs` [#3720](https://github.com/rerun-io/rerun/pull/3720)
+- Warn/raise when passing incompatible objects to `log` [#3727](https://github.com/rerun-io/rerun/pull/3727)
+- Refactor `rerun.AnyValues` to handle `None` input more gracefully [#3725](https://github.com/rerun-io/rerun/pull/3725)
+- Default `DisconnectedSpaces` boolean to `true` in Python [#3760](https://github.com/rerun-io/rerun/pull/3760)
+
+#### 🦀 Rust SDK
+- Fix return type of `entity_path!()` and `entity_path_vec!()` on empty input [#3734](https://github.com/rerun-io/rerun/pull/3734) (thanks [@kpreid](https://github.com/kpreid)!)
+- Export `RecordingStreamError` [#3777](https://github.com/rerun-io/rerun/pull/3777)
+
+#### 🪳 Bug Fixes
+- Fix bug when joining cleared optional components [#3726](https://github.com/rerun-io/rerun/pull/3726)
+- Update `winit` to 0.28.7 to fix UI glitch on macOS Sonoma [#3763](https://github.com/rerun-io/rerun/pull/3763)
+- Show 1D-tensors as bar charts [#3769](https://github.com/rerun-io/rerun/pull/3769)
+- Fix loading of `.obj` mesh files [#3772](https://github.com/rerun-io/rerun/pull/3772)
+- Fix crash when loading huge image [#3775](https://github.com/rerun-io/rerun/pull/3775)
+- Fix performance regression when viewing images and tensors [#3767](https://github.com/rerun-io/rerun/pull/3767)
+
+#### 🌁 Viewer Improvements
+- Turn on `AccessKit` accessibility integration [#3732](https://github.com/rerun-io/rerun/pull/3732)
+- Display space views using `ViewCoordinates` from closest ancestor [#3748](https://github.com/rerun-io/rerun/pull/3748)
+- Improve 3D view bounds handling of camera frustums [#3749](https://github.com/rerun-io/rerun/pull/3749) [#3815](https://github.com/rerun-io/rerun/pull/3815) [#3811](https://github.com/rerun-io/rerun/pull/3811)
+
+#### 🚀 Performance Improvements
+- Optimize gathering of point cloud colors [#3730](https://github.com/rerun-io/rerun/pull/3730)
+
+#### 🧑‍🏫 Examples
+- Fix open photogrammetry example not working on Windows [#3705](https://github.com/rerun-io/rerun/pull/3705)
+
+#### 📚 Docs
+- Document that entity-path `rerun/` is reserved [#3747](https://github.com/rerun-io/rerun/pull/3747)
+
+#### 🖼 UI Improvements
+- Show all entities/components in the Streams UI, even if empty for the selected timeline [#3779](https://github.com/rerun-io/rerun/pull/3779)
+
+#### 🧑‍💻 Dev-experience
+- Less automatic `build.rs` shenanigans [#3814](https://github.com/rerun-io/rerun/pull/3814)
+
+#### 🗣 Refactors
+- Refactor our `build.rs` files [#3789](https://github.com/rerun-io/rerun/pull/3789)
+
+#### 📦 Dependencies
+- Update `ewebsock` to 0.4.0 [#3729](https://github.com/rerun-io/rerun/pull/3729)
+- Update `winit` to 0.28.7 [#3763](https://github.com/rerun-io/rerun/pull/3763)
+
+
 ## [0.9.0](https://github.com/rerun-io/rerun/compare/0.8.2...0.9.0) - New logging API - 2023-10-05
 
 [Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
