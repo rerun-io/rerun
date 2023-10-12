@@ -3,12 +3,16 @@ use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
 use re_renderer::DepthOffset;
 use re_types::Archetype;
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery, ViewerContext,
+    NamedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
+    ViewQuery, ViewerContext,
 };
 
-use crate::contexts::{
-    AnnotationSceneContext, EntityDepthOffsets, PrimitiveCounter, SharedRenderBuilders,
-    SpatialSceneEntityContext, TransformContext,
+use crate::{
+    contexts::{
+        AnnotationSceneContext, EntityDepthOffsets, PrimitiveCounter, SharedRenderBuilders,
+        SpatialSceneEntityContext, TransformContext,
+    },
+    SpatialSpaceView3D,
 };
 
 /// Iterates through all entity views for a given archetype.
@@ -39,7 +43,18 @@ where
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
     for (ent_path, props) in query.iter_entities_for_system(System::name()) {
-        let Some(world_from_entity) = transforms.reference_from_entity(ent_path) else {
+        // The transform that considers pinholes only makes sense if this is a 3D space-view
+        let world_from_entity = if view_ctx.space_view_class_name() == SpatialSpaceView3D.name() {
+            transforms.reference_from_entity(ent_path)
+        } else {
+            transforms.reference_from_entity_ignoring_pinhole(
+                ent_path,
+                &ctx.store_db.entity_db.data_store,
+                &query.latest_at_query(),
+            )
+        };
+
+        let Some(world_from_entity) = world_from_entity else {
             continue;
         };
         let entity_context = SpatialSceneEntityContext {
@@ -51,6 +66,7 @@ where
             annotations: annotations.0.find(ent_path),
             shared_render_builders,
             highlight: query.highlights.entity_outline_mask(ent_path.hash()),
+            space_view_class_name: view_ctx.space_view_class_name(),
         };
 
         match query_archetype_with_history::<A, N>(

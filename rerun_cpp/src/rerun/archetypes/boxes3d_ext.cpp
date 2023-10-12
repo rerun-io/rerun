@@ -9,25 +9,28 @@ namespace rerun {
         // [CODEGEN COPY TO HEADER START]
 
         /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
-        static Boxes3D from_half_sizes(std::vector<components::HalfSizes3D> _half_sizes) {
+        static Boxes3D from_half_sizes(ComponentBatch<components::HalfSizes3D> half_sizes) {
             Boxes3D boxes;
-            boxes.half_sizes = std::move(_half_sizes);
+            boxes.half_sizes = std::move(half_sizes);
             return boxes;
         }
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes`.
         static Boxes3D from_centers_and_half_sizes(
-            std::vector<components::Position3D> _centers,
-            std::vector<components::HalfSizes3D> _half_sizes
+            ComponentBatch<components::Position3D> centers,
+            ComponentBatch<components::HalfSizes3D> half_sizes
         ) {
-            return Boxes3D::from_half_sizes(std::move(_half_sizes))
-                .with_centers(std::move(_centers));
+            Boxes3D boxes;
+            boxes.half_sizes = std::move(half_sizes);
+            boxes.centers = std::move(centers);
+            return boxes;
         }
 
         /// Creates new `Boxes3D` with `half_sizes` created from (full) sizes.
         ///
         /// TODO(#3285): Does *not* preserve data as-is and instead creates half-sizes from the
         /// input data.
+        /// TODO(#3794): This should not take an std::vector.
         static Boxes3D from_sizes(const std::vector<datatypes::Vec3D>& sizes);
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes` created from centers and (full)
@@ -35,10 +38,14 @@ namespace rerun {
         ///
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
+        /// TODO(#3794): This should not take an std::vector.
         static Boxes3D from_centers_and_sizes(
-            std::vector<components::Position3D> centers, const std::vector<datatypes::Vec3D>& sizes
+            ComponentBatch<components::Position3D> centers,
+            const std::vector<datatypes::Vec3D>& sizes
         ) {
-            return from_sizes(sizes).with_centers(std::move(centers));
+            Boxes3D boxes = from_sizes(std::move(sizes));
+            boxes.centers = std::move(centers);
+            return boxes;
         }
 
         /// Creates new `Boxes3D` with `half_sizes` and `centers` created from minimums and (full)
@@ -46,6 +53,7 @@ namespace rerun {
         ///
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
+        /// TODO(#3794): This should not take an std::vector.
         static Boxes3D from_mins_and_sizes(
             const std::vector<datatypes::Vec3D>& mins, const std::vector<datatypes::Vec3D>& sizes
         );
@@ -59,26 +67,37 @@ namespace rerun {
                 half_sizes.emplace_back(size.x() / 2.0, size.y() / 2.0, size.z() / 2.0);
             }
 
+            // Move the vector into a component batch.
             return Boxes3D::from_half_sizes(std::move(half_sizes));
         }
 
         Boxes3D Boxes3D::from_mins_and_sizes(
             const std::vector<datatypes::Vec3D>& mins, const std::vector<datatypes::Vec3D>& sizes
         ) {
-            auto boxes = from_sizes(sizes);
+            auto num_components = std::min(mins.size(), sizes.size());
 
-            auto num_centers = std::min(mins.size(), sizes.size());
+            std::vector<components::HalfSizes3D> half_sizes;
             std::vector<components::Position3D> centers;
-            centers.reserve(num_centers);
-            for (size_t i = 0; i < num_centers; ++i) {
+            half_sizes.reserve(num_components);
+            centers.reserve(num_components);
+
+            for (size_t i = 0; i < num_components; ++i) {
+                float half_size_x = sizes[i].x() * 0.5f;
+                float half_size_y = sizes[i].y() * 0.5f;
+                float half_size_z = sizes[i].z() * 0.5f;
+
+                half_sizes.emplace_back(half_size_x, half_size_y, half_size_z);
                 centers.emplace_back(
-                    mins[i].x() + boxes.half_sizes[i].x(),
-                    mins[i].y() + boxes.half_sizes[i].y(),
-                    mins[i].z() + boxes.half_sizes[i].z()
+                    mins[i].x() + half_size_x,
+                    mins[i].y() + half_size_y,
+                    mins[i].z() + half_size_z
                 );
             }
 
-            return boxes.with_centers(centers);
+            Boxes3D boxes;
+            boxes.half_sizes = std::move(half_sizes);
+            boxes.centers = std::move(centers);
+            return boxes;
         }
     } // namespace archetypes
 } // namespace rerun

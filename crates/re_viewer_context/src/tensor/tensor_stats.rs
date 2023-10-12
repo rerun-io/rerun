@@ -11,6 +11,8 @@ pub struct TensorStats {
 
 impl TensorStats {
     pub fn new(tensor: &re_types::datatypes::TensorData) -> Self {
+        re_tracing::profile_function!();
+
         use half::f16;
         use ndarray::ArrayViewD;
         use re_types::tensor_data::TensorDataType;

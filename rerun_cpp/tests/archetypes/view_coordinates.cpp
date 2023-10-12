@@ -25,7 +25,7 @@ SCENARIO(
             rerun::components::ViewCoordinates::Down,
             rerun::components::ViewCoordinates::Forward};
 
-        test_serialization_for_manual_and_builder(from_manual, from_builder);
+        test_compare_archetype_serialization(from_manual, from_builder);
     }
 
     GIVEN("Constructed from builder and static") {
@@ -35,6 +35,6 @@ SCENARIO(
             rerun::components::ViewCoordinates::Forward
         );
 
-        test_serialization_for_manual_and_builder(ViewCoordinates::RDF, from_builder);
+        test_compare_archetype_serialization(ViewCoordinates::RDF, from_builder);
     }
 }

@@ -1,15 +1,29 @@
 use std::path::PathBuf;
 
-use re_build_tools::{is_tracked_env_var_set, write_file_if_necessary};
+use re_build_tools::write_file_if_necessary;
+
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use re_build_tools::Environment;
+
+    match Environment::detect() {
+        // The code (which is committed) should hopefully already be up-to-date.
+        Environment::PublishingCrates => false,
+
+        // No need to run this on CI (which means setting up `protoc` etc)
+        // since the code is committed anyway.
+        Environment::CI => false,
+
+        // Sure - let's keep it up-to-date.
+        Environment::DeveloperInWorkspace => true,
+
+        // Definitely not
+        Environment::UsedAsDependency => false,
+    }
+}
 
 fn main() -> Result<(), std::io::Error> {
-    if std::env::var("CI").is_ok() {
-        // No need to run this on CI (which means setting up `protoc` etc) since the code is committed
-        // anyway.
-        return Ok(());
-    }
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
-        // Only run if we are in the rerun workspace, not on users machines (if we ever publish the example).
+    if !should_run() {
         return Ok(());
     }
 
@@ -31,7 +45,7 @@ fn main() -> Result<(), std::io::Error> {
         &["proto"],
     )?;
 
-    let out_dir = std::env::var("OUT_DIR").unwrap();
+    let out_dir = re_build_tools::get_and_track_env_var("OUT_DIR").unwrap();
     let src_path = PathBuf::from(out_dir).join("objectron.proto.rs");
     let dst_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/objectron.rs");
 

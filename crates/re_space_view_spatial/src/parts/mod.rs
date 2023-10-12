@@ -22,8 +22,10 @@ use re_types::components::Text;
 pub use spatial_view_part::SpatialViewPartData;
 pub use transform3d_arrows::{add_axis_arrows, Transform3DArrowsPart};
 
+#[doc(hidden)] // Public for benchmarks
+pub use points3d::LoadedPoints;
+
 use ahash::HashMap;
-use std::sync::Arc;
 
 use re_data_store::{EntityPath, InstancePathHash};
 use re_types::components::{Color, InstanceKey};
@@ -43,7 +45,26 @@ pub type Keypoints = HashMap<(re_types::components::ClassId, i64), HashMap<Keypo
 pub const SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES: f32 = 1.5;
 pub const SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES: f32 = 2.5;
 
-pub fn register_parts(
+pub fn register_2d_spatial_parts(
+    system_registry: &mut SpaceViewSystemRegistry,
+) -> Result<(), SpaceViewClassRegistryError> {
+    // Note: 2D spatial systems don't include cameras as this
+    // part only shows a 2D projection WITHIN a 3D view.
+    system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
+    system_registry.register_part_system::<assets3d::Asset3DPart>()?;
+    system_registry.register_part_system::<boxes2d::Boxes2DPart>()?;
+    system_registry.register_part_system::<boxes3d::Boxes3DPart>()?;
+    system_registry.register_part_system::<images::ImagesPart>()?;
+    system_registry.register_part_system::<lines2d::Lines2DPart>()?;
+    system_registry.register_part_system::<lines3d::Lines3DPart>()?;
+    system_registry.register_part_system::<meshes::Mesh3DPart>()?;
+    system_registry.register_part_system::<points2d::Points2DPart>()?;
+    system_registry.register_part_system::<points3d::Points3DPart>()?;
+    system_registry.register_part_system::<transform3d_arrows::Transform3DArrowsPart>()?;
+    Ok(())
+}
+
+pub fn register_3d_spatial_parts(
     system_registry: &mut SpaceViewSystemRegistry,
 ) -> Result<(), SpaceViewClassRegistryError> {
     system_registry.register_part_system::<arrows3d::Arrows3DPart>()?;
@@ -118,7 +139,7 @@ pub fn process_colors<'a, A: Archetype>(
         arch_view.iter_optional_component::<Color>()?,
     )
     .map(move |(annotation_info, color)| {
-        annotation_info.color(color.map(move |c| c.to_array()).as_ref(), default_color)
+        annotation_info.color(color.map(|c| c.to_array()), default_color)
     }))
 }
 
@@ -134,9 +155,7 @@ pub fn process_labels<'a, A: Archetype>(
         annotation_infos.iter(),
         arch_view.iter_optional_component::<Text>()?,
     )
-    .map(move |(annotation_info, text)| {
-        annotation_info.label(text.as_ref().map(move |t| t.as_str()))
-    }))
+    .map(move |(annotation_info, text)| annotation_info.label(text.as_ref().map(|t| t.as_str()))))
 }
 
 /// Process [`re_types::components::Radius`] components to [`re_renderer::Size`] using auto size
@@ -171,12 +190,12 @@ pub fn process_radii<'a, A: Archetype>(
 fn process_annotations<Primary, A: Archetype>(
     query: &ViewQuery<'_>,
     arch_view: &re_query::ArchetypeView<A>,
-    annotations: &Arc<Annotations>,
+    annotations: &Annotations,
 ) -> Result<ResolvedAnnotationInfos, re_query::QueryError>
 where
     Primary: re_types::Component + Clone,
 {
-    process_annotations_and_keypoints(query, arch_view, annotations, |_: &Primary| {
+    process_annotations_and_keypoints(query.latest_at, arch_view, annotations, |_: &Primary| {
         glam::Vec3::ZERO
     })
     .map(|(a, _)| a)
@@ -184,9 +203,9 @@ where
 
 /// Resolves all annotations and keypoints for the given entity view.
 fn process_annotations_and_keypoints<Primary, A: Archetype>(
-    query: &ViewQuery<'_>,
+    latest_at: re_log_types::TimeInt,
     arch_view: &re_query::ArchetypeView<A>,
-    annotations: &Arc<Annotations>,
+    annotations: &Annotations,
     mut primary_into_position: impl FnMut(&Primary) -> glam::Vec3,
 ) -> Result<(ResolvedAnnotationInfos, Keypoints), re_query::QueryError>
 where
@@ -220,7 +239,7 @@ where
 
         if let (Some(keypoint_id), Some(class_id), primary) = (keypoint_id, class_id, primary) {
             keypoints
-                .entry((class_id, query.latest_at.as_i64()))
+                .entry((class_id, latest_at.as_i64()))
                 .or_default()
                 .insert(keypoint_id.0, primary_into_position(&primary));
             class_description.annotation_info_with_keypoint(keypoint_id.0)

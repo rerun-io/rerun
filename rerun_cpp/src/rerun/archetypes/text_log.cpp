@@ -3,31 +3,42 @@
 
 #include "text_log.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";
+    }
 
-        AnonymousComponentBatch TextLog::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<TextLog::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::TextLog>::serialize(
+        const archetypes::TextLog& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(3);
+
+        {
+            auto result = ComponentBatch<rerun::components::Text>(archetype.text).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.level.has_value()) {
+            auto result = ComponentBatch<rerun::components::TextLogLevel>(archetype.level.value())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.color.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Color>(archetype.color.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<TextLog::IndicatorComponent>(TextLog::IndicatorComponent())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> TextLog::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(3);
-
-            comp_batches.emplace_back(text);
-            if (level.has_value()) {
-                comp_batches.emplace_back(level.value());
-            }
-            if (color.has_value()) {
-                comp_batches.emplace_back(color.value());
-            }
-            comp_batches.emplace_back(TextLog::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

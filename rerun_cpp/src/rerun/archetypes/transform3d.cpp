@@ -3,26 +3,33 @@
 
 #include "transform3d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Transform3D::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.Transform3DIndicator";
+    }
 
-        AnonymousComponentBatch Transform3D::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<Transform3D::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Transform3D>::serialize(
+        const archetypes::Transform3D& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
+
+        {
+            auto result =
+                ComponentBatch<rerun::components::Transform3D>(archetype.transform).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result =
+                ComponentBatch<Transform3D::IndicatorComponent>(Transform3D::IndicatorComponent())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> Transform3D::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
-
-            comp_batches.emplace_back(transform);
-            comp_batches.emplace_back(Transform3D::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

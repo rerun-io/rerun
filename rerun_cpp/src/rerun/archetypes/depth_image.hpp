@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -41,45 +41,50 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             DepthImage() = default;
+            DepthImage(DepthImage&& other) = default;
 
-            DepthImage(rerun::components::TensorData _data) : data(std::move(_data)) {}
+            explicit DepthImage(rerun::components::TensorData _data) : data(std::move(_data)) {}
 
             /// An optional floating point value that specifies how long a meter is in the native
             /// depth units.
             ///
             /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter
             /// precision and a range of up to ~65 meters (2^16 / 1000).
-            DepthImage& with_meter(rerun::components::DepthMeter _meter) {
+            DepthImage with_meter(rerun::components::DepthMeter _meter) && {
                 meter = std::move(_meter);
-                return *this;
+                return std::move(*this);
             }
 
             /// An optional floating point value that specifies the 2D drawing order.
             ///
             /// Objects with higher values are drawn on top of those with lower values.
-            DepthImage& with_draw_order(rerun::components::DrawOrder _draw_order) {
+            DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
                 draw_order = std::move(_draw_order);
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return 1;
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::DepthImage> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::DepthImage& archetype
+        );
+    };
 } // namespace rerun

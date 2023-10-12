@@ -130,7 +130,10 @@ fn update_pinhole_property_heuristics(
             let default_image_plane_distance = if scene_size.is_finite() && scene_size > 0.0 {
                 scene_size * 0.02 // Works pretty well for `examples/python/open_photogrammetry_format/main.py --no-frames`
             } else {
-                1.0
+                // This value somewhat arbitrary. In almost all cases where the scene has defined bounds
+                // the heuristic will change it or it will be user edited. In the case of non-defined bounds
+                // this value works better with the default camera setup.
+                0.3
             };
             properties.pinhole_image_plane_distance =
                 EditableAutoValue::Auto(default_image_plane_distance);

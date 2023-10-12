@@ -207,7 +207,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         // TODO(andreas): We should be able to parallelize both of these loops
         let view_ctx = {
             re_tracing::profile_scope!("ViewContextSystem::execute");
-            let mut view_ctx = systems.new_context_collection();
+            let mut view_ctx = systems.new_context_collection(self.name());
             for (_name, system) in &mut view_ctx.systems {
                 re_tracing::profile_scope!(_name.as_str());
                 system.execute(ctx, query);
