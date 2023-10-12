@@ -144,6 +144,11 @@ jobs:
       - name: Publish app.rerun.io
         if: inputs.update-latest
         run: |
+          gsutil -m cp -r 'gs://rerun-example-rrd/version/${{ inputs.release-version }}/*' gs://rerun-example-rrd/version/latest
+
+      - name: Publish app.rerun.io
+        if: inputs.update-latest
+        run: |
           gsutil -m cp -r 'gs://rerun-web-viewer/version/${{ inputs.release-version }}/*' gs://rerun-web-viewer/version/latest
 
       - name: Publish demo.rerun.io
