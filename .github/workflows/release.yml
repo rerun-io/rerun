@@ -116,11 +116,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
-          pr=$(gh pr view --json headRefName 2>/dev/null)
+          set +e
+          pr=$(gh pr view --json headRefName 2>/dev/null || echo "no pull requests found")
           if echo "$pr" | jq '. | has("headRefName")' | grep -q 'true'; then
             echo "PR already exists"
             exit 0
           fi
+          set -e
 
           echo "PR does not exist, creating…"
 
