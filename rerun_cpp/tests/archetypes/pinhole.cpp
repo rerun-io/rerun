@@ -20,7 +20,7 @@ SCENARIO(
                                         {4.0f, 5.0f, 6.0f},
                                         {7.0f, 8.0f, 9.0f},
                                     }))
-                                .with_resolution(rerun::datatypes::Vec2D({1.0f, 2.0f}));
+                                .with_resolution(1.0f, 2.0f);
 
         Pinhole from_manual;
         from_manual.image_from_camera = rerun::datatypes::Mat3x3({
