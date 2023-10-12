@@ -104,12 +104,12 @@ pub struct RenderPipelineDesc {
 #[derive(thiserror::Error, Debug)]
 pub enum RenderPipelineError {
     #[error("Referenced pipeline layout not found: {0}")]
-    PipelineLayoutNotPresent(PoolError),
+    PipelineLayout(PoolError),
 
-    #[error("Referenced vertex shader not found")]
+    #[error("Referenced vertex shader not found: {0}")]
     VertexShaderNotFound(PoolError),
 
-    #[error("Referenced fragment shader not found")]
+    #[error("Referenced fragment shader not found: {0}")]
     FragmentShaderNotFound(PoolError),
 }
 
