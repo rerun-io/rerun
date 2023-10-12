@@ -68,7 +68,3 @@ uuid = "1.1"
 [build-dependencies]
 re_build_tools.workspace = true
 pyo3-build-config = "0.19.0"
-
-
-[package.metadata.maturin]
-name = "rerun_bindings"
