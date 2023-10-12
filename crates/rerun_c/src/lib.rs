@@ -481,7 +481,7 @@ fn rr_log_impl(
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_log(
+pub unsafe extern "C" fn rr_recording_stream_log(
     stream: CRecordingStream,
     data_row: *const CDataRow,
     inject_time: bool,

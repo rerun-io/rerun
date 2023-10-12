@@ -260,7 +260,7 @@ extern void rr_recording_stream_reset_time(rr_recording_stream stream);
 ///
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
-extern void rr_log(
+extern void rr_recording_stream_log(
     rr_recording_stream stream, const rr_data_row* data_row, bool inject_time, rr_error* error
 );
 
