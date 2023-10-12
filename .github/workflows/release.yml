@@ -112,6 +112,38 @@ jobs:
           git push
           echo "version_bump_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pr=$(gh pr view --json headRefName 2>/dev/null)
+          if echo "$pr" | jq '. | has("headRefName")' | grep -q 'true'; then
+            echo "PR already exists"
+            exit 0
+          fi
+
+          echo "PR does not exist, creating…"
+
+          cat <<EOF > pr-body.txt
+          # Release ${{ steps.versioning.outputs.final }}
+
+          ### Next steps
+          - [Test the release](#testing)
+          - If this is an `alpha` release, you can just merge the pull request.
+          - Otherwise:
+            - For any added commits, run the release workflow in `rc` mode again
+            - After testing, run the release workflow in `release` mode
+            - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+          EOF
+
+          gh pr create \
+            --base main \
+            --head $(git branch --show-current) \
+            --label "⛴ release" \
+            --label "exclude from changelog" \
+            --fill \
+            --body-file pr-body.txt
+
   update-docs:
     name: "Update Docs"
     needs: [version]
@@ -207,9 +239,9 @@ jobs:
           echo "branch=$branch_name" >> "$GITHUB_OUTPUT"
 
       - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo '${{ secrets.RERUN_BOT_TOKEN }}' | gh auth login --with-token
-
           cat <<EOF > pr-body.txt
           ### What
 
