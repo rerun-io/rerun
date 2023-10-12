@@ -976,7 +976,6 @@ version = "0.10.0-alpha.7+dev"
 dependencies = [
  "ndarray",
  "rand",
- "rand_distr",
  "rerun",
 ]
 
@@ -4524,7 +4523,6 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "criterion",
- "eframe",
  "egui",
  "glam",
  "itertools 0.11.0",
@@ -4558,7 +4556,6 @@ dependencies = [
  "ahash 0.8.3",
  "anyhow",
  "bytemuck",
- "eframe",
  "egui",
  "half 2.3.1",
  "ndarray",

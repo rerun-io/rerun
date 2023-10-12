@@ -31,7 +31,6 @@ re_viewer_context.workspace = true
 anyhow.workspace = true
 ahash.workspace = true
 bytemuck.workspace = true
-eframe.workspace = true
 egui.workspace = true
 half.workspace = true
 ndarray.workspace = true

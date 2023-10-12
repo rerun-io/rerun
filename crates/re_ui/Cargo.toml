@@ -32,11 +32,11 @@ eframe = ["dep:eframe"]
 egui_extras.workspace = true
 egui.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-strum = { version = "0.24", features = ["derive"] }
-strum_macros = "0.24"
-sublime_fuzzy = "0.7"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+sublime_fuzzy.workspace = true
 
 ## Optional dependencies:
 eframe = { workspace = true, optional = true, default-features = false }

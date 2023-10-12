@@ -34,7 +34,6 @@ re_space_view.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bytemuck.workspace = true
-eframe.workspace = true
 egui = { workspace = true, features = ["serde"] }
 glam.workspace = true
 itertools.workspace = true
