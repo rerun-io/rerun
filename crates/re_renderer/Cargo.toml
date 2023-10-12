@@ -94,6 +94,8 @@ zip = { workspace = true, default-features = false, features = ["deflate"] }
 # For tests:
 unindent.workspace = true
 
+
+
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies] # native
 async-executor.workspace = true
 
