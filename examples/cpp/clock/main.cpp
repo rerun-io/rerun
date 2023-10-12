@@ -10,7 +10,11 @@ void log_hand(
 ) {
     rerun::datatypes::Vec3D tip{length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f};
     uint8_t c = static_cast<uint8_t>(angle * 255.0f);
-    rerun::components::Color color{255 - c, c, blue, std::max<uint8_t>(128, blue)};
+    rerun::components::Color color{
+        static_cast<uint8_t>(255 - c),
+        c,
+        blue,
+        std::max<uint8_t>(128, blue)};
 
     rec.set_time_seconds("sim_time", step);
 
