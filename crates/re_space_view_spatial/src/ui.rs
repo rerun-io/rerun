@@ -1,5 +1,4 @@
-use eframe::epaint::text::TextWrapping;
-use egui::{NumExt, WidgetText};
+use egui::{text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_store::EntityPath;
