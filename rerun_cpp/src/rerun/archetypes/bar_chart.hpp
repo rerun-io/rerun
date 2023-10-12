@@ -6,6 +6,7 @@
 #include "../component_batch.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
+#include "../half.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -95,11 +96,9 @@ namespace rerun {
             inline BarChart(std::vector<int64_t> i64)
                 : BarChart(rerun::datatypes::TensorBuffer::i64(std::move(i64))) {}
 
-            // TODO(#3380): f16 support
-            // /// Construct aBarChart` from a `std::vector<half>`.
-            // inline BarChart(std::vector<half> f16) :
-            // BarChart(rerun::datatypes::TensorBuffer::f16(std::move(f16)))
-            // {}
+            /// Construct aBarChart` from a `std::vector<half>`.
+            inline BarChart(std::vector<rerun::half> f16)
+                : BarChart(rerun::datatypes::TensorBuffer::f16(std::move(f16))) {}
 
             /// Construct a `BarChart` from a `std::vector<float>`.
             inline BarChart(std::vector<float> f32)
@@ -152,11 +151,10 @@ namespace rerun {
                 return BarChart(i64);
             }
 
-            // TODO(#3380): f16 support
-            // /// Construct a `BarChart` from a  `std::vector<half>`.
-            // static inline BarChart f16(std::vector<half> f16) : {
-            //         return BarChart(f16) );
-            // }
+            /// Construct a `BarChart` from a  `std::vector<half>`.
+            static inline BarChart f16(std::vector<rerun::half> f16) {
+                return BarChart(f16);
+            }
 
             /// Construct a `BarChart` from a `std::vector<float>`.
             static inline BarChart f32(std::vector<float> f32) {

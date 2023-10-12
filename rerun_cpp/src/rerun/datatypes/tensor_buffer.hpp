@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../half.hpp"
 #include "../result.hpp"
 
 #include <cassert>
@@ -58,7 +59,7 @@ namespace rerun {
 
                 std::vector<int64_t> i64;
 
-                std::vector<uint16_t> f16;
+                std::vector<rerun::half> f16;
 
                 std::vector<float> f32;
 
@@ -208,7 +209,7 @@ namespace rerun {
                         break;
                     }
                     case detail::TensorBufferTag::F16: {
-                        typedef std::vector<uint16_t> TypeAlias;
+                        typedef std::vector<rerun::half> TypeAlias;
                         _data.f16.~TypeAlias();
                         break;
                     }
@@ -257,10 +258,9 @@ namespace rerun {
             /// Construct a `TensorBuffer` from a `std::vector<int64_t>`.
             inline TensorBuffer(std::vector<int64_t> i64) : TensorBuffer(TensorBuffer::i64(i64)) {}
 
-            // TODO(#3380): f16 support
-            // /// Construct a `TensorBuffer` from a `std::vector<half>`.
-            // inline TensorBuffer(std::vector<half> f16) : TensorBuffer(TensorBuffer::f16(f16))
-            // {}
+            /// Construct a `TensorBuffer` from a `std::vector<half>`.
+            inline TensorBuffer(std::vector<rerun::half> f16)
+                : TensorBuffer(TensorBuffer::f16(f16)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<float>`.
             inline TensorBuffer(std::vector<float> f32) : TensorBuffer(TensorBuffer::f32(f32)) {}
@@ -344,8 +344,8 @@ namespace rerun {
                 return self;
             }
 
-            static TensorBuffer f16(std::vector<uint16_t> f16) {
-                typedef std::vector<uint16_t> TypeAlias;
+            static TensorBuffer f16(std::vector<rerun::half> f16) {
+                typedef std::vector<rerun::half> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F16;
                 new (&self._data.f16) TypeAlias(std::move(f16));

@@ -1893,7 +1893,10 @@ fn quote_variable(
             Type::Int32 => quote! { std::optional<int32_t> #name },
             Type::Int64 => quote! { std::optional<int64_t> #name },
             Type::Bool => quote! { std::optional<bool> #name },
-            Type::Float16 => quote! { std::optional<uint16_t> #name },
+            Type::Float16 => {
+                includes.insert_rerun("half.hpp");
+                quote! { std::optional<rerun::half> #name }
+            }
             Type::Float32 => quote! { std::optional<float> #name },
             Type::Float64 => quote! { std::optional<double> #name },
             Type::String => {
@@ -1928,7 +1931,10 @@ fn quote_variable(
             Type::Int32 => quote! { int32_t #name },
             Type::Int64 => quote! { int64_t #name },
             Type::Bool => quote! { bool #name },
-            Type::Float16 => quote! { uint16_t #name },
+            Type::Float16 => {
+                includes.insert_rerun("half.hpp");
+                quote! { rerun::half #name }
+            }
             Type::Float32 => quote! { float #name },
             Type::Float64 => quote! { double #name },
             Type::String => {
@@ -1966,7 +1972,10 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         ElementType::Int32 => quote! { int32_t },
         ElementType::Int64 => quote! { int64_t },
         ElementType::Bool => quote! { bool },
-        ElementType::Float16 => quote! { uint16_t },
+        ElementType::Float16 => {
+            includes.insert_rerun("half.hpp");
+            quote! { rerun::half }
+        }
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
         ElementType::String => {
