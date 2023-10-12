@@ -29,11 +29,6 @@ namespace rerun {
         ///
         /// #include <rerun.hpp>
         ///
-        /// #include <filesystem>
-        /// #include <iostream>
-        /// #include <string>
-        /// #include <vector>
-        ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_bar_chart");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
