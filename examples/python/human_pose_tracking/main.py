@@ -60,7 +60,7 @@ nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/types/archetypes/poin
 """.strip()
 
 
-def track_pose(video_path: str, segment: bool) -> None:
+def track_pose(video_path: str, segment: bool, max_frame_count: int | None) -> None:
     mp_pose = mp.solutions.pose
 
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
@@ -90,7 +90,10 @@ def track_pose(video_path: str, segment: bool) -> None:
     rr.log("person", rr.ViewCoordinates.RIGHT_HAND_Y_DOWN, timeless=True)
 
     with closing(VideoSource(video_path)) as video_source, mp_pose.Pose(enable_segmentation=segment) as pose:
-        for bgr_frame in video_source.stream_bgr():
+        for idx, bgr_frame in enumerate(video_source.stream_bgr()):
+            if max_frame_count is not None and idx >= max_frame_count:
+                break
+
             rgb = cv2.cvtColor(bgr_frame.data, cv2.COLOR_BGR2RGB)
             rr.set_time_seconds("time", bgr_frame.time)
             rr.set_time_sequence("frame_idx", bgr_frame.idx)
@@ -203,6 +206,11 @@ def main() -> None:
     parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
     parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
     parser.add_argument("--no-segment", action="store_true", help="Don't run person segmentation.")
+    parser.add_argument(
+        "--max-frame",
+        type=int,
+        help="Stop after processing this many frames. If not specified, will run until interrupted.",
+    )
     rr.script_add_args(parser)
 
     args = parser.parse_args()
@@ -212,7 +220,7 @@ def main() -> None:
     if not video_path:
         video_path = get_downloaded_path(args.dataset_dir, args.video)
 
-    track_pose(video_path, segment=not args.no_segment)
+    track_pose(video_path, segment=not args.no_segment, max_frame_count=args.max_frame)
 
     rr.script_teardown(args)
 
