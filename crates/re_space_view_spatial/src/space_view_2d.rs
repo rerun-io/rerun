@@ -84,11 +84,12 @@ impl SpaceViewClass for SpatialSpaceView2D {
         //
         // Since pinhole projections provide a mapping between a 2D child space and a 3D
         // parent space, it means that for any 3D content to to be projected into a 2D space,
-        // there must exist a common 3D ancestor-space which has a *child* which is a 2D space.
-        // But if this space origin is at the root itself, that common ancestor would need to be
-        // a parent of the root, which doesn't exist. As such, it's impossible that this space
-        // would be able to correctly account for the required content. By not spawning a 2D
-        // space in this case we ensure the 3D version gets chosen by the heuristics instead.
+        // there must exist a common 3D ancestor-space which has a *child* which is a 2D space
+        // (and contains a pinhole.) But if this space origin is at the root itself, that common
+        // ancestor would need to be a parent of the root, which doesn't exist. As such, it's
+        // impossible that this space would be able to correctly account for the required
+        // content. By not spawning a 2D space in this case we ensure the 3D version gets chosen
+        // by the heuristics instead.
         if space_origin.is_root() {
             let parts = ctx
                 .space_view_class_registry
