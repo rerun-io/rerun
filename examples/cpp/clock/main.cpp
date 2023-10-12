@@ -2,7 +2,7 @@
 #include <cmath>
 #include <rerun.hpp>
 
-#define TAU (M_PI * 2.0)
+#define TAU (static_cast<float>(M_PI) * 2.0f)
 
 void log_hand(
     rerun::RecordingStream& rec, const char* name, int step, float angle, float length, float width,
