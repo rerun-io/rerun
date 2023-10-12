@@ -15,6 +15,8 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
+            // TODO(#3794): don't use std::vector here
+
             /// Construct a `TensorBuffer` from a `std::vector<uint8_t>`.
             inline TensorBuffer(std::vector<uint8_t> u8) : TensorBuffer(TensorBuffer::u8(u8)) {}
 

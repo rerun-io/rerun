@@ -56,6 +56,7 @@ namespace rerun {
 
             // --------------------------------------------------------------------
             // Implicit constructors:
+            // TODO(#3794): don't use std::vector here
 
             /// Construct a `BarChart` from a `std::vector<uint8_t>`.
             inline BarChart(std::vector<uint8_t> u8)
@@ -103,6 +104,7 @@ namespace rerun {
 
             // --------------------------------------------------------------------
             // Explicit static constructors:
+            // TODO(#3794): don't use std::vector here
 
             /// Construct a `BarChart` from a `std::vector<uint8_t>`.
             static inline BarChart u8(std::vector<uint8_t> u8) {
