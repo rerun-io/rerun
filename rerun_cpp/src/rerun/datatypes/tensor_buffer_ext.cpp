@@ -1,5 +1,7 @@
 #include "tensor_buffer.hpp"
 
+#include <cassert>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
