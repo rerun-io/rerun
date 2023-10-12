@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
         std::vector{
             rrc::Position2D(0.0f, 0.0f),
             rrc::Position2D(1.0f, 3.0f),
-            rrc::Position2D(5.0f, 5.0f)
+            rrc::Position2D(5.0f, 5.0f),
         },
         std::array{rrc::Color(0xFF0000FF), rrc::Color(0x00FF00FF), rrc::Color(0x0000FFFF)},
         c_style_array

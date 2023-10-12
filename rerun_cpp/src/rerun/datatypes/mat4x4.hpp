@@ -78,8 +78,7 @@ namespace rerun {
                       _flat_columns[12],
                       _flat_columns[13],
                       _flat_columns[14],
-                      _flat_columns[15]
-                  } {}
+                      _flat_columns[15]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

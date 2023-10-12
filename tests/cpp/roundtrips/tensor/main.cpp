@@ -11,8 +11,7 @@ int main(int argc, char** argv) {
         rerun::datatypes::TensorDimension{3, std::nullopt},
         rerun::datatypes::TensorDimension{4, std::nullopt},
         rerun::datatypes::TensorDimension{5, std::nullopt},
-        rerun::datatypes::TensorDimension{6, std::nullopt}
-    };
+        rerun::datatypes::TensorDimension{6, std::nullopt}};
 
     std::vector<int32_t> data;
     for (auto i = 0; i < 360; ++i) {

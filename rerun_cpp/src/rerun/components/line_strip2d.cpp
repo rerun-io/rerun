@@ -83,9 +83,9 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema =
-                arrow::schema({arrow::field(LineStrip2D::NAME, LineStrip2D::arrow_datatype(), false)
-                });
+            auto schema = arrow::schema(
+                {arrow::field(LineStrip2D::NAME, LineStrip2D::arrow_datatype(), false)}
+            );
 
             rerun::DataCell cell;
             cell.component_name = LineStrip2D::NAME;
