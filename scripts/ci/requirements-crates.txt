@@ -1,0 +1,5 @@
+PyGithub==1.59.0
+GitPython==3.1.37
+colorama==0.4.6
+requests>=2.31,<3
+tomlkit==0.11.8
