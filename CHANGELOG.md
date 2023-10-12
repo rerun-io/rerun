@@ -10,7 +10,7 @@
 
 * Python: `pip install rerun-sdk`
 * Rust: `cargo add rerun` and `cargo install rerun-cli`
-* Online demo: <https://app.rerun.io/version/0.9.0/>
+* Online demo: <https://app.rerun.io/version/0.9.1/>
 
 ### Overview & Highlights
 - A bunch of bug fixes
@@ -40,6 +40,7 @@
 - Turn on `AccessKit` accessibility integration [#3732](https://github.com/rerun-io/rerun/pull/3732)
 - Display space views using `ViewCoordinates` from closest ancestor [#3748](https://github.com/rerun-io/rerun/pull/3748)
 - Improve 3D view bounds handling of camera frustums [#3749](https://github.com/rerun-io/rerun/pull/3749) [#3815](https://github.com/rerun-io/rerun/pull/3815) [#3811](https://github.com/rerun-io/rerun/pull/3811)
+- Improve heuristics around 2D vs 3D space-view creation [#3822](https://github.com/rerun-io/rerun/pull/3822)
 
 #### 🚀 Performance Improvements
 - Optimize gathering of point cloud colors [#3730](https://github.com/rerun-io/rerun/pull/3730)
