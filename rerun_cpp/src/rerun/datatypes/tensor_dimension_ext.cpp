@@ -9,7 +9,7 @@ namespace rerun {
         // [CODEGEN COPY TO HEADER START]
 
         /// Nameless dimension
-        inline explicit TensorDimension(size_t size_) : size(size_) {}
+        explicit TensorDimension(size_t size_) : size(size_) {}
 
         // [CODEGEN COPY TO HEADER END]
 #endif

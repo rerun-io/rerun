@@ -30,7 +30,7 @@ namespace rerun {
             // Extensions to generated type defined in 'tensor_dimension_ext.cpp'
 
             /// Nameless dimension
-            inline explicit TensorDimension(size_t size_) : size(size_) {}
+            explicit TensorDimension(size_t size_) : size(size_) {}
 
           public:
             TensorDimension() = default;

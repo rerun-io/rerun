@@ -237,38 +237,37 @@ namespace rerun {
             // TODO(#3794): don't use std::vector here
 
             /// Construct a `TensorBuffer` from a `std::vector<uint8_t>`.
-            inline TensorBuffer(std::vector<uint8_t> u8) : TensorBuffer(TensorBuffer::u8(u8)) {}
+            TensorBuffer(std::vector<uint8_t> u8) : TensorBuffer(TensorBuffer::u8(u8)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint16_t>`.
-            inline TensorBuffer(std::vector<uint16_t> u16) : TensorBuffer(TensorBuffer::u16(u16)) {}
+            TensorBuffer(std::vector<uint16_t> u16) : TensorBuffer(TensorBuffer::u16(u16)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint32_t>`.
-            inline TensorBuffer(std::vector<uint32_t> u32) : TensorBuffer(TensorBuffer::u32(u32)) {}
+            TensorBuffer(std::vector<uint32_t> u32) : TensorBuffer(TensorBuffer::u32(u32)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint64_t>`.
-            inline TensorBuffer(std::vector<uint64_t> u64) : TensorBuffer(TensorBuffer::u64(u64)) {}
+            TensorBuffer(std::vector<uint64_t> u64) : TensorBuffer(TensorBuffer::u64(u64)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int8_t>`.
-            inline TensorBuffer(std::vector<int8_t> i8) : TensorBuffer(TensorBuffer::i8(i8)) {}
+            TensorBuffer(std::vector<int8_t> i8) : TensorBuffer(TensorBuffer::i8(i8)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int16_t>`.
-            inline TensorBuffer(std::vector<int16_t> i16) : TensorBuffer(TensorBuffer::i16(i16)) {}
+            TensorBuffer(std::vector<int16_t> i16) : TensorBuffer(TensorBuffer::i16(i16)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int32_t>`.
-            inline TensorBuffer(std::vector<int32_t> i32) : TensorBuffer(TensorBuffer::i32(i32)) {}
+            TensorBuffer(std::vector<int32_t> i32) : TensorBuffer(TensorBuffer::i32(i32)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int64_t>`.
-            inline TensorBuffer(std::vector<int64_t> i64) : TensorBuffer(TensorBuffer::i64(i64)) {}
+            TensorBuffer(std::vector<int64_t> i64) : TensorBuffer(TensorBuffer::i64(i64)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<half>`.
-            inline TensorBuffer(std::vector<rerun::half> f16)
-                : TensorBuffer(TensorBuffer::f16(f16)) {}
+            TensorBuffer(std::vector<rerun::half> f16) : TensorBuffer(TensorBuffer::f16(f16)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<float>`.
-            inline TensorBuffer(std::vector<float> f32) : TensorBuffer(TensorBuffer::f32(f32)) {}
+            TensorBuffer(std::vector<float> f32) : TensorBuffer(TensorBuffer::f32(f32)) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<double>`.
-            inline TensorBuffer(std::vector<double> f64) : TensorBuffer(TensorBuffer::f64(f64)) {}
+            TensorBuffer(std::vector<double> f64) : TensorBuffer(TensorBuffer::f64(f64)) {}
 
             /// Number of elements in the buffer.
             ///
