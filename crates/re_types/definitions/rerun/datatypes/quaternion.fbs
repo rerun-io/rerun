@@ -15,7 +15,8 @@ namespace rerun.datatypes;
 struct Quaternion (
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  "attr.rust.tuple_struct"
+  "attr.rust.tuple_struct",
+  "attr.cpp.no_field_ctors" // conflicts with float* constructor
 ) {
   xyzw: [float: 4] (order: 100);
 }

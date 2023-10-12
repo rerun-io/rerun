@@ -31,6 +31,11 @@ namespace rerun {
             /// Construct Quaternion from x/y/z/w values.
             Quaternion(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
 
+            /// Construct Quaternion from x/y/z/w float pointer.
+            ///
+            /// Attention: The pointer must point to at least least 4 floats long.
+            Quaternion(const float* ptr) : xyzw{ptr[0], ptr[1], ptr[2], ptr[3]} {}
+
             float x() const {
                 return xyzw[0];
             }
@@ -49,8 +54,6 @@ namespace rerun {
 
           public:
             Quaternion() = default;
-
-            Quaternion(const float (&_xyzw)[4]) : xyzw{_xyzw[0], _xyzw[1], _xyzw[2], _xyzw[3]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
