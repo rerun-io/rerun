@@ -523,3 +523,23 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
         }
     }
 }
+
+SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
+    rr::RecordingStream stream("test");
+
+    SECTION("Setting time sequence does not log errors") {
+        check_logged_error([&] { stream.set_time_sequence("my sequence", 1); });
+        check_logged_error([&] { stream.set_time_sequence("my sequence", std::nullopt); });
+    }
+    SECTION("Setting time seconds does not log errors") {
+        check_logged_error([&] { stream.set_time_seconds("my sequence", 1.0); });
+        check_logged_error([&] { stream.set_time_seconds("my sequence", std::nullopt); });
+    }
+    SECTION("Setting time nanos does not log errors") {
+        check_logged_error([&] { stream.set_time_nanos("my sequence", 1); });
+        check_logged_error([&] { stream.set_time_nanos("my sequence", std::nullopt); });
+    }
+    SECTION("Resetting time does not log errors") {
+        check_logged_error([&] { stream.reset_time(); });
+    }
+}
