@@ -53,9 +53,18 @@ namespace rerun {
             /// Construct a new 3x3 matrix from a pointer to 9 floats (in row major order).
             ///
             /// Attention: The pointer must point to at least least 16 floats long.
-            Mat3x3(const float* elements) {
-                memcpy(flat_columns, elements, sizeof(float) * 9);
-            }
+            Mat3x3(const float* elements)
+                : flat_columns{
+                      elements[0],
+                      elements[1],
+                      elements[2],
+                      elements[3],
+                      elements[4],
+                      elements[5],
+                      elements[6],
+                      elements[7],
+                      elements[8],
+                  } {}
 
           public:
             Mat3x3() = default;
