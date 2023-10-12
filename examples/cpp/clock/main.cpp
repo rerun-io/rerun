@@ -8,7 +8,7 @@ void log_hand(
     rerun::RecordingStream& rec, const char* name, int step, float angle, float length, float width,
     uint8_t blue
 ) {
-    rerun::datatypes::Vec3D pos(length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f);
+    rerun::datatypes::Vec3D tip(length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f);
     uint8_t c = static_cast<uint8_t>(angle * 255.0f);
     rerun::components::Color color(255 - c, c, blue, std::max<uint8_t>(128, blue));
 
@@ -16,11 +16,11 @@ void log_hand(
 
     rec.log(
         (std::string("world/") + name + "_pt").c_str(),
-        rerun::Points3D({pos}).with_colors(color)
+        rerun::Points3D({tip}).with_colors(color)
     );
     rec.log(
         (std::string("world/") + name + "hand").c_str(),
-        rerun::Arrows3D::from_vectors({pos})
+        rerun::Arrows3D::from_vectors({tip})
             .with_origins({{0.0f, 0.0f, 0.0f}})
             .with_colors(color)
             .with_radii({width * 0.5f})
