@@ -601,7 +601,7 @@ fn assert_receive_into_store_db(rx: &ReceiveSet<LogMsg>) -> anyhow::Result<re_da
                         if let Some(err) = err {
                             anyhow::bail!("data source has disconnected unexpectedly: {err}")
                         } else if let Some(db) = db {
-                            db.entity_db.data_store.sanity_check()?;
+                            db.store().sanity_check()?;
                             anyhow::ensure!(0 < num_messages, "No messages received");
                             re_log::info!("Successfully ingested {num_messages} messages.");
                             return Ok(db);

@@ -390,7 +390,7 @@ impl TimePanel {
                         time_area_painter,
                         tree_max_y,
                         None,
-                        &ctx.store_db.entity_db.tree,
+                        &ctx.store_db.entity_db().tree,
                         ui,
                     );
                 } else {
@@ -399,7 +399,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         tree_max_y,
-                        &ctx.store_db.entity_db.tree,
+                        &ctx.store_db.entity_db().tree,
                         ui,
                     );
                 }
@@ -777,7 +777,7 @@ fn is_time_safe_to_show(
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = store_db.entity_db.tree.prefix_times.get(timeline) {
+    if let Some(times) = store_db.entity_db().tree.prefix_times.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
@@ -822,7 +822,7 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .store_db
-        .entity_db
+        .entity_db()
         .tree
         .prefix_times
         .get(ctx.rec_cfg.time_ctrl.timeline())

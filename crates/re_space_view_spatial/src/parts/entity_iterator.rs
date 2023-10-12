@@ -49,7 +49,7 @@ where
         } else {
             transforms.reference_from_entity_ignoring_pinhole(
                 ent_path,
-                &ctx.store_db.entity_db.data_store,
+                ctx.store_db.store(),
                 &query.latest_at_query(),
             )
         };
@@ -70,7 +70,7 @@ where
         };
 
         match query_archetype_with_history::<A, N>(
-            &ctx.store_db.entity_db.data_store,
+            ctx.store_db.store(),
             &query.timeline,
             &query.latest_at,
             &props.visible_history,
