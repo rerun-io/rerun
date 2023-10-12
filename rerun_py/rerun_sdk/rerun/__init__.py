@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import random
 from typing import Any, Callable, TypeVar, cast
+from uuid import UUID
 
 import numpy as np
 
@@ -251,7 +252,7 @@ _init_recording_stream()
 def init(
     application_id: str,
     *,
-    recording_id: str | None = None,
+    recording_id: str | UUID | None = None,
     spawn: bool = False,
     init_logging: bool = True,
     default_enabled: bool = True,
@@ -282,8 +283,9 @@ def init(
 
         To create distinct recordings from the same process, specify distinct recording IDs:
         ```
-        rr.init("my_app", recording_id="recording1")
-        rr.init("my_app", recording_id="recording2")
+        from uuid import uuid4
+        rr.init("my_app", recording_id=uuid4())
+        rr.init("my_app", recording_id=uuid4())
         ```
 
     Parameters
@@ -342,6 +344,9 @@ def init(
     # via `_register_on_fork` but it's worth being conservative.
     cleanup_if_forked_child()
 
+    if recording_id is not None:
+        recording_id = str(recording_id)
+
     if init_logging:
         new_recording(
             application_id=application_id,
@@ -372,7 +377,7 @@ def init(
 def new_recording(
     *,
     application_id: str,
-    recording_id: str | None = None,
+    recording_id: str | UUID | None = None,
     make_default: bool = False,
     make_thread_default: bool = False,
     spawn: bool = False,
@@ -398,8 +403,9 @@ def new_recording(
 
         To create distinct recordings from the same process, specify distinct recording IDs:
         ```
-        rec1 = rr.new_recording("my_app", recording_id="recording1")
-        rec2 = rr.new_recording("my_app", recording_id="recording2")
+        from uuid import uuid4
+        rec = rr.new_recording(application_id="test", recording_id=uuid4())
+        rec = rr.new_recording(application_id="test", recording_id=uuid4())
         ```
 
     Parameters
@@ -471,6 +477,9 @@ def new_recording(
                 application_path = path
     except Exception:
         pass
+
+    if recording_id is not None:
+        recording_id = str(recording_id)
 
     recording = RecordingStream(
         bindings.new_recording(
