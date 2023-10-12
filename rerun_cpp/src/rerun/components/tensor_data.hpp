@@ -27,6 +27,16 @@ namespace rerun {
             static const char NAME[];
 
           public:
+            // Extensions to generated type defined in 'tensor_data_ext.cpp'
+
+            /// Construct a 1D tensor with the given buffer.
+            inline static TensorData one_dim(rerun::datatypes::TensorBuffer buffer) {
+                auto data = rerun::components::TensorData{};
+                data.data = rerun::datatypes::TensorData::one_dim(std::move(buffer));
+                return data;
+            }
+
+          public:
             TensorData() = default;
 
             TensorData(rerun::datatypes::TensorData _data) : data(std::move(_data)) {}
