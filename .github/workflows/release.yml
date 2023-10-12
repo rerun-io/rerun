@@ -61,7 +61,7 @@ jobs:
         run: |
           python3 -m pip install -r ./scripts/ci/requirements-crates.txt
 
-      # for `taplo fmt` done in `crates.py version --bump ...`
+      # for `taplo fmt` done in `crates.py version --bump`
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
         with:
@@ -235,7 +235,7 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
-      # for `taplo fmt` done in `crates.py version --bump ...`
+      # for `taplo fmt` done in `crates.py version --bump`
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
         with:
@@ -272,7 +272,7 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
-      # for `taplo fmt` done in `crates.py version --bump ...`
+      # for `taplo fmt` done in `crates.py version --bump`
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
         with:
