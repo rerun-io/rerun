@@ -506,7 +506,7 @@ impl App {
             UICommand::PrintDatastore => {
                 if let Some(ctx) = store_context {
                     if let Some(recording) = ctx.recording {
-                        let table = recording.entity_db.data_store.to_data_table();
+                        let table = recording.store().to_data_table();
                         match table {
                             Ok(table) => {
                                 println!("{table}");

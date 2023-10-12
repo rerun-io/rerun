@@ -228,7 +228,7 @@ pub struct StoreDb {
     recording_msg: Option<SetStoreInfo>,
 
     /// Where we store the entities.
-    pub entity_db: EntityDb, // TODO(emilk): remove `pub`
+    entity_db: EntityDb,
 }
 
 impl StoreDb {
