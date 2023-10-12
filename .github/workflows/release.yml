@@ -61,6 +61,12 @@ jobs:
         run: |
           python3 -m pip install -r ./scripts/ci/requirements-crates.txt
 
+      # for `taplo fmt` done in `crates.py version --bump`
+      - name: Install taplo-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli
+
       - name: Update crate versions
         id: versioning
         run: |
@@ -128,20 +134,24 @@ jobs:
           echo "PR does not exist, creating…"
 
           cat <<EOF > pr-body.txt
-          # Release ${{ steps.versioning.outputs.final }}
-
           ### Next steps
-          - [Test the release](#testing)
+          - Test the release
           - If this is an `alpha` release, you can just merge the pull request.
           - Otherwise:
             - For any added commits, run the release workflow in `rc` mode again
             - After testing, run the release workflow in `release` mode
             - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+
+          - [ ] Tests
+            - [ ] Windows
+            - [ ] Linux
+            - [ ] MacOS
           EOF
 
           gh pr create \
             --base main \
             --head $(git branch --show-current) \
+            --title "Release ${{ (inputs.release-type == 'alpha' && steps.versioning.outputs.current) || steps.versioning.outputs.final }}" \
             --label "⛴ release" \
             --label "exclude from changelog" \
             --fill \
@@ -210,9 +220,9 @@ jobs:
           git checkout ${{ github.ref_name }}
           git push --force origin ${{ github.ref_name }}:latest
 
-  alpha-version-bump:
-    name: "Alpha Version Bump"
-    if: inputs.release-type == 'alpha'
+  post-release-version-bump:
+    name: "Post-Release Version Bump"
+    if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
     needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
     runs-on: ubuntu-latest
     steps:
@@ -225,12 +235,25 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
-      # After an alpha release, we bump the prerelease version and append `+dev`.
+      # for `taplo fmt` done in `crates.py version --bump`
+      - name: Install taplo-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli
+
       - name: Update version
         id: update-version
         run: |
-          python3 scripts/ci/crates.py version --bump prerelease --dev
-          echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+          if [ ${{ inputs.release-type }} = "final" ]; then
+            # After a final release, we bump the minor version and append `+dev`.
+            python3 scripts/ci/crates.py version --bump prerelease --dev --pre-id=alpha
+            echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+          else
+            # After an alpha release, we bump the prerelease version and append `+dev`.
+            python3 scripts/ci/crates.py version --bump minor
+            python3 scripts/ci/crates.py version --bump prerelease --dev --pre-id=alpha
+            echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Commit new version
         run: |
@@ -239,54 +262,51 @@ jobs:
           git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
           git push
 
-  final-version-bump:
-    name: "Post-release Version Bump"
-    if: inputs.release-type == 'final'
+  comment-artifact-links:
+    name: "Link to artifacts"
     needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
-      - name: Install dependencies
-        run: |
-          python3 -m pip install -r scripts/ci/requirements-crates.txt
-
-      # After a release, we bump the minor version and append `+dev`.
-      - name: Update version
-        id: update-version
-        run: |
-          python3 scripts/ci/crates.py version --bump minor --dev
-          echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
-
-      - name: Commit new version
-        id: commit-version
-        run: |
-          branch_name="bump-${{ steps.update-version.outputs.version }}"
-          git checkout -b $branch_name
-          git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
-          git push -u origin $branch_name
-          echo "branch=$branch_name" >> "$GITHUB_OUTPUT"
-
-      - name: Create pull request
+      - name: Create comment
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
-          cat <<EOF > pr-body.txt
-          ### What
+          pr_number=$(gh pr view --json number | jq '.number')
 
-          - [x] Bump all crate versions to `${{ steps.update-version.outputs.version }}`
+          if [ ${{ inputs.release-type }} = "final" ]; then
+            web_app_link="https://app.rerun.io/version/${{ needs.version.outputs.final }}"
+            rerun_io_docs_link="https://rerun.io/docs"
+            py_docs_link="https://ref.rerun.io/docs/python/${{ needs.version.outputs.final }}"
+          else
+            web_app_link="https://app.rerun.io/commit/${{ needs.version.outputs.release-commit }}"
+            rerun_io_docs_link="https://rerun.io/preview/${{ needs.version.outputs.release-commit }}/docs"
+            py_docs_link="https://ref.rerun.io/docs/python/dev"
+          fi
+          wheels_link="https://pypi.org/project/rerun-sdk/${{ needs.version.outputs.current }}"
+          crates_link="https://crates.io/crates/rerun/${{ needs.version.outputs.current }}"
+          rs_docs_link="https://docs.rs/rerun/${{ needs.version.outputs.current }}"
+
+          pip_install="pip install rerun-sdk==${{ needs.version.outputs.current }}"
+          cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
+
+          cat <<EOF > comment-body.txt
+          Version ${{ needs.version.outputs.current }} published sucessfully.
+
+          | artifact                    | install        |
+          | --------------------------- | -------------- |
+          | [web app]($web_app_link)    |                |
+          | [wheels]($wheels_link)      | $pip_install   |
+          | [crates]($crates_link)      | $cargo_install |
+          | [docs]($rerun_io_docs_link) |                |
+          | [py docs]($py_docs_link)    |                |
+          | [rs docs]($rs_docs_link)    |                |
           EOF
 
-          gh pr create \
-            --base main \
-            --head ${{ steps.commit-version.outputs.branch }} \
-            --label "⛴ release" \
-            --label "exclude from changelog" \
-            --fill \
-            --body-file pr-body.txt
+          gh pr comment $pr_number --body-file comment-body.txt --edit-last
 
