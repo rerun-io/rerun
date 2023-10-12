@@ -101,15 +101,8 @@ py-build *ARGS:
 py-format:
     #!/usr/bin/env bash
     set -euo pipefail
-    # The order below is important and sadly we need to call black twice. Ruff does not yet
-    # fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
-    #
-    # 1) Call black, which among others things fixes line-length
-    # 2) Call ruff, which requires line-lengths to be correct
-    # 3) Call black again to cleanup some whitespace issues ruff might introduce
-    black --config rerun_py/pyproject.toml {{py_folders}}
     ruff --fix --config rerun_py/pyproject.toml {{py_folders}}
-    black --config rerun_py/pyproject.toml {{py_folders}}
+    ruff format --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc {{py_folders}}
 
 # Check that all the requirements.txt files for all the examples are correct
@@ -123,7 +116,7 @@ py-lint:
     #!/usr/bin/env bash
     set -euxo pipefail
     ruff check --config rerun_py/pyproject.toml {{py_folders}}
-    black --check --config rerun_py/pyproject.toml --diff {{py_folders}}
+    ruff format --check --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc --check {{py_folders}}
     mypy --no-warn-unused-ignore
 
