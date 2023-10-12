@@ -271,7 +271,7 @@ fn open_quick_start<'a>(
     entity_path: impl AsRef<str>,
 ) {
     let markdown = parts.into_iter().join("\n");
-    let res = open_markdown_recording(command_sender, &markdown, app_id, entity_path);
+    let res = open_markdown_recording(command_sender, markdown, app_id, entity_path);
     if let Err(err) = res {
         re_log::error!("Failed to load quick start: {}", err);
     }

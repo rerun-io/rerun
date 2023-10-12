@@ -245,17 +245,15 @@ impl StoreDb {
         store_info: StoreInfo,
         rows: impl IntoIterator<Item = DataRow>,
     ) -> anyhow::Result<Self> {
-        let arrow_msg = DataTable::from_rows(TableId::random(), rows).to_arrow_msg()?;
-        let store_id = store_info.store_id.clone();
-        let mut store_db = StoreDb::new(store_id.clone());
-        store_db.add(
-            &SetStoreInfo {
-                row_id: RowId::random(),
-                info: store_info,
-            }
-            .into(),
-        )?;
-        store_db.add(&LogMsg::ArrowMsg(store_id, arrow_msg))?;
+        let mut store_db = StoreDb::new(store_info.store_id.clone());
+
+        store_db.set_store_info(SetStoreInfo {
+            row_id: RowId::random(),
+            info: store_info,
+        });
+        for row in rows {
+            store_db.add_data_row(&row)?;
+        }
 
         Ok(store_db)
     }
