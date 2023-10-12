@@ -976,7 +976,6 @@ version = "0.10.0-alpha.6+dev"
 dependencies = [
  "ndarray",
  "rand",
- "rand_distr",
  "rerun",
 ]
 
