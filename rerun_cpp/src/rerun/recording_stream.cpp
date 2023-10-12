@@ -94,6 +94,47 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
+    void RecordingStream::set_time_sequence(
+        const char* timeline_name, std::optional<int64_t> sequence_nr
+    ) {
+        rr_error status = {};
+        rr_recording_stream_set_time_sequence(
+            _id,
+            timeline_name,
+            sequence_nr.has_value() ? &sequence_nr.value() : nullptr,
+            &status
+        );
+        Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::set_time_seconds(
+        const char* timeline_name, std::optional<double> seconds
+    ) {
+        rr_error status = {};
+        rr_recording_stream_set_time_seconds(
+            _id,
+            timeline_name,
+            seconds.has_value() ? &seconds.value() : nullptr,
+            &status
+        );
+        Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::set_time_nanos(const char* timeline_name, std::optional<int64_t> nanos) {
+        rr_error status = {};
+        rr_recording_stream_set_time_nanos(
+            _id,
+            timeline_name,
+            nanos.has_value() ? &nanos.value() : nullptr,
+            &status
+        );
+        Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::reset_time() {
+        rr_recording_stream_reset_time(_id);
+    }
+
     Error RecordingStream::try_log_serialized_batches(
         const char* entity_path, const std::vector<SerializedComponentBatch>& batches
     ) {

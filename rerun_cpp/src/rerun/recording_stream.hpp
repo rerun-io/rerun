@@ -121,6 +121,51 @@ namespace rerun {
         void flush_blocking();
 
         // -----------------------------------------------------------------------------------------
+        // Methods for controlling time.
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+        ///
+        /// You can remove a timeline again using `set_time_sequence("frame_nr", std::nullopt)`.
+        /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time,
+        void set_time_sequence(const char* timeline_name, std::optional<int64_t> sequence_nr);
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
+        ///
+        /// You can remove a timeline again using `rec.set_time_seconds("sim_time", std::null_opt)`.
+        /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time,
+        void set_time_seconds(const char* timeline_name, std::optional<double> seconds);
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
+        ///
+        /// You can remove a timeline again using `rec.set_time_nanos("sim_time", std::null_opt)`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time,
+        void set_time_nanos(const char* timeline_name, std::optional<int64_t> nanos);
+
+        /// Clears out the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.reset_time()`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos,
+        void reset_time();
+
+        // -----------------------------------------------------------------------------------------
         // Methods for logging.
 
         /// Logs one or more archetype and/or component batches.
