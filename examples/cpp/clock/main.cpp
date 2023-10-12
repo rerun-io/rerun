@@ -8,9 +8,9 @@ void log_hand(
     rerun::RecordingStream& rec, const char* name, int step, float angle, float length, float width,
     uint8_t blue
 ) {
-    rerun::datatypes::Vec3D tip(length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f);
+    rerun::datatypes::Vec3D tip{length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f};
     uint8_t c = static_cast<uint8_t>(angle * 255.0f);
-    rerun::components::Color color(255 - c, c, blue, std::max<uint8_t>(128, blue));
+    rerun::components::Color color{255 - c, c, blue, std::max<uint8_t>(128, blue)};
 
     rec.set_time_seconds("sim_time", step);
 
