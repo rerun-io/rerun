@@ -212,7 +212,10 @@ impl ViewPartSystem for Points2DPart {
             return false;
         }
 
-        // If this is a 3D view and there's no parent pinhole, do not include this part.
+        // 2D parts can only ever be rendered properly as part of a 3D scene if the
+        // transform graph includes a pinhole projection. Pinholes only map from 2d children
+        // to 3d parents, so if the required pinhole exists, it must be an ancestor.
+        // Filter them otherwise to avoid ending up with 2D content mixed into 3D scenes.
         if ctx.class == "3D" && !ctx.has_ancestor_pinhole {
             return false;
         }
