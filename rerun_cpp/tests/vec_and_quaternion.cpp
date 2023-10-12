@@ -96,4 +96,15 @@ TEST_CASE("Construct VecND in different ways", TEST_TAG) {
 
         ctor_checks(v2, v3, v4, q);
     }
+
+    SECTION("Via float ptr") {
+        std::array<float, 4> elements = {1.0f, 2.0f, 3.0f, 4.0f};
+
+        Vec2D v2(elements.data());
+        Vec3D v3(elements.data());
+        Vec4D v4(elements.data());
+        Quaternion q(elements.data());
+
+        ctor_checks(v2, v3, v4, q);
+    }
 }
