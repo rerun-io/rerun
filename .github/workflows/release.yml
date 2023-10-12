@@ -134,20 +134,24 @@ jobs:
           echo "PR does not exist, creating…"
 
           cat <<EOF > pr-body.txt
-          # Release ${{ steps.versioning.outputs.final }}
-
           ### Next steps
-          - [Test the release](#testing)
+          - Test the release
           - If this is an `alpha` release, you can just merge the pull request.
           - Otherwise:
             - For any added commits, run the release workflow in `rc` mode again
             - After testing, run the release workflow in `release` mode
             - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+
+          - [ ] Tests
+            - [ ] Windows
+            - [ ] Linux
+            - [ ] MacOS
           EOF
 
           gh pr create \
             --base main \
             --head $(git branch --show-current) \
+            --title "Release ${{ (inputs.release-type == 'alpha' && steps.versioning.outputs.current) || steps.versioning.outputs.final }}" \
             --label "⛴ release" \
             --label "exclude from changelog" \
             --fill \
@@ -303,6 +307,7 @@ jobs:
           gh pr create \
             --base main \
             --head ${{ steps.commit-version.outputs.branch }} \
+            --title "Bump to ${{ steps.update-version.outputs.version }}" \
             --label "⛴ release" \
             --label "exclude from changelog" \
             --fill \
