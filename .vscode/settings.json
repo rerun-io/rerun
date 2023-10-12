@@ -68,9 +68,6 @@
     "python.analysis.extraPaths": [
         "rerun_py/rerun_sdk"
     ],
-    "ruff.lint.arg": [
-        "--config=rerun_py/pyproject.toml"
-    ],
     "cmake.buildDirectory": "${workspaceRoot}/build/",
     "C_Cpp.autoAddFileAssociations": false,
     "rust-analyzer.showUnlinkedFileNotification": false,
