@@ -225,7 +225,7 @@ pub struct StoreDb {
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
-    recording_msg: Option<SetStoreInfo>,
+    set_store_info: Option<SetStoreInfo>,
 
     /// Where we store the entities.
     entity_db: EntityDb,
@@ -237,7 +237,7 @@ impl StoreDb {
             store_id,
             entity_op_msgs: Default::default(),
             data_source: None,
-            recording_msg: None,
+            set_store_info: None,
             entity_db: Default::default(),
         }
     }
@@ -247,12 +247,12 @@ impl StoreDb {
         &self.entity_db
     }
 
-    pub fn recording_msg(&self) -> Option<&SetStoreInfo> {
-        self.recording_msg.as_ref()
+    pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
+        self.set_store_info.as_ref()
     }
 
     pub fn store_info(&self) -> Option<&StoreInfo> {
-        self.recording_msg().map(|msg| &msg.info)
+        self.store_info_msg().map(|msg| &msg.info)
     }
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
@@ -296,7 +296,7 @@ impl StoreDb {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.recording_msg.is_none() && self.num_rows() == 0
+        self.set_store_info.is_none() && self.num_rows() == 0
     }
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
@@ -305,7 +305,7 @@ impl StoreDb {
         debug_assert_eq!(msg.store_id(), self.store_id());
 
         match &msg {
-            LogMsg::SetStoreInfo(msg) => self.add_begin_recording_msg(msg),
+            LogMsg::SetStoreInfo(msg) => self.set_store_info(msg.clone()),
 
             LogMsg::EntityPathOpMsg(_, msg) => {
                 let EntityPathOpMsg {
@@ -343,8 +343,8 @@ impl StoreDb {
         self.entity_db.add_data_row(row)
     }
 
-    pub fn add_begin_recording_msg(&mut self, msg: &SetStoreInfo) {
-        self.recording_msg = Some(msg.clone());
+    pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
+        self.set_store_info = Some(store_info);
     }
 
     /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `StoreDb`.
@@ -396,7 +396,7 @@ impl StoreDb {
             store_id: _,
             entity_op_msgs,
             data_source: _,
-            recording_msg: _,
+            set_store_info: _,
             entity_db,
         } = self;
 

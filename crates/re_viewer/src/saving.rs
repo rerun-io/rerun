@@ -86,8 +86,8 @@ pub fn save_database_to_file(
 
     re_tracing::profile_function!();
 
-    let begin_rec_msg = store_db
-        .recording_msg()
+    let set_store_info_msg = store_db
+        .store_info_msg()
         .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
 
     let ent_op_msgs = store_db
@@ -115,7 +115,7 @@ pub fn save_database_to_file(
     use re_log_types::LogMsg;
     let data_msgs = data_msgs.with_context(|| "Failed to export to data tables")?;
 
-    let msgs = std::iter::once(begin_rec_msg)
+    let msgs = std::iter::once(set_store_info_msg)
         .flatten() // option
         .chain(ent_op_msgs)
         .chain(data_msgs);
