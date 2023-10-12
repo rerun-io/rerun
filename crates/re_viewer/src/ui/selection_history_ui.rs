@@ -45,10 +45,11 @@ impl SelectionHistoryUi {
             let mut return_current = false;
             let response = response.context_menu(|ui| {
                 // undo: newest on top, oldest on bottom
+                let cur = history.current;
                 for i in (0..history.current).rev() {
                     self.history_item_ui(blueprint, ui, i, history);
                 }
-                return_current = true;
+                return_current = cur != history.current;
             });
             if return_current {
                 return history.current().map(|sel| sel.selection);
@@ -94,10 +95,11 @@ impl SelectionHistoryUi {
             let mut return_current = false;
             let response = response.context_menu(|ui| {
                 // redo: oldest on top, most recent on bottom
+                let cur = history.current;
                 for i in (history.current + 1)..history.stack.len() {
                     self.history_item_ui(blueprint, ui, i, history);
                 }
-                return_current = true;
+                return_current = cur != history.current;
             });
             if return_current {
                 return history.current().map(|sel| sel.selection);
