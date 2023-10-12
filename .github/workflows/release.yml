@@ -249,6 +249,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - name: Install dependencies
