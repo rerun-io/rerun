@@ -103,14 +103,14 @@ pub struct RenderPipelineDesc {
 
 #[derive(thiserror::Error, Debug)]
 pub enum RenderPipelineError {
-    #[error("referenced pipeline layout not found")]
-    PipelineLayoutNotPresent(),
+    #[error("Referenced pipeline layout not found: {0}")]
+    PipelineLayoutNotPresent(PoolError),
 
-    #[error("referenced vertex shader not found")]
-    VertexShaderNotFound(),
+    #[error("Referenced vertex shader not found")]
+    VertexShaderNotFound(PoolError),
 
-    #[error("referenced fragment shader not found")]
-    FragmentShaderNotFound(),
+    #[error("Referenced fragment shader not found")]
+    FragmentShaderNotFound(PoolError),
 }
 
 impl RenderPipelineDesc {
@@ -120,21 +120,17 @@ impl RenderPipelineDesc {
         pipeline_layouts: &GpuPipelineLayoutPool,
         shader_modules: &GpuShaderModulePool,
     ) -> Result<wgpu::RenderPipeline, RenderPipelineError> {
-        let pipeline_layout =
-            if let Ok(pipeline_layout) = pipeline_layouts.get_resource(self.pipeline_layout) {
-                Some(&pipeline_layout.layout)
-            } else {
-                return Err(RenderPipelineError::PipelineLayoutNotPresent());
-            };
+        let pipeline_layout = pipeline_layouts
+            .get_resource(self.pipeline_layout)
+            .map_err(RenderPipelineError::PipelineLayoutNotPresent);
 
-        let Ok(vertex_shader_module) = shader_modules.get(self.vertex_handle) else {
-            re_log::error!("referenced vertex shader not found");
-            return Err(RenderPipelineError::VertexShaderNotFound());
-        };
-        let Ok(fragment_shader_module) = shader_modules.get(self.fragment_handle) else {
-            re_log::error!("referenced fragment shader not found");
-            return Err(RenderPipelineError::FragmentShaderNotFound());
-        };
+        let Ok(vertex_shader_module) = shader_modules
+            .get(self.vertex_handle)
+            .map_err(RenderPipelineError::VertexShaderNotFound);
+
+        let Ok(fragment_shader_module) = shader_modules
+            .get(self.fragment_handle)
+            .map_err(RenderPipelineError::FragmentShaderNotFound);
 
         let buffers = self
             .vertex_buffers
@@ -145,7 +141,7 @@ impl RenderPipelineDesc {
         Ok(
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: self.label.get(),
-                layout: pipeline_layout,
+                layout: pipeline_layout.map_or(None, |layout| Some(&layout.layout)),
                 vertex: wgpu::VertexState {
                     module: vertex_shader_module,
                     entry_point: &self.vertex_entrypoint,
@@ -226,7 +222,13 @@ impl GpuRenderPipelinePool {
                     re_log::info!(label = desc.label.get(), "recompiled render pipeline");
                     Some(sm)
                 }
-                Err(_) => None,
+                Err(err) => {
+                    re_log::error!(
+                        "Failed to compile render pipeline: {}",
+                        re_error::format(err)
+                    );
+                    None
+                }
             }
         });
     }
