@@ -1,13 +1,15 @@
-use super::{
-    large_text_button, python_quick_start::python_quick_start, status_strings,
-    url_large_text_button, WelcomeScreenResponse,
-};
+use super::{large_text_button, status_strings, url_large_text_button, WelcomeScreenResponse};
 use egui::{NumExt, Ui};
-use re_log_types::LogMsg;
+use itertools::Itertools;
+use re_data_store::StoreDb;
+use re_log_types::{
+    ApplicationId, DataRow, EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource,
+    Time, TimePoint,
+};
 use re_smart_channel::ReceiveSet;
 use re_ui::UICommandSender;
+use re_viewer_context::{SystemCommand, SystemCommandSender};
 
-const RUST_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/rust";
 const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
 /// Show the welcome page.
@@ -59,14 +61,39 @@ fn onboarding_content_ui(
                 Visualize synchronized data from multiple processes, locally or over a network.",
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
-                // TODO(ab): activate when C++ is ready!
-                // url_large_text_button(ui, "C++", CPP_QUICKSTART);
-                if large_text_button(ui, "Python").clicked() {
-                    if let Err(err) = python_quick_start(command_sender) {
-                        re_log::error!("Failed to load Python quick start: {}", err);
-                    }
+                if large_text_button(ui, "C++").clicked() {
+                    open_quick_start(
+                        command_sender,
+                        [
+                            include_str!("../../../data/quick_start_guides/cpp_native.md"),
+                            include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
+                        ],
+                        "C++ Quick Start",
+                        "cpp_quick_start",
+                    );
                 }
-                url_large_text_button(ui, "Rust", RUST_QUICKSTART);
+                if large_text_button(ui, "Python").clicked() {
+                    open_quick_start(
+                        command_sender,
+                        [
+                            include_str!("../../../data/quick_start_guides/python_native.md"),
+                            include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
+                        ],
+                        "Python Quick Start",
+                        "python_quick_start",
+                    );
+                }
+                if large_text_button(ui, "Rust").clicked() {
+                    open_quick_start(
+                        command_sender,
+                        [
+                            include_str!("../../../data/quick_start_guides/rust_native.md"),
+                            include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
+                        ],
+                        "Rust Quick Start",
+                        "rust_quick_start",
+                    );
+                }
 
                 false
             }),
@@ -235,4 +262,49 @@ fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32, max_im
                 .rounding(egui::Rounding::same(8.)),
         );
     });
+}
+
+fn open_quick_start<'a>(
+    command_sender: &re_viewer_context::CommandSender,
+    parts: impl IntoIterator<Item = &'a str>,
+    app_id: impl AsRef<str>,
+    entity_path: impl AsRef<str>,
+) {
+    let markdown = parts.into_iter().join("\n");
+    let res = open_markdown_recording(command_sender, &markdown, app_id, entity_path);
+    if let Err(err) = res {
+        re_log::error!("Failed to load quick start: {}", err);
+    }
+}
+
+fn open_markdown_recording(
+    command_sender: &re_viewer_context::CommandSender,
+    markdown: impl AsRef<str>,
+    app_id: impl AsRef<str>,
+    entity_path: impl AsRef<str>,
+) -> anyhow::Result<()> {
+    let text_doc = re_types::archetypes::TextDocument::new(markdown.as_ref())
+        .with_media_type(re_types::components::MediaType::markdown());
+
+    let row = DataRow::from_archetype(
+        RowId::random(),
+        TimePoint::timeless(),
+        EntityPath::from(entity_path.as_ref()),
+        &text_doc,
+    )?;
+
+    let store_info = StoreInfo {
+        application_id: ApplicationId::from(app_id.as_ref()),
+        store_id: StoreId::random(StoreKind::Recording),
+        is_official_example: true,
+        started: Time::now(),
+        store_source: StoreSource::InAppGuides,
+        store_kind: StoreKind::Recording,
+    };
+
+    let store_db = StoreDb::from_info_and_rows(store_info, [row])?;
+
+    command_sender.send_system(SystemCommand::LoadStoreDb(store_db));
+
+    Ok(())
 }
