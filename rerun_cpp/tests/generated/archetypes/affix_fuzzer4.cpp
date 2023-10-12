@@ -3,79 +3,117 @@
 
 #include "affix_fuzzer4.hpp"
 
-#include <rerun/indicator_component.hpp>
-
 namespace rerun {
     namespace archetypes {
         const char AffixFuzzer4::INDICATOR_COMPONENT_NAME[] =
             "rerun.testing.components.AffixFuzzer4Indicator";
+    }
 
-        AnonymousComponentBatch AffixFuzzer4::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<AffixFuzzer4::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::AffixFuzzer4>::serialize(
+        const archetypes::AffixFuzzer4& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(18);
+
+        if (archetype.fuzz2101.has_value()) {
+            auto result = (archetype.fuzz2101.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2102.has_value()) {
+            auto result = (archetype.fuzz2102.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2103.has_value()) {
+            auto result = (archetype.fuzz2103.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2104.has_value()) {
+            auto result = (archetype.fuzz2104.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2105.has_value()) {
+            auto result = (archetype.fuzz2105.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2106.has_value()) {
+            auto result = (archetype.fuzz2106.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2107.has_value()) {
+            auto result = (archetype.fuzz2107.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2108.has_value()) {
+            auto result = (archetype.fuzz2108.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2109.has_value()) {
+            auto result = (archetype.fuzz2109.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2110.has_value()) {
+            auto result = (archetype.fuzz2110.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2111.has_value()) {
+            auto result = (archetype.fuzz2111.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2112.has_value()) {
+            auto result = (archetype.fuzz2112.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2113.has_value()) {
+            auto result = (archetype.fuzz2113.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2114.has_value()) {
+            auto result = (archetype.fuzz2114.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2115.has_value()) {
+            auto result = (archetype.fuzz2115.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2116.has_value()) {
+            auto result = (archetype.fuzz2116.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2117.has_value()) {
+            auto result = (archetype.fuzz2117.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.fuzz2118.has_value()) {
+            auto result = (archetype.fuzz2118.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result =
+                ComponentBatch<AffixFuzzer4::IndicatorComponent>(AffixFuzzer4::IndicatorComponent())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> AffixFuzzer4::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(18);
-
-            if (fuzz2101.has_value()) {
-                comp_batches.emplace_back(fuzz2101.value());
-            }
-            if (fuzz2102.has_value()) {
-                comp_batches.emplace_back(fuzz2102.value());
-            }
-            if (fuzz2103.has_value()) {
-                comp_batches.emplace_back(fuzz2103.value());
-            }
-            if (fuzz2104.has_value()) {
-                comp_batches.emplace_back(fuzz2104.value());
-            }
-            if (fuzz2105.has_value()) {
-                comp_batches.emplace_back(fuzz2105.value());
-            }
-            if (fuzz2106.has_value()) {
-                comp_batches.emplace_back(fuzz2106.value());
-            }
-            if (fuzz2107.has_value()) {
-                comp_batches.emplace_back(fuzz2107.value());
-            }
-            if (fuzz2108.has_value()) {
-                comp_batches.emplace_back(fuzz2108.value());
-            }
-            if (fuzz2109.has_value()) {
-                comp_batches.emplace_back(fuzz2109.value());
-            }
-            if (fuzz2110.has_value()) {
-                comp_batches.emplace_back(fuzz2110.value());
-            }
-            if (fuzz2111.has_value()) {
-                comp_batches.emplace_back(fuzz2111.value());
-            }
-            if (fuzz2112.has_value()) {
-                comp_batches.emplace_back(fuzz2112.value());
-            }
-            if (fuzz2113.has_value()) {
-                comp_batches.emplace_back(fuzz2113.value());
-            }
-            if (fuzz2114.has_value()) {
-                comp_batches.emplace_back(fuzz2114.value());
-            }
-            if (fuzz2115.has_value()) {
-                comp_batches.emplace_back(fuzz2115.value());
-            }
-            if (fuzz2116.has_value()) {
-                comp_batches.emplace_back(fuzz2116.value());
-            }
-            if (fuzz2117.has_value()) {
-                comp_batches.emplace_back(fuzz2117.value());
-            }
-            if (fuzz2118.has_value()) {
-                comp_batches.emplace_back(fuzz2118.value());
-            }
-            comp_batches.emplace_back(AffixFuzzer4::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

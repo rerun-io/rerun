@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Load an Open Photogrammetry Format (OFP) project and display the cameras and point cloud.
+Load an Open Photogrammetry Format (OPF) project and display the cameras and point cloud.
 
 OPF specification: https://pix4d.github.io/opf-spec/index.html
 Dataset source: https://support.pix4d.com/hc/en-us/articles/360000235126-Example-projects-real-photogrammetry-data#OPF1
@@ -77,8 +77,13 @@ class OPFProject:
         log_as_frames : bool, optional
             Whether to log the cameras as individual frames, by default True
         """
+        import os
+
         self.path = path
-        self.project = resolve(load(str(path)))
+        # TODO(Pix4D/pyopf#6): https://github.com/Pix4D/pyopf/issues/6
+        # pyopf doesn't seem to work with regular windows paths, but a "UNC dos path" works
+        path_as_str = "\\\\.\\" + str(path.absolute()) if os.name == "nt" else str(path)
+        self.project = resolve(load(path_as_str))
         self.log_as_frames = log_as_frames
 
     @classmethod

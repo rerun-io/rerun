@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/transform3d.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -36,8 +36,8 @@ namespace rerun {
         ///     auto rec = rr::RecordingStream("rerun_example_transform3d");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     auto arrow = rr::Arrows3D::from_vectors({0.0f, 1.0f, 0.0f}).with_origins({0.0f,
-        ///     0.0f, 0.0f});
+        ///     auto arrow = rr::Arrows3D::from_vectors({0.0f, 1.0f, 0.0f}).with_origins({{0.0f,
+        ///     0.0f, 0.0f}});
         ///
         ///     rec.log("base", arrow);
         ///
@@ -61,6 +61,9 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             // Extensions to generated type defined in 'transform3d_ext.cpp'
@@ -241,25 +244,27 @@ namespace rerun {
 
           public:
             Transform3D() = default;
+            Transform3D(Transform3D&& other) = default;
 
-            Transform3D(rerun::components::Transform3D _transform)
+            explicit Transform3D(rerun::components::Transform3D _transform)
                 : transform(std::move(_transform)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return 1;
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::Transform3D> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::Transform3D& archetype
+        );
+    };
 } // namespace rerun

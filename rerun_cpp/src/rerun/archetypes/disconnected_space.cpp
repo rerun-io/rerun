@@ -3,29 +3,34 @@
 
 #include "disconnected_space.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char DisconnectedSpace::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.DisconnectedSpaceIndicator";
+    }
 
-        AnonymousComponentBatch DisconnectedSpace::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<DisconnectedSpace::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
+    Result<std::vector<SerializedComponentBatch>> AsComponents<
+        archetypes::DisconnectedSpace>::serialize(const archetypes::DisconnectedSpace& archetype) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
+
+        {
+            auto result =
+                ComponentBatch<rerun::components::DisconnectedSpace>(archetype.disconnected_space)
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<DisconnectedSpace::IndicatorComponent>(
+                              DisconnectedSpace::IndicatorComponent()
+            )
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> DisconnectedSpace::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
-
-            comp_batches.emplace_back(disconnected_space);
-            comp_batches.emplace_back(DisconnectedSpace::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

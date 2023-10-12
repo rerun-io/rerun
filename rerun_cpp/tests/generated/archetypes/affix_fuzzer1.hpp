@@ -26,9 +26,9 @@
 #include "../components/affix_fuzzer9.hpp"
 
 #include <cstdint>
-#include <rerun/arrow.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/data_cell.hpp>
+#include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 #include <vector>
@@ -81,11 +81,15 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             AffixFuzzer1() = default;
+            AffixFuzzer1(AffixFuzzer1&& other) = default;
 
-            AffixFuzzer1(
+            explicit AffixFuzzer1(
                 rerun::components::AffixFuzzer1 _fuzz1001,
                 rerun::components::AffixFuzzer2 _fuzz1002,
                 rerun::components::AffixFuzzer3 _fuzz1003,
@@ -134,17 +138,18 @@ namespace rerun {
             size_t num_instances() const {
                 return 1;
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::AffixFuzzer1> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::AffixFuzzer1& archetype
+        );
+    };
 } // namespace rerun
