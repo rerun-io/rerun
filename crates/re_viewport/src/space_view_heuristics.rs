@@ -465,7 +465,7 @@ pub fn compute_heuristic_context_for_entities(
     let query_time = TimeInt::MAX;
     let query = LatestAtQuery::new(timeline, query_time);
 
-    let tree = &ctx.store_db.entity_db.tree;
+    let tree = &ctx.store_db.entity_db().tree;
 
     fn visit_children_recursively(
         has_parent_pinhole: bool,
@@ -493,7 +493,7 @@ pub fn compute_heuristic_context_for_entities(
     visit_children_recursively(
         false,
         tree,
-        &ctx.store_db.entity_db.data_store,
+        &ctx.store_db.entity_db().data_store,
         &query,
         &mut heuristic_context,
     );
