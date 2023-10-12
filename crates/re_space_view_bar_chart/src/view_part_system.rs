@@ -8,8 +8,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -45,6 +45,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        _ctx: HeuristicFilterContext,
         query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {

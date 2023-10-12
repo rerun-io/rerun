@@ -6,8 +6,9 @@ use re_types::{
     ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem,
+    SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 #[derive(Default)]
@@ -37,6 +38,7 @@ impl ViewPartSystem for TensorSystem {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        _ctx: HeuristicFilterContext,
         query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
