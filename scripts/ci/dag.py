@@ -2,10 +2,39 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import ThreadPoolExecutor
+from math import floor
 from multiprocessing import Event, cpu_count
 from multiprocessing.synchronize import Event as EventClass
 from queue import Empty, Queue
 from typing import Callable, Generic, Hashable, TypeVar
+
+
+class RateLimiter:
+    """
+    Burst rate limiter.
+
+    Starts at `max_tokens`, and refills one token every `refill_interval_sec / max_tokens`.
+
+    This implementation attempts to mimic https://github.com/rust-lang/crates.io/blob/e66c852d3db3f0dfafa1f9a01e7806f0b2ad1465/src/rate_limiter.rs
+    """
+
+    def __init__(self, max_tokens: int, refill_interval_sec: float):
+        self.start_tokens = max_tokens
+        self.tokens_per_second = 1.0 / refill_interval_sec
+        self.start_time = time.time()
+        self.used_tokens = 0
+
+    def get(self) -> bool:
+        seconds_since_start = time.time() - self.start_time
+        num_refilled_tokens = int(floor(self.tokens_per_second * seconds_since_start))
+        total_tokens = self.start_tokens + num_refilled_tokens
+
+        if self.used_tokens < total_tokens:
+            self.used_tokens += 1
+            return True
+        else:
+            return False
+
 
 _T = TypeVar("_T", bound=Hashable)
 
@@ -24,8 +53,7 @@ class DAG(Generic[_T]):
         self,
         f: Callable[[_T], None],
         *,
-        max_tokens: int,
-        refill_interval_sec: float,
+        rate_limiter: RateLimiter,
         num_workers: int = max(1, cpu_count() - 1),
     ) -> None:
         """
@@ -38,6 +66,25 @@ class DAG(Generic[_T]):
         * There are at most `max_tokens - num_in_progress` in the bucket at any time.
         * Tokens are refreshed every `refill_interval_sec`.
         """
+
+        # This loop has two parts, `push` and `pull`.
+        #
+        # The `push` loop attempts to push tasks
+        # onto the `task_queue` while there are
+        # some tasks ready to go, and some tokens left.
+        # It is also responsible for refreshing the bucket.
+        #
+        # The `pull` loop attempts to retrieve done
+        # tasks and decrement the dependency counter on
+        # their dependents.
+        #
+        # Once a node has no pending dependencies left,
+        # it becomes ready and will be queued in one of
+        # the iterations of the `push` loop.
+        #
+        # It's important to always use non-blocking `get`
+        # with the task queue and done queue, so that both
+        # the push and pull loops can eventually make progress.
 
         state = _State(self)
 
@@ -58,54 +105,30 @@ class DAG(Generic[_T]):
                     except Empty:
                         time.sleep(0)  # yield to prevent busy-looping
                         continue
+                    except Exception as e:
+                        shutdown.set()
+                        print(e)
 
             for n in range(0, num_workers):  # start all workers
                 p.submit(worker, n)
 
-            tokens = max_tokens
-            num_in_progress = 0
-            last_refill = time.time()
-            while not state._is_done():
-                # This loop has two parts, `push` and `pull`.
-                #
-                # The `push` loop attempts to push tasks
-                # onto the `task_queue` while there are
-                # some tasks ready to go, and some tokens left.
-                # It is also responsible for refreshing the bucket.
-                #
-                # The `pull` loop attempts to retrieve done
-                # tasks and decrement the dependency counter on
-                # their dependents.
-                #
-                # Once a node has no pending dependencies left,
-                # it becomes ready and will be queued in one of
-                # the iterations of the `push` loop.
-                #
-                # It's important to always use non-blocking `get`
-                # with the task queue and done queue, so that both
-                # the push and pull loops can eventually make progress.
-                while len(state._queue) > 0:  # push loop
-                    now = time.time()
-                    if now - last_refill > refill_interval_sec:
-                        tokens = max_tokens - num_in_progress
-                        last_refill = now
+            while not shutdown.is_set():
+                if state._is_done():
+                    shutdown.set()
+                    state._sanity_check()
+                    break
 
-                    if len(state._queue) == 0 or tokens == 0:
+                while len(state._queue) > 0:  # push loop
+                    if len(state._queue) == 0 or not rate_limiter.get():
                         break
 
-                    tokens -= 1
-                    num_in_progress += 1
                     task_queue.put(state._queue.pop())
 
                 try:
                     while True:  # pull loop
                         state._finish(done_queue.get_nowait())
-                        num_in_progress -= 1
                 except Empty:
                     time.sleep(0)  # yield here to prevent busy-looping
-
-            shutdown.set()
-            state._sanity_check()
 
 
 class _NodeState(Generic[_T]):
@@ -175,8 +198,8 @@ def main() -> None:
     # The output should be:
     #   Processed A at T+0
     #   Processed C at T+0
-    #   Processed B at T+1
-    #   Processed D at T+1.5
+    #   Processed B at T+0.5
+    #   Processed D at T+1
     # `A` and `C` may swap places.
     dag = DAG(
         {
@@ -190,13 +213,7 @@ def main() -> None:
     # `walk_parallel` can be called multiple times
     dag.walk_parallel(
         process,
-        max_tokens=2,
-        refill_interval_sec=1,
-    )
-    dag.walk_parallel(
-        process,
-        max_tokens=2,
-        refill_interval_sec=1,
+        rate_limiter=RateLimiter(max_tokens=2, refill_interval_sec=1),
     )
 
 

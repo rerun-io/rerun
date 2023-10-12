@@ -3,7 +3,7 @@
 #include <cstdint> // uint32_t etc.
 #include <vector>
 
-#include "component_batch.hpp"
+#include "as_components.hpp"
 #include "error.hpp"
 
 namespace rerun {
@@ -123,119 +123,71 @@ namespace rerun {
         // -----------------------------------------------------------------------------------------
         // Methods for logging.
 
-        /// Logs an archetype.
-        ///
-        /// Prefer this interface for ease of use over the more general `log_component_batches`
-        /// interface.
-        ///
-        /// Logs any failure via `Error::log_on_failure`
-        template <typename T>
-        void log(const char* entity_path, const T& archetype) {
-            log_archetype(entity_path, archetype);
-        }
-
-        /// @copydoc log
-        template <typename T>
-        void log_archetype(const char* entity_path, const T& archetype) {
-            try_log_archetype(entity_path, archetype).log_on_failure();
-        }
-
-        /// Logs a an archetype, returning an error on failure.
-        ///
-        /// @see log_archetype
-        template <typename T>
-        Error try_log_archetype(const char* entity_path, const T& archetype) {
-            return try_log_component_batches(
-                entity_path,
-                archetype.num_instances(),
-                archetype.as_component_batches()
-            );
-        }
-
-        /// Logs a single component batch.
-        ///
-        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
-        /// built-in archetypes.
+        /// Logs one or more archetype and/or component batches.
         ///
         /// Logs any failure via `Error::log_on_failure`
         ///
-        /// @param component_batch
-        /// Expects component batch as std::vector, std::array or C arrays.
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
         ///
-        /// @see try_log_component_batch, log_component_batches, try_log_component_batches
-        template <typename T>
-        void log_component_batch(const char* entity_path, const T& component_batch) {
-            const auto batch = AnonymousComponentBatch(component_batch);
-            try_log_component_batches(entity_path, batch.num_instances, batch).log_on_failure();
-        }
-
-        /// Logs a single component batch.
-        ///
-        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
-        /// built-in archetypes.
-        ///
-        /// @param component_batch
-        /// Expects component batch as std::vector, std::array or C arrays.
-        ///
-        /// @see log_component_batch, log_component_batches, try_log_component_batches
-        template <typename T>
-        Error try_log_component_batch(const char* entity_path, const T& component_batch) {
-            const auto batch = AnonymousComponentBatch(component_batch);
-            return try_log_component_batches(entity_path, batch.num_instances, batch);
-        }
-
-        /// Logs several component batches.
-        ///
-        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
-        /// built-in archetypes.
-        ///
-        /// Logs any failure via `Error::log_on_failure`
-        ///
-        /// @param component_batches
-        /// Expects component batches as std::vector, std::array or C arrays.
-        ///
-        /// @param num_instances
-        /// Specify the expected number of component instances present in each
-        /// list. Each can have either:
-        /// - exactly `num_instances` instances,
-        /// - a single instance (splat),
-        /// - or zero instance (clear).
-        ///
-        /// @see try_log_component_batches
+        /// @see try_log
         template <typename... Ts>
-        void log_component_batches(
-            const char* entity_path, size_t num_instances, const Ts&... component_batches
-        ) {
-            try_log_component_batches(entity_path, num_instances, component_batches...)
-                .log_on_failure();
+        void log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            try_log(entity_path, archetypes_or_component_batches...).log_on_failure();
         }
 
-        /// Logs several component batches, returning an error on failure.
+        /// Logs one or more archetype and/or component batches.
         ///
+        /// Returns an error if an error occurs during serialization or logging.
         ///
-        /// @param num_instances
-        /// Specify the expected number of component instances present in each
-        /// list. Each can have either:
-        /// - exactly `num_instances` instances,
-        /// - a single instance (splat),
-        /// - or zero instance (clear).
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
         ///
-        /// @see log_component_batches
+        /// @see try_log
         template <typename... Ts>
-        Error try_log_component_batches(
-            const char* entity_path, size_t num_instances, const Ts&... component_batches
-        ) {
-            return try_log_component_batches(
-                entity_path,
-                num_instances,
-                {AnonymousComponentBatch(component_batches)...}
+        Error try_log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            std::vector<SerializedComponentBatch> serialized_batches;
+            Error err;
+            (
+                [&] {
+                    if (err.is_err()) {
+                        return;
+                    }
+
+                    const Result<std::vector<SerializedComponentBatch>> serialization_result =
+                        AsComponents<Ts>().serialize(archetypes_or_component_batches);
+                    if (serialization_result.is_err()) {
+                        err = serialization_result.error;
+                        return;
+                    }
+
+                    if (serialized_batches.empty()) {
+                        // Fast path for the first batch (which is usually the only one!)
+                        serialized_batches = std::move(serialization_result.value);
+                    } else {
+                        serialized_batches.insert(
+                            serialized_batches.end(),
+                            std::make_move_iterator(serialization_result.value.begin()),
+                            std::make_move_iterator(serialization_result.value.end())
+                        );
+                    }
+                }(),
+                ...
             );
+            RR_RETURN_NOT_OK(err);
+
+            return try_log_serialized_batches(entity_path, serialized_batches);
         }
 
-        /// @copydoc try_log_component_batches
-        Error try_log_component_batches(
-            const char* entity_path, size_t num_instances,
-            const std::vector<AnonymousComponentBatch>& component_lists
+        /// Logs several serialized batches batches, returning an error on failure.
+        ///
+        /// The number of instances in each batch must either be equal to the maximum or:
+        /// - zero instances - implies a clear
+        /// - single instance (but other instances have more) - causes a splat
+        Error try_log_serialized_batches(
+            const char* entity_path, const std::vector<SerializedComponentBatch>& batches
         );
 
         /// Low level API that logs raw data cells to the recording stream.

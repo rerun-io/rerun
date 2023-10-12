@@ -3,29 +3,33 @@
 
 #include "annotation_context.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.AnnotationContextIndicator";
+    }
 
-        AnonymousComponentBatch AnnotationContext::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<AnnotationContext::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
+    Result<std::vector<SerializedComponentBatch>> AsComponents<
+        archetypes::AnnotationContext>::serialize(const archetypes::AnnotationContext& archetype) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
+
+        {
+            auto result =
+                ComponentBatch<rerun::components::AnnotationContext>(archetype.context).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<AnnotationContext::IndicatorComponent>(
+                              AnnotationContext::IndicatorComponent()
+            )
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> AnnotationContext::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
-
-            comp_batches.emplace_back(context);
-            comp_batches.emplace_back(AnnotationContext::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

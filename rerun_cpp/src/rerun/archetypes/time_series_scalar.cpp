@@ -3,41 +3,57 @@
 
 #include "time_series_scalar.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char TimeSeriesScalar::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.TimeSeriesScalarIndicator";
+    }
 
-        AnonymousComponentBatch TimeSeriesScalar::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<TimeSeriesScalar::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
+    Result<std::vector<SerializedComponentBatch>> AsComponents<
+        archetypes::TimeSeriesScalar>::serialize(const archetypes::TimeSeriesScalar& archetype) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(5);
+
+        {
+            auto result = ComponentBatch<rerun::components::Scalar>(archetype.scalar).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.radius.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Radius>(archetype.radius.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.color.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Color>(archetype.color.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.label.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Text>(archetype.label.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.scattered.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::ScalarScattering>(archetype.scattered.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<TimeSeriesScalar::IndicatorComponent>(
+                              TimeSeriesScalar::IndicatorComponent()
+            )
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> TimeSeriesScalar::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(5);
-
-            comp_batches.emplace_back(scalar);
-            if (radius.has_value()) {
-                comp_batches.emplace_back(radius.value());
-            }
-            if (color.has_value()) {
-                comp_batches.emplace_back(color.value());
-            }
-            if (label.has_value()) {
-                comp_batches.emplace_back(label.value());
-            }
-            if (scattered.has_value()) {
-                comp_batches.emplace_back(scattered.value());
-            }
-            comp_batches.emplace_back(TimeSeriesScalar::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun
