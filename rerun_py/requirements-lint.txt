@@ -1,5 +1,4 @@
 attrs>=23.1.0  # for mypy to work
-black==23.3.0
 blackdoc==0.3.8
 mypy==1.4.1
 numpy>=1.24 # For mypy plugin
