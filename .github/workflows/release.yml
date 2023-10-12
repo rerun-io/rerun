@@ -112,6 +112,38 @@ jobs:
           git push
           echo "version_bump_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          pr=$(gh pr view --json headRefName 2>/dev/null)
+          if echo "$pr" | jq '. | has("headRefName")' | grep -q 'true'; then
+            echo "PR already exists"
+            exit 0
+          fi
+
+          echo "PR does not exist, creating…"
+
+          cat <<EOF > pr-body.txt
+          # Release ${{ steps.versioning.outputs.final }}
+
+          ### Next steps
+          - [Test the release](#testing)
+          - If this is an `alpha` release, you can just merge the pull request.
+          - Otherwise:
+            - For any added commits, run the release workflow in `rc` mode again
+            - After testing, run the release workflow in `release` mode
+            - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+          EOF
+
+          gh pr create \
+            --base main \
+            --head $(git branch --show-current) \
+            --label "⛴ release" \
+            --label "exclude from changelog" \
+            --fill \
+            --body-file pr-body.txt
+
   update-docs:
     name: "Update Docs"
     needs: [version]
@@ -175,7 +207,36 @@ jobs:
           git checkout ${{ github.ref_name }}
           git push --force origin ${{ github.ref_name }}:latest
 
-  post-release-version-bump:
+  alpha-version-bump:
+    name: "Alpha Version Bump"
+    if: inputs.release-type == 'alpha'
+    needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r scripts/ci/requirements.txt
+
+      # After an alpha release, we bump the prerelease version and append `+dev`.
+      - name: Update version
+        id: update-version
+        run: |
+          python3 scripts/ci/crates.py version --bump prerelease --dev
+          echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Commit new version
+        run: |
+          git config --global user.name "rerun-bot"
+          git config --global user.email "bot@rerun.io"
+          git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
+          git push
+
+  final-version-bump:
     name: "Post-release Version Bump"
     if: inputs.release-type == 'final'
     needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
@@ -185,6 +246,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
 
       - name: Install dependencies
         run: |
@@ -197,19 +259,30 @@ jobs:
           python3 scripts/ci/crates.py version --bump minor --dev
           echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-      - name: Create pull request
-        uses: peter-evans/create-pull-request@v5.0.2
-        with:
-          token: ${{ secrets.RERUN_BOT_TOKEN }}
-          base: main
-          branch: "post-${{ github.ref_name }}"
-          commit-message: "bump versions to ${{ steps.update-version.outputs.version }}"
-          title: "Post-release ${{ needs.version.outputs.final }}"
-          labels: "⛴ release"
-          committer: "Rerun Bot <bot@rerun.io>"
-          author: "Rerun Bot <bot@rerun.io>"
-          body: |
-            ### What
+      - name: Commit new version
+        id: commit-version
+        run: |
+          branch_name="bump-${{ steps.update-version.outputs.version }}"
+          git checkout -b $branch_name
+          git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
+          git push -u origin $branch_name
+          echo "branch=$branch_name" >> "$GITHUB_OUTPUT"
 
-            - [x] Bump all crate versions to `${{ steps.update-version.outputs.version }}`
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          cat <<EOF > pr-body.txt
+          ### What
+
+          - [x] Bump all crate versions to `${{ steps.update-version.outputs.version }}`
+          EOF
+
+          gh pr create \
+            --base main \
+            --head ${{ steps.commit-version.outputs.branch }} \
+            --label "⛴ release" \
+            --label "exclude from changelog" \
+            --fill \
+            --body-file pr-body.txt
 
