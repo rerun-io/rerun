@@ -6,6 +6,6 @@ numpy>=1.24 # For mypy plugin
 torch>=2.1.0
 pip-check-reqs==2.4.4 # Checks for missing deps in requirements.txt files
 pytest  # For mypy to work
-ruff==0.0.276
+ruff==0.0.292
 types-Deprecated==1.2.9.2
 types-requests>=2.31,<3
