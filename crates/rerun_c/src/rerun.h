@@ -212,11 +212,8 @@ extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 ///
 /// For example:
 /// `rr_recording_stream_set_time_sequence(stream, "frame_nr", &frame_nr, &err)`.
-///
-/// You can remove a timeline again using
-/// `rr_recording_stream_set_time_sequence(stream, "sim_time", NULL, &err)`.
 extern void rr_recording_stream_set_time_sequence(
-    rr_recording_stream stream, const char* timeline_name, int64_t* sequence, rr_error* error
+    rr_recording_stream stream, const char* timeline_name, int64_t sequence, rr_error* error
 );
 
 /// Set the current time of the recording, for the current calling thread.
@@ -225,12 +222,9 @@ extern void rr_recording_stream_set_time_sequence(
 /// to one of the time setting methods.
 ///
 /// For example:
-/// `rr_recording_stream_set_time_seconds(stream, "sim_time", &sim_time_secs, &err)`.
-///
-/// You can remove a timeline again using
-/// `rr_recording_stream_set_time_seconds(stream, "sim_time", NULL, &err)`.
+/// `rr_recording_stream_set_time_seconds(stream, "sim_time", sim_time_secs, &err)`.
 extern void rr_recording_stream_set_time_seconds(
-    rr_recording_stream stream, const char* timeline_name, double* seconds, rr_error* error
+    rr_recording_stream stream, const char* timeline_name, double seconds, rr_error* error
 );
 
 /// Set the current time of the recording, for the current calling thread.
@@ -239,16 +233,21 @@ extern void rr_recording_stream_set_time_seconds(
 /// to one of the time setting methods.
 ///
 /// For example:
-/// `rr_recording_stream_set_time_nanos(stream, "sim_time", &sim_time_nanos, &err)`.
-///
-/// You can remove a timeline again using
-/// `rr_recording_stream_set_time_nanos(stream, "sim_time", NULL, &err)`.
+/// `rr_recording_stream_set_time_nanos(stream, "sim_time", sim_time_nanos, &err)`.
 extern void rr_recording_stream_set_time_nanos(
-    rr_recording_stream stream, const char* timeline_name, int64_t* ns, rr_error* error
+    rr_recording_stream stream, const char* timeline_name, int64_t ns, rr_error* error
+);
+
+/// Stops logging to the specified timeline for subsequent log calls.
+///
+/// The timeline is still there, but it will not be updated with any new data.
+///
+/// No-op if the timeline doesn't exist.
+void rr_recording_stream_disable_timeline(
+    rr_recording_stream stream, const char* timeline_name, rr_error* error
 );
 
 /// Clears out the current time of the recording, for the current calling thread.
-/// TODO(#3743): Time is thread local per stream!
 ///
 /// Used for all subsequent logging performed from this same thread, until the next call
 /// to one of the time setting methods.

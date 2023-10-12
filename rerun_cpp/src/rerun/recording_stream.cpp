@@ -94,40 +94,27 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::set_time_sequence(
-        const char* timeline_name, std::optional<int64_t> sequence_nr
-    ) {
+    void RecordingStream::set_time_sequence(const char* timeline_name, int64_t sequence_nr) {
         rr_error status = {};
-        rr_recording_stream_set_time_sequence(
-            _id,
-            timeline_name,
-            sequence_nr.has_value() ? &sequence_nr.value() : nullptr,
-            &status
-        );
+        rr_recording_stream_set_time_sequence(_id, timeline_name, sequence_nr, &status);
         Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_seconds(
-        const char* timeline_name, std::optional<double> seconds
-    ) {
+    void RecordingStream::set_time_seconds(const char* timeline_name, double seconds) {
         rr_error status = {};
-        rr_recording_stream_set_time_seconds(
-            _id,
-            timeline_name,
-            seconds.has_value() ? &seconds.value() : nullptr,
-            &status
-        );
+        rr_recording_stream_set_time_seconds(_id, timeline_name, seconds, &status);
         Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_nanos(const char* timeline_name, std::optional<int64_t> nanos) {
+    void RecordingStream::set_time_nanos(const char* timeline_name, int64_t nanos) {
         rr_error status = {};
-        rr_recording_stream_set_time_nanos(
-            _id,
-            timeline_name,
-            nanos.has_value() ? &nanos.value() : nullptr,
-            &status
-        );
+        rr_recording_stream_set_time_nanos(_id, timeline_name, nanos, &status);
+        Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::disable_timeline(const char* timeline_name) {
+        rr_error status = {};
+        rr_recording_stream_disable_timeline(_id, timeline_name, &status);
         Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
     }
 

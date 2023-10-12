@@ -308,21 +308,14 @@ pub extern "C" fn rr_recording_stream_save(
     }
 }
 
-#[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_sequence_impl(
     stream: CRecordingStream,
     timeline_name: *const c_char,
-    sequence: *const i64,
+    sequence: i64,
 ) -> Result<(), CError> {
     let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
-    let sequence = if sequence.is_null() {
-        None
-    } else {
-        Some(unsafe { *sequence })
-    };
-    recording_stream(stream)?.set_time_sequence(timeline, sequence);
-
+    recording_stream(stream)?.set_time_sequence(timeline, Some(sequence));
     Ok(())
 }
 
@@ -331,7 +324,7 @@ fn rr_recording_stream_set_time_sequence_impl(
 pub extern "C" fn rr_recording_stream_set_time_sequence(
     stream: CRecordingStream,
     timeline_name: *const c_char,
-    sequence: *const i64,
+    sequence: i64,
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_set_time_sequence_impl(stream, timeline_name, sequence) {
@@ -339,21 +332,14 @@ pub extern "C" fn rr_recording_stream_set_time_sequence(
     }
 }
 
-#[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_seconds_impl(
     stream: CRecordingStream,
     timeline_name: *const c_char,
-    seconds: *const f64,
+    seconds: f64,
 ) -> Result<(), CError> {
     let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
-    let seconds = if seconds.is_null() {
-        None
-    } else {
-        Some(unsafe { *seconds })
-    };
-    recording_stream(stream)?.set_time_seconds(timeline, seconds);
-
+    recording_stream(stream)?.set_time_seconds(timeline, Some(seconds));
     Ok(())
 }
 
@@ -362,7 +348,7 @@ fn rr_recording_stream_set_time_seconds_impl(
 pub extern "C" fn rr_recording_stream_set_time_seconds(
     stream: CRecordingStream,
     timeline_name: *const c_char,
-    seconds: *const f64,
+    seconds: f64,
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_set_time_seconds_impl(stream, timeline_name, seconds) {
@@ -370,21 +356,14 @@ pub extern "C" fn rr_recording_stream_set_time_seconds(
     }
 }
 
-#[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_nanos_impl(
     stream: CRecordingStream,
     timeline_name: *const c_char,
-    nanos: *const i64,
+    nanos: i64,
 ) -> Result<(), CError> {
     let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
-    let nanos = if nanos.is_null() {
-        None
-    } else {
-        Some(unsafe { *nanos })
-    };
-    recording_stream(stream)?.set_time_nanos(timeline, nanos);
-
+    recording_stream(stream)?.set_time_nanos(timeline, Some(nanos));
     Ok(())
 }
 
@@ -393,10 +372,33 @@ fn rr_recording_stream_set_time_nanos_impl(
 pub extern "C" fn rr_recording_stream_set_time_nanos(
     stream: CRecordingStream,
     timeline_name: *const c_char,
-    nanos: *const i64,
+    nanos: i64,
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_set_time_nanos_impl(stream, timeline_name, nanos) {
+        err.write_error(error);
+    }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_disable_timeline_impl(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+) -> Result<(), CError> {
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    recording_stream(stream)?.set_time_sequence(timeline, None);
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_disable_timeline(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_disable_timeline_impl(stream, timeline_name) {
         err.write_error(error);
     }
 }
