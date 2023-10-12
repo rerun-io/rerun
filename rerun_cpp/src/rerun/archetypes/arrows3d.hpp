@@ -103,17 +103,9 @@ namespace rerun {
 
             /// Creates new 3D arrows pointing in the given directions, with a base at the origin
             /// (0, 0, 0).
-            static Arrows3D from_vectors(std::vector<components::Vector3D> _vectors) {
+            static Arrows3D from_vectors(ComponentBatch<components::Vector3D> vectors_) {
                 Arrows3D arrows;
-                arrows.vectors = std::move(_vectors);
-                return arrows;
-            }
-
-            /// Creates new 3D arrows pointing in the given directions, with a base at the origin
-            /// (0, 0, 0).
-            static Arrows3D from_vectors(components::Vector3D _vector) {
-                Arrows3D arrows;
-                arrows.vectors = std::vector(1, std::move(_vector));
+                arrows.vectors = std::move(vectors_);
                 return arrows;
             }
 

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-# project(RerunExample)
+# project(ClockExample)
 
 # ------------------------------------------------------------------------------
 
@@ -9,7 +9,7 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
 endif()
 
-add_executable(rerun_example main.cpp)
+add_executable(clock_example main.cpp)
 
-set_default_warning_settings(rerun_example)
-target_link_libraries(rerun_example PRIVATE rerun_sdk)
+set_default_warning_settings(clock_example)
+target_link_libraries(clock_example PRIVATE rerun_sdk)

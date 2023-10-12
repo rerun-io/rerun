@@ -7,6 +7,7 @@ crates/re_types_builder/source_hash.txt
 # C++ and CMake stuff:
 *.bin
 *.o
+*.a
 **/build/
 **/CMakeFiles/
 **/CMakeCache.txt

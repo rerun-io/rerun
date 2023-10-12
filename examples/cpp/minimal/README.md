@@ -1,5 +1,3 @@
 # Example of using the Rerun C SDK
 
-```
-make run
-```
+TODO(andreas): Doc links etc.
