@@ -1,14 +1,12 @@
 #include <rerun.hpp>
 
-namespace rr = rerun;
-
 int main(int argc, char** argv) {
-    auto rec = rr::RecordingStream("rerun_example_roundtrip_text_log");
+    auto rec = rerun::RecordingStream("rerun_example_roundtrip_text_log");
     rec.save(argv[1]).throw_on_failure();
-    rec.log("log", rr::archetypes::TextLog("No level"));
+    rec.log("log", rerun::archetypes::TextLog("No level"));
     rec.log(
         "log",
-        rr::archetypes::TextLog("INFO level").with_level(rr::components::TextLogLevel::INFO)
+        rerun::archetypes::TextLog("INFO level").with_level(rerun::components::TextLogLevel::INFO)
     );
-    rec.log("log", rr::archetypes::TextLog("WILD level").with_level("WILD"));
+    rec.log("log", rerun::archetypes::TextLog("WILD level").with_level("WILD"));
 }

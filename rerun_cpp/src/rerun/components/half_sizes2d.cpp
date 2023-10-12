@@ -69,9 +69,9 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(HalfSizes2D::NAME, HalfSizes2D::arrow_datatype(), false)}
-            );
+            auto schema =
+                arrow::schema({arrow::field(HalfSizes2D::NAME, HalfSizes2D::arrow_datatype(), false)
+                });
 
             rerun::DataCell cell;
             cell.component_name = HalfSizes2D::NAME;

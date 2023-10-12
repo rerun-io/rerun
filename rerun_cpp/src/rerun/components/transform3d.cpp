@@ -70,9 +70,9 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(Transform3D::NAME, Transform3D::arrow_datatype(), false)}
-            );
+            auto schema =
+                arrow::schema({arrow::field(Transform3D::NAME, Transform3D::arrow_datatype(), false)
+                });
 
             rerun::DataCell cell;
             cell.component_name = Transform3D::NAME;

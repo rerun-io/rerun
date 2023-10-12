@@ -17,22 +17,21 @@
 #include <vector>
 
 namespace fs = std::filesystem;
-namespace rr = rerun;
-namespace rrc = rr::components;
+namespace rrc = rerun::components;
 
 #define TEST_TAG "[recording_stream]"
 
 struct BadComponent {
     static const char* NAME;
-    static rr::Error error;
+    static rerun::Error error;
 
-    static rr::Result<rerun::DataCell> to_data_cell(const BadComponent*, size_t) {
+    static rerun::Result<rerun::DataCell> to_data_cell(const BadComponent*, size_t) {
         return error;
     }
 };
 
 const char* BadComponent::NAME = "bad!";
-rr::Error BadComponent::error = rr::Error(rr::ErrorCode::Unknown, "BadComponent");
+rerun::Error BadComponent::error = rerun::Error(rerun::ErrorCode::Unknown, "BadComponent");
 
 struct BadArchetype {
     size_t num_instances() const {
@@ -54,10 +53,10 @@ namespace rerun {
 namespace rerun {
     std::ostream& operator<<(std::ostream& os, StoreKind kind) {
         switch (kind) {
-            case rr::StoreKind::Recording:
+            case rerun::StoreKind::Recording:
                 os << "StoreKind::Recording";
                 break;
-            case rr::StoreKind::Blueprint:
+            case rerun::StoreKind::Blueprint:
                 os << "StoreKind::Blueprint";
                 break;
             default:
@@ -69,13 +68,13 @@ namespace rerun {
 } // namespace rerun
 
 SCENARIO("RecordingStream can be created, destroyed and lists correct properties", TEST_TAG) {
-    const auto kind = GENERATE(rr::StoreKind::Recording, rr::StoreKind::Blueprint);
+    const auto kind = GENERATE(rerun::StoreKind::Recording, rerun::StoreKind::Blueprint);
 
     GIVEN("recording stream kind" << kind) {
         AND_GIVEN("a valid application id") {
             THEN("creating a new stream does not log an error") {
-                rr::RecordingStream stream = check_logged_error([&] {
-                    return rr::RecordingStream("rerun_example_test", kind);
+                rerun::RecordingStream stream = check_logged_error([&] {
+                    return rerun::RecordingStream("rerun_example_test", kind);
                 });
 
                 AND_THEN("it does not crash on destruction") {}
@@ -89,16 +88,16 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
         AND_GIVEN("a nullptr for the application id") {
             THEN("creating a new stream logs a null argument error") {
                 check_logged_error(
-                    [&] { rr::RecordingStream stream(nullptr, kind); },
-                    rr::ErrorCode::UnexpectedNullArgument
+                    [&] { rerun::RecordingStream stream(nullptr, kind); },
+                    rerun::ErrorCode::UnexpectedNullArgument
                 );
             }
         }
         AND_GIVEN("invalid utf8 character sequence for the application id") {
             THEN("creating a new stream logs an invalid string argument error") {
                 check_logged_error(
-                    [&] { rr::RecordingStream stream("\xc3\x28", kind); },
-                    rr::ErrorCode::InvalidStringArgument
+                    [&] { rerun::RecordingStream stream("\xc3\x28", kind); },
+                    rerun::ErrorCode::InvalidStringArgument
                 );
             }
         }
@@ -106,10 +105,10 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
 }
 
 SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
-    for (auto kind : std::array{rr::StoreKind::Recording, rr::StoreKind::Blueprint}) {
+    for (auto kind : std::array{rerun::StoreKind::Recording, rerun::StoreKind::Blueprint}) {
         GIVEN("a store kind" << kind) {
             WHEN("querying the current one") {
-                auto& stream = rr::RecordingStream::current(kind);
+                auto& stream = rerun::RecordingStream::current(kind);
 
                 THEN("it reports the correct kind") {
                     CHECK(stream.kind() == kind);
@@ -117,7 +116,7 @@ SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
             }
 
             WHEN("creating a new stream") {
-                rr::RecordingStream stream("test", kind);
+                rerun::RecordingStream stream("test", kind);
 
                 THEN("it can be set as global") {
                     stream.set_global();
@@ -137,10 +136,10 @@ SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
 }
 
 SCENARIO("RecordingStream can be used for logging archetypes and components", TEST_TAG) {
-    for (auto kind : std::array{rr::StoreKind::Recording, rr::StoreKind::Blueprint}) {
+    for (auto kind : std::array{rerun::StoreKind::Recording, rerun::StoreKind::Blueprint}) {
         GIVEN("a store kind" << kind) {
             WHEN("creating a new stream") {
-                rr::RecordingStream stream("test", kind);
+                rerun::RecordingStream stream("test", kind);
 
                 // We can make single components work, but this would make error messages a lot
                 // worse since we'd have to implement the base `AsComponents` template for this.
@@ -155,8 +154,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
 
                 THEN("components as c-array can be logged") {
                     rrc::Position2D c_style_array[2] = {
-                        rr::datatypes::Vec2D{1.0, 2.0},
-                        rr::datatypes::Vec2D{4.0, 5.0},
+                        rerun::datatypes::Vec2D{1.0, 2.0},
+                        rerun::datatypes::Vec2D{4.0, 5.0},
                     };
 
                     stream.log("as-carray", c_style_array);
@@ -165,8 +164,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log(
                         "as-array",
                         std::array<rrc::Position2D, 2>{
-                            rr::datatypes::Vec2D{1.0, 2.0},
-                            rr::datatypes::Vec2D{4.0, 5.0},
+                            rerun::datatypes::Vec2D{1.0, 2.0},
+                            rerun::datatypes::Vec2D{4.0, 5.0},
                         }
                     );
                 }
@@ -174,8 +173,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log(
                         "as-vector",
                         std::vector<rrc::Position2D>{
-                            rr::datatypes::Vec2D{1.0, 2.0},
-                            rr::datatypes::Vec2D{4.0, 5.0},
+                            rerun::datatypes::Vec2D{1.0, 2.0},
+                            rerun::datatypes::Vec2D{4.0, 5.0},
                         }
                     );
                 }
@@ -188,9 +187,9 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log(
                         "as-mix",
                         std::vector{
-                            rrc::Position2D(rr::datatypes::Vec2D{0.0, 0.0}),
-                            rrc::Position2D(rr::datatypes::Vec2D{1.0, 3.0}),
-                            rrc::Position2D(rr::datatypes::Vec2D{5.0, 5.0}),
+                            rrc::Position2D(rerun::datatypes::Vec2D{0.0, 0.0}),
+                            rrc::Position2D(rerun::datatypes::Vec2D{1.0, 3.0}),
+                            rrc::Position2D(rerun::datatypes::Vec2D{5.0, 5.0}),
                         },
                         std::array{
                             rrc::Color(0xFF0000FF),
@@ -205,8 +204,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log(
                         "log-splat",
                         std::vector{
-                            rrc::Position2D(rr::datatypes::Vec2D{0.0, 0.0}),
-                            rrc::Position2D(rr::datatypes::Vec2D{1.0, 3.0}),
+                            rrc::Position2D(rerun::datatypes::Vec2D{0.0, 0.0}),
+                            rrc::Position2D(rerun::datatypes::Vec2D{1.0, 3.0}),
                         },
                         std::array{rrc::Color(0xFF0000FF)}
                     );
@@ -215,8 +214,8 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                 THEN("an archetype can be logged") {
                     stream.log(
                         "log_archetype-splat",
-                        rr::archetypes::Points2D(
-                            {rr::datatypes::Vec2D{1.0, 2.0}, rr::datatypes::Vec2D{4.0, 5.0}}
+                        rerun::archetypes::Points2D(
+                            {rerun::datatypes::Vec2D{1.0, 2.0}, rerun::datatypes::Vec2D{4.0, 5.0}}
                         ).with_colors(rrc::Color(0xFF0000FF))
                     );
                 }
@@ -239,11 +238,11 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     fs::remove(test_rrd1.c_str());
 
     GIVEN("a new RecordingStream") {
-        auto stream0 = std::make_unique<rr::RecordingStream>("test");
+        auto stream0 = std::make_unique<rerun::RecordingStream>("test");
 
         AND_GIVEN("a nullptr for the save path") {
             THEN("then the save call returns a null argument error") {
-                CHECK(stream0->save(nullptr).code == rr::ErrorCode::UnexpectedNullArgument);
+                CHECK(stream0->save(nullptr).code == rerun::ErrorCode::UnexpectedNullArgument);
             }
         }
         AND_GIVEN("valid save path " << test_rrd0) {
@@ -252,7 +251,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                 THEN("then the save call fails") {
                     CHECK(
                         stream0->save(test_rrd0.c_str()).code ==
-                        rr::ErrorCode::RecordingStreamSaveFailure
+                        rerun::ErrorCode::RecordingStreamSaveFailure
                     );
                 }
             }
@@ -264,7 +263,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                 }
 
                 WHEN("creating a second stream") {
-                    auto stream1 = std::make_unique<rr::RecordingStream>("test2");
+                    auto stream1 = std::make_unique<rerun::RecordingStream>("test2");
 
                     WHEN("saving that one to a different file " << test_rrd1) {
                         REQUIRE(stream1->save(test_rrd1.c_str()).is_ok());
@@ -274,8 +273,8 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                                 stream1->log(
                                     "as-array",
                                     std::array<rrc::Position2D, 2>{
-                                        rr::datatypes::Vec2D{1.0, 2.0},
-                                        rr::datatypes::Vec2D{4.0, 5.0},
+                                        rerun::datatypes::Vec2D{1.0, 2.0},
+                                        rerun::datatypes::Vec2D{4.0, 5.0},
                                     }
                                 );
                             });
@@ -290,9 +289,9 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                             check_logged_error([&] {
                                 stream1->log(
                                     "archetype",
-                                    rr::archetypes::Points2D({
-                                        rr::datatypes::Vec2D{1.0, 2.0},
-                                        rr::datatypes::Vec2D{4.0, 5.0},
+                                    rerun::archetypes::Points2D({
+                                        rerun::datatypes::Vec2D{1.0, 2.0},
+                                        rerun::datatypes::Vec2D{4.0, 5.0},
                                     })
                                 );
                             });
@@ -310,17 +309,17 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     }
 }
 
-void test_logging_to_connection(const char* address, rr::RecordingStream& stream) {
+void test_logging_to_connection(const char* address, rerun::RecordingStream& stream) {
     AND_GIVEN("a nullptr for the socket address") {
         THEN("then the connect call returns a null argument error") {
-            CHECK(stream.connect(nullptr, 0.0f).code == rr::ErrorCode::UnexpectedNullArgument);
+            CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
         }
     }
     AND_GIVEN("an invalid address for the socket address") {
         THEN("then the save call fails") {
             CHECK(
                 stream.connect("definitely not valid!", 0.0f).code ==
-                rr::ErrorCode::InvalidSocketAddress
+                rerun::ErrorCode::InvalidSocketAddress
             );
         }
     }
@@ -333,8 +332,8 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
                     stream.log(
                         "as-array",
                         std::array<rrc::Position2D, 2>{
-                            rr::datatypes::Vec2D{1.0, 2.0},
-                            rr::datatypes::Vec2D{4.0, 5.0},
+                            rerun::datatypes::Vec2D{1.0, 2.0},
+                            rerun::datatypes::Vec2D{4.0, 5.0},
                         }
                     );
                 });
@@ -348,9 +347,9 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
                 check_logged_error([&] {
                     stream.log(
                         "archetype",
-                        rr::archetypes::Points2D({
-                            rr::datatypes::Vec2D{1.0, 2.0},
-                            rr::datatypes::Vec2D{4.0, 5.0},
+                        rerun::archetypes::Points2D({
+                            rerun::datatypes::Vec2D{1.0, 2.0},
+                            rerun::datatypes::Vec2D{4.0, 5.0},
                         })
                     );
                 });
@@ -368,29 +367,29 @@ void test_logging_to_connection(const char* address, rr::RecordingStream& stream
 SCENARIO("RecordingStream can connect", TEST_TAG) {
     const char* address = "127.0.0.1:9876";
     GIVEN("a new RecordingStream") {
-        rr::RecordingStream stream("test-local");
+        rerun::RecordingStream stream("test-local");
         test_logging_to_connection(address, stream);
     }
     WHEN("setting a global RecordingStream and then discarding it") {
         {
-            rr::RecordingStream stream("test-global");
+            rerun::RecordingStream stream("test-global");
             stream.set_global();
         }
         GIVEN("the current recording stream") {
-            test_logging_to_connection(address, rr::RecordingStream::current());
+            test_logging_to_connection(address, rerun::RecordingStream::current());
         }
     }
 }
 
 SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
     GIVEN("a new RecordingStream") {
-        rr::RecordingStream stream("test");
+        rerun::RecordingStream stream("test");
 
         AND_GIVEN("an invalid path") {
-            auto variant = GENERATE(table<const char*, rr::ErrorCode>({
-                std::tuple<const char*, rr::ErrorCode>(
+            auto variant = GENERATE(table<const char*, rerun::ErrorCode>({
+                std::tuple<const char*, rerun::ErrorCode>(
                     nullptr,
-                    rr::ErrorCode::UnexpectedNullArgument
+                    rerun::ErrorCode::UnexpectedNullArgument
                 ),
             }));
             const auto [path, error] = variant;
@@ -403,7 +402,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 CHECK(stream.try_log(path, std::array<rrc::Position2D, 1>{v}).code == error);
             }
             THEN("try_log_archetypes returns the correct error") {
-                CHECK(stream.try_log(path, rr::archetypes::Points2D(v)).code == error);
+                CHECK(stream.try_log(path, rerun::archetypes::Points2D(v)).code == error);
             }
             THEN("log_component_batch logs the correct error") {
                 check_logged_error(
@@ -413,7 +412,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             }
             THEN("log_archetypes logs the correct error") {
                 check_logged_error(
-                    [&] { stream.log(std::get<0>(variant), rr::archetypes::Points2D(v)); },
+                    [&] { stream.log(std::get<0>(variant), rerun::archetypes::Points2D(v)); },
                     error
                 );
             }
@@ -423,41 +422,41 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             const char* path = "valid";
 
             AND_GIVEN("a cell with a null buffer") {
-                rr::DataCell cell;
+                rerun::DataCell cell;
                 cell.buffer = nullptr;
                 cell.component_name = "valid";
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
                     CHECK(
                         stream.try_log_data_row(path, 1, 1, &cell).code ==
-                        rr::ErrorCode::UnexpectedNullArgument
+                        rerun::ErrorCode::UnexpectedNullArgument
                     );
                 }
             }
 
             AND_GIVEN("a cell with a null component name") {
-                rr::DataCell cell;
+                rerun::DataCell cell;
                 cell.buffer = std::make_shared<arrow::Buffer>(nullptr, 0);
                 cell.component_name = nullptr;
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
                     CHECK(
                         stream.try_log_data_row(path, 1, 1, &cell).code ==
-                        rr::ErrorCode::UnexpectedNullArgument
+                        rerun::ErrorCode::UnexpectedNullArgument
                     );
                 }
             }
 
             AND_GIVEN("a cell with a valid component name but invalid data") {
                 uint8_t invalid_data[1] = {0};
-                rr::DataCell cell;
+                rerun::DataCell cell;
                 cell.component_name = "very-valid";
                 cell.buffer = std::make_shared<arrow::Buffer>(invalid_data, sizeof(invalid_data));
 
                 THEN("try_log_data_row fails with ArrowIpcMessageParsingFailure") {
                     CHECK(
                         stream.try_log_data_row(path, 1, 1, &cell).code ==
-                        rr::ErrorCode::ArrowIpcMessageParsingFailure
+                        rerun::ErrorCode::ArrowIpcMessageParsingFailure
                     );
                 }
             }
@@ -470,12 +469,12 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
 SCENARIO("Recording stream handles serialization failure during logging gracefully", TEST_TAG) {
     GIVEN("a new RecordingStream and a valid entity path") {
-        rr::RecordingStream stream("test");
+        rerun::RecordingStream stream("test");
         const char* path = "valid";
         AND_GIVEN("an component that fails serialization") {
             const auto component = BadComponent();
             BadComponent::error.code =
-                GENERATE(rr::ErrorCode::Unknown, rr::ErrorCode::ArrowStatusCode_TypeError);
+                GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
             THEN("calling log_component_batch with an array logs the serialization error") {
                 check_logged_error(
@@ -512,7 +511,7 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
         AND_GIVEN("an archetype that fails serialization") {
             auto archetype = BadArchetype();
             BadComponent::error.code =
-                GENERATE(rr::ErrorCode::Unknown, rr::ErrorCode::ArrowStatusCode_TypeError);
+                GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
             THEN("calling log_archetype logs the serialization error") {
                 check_logged_error([&] { stream.log(path, archetype); }, BadComponent::error.code);
