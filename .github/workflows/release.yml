@@ -61,6 +61,12 @@ jobs:
         run: |
           python3 -m pip install -r ./scripts/ci/requirements-crates.txt
 
+      # for `taplo fmt` done in `crates.py version --bump ...`
+      - name: Install taplo-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli
+
       - name: Update crate versions
         id: versioning
         run: |
@@ -225,6 +231,12 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
+      # for `taplo fmt` done in `crates.py version --bump ...`
+      - name: Install taplo-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli
+
       # After an alpha release, we bump the prerelease version and append `+dev`.
       - name: Update version
         id: update-version
@@ -255,6 +267,12 @@ jobs:
       - name: Install dependencies
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
+
+      # for `taplo fmt` done in `crates.py version --bump ...`
+      - name: Install taplo-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli
 
       # After a release, we bump the minor version and append `+dev`.
       - name: Update version
