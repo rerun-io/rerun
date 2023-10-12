@@ -58,27 +58,15 @@ namespace rerun {
                       columns[3].w(),
                   } {}
 
+            /// Construct a new 4x4 matrix from a pointer to 16 floats (in row major order).
+            ///
+            /// Attention: The pointer must point to at least least 16 floats long.
+            Mat4x4(const float* elements) {
+                memcpy(flat_columns, elements, sizeof(float) * 16);
+            }
+
           public:
             Mat4x4() = default;
-
-            Mat4x4(const float (&_flat_columns)[16])
-                : flat_columns{
-                      _flat_columns[0],
-                      _flat_columns[1],
-                      _flat_columns[2],
-                      _flat_columns[3],
-                      _flat_columns[4],
-                      _flat_columns[5],
-                      _flat_columns[6],
-                      _flat_columns[7],
-                      _flat_columns[8],
-                      _flat_columns[9],
-                      _flat_columns[10],
-                      _flat_columns[11],
-                      _flat_columns[12],
-                      _flat_columns[13],
-                      _flat_columns[14],
-                      _flat_columns[15]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

@@ -50,20 +50,15 @@ namespace rerun {
                       columns[2].z(),
                   } {}
 
+            /// Construct a new 3x3 matrix from a pointer to 9 floats (in row major order).
+            ///
+            /// Attention: The pointer must point to at least least 16 floats long.
+            Mat3x3(const float* elements) {
+                memcpy(flat_columns, elements, sizeof(float) * 9);
+            }
+
           public:
             Mat3x3() = default;
-
-            Mat3x3(const float (&_flat_columns)[9])
-                : flat_columns{
-                      _flat_columns[0],
-                      _flat_columns[1],
-                      _flat_columns[2],
-                      _flat_columns[3],
-                      _flat_columns[4],
-                      _flat_columns[5],
-                      _flat_columns[6],
-                      _flat_columns[7],
-                      _flat_columns[8]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

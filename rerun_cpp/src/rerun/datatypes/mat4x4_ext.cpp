@@ -37,6 +37,13 @@ namespace rerun {
                       columns[3].w(),
                   } {}
 
+            /// Construct a new 4x4 matrix from a pointer to 16 floats (in row major order).
+            ///
+            /// Attention: The pointer must point to at least least 16 floats long.
+            Mat4x4(const float* elements) {
+                memcpy(flat_columns, elements, sizeof(float) * 16);
+            }
+
             // [CODEGEN COPY TO HEADER END]
         };
 

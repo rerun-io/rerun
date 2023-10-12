@@ -30,6 +30,13 @@ namespace rerun {
                       columns[2].z(),
                   } {}
 
+            /// Construct a new 3x3 matrix from a pointer to 9 floats (in row major order).
+            ///
+            /// Attention: The pointer must point to at least least 16 floats long.
+            Mat3x3(const float* elements) {
+                memcpy(flat_columns, elements, sizeof(float) * 9);
+            }
+
             // [CODEGEN COPY TO HEADER END]
         };
 

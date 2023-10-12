@@ -2,6 +2,7 @@ include "arrow/attributes.fbs";
 include "fbs/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
+include "cpp/attributes.fbs";
 
 namespace rerun.datatypes;
 
@@ -14,7 +15,8 @@ struct Vec3D (
   "attr.python.array_aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]",
   "attr.rust.derive": "Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
   "attr.rust.tuple_struct",
-  "attr.rust.repr": "C"
+  "attr.rust.repr": "C",
+  "attr.cpp.no_field_ctors" // conflicts with float* constructor
 ) {
   xyz: [float: 3] (order: 100);
 }
