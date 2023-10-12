@@ -107,6 +107,7 @@ namespace rerun {
                 }
             }
             assert(false && "Unknown TensorBuffer tag");
+            return 0;
         }
 
     } // namespace datatypes
