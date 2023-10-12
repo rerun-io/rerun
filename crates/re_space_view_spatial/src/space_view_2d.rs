@@ -69,7 +69,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
     fn auto_spawn_heuristic(
         &self,
         ctx: &ViewerContext<'_>,
-        _space_origin: &EntityPath,
+        space_origin: &EntityPath,
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         let mut score = auto_spawn_heuristic(
@@ -83,7 +83,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // prefer to be 3D, don't spawn the 2D view. This is because it's never
         // possible to correctly project 3d objects to a root 2d view since the
         // the pinhole would go past the root.
-        if _space_origin.is_root() {
+        if space_origin.is_root() {
             let parts = ctx
                 .space_view_class_registry
                 .get_system_registry_or_log_error(&self.name())

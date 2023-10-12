@@ -475,13 +475,13 @@ pub fn compute_heuristic_context_for_entities(
         heuristic_context: &mut HeuristicFilterContextPerEntity,
     ) {
         let has_parent_pinhole =
-            query_pinhole(store, query, &tree.path).is_some() || has_parent_pinhole;
+            has_parent_pinhole || query_pinhole(store, query, &tree.path).is_some();
 
         heuristic_context.insert(
             tree.path.clone(),
             HeuristicFilterContext {
                 class: SpaceViewClassName::invalid(),
-                has_parent_pinhole,
+                has_ancestor_pinhole: has_parent_pinhole,
             },
         );
 

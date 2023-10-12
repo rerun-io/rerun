@@ -213,7 +213,7 @@ impl ViewPartSystem for Points2DPart {
         }
 
         // If this is a 3D view and there's no parent pinhole, do not include this part.
-        if ctx.class == "3D" && !ctx.has_parent_pinhole {
+        if ctx.class == "3D" && !ctx.has_ancestor_pinhole {
             return false;
         }
 

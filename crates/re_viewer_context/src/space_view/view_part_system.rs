@@ -16,14 +16,14 @@ use crate::{
 #[derive(Clone, Copy, Debug)]
 pub struct HeuristicFilterContext {
     pub class: SpaceViewClassName,
-    pub has_parent_pinhole: bool,
+    pub has_ancestor_pinhole: bool,
 }
 
 impl Default for HeuristicFilterContext {
     fn default() -> HeuristicFilterContext {
         Self {
             class: SpaceViewClassName::invalid(),
-            has_parent_pinhole: false,
+            has_ancestor_pinhole: false,
         }
     }
 }
@@ -32,7 +32,7 @@ impl HeuristicFilterContext {
     pub fn with_class(&self, class: SpaceViewClassName) -> Self {
         Self {
             class,
-            has_parent_pinhole: self.has_parent_pinhole,
+            has_ancestor_pinhole: self.has_ancestor_pinhole,
         }
     }
 }
