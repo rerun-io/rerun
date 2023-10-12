@@ -4,9 +4,8 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
 use re_log_types::{
-    ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash,
-    EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint,
-    Timeline,
+    ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
+    PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
 use re_types::{components::InstanceKey, Loggable as _};
 
@@ -218,9 +217,6 @@ pub struct StoreDb {
     /// The [`StoreId`] for this log.
     store_id: StoreId,
 
-    /// All [`EntityPathOpMsg`]s ever received.
-    entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
-
     /// Set by whomever created this [`StoreDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
@@ -235,7 +231,6 @@ impl StoreDb {
     pub fn new(store_id: StoreId) -> Self {
         Self {
             store_id,
-            entity_op_msgs: Default::default(),
             data_source: None,
             set_store_info: None,
             entity_db: Default::default(),
@@ -307,16 +302,6 @@ impl StoreDb {
         match &msg {
             LogMsg::SetStoreInfo(msg) => self.set_store_info(msg.clone()),
 
-            LogMsg::EntityPathOpMsg(_, msg) => {
-                let EntityPathOpMsg {
-                    row_id,
-                    time_point,
-                    path_op,
-                } = msg;
-                self.entity_op_msgs.insert(*row_id, msg.clone());
-                self.entity_db.add_path_op(*row_id, time_point, path_op);
-            }
-
             LogMsg::ArrowMsg(_, arrow_msg) => {
                 let table = DataTable::from_arrow_msg(arrow_msg)?;
                 self.add_data_table(table)?;
@@ -345,15 +330,6 @@ impl StoreDb {
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
         self.set_store_info = Some(store_info);
-    }
-
-    /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `StoreDb`.
-    pub fn iter_entity_op_msgs(&self) -> impl Iterator<Item = &EntityPathOpMsg> {
-        self.entity_op_msgs.values()
-    }
-
-    pub fn get_entity_op_msg(&self, row_id: &RowId) -> Option<&EntityPathOpMsg> {
-        self.entity_op_msgs.get(row_id)
     }
 
     pub fn gc_everything_but_the_latest_row(&mut self) {
@@ -394,16 +370,10 @@ impl StoreDb {
 
         let Self {
             store_id: _,
-            entity_op_msgs,
             data_source: _,
             set_store_info: _,
             entity_db,
         } = self;
-
-        {
-            re_tracing::profile_scope!("entity_op_msgs");
-            entity_op_msgs.retain(|row_id, _| !deleted.row_ids.contains(row_id));
-        }
 
         entity_db.purge(&deleted);
     }
