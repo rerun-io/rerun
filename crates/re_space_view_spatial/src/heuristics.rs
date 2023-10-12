@@ -57,11 +57,6 @@ pub fn auto_spawn_heuristic(
         }
     }
 
-    if view_kind == SpatialSpaceViewKind::TwoD {
-        // Prefer 2D views over 3D views.
-        score += 0.1;
-    }
-
     AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
 }
 

@@ -5,8 +5,12 @@ use re_data_ui::item_ui;
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use crate::{
-    space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint,
-    space_view_heuristics::is_entity_processed_by_class,
+    space_info::SpaceInfoCollection,
+    space_view::SpaceViewBlueprint,
+    space_view_heuristics::{
+        compute_heuristic_context_for_entities, is_entity_processed_by_class,
+        HeuristicFilterContextPerEntity,
+    },
 };
 
 /// Window for adding/removing entities from a space view.
@@ -84,7 +88,14 @@ fn add_entities_ui(
 ) {
     let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
     let tree = &ctx.store_db.entity_db.tree;
-    let entities_add_info = create_entity_add_info(ctx, tree, space_view, &spaces_info);
+    let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx);
+    let entities_add_info = create_entity_add_info(
+        ctx,
+        tree,
+        &heuristic_context_per_entity,
+        space_view,
+        &spaces_info,
+    );
 
     add_entities_tree_ui(
         ctx,
@@ -297,6 +308,7 @@ struct EntityAddInfo {
 fn create_entity_add_info(
     ctx: &ViewerContext<'_>,
     tree: &EntityTree,
+    heuristic_context_per_entity: &HeuristicFilterContextPerEntity,
     space_view: &SpaceViewBlueprint,
     spaces_info: &SpaceInfoCollection,
 ) -> IntMap<EntityPath, EntityAddInfo> {
@@ -304,7 +316,7 @@ fn create_entity_add_info(
 
     tree.visit_children_recursively(&mut |entity_path| {
         let can_add: CanAddToSpaceView =
-            if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path, &ctx.current_query()) {
+            if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path, heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default(), &ctx.current_query()) {
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
                         already_added: space_view.contents.contains_entity(entity_path),
