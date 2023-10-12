@@ -26,7 +26,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python3 -m pip install -r scripts/ci/requirements.txt
+          python3 -m pip install -r scripts/ci/requirements-crates.txt
 
       - name: Install Wasm tools
         shell: bash
