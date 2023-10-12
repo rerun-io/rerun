@@ -346,6 +346,9 @@ pub enum StoreSource {
         file_source: FileSource,
     },
 
+    /// In-app guides.
+    InAppGuides,
+
     /// Perhaps from some manual data ingestion?
     Other(String),
 }
@@ -362,6 +365,7 @@ impl std::fmt::Display for StoreSource {
                 FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
                 FileSource::FileDialog => write!(f, "File via file dialog"),
             },
+            Self::InAppGuides => write!(f, "In-app guide"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }

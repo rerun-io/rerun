@@ -1,13 +1,15 @@
+use re_data_store::StoreDb;
+use re_log_types::{
+    ApplicationId, DataRow, EntityPath, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time,
+    TimePoint,
+};
 use re_viewer_context::{SystemCommand, SystemCommandSender};
 
 pub(super) fn python_quick_start(
     command_sender: &re_viewer_context::CommandSender,
-) -> re_sdk::RecordingStreamResult<()> {
-    let (rec, storage) = re_sdk::RecordingStreamBuilder::new("Python Getting Started").memory()?;
-
-    rec.log(
-        "markdown",
-        &re_sdk::TextDocument::new(
+) -> anyhow::Result<()> {
+    let text_doc =
+        re_types::archetypes::TextDocument::new(
             r#"
 ## Python Quick Start
 
@@ -75,15 +77,27 @@ TBC
 "#
                 .trim(),
         )
-        .with_media_type(re_sdk::MediaType::markdown()),
+        .with_media_type(re_types::components::MediaType::markdown());
+
+    let row = DataRow::from_archetype(
+        RowId::random(),
+        TimePoint::timeless(),
+        EntityPath::from("quick_start"),
+        &text_doc,
     )?;
 
-    let log_msgs = storage.take();
-    let store_id = rec.store_info().map(|info| info.store_id.clone());
-    command_sender.send_system(SystemCommand::LoadLogMessage(log_msgs));
-    if let Some(store_id) = store_id {
-        command_sender.send_system(SystemCommand::SetRecordingId(store_id));
-    }
+    let store_info = StoreInfo {
+        application_id: ApplicationId::from("Python Quick Start"),
+        store_id: StoreId::random(StoreKind::Recording),
+        is_official_example: true,
+        started: Time::now(),
+        store_source: StoreSource::InAppGuides,
+        store_kind: StoreKind::Recording,
+    };
+
+    let store_db = StoreDb::from_info_and_rows(store_info, [row])?;
+
+    command_sender.send_system(SystemCommand::LoadStoreDb(store_db));
 
     Ok(())
 }

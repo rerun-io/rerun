@@ -4180,6 +4180,7 @@ dependencies = [
 name = "re_data_store"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
+ "anyhow",
  "criterion",
  "document-features",
  "itertools 0.11.0",
@@ -4805,7 +4806,6 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_renderer",
- "re_sdk",
  "re_smart_channel",
  "re_space_view_bar_chart",
  "re_space_view_spatial",

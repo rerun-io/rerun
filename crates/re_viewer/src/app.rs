@@ -349,11 +349,10 @@ impl App {
                 }
             }
 
-            SystemCommand::LoadLogMessage(mut log_messages) => {
-                for log_msg in log_messages.drain(..) {
-                    let store_db = store_hub.store_db_mut(log_msg.store_id());
-                    store_db.add(&log_msg).unwrap();
-                }
+            SystemCommand::LoadStoreDb(store_db) => {
+                let store_id = store_db.store_id().clone();
+                store_hub.insert_recording(store_db);
+                store_hub.set_recording_id(store_id);
             }
 
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),

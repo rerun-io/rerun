@@ -103,7 +103,10 @@ impl AppEnvironment {
                 llvm_version: llvm_version.clone(),
             },
 
-            StoreSource::File { .. } | StoreSource::Unknown | StoreSource::Other(_) => {
+            StoreSource::File { .. }
+            | StoreSource::Unknown
+            | StoreSource::InAppGuides
+            | StoreSource::Other(_) => {
                 // We should not really get here
 
                 #[cfg(debug_assertions)]
