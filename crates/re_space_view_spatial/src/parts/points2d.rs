@@ -1,3 +1,4 @@
+use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
@@ -6,8 +7,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -197,6 +198,29 @@ impl ViewPartSystem for Points2DPart {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(Points2D::indicator().name()).collect()
+    }
+
+    fn heuristic_filter(
+        &self,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &EntityPath,
+        ctx: HeuristicFilterContext,
+        _query: &LatestAtQuery,
+        entity_components: &ComponentNameSet,
+    ) -> bool {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+            return false;
+        }
+
+        // 2D parts can only ever be rendered properly as part of a 3D scene if the
+        // transform graph includes a pinhole projection. Pinholes only map from 2D children
+        // to 3D parents, so if the required pinhole exists, it must be an ancestor.
+        // Filter them otherwise to avoid ending up with 2D content mixed into 3D scenes.
+        if ctx.class == "3D" && !ctx.has_ancestor_pinhole {
+            return false;
+        }
+
+        true
     }
 
     fn execute(

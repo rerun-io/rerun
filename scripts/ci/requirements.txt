@@ -2,6 +2,7 @@
 -r ../../rerun_py/requirements-build.txt
 -r ../../rerun_py/requirements-doc.txt
 -r ../../rerun_py/requirements-lint.txt
+-r ./requirements-crates.txt
 
 Jinja2==3.1.2
 Pillow==10.0.0

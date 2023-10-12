@@ -19,7 +19,7 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, gpu_bridge, DefaultColor, SpaceViewClass,
+    default_heuristic_filter, gpu_bridge, DefaultColor, HeuristicFilterContext, SpaceViewClass,
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
@@ -681,10 +681,19 @@ impl ViewPartSystem for ImagesPart {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        ctx: HeuristicFilterContext,
         query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+            return false;
+        }
+
+        // 2D parts can only ever be rendered properly as part of a 3D scene if the
+        // transform graph includes a pinhole projection. Pinholes only map from 2D children
+        // to 3D parents, so if the required pinhole exists, it must be an ancestor.
+        // Filter them otherwise to avoid ending up with 2D content mixed into 3D scenes.
+        if ctx.class == "3D" && !ctx.has_ancestor_pinhole {
             return false;
         }
 

@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, fmt::Display};
 
-use eframe::emath::Align2;
-use egui::{epaint::TextShape, NumExt as _, Vec2};
+use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
