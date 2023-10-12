@@ -248,12 +248,7 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
-    if let Some(time_point) = ctx
-        .store_db
-        .entity_db
-        .data_store
-        .get_msg_metadata(&entry.row_id)
-    {
+    if let Some(time_point) = ctx.store_db.store().get_msg_metadata(&entry.row_id) {
         Some(time_point.clone())
     } else {
         re_log::warn_once!("Missing meta-data for {:?}", entry.entity_path);

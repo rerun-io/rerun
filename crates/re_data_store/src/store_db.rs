@@ -15,6 +15,8 @@ use crate::{Error, TimesPerTimeline};
 // ----------------------------------------------------------------------------
 
 /// Stored entities with easy indexing of the paths.
+///
+/// NOTE: don't go mutating the contents of this. Use the public functions instead.
 pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
@@ -226,6 +228,8 @@ impl EntityDb {
 // ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
+///
+/// NOTE: all mutation is to be done via public functions!
 pub struct StoreDb {
     /// The [`StoreId`] for this log.
     store_id: StoreId,
@@ -254,6 +258,11 @@ impl StoreDb {
         }
     }
 
+    #[inline]
+    pub fn entity_db(&self) -> &EntityDb {
+        &self.entity_db
+    }
+
     pub fn recording_msg(&self) -> Option<&SetStoreInfo> {
         self.recording_msg.as_ref()
     }
@@ -264,11 +273,6 @@ impl StoreDb {
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
         self.store_info().map(|ri| &ri.application_id)
-    }
-
-    #[inline]
-    pub fn store_mut(&mut self) -> &mut re_arrow_store::DataStore {
-        &mut self.entity_db.data_store
     }
 
     #[inline]
@@ -346,12 +350,23 @@ impl StoreDb {
         self.entity_op_msgs.get(row_id)
     }
 
+    pub fn gc_everything_but_the_latest_row(&mut self) {
+        re_tracing::profile_function!();
+
+        self.gc(GarbageCollectionOptions {
+            target: re_arrow_store::GarbageCollectionTarget::Everything,
+            gc_timeless: true,
+            protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
+            purge_empty_tables: true,
+        });
+    }
+
     /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
-        assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let (deleted, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
+        assert!((0.0..=1.0).contains(&fraction_to_purge));
+        self.gc(GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
@@ -359,6 +374,12 @@ impl StoreDb {
             protect_latest: 1,
             purge_empty_tables: false,
         });
+    }
+
+    pub fn gc(&mut self, gc_options: GarbageCollectionOptions) {
+        re_tracing::profile_function!();
+
+        let (deleted, stats_diff) = self.entity_db.data_store.gc(gc_options);
         re_log::trace!(
             num_row_ids_dropped = deleted.row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),

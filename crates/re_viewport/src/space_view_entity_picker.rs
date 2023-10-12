@@ -82,8 +82,8 @@ fn add_entities_ui(
     ui: &mut egui::Ui,
     space_view: &mut SpaceViewBlueprint,
 ) {
-    let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
-    let tree = &ctx.store_db.entity_db.tree;
+    let spaces_info = SpaceInfoCollection::new(ctx.store_db.entity_db());
+    let tree = &ctx.store_db.entity_db().tree;
     let entities_add_info = create_entity_add_info(ctx, tree, space_view, &spaces_info);
 
     add_entities_tree_ui(

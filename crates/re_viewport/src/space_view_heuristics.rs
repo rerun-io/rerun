@@ -44,7 +44,7 @@ fn candidate_space_view_paths<'a>(
 ) -> impl Iterator<Item = &'a EntityPath> {
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
-    let root_children = &ctx.store_db.entity_db.tree.children;
+    let root_children = &ctx.store_db.entity_db().tree.children;
     spaces_info
         .iter()
         .map(|info| &info.path)
@@ -499,7 +499,7 @@ pub fn identify_entities_per_system_per_class(
     let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
 
     let store = ctx.store_db.store();
-    for ent_path in ctx.store_db.entity_db.entity_paths() {
+    for ent_path in ctx.store_db.entity_db().entity_paths() {
         let Some(components) = store.all_components(&re_log_types::Timeline::log_time(), ent_path)
         else {
             continue;

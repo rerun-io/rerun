@@ -102,8 +102,7 @@ pub fn save_database_to_file(
         )
     });
     let data_msgs: Result<Vec<_>, _> = store_db
-        .entity_db
-        .data_store
+        .store()
         .to_data_tables(time_filter)
         .map(|table| {
             table
