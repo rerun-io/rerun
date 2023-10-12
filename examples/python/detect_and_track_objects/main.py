@@ -363,7 +363,7 @@ def update_trackers_with_detections(
     return updated_trackers
 
 
-def track_objects(video_path: str) -> None:
+def track_objects(video_path: str, max_frame_count: int | None) -> None:
     with open(COCO_CATEGORIES_PATH) as f:
         coco_categories = json.load(f)
     class_descriptions = [
@@ -380,6 +380,9 @@ def track_objects(video_path: str) -> None:
     label_strs = [cat["name"] or str(cat["id"]) for cat in coco_categories]
     trackers: list[Tracker] = []
     while cap.isOpened():
+        if max_frame_count is not None and frame_idx >= max_frame_count:
+            break
+
         ret, bgr = cap.read()
         rr.set_time_sequence("frame", frame_idx)
 
@@ -445,6 +448,11 @@ def main() -> None:
     )
     parser.add_argument("--dataset_dir", type=Path, default=DATASET_DIR, help="Directory to save example videos to.")
     parser.add_argument("--video_path", type=str, default="", help="Full path to video to run on. Overrides `--video`.")
+    parser.add_argument(
+        "--max-frame",
+        type=int,
+        help="Stop after processing this many frames. If not specified, will run until interrupted.",
+    )
     rr.script_add_args(parser)
     args = parser.parse_args()
 
@@ -458,7 +466,7 @@ def main() -> None:
     if not video_path:
         video_path = get_downloaded_path(args.dataset_dir, args.video)
 
-    track_objects(video_path)
+    track_objects(video_path, max_frame_count=args.max_frame)
 
     rr.script_teardown(args)
 
