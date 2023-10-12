@@ -353,7 +353,7 @@ impl App {
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 let blueprint_db = store_hub.store_db_mut(&blueprint_id);
                 for row in updates {
-                    match blueprint_db.entity_db.try_add_data_row(&row) {
+                    match blueprint_db.add_data_row(&row) {
                         Ok(()) => {}
                         Err(err) => {
                             re_log::warn_once!("Failed to store blueprint delta: {err}");

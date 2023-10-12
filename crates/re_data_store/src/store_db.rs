@@ -4,9 +4,9 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
 use re_log_types::{
-    ApplicationId, ArrowMsg, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
-    EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo,
-    StoreKind, TimePoint, Timeline,
+    ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash,
+    EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint,
+    Timeline,
 };
 use re_types::{components::InstanceKey, Loggable as _};
 
@@ -76,45 +76,12 @@ impl EntityDb {
             .or_insert_with(|| entity_path.clone());
     }
 
-    fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
-        re_tracing::profile_function!();
-
-        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
-        let mut table = DataTable::from_arrow_msg(msg)?;
-        table.compute_all_size_bytes();
-
-        // TODO(cmc): batch all of this
-        for row in table.to_rows() {
-            let row = row?;
-
-            self.register_entity_path(&row.entity_path);
-
-            self.try_add_data_row(&row)?;
-
-            // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
-            // instead.
-            use re_types::components::ClearIsRecursive;
-            if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
-                let cell = &row.cells()[idx];
-                let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();
-                let path_op = if settings.map_or(false, |s| s.0) {
-                    PathOp::ClearRecursive(row.entity_path.clone())
-                } else {
-                    PathOp::ClearComponents(row.entity_path.clone())
-                };
-                // NOTE: We've just added the row itself, so make sure to bump the row ID already!
-                self.add_path_op(row.row_id().next(), row.timepoint(), &path_op);
-            }
-        }
-
-        Ok(())
-    }
-
-    // TODO(jleibs): If this shouldn't be public, chain together other setters
     // TODO(cmc): Updates of secondary datastructures should be the result of subscribing to the
     // datastore's changelog and reacting to these changes appropriately. We shouldn't be creating
     // many sources of truth.
-    pub fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+    fn add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+        self.register_entity_path(&row.entity_path);
+
         for (&timeline, &time_int) in row.timepoint().iter() {
             self.times_per_timeline.insert(timeline, time_int);
         }
@@ -146,7 +113,24 @@ impl EntityDb {
             }
         }
 
-        self.data_store.insert_row(row).map_err(Into::into)
+        self.data_store.insert_row(row)?;
+
+        // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
+        // instead.
+        use re_types::components::ClearIsRecursive;
+        if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
+            let cell = &row.cells()[idx];
+            let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();
+            let path_op = if settings.map_or(false, |s| s.0) {
+                PathOp::ClearRecursive(row.entity_path.clone())
+            } else {
+                PathOp::ClearComponents(row.entity_path.clone())
+            };
+            // NOTE: We've just added the row itself, so make sure to bump the row ID already!
+            self.add_path_op(row.row_id().next(), row.timepoint(), &path_op);
+        }
+
+        Ok(())
     }
 
     fn add_path_op(&mut self, row_id: RowId, time_point: &TimePoint, path_op: &PathOp) {
@@ -322,6 +306,7 @@ impl StoreDb {
 
         match &msg {
             LogMsg::SetStoreInfo(msg) => self.add_begin_recording_msg(msg),
+
             LogMsg::EntityPathOpMsg(_, msg) => {
                 let EntityPathOpMsg {
                     row_id,
@@ -331,10 +316,31 @@ impl StoreDb {
                 self.entity_op_msgs.insert(*row_id, msg.clone());
                 self.entity_db.add_path_op(*row_id, time_point, path_op);
             }
-            LogMsg::ArrowMsg(_, inner) => self.entity_db.try_add_arrow_msg(inner)?,
+
+            LogMsg::ArrowMsg(_, arrow_msg) => {
+                let table = DataTable::from_arrow_msg(arrow_msg)?;
+                self.add_data_table(table)?;
+            }
         }
 
         Ok(())
+    }
+
+    pub fn add_data_table(&mut self, mut table: DataTable) -> Result<(), Error> {
+        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
+        table.compute_all_size_bytes();
+
+        // TODO(cmc): batch all of this
+        for row in table.to_rows() {
+            let row = row?;
+            self.add_data_row(&row)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+        self.entity_db.add_data_row(row)
     }
 
     pub fn add_begin_recording_msg(&mut self, msg: &SetStoreInfo) {
