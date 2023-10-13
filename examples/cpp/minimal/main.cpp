@@ -1,4 +1,3 @@
-#include <loguru.hpp>
 #include <rerun.hpp>
 
 #include <array>
@@ -6,12 +5,6 @@
 namespace rrc = rerun::components;
 
 int main(int argc, char** argv) {
-    loguru::g_preamble_uptime = false;
-    loguru::g_preamble_thread = false;
-    loguru::init(argc, argv); // installs signal handlers
-
-    LOG_F(INFO, "Rerun C++ SDK version: %s", rerun::version_string());
-
     auto rec = rerun::RecordingStream("rerun_example_cpp_app");
     rec.connect("127.0.0.1:9876").throw_on_failure();
 

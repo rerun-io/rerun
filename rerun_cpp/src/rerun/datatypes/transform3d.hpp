@@ -68,7 +68,7 @@ namespace rerun {
                 return *this;
             }
 
-            Transform3D(Transform3D &&other) noexcept : _tag(detail::Transform3DTag::NONE) {
+            Transform3D(Transform3D &&other) noexcept : Transform3D() {
                 this->swap(other);
             }
 
@@ -78,9 +78,7 @@ namespace rerun {
             }
 
             void swap(Transform3D &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 

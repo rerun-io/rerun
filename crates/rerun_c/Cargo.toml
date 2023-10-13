@@ -34,7 +34,7 @@ test = false
 re_log.workspace = true
 re_sdk.workspace = true
 
-arrow2.workspace = true
 ahash.workspace = true
+arrow2.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true

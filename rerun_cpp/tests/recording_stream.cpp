@@ -159,6 +159,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     };
 
                     stream.log("as-carray", c_style_array);
+                    stream.log_timeless("as-carray", c_style_array);
                 }
                 THEN("components as std::array can be logged") {
                     stream.log(
@@ -168,9 +169,23 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                             rerun::datatypes::Vec2D{4.0, 5.0},
                         }
                     );
+                    stream.log_timeless(
+                        "as-array",
+                        std::array<rrc::Position2D, 2>{
+                            rerun::datatypes::Vec2D{1.0, 2.0},
+                            rerun::datatypes::Vec2D{4.0, 5.0},
+                        }
+                    );
                 }
                 THEN("components as std::vector can be logged") {
                     stream.log(
+                        "as-vector",
+                        std::vector<rrc::Position2D>{
+                            rerun::datatypes::Vec2D{1.0, 2.0},
+                            rerun::datatypes::Vec2D{4.0, 5.0},
+                        }
+                    );
+                    stream.log_timeless(
                         "as-vector",
                         std::vector<rrc::Position2D>{
                             rerun::datatypes::Vec2D{1.0, 2.0},
@@ -198,6 +213,20 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         },
                         c_style_array
                     );
+                    stream.log_timeless(
+                        "as-mix",
+                        std::vector{
+                            rrc::Position2D(rerun::datatypes::Vec2D{0.0, 0.0}),
+                            rrc::Position2D(rerun::datatypes::Vec2D{1.0, 3.0}),
+                            rrc::Position2D(rerun::datatypes::Vec2D{5.0, 5.0}),
+                        },
+                        std::array{
+                            rrc::Color(0xFF0000FF),
+                            rrc::Color(0x00FF00FF),
+                            rrc::Color(0x0000FFFF),
+                        },
+                        c_style_array
+                    );
                 }
 
                 THEN("components with splatting some of them can be logged") {
@@ -209,10 +238,24 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                         },
                         std::array{rrc::Color(0xFF0000FF)}
                     );
+                    stream.log_timeless(
+                        "log-splat",
+                        std::vector{
+                            rrc::Position2D(rerun::datatypes::Vec2D{0.0, 0.0}),
+                            rrc::Position2D(rerun::datatypes::Vec2D{1.0, 3.0}),
+                        },
+                        std::array{rrc::Color(0xFF0000FF)}
+                    );
                 }
 
                 THEN("an archetype can be logged") {
                     stream.log(
+                        "log_archetype-splat",
+                        rerun::archetypes::Points2D(
+                            {rerun::datatypes::Vec2D{1.0, 2.0}, rerun::datatypes::Vec2D{4.0, 5.0}}
+                        ).with_colors(rrc::Color(0xFF0000FF))
+                    );
+                    stream.log_timeless(
                         "log_archetype-splat",
                         rerun::archetypes::Points2D(
                             {rerun::datatypes::Vec2D{1.0, 2.0}, rerun::datatypes::Vec2D{4.0, 5.0}}
@@ -396,23 +439,25 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             auto v = rrc::Position2D{1.0, 2.0};
 
             THEN("try_log_data_row returns the correct error") {
-                CHECK(stream.try_log_data_row(path, 0, 0, nullptr).code == error);
+                CHECK(stream.try_log_data_row(path, 0, 0, nullptr, true).code == error);
             }
-            THEN("try_log_component_batch returns the correct error") {
-                CHECK(stream.try_log(path, std::array<rrc::Position2D, 1>{v}).code == error);
-            }
-            THEN("try_log_archetypes returns the correct error") {
+            THEN("try_log returns the correct error") {
                 CHECK(stream.try_log(path, rerun::archetypes::Points2D(v)).code == error);
             }
-            THEN("log_component_batch logs the correct error") {
+            THEN("log logs the correct error") {
                 check_logged_error(
-                    [&] { stream.log(std::get<0>(variant), std::array<rrc::Position2D, 1>{v}); },
+                    [&] { stream.log(std::get<0>(variant), rerun::archetypes::Points2D(v)); },
                     error
                 );
             }
-            THEN("log_archetypes logs the correct error") {
+            THEN("try_log_timeless returns the correct error") {
+                CHECK(stream.try_log_timeless(path, rerun::archetypes::Points2D(v)).code == error);
+            }
+            THEN("log_timeless logs the correct error") {
                 check_logged_error(
-                    [&] { stream.log(std::get<0>(variant), rerun::archetypes::Points2D(v)); },
+                    [&] {
+                        stream.log_timeless(std::get<0>(variant), rerun::archetypes::Points2D(v));
+                    },
                     error
                 );
             }
@@ -428,7 +473,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
                     CHECK(
-                        stream.try_log_data_row(path, 1, 1, &cell).code ==
+                        stream.try_log_data_row(path, 1, 1, &cell, true).code ==
                         rerun::ErrorCode::UnexpectedNullArgument
                     );
                 }
@@ -441,7 +486,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
                     CHECK(
-                        stream.try_log_data_row(path, 1, 1, &cell).code ==
+                        stream.try_log_data_row(path, 1, 1, &cell, true).code ==
                         rerun::ErrorCode::UnexpectedNullArgument
                     );
                 }
@@ -455,7 +500,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
 
                 THEN("try_log_data_row fails with ArrowIpcMessageParsingFailure") {
                     CHECK(
-                        stream.try_log_data_row(path, 1, 1, &cell).code ==
+                        stream.try_log_data_row(path, 1, 1, &cell, true).code ==
                         rerun::ErrorCode::ArrowIpcMessageParsingFailure
                     );
                 }
@@ -520,5 +565,28 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
                 CHECK(stream.try_log(path, archetype) == BadComponent::error);
             }
         }
+    }
+}
+
+SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
+    rerun::RecordingStream stream("test");
+
+    SECTION("Setting time sequence does not log errors") {
+        check_logged_error([&] { stream.set_time_sequence("my sequence", 1); });
+    }
+    SECTION("Setting time seconds does not log errors") {
+        check_logged_error([&] { stream.set_time_seconds("my sequence", 1.0); });
+    }
+    SECTION("Setting time nanos does not log errors") {
+        check_logged_error([&] { stream.set_time_nanos("my sequence", 1); });
+    }
+    SECTION("Resetting time does not log errors") {
+        check_logged_error([&] { stream.reset_time(); });
+    }
+
+    SECTION("Disabling timeline does not log errors") {
+        check_logged_error([&] { stream.disable_timeline("doesn't exist"); });
+        check_logged_error([&] { stream.set_time_sequence("exists!", 123); });
+        check_logged_error([&] { stream.disable_timeline("exists"); });
     }
 }

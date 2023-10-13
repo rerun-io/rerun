@@ -35,6 +35,8 @@ namespace rerun {
         /// #include <cmath>
         /// #include <numeric>
         ///
+        /// #define TAU (static_cast<float>(M_PI) * 2.0f)
+        ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_arrow3d");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
@@ -46,11 +48,11 @@ namespace rerun {
         ///     for (int i = 0; i <100; ++i) {
         ///         origins.push_back({0, 0, 0});
         ///
-        ///         float angle = 2.0 * M_PI * i * 0.01f;
+        ///         float angle = TAU * i * 0.01f;
         ///         float length = log2f(i + 1);
         ///         vectors.push_back({length * sinf(angle), 0.0, length * cosf(angle)});
         ///
-        ///         uint8_t c = static_cast<uint8_t>(round(angle / (2.0 * M_PI) * 255.0));
+        ///         uint8_t c = static_cast<uint8_t>(round(angle / TAU * 255.0f));
         ///         colors.push_back({static_cast<uint8_t>(255 - c), c, 128, 128});
         ///     }
         ///
@@ -101,17 +103,9 @@ namespace rerun {
 
             /// Creates new 3D arrows pointing in the given directions, with a base at the origin
             /// (0, 0, 0).
-            static Arrows3D from_vectors(std::vector<components::Vector3D> _vectors) {
+            static Arrows3D from_vectors(ComponentBatch<components::Vector3D> vectors_) {
                 Arrows3D arrows;
-                arrows.vectors = std::move(_vectors);
-                return arrows;
-            }
-
-            /// Creates new 3D arrows pointing in the given directions, with a base at the origin
-            /// (0, 0, 0).
-            static Arrows3D from_vectors(components::Vector3D _vector) {
-                Arrows3D arrows;
-                arrows.vectors = std::vector(1, std::move(_vector));
+                arrows.vectors = std::move(vectors_);
                 return arrows;
             }
 

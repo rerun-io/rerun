@@ -154,7 +154,7 @@ namespace rerun {
                 return *this;
             }
 
-            TensorBuffer(TensorBuffer &&other) noexcept : _tag(detail::TensorBufferTag::NONE) {
+            TensorBuffer(TensorBuffer &&other) noexcept : TensorBuffer() {
                 this->swap(other);
             }
 
@@ -275,9 +275,7 @@ namespace rerun {
             size_t num_elems() const;
 
             void swap(TensorBuffer &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 
