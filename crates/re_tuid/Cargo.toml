@@ -19,8 +19,8 @@ all-features = true
 [features]
 default = []
 
-## Enable converting Tuid to arrow2
-arrow2_convert = ["dep:arrow2", "dep:arrow2_convert"]
+## Enable (de)serialization using Arrow.
+arrow = ["dep:arrow2"]
 
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
@@ -33,8 +33,7 @@ once_cell.workspace = true
 web-time.workspace = true
 
 # Optional dependencies:
-arrow2 = { workspace = true, optional = true }                    # used by arrow2_convert
-arrow2_convert = { workspace = true, optional = true }
+arrow2 = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 thiserror = { workspace = true, optional = true }
 

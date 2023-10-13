@@ -4683,7 +4683,6 @@ name = "re_tuid"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
  "arrow2",
- "arrow2_convert",
  "criterion",
  "document-features",
  "getrandom",

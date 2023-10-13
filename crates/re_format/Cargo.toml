@@ -19,4 +19,4 @@ all-features = true
 arrow2.workspace = true
 arrow2_convert.workspace = true
 comfy-table.workspace = true
-re_tuid = { workspace = true, features = ["arrow2_convert"] }
+re_tuid = { workspace = true, features = ["arrow"] }

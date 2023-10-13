@@ -21,25 +21,8 @@ pub struct Tuid {
     inc: u64,
 }
 
-#[cfg(feature = "arrow2_convert")]
+#[cfg(feature = "arrow")]
 mod arrow;
-
-#[cfg(feature = "arrow2_convert")]
-arrow2_convert::arrow_enable_vec_for_type!(Tuid);
-
-// TODO(#3741): shouldn't have to write this manually
-#[cfg(feature = "arrow2_convert")]
-impl arrow2_convert::field::ArrowField for Tuid {
-    type Type = Self;
-
-    fn data_type() -> arrow2::datatypes::DataType {
-        let datatype = arrow2::datatypes::DataType::Struct(<[_]>::into_vec(Box::new([
-            <u64 as arrow2_convert::field::ArrowField>::field("time_ns"),
-            <u64 as arrow2_convert::field::ArrowField>::field("inc"),
-        ])));
-        arrow2::datatypes::DataType::Extension("rerun.tuid".into(), Box::new(datatype), None)
-    }
-}
 
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -8,23 +8,15 @@ fn bench_tuid(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "arrow2_convert")]
+#[cfg(feature = "arrow")]
 fn bench_arrow(c: &mut Criterion) {
     use arrow2::array::Array;
-    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
 
     {
         let mut group = c.benchmark_group("arrow/serialize");
         group.throughput(criterion::Throughput::Elements(1));
 
         let tuid = re_tuid::Tuid::random();
-
-        group.bench_function("arrow2_convert", |b| {
-            b.iter(|| {
-                let data: Box<dyn Array> = vec![tuid].try_into_arrow().unwrap();
-                criterion::black_box(data)
-            });
-        });
 
         group.bench_function("arrow2", |b| {
             b.iter(|| {
@@ -38,14 +30,7 @@ fn bench_arrow(c: &mut Criterion) {
         let mut group = c.benchmark_group("arrow/deserialize");
         group.throughput(criterion::Throughput::Elements(1));
 
-        let data: Box<dyn Array> = vec![re_tuid::Tuid::random()].try_into_arrow().unwrap();
-
-        group.bench_function("arrow2_convert", |b| {
-            b.iter(|| {
-                let tuids: Vec<re_tuid::Tuid> = data.as_ref().try_into_collection().unwrap();
-                criterion::black_box(tuids)
-            });
-        });
+        let data: Box<dyn Array> = re_tuid::Tuid::random().as_arrow();
 
         group.bench_function("arrow2", |b| {
             b.iter(|| {
