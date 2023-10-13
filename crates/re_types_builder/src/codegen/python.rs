@@ -411,15 +411,17 @@ impl PythonCodeGenerator {
                 code.push_text(&clause, 1, 0);
             }
 
-            code.push_unindented_text(
-                format!(
-                    "
+            if !manifest.is_empty() {
+                code.push_unindented_text(
+                    format!(
+                        "
                 __all__ = [{manifest}]
 
                 ",
-                ),
-                0,
-            );
+                    ),
+                    0,
+                );
+            }
 
             let obj_code = if obj.is_struct() {
                 code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
@@ -508,7 +510,9 @@ fn write_init_file(
         let names = names.join(", ");
         code.push_text(&format!("from .{module} import {names}"), 1, 0);
     }
-    code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+    if !manifest.is_empty() {
+        code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+    }
     files_to_write.insert(path, code);
 }
 
