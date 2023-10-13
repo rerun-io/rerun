@@ -1,2 +1,4 @@
 *.zip -text diff
 **/source_hash.txt linguist-generated=true
+Cargo.lock linguist-generated=true
+pixi.lock linguist-generated=true
