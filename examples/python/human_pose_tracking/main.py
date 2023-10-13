@@ -60,7 +60,7 @@ nd 3D as [rr.Points2D](https://www.rerun.io/docs/reference/types/archetypes/poin
 """.strip()
 
 
-def track_pose(video_path: str, segment: bool, max_frame_count: int | None) -> None:
+def track_pose(video_path: str, *, segment: bool, max_frame_count: int | None) -> None:
     mp_pose = mp.solutions.pose
 
     rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)

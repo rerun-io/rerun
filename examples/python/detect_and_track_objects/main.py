@@ -363,7 +363,7 @@ def update_trackers_with_detections(
     return updated_trackers
 
 
-def track_objects(video_path: str, max_frame_count: int | None) -> None:
+def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
     with open(COCO_CATEGORIES_PATH) as f:
         coco_categories = json.load(f)
     class_descriptions = [
