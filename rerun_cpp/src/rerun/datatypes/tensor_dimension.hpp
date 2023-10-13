@@ -27,6 +27,12 @@ namespace rerun {
             std::optional<std::string> name;
 
           public:
+            // Extensions to generated type defined in 'tensor_dimension_ext.cpp'
+
+            /// Nameless dimension
+            explicit TensorDimension(size_t size_) : size(size_) {}
+
+          public:
             TensorDimension() = default;
 
             /// Returns the arrow data type this type corresponds to.

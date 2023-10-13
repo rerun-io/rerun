@@ -58,7 +58,9 @@ namespace rerun {
                     static_cast<arrow::HalfFloatBuilder *>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].single_half));
+                    ARROW_RETURN_NOT_OK(field_builder->Append(
+                        *reinterpret_cast<const uint16_t *>(&(elements[elem_idx].single_half))
+                    ));
                 }
             }
             {
@@ -72,7 +74,7 @@ namespace rerun {
                     const auto &element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                        element.many_halves.data(),
+                        reinterpret_cast<const uint16_t *>(element.many_halves.data()),
                         static_cast<int64_t>(element.many_halves.size()),
                         nullptr
                     ));

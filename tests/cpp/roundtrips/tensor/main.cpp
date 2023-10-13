@@ -3,17 +3,15 @@
 #include <rerun/datatypes/tensor_data.hpp>
 #include <rerun/recording_stream.hpp>
 
-namespace rr = rerun;
-
 int main(int argc, char** argv) {
-    auto rec = rr::RecordingStream("rerun_example_roundtrip_tensor");
+    auto rec = rerun::RecordingStream("rerun_example_roundtrip_tensor");
     rec.save(argv[1]).throw_on_failure();
 
-    std::vector<rr::datatypes::TensorDimension> dimensions{
-        rr::datatypes::TensorDimension{3, std::nullopt},
-        rr::datatypes::TensorDimension{4, std::nullopt},
-        rr::datatypes::TensorDimension{5, std::nullopt},
-        rr::datatypes::TensorDimension{6, std::nullopt}};
+    std::vector<rerun::datatypes::TensorDimension> dimensions{
+        rerun::datatypes::TensorDimension{3, std::nullopt},
+        rerun::datatypes::TensorDimension{4, std::nullopt},
+        rerun::datatypes::TensorDimension{5, std::nullopt},
+        rerun::datatypes::TensorDimension{6, std::nullopt}};
 
     std::vector<int32_t> data;
     for (auto i = 0; i < 360; ++i) {
@@ -24,8 +22,8 @@ int main(int argc, char** argv) {
     // don't supported nested list-types.
     rec.log(
         "tensor",
-        rr::archetypes::Tensor(
-            rr::datatypes::TensorData{dimensions, rr::datatypes::TensorBuffer::i32(data)}
+        rerun::archetypes::Tensor(
+            rerun::datatypes::TensorData{dimensions, rerun::datatypes::TensorBuffer::i32(data)}
         )
     );
 }
