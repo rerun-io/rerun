@@ -87,8 +87,7 @@ fn annotation_info(
 ) -> Option<AnnotationInfo> {
     let class_id = ctx
         .store_db
-        .entity_db
-        .data_store
+        .store()
         .query_latest_component::<re_types::components::ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
     let class = annotations.resolved_class_description(Some(*class_id));

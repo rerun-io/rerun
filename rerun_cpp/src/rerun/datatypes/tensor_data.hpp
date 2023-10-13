@@ -33,6 +33,17 @@ namespace rerun {
             rerun::datatypes::TensorBuffer buffer;
 
           public:
+            // Extensions to generated type defined in 'tensor_data_ext.cpp'
+
+            /// Construct a 1D tensor with the given buffer.
+            static TensorData one_dim(rerun::datatypes::TensorBuffer buffer) {
+                auto data = TensorData{};
+                data.shape.emplace_back(rerun::datatypes::TensorDimension(buffer.num_elems()));
+                data.buffer = std::move(buffer);
+                return data;
+            }
+
+          public:
             TensorData() = default;
 
             /// Returns the arrow data type this type corresponds to.

@@ -86,7 +86,7 @@ namespace rerun {
                 return *this;
             }
 
-            AffixFuzzer3(AffixFuzzer3 &&other) noexcept : _tag(detail::AffixFuzzer3Tag::NONE) {
+            AffixFuzzer3(AffixFuzzer3 &&other) noexcept : AffixFuzzer3() {
                 this->swap(other);
             }
 
@@ -118,9 +118,7 @@ namespace rerun {
             }
 
             void swap(AffixFuzzer3 &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 

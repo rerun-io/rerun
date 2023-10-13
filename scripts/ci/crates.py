@@ -352,7 +352,7 @@ def is_already_published(version: str, crate: Crate) -> bool:
     body = resp.json()
 
     # the request failed
-    if resp.ok:
+    if not resp.ok:
         raise Exception(f"failed to get crate {name}: {body['errors'][0]['detail']}")
 
     # crate has not been uploaded yet

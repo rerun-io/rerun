@@ -254,7 +254,7 @@ fn recording_hover_ui(
                 ui.end_row();
             }
 
-            if let Some(set_store_info) = store_db.recording_msg() {
+            if let Some(store_info) = store_db.store_info() {
                 let re_log_types::StoreInfo {
                     application_id,
                     store_id: _,
@@ -262,7 +262,7 @@ fn recording_hover_ui(
                     started,
                     store_source,
                     store_kind,
-                } = &set_store_info.info;
+                } = store_info;
 
                 re_ui.grid_left_hand_label(ui, "Application ID");
                 ui.label(application_id.to_string());

@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include "../half.hpp"
 #include "../result.hpp"
 
+#include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -57,7 +59,7 @@ namespace rerun {
 
                 std::vector<int64_t> i64;
 
-                std::vector<uint16_t> f16;
+                std::vector<rerun::half> f16;
 
                 std::vector<float> f32;
 
@@ -152,7 +154,7 @@ namespace rerun {
                 return *this;
             }
 
-            TensorBuffer(TensorBuffer &&other) noexcept : _tag(detail::TensorBufferTag::NONE) {
+            TensorBuffer(TensorBuffer &&other) noexcept : TensorBuffer() {
                 this->swap(other);
             }
 
@@ -207,7 +209,7 @@ namespace rerun {
                         break;
                     }
                     case detail::TensorBufferTag::F16: {
-                        typedef std::vector<uint16_t> TypeAlias;
+                        typedef std::vector<rerun::half> TypeAlias;
                         _data.f16.~TypeAlias();
                         break;
                     }
@@ -229,10 +231,51 @@ namespace rerun {
                 }
             }
 
+          public:
+            // Extensions to generated type defined in 'tensor_buffer_ext.cpp'
+
+            // TODO(#3794): don't use std::vector here
+
+            /// Construct a `TensorBuffer` from a `std::vector<uint8_t>`.
+            TensorBuffer(std::vector<uint8_t> u8) : TensorBuffer(TensorBuffer::u8(u8)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<uint16_t>`.
+            TensorBuffer(std::vector<uint16_t> u16) : TensorBuffer(TensorBuffer::u16(u16)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<uint32_t>`.
+            TensorBuffer(std::vector<uint32_t> u32) : TensorBuffer(TensorBuffer::u32(u32)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<uint64_t>`.
+            TensorBuffer(std::vector<uint64_t> u64) : TensorBuffer(TensorBuffer::u64(u64)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<int8_t>`.
+            TensorBuffer(std::vector<int8_t> i8) : TensorBuffer(TensorBuffer::i8(i8)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<int16_t>`.
+            TensorBuffer(std::vector<int16_t> i16) : TensorBuffer(TensorBuffer::i16(i16)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<int32_t>`.
+            TensorBuffer(std::vector<int32_t> i32) : TensorBuffer(TensorBuffer::i32(i32)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<int64_t>`.
+            TensorBuffer(std::vector<int64_t> i64) : TensorBuffer(TensorBuffer::i64(i64)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<half>`.
+            TensorBuffer(std::vector<rerun::half> f16) : TensorBuffer(TensorBuffer::f16(f16)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<float>`.
+            TensorBuffer(std::vector<float> f32) : TensorBuffer(TensorBuffer::f32(f32)) {}
+
+            /// Construct a `TensorBuffer` from a `std::vector<double>`.
+            TensorBuffer(std::vector<double> f64) : TensorBuffer(TensorBuffer::f64(f64)) {}
+
+            /// Number of elements in the buffer.
+            ///
+            /// You may NOT call this for JPEG buffers.
+            size_t num_elems() const;
+
             void swap(TensorBuffer &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 
@@ -300,8 +343,8 @@ namespace rerun {
                 return self;
             }
 
-            static TensorBuffer f16(std::vector<uint16_t> f16) {
-                typedef std::vector<uint16_t> TypeAlias;
+            static TensorBuffer f16(std::vector<rerun::half> f16) {
+                typedef std::vector<rerun::half> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F16;
                 new (&self._data.f16) TypeAlias(std::move(f16));

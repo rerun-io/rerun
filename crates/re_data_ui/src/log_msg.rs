@@ -1,4 +1,4 @@
-use re_log_types::{ArrowMsg, DataTable, EntityPathOpMsg, LogMsg, SetStoreInfo, StoreInfo};
+use re_log_types::{ArrowMsg, DataTable, LogMsg, SetStoreInfo, StoreInfo};
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
 use super::DataUi;
@@ -14,7 +14,6 @@ impl DataUi for LogMsg {
     ) {
         match self {
             LogMsg::SetStoreInfo(msg) => msg.data_ui(ctx, ui, verbosity, query),
-            LogMsg::EntityPathOpMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
             LogMsg::ArrowMsg(_, msg) => msg.data_ui(ctx, ui, verbosity, query),
         }
     }
@@ -62,32 +61,6 @@ impl DataUi for SetStoreInfo {
 
             ui.monospace("store_kind:");
             ui.label(format!("{store_kind}"));
-            ui.end_row();
-        });
-    }
-}
-
-impl DataUi for EntityPathOpMsg {
-    fn data_ui(
-        &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        verbosity: UiVerbosity,
-        query: &re_arrow_store::LatestAtQuery,
-    ) {
-        let EntityPathOpMsg {
-            row_id: _,
-            time_point,
-            path_op,
-        } = self;
-
-        egui::Grid::new("fields").num_columns(2).show(ui, |ui| {
-            ui.monospace("time_point:");
-            time_point.data_ui(ctx, ui, verbosity, query);
-            ui.end_row();
-
-            ui.monospace("path_op:");
-            path_op.data_ui(ctx, ui, verbosity, query);
             ui.end_row();
         });
     }

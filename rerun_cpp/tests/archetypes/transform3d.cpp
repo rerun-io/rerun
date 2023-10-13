@@ -4,9 +4,8 @@
 
 #include <rerun/archetypes/transform3d.hpp>
 
-namespace rr = rerun;
-namespace rrd = rr::datatypes;
-using namespace rr::archetypes;
+namespace rrd = rerun::datatypes;
+using namespace rerun::archetypes;
 
 #define TEST_TAG "[transform3d][archetypes]"
 

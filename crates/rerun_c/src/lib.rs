@@ -23,7 +23,7 @@ use re_sdk::{
 // ----------------------------------------------------------------------------
 // Types:
 
-type CRecStreamId = u32;
+type CRecordingStream = u32;
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,24 +105,24 @@ pub struct CError {
 // ----------------------------------------------------------------------------
 // Global data:
 
-const RERUN_REC_STREAM_CURRENT_RECORDING: CRecStreamId = 0xFFFFFFFF;
-const RERUN_REC_STREAM_CURRENT_BLUEPRINT: CRecStreamId = 0xFFFFFFFE;
+const RERUN_REC_STREAM_CURRENT_RECORDING: CRecordingStream = 0xFFFFFFFF;
+const RERUN_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
 
 #[derive(Default)]
 pub struct RecStreams {
-    next_id: CRecStreamId,
-    streams: ahash::HashMap<CRecStreamId, RecordingStream>,
+    next_id: CRecordingStream,
+    streams: ahash::HashMap<CRecordingStream, RecordingStream>,
 }
 
 impl RecStreams {
-    fn insert(&mut self, stream: RecordingStream) -> CRecStreamId {
+    fn insert(&mut self, stream: RecordingStream) -> CRecordingStream {
         let id = self.next_id;
         self.next_id += 1;
         self.streams.insert(id, stream);
         id
     }
 
-    fn get(&self, id: CRecStreamId) -> Option<RecordingStream> {
+    fn get(&self, id: CRecordingStream) -> Option<RecordingStream> {
         match id {
             RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None),
             RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None),
@@ -130,7 +130,7 @@ impl RecStreams {
         }
     }
 
-    fn remove(&mut self, id: CRecStreamId) -> Option<RecordingStream> {
+    fn remove(&mut self, id: CRecordingStream) -> Option<RecordingStream> {
         match id {
             RERUN_REC_STREAM_CURRENT_BLUEPRINT | RERUN_REC_STREAM_CURRENT_RECORDING => None,
             _ => self.streams.remove(&id),
@@ -140,6 +140,15 @@ impl RecStreams {
 
 /// All recording streams created from C.
 static RECORDING_STREAMS: Lazy<Mutex<RecStreams>> = Lazy::new(Mutex::default);
+
+/// Access a C created recording stream.
+#[allow(clippy::result_large_err)]
+fn recording_stream(stream: CRecordingStream) -> Result<RecordingStream, CError> {
+    RECORDING_STREAMS
+        .lock()
+        .get(stream)
+        .ok_or(CError::invalid_recording_stream_handle())
+}
 
 // ----------------------------------------------------------------------------
 // Public functions:
@@ -156,7 +165,7 @@ pub extern "C" fn rr_version_string() -> *const c_char {
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecStreamId, CError> {
+fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecordingStream, CError> {
     initialize_logging();
 
     let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
@@ -191,7 +200,7 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecStr
 pub extern "C" fn rr_recording_stream_new(
     store_info: *const CStoreInfo,
     error: *mut CError,
-) -> CRecStreamId {
+) -> CRecordingStream {
     match rr_recording_stream_new_impl(store_info) {
         Err(err) => {
             err.write_error(error);
@@ -203,7 +212,7 @@ pub extern "C" fn rr_recording_stream_new(
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_free(id: CRecStreamId) {
+pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
         stream.disconnect();
     }
@@ -211,21 +220,24 @@ pub extern "C" fn rr_recording_stream_free(id: CRecStreamId) {
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_set_global(id: CRecStreamId, store_kind: CStoreKind) {
+pub extern "C" fn rr_recording_stream_set_global(id: CRecordingStream, store_kind: CStoreKind) {
     let stream = RECORDING_STREAMS.lock().get(id);
     RecordingStream::set_global(store_kind.into(), stream);
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_set_thread_local(id: CRecStreamId, store_kind: CStoreKind) {
+pub extern "C" fn rr_recording_stream_set_thread_local(
+    id: CRecordingStream,
+    store_kind: CStoreKind,
+) {
     let stream = RECORDING_STREAMS.lock().get(id);
     RecordingStream::set_thread_local(store_kind.into(), stream);
 }
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecStreamId) {
+pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
         stream.flush_blocking();
     }
@@ -233,14 +245,11 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecStreamId) {
 
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_connect_impl(
-    id: CRecStreamId,
+    stream: CRecordingStream,
     tcp_addr: *const c_char,
     flush_timeout_sec: f32,
 ) -> Result<(), CError> {
-    let stream = RECORDING_STREAMS
-        .lock()
-        .get(id)
-        .ok_or(CError::invalid_recording_stream_handle())?;
+    let stream = recording_stream(stream)?;
 
     let tcp_addr = ptr::try_char_ptr_as_str(tcp_addr, "tcp_addr")?;
     let tcp_addr = tcp_addr.parse().map_err(|err| {
@@ -263,7 +272,7 @@ fn rr_recording_stream_connect_impl(
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_connect(
-    id: CRecStreamId,
+    id: CRecordingStream,
     tcp_addr: *const c_char,
     flush_timeout_sec: f32,
     error: *mut CError,
@@ -274,14 +283,12 @@ pub extern "C" fn rr_recording_stream_connect(
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_save_impl(id: CRecStreamId, path: *const c_char) -> Result<(), CError> {
-    let stream = RECORDING_STREAMS
-        .lock()
-        .get(id)
-        .ok_or(CError::invalid_recording_stream_handle())?;
-
+fn rr_recording_stream_save_impl(
+    stream: CRecordingStream,
+    path: *const c_char,
+) -> Result<(), CError> {
     let path = ptr::try_char_ptr_as_str(path, "path")?;
-    stream.save(path).map_err(|err| {
+    recording_stream(stream)?.save(path).map_err(|err| {
         CError::new(
             CErrorCode::RecordingStreamSaveFailure,
             &format!("Failed to save recording stream to {path:?}: {err}"),
@@ -292,7 +299,7 @@ fn rr_recording_stream_save_impl(id: CRecStreamId, path: *const c_char) -> Resul
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_save(
-    id: CRecStreamId,
+    id: CRecordingStream,
     path: *const c_char,
     error: *mut CError,
 ) {
@@ -301,17 +308,117 @@ pub extern "C" fn rr_recording_stream_save(
     }
 }
 
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_set_time_sequence_impl(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+    sequence: i64,
+) -> Result<(), CError> {
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    recording_stream(stream)?.set_time_sequence(timeline, Some(sequence));
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_set_time_sequence(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+    sequence: i64,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_set_time_sequence_impl(stream, timeline_name, sequence) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_set_time_seconds_impl(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+    seconds: f64,
+) -> Result<(), CError> {
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    recording_stream(stream)?.set_time_seconds(timeline, Some(seconds));
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_set_time_seconds(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+    seconds: f64,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_set_time_seconds_impl(stream, timeline_name, seconds) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_set_time_nanos_impl(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+    nanos: i64,
+) -> Result<(), CError> {
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    recording_stream(stream)?.set_time_nanos(timeline, Some(nanos));
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_set_time_nanos(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+    nanos: i64,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_set_time_nanos_impl(stream, timeline_name, nanos) {
+        err.write_error(error);
+    }
+}
+
+#[allow(unsafe_code)]
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_disable_timeline_impl(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+) -> Result<(), CError> {
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    recording_stream(stream)?.set_time_sequence(timeline, None);
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_disable_timeline(
+    stream: CRecordingStream,
+    timeline_name: *const c_char,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_disable_timeline_impl(stream, timeline_name) {
+        err.write_error(error);
+    }
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
+    if let Some(stream) = RECORDING_STREAMS.lock().remove(stream) {
+        stream.reset_time();
+    }
+}
+
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
 fn rr_log_impl(
-    id: CRecStreamId,
+    stream: CRecordingStream,
     data_row: *const CDataRow,
     inject_time: bool,
 ) -> Result<(), CError> {
-    let stream = RECORDING_STREAMS
-        .lock()
-        .get(id)
-        .ok_or(CError::invalid_recording_stream_handle())?;
+    let stream = recording_stream(stream)?;
 
     let data_row = ptr::try_ptr_as_ref(data_row, "data_row")?;
 
@@ -376,13 +483,13 @@ fn rr_log_impl(
 
 #[allow(unsafe_code)]
 #[no_mangle]
-pub unsafe extern "C" fn rr_log(
-    id: CRecStreamId,
+pub unsafe extern "C" fn rr_recording_stream_log(
+    stream: CRecordingStream,
     data_row: *const CDataRow,
     inject_time: bool,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_log_impl(id, data_row, inject_time) {
+    if let Err(err) = rr_log_impl(stream, data_row, inject_time) {
         err.write_error(error);
     }
 }

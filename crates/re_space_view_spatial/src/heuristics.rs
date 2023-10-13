@@ -57,11 +57,6 @@ pub fn auto_spawn_heuristic(
         }
     }
 
-    if view_kind == SpatialSpaceViewKind::TwoD {
-        // Prefer 2D views over 3D views.
-        score += 0.1;
-    }
-
     AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)
 }
 
@@ -153,7 +148,7 @@ fn update_depth_cloud_property_heuristics(
         .get(&ImagesPart::name())
         .unwrap_or(&BTreeSet::new())
     {
-        let store = &ctx.store_db.entity_db.data_store;
+        let store = ctx.store_db.store();
         let Some(tensor) =
             store.query_latest_component::<TensorData>(ent_path, &ctx.current_query())
         else {
@@ -213,7 +208,7 @@ fn update_transform3d_lines_heuristics(
                 return Some(ent_path);
             } else {
                 // Any direct child has a pinhole camera?
-                if let Some(child_tree) = ctx.store_db.entity_db.tree.subtree(ent_path) {
+                if let Some(child_tree) = ctx.store_db.entity_db().tree.subtree(ent_path) {
                     for child in child_tree.children.values() {
                         if query_pinhole(store, &ctx.current_query(), &child.path).is_some() {
                             return Some(&child.path);

@@ -121,6 +121,60 @@ namespace rerun {
         void flush_blocking();
 
         // -----------------------------------------------------------------------------------------
+        // Methods for controlling time.
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+        ///
+        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
+        /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time, remove_timeline
+        void set_time_sequence(const char* timeline_name, int64_t sequence_nr);
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
+        ///
+        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
+        /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time, remove_timeline
+        void set_time_seconds(const char* timeline_name, double seconds);
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
+        ///
+        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, remove_timeline
+        void set_time_nanos(const char* timeline_name, int64_t nanos);
+
+        /// Stops logging to the specified timeline for subsequent log calls.
+        ///
+        /// The timeline is still there, but it will not be updated with any new data.
+        ///
+        /// No-op if the timeline doesn't exist.
+        ///
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, remove_timeline
+        void disable_timeline(const char* timeline_name);
+
+        /// Clears out the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.reset_time()`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, remove_timeline
+        void reset_time();
+
+        // -----------------------------------------------------------------------------------------
         // Methods for logging.
 
         /// Logs one or more archetype and/or component batches.
@@ -134,7 +188,27 @@ namespace rerun {
         /// @see try_log
         template <typename... Ts>
         void log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
-            try_log(entity_path, archetypes_or_component_batches...).log_on_failure();
+            try_log_with_timeless(entity_path, false, archetypes_or_component_batches...)
+                .log_on_failure();
+        }
+
+        /// Logs one or more archetype and/or component batches as timeless data.
+        ///
+        /// Timeless data is present on all timelines and behaves as if it was recorded infinitely
+        /// far into the past. All timestamp data associated with this message will be dropped right
+        /// before sending it to Rerun.
+        ///
+        /// Logs any failure via `Error::log_on_failure`
+        ///
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        ///
+        /// @see try_log
+        template <typename... Ts>
+        void log_timeless(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            try_log_with_timeless(entity_path, true, archetypes_or_component_batches...)
+                .log_on_failure();
         }
 
         /// Logs one or more archetype and/or component batches.
@@ -148,6 +222,42 @@ namespace rerun {
         /// @see try_log
         template <typename... Ts>
         Error try_log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            return try_log_with_timeless(entity_path, false, archetypes_or_component_batches...);
+        }
+
+        /// Logs one or more archetype and/or component batches as timeless data.
+        ///
+        /// Timeless data is present on all timelines and behaves as if it was recorded infinitely
+        /// far into the past. All timestamp data associated with this message will be dropped right
+        /// before sending it to Rerun.
+        ///
+        /// Returns an error if an error occurs during serialization or logging.
+        ///
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        ///
+        /// @see try_log
+        template <typename... Ts>
+        Error try_log_timeless(
+            const char* entity_path, const Ts&... archetypes_or_component_batches
+        ) {
+            return try_log_with_timeless(entity_path, true, archetypes_or_component_batches...);
+        }
+
+        /// Logs one or more archetype and/or component batches optionally timeless.
+        ///
+        /// Returns an error if an error occurs during serialization or logging.
+        ///
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        ///
+        /// @see log, try_log, log_timeless, try_log_timeless
+        template <typename... Ts>
+        Error try_log_with_timeless(
+            const char* entity_path, bool timeless, const Ts&... archetypes_or_component_batches
+        ) {
             std::vector<SerializedComponentBatch> serialized_batches;
             Error err;
             (
@@ -178,7 +288,7 @@ namespace rerun {
             );
             RR_RETURN_NOT_OK(err);
 
-            return try_log_serialized_batches(entity_path, serialized_batches);
+            return try_log_serialized_batches(entity_path, timeless, serialized_batches);
         }
 
         /// Logs several serialized batches batches, returning an error on failure.
@@ -187,16 +297,21 @@ namespace rerun {
         /// - zero instances - implies a clear
         /// - single instance (but other instances have more) - causes a splat
         Error try_log_serialized_batches(
-            const char* entity_path, const std::vector<SerializedComponentBatch>& batches
+            const char* entity_path, bool timeless,
+            const std::vector<SerializedComponentBatch>& batches
         );
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
         /// @param num_instances
         /// Each cell is expected to hold exactly `num_instances` instances.
+        ///
+        /// @param inject_time
+        /// If set to `true`, the row's timestamp data will be overridden using the recording
+        /// streams internal clock.
         Error try_log_data_row(
             const char* entity_path, size_t num_instances, size_t num_data_cells,
-            const DataCell* data_cells
+            const DataCell* data_cells, bool inject_time
         );
 
       private:

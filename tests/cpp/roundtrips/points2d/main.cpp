@@ -2,15 +2,13 @@
 #include <rerun/archetypes/points2d.hpp>
 #include <rerun/recording_stream.hpp>
 
-namespace rr = rerun;
-
 int main(int argc, char** argv) {
-    auto rec = rr::RecordingStream("rerun_example_roundtrip_points2d");
+    auto rec = rerun::RecordingStream("rerun_example_roundtrip_points2d");
     rec.save(argv[1]).throw_on_failure();
 
     rec.log(
         "points2d",
-        rr::archetypes::Points2D({{1.0, 2.0}, {3.0, 4.0}})
+        rerun::archetypes::Points2D({{1.0, 2.0}, {3.0, 4.0}})
             .with_radii({0.42f, 0.43f})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({"hello", "friend"})
@@ -21,5 +19,8 @@ int main(int argc, char** argv) {
     );
 
     // Hack to establish 2d view bounds
-    rec.log("rect", rr::archetypes::Boxes2D::from_mins_and_sizes({{0.0f, 0.0f}}, {{4.0f, 6.0f}}));
+    rec.log(
+        "rect",
+        rerun::archetypes::Boxes2D::from_mins_and_sizes({{0.0f, 0.0f}}, {{4.0f, 6.0f}})
+    );
 }

@@ -450,7 +450,7 @@ fn pinhole_props_ui(
     entity_props: &mut EntityProperties,
 ) {
     let query = ctx.current_query();
-    let store = &ctx.store_db.entity_db.data_store;
+    let store = ctx.store_db.store();
     if store
         .query_latest_component::<PinholeProjection>(entity_path, &query)
         .is_some()
@@ -482,7 +482,7 @@ fn depth_props_ui(
     re_tracing::profile_function!();
 
     let query = ctx.current_query();
-    let store = &ctx.store_db.entity_db.data_store;
+    let store = ctx.store_db.store();
 
     let meaning = image_meaning_for_entity(entity_path, ctx);
 
