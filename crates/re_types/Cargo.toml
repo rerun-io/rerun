@@ -68,7 +68,6 @@ arrow2 = { workspace = true, features = [
   "io_print",
   "compute_concatenate",
 ] }
-arrow2_convert.workspace = true
 backtrace.workspace = true
 bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
 document-features.workspace = true

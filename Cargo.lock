@@ -4699,7 +4699,6 @@ dependencies = [
  "anyhow",
  "array-init",
  "arrow2",
- "arrow2_convert",
  "backtrace",
  "bytemuck",
  "document-features",
