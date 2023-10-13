@@ -150,7 +150,7 @@ def main() -> None:
     examples.sort()
 
     print("----------------------------------------------------------")
-    print(f"Building {len(examples)} examples…")
+    print(f"Running {len(examples)} examples…")
 
     with multiprocessing.Pool() as pool:
         jobs = []
@@ -159,9 +159,9 @@ def main() -> None:
             for language in ["cpp", "py", "rust"]:
                 if language in example_opt_out_entirely:
                     continue
-                job = pool.apply_async(build_example, (example, language, args))
+                job = pool.apply_async(run_example, (example, language, args))
                 jobs.append(job)
-        print(f"Waiting for {len(jobs)} build jobs to finish…")
+        print(f"Waiting for {len(jobs)} runs to finish…")
         for job in jobs:
             job.get()
 
@@ -194,7 +194,7 @@ def main() -> None:
     print("All tests passed!")
 
 
-def build_example(example: str, language: str, args: argparse.Namespace) -> None:
+def run_example(example: str, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
         cpp_output_path = run_roundtrip_cpp(example, args.release)
         check_non_empty_rrd(cpp_output_path)
