@@ -102,6 +102,11 @@ impl RustCodeGenerator {
         let folder_name = object_kind.plural_snake_case();
         let kind_path = self.crate_path.join("src").join(folder_name);
         let kind_testing_path = self.crate_path.join("src/testing").join(folder_name);
+        //
+        // TODO
+        // if object_kind == ObjectKind::Blueprint {
+        //     panic!("{:?}", objects.ordered_objects(object_kind.into()))
+        // }
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
@@ -706,8 +711,8 @@ fn quote_trait_impls_from_obj(
     let name = format_ident!("{name}");
 
     match kind {
-        ObjectKind::Datatype | ObjectKind::Component => {
-            let quoted_kind = if *kind == ObjectKind::Datatype {
+        ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
+            let quoted_kind = if *kind == ObjectKind::Datatype || *kind == ObjectKind::Blueprint {
                 quote!(Datatype)
             } else {
                 quote!(Component)
