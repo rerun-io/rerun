@@ -1,7 +1,7 @@
 #include "error.hpp"
+#include "c/rerun.h"
 
 #include <arrow/status.h>
-#include <rerun.h>
 
 namespace rerun {
     static StatusLogHandler global_log_handler = nullptr;

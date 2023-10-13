@@ -1,4 +1,9 @@
-// The Rerun C SDK.
+// ----------------------------------------------------------------------------
+// The Rerun C SDK for Rerun version @RERUN_VERSION@
+// ----------------------------------------------------------------------------
+// This file is part of the rerun_c Rust crate.
+// EDITS TO COPIES OUTSIDE OF RERUN_C WILL BE OVERWRITTEN.
+// ----------------------------------------------------------------------------
 
 #ifndef RERUN_H
 #define RERUN_H

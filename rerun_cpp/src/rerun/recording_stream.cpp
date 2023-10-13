@@ -1,7 +1,7 @@
 #include "recording_stream.hpp"
 #include "components/instance_key.hpp"
 
-#include <rerun.h>
+#include "c/rerun.h"
 
 #include <arrow/buffer.h>
 #include <vector>

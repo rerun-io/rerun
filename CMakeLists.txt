@@ -55,6 +55,13 @@ if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 17)
 endif()
 
+# Signal to all our build scripts that we're inside the Rerun repository.
+set(RERUN_REPOSITORY YES)
+
+# Set version number.
+# TODO: add to ci script?
+set(RERUN_VERSION "0.10.0")
+
 # ------------------------------------------------------------------------------
 # Loguru logging library (https://github.com/emilk/loguru):
 set(CMAKE_DL_LIBS "dl") # Required by Loguru for backtraces

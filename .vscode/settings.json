@@ -68,6 +68,7 @@
     "python.analysis.extraPaths": [
         "rerun_py/rerun_sdk"
     ],
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools", // Use cmake-tools to grab configs.
     "cmake.buildDirectory": "${workspaceRoot}/build/",
     "cmake.buildTask": true, // Use a terminal instead of the output panel for builds, it won't show color.
     "cmake.environment": {
