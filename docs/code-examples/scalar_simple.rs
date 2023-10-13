@@ -3,7 +3,7 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_scalar").memory()?;
 
-    for step in 0..64 {
+    for step in 0..64_000 {
         rec.set_time_sequence("step", step);
         rec.log(
             "scalar",

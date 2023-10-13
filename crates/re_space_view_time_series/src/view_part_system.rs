@@ -130,42 +130,59 @@ impl TimeSeriesSystem {
                 TimeRange::new(i64::MIN.into(), i64::MAX.into()),
             );
 
-            let arch_views = range_archetype::<
-                TimeSeriesScalar,
-                { TimeSeriesScalar::NUM_COMPONENTS },
-            >(store, &query, ent_path);
+            let arch_views: Vec<_> = {
+                let now = std::time::Instant::now();
+                re_tracing::profile_scope!("store_walk");
+                let x = range_archetype::<TimeSeriesScalar, { TimeSeriesScalar::NUM_COMPONENTS }>(
+                    store, &query, ent_path,
+                )
+                .collect();
+                eprintln!("store_walk in {:?}", now.elapsed());
+                x
+            };
 
-            for (time, arch_view) in arch_views {
-                let Some(time) = time else {
-                    continue;
-                }; // scalars cannot be timeless
+            {
+                let now = std::time::Instant::now();
+                re_tracing::profile_scope!("joins");
+                for (time, arch_view) in arch_views {
+                    let Some(time) = time else {
+                        continue;
+                    }; // scalars cannot be timeless
 
-                for (scalar, scattered, color, radius, label) in itertools::izip!(
-                    arch_view.iter_required_component::<Scalar>()?,
-                    arch_view.iter_optional_component::<ScalarScattering>()?,
-                    arch_view.iter_optional_component::<Color>()?,
-                    arch_view.iter_optional_component::<Radius>()?,
-                    arch_view.iter_optional_component::<Text>()?,
-                ) {
-                    let color = annotation_info.color(color.map(|c| c.to_array()), default_color);
-                    let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                    for (scalar, scattered, color, radius, label) in itertools::izip!(
+                        arch_view.iter_required_component::<Scalar>()?,
+                        arch_view.iter_optional_component::<ScalarScattering>()?,
+                        arch_view.iter_optional_component::<Color>()?,
+                        arch_view.iter_optional_component::<Radius>()?,
+                        arch_view.iter_optional_component::<Text>()?,
+                    ) {
+                        let color =
+                            annotation_info.color(color.map(|c| c.to_array()), default_color);
+                        let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
 
-                    const DEFAULT_RADIUS: f32 = 0.75;
+                        const DEFAULT_RADIUS: f32 = 0.75;
 
-                    points.push(PlotPoint {
-                        time: time.as_i64(),
-                        value: scalar.0,
-                        attrs: PlotPointAttrs {
-                            label,
-                            color,
-                            radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                            scattered: scattered.map_or(false, |s| s.0),
-                        },
-                    });
+                        points.push(PlotPoint {
+                            time: time.as_i64(),
+                            value: scalar.0,
+                            attrs: PlotPointAttrs {
+                                label,
+                                color,
+                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                                scattered: scattered.map_or(false, |s| s.0),
+                            },
+                        });
+                    }
                 }
+                eprintln!("joins in {:?}", now.elapsed());
             }
 
-            points.sort_by_key(|s| s.time);
+            {
+                let now = std::time::Instant::now();
+                re_tracing::profile_scope!("sort");
+                points.sort_by_key(|s| s.time);
+                eprintln!("sort in {:?}", now.elapsed());
+            }
 
             if points.is_empty() {
                 continue;
