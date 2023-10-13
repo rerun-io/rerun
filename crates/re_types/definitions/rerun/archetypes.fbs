@@ -24,4 +24,6 @@ include "./archetypes/view_coordinates.fbs";
 
 include "./testing/archetypes/fuzzy.fbs";
 
+include "./blueprint.fbs"; // TODO
+
 namespace rerun.archetypes;
