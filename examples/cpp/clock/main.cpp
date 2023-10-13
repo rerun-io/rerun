@@ -20,11 +20,11 @@ void log_hand(
 
     rec.log(
         (std::string("world/") + name + "_pt").c_str(),
-        rerun::Points3D({tip}).with_colors(color)
+        rerun::Points3D(rerun::components::Position3D(tip)).with_colors(color)
     );
     rec.log(
         (std::string("world/") + name + "hand").c_str(),
-        rerun::Arrows3D::from_vectors({tip})
+        rerun::Arrows3D::from_vectors(rerun::components::Vector3D(tip))
             .with_origins({{0.0f, 0.0f, 0.0f}})
             .with_colors(color)
             .with_radii({width * 0.5f})

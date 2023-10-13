@@ -35,6 +35,8 @@ namespace rerun {
         /// #include <cmath>
         /// #include <numeric>
         ///
+        /// #define TAU (static_cast<float>(M_PI) * 2.0f)
+        ///
         /// namespace rr = rerun;
         ///
         /// int main() {
@@ -48,11 +50,11 @@ namespace rerun {
         ///     for (int i = 0; i <100; ++i) {
         ///         origins.push_back({0, 0, 0});
         ///
-        ///         float angle = 2.0 * M_PI * i * 0.01f;
+        ///         float angle = TAU * i * 0.01f;
         ///         float length = log2f(i + 1);
         ///         vectors.push_back({length * sinf(angle), 0.0, length * cosf(angle)});
         ///
-        ///         uint8_t c = static_cast<uint8_t>(round(angle / (2.0 * M_PI) * 255.0));
+        ///         uint8_t c = static_cast<uint8_t>(round(angle / TAU * 255.0f));
         ///         colors.push_back({static_cast<uint8_t>(255 - c), c, 128, 128});
         ///     }
         ///
