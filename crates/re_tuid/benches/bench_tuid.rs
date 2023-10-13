@@ -8,36 +8,39 @@ fn bench_tuid(c: &mut Criterion) {
     });
 }
 
-#[cfg(feature = "arrow")]
+// #[cfg(feature = "arrow")]
 fn bench_arrow(c: &mut Criterion) {
     use arrow2::array::Array;
 
-    {
-        let mut group = c.benchmark_group("arrow/serialize");
-        group.throughput(criterion::Throughput::Elements(1));
+    for nb_elems in [1, 1000] {
+        {
+            let mut group = c.benchmark_group(format!("arrow/serialize/nb_elems={nb_elems}"));
+            group.throughput(criterion::Throughput::Elements(nb_elems));
 
-        let tuid = re_tuid::Tuid::random();
+            let tuids = vec![re_tuid::Tuid::random(); nb_elems as usize];
 
-        group.bench_function("arrow2", |b| {
-            b.iter(|| {
-                let data: Box<dyn Array> = tuid.as_arrow();
-                criterion::black_box(data)
+            group.bench_function("arrow2", |b| {
+                b.iter(|| {
+                    let data: Box<dyn Array> = re_tuid::Tuid::to_arrow(tuids.clone());
+                    criterion::black_box(data)
+                });
             });
-        });
-    }
+        }
 
-    {
-        let mut group = c.benchmark_group("arrow/deserialize");
-        group.throughput(criterion::Throughput::Elements(1));
+        {
+            let mut group = c.benchmark_group(format!("arrow/deserialize/nb_elems={nb_elems}"));
+            group.throughput(criterion::Throughput::Elements(nb_elems));
 
-        let data: Box<dyn Array> = re_tuid::Tuid::random().as_arrow();
+            let data: Box<dyn Array> =
+                re_tuid::Tuid::to_arrow(vec![re_tuid::Tuid::random(); nb_elems as usize]);
 
-        group.bench_function("arrow2", |b| {
-            b.iter(|| {
-                let tuid = re_tuid::Tuid::from_arrow(data.as_ref()).unwrap();
-                criterion::black_box(tuid)
+            group.bench_function("arrow2", |b| {
+                b.iter(|| {
+                    let tuids = re_tuid::Tuid::from_arrow(data.as_ref()).unwrap();
+                    criterion::black_box(tuids)
+                });
             });
-        });
+        }
     }
 }
 
