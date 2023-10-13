@@ -2,4 +2,5 @@
 
 #pragma once
 
+#include "blueprint/auto_space_views.hpp"
 #include "blueprint/panel_view.hpp"

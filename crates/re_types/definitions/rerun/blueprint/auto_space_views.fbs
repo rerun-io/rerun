@@ -1,0 +1,22 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint;
+
+// ---
+
+/// A flag indicating space views should be automatically populated.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+struct AutoSpaceViews (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Copy, Default",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  enabled: bool (order: 100);
+}

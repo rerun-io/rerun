@@ -25,6 +25,7 @@ src/archetypes/text_log.rs linguist-generated=true
 src/archetypes/time_series_scalar.rs linguist-generated=true
 src/archetypes/transform3d.rs linguist-generated=true
 src/archetypes/view_coordinates.rs linguist-generated=true
+src/blueprint/auto_space_views.rs linguist-generated=true
 src/blueprint/mod.rs linguist-generated=true
 src/blueprint/panel_view.rs linguist-generated=true
 src/components/annotation_context.rs linguist-generated=true
