@@ -45,7 +45,6 @@ re_types.workspace = true
 # External dependencies:
 ahash.workspace = true
 arrow2 = { workspace = true, features = ["compute_concatenate"] }
-arrow2_convert.workspace = true
 document-features.workspace = true
 indent.workspace = true
 itertools = { workspace = true }
