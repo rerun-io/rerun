@@ -11,7 +11,6 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_viewer::blueprint_components::panel::PanelState;
 use re_viewer_context::SpaceViewId;
 use re_viewport::{
     blueprint_components::{AutoSpaceViews, SpaceViewComponent, VIEWPORT_PATH},
@@ -694,26 +693,30 @@ fn set_panels(
     timeline_view_expanded: Option<bool>,
     blueprint: Option<&PyRecordingStream>,
 ) {
+    use rerun::external::re_types::blueprint::PanelView;
+
     if let Some(expanded) = blueprint_view_expanded {
-        set_panel(PanelState::BLUEPRINT_VIEW_PATH, expanded, blueprint);
+        set_panel(PanelView::BLUEPRINT_VIEW_PATH, expanded, blueprint);
     }
     if let Some(expanded) = selection_view_expanded {
-        set_panel(PanelState::SELECTION_VIEW_PATH, expanded, blueprint);
+        set_panel(PanelView::SELECTION_VIEW_PATH, expanded, blueprint);
     }
     if let Some(expanded) = timeline_view_expanded {
-        set_panel(PanelState::TIMELINE_VIEW_PATH, expanded, blueprint);
+        set_panel(PanelView::TIMELINE_VIEW_PATH, expanded, blueprint);
     }
 }
 
-fn set_panel(entity_path: &str, expanded: bool, blueprint: Option<&PyRecordingStream>) {
+fn set_panel(entity_path: &str, is_expanded: bool, blueprint: Option<&PyRecordingStream>) {
     let Some(blueprint) = get_blueprint_recording(blueprint) else {
         return;
     };
 
+    use rerun::external::re_types::blueprint::PanelView;
+
     // TODO(jleibs): Validation this is a valid blueprint path?
     let entity_path = parse_entity_path(entity_path);
 
-    let panel_state = PanelState { expanded };
+    let panel_state = PanelView { is_expanded };
 
     let row = DataRow::from_cells1(
         RowId::random(),

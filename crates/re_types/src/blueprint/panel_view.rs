@@ -51,7 +51,7 @@ impl<'a> From<&'a PanelView> for ::std::borrow::Cow<'a, PanelView> {
 }
 
 impl crate::Loggable for PanelView {
-    type Name = crate::DatatypeName;
+    type Name = crate::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {

@@ -712,7 +712,7 @@ fn quote_trait_impls_from_obj(
 
     match kind {
         ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
-            let quoted_kind = if *kind == ObjectKind::Datatype || *kind == ObjectKind::Blueprint {
+            let quoted_kind = if *kind == ObjectKind::Datatype {
                 quote!(Datatype)
             } else {
                 quote!(Component)
