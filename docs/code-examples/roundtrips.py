@@ -20,28 +20,28 @@ from os.path import isfile, join
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 opt_out_entirely = {
-    "annotation_context_connections": ["cpp"],
-    "annotation_context_segmentation": ["cpp"],
-    "annotation_context_rects": ["cpp"], # TODO(#2919): Needs support for log_timeless
+    "annotation_context_connections": ["cpp"], # Not yet implemented in C++
+    "annotation_context_segmentation": ["cpp"], # Not yet implemented in C++
+    "annotation_context_rects": [],
     "any_values": ["cpp", "rust"], # Only implemented for Python
     "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
-    "asset3d_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
-    "bar_chart": ["cpp"],
-    "custom_data": ["cpp"],
-    "depth_image_3d": ["cpp"],
-    "depth_image_simple": ["cpp"],
+    "asset3d_simple": [],
+    "bar_chart": [],
+    "custom_data": ["cpp"], # Not yet implemented in C++
+    "depth_image_3d": ["cpp"], # Not yet implemented in C++
+    "depth_image_simple": ["cpp"],  # Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Only implemented for Python
     "image_advanced": ["cpp", "rust"], # Missing example for Rust
-    "image_simple": ["cpp"],
+    "image_simple": ["cpp"], # Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
-    "pinhole_simple": ["cpp"],
-    "scalar_multiple_plots": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
-    "scalar_simple": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
-    "segmentation_image_simple": ["cpp"],
-    "tensor_simple": ["cpp"],
-    "text_log_integration": ["cpp"],
-    "view_coordinates_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
+    "pinhole_simple": [],
+    "scalar_multiple_plots": ["cpp"], # Not yet implemented in C++
+    "scalar_simple": ["cpp"], # Not yet implemented in C++
+    "segmentation_image_simple": ["cpp"], # Not yet implemented in C++
+    "tensor_simple": ["cpp"], # Not yet implemented in C++
+    "text_log_integration": ["cpp"], # Not yet implemented in C++
+    "view_coordinates_simple": [],
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
