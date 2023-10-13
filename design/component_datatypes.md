@@ -41,7 +41,7 @@ We can use this for:
 ### Open questions:
 How do we handle Jpegs? Are they a separate datatype for the `Tensor` component: `(Tensor Jpeg)`, or are they a separate component type: `(Jpeg [u8])` ?
 
-How do we handle the transform-graph of convertes? What if there are cycles? What if there are two different paths from one `(component datatype)` tuple to another?
+How do we handle the transform-graph of conversions? What if there are cycles? What if there are two different paths from one `(component datatype)` tuple to another?
 
 #### What naming convention should we use for datatypes?
 * Rust style: `[u8]`, `[f32; 3]` etc ?

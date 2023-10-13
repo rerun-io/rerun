@@ -46,7 +46,7 @@ pub fn recordings_panel_ui(
 }
 
 fn loading_receivers_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     rx: &ReceiveSet<LogMsg>,
     ui: &mut egui::Ui,
 ) -> bool {
@@ -254,7 +254,7 @@ fn recording_hover_ui(
                 ui.end_row();
             }
 
-            if let Some(set_store_info) = store_db.recording_msg() {
+            if let Some(store_info) = store_db.store_info() {
                 let re_log_types::StoreInfo {
                     application_id,
                     store_id: _,
@@ -262,7 +262,7 @@ fn recording_hover_ui(
                     started,
                     store_source,
                     store_kind,
-                } = &set_store_info.info;
+                } = store_info;
 
                 re_ui.grid_left_hand_label(ui, "Application ID");
                 ui.label(application_id.to_string());
@@ -297,7 +297,7 @@ fn data_source_string(data_source: &re_smart_channel::SmartChannelSource) -> Str
     }
 }
 
-fn add_button_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+fn add_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     use re_ui::UICommandSender;
 
     if ctx

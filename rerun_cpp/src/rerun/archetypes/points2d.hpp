@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
@@ -14,6 +13,7 @@
 #include "../components/radius.hpp"
 #include "../components/text.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -36,10 +36,8 @@ namespace rerun {
         /// #include <algorithm>
         /// #include <random>
         ///
-        /// namespace rr = rerun;
-        ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_points2d_simple");
+        ///     auto rec = rerun::RecordingStream("rerun_example_points2d_simple");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///     std::default_random_engine gen;
@@ -47,35 +45,36 @@ namespace rerun {
         ///     std::uniform_real_distribution<float> dist_radius(0.1, 1.0);
         ///     std::uniform_int_distribution<uint8_t> dist_color(0, 255);
         ///
-        ///     std::vector<rr::components::Position2D> points2d(10);
+        ///     std::vector<rerun::components::Position2D> points2d(10);
         ///     std::generate(points2d.begin(), points2d.end(), [&] {
-        ///         return rr::components::Position2D(dist_pos(gen), dist_pos(gen));
+        ///         return rerun::components::Position2D(dist_pos(gen), dist_pos(gen));
         ///     });
-        ///     std::vector<rr::components::Color> colors(10);
+        ///     std::vector<rerun::components::Color> colors(10);
         ///     std::generate(colors.begin(), colors.end(), [&] {
-        ///         return rr::components::Color(dist_color(gen), dist_color(gen), dist_color(gen));
+        ///         return rerun::components::Color(dist_color(gen), dist_color(gen),
+        ///         dist_color(gen));
         ///     });
-        ///     std::vector<rr::components::Radius> radii(10);
+        ///     std::vector<rerun::components::Radius> radii(10);
         ///     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
         ///
-        ///     rec.log("random", rr::Points2D(points2d).with_colors(colors).with_radii(radii));
+        ///     rec.log("random", rerun::Points2D(points2d).with_colors(colors).with_radii(radii));
         ///
         ///     // Log an extra rect to set the view bounds
-        ///     rec.log("bounds", rr::Boxes2D::from_half_sizes({{2.0f, 1.5f}}));
+        ///     rec.log("bounds", rerun::Boxes2D::from_half_sizes({{2.0f, 1.5f}}));
         /// }
         /// ```
         struct Points2D {
             /// All the 2D positions at which the point cloud shows points.
-            std::vector<rerun::components::Position2D> positions;
+            ComponentBatch<rerun::components::Position2D> positions;
 
             /// Optional radii for the points, effectively turning them into circles.
-            std::optional<std::vector<rerun::components::Radius>> radii;
+            std::optional<ComponentBatch<rerun::components::Radius>> radii;
 
             /// Optional colors for the points.
-            std::optional<std::vector<rerun::components::Color>> colors;
+            std::optional<ComponentBatch<rerun::components::Color>> colors;
 
             /// Optional text labels for the points.
-            std::optional<std::vector<rerun::components::Text>> labels;
+            std::optional<ComponentBatch<rerun::components::Text>> labels;
 
             /// An optional floating point value that specifies the 2D drawing order.
             ///
@@ -85,7 +84,7 @@ namespace rerun {
             /// Optional class Ids for the points.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            std::optional<std::vector<rerun::components::ClassId>> class_ids;
+            std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
 
             /// Optional keypoint IDs for the points, identifying them within a class.
             ///
@@ -94,82 +93,57 @@ namespace rerun {
             /// This is useful to identify points within a single classification (which is
             /// identified with `class_id`). E.g. the classification might be 'Person' and the
             /// keypoints refer to joints on a detected skeleton.
-            std::optional<std::vector<rerun::components::KeypointId>> keypoint_ids;
+            std::optional<ComponentBatch<rerun::components::KeypointId>> keypoint_ids;
 
             /// Unique identifiers for each individual point in the batch.
-            std::optional<std::vector<rerun::components::InstanceKey>> instance_keys;
+            std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             Points2D() = default;
+            Points2D(Points2D&& other) = default;
 
-            Points2D(std::vector<rerun::components::Position2D> _positions)
+            explicit Points2D(ComponentBatch<rerun::components::Position2D> _positions)
                 : positions(std::move(_positions)) {}
 
-            Points2D(rerun::components::Position2D _positions)
-                : positions(1, std::move(_positions)) {}
-
             /// Optional radii for the points, effectively turning them into circles.
-            Points2D& with_radii(std::vector<rerun::components::Radius> _radii) {
+            Points2D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
-                return *this;
-            }
-
-            /// Optional radii for the points, effectively turning them into circles.
-            Points2D& with_radii(rerun::components::Radius _radii) {
-                radii = std::vector(1, std::move(_radii));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional colors for the points.
-            Points2D& with_colors(std::vector<rerun::components::Color> _colors) {
+            Points2D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
-                return *this;
-            }
-
-            /// Optional colors for the points.
-            Points2D& with_colors(rerun::components::Color _colors) {
-                colors = std::vector(1, std::move(_colors));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional text labels for the points.
-            Points2D& with_labels(std::vector<rerun::components::Text> _labels) {
+            Points2D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
-                return *this;
-            }
-
-            /// Optional text labels for the points.
-            Points2D& with_labels(rerun::components::Text _labels) {
-                labels = std::vector(1, std::move(_labels));
-                return *this;
+                return std::move(*this);
             }
 
             /// An optional floating point value that specifies the 2D drawing order.
             ///
             /// Objects with higher values are drawn on top of those with lower values.
-            Points2D& with_draw_order(rerun::components::DrawOrder _draw_order) {
+            Points2D with_draw_order(rerun::components::DrawOrder _draw_order) && {
                 draw_order = std::move(_draw_order);
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional class Ids for the points.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
-            Points2D& with_class_ids(std::vector<rerun::components::ClassId> _class_ids) {
+            Points2D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
-                return *this;
-            }
-
-            /// Optional class Ids for the points.
-            ///
-            /// The class ID provides colors and labels if not specified explicitly.
-            Points2D& with_class_ids(rerun::components::ClassId _class_ids) {
-                class_ids = std::vector(1, std::move(_class_ids));
-                return *this;
+                return std::move(*this);
             }
 
             /// Optional keypoint IDs for the points, identifying them within a class.
@@ -179,51 +153,36 @@ namespace rerun {
             /// This is useful to identify points within a single classification (which is
             /// identified with `class_id`). E.g. the classification might be 'Person' and the
             /// keypoints refer to joints on a detected skeleton.
-            Points2D& with_keypoint_ids(std::vector<rerun::components::KeypointId> _keypoint_ids) {
+            Points2D with_keypoint_ids(ComponentBatch<rerun::components::KeypointId> _keypoint_ids
+            ) && {
                 keypoint_ids = std::move(_keypoint_ids);
-                return *this;
-            }
-
-            /// Optional keypoint IDs for the points, identifying them within a class.
-            ///
-            /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
-            /// default to 0.
-            /// This is useful to identify points within a single classification (which is
-            /// identified with `class_id`). E.g. the classification might be 'Person' and the
-            /// keypoints refer to joints on a detected skeleton.
-            Points2D& with_keypoint_ids(rerun::components::KeypointId _keypoint_ids) {
-                keypoint_ids = std::vector(1, std::move(_keypoint_ids));
-                return *this;
+                return std::move(*this);
             }
 
             /// Unique identifiers for each individual point in the batch.
-            Points2D& with_instance_keys(std::vector<rerun::components::InstanceKey> _instance_keys
-            ) {
+            Points2D with_instance_keys(
+                ComponentBatch<rerun::components::InstanceKey> _instance_keys
+            ) && {
                 instance_keys = std::move(_instance_keys);
-                return *this;
-            }
-
-            /// Unique identifiers for each individual point in the batch.
-            Points2D& with_instance_keys(rerun::components::InstanceKey _instance_keys) {
-                instance_keys = std::vector(1, std::move(_instance_keys));
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return positions.size();
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::Points2D> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::Points2D& archetype
+        );
+    };
 } // namespace rerun

@@ -3,45 +3,64 @@
 
 #include "mesh3d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Mesh3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Mesh3DIndicator";
+    }
 
-        AnonymousComponentBatch Mesh3D::indicator() {
-            return ComponentBatch<components::IndicatorComponent<Mesh3D::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Mesh3D>::serialize(
+        const archetypes::Mesh3D& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(7);
+
+        {
+            auto result = (archetype.vertex_positions).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.mesh_properties.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::MeshProperties>(archetype.mesh_properties.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.vertex_normals.has_value()) {
+            auto result = (archetype.vertex_normals.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.vertex_colors.has_value()) {
+            auto result = (archetype.vertex_colors.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.mesh_material.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::Material>(archetype.mesh_material.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.class_ids.has_value()) {
+            auto result = (archetype.class_ids.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.instance_keys.has_value()) {
+            auto result = (archetype.instance_keys.value()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<Mesh3D::IndicatorComponent>(Mesh3D::IndicatorComponent())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> Mesh3D::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(7);
-
-            comp_batches.emplace_back(vertex_positions);
-            if (mesh_properties.has_value()) {
-                comp_batches.emplace_back(mesh_properties.value());
-            }
-            if (vertex_normals.has_value()) {
-                comp_batches.emplace_back(vertex_normals.value());
-            }
-            if (vertex_colors.has_value()) {
-                comp_batches.emplace_back(vertex_colors.value());
-            }
-            if (mesh_material.has_value()) {
-                comp_batches.emplace_back(mesh_material.value());
-            }
-            if (class_ids.has_value()) {
-                comp_batches.emplace_back(class_ids.value());
-            }
-            if (instance_keys.has_value()) {
-                comp_batches.emplace_back(instance_keys.value());
-            }
-            comp_batches.emplace_back(Mesh3D::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

@@ -85,7 +85,7 @@ impl CamerasPart {
         // There's one wrinkle with using the parent transform though:
         // The entity itself may have a 3D transform which (by convention!) we apply *before* the pinhole camera.
         // Let's add that if it exists.
-        if let Some(transform_at_entity) = transform_at_entity {
+        if let Some(transform_at_entity) = transform_at_entity.clone() {
             world_from_camera =
                 world_from_camera * transform_at_entity.into_parent_from_child_transform();
         }
@@ -171,6 +171,13 @@ impl CamerasPart {
         if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance_key) {
             lines.outline_mask_ids(*outline_mask_ids);
         }
+
+        self.data.extend_bounding_box_with_points(
+            std::iter::once(glam::Vec3::ZERO),
+            transform_at_entity
+                .unwrap_or(Transform3D::IDENTITY)
+                .into_parent_from_child_transform(),
+        );
     }
 }
 

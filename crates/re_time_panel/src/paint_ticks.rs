@@ -9,7 +9,7 @@ use super::time_ranges_ui::TimeRangesUi;
 
 pub fn paint_time_ranges_and_ticks(
     time_ranges_ui: &TimeRangesUi,
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     time_area_painter: &egui::Painter,
     line_y_range: RangeInclusive<f32>,
     time_type: TimeType,
@@ -58,7 +58,7 @@ pub fn paint_time_ranges_and_ticks(
 }
 
 fn paint_time_range_ticks(
-    ui: &mut egui::Ui,
+    ui: &egui::Ui,
     rect: &Rect,
     time_type: TimeType,
     time_range: &TimeRangeF,

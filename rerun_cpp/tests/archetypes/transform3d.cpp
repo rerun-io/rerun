@@ -4,9 +4,8 @@
 
 #include <rerun/archetypes/transform3d.hpp>
 
-namespace rr = rerun;
-namespace rrd = rr::datatypes;
-using namespace rr::archetypes;
+namespace rrd = rerun::datatypes;
+using namespace rerun::archetypes;
 
 #define TEST_TAG "[transform3d][archetypes]"
 
@@ -43,7 +42,7 @@ SCENARIO(
                 manual.transform.repr =
                     rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
-                test_serialization_for_manual_and_builder(manual, utility);
+                test_compare_archetype_serialization(manual, utility);
             }
             AND_GIVEN("matrix as column vectors") {
                 auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, columns, true)
@@ -52,7 +51,7 @@ SCENARIO(
                 manual.transform.repr =
                     rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
-                test_serialization_for_manual_and_builder(manual, utility);
+                test_compare_archetype_serialization(manual, utility);
             }
         }
         GIVEN("Transform3D from matrix as initializer list and from_parent==" << from_parent) {
@@ -66,7 +65,7 @@ SCENARIO(
                 manual.transform.repr =
                     rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
-                test_serialization_for_manual_and_builder(manual, utility);
+                test_compare_archetype_serialization(manual, utility);
             }
             AND_GIVEN("matrix as column vectors") {
                 auto utility = from_parent ? Transform3D(columns, true) : Transform3D(columns);
@@ -74,7 +73,7 @@ SCENARIO(
                 manual.transform.repr =
                     rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
-                test_serialization_for_manual_and_builder(manual, utility);
+                test_compare_archetype_serialization(manual, utility);
             }
         }
     }
@@ -96,7 +95,7 @@ SCENARIO(
             manual.transform.repr =
                 rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            test_compare_archetype_serialization(manual, utility);
         }
         GIVEN("Transform3D from translation/rotation/scale and from_parent==" << from_parent) {
             auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, rotation, 1.0f, true)
@@ -109,7 +108,7 @@ SCENARIO(
             manual.transform.repr =
                 rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            test_compare_archetype_serialization(manual, utility);
         }
         GIVEN("Transform3D from translation/scale and from_parent==" << from_parent) {
             auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, 1.0f, true)
@@ -122,7 +121,7 @@ SCENARIO(
             manual.transform.repr =
                 rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            test_compare_archetype_serialization(manual, utility);
         }
         GIVEN("Transform3D from translation/rotation and from_parent==" << from_parent) {
             auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, rotation, true)
@@ -135,7 +134,7 @@ SCENARIO(
             manual.transform.repr =
                 rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            test_compare_archetype_serialization(manual, utility);
         }
         GIVEN("Transform3D from rotation/scale and from_parent==" << from_parent) {
             auto utility =
@@ -148,7 +147,7 @@ SCENARIO(
             manual.transform.repr =
                 rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            test_compare_archetype_serialization(manual, utility);
         }
         GIVEN("Transform3D from rotation only and from_parent==" << from_parent) {
             auto utility = from_parent ? Transform3D(rotation, true) : Transform3D(rotation);
@@ -160,7 +159,7 @@ SCENARIO(
             manual.transform.repr =
                 rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            test_compare_archetype_serialization(manual, utility);
         }
         GIVEN("Transform3D from scale only and from_parent==" << from_parent) {
             auto utility = from_parent ? Transform3D(1.0f, true) : Transform3D(1.0f);
@@ -172,7 +171,7 @@ SCENARIO(
             manual.transform.repr =
                 rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
-            test_serialization_for_manual_and_builder(manual, utility);
+            test_compare_archetype_serialization(manual, utility);
         }
     }
 }

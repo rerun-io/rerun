@@ -15,7 +15,7 @@ We call an `Archetype` a well-define collection of component that represent a gi
 
 Some complex components are build using combination of another type of object called "datatype". These objects have well-defined memory layout but typically lack semantics. For example, the `Vec3D` datatype is a size 3 array of `float32`, and can be used by various components (for example, the `Position3D` component use the `Vec3D` datatype).
 
-The purpose of the Python SDK is to make it easy to build archetype-conforming data structures and log them for subsequent display and inspection using the Rerun viewer, through an easy-to-learn, Pythonic API. To that end, it exposes an API over the supported archetypes, as well as all the components and datatypes needed to build them. In addition, the SDK provides the `rr.log()` function to log any archetype-conforming object, and several support function for initialisation, recording session management, etc.
+The purpose of the Python SDK is to make it easy to build archetype-conforming data structures and log them for subsequent display and inspection using the Rerun viewer, through an easy-to-learn, Pythonic API. To that end, it exposes an API over the supported archetypes, as well as all the components and datatypes needed to build them. In addition, the SDK provides the `rr.log()` function to log any archetype-conforming object, and several support function for initialization, recording session management, etc.
 
 The present document focuses on the construction of archetype-conforming objects and the `rr.log()` function.
 
@@ -149,7 +149,7 @@ TODO(ab):
 
 Implementing a Pythonic API for a component or datatype sometime require a subtle interplay between various hand-coded overrides and auto-generated methods. The `Color` component is a good illustration:
 
-- The `ColorExt.rgba__field_converter_override()` converter flexibly normalises user input into a `int` RGBA storage.
+- The `ColorExt.rgba__field_converter_override()` converter flexibly normalizes user input into a `int` RGBA storage.
 - The auto-generated `__int__()` method facilitates the conversion of a `Color` instance into a `int`, which is recognised by Numpy array creation functions.
 - The `ColorExt.native_to_pa_array()` exploits these capabilities of the `Color` native object to simplify its implementation (even though, in most cases, the user code will skip using actual `Color` instances).
 
@@ -167,5 +167,5 @@ The `converter` attribute of [`attrs.field()`] can be any callable. Often, `lamb
 TODO(ab):
 - fully typed SDK is a goal
 - both mypy and pyright
-- tests (in `rerun_py/tests/unit/`) serve as typing test as well and should minimise use of `# noqa` and similar
+- tests (in `rerun_py/tests/unit/`) serve as typing test as well and should minimize use of `# noqa` and similar
 - unfortunately, PyCharm [doesn't properly support converters](https://youtrack.jetbrains.com/issue/PY-34243/attr.s-attr.ibconverter...-type-hinting-false-positive).

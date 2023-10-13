@@ -1,5 +1,4 @@
-use eframe::epaint::text::TextWrapping;
-use egui::{NumExt, WidgetText};
+use egui::{text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_store::EntityPath;
@@ -308,7 +307,7 @@ pub fn create_labels(
     labels: &[UiLabel],
     ui_from_canvas: egui::emath::RectTransform,
     eye3d: &Eye,
-    parent_ui: &mut egui::Ui,
+    parent_ui: &egui::Ui,
     highlights: &SpaceViewHighlights,
     spatial_kind: SpatialSpaceViewKind,
 ) -> (Vec<egui::Shape>, Vec<PickableUiRect>) {
@@ -454,7 +453,7 @@ pub fn picking(
     mut response: egui::Response,
     space_from_ui: egui::emath::RectTransform,
     ui_clip_rect: egui::Rect,
-    parent_ui: &mut egui::Ui,
+    parent_ui: &egui::Ui,
     eye: Eye,
     view_builder: &mut re_renderer::view_builder::ViewBuilder,
     state: &mut SpatialSpaceViewState,
@@ -518,7 +517,7 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
-        let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
+        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.store_db.entity_db())
         else {
             continue;
         };
@@ -621,7 +620,7 @@ pub fn picking(
                             ui_clip_rect,
                             coords,
                             space_from_ui,
-                            tensor_path_hash,
+                            tensor_path_hash.row_id,
                             annotations,
                             meaning,
                             meter,
@@ -682,7 +681,7 @@ fn image_hover_ui(
     ui_clip_rect: egui::Rect,
     coords: [u32; 2],
     space_from_ui: egui::emath::RectTransform,
-    tensor_path_hash: re_data_store::VersionedInstancePathHash,
+    tensor_data_row_id: re_log_types::RowId,
     annotations: &AnnotationSceneContext,
     meaning: TensorDataMeaning,
     meter: Option<f32>,
@@ -720,17 +719,17 @@ fn image_hover_ui(
 
             let decoded_tensor = ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0));
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0));
             match decoded_tensor {
                 Ok(decoded_tensor) => {
                     let annotations = annotations.0.find(&instance_path.entity_path);
                     let tensor_stats = ctx.cache.entry(|c: &mut TensorStatsCache| {
-                        c.entry(tensor_path_hash, &decoded_tensor)
+                        c.entry(tensor_data_row_id, &decoded_tensor)
                     });
                     show_zoomed_image_region(
                         ctx.render_ctx,
                         ui,
-                        tensor_path_hash,
+                        tensor_data_row_id,
                         &decoded_tensor,
                         &tensor_stats,
                         &annotations,

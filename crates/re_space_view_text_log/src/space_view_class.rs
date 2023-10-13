@@ -225,7 +225,7 @@ impl ViewTextFilters {
 
     // Checks whether new values are available for any of the filters, and updates everything
     // accordingly.
-    fn update(&mut self, ctx: &mut ViewerContext<'_>, entries: &[&Entry]) {
+    fn update(&mut self, ctx: &ViewerContext<'_>, entries: &[&Entry]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -248,12 +248,7 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
-    if let Some(time_point) = ctx
-        .store_db
-        .entity_db
-        .data_store
-        .get_msg_metadata(&entry.row_id)
-    {
+    if let Some(time_point) = ctx.store_db.store().get_msg_metadata(&entry.row_id) {
         Some(time_point.clone())
     } else {
         re_log::warn_once!("Missing meta-data for {:?}", entry.entity_path);
@@ -267,7 +262,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
 fn table_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    state: &mut TextSpaceViewState,
+    state: &TextSpaceViewState,
     entries: &[&Entry],
     scroll_to_row: Option<usize>,
 ) {

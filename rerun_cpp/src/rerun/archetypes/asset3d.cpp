@@ -3,31 +3,43 @@
 
 #include "asset3d.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";
+    }
 
-        AnonymousComponentBatch Asset3D::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<Asset3D::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Asset3D>::serialize(
+        const archetypes::Asset3D& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(3);
+
+        {
+            auto result = ComponentBatch<rerun::components::Blob>(archetype.blob).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.media_type.has_value()) {
+            auto result = ComponentBatch<rerun::components::MediaType>(archetype.media_type.value())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.transform.has_value()) {
+            auto result =
+                ComponentBatch<rerun::components::OutOfTreeTransform3D>(archetype.transform.value())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<Asset3D::IndicatorComponent>(Asset3D::IndicatorComponent())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> Asset3D::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(3);
-
-            comp_batches.emplace_back(blob);
-            if (media_type.has_value()) {
-                comp_batches.emplace_back(media_type.value());
-            }
-            if (transform.has_value()) {
-                comp_batches.emplace_back(transform.value());
-            }
-            comp_batches.emplace_back(Asset3D::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

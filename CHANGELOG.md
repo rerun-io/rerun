@@ -4,6 +4,67 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
+## [0.9.1](https://github.com/rerun-io/rerun/compare/0.9.0...0.9.1) - Bug fixes and performance improvements - 2023-10-12
+
+[Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
+
+* Python: `pip install rerun-sdk`
+* Rust: `cargo add rerun` and `cargo install rerun-cli`
+* Online demo: <https://app.rerun.io/version/0.9.1/>
+
+### Overview & Highlights
+- A bunch of bug fixes
+- Fix big performance regression when hovering images
+- The Rerun Viewer should now be visible to the system accessibility system
+
+#### 🐍 Python SDK
+- Added support for PyTorch array to `Boxes2D`'s `array` convenience argument [#3719](https://github.com/rerun-io/rerun/pull/3719)
+- Fix default stroke width handling in `log_line_strip_Xd` and `log_obbs` [#3720](https://github.com/rerun-io/rerun/pull/3720)
+- Warn/raise when passing incompatible objects to `log` [#3727](https://github.com/rerun-io/rerun/pull/3727)
+- Refactor `rerun.AnyValues` to handle `None` input more gracefully [#3725](https://github.com/rerun-io/rerun/pull/3725)
+- Default `DisconnectedSpaces` boolean to `true` in Python [#3760](https://github.com/rerun-io/rerun/pull/3760)
+
+#### 🦀 Rust SDK
+- Fix return type of `entity_path!()` and `entity_path_vec!()` on empty input [#3734](https://github.com/rerun-io/rerun/pull/3734) (thanks [@kpreid](https://github.com/kpreid)!)
+- Export `RecordingStreamError` [#3777](https://github.com/rerun-io/rerun/pull/3777)
+
+#### 🪳 Bug Fixes
+- Fix bug when joining cleared optional components [#3726](https://github.com/rerun-io/rerun/pull/3726)
+- Update `winit` to 0.28.7 to fix UI glitch on macOS Sonoma [#3763](https://github.com/rerun-io/rerun/pull/3763)
+- Show 1D-tensors as bar charts [#3769](https://github.com/rerun-io/rerun/pull/3769)
+- Fix loading of `.obj` mesh files [#3772](https://github.com/rerun-io/rerun/pull/3772)
+- Fix crash when loading huge image [#3775](https://github.com/rerun-io/rerun/pull/3775)
+- Fix performance regression when viewing images and tensors [#3767](https://github.com/rerun-io/rerun/pull/3767)
+
+#### 🌁 Viewer Improvements
+- Turn on `AccessKit` accessibility integration [#3732](https://github.com/rerun-io/rerun/pull/3732)
+- Display space views using `ViewCoordinates` from closest ancestor [#3748](https://github.com/rerun-io/rerun/pull/3748)
+- Improve 3D view bounds handling of camera frustums [#3749](https://github.com/rerun-io/rerun/pull/3749) [#3815](https://github.com/rerun-io/rerun/pull/3815) [#3811](https://github.com/rerun-io/rerun/pull/3811)
+- Improve heuristics around 2D vs 3D space-view creation [#3822](https://github.com/rerun-io/rerun/pull/3822)
+
+#### 🚀 Performance Improvements
+- Optimize gathering of point cloud colors [#3730](https://github.com/rerun-io/rerun/pull/3730)
+
+#### 🧑‍🏫 Examples
+- Fix open photogrammetry example not working on Windows [#3705](https://github.com/rerun-io/rerun/pull/3705)
+
+#### 📚 Docs
+- Document that entity-path `rerun/` is reserved [#3747](https://github.com/rerun-io/rerun/pull/3747)
+
+#### 🖼 UI Improvements
+- Show all entities/components in the Streams UI, even if empty for the selected timeline [#3779](https://github.com/rerun-io/rerun/pull/3779)
+
+#### 🧑‍💻 Dev-experience
+- Less automatic `build.rs` shenanigans [#3814](https://github.com/rerun-io/rerun/pull/3814)
+
+#### 🗣 Refactors
+- Refactor our `build.rs` files [#3789](https://github.com/rerun-io/rerun/pull/3789)
+
+#### 📦 Dependencies
+- Update `ewebsock` to 0.4.0 [#3729](https://github.com/rerun-io/rerun/pull/3729)
+- Update `winit` to 0.28.7 [#3763](https://github.com/rerun-io/rerun/pull/3763)
+
+
 ## [0.9.0](https://github.com/rerun-io/rerun/compare/0.8.2...0.9.0) - New logging API - 2023-10-05
 
 [Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
@@ -19,7 +80,7 @@ This API is code-generated from a common definition, meaning the Python and Rust
 This will let us more easily extend and improve the API going forward.
 It is also the basis for our C++ API, which is coming in Rerun 0.10.0.
 
-Read [the migration guide](https://www.rerun.io/docs/reference/migration-0-9.md) for details!
+Read [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for details!
 
 <picture>
   <img src="https://static.rerun.io/0.9.0-start-screen/ee485acc4bf50519102180d01ae6338aef07e88e/full.png" alt="0.9.0 Welcome Screen">
@@ -65,7 +126,7 @@ Other highlights:
 - Fix row ordering flakiness when using clear APIs [#3288](https://github.com/rerun-io/rerun/pull/3288)
 - Fix incorrect propagation of field's nullability into its inner list [#3352](https://github.com/rerun-io/rerun/pull/3352)
 - Fix post-GC purging of streams view time histogram [#3364](https://github.com/rerun-io/rerun/pull/3364)
-- Fix color greyscale colormap not being even [#3391](https://github.com/rerun-io/rerun/pull/3391)
+- Fix color grayscale colormap not being even [#3391](https://github.com/rerun-io/rerun/pull/3391)
 - Fix depth point cloud not taking transformation at its path into account [#3514](https://github.com/rerun-io/rerun/pull/3514)
 - Fix infinite recursion when putting a container inside a viewer tab [#3534](https://github.com/rerun-io/rerun/pull/3534)
 - Fix failing to preview small images [#3520](https://github.com/rerun-io/rerun/pull/3520)
@@ -333,7 +394,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 - Convert objectron proto.py back to using typing.List [#2559](https://github.com/rerun-io/rerun/pull/2559)
 - Exclude from `objectron/proto/objectron/proto.py` from `just py-format` [#2562](https://github.com/rerun-io/rerun/pull/2562)
 - Fix pinhole visualization not working with camera extrinsics & intrinsics on the same path [#2568](https://github.com/rerun-io/rerun/pull/2568)
-- Fix: always auto-layout spaceviews until the user interveens [#2583](https://github.com/rerun-io/rerun/pull/2583)
+- Fix: always auto-layout spaceviews until the user intervenes [#2583](https://github.com/rerun-io/rerun/pull/2583)
 - Fix freeze/crash when logging large times [#2588](https://github.com/rerun-io/rerun/pull/2588)
 - Update egui_tiles to fix crash [#2598](https://github.com/rerun-io/rerun/pull/2598)
 - Fix clicking object with single instance (of every component) selecting instance instead of entity [#2573](https://github.com/rerun-io/rerun/pull/2573)
@@ -742,9 +803,9 @@ here's a smaller release packed with useful improvements 🎉
 #### 🤷‍♂️ Other
 - Fix secret in dispatch_lint.yml [4848f98f2605a3caf9b7695273e0871efa2d44c8](https://github.com/rerun-io/rerun/commit/4848f98f2605a3caf9b7695273e0871efa2d44c8)
 - Only maintain a single manual-dispatch job for testing workflows [98f7de3b52b0fea6abe364f9d0ce0bd4c459caf1](https://github.com/rerun-io/rerun/commit/98f7de3b52b0fea6abe364f9d0ce0bd4c459caf1)
-- Add other build parameterizations to manual_dispatch.yml [dbdf275eaf17220d14811dc34b69b6a76e948e73](https://github.com/rerun-io/rerun/commit/dbdf275eaf17220d14811dc34b69b6a76e948e73)
+- Add other build parametrizations to manual_dispatch.yml [dbdf275eaf17220d14811dc34b69b6a76e948e73](https://github.com/rerun-io/rerun/commit/dbdf275eaf17220d14811dc34b69b6a76e948e73)
 - Use proper if gates on the manual_dispatch.yml jobs [9ad62011678caaed04260ba160763e24e64a7402](https://github.com/rerun-io/rerun/commit/9ad62011678caaed04260ba160763e24e64a7402)
-- Add ability to save cache to manual_disaptch.yml [5c61b37a1bc40f1a223c370b3b69b08654aada47](https://github.com/rerun-io/rerun/commit/5c61b37a1bc40f1a223c370b3b69b08654aada47)
+- Add ability to save cache to manual_dispatch.yml [5c61b37a1bc40f1a223c370b3b69b08654aada47](https://github.com/rerun-io/rerun/commit/5c61b37a1bc40f1a223c370b3b69b08654aada47)
 - Standard case of inputs [2729c71f1ba9f7cdbe64adc3c610caf9464324e4](https://github.com/rerun-io/rerun/commit/2729c71f1ba9f7cdbe64adc3c610caf9464324e4)
 - Add manual step for packaging to 'manual_dispatch.yml' [a3178e6143c068175b477cb236f2ba2477e083ea](https://github.com/rerun-io/rerun/commit/a3178e6143c068175b477cb236f2ba2477e083ea)
 - New workflow_dispatch for building wheels for a PR [3bc2cb73ece98f914254221ce0ea129015834f59](https://github.com/rerun-io/rerun/commit/3bc2cb73ece98f914254221ce0ea129015834f59)
@@ -796,11 +857,11 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
     * Try it out live on [Google Colab](https://colab.research.google.com/drive/1R9I7s4o6wydQC_zkybqaSRFTtlEaked_?usp=sharing)
 * All colormapping tasks are now done directly on the GPU
     * This yields _very significant_ performance improvements for colormapping heavy workload (e.g. segmentation)
-    * Try it out in our new [`segment_anything` example](https://www.rerun.io/docs/getting-started/examples#segment-anything) that shows off the latest models from Meta AI
+    * Try it out in our new [`segment_anything` example](https://www.rerun.io/examples/real-data/segment-anything-model) that shows off the latest models from Meta AI
 * GPU picking & hovering now works with all of our primitives, including meshes & depth clouds
     * This fixes all the shortcomings of the previous CPU-based system
     * Rerun's automatic backprojection of depth textures ("depth clouds") is now feature complete
-    * Try it out in our updated [`nyud` example](https://www.rerun.io/docs/getting-started/examples#nyud)
+    * Try it out in our updated [`nyud` example](https://www.rerun.io/examples/real-data/rgbd)
 * Our datastore has been completely revamped to more closely match our latest data model
     * This yields _very significant_ performance improvements for workloads with many events
     * Checkout [this post](https://github.com/rerun-io/rerun/issues/1619#issuecomment-1511046649) for a detailed walkthrough of the changes
@@ -907,7 +968,7 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - GPU colormapping, first step [#1835](https://github.com/rerun-io/rerun/pull/1835)
 - GPU tensor colormapping [#1841](https://github.com/rerun-io/rerun/pull/1841)
 - GPU picking for depth clouds [#1849](https://github.com/rerun-io/rerun/pull/1849)
-- Implement billinear filtering of textures [#1850](https://github.com/rerun-io/rerun/pull/1850) [#1859](https://github.com/rerun-io/rerun/pull/1859) [#1860](https://github.com/rerun-io/rerun/pull/1860)
+- Implement bilinear filtering of textures [#1850](https://github.com/rerun-io/rerun/pull/1850) [#1859](https://github.com/rerun-io/rerun/pull/1859) [#1860](https://github.com/rerun-io/rerun/pull/1860)
 - Refactor: remove `GpuTexture2DHandle::invalid` [#1866](https://github.com/rerun-io/rerun/pull/1866)
 - Fix filtering artifact for non-color images [#1886](https://github.com/rerun-io/rerun/pull/1886)
 - Refactor: Add helper functions to `GpuTexture2DHandle` [#1900](https://github.com/rerun-io/rerun/pull/1900)

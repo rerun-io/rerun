@@ -6,6 +6,7 @@ from typing import Any, Optional, cast
 import numpy as np
 import pytest
 import rerun as rr
+import torch
 from rerun.components.instance_key import InstanceKeyArrayLike
 from rerun.components.line_strip3d import LineStrip3DArrayLike, LineStrip3DBatch
 from rerun.components.radius import RadiusArrayLike
@@ -45,6 +46,10 @@ strips_arrays: list[LineStrip3DArrayLike] = [
     [
         np.array([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=np.float32),
         np.array([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], dtype=np.float32), # noqa
+    ],
+    [
+        torch.tensor([([0, 0, 2]), (1, 0, 2), [1, 1, 2], (0, 1, 2)], dtype=torch.float32),
+        torch.tensor([([0, 0, 0]), (0, 0, 1), [1, 0, 0], (1, 0, 1), [1, 1, 0], (1, 1, 1), [0, 1, 0], (0, 1, 1)], dtype=torch.float32), # noqa
     ],
     # NOTE: Not legal -- non-homogeneous.
     # np.array([

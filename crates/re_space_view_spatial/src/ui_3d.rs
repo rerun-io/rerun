@@ -1,5 +1,4 @@
-use eframe::emath::RectTransform;
-use egui::NumExt as _;
+use egui::{emath::RectTransform, NumExt as _};
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 
@@ -325,8 +324,10 @@ pub fn view_3d(
     let view_coordinates = ctx
         .store_db
         .store()
-        .query_latest_component(query.space_origin, &ctx.current_query())
-        .map(|c| c.value);
+        // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
+        // See https://github.com/rerun-io/rerun/issues/3538
+        .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
+        .map(|(_, c)| c.value);
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -622,7 +623,7 @@ pub fn view_3d(
 }
 
 fn show_projections_from_2d_space(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     line_builder: &mut LineStripSeriesBuilder,
     space_cameras: &[SpaceCamera3D],
     tracked_space_camera: &Option<EntityPath>,

@@ -3,29 +3,38 @@
 
 #include "text_document.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char TextDocument::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.TextDocumentIndicator";
+    }
 
-        AnonymousComponentBatch TextDocument::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<TextDocument::INDICATOR_COMPONENT_NAME>>(nullptr, 1);
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::TextDocument>::serialize(
+        const archetypes::TextDocument& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(2);
+
+        {
+            auto result = ComponentBatch<rerun::components::Text>(archetype.text).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.media_type.has_value()) {
+            auto result = ComponentBatch<rerun::components::MediaType>(archetype.media_type.value())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result =
+                ComponentBatch<TextDocument::IndicatorComponent>(TextDocument::IndicatorComponent())
+                    .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> TextDocument::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(2);
-
-            comp_batches.emplace_back(text);
-            if (media_type.has_value()) {
-                comp_batches.emplace_back(media_type.value());
-            }
-            comp_batches.emplace_back(TextDocument::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

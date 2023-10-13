@@ -2,10 +2,14 @@ use std::collections::BTreeMap;
 
 use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
-use re_types::{archetypes::BarChart, datatypes::TensorData, Archetype, ComponentNameSet};
+use re_types::{
+    archetypes::{BarChart, Tensor},
+    datatypes::TensorData,
+    Archetype, ComponentNameSet,
+};
 use re_viewer_context::{
-    default_heuristic_filter, NamedViewSystem, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 /// A bar chart system, with everything needed to render it.
@@ -29,13 +33,19 @@ impl ViewPartSystem for BarChartViewPartSystem {
     }
 
     fn indicator_components(&self) -> ComponentNameSet {
-        std::iter::once(BarChart::indicator().name()).collect()
+        // TODO(#3342): For now, we relax the indicator component heuristics on bar charts so that
+        // logging a 1D tensor also results in a bar chart view, rather than a broken viewer (see #3709).
+        // Ideally though, this should be implemented using an heuristic fallback mechanism.
+        [BarChart::indicator().name(), Tensor::indicator().name()]
+            .into_iter()
+            .collect()
     }
 
     fn heuristic_filter(
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        _ctx: HeuristicFilterContext,
         query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
@@ -63,7 +73,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let store = &ctx.store_db.entity_db.data_store;
+        let store = ctx.store_db.store();
 
         for (ent_path, _props) in query.iter_entities_for_system(Self::name()) {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);

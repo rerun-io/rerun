@@ -5,8 +5,8 @@ use itertools::Itertools as _;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, InstancePathHash, VersionedInstancePathHash};
-use re_log_types::EntityPathHash;
+use re_data_store::{EntityPath, EntityProperties};
+use re_log_types::{EntityPathHash, RowId};
 use re_query::{ArchetypeView, QueryError};
 use re_renderer::{
     renderer::{DepthCloud, DepthClouds, RectangleOptions, TexturedRect},
@@ -19,8 +19,9 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, gpu_bridge, DefaultColor, SpaceViewSystemExecutionError,
-    TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, gpu_bridge, DefaultColor, HeuristicFilterContext, SpaceViewClass,
+    SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
+    ViewerContext,
 };
 use re_viewer_context::{NamedViewSystem, ViewContextCollection};
 
@@ -29,6 +30,7 @@ use crate::{
     parts::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
     query_pinhole,
     view_kind::SpatialSpaceViewKind,
+    SpatialSpaceView2D, SpatialSpaceView3D,
 };
 
 use super::{entity_iterator::process_archetype_views, SpatialViewPartData};
@@ -54,10 +56,10 @@ pub struct ViewerImage {
 
 #[allow(clippy::too_many_arguments)]
 fn to_textured_rect(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ent_path: &EntityPath,
     ent_context: &SpatialSceneEntityContext<'_>,
-    tensor_path_hash: VersionedInstancePathHash,
+    tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
     meaning: TensorDataMeaning,
     multiplicative_tint: egui::Rgba,
@@ -71,12 +73,12 @@ fn to_textured_rect(
     let debug_name = ent_path.to_string();
     let tensor_stats = ctx
         .cache
-        .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
+        .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
 
     match gpu_bridge::tensor_to_gpu(
         ctx.render_ctx,
         &debug_name,
-        tensor_path_hash,
+        tensor_data_row_id,
         tensor,
         meaning,
         &tensor_stats,
@@ -121,7 +123,7 @@ fn to_textured_rect(
             })
         }
         Err(err) => {
-            re_log::error_once!("Failed to create texture from tensor for {debug_name:?}: {err}");
+            re_log::error_once!("Failed to create texture for {debug_name:?}: {err}");
             None
         }
     }
@@ -203,16 +205,22 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
-        _ent_props: &EntityProperties,
+        ent_props: &EntityProperties,
         arch_view: &ArchetypeView<Image>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let parent_pinhole_path = transforms.parent_pinhole(ent_path);
+        // Parent pinhole should only be relevant to 3D views
+        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
+        {
+            transforms.parent_pinhole(ent_path)
+        } else {
+            None
+        };
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
@@ -239,12 +247,11 @@ impl ImagesPart {
                 return Ok(());
             }
 
-            // NOTE: Tensors don't support batches at the moment so always splat.
-            let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
+            let tensor_data_row_id = arch_view.primary_row_id();
+
             let tensor = match ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
             {
                 Ok(tensor) => tensor,
                 Err(err) => {
@@ -259,21 +266,27 @@ impl ImagesPart {
                 .annotations
                 .resolved_class_description(None)
                 .annotation_info()
-                .color(
-                    color.map(|c| c.to_array()).as_ref(),
-                    DefaultColor::OpaqueWhite,
-                );
+                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
                 ent_path,
                 ent_context,
-                tensor_path_hash,
+                tensor_data_row_id,
                 &tensor,
                 meaning,
                 color.into(),
             ) {
-                self.extend_bbox(&textured_rect);
+                // Only update the bounding box if this is a 2D space view or
+                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // relationship where the image plane grows the bounds which in
+                // turn influence the size of the image plane.
+                // See: https://github.com/rerun-io/rerun/issues/3728
+                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                {
+                    self.extend_bbox(&textured_rect);
+                }
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
@@ -292,7 +305,7 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_depth_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         depth_clouds: &mut Vec<DepthCloud>,
         transforms: &TransformContext,
         ent_props: &EntityProperties,
@@ -313,7 +326,13 @@ impl ImagesPart {
         }
         let meaning = TensorDataMeaning::Depth;
 
-        let parent_pinhole_path = transforms.parent_pinhole(ent_path);
+        // Parent pinhole should only be relevant to 3D views
+        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
+        {
+            transforms.parent_pinhole(ent_path)
+        } else {
+            None
+        };
 
         // Instance ids of tensors refer to entries inside the tensor.
         for (tensor, color, draw_order) in itertools::izip!(
@@ -330,12 +349,11 @@ impl ImagesPart {
                 return Ok(());
             }
 
-            // NOTE: Tensors don't support batches at the moment so always splat.
-            let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
+            let tensor_data_row_id = arch_view.primary_row_id();
+
             let tensor = match ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
             {
                 Ok(tensor) => tensor,
                 Err(err) => {
@@ -356,7 +374,7 @@ impl ImagesPart {
                         transforms,
                         ent_context,
                         ent_props,
-                        tensor_path_hash,
+                        tensor_data_row_id,
                         &tensor,
                         ent_path,
                         parent_pinhole_path,
@@ -379,21 +397,27 @@ impl ImagesPart {
                 .annotations
                 .resolved_class_description(None)
                 .annotation_info()
-                .color(
-                    color.map(|c| c.to_array()).as_ref(),
-                    DefaultColor::OpaqueWhite,
-                );
+                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
                 ent_path,
                 ent_context,
-                tensor_path_hash,
+                tensor_data_row_id,
                 &tensor,
                 meaning,
                 color.into(),
             ) {
-                self.extend_bbox(&textured_rect);
+                // Only update the bounding box if this is a 2D space view or
+                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // relationship where the image plane grows the bounds which in
+                // turn influence the size of the image plane.
+                // See: https://github.com/rerun-io/rerun/issues/3728
+                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                {
+                    self.extend_bbox(&textured_rect);
+                }
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
@@ -412,16 +436,22 @@ impl ImagesPart {
     #[allow(clippy::too_many_arguments)]
     fn process_segmentation_image_arch_view(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
-        _ent_props: &EntityProperties,
+        ent_props: &EntityProperties,
         arch_view: &ArchetypeView<SegmentationImage>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let parent_pinhole_path = transforms.parent_pinhole(ent_path);
+        // Parent pinhole should only be relevant to 3D views
+        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
+        {
+            transforms.parent_pinhole(ent_path)
+        } else {
+            None
+        };
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
@@ -447,12 +477,11 @@ impl ImagesPart {
                 return Ok(());
             }
 
-            // NOTE: Tensors don't support batches at the moment so always splat.
-            let tensor_path_hash =
-                InstancePathHash::entity_splat(ent_path).versioned(arch_view.primary_row_id());
+            let tensor_data_row_id = arch_view.primary_row_id();
+
             let tensor = match ctx
                 .cache
-                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+                .entry(|c: &mut TensorDecodeCache| c.entry(tensor_data_row_id, tensor.0))
             {
                 Ok(tensor) => tensor,
                 Err(err) => {
@@ -467,21 +496,27 @@ impl ImagesPart {
                 .annotations
                 .resolved_class_description(None)
                 .annotation_info()
-                .color(
-                    color.map(|c| c.to_array()).as_ref(),
-                    DefaultColor::OpaqueWhite,
-                );
+                .color(color.map(|c| c.to_array()), DefaultColor::OpaqueWhite);
 
             if let Some(textured_rect) = to_textured_rect(
                 ctx,
                 ent_path,
                 ent_context,
-                tensor_path_hash,
+                tensor_data_row_id,
                 &tensor,
                 meaning,
                 color.into(),
             ) {
-                self.extend_bbox(&textured_rect);
+                // Only update the bounding box if this is a 2D space view or
+                // the image_plane_distance is not auto.  This is avoids a cyclic
+                // relationship where the image plane grows the bounds which in
+                // turn influence the size of the image plane.
+                // See: https://github.com/rerun-io/rerun/issues/3728
+                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                    || !ent_props.pinhole_image_plane_distance.is_auto()
+                {
+                    self.extend_bbox(&textured_rect);
+                }
 
                 self.images.push(ViewerImage {
                     ent_path: ent_path.clone(),
@@ -499,11 +534,11 @@ impl ImagesPart {
 
     #[allow(clippy::too_many_arguments)]
     fn process_entity_view_as_depth_cloud(
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         transforms: &TransformContext,
         ent_context: &SpatialSceneEntityContext<'_>,
         properties: &EntityProperties,
-        tensor_path_hash: VersionedInstancePathHash,
+        tensor_data_row_id: RowId,
         tensor: &DecodedTensor,
         ent_path: &EntityPath,
         parent_pinhole_path: &EntityPath,
@@ -543,11 +578,11 @@ impl ImagesPart {
         let debug_name = ent_path.to_string();
         let tensor_stats = ctx
             .cache
-            .entry(|c: &mut TensorStatsCache| c.entry(tensor_path_hash, tensor));
+            .entry(|c: &mut TensorStatsCache| c.entry(tensor_data_row_id, tensor));
         let depth_texture = re_viewer_context::gpu_bridge::depth_tensor_to_gpu(
             ctx.render_ctx,
             &debug_name,
-            tensor_path_hash,
+            tensor_data_row_id,
             tensor,
             &tensor_stats,
         )?;
@@ -646,10 +681,19 @@ impl ViewPartSystem for ImagesPart {
         &self,
         store: &re_arrow_store::DataStore,
         ent_path: &EntityPath,
+        ctx: HeuristicFilterContext,
         query: &LatestAtQuery,
         entity_components: &ComponentNameSet,
     ) -> bool {
         if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+            return false;
+        }
+
+        // 2D parts can only ever be rendered properly as part of a 3D scene if the
+        // transform graph includes a pinhole projection. Pinholes only map from 2D children
+        // to 3D parents, so if the required pinhole exists, it must be an ancestor.
+        // Filter them otherwise to avoid ending up with 2D content mixed into 3D scenes.
+        if ctx.class == "3D" && !ctx.has_ancestor_pinhole {
             return false;
         }
 

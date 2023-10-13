@@ -34,7 +34,10 @@ all-features = true
 ##
 ## When set: will skip building the Web Viewer Wasm.
 ## This makes the CI much faster, but the resulting web server
-## will crash if you rey to run it!
+## will crash if you try to run it!
+##
+## BONUS: If you configure rust-analyzer to use `--all-features,
+## you will also have rust-analyzer opting-out of building wasm!
 __ci = []
 
 ## Enable telemetry using our analytics SDK.

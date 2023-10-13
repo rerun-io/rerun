@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/view_coordinates.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -36,16 +36,15 @@ namespace rerun {
         /// #include <cmath>
         /// #include <numeric>
         ///
-        /// namespace rr = rerun;
-        ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_view_coordinates");
+        ///     auto rec = rerun::RecordingStream("rerun_example_view_coordinates");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     rec.log("world", rr::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
+        ///     rec.log("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
         ///     rec.log(
         ///         "world/xyz",
-        ///         rr::Arrows3D::from_vectors({{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}
+        ///         rerun::Arrows3D::from_vectors({{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0,
+        ///         0.0, 1.0}}
         ///         ).with_colors({{255, 0, 0}, {0, 255, 0}, {0, 0, 255}})
         ///     );
         /// }
@@ -56,6 +55,9 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             // Extensions to generated type defined in 'view_coordinates_ext.cpp'
@@ -130,24 +132,27 @@ namespace rerun {
 
           public:
             ViewCoordinates() = default;
+            ViewCoordinates(ViewCoordinates&& other) = default;
 
-            ViewCoordinates(rerun::components::ViewCoordinates _xyz) : xyz(std::move(_xyz)) {}
+            explicit ViewCoordinates(rerun::components::ViewCoordinates _xyz)
+                : xyz(std::move(_xyz)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return 1;
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::ViewCoordinates> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::ViewCoordinates& archetype
+        );
+    };
 } // namespace rerun

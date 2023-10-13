@@ -17,15 +17,36 @@ from rerun.datatypes import (
     TranslationRotationScale3D,
     Vec3D,
 )
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
 # Legacy alias for `TranslationAndMat3x3`
-# TODO(#3275): Deprecation notices on these
 TranslationAndMat3 = TranslationAndMat3x3
+"""
+!!! Warning "Deprecated"
+    Please migrate to [rerun.log][] with [rerun.TranslationAndMat3x3][].
+
+    See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
+"""
+
+# Legacy alias for `TranslationRotationScale3D`
 Rigid3D = TranslationRotationScale3D
+"""
+!!! Warning "Deprecated"
+    Please migrate to [rerun.log][] with [rerun.TranslationRotationScale3D][].
+
+    See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
+"""
+
+# Legacy alias for `Vec3D`
 Translation3D = Vec3D
+"""
+!!! Warning "Deprecated"
+    Please migrate to [rerun.log][] with [rerun.datatypes.Vec3D][].
+
+    See [the migration guide](https://www.rerun.io/docs/reference/migration-0-9) for more details.
+"""
 
 
 __all__ = [
@@ -134,10 +155,10 @@ def log_view_coordinates(
     recording = RecordingStream.to_native(recording)
 
     if xyz == "" and up == "":
-        _send_warning("You must set either 'xyz' or 'up'. Ignoring log.", 1)
+        _send_warning_or_raise("You must set either 'xyz' or 'up'. Ignoring log.", 1)
         return
     if xyz != "" and up != "":
-        _send_warning("You must set either 'xyz' or 'up', but not both. Dropping up.", 1)
+        _send_warning_or_raise("You must set either 'xyz' or 'up', but not both. Dropping up.", 1)
         up = ""
     if xyz != "":
         xyz = xyz.upper()
@@ -198,7 +219,7 @@ def log_disconnected_space(
 
     recording = RecordingStream.to_native(recording)
 
-    log(entity_path, DisconnectedSpace(True), timeless=timeless, recording=recording)
+    log(entity_path, DisconnectedSpace(), timeless=timeless, recording=recording)
 
 
 @deprecated(

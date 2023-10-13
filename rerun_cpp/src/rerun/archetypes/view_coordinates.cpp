@@ -3,29 +3,33 @@
 
 #include "view_coordinates.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char ViewCoordinates::INDICATOR_COMPONENT_NAME[] =
             "rerun.components.ViewCoordinatesIndicator";
+    }
 
-        AnonymousComponentBatch ViewCoordinates::indicator() {
-            return ComponentBatch<
-                components::IndicatorComponent<ViewCoordinates::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
+    Result<std::vector<SerializedComponentBatch>> AsComponents<
+        archetypes::ViewCoordinates>::serialize(const archetypes::ViewCoordinates& archetype) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(1);
+
+        {
+            auto result =
+                ComponentBatch<rerun::components::ViewCoordinates>(archetype.xyz).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result = ComponentBatch<ViewCoordinates::IndicatorComponent>(
+                              ViewCoordinates::IndicatorComponent()
+            )
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> ViewCoordinates::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(1);
-
-            comp_batches.emplace_back(xyz);
-            comp_batches.emplace_back(ViewCoordinates::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

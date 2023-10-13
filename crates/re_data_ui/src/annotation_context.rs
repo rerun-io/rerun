@@ -80,15 +80,14 @@ impl crate::EntityDataUi for re_types::components::KeypointId {
 }
 
 fn annotation_info(
-    ctx: &mut re_viewer_context::ViewerContext<'_>,
+    ctx: &re_viewer_context::ViewerContext<'_>,
     entity_path: &re_log_types::EntityPath,
     query: &re_arrow_store::LatestAtQuery,
     keypoint_id: KeypointId,
 ) -> Option<AnnotationInfo> {
     let class_id = ctx
         .store_db
-        .entity_db
-        .data_store
+        .store()
         .query_latest_component::<re_types::components::ClassId>(entity_path, query)?;
     let annotations = crate::annotations(ctx, query, entity_path);
     let class = annotations.resolved_class_description(Some(*class_id));

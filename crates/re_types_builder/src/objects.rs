@@ -345,7 +345,8 @@ impl Docs {
                     cur_tag.clone(),
                     tagged_lines
                         .iter()
-                        .filter_map(|(tag, line)| (cur_tag == tag).then(|| line.clone()))
+                        .filter(|(tag, _)| cur_tag == tag)
+                        .map(|(_, line)| line.clone())
                         .collect(),
                 );
             }

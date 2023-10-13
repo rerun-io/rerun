@@ -124,7 +124,7 @@ fn store_db_ui(ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
         .show(ui, |ui| {
-            for entity_path in store_db.entity_db.entity_paths() {
+            for entity_path in store_db.entity_db().entity_paths() {
                 ui.collapsing(entity_path.to_string(), |ui| {
                     entity_ui(ui, store_db, timeline, entity_path);
                 });
@@ -139,11 +139,7 @@ fn entity_ui(
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
-    if let Some(mut components) = store_db
-        .entity_db
-        .data_store
-        .all_components(&timeline, entity_path)
-    {
+    if let Some(mut components) = store_db.store().all_components(&timeline, entity_path) {
         components.sort(); // Make the order predicatable
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
@@ -165,7 +161,7 @@ fn component_ui(
     let query = re_arrow_store::LatestAtQuery::latest(timeline);
 
     if let Some((_, component)) = re_query::get_component_with_instances(
-        &store_db.entity_db.data_store,
+        store_db.store(),
         &query,
         entity_path,
         component_name,

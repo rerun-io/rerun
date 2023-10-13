@@ -122,12 +122,12 @@ impl AppState {
         // First update the viewport and thus all active space views.
         // This may update their heuristics, so that all panels that are shown in this frame,
         // have the latest information.
-        let spaces_info = SpaceInfoCollection::new(&ctx.store_db.entity_db);
+        let spaces_info = SpaceInfoCollection::new(ctx.store_db.entity_db());
 
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
             re_log::warn!("Incompatible blueprint detected. Resetting to default.");
-            viewport.blueprint.reset(&mut ctx, &spaces_info);
+            viewport.blueprint.reset(&ctx, &spaces_info);
         }
 
         viewport.on_frame_start(&mut ctx, &spaces_info);

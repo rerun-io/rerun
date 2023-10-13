@@ -3,30 +3,36 @@
 
 #include "image.hpp"
 
-#include "../indicator_component.hpp"
-
 namespace rerun {
     namespace archetypes {
         const char Image::INDICATOR_COMPONENT_NAME[] = "rerun.components.ImageIndicator";
+    }
 
-        AnonymousComponentBatch Image::indicator() {
-            return ComponentBatch<components::IndicatorComponent<Image::INDICATOR_COMPONENT_NAME>>(
-                nullptr,
-                1
-            );
+    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Image>::serialize(
+        const archetypes::Image& archetype
+    ) {
+        using namespace archetypes;
+        std::vector<SerializedComponentBatch> cells;
+        cells.reserve(2);
+
+        {
+            auto result = ComponentBatch<rerun::components::TensorData>(archetype.data).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.draw_order.has_value()) {
+            auto result = ComponentBatch<rerun::components::DrawOrder>(archetype.draw_order.value())
+                              .serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        {
+            auto result =
+                ComponentBatch<Image::IndicatorComponent>(Image::IndicatorComponent()).serialize();
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
 
-        std::vector<AnonymousComponentBatch> Image::as_component_batches() const {
-            std::vector<AnonymousComponentBatch> comp_batches;
-            comp_batches.reserve(2);
-
-            comp_batches.emplace_back(data);
-            if (draw_order.has_value()) {
-                comp_batches.emplace_back(draw_order.value());
-            }
-            comp_batches.emplace_back(Image::indicator());
-
-            return comp_batches;
-        }
-    } // namespace archetypes
+        return cells;
+    }
 } // namespace rerun

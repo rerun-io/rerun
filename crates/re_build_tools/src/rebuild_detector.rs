@@ -9,19 +9,37 @@ use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 
 use crate::should_output_cargo_build_instructions;
 
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use super::Environment;
+
+    match Environment::detect() {
+        // We cannot run this during publishing,
+        // we don't need to,
+        // and it can also can cause a Cargo.lock file to be generated.
+        Environment::PublishingCrates => false,
+
+        // Dependencies shouldn't change on CI, but who knows 🤷‍♂️
+        Environment::CI => true,
+
+        // Yes - this is what we want tracking for.
+        Environment::DeveloperInWorkspace => true,
+
+        // Definitely not
+        Environment::UsedAsDependency => false,
+    }
+}
+
 /// Call from `build.rs` to trigger a rebuild whenever any source file of the given package
 /// _or any of its dependencies_ changes, recursively.
 ///
 /// This will work even if the package depends on crates that are outside of the workspace,
 /// included with `path = …`
+///
+/// However, this is a complex beast, and may have bugs in it.
+/// Maybe it is even causing spurious re-compiles (<https://github.com/rerun-io/rerun/issues/3266>).
 pub fn rebuild_if_crate_changed(pkg_name: &str) {
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
-        // Only run if we are in the rerun workspace, not on users machines.
-        return;
-    }
-    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
-        // We cannot run this during publishing.
-        // We don't need to, and it can also can cause a Cargo.lock file to be generated.
+    if !should_run() {
         return;
     }
 
@@ -40,7 +58,7 @@ pub fn rebuild_if_crate_changed(pkg_name: &str) {
     }
 }
 
-/// Call from `build.rs` to trigger a rebuild whenever an environment variable changes.
+/// Read the environment variable and trigger a rebuild whenever the environment variable changes.
 pub fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::VarError> {
     if should_output_cargo_build_instructions() {
         println!("cargo:rerun-if-env-changed={env_var_name}");
@@ -48,11 +66,20 @@ pub fn get_and_track_env_var(env_var_name: &str) -> Result<String, std::env::Var
     std::env::var(env_var_name)
 }
 
-/// Call from `build.rs` to trigger a rebuild whenever an environment variable changes, and returns
-/// true if that variable has been set to a truthy value.
+/// Read the environment variable and trigger a rebuild whenever the environment variable changes.
+///
+/// Returns `true` if that variable has been set to a truthy value.
 pub fn is_tracked_env_var_set(env_var_name: &str) -> bool {
-    let var = get_and_track_env_var(env_var_name).map(|v| v.to_lowercase());
-    var == Ok("1".to_owned()) || var == Ok("yes".to_owned()) || var == Ok("true".to_owned())
+    match get_and_track_env_var(env_var_name) {
+        Err(_) => false,
+        Ok(value) => match value.to_lowercase().as_str() {
+            "1" | "yes" | "true" => true,
+            "0" | "no" | "false" => false,
+            _ => {
+                panic!("Failed to understand boolean env-var {env_var_name}={value}");
+            }
+        },
+    }
 }
 
 /// Call from `build.rs` to trigger a rebuild whenever the file at `path` changes.

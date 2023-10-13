@@ -7,12 +7,14 @@
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)
 * [`RELEASES.md`](RELEASES.md)
 
+
 ## Languages
 We prefer Rust.
 
 We have a bunch of Bash and Python scripts that [we want to replace with Rust](https://github.com/rerun-io/rerun/issues/3349).
 
 For configs we like JSON and TOML, and [dislike YAML](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell).
+
 
 ## Rust code
 
@@ -121,6 +123,56 @@ You can also use the `todo()!` macro during development, but again it won't pass
 Use debug-formatting (`{:?}`) when logging strings in logs and error messages. This will surround the string with quotes and escape newlines, tabs, etc. For instance: `re_log::warn!("Unknown key: {key:?}");`.
 
 Use `re_error::format(err)` when displaying an error.
+
+
+## C++
+We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
+
+### Initialization
+Always use `const` unless you plan on mutating it, with the exception of function parameters (because that is just too much noise).
+
+We use `const auto x = …` for declaration because that gives symmetric code for normal constructors and static constructors:
+
+```C++
+const auto foo = SomeClass{…};
+const auto bar = SomeClass::new_xyzw(…);
+```
+
+We prefer `{}` for constructors (`Foo{…}` instead of `Foo(…)`), though there are exceptions (`std::vector{2, 3}` is different from `std::vector(2, 3)`).
+
+### Misc
+We don't add `inline` before class/struct member functions if they are inlined in the class/struct definition.
+
+### Members
+We prefix _private_ member variables with a `_`:
+
+```C++
+class Thing {
+  public:
+    …
+
+    void set_value(uint32_t value) {
+        _value = value;
+    }
+
+  private:
+    uint32_t _value;
+}
+```
+
+Public member variables has no prefix.
+When necessary use a `_` suffix on parameter names to avoid name conflicts:
+
+```C++
+struct Thing {
+    uint32_t value;
+
+    void set_value(uint32_t value_) {
+        value = value_;
+    }
+}
+```
+
 
 ## Naming
 We prefer `snake_case` to `kebab-case` for most things (e.g. crate names, crate features, …). `snake_case` is a valid identifier in almost any programming language, while `kebab-case` is not. This means one can use the same `snake_case` identifier everywhere, and not think about whether it needs to be written as `snake_case` in some circumstances.

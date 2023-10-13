@@ -6,7 +6,7 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 use std::sync::Arc;
 
 use arrow2::array::{Array, PrimitiveArray, StructArray, UnionArray};
-use criterion::{criterion_group, Criterion};
+use criterion::Criterion;
 use itertools::Itertools;
 
 use re_log_types::{DataCell, SizeBytes as _};
@@ -19,7 +19,7 @@ use re_types::{
 
 // ---
 
-criterion_group!(benches, erased_clone, estimated_size_bytes);
+criterion::criterion_group!(benches, erased_clone, estimated_size_bytes);
 
 #[cfg(not(feature = "core_benchmarks_only"))]
 criterion::criterion_main!(benches);
