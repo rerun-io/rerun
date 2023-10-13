@@ -6,6 +6,8 @@
     "gaborv.flatbuffers",
     "github.vscode-github-actions",
     "josetr.cmake-language-support-vscode",
+    "ms-python.black-formatter",
+    "ms-python.mypy-type-checker",
     "ms-python.python",
     "ms-vscode.cmake-tools",
     "ms-vscode.cpptools-extension-pack",
@@ -18,7 +20,7 @@
     "vadimcn.vscode-lldb",
     "wayou.vscode-todo-highlight",
     "webfreak.debug",
-    "xaver.clang-format",  // C++ formatter
+    "xaver.clang-format", // C++ formatter
     "zxh404.vscode-proto3",
   ]
 }
