@@ -8,10 +8,11 @@ int main(int argc, char** argv) {
     rec.save(argv[1]).throw_on_failure();
 
     std::vector<rerun::datatypes::TensorDimension> dimensions{
-        rerun::datatypes::TensorDimension{3, std::nullopt},
-        rerun::datatypes::TensorDimension{4, std::nullopt},
-        rerun::datatypes::TensorDimension{5, std::nullopt},
-        rerun::datatypes::TensorDimension{6, std::nullopt}};
+        rerun::datatypes::TensorDimension{3},
+        rerun::datatypes::TensorDimension{4},
+        rerun::datatypes::TensorDimension{5},
+        rerun::datatypes::TensorDimension{6},
+    };
 
     std::vector<int32_t> data;
     for (auto i = 0; i < 360; ++i) {

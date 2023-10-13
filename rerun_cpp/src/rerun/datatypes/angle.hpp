@@ -66,7 +66,7 @@ namespace rerun {
                 return *this;
             }
 
-            Angle(Angle &&other) noexcept : _tag(detail::AngleTag::NONE) {
+            Angle(Angle &&other) noexcept : Angle() {
                 this->swap(other);
             }
 
@@ -76,9 +76,7 @@ namespace rerun {
             }
 
             void swap(Angle &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 

@@ -50,7 +50,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         &rerun::Boxes3D::from_half_sizes([(LENGTH_S, LENGTH_S, 1.0)]),
     )?;
 
-    fn pos(angle: f32, length: f32) -> [f32; 3] {
+    fn tip(angle: f32, length: f32) -> [f32; 3] {
         [length * angle.sin(), length * angle.cos(), 0.0]
     }
 
@@ -68,7 +68,7 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         width: f32,
         blue: u8,
     ) -> anyhow::Result<()> {
-        let pos = pos(angle * TAU, length);
+        let pos = tip(angle * TAU, length);
         let color = color(angle, blue);
 
         rec.set_time_seconds("sim_time", step as f64);

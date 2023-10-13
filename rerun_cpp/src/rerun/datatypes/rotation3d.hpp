@@ -70,7 +70,7 @@ namespace rerun {
                 return *this;
             }
 
-            Rotation3D(Rotation3D &&other) noexcept : _tag(detail::Rotation3DTag::NONE) {
+            Rotation3D(Rotation3D &&other) noexcept : Rotation3D() {
                 this->swap(other);
             }
 
@@ -85,9 +85,7 @@ namespace rerun {
             // static const Rotation3D IDENTITY;
 
             void swap(Rotation3D &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 

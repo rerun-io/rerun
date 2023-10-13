@@ -964,7 +964,7 @@ impl QuotedObject {
                         }
 
                         // Move-constructor:
-                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : _tag(detail::#tag_typename::NONE) {
+                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : #pascal_case_ident() {
                             this->swap(other);
                         }
 
@@ -980,10 +980,8 @@ impl QuotedObject {
 
                         // This is useful for easily implementing the move constructor and assignment operators:
                         void swap(#pascal_case_ident& other) noexcept {
-                            // Swap tags:
-                            auto tag_temp = this->_tag;
-                            this->_tag = other._tag;
-                            other._tag = tag_temp;
+                            // Swap tags: Not using std::swap here causes a warning for some gcc version about potentially uninitialized data.
+                            std::swap(this->_tag, other._tag);
 
                             // Swap data:
                             this->_data.swap(other._data);

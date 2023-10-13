@@ -10,8 +10,8 @@ int main() {
     rec.connect("127.0.0.1:9876").throw_on_failure();
 
     std::default_random_engine gen;
-    std::uniform_real_distribution<float> dist_pos(-5.0, 5.0);
-    std::uniform_real_distribution<float> dist_radius(0.1, 1.0);
+    std::uniform_real_distribution<float> dist_pos(-5.0f, 5.0f);
+    std::uniform_real_distribution<float> dist_radius(0.1f, 1.0f);
     std::uniform_int_distribution<uint8_t> dist_color(0, 255);
 
     std::vector<rerun::components::Position2D> points2d(10);

@@ -29,7 +29,7 @@ int main() {
     };
 
     // Log a handful of arrows.
-    for (int i = 0; i < vectors.size(); ++i) {
+    for (size_t i = 0; i < vectors.size(); ++i) {
         auto entity_path = "arrows/" + std::to_string(i);
         rec.log(
             entity_path.c_str(),
@@ -40,7 +40,7 @@ int main() {
     }
 
     // Now clear them, one by one on each tick.
-    for (int i = 0; i < vectors.size(); ++i) {
+    for (size_t i = 0; i < vectors.size(); ++i) {
         auto entity_path = "arrows/" + std::to_string(i);
         rec.log(entity_path.c_str(), rerun::Clear::FLAT);
     }
