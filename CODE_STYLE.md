@@ -142,7 +142,7 @@ const auto bar = SomeClass::new_xyzw(…);
 We use `{}` for constructors (`Foo{…}` instead of `Foo(…)`).
 
 ### Misc
-We don't add `inline ` before class/struct methods.
+We don't add `inline ` before class/struct member functions if they are inlined in the class/struct definition.
 
 ### Members
 We prefix _private_ member variables with a `_`:
