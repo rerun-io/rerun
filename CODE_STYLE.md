@@ -126,7 +126,6 @@ Use `re_error::format(err)` when displaying an error.
 
 
 ## C++
-For compatibility reasons we use C++11 (and nothing newer).
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
 
 ### Initialization
@@ -142,7 +141,7 @@ const auto bar = SomeClass::new_xyzw(…);
 We use `{}` for constructors (`Foo{…}` instead of `Foo(…)`).
 
 ### Misc
-We don't add `inline ` before class/struct member functions if they are inlined in the class/struct definition.
+We don't add `inline` before class/struct member functions if they are inlined in the class/struct definition.
 
 ### Members
 We prefix _private_ member variables with a `_`:
