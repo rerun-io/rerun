@@ -126,6 +126,25 @@ Use `re_error::format(err)` when displaying an error.
 
 
 ## C++
+For compatibility reasons we use C++11 (and nothing newer).
+We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
+
+### Initialization
+Always use `const` unless you plan on mutating it.
+
+We use `const auto x = …` for declaration because that gives symmetric code for normal constructors and static constructors:
+
+```C++
+const auto foo = SomeClass{…};
+const auto bar = SomeClass::new_xyzw(…);
+```
+
+We use `{}` for constructors (`Foo{…}` instead of `Foo(…)`).
+
+### Misc
+We don't add `inline ` before class/struct methods.
+
+### Members
 We prefix _private_ member variables with a `_`:
 
 ```C++
