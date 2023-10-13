@@ -58,7 +58,9 @@ namespace rerun {
                     static_cast<arrow::HalfFloatBuilder *>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].single_half));
+                    ARROW_RETURN_NOT_OK(field_builder->Append(
+                        *reinterpret_cast<const uint16_t *>(&(elements[elem_idx].single_half))
+                    ));
                 }
             }
             {

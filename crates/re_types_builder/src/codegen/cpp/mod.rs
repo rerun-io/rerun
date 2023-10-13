@@ -1634,11 +1634,18 @@ fn quote_append_single_value_to_builder(
         | Type::Int32
         | Type::Int64
         | Type::Bool
-        | Type::Float16
         | Type::Float32
         | Type::Float64
         | Type::String => {
             quote!(ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access));)
+        }
+        Type::Float16 => {
+            // Cast `rerun::half` to a `uint16_t``
+            quote! {
+                ARROW_RETURN_NOT_OK(#value_builder->Append(
+                    *reinterpret_cast<const uint16_t*>(&(#value_access))
+                ));
+            }
         }
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
             let num_items_per_element = quote_num_items_per_value(typ, &value_access);
