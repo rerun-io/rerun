@@ -1653,12 +1653,21 @@ fn quote_append_single_value_to_builder(
                 | ElementType::Int32
                 | ElementType::Int64
                 | ElementType::Bool
-                | ElementType::Float16
                 | ElementType::Float32
                 | ElementType::Float64 => {
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
                         ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(#num_items_per_element), nullptr));
+                    }
+                }
+                ElementType::Float16 => {
+                    // We need to convert `rerun::half` to `uint16_t`:
+                    let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
+                    quote! {
+                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
+                            reinterpret_cast<const uint16_t*>(#field_ptr_accessor),
+                            static_cast<int64_t>(#num_items_per_element), nullptr)
+                        );
                     }
                 }
                 ElementType::String => {

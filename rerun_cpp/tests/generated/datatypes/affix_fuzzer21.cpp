@@ -72,7 +72,7 @@ namespace rerun {
                     const auto &element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                        element.many_halves.data(),
+                        reinterpret_cast<const uint16_t *>(element.many_halves.data()),
                         static_cast<int64_t>(element.many_halves.size()),
                         nullptr
                     ));
