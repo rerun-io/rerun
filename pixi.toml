@@ -7,8 +7,10 @@ channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64", "win-64"]
 
 [tasks]
+# Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
 
-codegen = "cargo codegen"
+# Run the codegen. Optionally pass `--profile` argument if you want.
+codegen = "cargo run --package re_types_builder -- "
 
 py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
