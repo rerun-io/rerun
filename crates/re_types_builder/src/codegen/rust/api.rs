@@ -102,11 +102,6 @@ impl RustCodeGenerator {
         let folder_name = object_kind.plural_snake_case();
         let kind_path = self.crate_path.join("src").join(folder_name);
         let kind_testing_path = self.crate_path.join("src/testing").join(folder_name);
-        //
-        // TODO
-        // if object_kind == ObjectKind::Blueprint {
-        //     panic!("{:?}", objects.ordered_objects(object_kind.into()))
-        // }
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
