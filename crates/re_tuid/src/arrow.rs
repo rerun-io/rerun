@@ -27,7 +27,7 @@ impl Loggable for Tuid {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.control.TUID".into()
+        "rerun.controls.TUID".into()
     }
 
     #[inline]
@@ -68,7 +68,9 @@ impl Loggable for Tuid {
             UInt64Array::from_vec(inc_values).boxed(),
         ];
         let validity = None;
-        Ok(StructArray::new(Self::arrow_datatype(), values, validity).boxed())
+
+        // TODO(#3360): We use the extended type here because we rely on it for formatting.
+        Ok(StructArray::new(Self::extended_arrow_datatype(), values, validity).boxed())
     }
 
     fn from_arrow(

@@ -38,8 +38,7 @@ pub fn get_custom_display<'a, F: std::fmt::Write + 'a>(
 
     if let Some(DataType::Extension(name, _, _)) = datatype {
         // TODO(#1775): This should be registered dynamically.
-        // NOTE: Can't call `Tuid::name()`, `Component` lives in `re_log_types`.
-        if name.as_str() == "rerun.tuid" {
+        if name.as_str() == Tuid::name() {
             return Box::new(|w, index| {
                 if let Some(tuid) = parse_tuid(array, index) {
                     w.write_fmt(format_args!("{tuid}"))
@@ -226,7 +225,11 @@ where
         .map(|(name, data_type)| {
             Cell::new(format!(
                 "{}\n---\n{}",
-                name.replace("rerun.components.", "").replace("rerun.", ""),
+                name.replace("rerun.archetypes.", "")
+                    .replace("rerun.components.", "")
+                    .replace("rerun.datatypes.", "")
+                    .replace("rerun.controls.", "")
+                    .replace("rerun.", ""),
                 DisplayDataType(data_type.clone())
             ))
         });

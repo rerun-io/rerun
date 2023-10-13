@@ -176,7 +176,7 @@ impl std::ops::DerefMut for TableId {
     }
 }
 
-re_tuid::delegate_arrow_tuid!(TableId as "rerun.control.TableId");
+re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 
 /// A sparse table's worth of data, i.e. a batch of events: a collection of [`DataRow`]s.
 /// This is the top-level layer in our data model.
