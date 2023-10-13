@@ -18,9 +18,17 @@ fn bench_arrow(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(1));
 
         let tuid = re_tuid::Tuid::random();
+
         group.bench_function("arrow2_convert", |b| {
             b.iter(|| {
                 let data: Box<dyn Array> = vec![tuid].try_into_arrow().unwrap();
+                criterion::black_box(data)
+            });
+        });
+
+        group.bench_function("arrow2", |b| {
+            b.iter(|| {
+                let data: Box<dyn Array> = tuid.as_arrow();
                 criterion::black_box(data)
             });
         });
@@ -31,10 +39,18 @@ fn bench_arrow(c: &mut Criterion) {
         group.throughput(criterion::Throughput::Elements(1));
 
         let data: Box<dyn Array> = vec![re_tuid::Tuid::random()].try_into_arrow().unwrap();
+
         group.bench_function("arrow2_convert", |b| {
             b.iter(|| {
                 let tuids: Vec<re_tuid::Tuid> = data.as_ref().try_into_collection().unwrap();
                 criterion::black_box(tuids)
+            });
+        });
+
+        group.bench_function("arrow2", |b| {
+            b.iter(|| {
+                let tuid = re_tuid::Tuid::from_arrow(data.as_ref()).unwrap();
+                criterion::black_box(tuid)
             });
         });
     }
