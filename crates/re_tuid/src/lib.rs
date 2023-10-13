@@ -7,10 +7,6 @@
 //!
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(
-    feature = "arrow2_convert",
-    derive(arrow2_convert::ArrowSerialize, arrow2_convert::ArrowDeserialize)
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
