@@ -36,6 +36,7 @@ web-time.workspace = true
 arrow2 = { workspace = true, optional = true }                    # used by arrow2_convert
 arrow2_convert = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
+thiserror = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = "0.5"

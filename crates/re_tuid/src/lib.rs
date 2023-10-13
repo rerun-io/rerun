@@ -22,6 +22,9 @@ pub struct Tuid {
 }
 
 #[cfg(feature = "arrow2_convert")]
+mod arrow;
+
+#[cfg(feature = "arrow2_convert")]
 arrow2_convert::arrow_enable_vec_for_type!(Tuid);
 
 // TODO(#3741): shouldn't have to write this manually
