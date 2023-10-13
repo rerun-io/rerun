@@ -11,7 +11,7 @@
 
 [project]
 name = "rerun"
-authors = ["Jeremy Leibs <jeremy@rerun.io>"]
+authors = ["rerun.io <opensource@rerun.io>"]
 channels = ["conda-forge"]
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 homepage = "https://rerun.io"
