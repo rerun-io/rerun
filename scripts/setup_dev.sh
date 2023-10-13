@@ -9,7 +9,7 @@ set -x
 ./scripts/setup.sh
 
 # Install
-cargo binstall pixi || cargo install pixi
+curl -fsSL https://pixi.sh/install.sh | bash
 
 cargo install cargo-cranky # Uses lints defined in Cranky.toml. See https://github.com/ericseppanen/cargo-cranky
 cargo install --locked cargo-deny # https://github.com/EmbarkStudios/cargo-deny
