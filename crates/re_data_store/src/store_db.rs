@@ -4,9 +4,8 @@ use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
 use re_log_types::{
-    ApplicationId, ArrowMsg, ComponentPath, DataCell, DataRow, DataTable, EntityPath,
-    EntityPathHash, EntityPathOpMsg, LogMsg, PathOp, RowId, SetStoreInfo, StoreId, StoreInfo,
-    StoreKind, TimePoint, Timeline,
+    ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
+    PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
 use re_types::{components::InstanceKey, Loggable as _};
 
@@ -15,6 +14,8 @@ use crate::{Error, TimesPerTimeline};
 // ----------------------------------------------------------------------------
 
 /// Stored entities with easy indexing of the paths.
+///
+/// NOTE: don't go mutating the contents of this. Use the public functions instead.
 pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
@@ -74,45 +75,12 @@ impl EntityDb {
             .or_insert_with(|| entity_path.clone());
     }
 
-    fn try_add_arrow_msg(&mut self, msg: &ArrowMsg) -> Result<(), Error> {
-        re_tracing::profile_function!();
-
-        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
-        let mut table = DataTable::from_arrow_msg(msg)?;
-        table.compute_all_size_bytes();
-
-        // TODO(cmc): batch all of this
-        for row in table.to_rows() {
-            let row = row?;
-
-            self.register_entity_path(&row.entity_path);
-
-            self.try_add_data_row(&row)?;
-
-            // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
-            // instead.
-            use re_types::components::ClearIsRecursive;
-            if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
-                let cell = &row.cells()[idx];
-                let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();
-                let path_op = if settings.map_or(false, |s| s.0) {
-                    PathOp::ClearRecursive(row.entity_path.clone())
-                } else {
-                    PathOp::ClearComponents(row.entity_path.clone())
-                };
-                // NOTE: We've just added the row itself, so make sure to bump the row ID already!
-                self.add_path_op(row.row_id().next(), row.timepoint(), &path_op);
-            }
-        }
-
-        Ok(())
-    }
-
-    // TODO(jleibs): If this shouldn't be public, chain together other setters
     // TODO(cmc): Updates of secondary datastructures should be the result of subscribing to the
     // datastore's changelog and reacting to these changes appropriately. We shouldn't be creating
     // many sources of truth.
-    pub fn try_add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+    fn add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+        self.register_entity_path(&row.entity_path);
+
         for (&timeline, &time_int) in row.timepoint().iter() {
             self.times_per_timeline.insert(timeline, time_int);
         }
@@ -144,7 +112,24 @@ impl EntityDb {
             }
         }
 
-        self.data_store.insert_row(row).map_err(Into::into)
+        self.data_store.insert_row(row)?;
+
+        // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
+        // instead.
+        use re_types::components::ClearIsRecursive;
+        if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
+            let cell = &row.cells()[idx];
+            let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();
+            let path_op = if settings.map_or(false, |s| s.0) {
+                PathOp::ClearRecursive(row.entity_path.clone())
+            } else {
+                PathOp::ClearComponents(row.entity_path.clone())
+            };
+            // NOTE: We've just added the row itself, so make sure to bump the row ID already!
+            self.add_path_op(row.row_id().next(), row.timepoint(), &path_op);
+        }
+
+        Ok(())
     }
 
     fn add_path_op(&mut self, row_id: RowId, time_point: &TimePoint, path_op: &PathOp) {
@@ -226,49 +211,47 @@ impl EntityDb {
 // ----------------------------------------------------------------------------
 
 /// A in-memory database built from a stream of [`LogMsg`]es.
+///
+/// NOTE: all mutation is to be done via public functions!
 pub struct StoreDb {
     /// The [`StoreId`] for this log.
     store_id: StoreId,
-
-    /// All [`EntityPathOpMsg`]s ever received.
-    entity_op_msgs: BTreeMap<RowId, EntityPathOpMsg>,
 
     /// Set by whomever created this [`StoreDb`].
     pub data_source: Option<re_smart_channel::SmartChannelSource>,
 
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
-    recording_msg: Option<SetStoreInfo>,
+    set_store_info: Option<SetStoreInfo>,
 
     /// Where we store the entities.
-    pub entity_db: EntityDb,
+    entity_db: EntityDb,
 }
 
 impl StoreDb {
     pub fn new(store_id: StoreId) -> Self {
         Self {
             store_id,
-            entity_op_msgs: Default::default(),
             data_source: None,
-            recording_msg: None,
+            set_store_info: None,
             entity_db: Default::default(),
         }
     }
 
-    pub fn recording_msg(&self) -> Option<&SetStoreInfo> {
-        self.recording_msg.as_ref()
+    #[inline]
+    pub fn entity_db(&self) -> &EntityDb {
+        &self.entity_db
+    }
+
+    pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
+        self.set_store_info.as_ref()
     }
 
     pub fn store_info(&self) -> Option<&StoreInfo> {
-        self.recording_msg().map(|msg| &msg.info)
+        self.store_info_msg().map(|msg| &msg.info)
     }
 
     pub fn app_id(&self) -> Option<&ApplicationId> {
         self.store_info().map(|ri| &ri.application_id)
-    }
-
-    #[inline]
-    pub fn store_mut(&mut self) -> &mut re_arrow_store::DataStore {
-        &mut self.entity_db.data_store
     }
 
     #[inline]
@@ -308,7 +291,7 @@ impl StoreDb {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.recording_msg.is_none() && self.num_rows() == 0
+        self.set_store_info.is_none() && self.num_rows() == 0
     }
 
     pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
@@ -317,41 +300,55 @@ impl StoreDb {
         debug_assert_eq!(msg.store_id(), self.store_id());
 
         match &msg {
-            LogMsg::SetStoreInfo(msg) => self.add_begin_recording_msg(msg),
-            LogMsg::EntityPathOpMsg(_, msg) => {
-                let EntityPathOpMsg {
-                    row_id,
-                    time_point,
-                    path_op,
-                } = msg;
-                self.entity_op_msgs.insert(*row_id, msg.clone());
-                self.entity_db.add_path_op(*row_id, time_point, path_op);
+            LogMsg::SetStoreInfo(msg) => self.set_store_info(msg.clone()),
+
+            LogMsg::ArrowMsg(_, arrow_msg) => {
+                let table = DataTable::from_arrow_msg(arrow_msg)?;
+                self.add_data_table(table)?;
             }
-            LogMsg::ArrowMsg(_, inner) => self.entity_db.try_add_arrow_msg(inner)?,
         }
 
         Ok(())
     }
 
-    pub fn add_begin_recording_msg(&mut self, msg: &SetStoreInfo) {
-        self.recording_msg = Some(msg.clone());
+    pub fn add_data_table(&mut self, mut table: DataTable) -> Result<(), Error> {
+        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
+        table.compute_all_size_bytes();
+
+        // TODO(cmc): batch all of this
+        for row in table.to_rows() {
+            let row = row?;
+            self.add_data_row(&row)?;
+        }
+
+        Ok(())
     }
 
-    /// Returns an iterator over all [`EntityPathOpMsg`]s that have been written to this `StoreDb`.
-    pub fn iter_entity_op_msgs(&self) -> impl Iterator<Item = &EntityPathOpMsg> {
-        self.entity_op_msgs.values()
+    pub fn add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+        self.entity_db.add_data_row(row)
     }
 
-    pub fn get_entity_op_msg(&self, row_id: &RowId) -> Option<&EntityPathOpMsg> {
-        self.entity_op_msgs.get(row_id)
+    pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
+        self.set_store_info = Some(store_info);
+    }
+
+    pub fn gc_everything_but_the_latest_row(&mut self) {
+        re_tracing::profile_function!();
+
+        self.gc(GarbageCollectionOptions {
+            target: re_arrow_store::GarbageCollectionTarget::Everything,
+            gc_timeless: true,
+            protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
+            purge_empty_tables: true,
+        });
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
-        assert!((0.0..=1.0).contains(&fraction_to_purge));
 
-        let (deleted, stats_diff) = self.entity_db.data_store.gc(GarbageCollectionOptions {
+        assert!((0.0..=1.0).contains(&fraction_to_purge));
+        self.gc(GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
@@ -359,6 +356,12 @@ impl StoreDb {
             protect_latest: 1,
             purge_empty_tables: false,
         });
+    }
+
+    pub fn gc(&mut self, gc_options: GarbageCollectionOptions) {
+        re_tracing::profile_function!();
+
+        let (deleted, stats_diff) = self.entity_db.data_store.gc(gc_options);
         re_log::trace!(
             num_row_ids_dropped = deleted.row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
@@ -367,16 +370,10 @@ impl StoreDb {
 
         let Self {
             store_id: _,
-            entity_op_msgs,
             data_source: _,
-            recording_msg: _,
+            set_store_info: _,
             entity_db,
         } = self;
-
-        {
-            re_tracing::profile_scope!("entity_op_msgs");
-            entity_op_msgs.retain(|row_id, _| !deleted.row_ids.contains(row_id));
-        }
 
         entity_db.purge(&deleted);
     }

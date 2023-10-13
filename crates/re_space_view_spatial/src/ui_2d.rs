@@ -1,6 +1,9 @@
-use eframe::emath::RectTransform;
-use egui::{pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape, Vec2};
+use egui::{
+    emath::RectTransform, pos2, vec2, Align2, Color32, NumExt as _, Pos2, Rect, ScrollArea, Shape,
+    Vec2,
+};
 use macaw::IsoTransform;
+
 use re_data_store::EntityPath;
 use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};

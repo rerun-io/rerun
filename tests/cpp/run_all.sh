@@ -10,8 +10,5 @@ echo "------------ Building all C++ Examples ------------"
 echo "------------ Building & running SDK tests ------------"
 /bin/bash ./rerun_cpp/build_and_run_tests.sh $@
 
-echo "------------ Building & running minimal example ------------"
-/bin/bash ./examples/cpp/minimal/build_and_run.sh $@
-
 echo "------------ Running roundtrip tests ------------"
 python ./tests/roundtrips.py

@@ -124,11 +124,11 @@ impl RenderPipelineDesc {
             .get_resource(self.pipeline_layout)
             .map_err(RenderPipelineError::PipelineLayout);
 
-        let Ok(vertex_shader_module) = shader_modules
+        let vertex_shader_module = shader_modules
             .get(self.vertex_handle)
             .map_err(RenderPipelineError::VertexShaderNotFound);
 
-        let Ok(fragment_shader_module) = shader_modules
+        let fragment_shader_module = shader_modules
             .get(self.fragment_handle)
             .map_err(RenderPipelineError::FragmentShaderNotFound);
 
@@ -143,12 +143,22 @@ impl RenderPipelineDesc {
                 label: self.label.get(),
                 layout: pipeline_layout.map_or(None, |layout| Some(&layout.layout)),
                 vertex: wgpu::VertexState {
-                    module: vertex_shader_module,
+                    module: match vertex_shader_module {
+                        Ok(module) => module,
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    },
                     entry_point: &self.vertex_entrypoint,
                     buffers: &buffers,
                 },
                 fragment: wgpu::FragmentState {
-                    module: fragment_shader_module,
+                    module: match fragment_shader_module {
+                        Ok(module) => module,
+                        Err(err) => {
+                            return Err(err);
+                        }
+                    },
                     entry_point: &self.fragment_entrypoint,
                     targets: &self.render_targets,
                 }
@@ -223,10 +233,17 @@ impl GpuRenderPipelinePool {
                     Some(sm)
                 }
                 Err(err) => {
-                    re_log::error!(
-                        "Failed to compile render pipeline: {}",
-                        re_error::format(err)
-                    );
+                    match err {
+                        RenderPipelineError::PipelineLayout(_) => {
+                            re_log::error!("Failed to compile render pipeline: {}", err);
+                        }
+                        RenderPipelineError::VertexShaderNotFound(_) => {
+                            re_log::error!("Failed to compile render pipeline: {}", err);
+                        }
+                        RenderPipelineError::FragmentShaderNotFound(_) => {
+                            re_log::error!("Failed to compile render pipeline: {}", err);
+                        }
+                    }
                     None
                 }
             }

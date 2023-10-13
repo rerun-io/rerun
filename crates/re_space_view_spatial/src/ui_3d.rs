@@ -1,5 +1,4 @@
-use eframe::emath::RectTransform;
-use egui::NumExt as _;
+use egui::{emath::RectTransform, NumExt as _};
 use glam::Affine3A;
 use macaw::{vec3, BoundingBox, Quat, Vec3};
 

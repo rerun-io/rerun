@@ -342,7 +342,7 @@ pub fn instance_hover_card_ui(
     let query = ctx.current_query();
 
     if instance_path.instance_key.is_splat() {
-        let store = &ctx.store_db.entity_db.data_store;
+        let store = ctx.store_db.store();
         let stats = store.entity_stats(query.timeline, instance_path.entity_path.hash());
         entity_stats_ui(ui, &query.timeline, &stats);
     } else {

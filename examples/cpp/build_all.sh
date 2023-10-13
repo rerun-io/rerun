@@ -2,8 +2,9 @@
 
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-cd "$script_path/../../.."
+cd "$script_path/../.."
 set -x
+
 
 WERROR=false
 
@@ -31,7 +32,5 @@ pushd build
     else
         cmake -DCMAKE_BUILD_TYPE=Debug ..
     fi
-    cmake --build . --config Debug --target rerun_example -j ${num_threads}
+    cmake --build . --config Debug --target examples -j ${num_threads}
 popd
-
-./build/examples/cpp/minimal/rerun_example

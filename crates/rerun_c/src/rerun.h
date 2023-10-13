@@ -117,6 +117,7 @@ enum {
     _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
     RR_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
+    RR_ERROR_CODE_RECORDING_STREAM_INVALID_TIMELINE_TYPE,
 
     // Arrow data processing errors.
     _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
@@ -204,11 +205,61 @@ extern void rr_recording_stream_save(rr_recording_stream stream, const char* pat
 /// No-op for destroyed/non-existing streams.
 extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 
+/// Set the current time of the recording, for the current calling thread.
+///
+/// Used for all subsequent logging performed from this same thread, until the next call
+/// to one of the time setting methods.
+///
+/// For example:
+/// `rr_recording_stream_set_time_sequence(stream, "frame_nr", &frame_nr, &err)`.
+extern void rr_recording_stream_set_time_sequence(
+    rr_recording_stream stream, const char* timeline_name, int64_t sequence, rr_error* error
+);
+
+/// Set the current time of the recording, for the current calling thread.
+///
+/// Used for all subsequent logging performed from this same thread, until the next call
+/// to one of the time setting methods.
+///
+/// For example:
+/// `rr_recording_stream_set_time_seconds(stream, "sim_time", sim_time_secs, &err)`.
+extern void rr_recording_stream_set_time_seconds(
+    rr_recording_stream stream, const char* timeline_name, double seconds, rr_error* error
+);
+
+/// Set the current time of the recording, for the current calling thread.
+///
+/// Used for all subsequent logging performed from this same thread, until the next call
+/// to one of the time setting methods.
+///
+/// For example:
+/// `rr_recording_stream_set_time_nanos(stream, "sim_time", sim_time_nanos, &err)`.
+extern void rr_recording_stream_set_time_nanos(
+    rr_recording_stream stream, const char* timeline_name, int64_t ns, rr_error* error
+);
+
+/// Stops logging to the specified timeline for subsequent log calls.
+///
+/// The timeline is still there, but it will not be updated with any new data.
+///
+/// No-op if the timeline doesn't exist.
+void rr_recording_stream_disable_timeline(
+    rr_recording_stream stream, const char* timeline_name, rr_error* error
+);
+
+/// Clears out the current time of the recording, for the current calling thread.
+///
+/// Used for all subsequent logging performed from this same thread, until the next call
+/// to one of the time setting methods.
+///
+/// No-op for destroyed/non-existing streams.
+extern void rr_recording_stream_reset_time(rr_recording_stream stream);
+
 /// Log the given data to the given stream.
 ///
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
-extern void rr_log(
+extern void rr_recording_stream_log(
     rr_recording_stream stream, const rr_data_row* data_row, bool inject_time, rr_error* error
 );
 

@@ -228,9 +228,6 @@ pub enum LogMsg {
     /// Should usually be the first message sent.
     SetStoreInfo(SetStoreInfo),
 
-    /// Server-backed operation on an [`EntityPath`].
-    EntityPathOpMsg(StoreId, EntityPathOpMsg),
-
     /// Log an entity using an [`ArrowMsg`].
     ArrowMsg(StoreId, ArrowMsg),
 }
@@ -239,7 +236,7 @@ impl LogMsg {
     pub fn store_id(&self) -> &StoreId {
         match self {
             Self::SetStoreInfo(msg) => &msg.info.store_id,
-            Self::EntityPathOpMsg(store_id, _) | Self::ArrowMsg(store_id, _) => store_id,
+            Self::ArrowMsg(store_id, _) => store_id,
         }
     }
 }
@@ -371,24 +368,6 @@ impl std::fmt::Display for StoreSource {
 }
 
 // ----------------------------------------------------------------------------
-
-/// An operation (like a 'clear') on an [`EntityPath`].
-#[must_use]
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub struct EntityPathOpMsg {
-    /// A unique id per [`EntityPathOpMsg`].
-    pub row_id: RowId,
-
-    /// Time information (when it was logged, when it was received, …).
-    ///
-    /// If this is empty, no operation will be performed as we
-    /// cannot be timeless in a meaningful way.
-    pub time_point: TimePoint,
-
-    /// What operation.
-    pub path_op: PathOp,
-}
 
 /// Operation to perform on an [`EntityPath`], e.g. clearing all components.
 #[derive(Clone, Debug, PartialEq, Eq)]

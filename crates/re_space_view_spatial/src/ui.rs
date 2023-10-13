@@ -1,5 +1,4 @@
-use eframe::epaint::text::TextWrapping;
-use egui::{NumExt, WidgetText};
+use egui::{text::TextWrapping, NumExt, WidgetText};
 use macaw::BoundingBox;
 
 use re_data_store::EntityPath;
@@ -518,7 +517,7 @@ pub fn picking(
     // TODO(#1818): Depth at pointer only works for depth images so far.
     let mut depth_at_pointer = None;
     for hit in &picking_result.hits {
-        let Some(mut instance_path) = hit.instance_path_hash.resolve(&ctx.store_db.entity_db)
+        let Some(mut instance_path) = hit.instance_path_hash.resolve(ctx.store_db.entity_db())
         else {
             continue;
         };

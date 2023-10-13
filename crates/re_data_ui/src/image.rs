@@ -33,8 +33,7 @@ impl EntityDataUi for re_types::components::TensorData {
 
         let tensor_data_row_id = ctx
             .store_db
-            .entity_db
-            .data_store
+            .store()
             .query_latest_component::<re_types::components::TensorData>(entity_path, query)
             .map_or(RowId::ZERO, |tensor| tensor.row_id);
 

@@ -3,15 +3,16 @@ use itertools::Itertools;
 use nohash_hasher::{IntMap, IntSet};
 
 use re_arrow_store::{LatestAtQuery, Timeline};
-use re_data_store::EntityPath;
+use re_data_store::{EntityPath, EntityTree};
+use re_log_types::TimeInt;
 use re_types::{
     archetypes::{Image, SegmentationImage},
     components::{DisconnectedSpace, TensorData},
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    AutoSpawnHeuristic, SpaceViewClassName, ViewContextCollection, ViewPartCollection,
-    ViewSystemName, ViewerContext,
+    AutoSpawnHeuristic, HeuristicFilterContext, SpaceViewClassName, ViewContextCollection,
+    ViewPartCollection, ViewSystemName, ViewerContext,
 };
 use tinyvec::TinyVec;
 
@@ -44,7 +45,7 @@ fn candidate_space_view_paths<'a>(
 ) -> impl Iterator<Item = &'a EntityPath> {
     // Everything with a SpaceInfo is a candidate (that is root + whenever there is a transform),
     // as well as all direct descendants of the root.
-    let root_children = &ctx.store_db.entity_db.tree.children;
+    let root_children = &ctx.store_db.entity_db().tree.children;
     spaces_info
         .iter()
         .map(|info| &info.path)
@@ -413,13 +414,20 @@ pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
     class: &SpaceViewClassName,
     ent_path: &EntityPath,
+    heuristic_ctx: HeuristicFilterContext,
     query: &LatestAtQuery,
 ) -> bool {
     let parts = ctx
         .space_view_class_registry
         .get_system_registry_or_log_error(class)
         .new_part_collection();
-    is_entity_processed_by_part_collection(ctx.store_db.store(), &parts, ent_path, query)
+    is_entity_processed_by_part_collection(
+        ctx.store_db.store(),
+        &parts,
+        ent_path,
+        heuristic_ctx.with_class(*class),
+        query,
+    )
 }
 
 /// Returns true if an entity is processed by any of the given [`re_viewer_context::ViewPartSystem`]s.
@@ -427,6 +435,7 @@ fn is_entity_processed_by_part_collection(
     store: &re_arrow_store::DataStore,
     parts: &ViewPartCollection,
     ent_path: &EntityPath,
+    ctx: HeuristicFilterContext,
     query: &LatestAtQuery,
 ) -> bool {
     let timeline = Timeline::log_time();
@@ -436,12 +445,59 @@ fn is_entity_processed_by_part_collection(
         .into_iter()
         .collect();
     for part in parts.iter() {
-        if part.heuristic_filter(store, ent_path, query, &components) {
+        if part.heuristic_filter(store, ent_path, ctx, query, &components) {
             return true;
         }
     }
 
     false
+}
+
+pub type HeuristicFilterContextPerEntity = IntMap<EntityPath, HeuristicFilterContext>;
+
+pub fn compute_heuristic_context_for_entities(
+    ctx: &ViewerContext<'_>,
+) -> HeuristicFilterContextPerEntity {
+    let mut heuristic_context = IntMap::default();
+
+    // Use "right most"/latest available data.
+    let timeline = Timeline::log_time();
+    let query_time = TimeInt::MAX;
+    let query = LatestAtQuery::new(timeline, query_time);
+
+    let tree = &ctx.store_db.entity_db().tree;
+
+    fn visit_children_recursively(
+        has_parent_pinhole: bool,
+        tree: &EntityTree,
+        store: &re_arrow_store::DataStore,
+        query: &LatestAtQuery,
+        heuristic_context: &mut HeuristicFilterContextPerEntity,
+    ) {
+        let has_parent_pinhole =
+            has_parent_pinhole || query_pinhole(store, query, &tree.path).is_some();
+
+        heuristic_context.insert(
+            tree.path.clone(),
+            HeuristicFilterContext {
+                class: SpaceViewClassName::invalid(),
+                has_ancestor_pinhole: has_parent_pinhole,
+            },
+        );
+
+        for child in tree.children.values() {
+            visit_children_recursively(has_parent_pinhole, child, store, query, heuristic_context);
+        }
+    }
+
+    visit_children_recursively(
+        false,
+        tree,
+        &ctx.store_db.entity_db().data_store,
+        &query,
+        &mut heuristic_context,
+    );
+    heuristic_context
 }
 
 pub fn identify_entities_per_system_per_class(
@@ -498,8 +554,9 @@ pub fn identify_entities_per_system_per_class(
 
     let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
 
+    let heuristic_context = compute_heuristic_context_for_entities(ctx);
     let store = ctx.store_db.store();
-    for ent_path in ctx.store_db.entity_db.entity_paths() {
+    for ent_path in ctx.store_db.entity_db().entity_paths() {
         let Some(components) = store.all_components(&re_log_types::Timeline::log_time(), ent_path)
         else {
             continue;
@@ -522,6 +579,11 @@ pub fn identify_entities_per_system_per_class(
                         if !view_part_system.heuristic_filter(
                             store,
                             ent_path,
+                            heuristic_context
+                                .get(ent_path)
+                                .copied()
+                                .unwrap_or_default()
+                                .with_class(*class),
                             &ctx.current_query(),
                             &all_components,
                         ) {

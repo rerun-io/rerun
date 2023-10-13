@@ -115,7 +115,7 @@ impl TimeSeriesSystem {
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
-        let store = &ctx.store_db.entity_db.data_store;
+        let store = ctx.store_db.store();
 
         for (ent_path, _ent_props) in query.iter_entities_for_system(Self::name()) {
             let mut points = Vec::new();
