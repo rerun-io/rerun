@@ -1,81 +1,86 @@
 use arrow2::{
-    array::{Array, StructArray, UInt64Array},
+    array::{StructArray, UInt64Array},
     datatypes::{DataType, Field},
 };
+use re_types::Loggable;
 
 use crate::Tuid;
 
 // ---
 
-pub type DeserializationResult<T> = ::std::result::Result<T, DeserializationError>;
-
-#[derive(Debug, thiserror::Error, Clone)]
-pub enum DeserializationError {
-    #[error("Expected {expected:#?} but found {got:#?} instead")]
-    DatatypeMismatch {
-        expected: ::arrow2::datatypes::DataType,
-        got: ::arrow2::datatypes::DataType,
-    },
-
-    #[error("Found {time_ns_length} \"time_ns\" values vs. {inc_length} \"inc\" values")]
-    MismatchLengths {
-        time_ns_length: usize,
-        inc_length: usize,
-    },
+impl<'a> From<Tuid> for ::std::borrow::Cow<'a, Tuid> {
+    #[inline]
+    fn from(value: Tuid) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
 }
 
-impl Tuid {
-    /// The underlying [`arrow2::datatypes::DataType`], excluding datatype extensions.
+impl<'a> From<&'a Tuid> for ::std::borrow::Cow<'a, Tuid> {
     #[inline]
-    pub fn arrow_datatype() -> DataType {
+    fn from(value: &'a Tuid) -> Self {
+        std::borrow::Cow::Borrowed(value)
+    }
+}
+
+impl Loggable for Tuid {
+    type Name = re_types::ComponentName;
+
+    #[inline]
+    fn name() -> Self::Name {
+        "rerun.components.TUID".into()
+    }
+
+    #[inline]
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
         DataType::Struct(vec![
             Field::new("time_ns", DataType::UInt64, false),
             Field::new("inc", DataType::UInt64, false),
         ])
     }
 
-    /// The underlying [`arrow2::datatypes::DataType`], including datatype extensions.
-    #[inline]
-    fn extended_arrow_datatype() -> arrow2::datatypes::DataType {
-        DataType::Extension("rerun.tuid".into(), Box::new(Self::arrow_datatype()), None)
+    fn to_arrow_opt<'a>(
+        _data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+    ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
+    where
+        Self: 'a,
+    {
+        Err(re_types::SerializationError::not_implemented(
+            Self::name(),
+            "TUIDs are never nullable, use `to_arrow()` instead",
+        ))
     }
 
     #[inline]
-    pub fn to_arrow(values: impl IntoIterator<Item = Self>) -> Box<dyn Array> {
-        let (time_ns_values, inc_values): (Vec<_>, Vec<_>) = values
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
+    ) -> re_types::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: 'a,
+    {
+        let (time_ns_values, inc_values): (Vec<_>, Vec<_>) = data
             .into_iter()
+            .map(Into::into)
             .map(|tuid| (tuid.time_ns, tuid.inc))
             .unzip();
 
-        let extended_datatype = Self::extended_arrow_datatype();
         let values = vec![
             UInt64Array::from_vec(time_ns_values).boxed(),
             UInt64Array::from_vec(inc_values).boxed(),
         ];
         let validity = None;
-        StructArray::new(extended_datatype, values, validity).boxed()
+        Ok(StructArray::new(Self::arrow_datatype(), values, validity).boxed())
     }
 
-    #[inline]
-    pub fn as_arrow(&self) -> Box<dyn Array> {
-        let extended_datatype = Self::extended_arrow_datatype();
-        let values = vec![
-            UInt64Array::from_vec(vec![self.time_ns]).boxed(),
-            UInt64Array::from_vec(vec![self.inc]).boxed(),
-        ];
-        let validity = None;
-        StructArray::new(extended_datatype, values, validity).boxed()
-    }
-
-    #[inline]
-    pub fn from_arrow(array: &dyn Array) -> DeserializationResult<Vec<Self>> {
+    fn from_arrow(
+        array: &dyn ::arrow2::array::Array,
+    ) -> re_types::DeserializationResult<Vec<Self>> {
         let expected_datatype = Self::arrow_datatype();
         let actual_datatype = array.data_type().to_logical_type();
         if actual_datatype != &expected_datatype {
-            return Err(DeserializationError::DatatypeMismatch {
-                expected: expected_datatype,
-                got: actual_datatype.clone(),
-            });
+            return Err(re_types::DeserializationError::datatype_mismatch(
+                expected_datatype,
+                actual_datatype.clone(),
+            ));
         }
 
         // NOTE: Unwrap is safe everywhere below, datatype is checked above.
@@ -111,10 +116,14 @@ impl Tuid {
         let inc_buffer = get_buffer(inc_index);
 
         if time_ns_buffer.len() != inc_buffer.len() {
-            return Err(DeserializationError::MismatchLengths {
-                time_ns_length: time_ns_buffer.len(),
-                inc_length: inc_buffer.len(),
-            });
+            return Err(
+                re_types::DeserializationError::mismatched_struct_field_lengths(
+                    "time_ns",
+                    time_ns_buffer.len(),
+                    "inc",
+                    inc_buffer.len(),
+                ),
+            );
         }
 
         Ok(time_ns_buffer

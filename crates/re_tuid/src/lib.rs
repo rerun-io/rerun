@@ -22,7 +22,12 @@ pub struct Tuid {
 }
 
 #[cfg(feature = "arrow")]
-mod arrow;
+pub mod arrow;
+
+pub mod external {
+    #[cfg(feature = "arrow")]
+    pub use re_types;
+}
 
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -27,6 +27,8 @@ serde = ["dep:serde"]
 
 
 [dependencies]
+re_types.workspace = true # TODO
+
 document-features.workspace = true
 getrandom = "0.2"
 once_cell.workspace = true
