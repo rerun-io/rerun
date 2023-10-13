@@ -69,6 +69,10 @@
         "rerun_py/rerun_sdk"
     ],
     "cmake.buildDirectory": "${workspaceRoot}/build/",
+    "cmake.buildTask": true, // Use a terminal instead of the output panel for builds, it won't show color.
+    "cmake.environment": {
+        "CLICOLOR_FORCE": "1" // Force color output from cmake.
+    },
     "C_Cpp.autoAddFileAssociations": false,
     "rust-analyzer.showUnlinkedFileNotification": false,
     "black-formatter.args": [
