@@ -129,7 +129,7 @@ Use `re_error::format(err)` when displaying an error.
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
 
 ### Initialization
-Always use `const` unless you plan on mutating it.
+Always use `const` unless you plan on mutating it, with the exception of function paramers (because that is just too much noise).
 
 We use `const auto x = …` for declaration because that gives symmetric code for normal constructors and static constructors:
 
