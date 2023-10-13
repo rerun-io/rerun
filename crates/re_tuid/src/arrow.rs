@@ -91,7 +91,7 @@ impl Loggable for Tuid {
         let array = array.as_any().downcast_ref::<StructArray>().unwrap();
 
         // TODO(cmc): Can we rely on the fields ordering from the datatype? I would assume not
-        // since we generally cannot rely on anything when it comes to arrow...
+        // since we generally cannot rely on anything when it comes to arrow…
         // If we could, that would also impact our codegen deserialization path.
         let (time_ns_index, inc_index) = {
             let mut time_ns_index = None;

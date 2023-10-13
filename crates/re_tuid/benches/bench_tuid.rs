@@ -13,12 +13,12 @@ fn bench_arrow(c: &mut Criterion) {
     use arrow2::array::Array;
     use re_types::Loggable as _;
 
-    for nb_elems in [1, 1000] {
+    for elem_count in [1, 1000] {
         {
-            let mut group = c.benchmark_group(format!("arrow/serialize/nb_elems={nb_elems}"));
-            group.throughput(criterion::Throughput::Elements(nb_elems));
+            let mut group = c.benchmark_group(format!("arrow/serialize/elem_count={elem_count}"));
+            group.throughput(criterion::Throughput::Elements(elem_count));
 
-            let tuids = vec![re_tuid::Tuid::random(); nb_elems as usize];
+            let tuids = vec![re_tuid::Tuid::random(); elem_count as usize];
 
             group.bench_function("arrow2", |b| {
                 b.iter(|| {
@@ -29,11 +29,12 @@ fn bench_arrow(c: &mut Criterion) {
         }
 
         {
-            let mut group = c.benchmark_group(format!("arrow/deserialize/nb_elems={nb_elems}"));
-            group.throughput(criterion::Throughput::Elements(nb_elems));
+            let mut group = c.benchmark_group(format!("arrow/deserialize/elem_count={elem_count}"));
+            group.throughput(criterion::Throughput::Elements(elem_count));
 
             let data: Box<dyn Array> =
-                re_tuid::Tuid::to_arrow(vec![re_tuid::Tuid::random(); nb_elems as usize]).unwrap();
+                re_tuid::Tuid::to_arrow(vec![re_tuid::Tuid::random(); elem_count as usize])
+                    .unwrap();
 
             group.bench_function("arrow2", |b| {
                 b.iter(|| {
