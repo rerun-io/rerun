@@ -88,7 +88,7 @@ namespace rerun {
                 return *this;
             }
 
-            AffixFuzzer4(AffixFuzzer4 &&other) noexcept : _tag(detail::AffixFuzzer4Tag::NONE) {
+            AffixFuzzer4(AffixFuzzer4 &&other) noexcept : AffixFuzzer4() {
                 this->swap(other);
             }
 

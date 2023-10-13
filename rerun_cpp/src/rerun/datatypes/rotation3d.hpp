@@ -70,7 +70,7 @@ namespace rerun {
                 return *this;
             }
 
-            Rotation3D(Rotation3D &&other) noexcept : _tag(detail::Rotation3DTag::NONE) {
+            Rotation3D(Rotation3D &&other) noexcept : Rotation3D() {
                 this->swap(other);
             }
 

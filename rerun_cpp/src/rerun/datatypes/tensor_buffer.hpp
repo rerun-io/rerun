@@ -152,7 +152,7 @@ namespace rerun {
                 return *this;
             }
 
-            TensorBuffer(TensorBuffer &&other) noexcept : _tag(detail::TensorBufferTag::NONE) {
+            TensorBuffer(TensorBuffer &&other) noexcept : TensorBuffer() {
                 this->swap(other);
             }
 

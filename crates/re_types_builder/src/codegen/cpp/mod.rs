@@ -964,7 +964,7 @@ impl QuotedObject {
                         }
 
                         // Move-constructor:
-                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : _tag(detail::#tag_typename::NONE) {
+                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : #pascal_case_ident() {
                             this->swap(other);
                         }
 

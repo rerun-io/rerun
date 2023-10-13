@@ -68,7 +68,7 @@ namespace rerun {
                 return *this;
             }
 
-            Transform3D(Transform3D &&other) noexcept : _tag(detail::Transform3DTag::NONE) {
+            Transform3D(Transform3D &&other) noexcept : Transform3D() {
                 this->swap(other);
             }
 

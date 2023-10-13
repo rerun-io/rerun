@@ -69,7 +69,7 @@ namespace rerun {
                 return *this;
             }
 
-            Scale3D(Scale3D &&other) noexcept : _tag(detail::Scale3DTag::NONE) {
+            Scale3D(Scale3D &&other) noexcept : Scale3D() {
                 this->swap(other);
             }
 

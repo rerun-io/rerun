@@ -66,7 +66,7 @@ namespace rerun {
                 return *this;
             }
 
-            Angle(Angle &&other) noexcept : _tag(detail::AngleTag::NONE) {
+            Angle(Angle &&other) noexcept : Angle() {
                 this->swap(other);
             }
 
