@@ -1634,11 +1634,18 @@ fn quote_append_single_value_to_builder(
         | Type::Int32
         | Type::Int64
         | Type::Bool
-        | Type::Float16
         | Type::Float32
         | Type::Float64
         | Type::String => {
             quote!(ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access));)
+        }
+        Type::Float16 => {
+            // Cast `rerun::half` to a `uint16_t``
+            quote! {
+                ARROW_RETURN_NOT_OK(#value_builder->Append(
+                    *reinterpret_cast<const uint16_t*>(&(#value_access))
+                ));
+            }
         }
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
             let num_items_per_element = quote_num_items_per_value(typ, &value_access);
@@ -1653,12 +1660,21 @@ fn quote_append_single_value_to_builder(
                 | ElementType::Int32
                 | ElementType::Int64
                 | ElementType::Bool
-                | ElementType::Float16
                 | ElementType::Float32
                 | ElementType::Float64 => {
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
                         ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(#num_items_per_element), nullptr));
+                    }
+                }
+                ElementType::Float16 => {
+                    // We need to convert `rerun::half` to `uint16_t`:
+                    let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
+                    quote! {
+                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
+                            reinterpret_cast<const uint16_t*>(#field_ptr_accessor),
+                            static_cast<int64_t>(#num_items_per_element), nullptr)
+                        );
                     }
                 }
                 ElementType::String => {
@@ -1893,7 +1909,10 @@ fn quote_variable(
             Type::Int32 => quote! { std::optional<int32_t> #name },
             Type::Int64 => quote! { std::optional<int64_t> #name },
             Type::Bool => quote! { std::optional<bool> #name },
-            Type::Float16 => quote! { std::optional<uint16_t> #name },
+            Type::Float16 => {
+                includes.insert_rerun("half.hpp");
+                quote! { std::optional<rerun::half> #name }
+            }
             Type::Float32 => quote! { std::optional<float> #name },
             Type::Float64 => quote! { std::optional<double> #name },
             Type::String => {
@@ -1928,7 +1947,10 @@ fn quote_variable(
             Type::Int32 => quote! { int32_t #name },
             Type::Int64 => quote! { int64_t #name },
             Type::Bool => quote! { bool #name },
-            Type::Float16 => quote! { uint16_t #name },
+            Type::Float16 => {
+                includes.insert_rerun("half.hpp");
+                quote! { rerun::half #name }
+            }
             Type::Float32 => quote! { float #name },
             Type::Float64 => quote! { double #name },
             Type::String => {
@@ -1966,7 +1988,10 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         ElementType::Int32 => quote! { int32_t },
         ElementType::Int64 => quote! { int64_t },
         ElementType::Bool => quote! { bool },
-        ElementType::Float16 => quote! { uint16_t },
+        ElementType::Float16 => {
+            includes.insert_rerun("half.hpp");
+            quote! { rerun::half }
+        }
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
         ElementType::String => {

@@ -228,17 +228,11 @@ impl StoreHub {
         // save the blueprints referenced by `blueprint_by_app_id`, even though
         // there may be other Blueprints in the Hub.
 
-        use re_arrow_store::GarbageCollectionOptions;
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
             if let Some(blueprint) = self.store_dbs.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
-                    // GC everything but the latest row.
-                    blueprint.store_mut().gc(GarbageCollectionOptions {
-                        target: re_arrow_store::GarbageCollectionTarget::Everything,
-                        gc_timeless: true,
-                        protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
-                        purge_empty_tables: true,
-                    });
+                    blueprint.gc_everything_but_the_latest_row();
+
                     #[cfg(not(target_arch = "wasm32"))]
                     {
                         let blueprint_path = default_blueprint_path(app_id)?;
@@ -314,11 +308,11 @@ impl StoreHub {
             .and_then(|blueprint_id| self.store_dbs.blueprint(blueprint_id));
 
         let blueprint_stats = blueprint
-            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .map(|store_db| DataStoreStats::from_store(store_db.store()))
             .unwrap_or_default();
 
         let blueprint_config = blueprint
-            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .map(|store_db| store_db.store().config().clone())
             .unwrap_or_default();
 
         let recording = self
@@ -327,11 +321,11 @@ impl StoreHub {
             .and_then(|rec_id| self.store_dbs.recording(rec_id));
 
         let recording_stats = recording
-            .map(|store_db| DataStoreStats::from_store(&store_db.entity_db.data_store))
+            .map(|store_db| DataStoreStats::from_store(store_db.store()))
             .unwrap_or_default();
 
         let recording_config = recording
-            .map(|store_db| store_db.entity_db.data_store.config().clone())
+            .map(|store_db| store_db.store().config().clone())
             .unwrap_or_default();
 
         StoreHubStats {
@@ -506,7 +500,7 @@ impl StoreBundle {
 
             let mut blueprint_db = StoreDb::new(id.clone());
 
-            blueprint_db.add_begin_recording_msg(&re_log_types::SetStoreInfo {
+            blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: re_log_types::RowId::random(),
                 info: re_log_types::StoreInfo {
                     application_id: id.as_str().into(),

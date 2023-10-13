@@ -83,7 +83,7 @@ impl ViewContextSystem for TransformContext {
     ) {
         re_tracing::profile_function!();
 
-        let entity_db = &ctx.store_db.entity_db;
+        let entity_db = ctx.store_db.entity_db();
         let time_ctrl = &ctx.rec_cfg.time_ctrl;
         let entity_prop_map = query.entity_props_map;
 

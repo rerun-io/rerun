@@ -1423,7 +1423,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            _ => panic!("expected SetStoreInfo"),
+            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
         }
 
         // Second message should be a set_store_info resulting from the later sink swap from
@@ -1434,7 +1434,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            _ => panic!("expected SetStoreInfo"),
+            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
         }
 
         // Third message is the batched table itself, which was sent as a result of the implicit
@@ -1451,7 +1451,7 @@ mod tests {
 
                 similar_asserts::assert_eq!(table, got);
             }
-            _ => panic!("expected ArrowMsg"),
+            LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
         }
 
         // That's all.
@@ -1490,7 +1490,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            _ => panic!("expected SetStoreInfo"),
+            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
         }
 
         // Second message should be a set_store_info resulting from the later sink swap from
@@ -1501,7 +1501,7 @@ mod tests {
                 assert!(msg.row_id != RowId::ZERO);
                 similar_asserts::assert_eq!(store_info, msg.info);
             }
-            _ => panic!("expected SetStoreInfo"),
+            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
         }
 
         let mut rows = {
@@ -1525,7 +1525,7 @@ mod tests {
 
                     similar_asserts::assert_eq!(expected, got);
                 }
-                _ => panic!("expected ArrowMsg"),
+                LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
             }
         };
 
@@ -1570,7 +1570,7 @@ mod tests {
                     assert!(msg.row_id != RowId::ZERO);
                     similar_asserts::assert_eq!(store_info, msg.info);
                 }
-                _ => panic!("expected SetStoreInfo"),
+                LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
             }
 
             // MemorySinkStorage transparently handles flushing during `take()`!
@@ -1588,7 +1588,7 @@ mod tests {
 
                     similar_asserts::assert_eq!(table, got);
                 }
-                _ => panic!("expected ArrowMsg"),
+                LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
             }
 
             // That's all.

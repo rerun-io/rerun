@@ -19,10 +19,10 @@ impl DataUi for InstancePath {
             instance_key,
         } = self;
 
-        let store = &ctx.store_db.entity_db.data_store;
+        let store = ctx.store_db.store();
 
         let Some(components) = store.all_components(&query.timeline, entity_path) else {
-            if ctx.store_db.entity_db.is_known_entity(entity_path) {
+            if ctx.store_db.entity_db().is_known_entity(entity_path) {
                 ui.label(ctx.re_ui.warning_text(format!(
                     "No components logged on timeline {:?}",
                     query.timeline.name()

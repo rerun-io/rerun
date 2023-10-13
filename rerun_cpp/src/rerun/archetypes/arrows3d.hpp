@@ -37,15 +37,13 @@ namespace rerun {
         ///
         /// #define TAU (static_cast<float>(M_PI) * 2.0f)
         ///
-        /// namespace rr = rerun;
-        ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_arrow3d");
+        ///     auto rec = rerun::RecordingStream("rerun_example_arrow3d");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     std::vector<rr::components::Position3D> origins;
-        ///     std::vector<rr::components::Vector3D> vectors;
-        ///     std::vector<rr::components::Color> colors;
+        ///     std::vector<rerun::components::Position3D> origins;
+        ///     std::vector<rerun::components::Vector3D> vectors;
+        ///     std::vector<rerun::components::Color> colors;
         ///
         ///     for (int i = 0; i <100; ++i) {
         ///         origins.push_back({0, 0, 0});
@@ -60,7 +58,7 @@ namespace rerun {
         ///
         ///     rec.log(
         ///         "arrows",
-        ///         rr::Arrows3D::from_vectors(vectors).with_origins(origins).with_colors(colors)
+        ///         rerun::Arrows3D::from_vectors(vectors).with_origins(origins).with_colors(colors)
         ///     );
         /// }
         /// ```

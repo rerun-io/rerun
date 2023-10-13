@@ -64,7 +64,7 @@ impl ViewPartSystem for TensorSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let store = &ctx.store_db.entity_db.data_store;
+        let store = ctx.store_db.store();
         for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 

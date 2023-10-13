@@ -16,8 +16,10 @@ from typing import Any
 
 EXTRA_ARGS = {
     "examples/python/clock": ["--steps=200"],  # Make it faster
-    "examples/python/live_camera_edge_detection": ["--num-frames=30"],  # Make sure it finishes
+    "examples/python/detect_and_track_objects": ["--max-frame=10"],  # Make it faster
     "examples/python/face_tracking": ["--max-frame=30"],  # Make sure it finishes
+    "examples/python/human_pose_tracking": ["--max-frame=10"],  # Make it faster
+    "examples/python/live_camera_edge_detection": ["--num-frames=30"],  # Make sure it finishes
 }
 
 HAS_NO_RERUN_ARGS = {

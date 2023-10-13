@@ -2,17 +2,16 @@
 
 #include <array>
 
-namespace rr = rerun;
-namespace rrc = rr::components;
+namespace rrc = rerun::components;
 
 int main(int argc, char** argv) {
-    auto rec = rr::RecordingStream("rerun_example_cpp_app");
+    auto rec = rerun::RecordingStream("rerun_example_cpp_app");
     rec.connect("127.0.0.1:9876").throw_on_failure();
 
     // Log points with the archetype api - this is the preferred way of logging.
     rec.log(
         "3d/points",
-        rr::Points3D({{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})
+        rerun::Points3D({{1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}})
             .with_radii({0.42f, 0.43f})
             .with_colors({0xAA0000CC, 0x00BB00DD})
             .with_labels({"hello", "friend"})
@@ -29,13 +28,14 @@ int main(int argc, char** argv) {
         std::vector{
             rrc::Position2D(0.0f, 0.0f),
             rrc::Position2D(1.0f, 3.0f),
-            rrc::Position2D(5.0f, 5.0f)},
+            rrc::Position2D(5.0f, 5.0f),
+        },
         std::array{rrc::Color(0xFF0000FF), rrc::Color(0x00FF00FF), rrc::Color(0x0000FFFF)},
         c_style_array
     );
 
     // Test some type instantiation
-    auto tls = rr::datatypes::TranslationRotationScale3D{};
+    auto tls = rerun::datatypes::TranslationRotationScale3D{};
     tls.translation = {1.0, 2.0, 3.0};
-    rr::datatypes::Transform3D t = std::move(tls);
+    rerun::datatypes::Transform3D t = std::move(tls);
 }
