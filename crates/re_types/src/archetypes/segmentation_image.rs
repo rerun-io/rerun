@@ -43,8 +43,8 @@
 ///
 ///     // create an annotation context to describe the classes
 ///     let annotation = rerun::AnnotationContext::new([
-///         (1, "red", rerun::Rgba32::from(0xFF0000FF)),
-///         (2, "green", rerun::Rgba32::from(0x00FF00FF)),
+///         (1, "red", rerun::Rgba32::from_rgb(255, 0, 0)),
+///         (2, "green", rerun::Rgba32::from_rgb(0, 255, 0)),
 ///     ]);
 ///
 ///     // log the annotation and the image
