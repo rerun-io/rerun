@@ -5,16 +5,14 @@ use arrow2_convert::field::ArrowField;
 
 use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataCell, DataRow, RowId, TimePoint};
-use re_types::Loggable as _;
+use re_types::{blueprint::AutoSpaceViews, Loggable as _};
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
     ViewerContext,
 };
 
 use crate::{
-    blueprint_components::{
-        AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH,
-    },
+    blueprint_components::{SpaceViewComponent, SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH},
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
     space_view_heuristics::{default_created_space_views, identify_entities_per_system_per_class},

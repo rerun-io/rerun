@@ -13,7 +13,7 @@ use pyo3::{
 
 use re_viewer_context::SpaceViewId;
 use re_viewport::{
-    blueprint_components::{AutoSpaceViews, SpaceViewComponent, VIEWPORT_PATH},
+    blueprint_components::{SpaceViewComponent, VIEWPORT_PATH},
     SpaceViewBlueprint,
 };
 
@@ -780,6 +780,8 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
     let Some(blueprint) = get_blueprint_recording(blueprint) else {
         return;
     };
+
+    use rerun::external::re_types::blueprint::AutoSpaceViews;
 
     let enable_auto_space = AutoSpaceViews(enabled);
 
