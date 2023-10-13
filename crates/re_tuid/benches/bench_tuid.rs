@@ -8,7 +8,7 @@ fn bench_tuid(c: &mut Criterion) {
     });
 }
 
-// #[cfg(feature = "arrow")]
+#[cfg(feature = "arrow")]
 fn bench_arrow(c: &mut Criterion) {
     use arrow2::array::Array;
 

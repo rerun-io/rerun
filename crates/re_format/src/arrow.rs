@@ -3,10 +3,9 @@
 use std::fmt::Formatter;
 
 use arrow2::{
-    array::{get_display, Array, ListArray, StructArray},
+    array::{get_display, Array, ListArray},
     datatypes::{DataType, IntervalUnit, TimeUnit},
 };
-use arrow2_convert::deserialize::TryIntoCollection;
 use comfy_table::{presets, Cell, Table};
 
 use re_tuid::Tuid;
@@ -68,9 +67,8 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
         // New control columns: it's not a list to begin with!
         _ => (array.to_boxed(), index),
     };
-    let array = array.as_any().downcast_ref::<StructArray>()?;
 
-    let tuids: Vec<Tuid> = TryIntoCollection::try_into_collection(array.to_boxed()).ok()?;
+    let tuids = Tuid::from_arrow(array.as_ref()).ok()?;
     tuids.get(index).copied()
 }
 

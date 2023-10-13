@@ -4237,7 +4237,6 @@ name = "re_format"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
  "arrow2",
- "arrow2_convert",
  "comfy-table",
  "re_tuid",
 ]

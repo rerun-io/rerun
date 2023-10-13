@@ -20,7 +20,7 @@ all-features = true
 default = []
 
 ## Enable (de)serialization using Arrow.
-arrow = ["dep:arrow2"]
+arrow = ["dep:arrow2", "dep:thiserror"]
 
 ## Enable (de)serialization using serde.
 serde = ["dep:serde"]
