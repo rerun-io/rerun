@@ -119,6 +119,27 @@ py-docs-serve:
 rs-doc:
     cargo +nightly doc --all --open --keep-going --all-features -Zunstable-options
 
+# `just rerun` is short a convenient shorthand, skipping the web viewer.
+rerun *ARGS:
+    cargo run --package rerun-cli --no-default-features --features native_viewer -- {{ARGS}}
+
+# like `just rerun`, but with --release
+rerun-release *ARGS:
+    cargo run --package rerun-cli --no-default-features --features native_viewer --release -- {{ARGS}}
+
+# `just rerun-web` is short a convenient shorthand for building & starting the web viewer.
+rerun-web *ARGS:
+    cargo run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer {{ARGS}}
+
+# Run the codegen. Optionally pass `--profile` argument if you want.
+codegen *ARGS:
+    pixi run codegen {{ARGS}}
+
+# To easily run examples on the web, see https://github.com/rukai/cargo-run-wasm.
+# Temporary solution while we wait for our own xtasks!
+run-wasm *ARGS:
+    cargo run --release --package run_wasm -- {{ARGS}}
+
 # Lint all of Rust code
 rs-lint:
     #!/usr/bin/env bash
