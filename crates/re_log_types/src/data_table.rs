@@ -128,21 +128,8 @@ impl SizeBytes for DataCellColumn {
 // ---
 
 /// A unique ID for a [`DataTable`].
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    arrow2_convert::ArrowField,
-    arrow2_convert::ArrowSerialize,
-    arrow2_convert::ArrowDeserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(transparent)]
 pub struct TableId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for TableId {
@@ -182,6 +169,8 @@ impl std::ops::DerefMut for TableId {
         &mut self.0
     }
 }
+
+re_tuid::delegate_arrow_tuid!(TableId as "rerun.control.TableId");
 
 /// A sparse table's worth of data, i.e. a batch of events: a collection of [`DataRow`]s.
 /// This is the top-level layer in our data model.

@@ -27,7 +27,7 @@ impl Loggable for Tuid {
 
     #[inline]
     fn name() -> Self::Name {
-        "rerun.components.TUID".into()
+        "rerun.control.TUID".into()
     }
 
     #[inline]
@@ -133,4 +133,80 @@ impl Loggable for Tuid {
             .map(|(time_ns, inc)| Self { time_ns, inc })
             .collect())
     }
+}
+
+/// Implements [`re_types::Component`] for any given type that is a simple wrapper
+/// (newtype) around a [`Tuid`].
+///
+/// Usage:
+/// ```ignore
+/// re_tuid::delegate_arrow_tuid!(RowId);
+/// ```
+#[macro_export]
+macro_rules! delegate_arrow_tuid {
+    ($typ:ident as $fqname:expr) => {
+        impl<'a> From<$typ> for ::std::borrow::Cow<'a, $typ> {
+            #[inline]
+            fn from(value: $typ) -> Self {
+                ::std::borrow::Cow::Owned(value)
+            }
+        }
+
+        impl<'a> From<&'a $typ> for ::std::borrow::Cow<'a, $typ> {
+            #[inline]
+            fn from(value: &'a $typ) -> Self {
+                ::std::borrow::Cow::Borrowed(value)
+            }
+        }
+
+        impl ::re_types::Loggable for $typ {
+            type Name = ::re_types::ComponentName;
+
+            #[inline]
+            fn name() -> Self::Name {
+                $fqname.into()
+            }
+
+            #[inline]
+            fn arrow_datatype() -> ::arrow2::datatypes::DataType {
+                $crate::Tuid::arrow_datatype()
+            }
+
+            #[inline]
+            fn to_arrow_opt<'a>(
+                values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+            ) -> re_types::SerializationResult<Box<dyn ::arrow2::array::Array>>
+            where
+                Self: 'a,
+            {
+                Err(re_types::SerializationError::not_implemented(
+                    Self::name(),
+                    "TUIDs are never nullable, use `to_arrow()` instead",
+                ))
+            }
+
+            #[inline]
+            fn to_arrow<'a>(
+                values: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
+            ) -> re_types::SerializationResult<Box<dyn ::arrow2::array::Array>> {
+                let values = values.into_iter().map(|value| {
+                    let value: ::std::borrow::Cow<'a, Self> = value.into();
+                    value.into_owned()
+                });
+                <$crate::Tuid as ::re_types::Loggable>::to_arrow(
+                    values.into_iter().map(|$typ(tuid)| tuid),
+                )
+            }
+
+            #[inline]
+            fn from_arrow(
+                array: &dyn arrow2::array::Array,
+            ) -> re_types::DeserializationResult<Vec<Self>> {
+                Ok(<$crate::Tuid as ::re_types::Loggable>::from_arrow(array)?
+                    .into_iter()
+                    .map(|tuid| Self(tuid))
+                    .collect())
+            }
+        }
+    };
 }
