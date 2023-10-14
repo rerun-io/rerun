@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import pathlib
-from typing import IO, Iterable
+from typing import IO, Iterable, Tuple
 
 import numpy as np
 from PIL import Image as PILImage
@@ -38,12 +38,18 @@ class NV12(ImageFormat):
     """NV12 format."""
 
     name = "NV12"
+    size_hint: Tuple[int, int]
 
-    def __init__(self, width: int | None = None, height: int | None = None) -> None:
-        if width is None and height is None:
-            raise ValueError("Must provide width or height")
-        self.width = width
-        self.height = height
+    def __init__(self, size_hint: Tuple[int, int]) -> None:
+        """
+        An NV12 encoded image.
+
+        Parameters
+        ----------
+        size_hint:
+            A tuple of (height, width), specifying the RGB size of the image
+        """
+        self.size_hint = size_hint
 
 
 # Assign the variants
@@ -111,18 +117,11 @@ class ImageEncoded(AsComponents):
         if format is not None:
             if isinstance(format, NV12):
                 np_buf = np.frombuffer(buffer.read(), dtype=np.uint8)
-                height = format.height
-                width = format.width
-                if height is None and width is None:
-                    raise ValueError("Must provide width or height")
-                elif height is None and width is not None:
-                    height = int(np_buf.size / (width * 1.5))
-                elif width is None and height is not None:
-                    width = int(np_buf.size / (height * 1.5))
-                assert height is not None and width is not None
-                np_buf = np_buf.reshape(int(height * 1.5), width, 1)
+                np_buf = np_buf.reshape(int(format.size_hint[0] * 1.5), format.size_hint[1])
+                tensor_buffer = TensorBuffer(np_buf)
+                tensor_buffer.kind = "nv12"
                 self.data = TensorData(
-                    buffer=TensorBuffer(np_buf, kind="nv12"),
+                    buffer=tensor_buffer,
                     shape=[
                         TensorDimension(np_buf.shape[0], "height"),
                         TensorDimension(np_buf.shape[1], "width"),

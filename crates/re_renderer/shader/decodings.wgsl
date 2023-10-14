@@ -12,6 +12,7 @@ fn decode_nv12(texture: texture_2d<u32>, coords: IVec2) -> Vec4 {
     let u = (f32(textureLoad(texture, UVec2(u32(uv_col), uv_offset + uv_row), 0).r) - 128.0) / 224.0;
     let v = (f32(textureLoad(texture, UVec2((u32(uv_col) + 1u), uv_offset + uv_row), 0).r) - 128.0) / 224.0;
 
+    // Specifying the color standard should be exposed in the future (https://github.com/rerun-io/rerun/pull/3541)
     // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
     let r = clamp(y + 1.402 * v, 0.0, 1.0);
     let g = clamp(y  - (0.344 * u + 0.714 * v), 0.0, 1.0);
