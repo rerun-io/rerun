@@ -3,6 +3,7 @@
 # Then run `just --list` to see the available commands
 
 export RUSTDOCFLAGS := "--deny warnings --deny rustdoc::missing_crate_level_docs"
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 default:
   @just --list
