@@ -963,11 +963,6 @@ fn quote_obj_docs(obj: &Object) -> String {
 
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["py", "python"]);
-    for line in &mut lines {
-        if line.starts_with(char::is_whitespace) {
-            line.remove(0);
-        }
-    }
 
     let examples = collect_examples_for_api_docs(docs, "py", true).unwrap();
     if !examples.is_empty() {
