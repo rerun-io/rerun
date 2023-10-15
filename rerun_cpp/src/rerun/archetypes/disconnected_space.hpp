@@ -15,8 +15,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// **Archetype**: Specifies that the entity path at which this is logged is disconnected
-        /// from its parent.
+        /// **Archetype**: Specifies that the entity path at which this is logged is disconnected from its parent.
         ///
         /// This is useful for specifying that a subgraph is independent of the rest of the scene.
         ///
@@ -47,11 +46,9 @@ namespace rerun {
         struct DisconnectedSpace {
             rerun::components::DisconnectedSpace disconnected_space;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:

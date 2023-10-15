@@ -91,18 +91,16 @@ namespace rerun {
             /// Unique identifiers for each individual point in the batch.
             std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             // Extensions to generated type defined in 'arrows3d_ext.cpp'
 
-            /// Creates new 3D arrows pointing in the given directions, with a base at the origin
-            /// (0, 0, 0).
+            /// Creates new 3D arrows pointing in the given directions, with a base at the origin (0, 0,
+            /// 0).
             static Arrows3D from_vectors(ComponentBatch<components::Vector3D> vectors_) {
                 Arrows3D arrows;
                 arrows.vectors = std::move(vectors_);

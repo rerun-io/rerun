@@ -36,8 +36,7 @@ namespace rerun {
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///     auto arrow =
-        ///         rerun::Arrows3D::from_vectors({{0.0f, 1.0f, 0.0f}}).with_origins({{0.0f, 0.0f,
-        ///         0.0f}});
+        ///         rerun::Arrows3D::from_vectors({{0.0f, 1.0f, 0.0f}}).with_origins({{0.0f, 0.0f, 0.0f}});
         ///
         ///     rec.log("base", arrow);
         ///
@@ -58,11 +57,9 @@ namespace rerun {
             /// The transform
             rerun::components::Transform3D transform;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:

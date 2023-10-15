@@ -64,45 +64,45 @@ class TimeSeriesScalar(Archetype):
         Parameters
         ----------
         scalar:
-             The scalar value to log.
+            The scalar value to log.
         radius:
-             An optional radius for the point.
+            An optional radius for the point.
 
-             Points within a single line do not have to share the same radius, the line
-             will have differently sized segments as appropriate.
+            Points within a single line do not have to share the same radius, the line
+            will have differently sized segments as appropriate.
 
-             If all points within a single entity path (i.e. a line) share the same
-             radius, then this radius will be used as the line width too. Otherwise, the
-             line will use the default width of `1.0`.
+            If all points within a single entity path (i.e. a line) share the same
+            radius, then this radius will be used as the line width too. Otherwise, the
+            line will use the default width of `1.0`.
         color:
-             Optional color for the scalar entry.
+            Optional color for the scalar entry.
 
-             If left unspecified, a pseudo-random color will be used instead. That
-             same color will apply to all points residing in the same entity path
-             that don't have a color specified.
+            If left unspecified, a pseudo-random color will be used instead. That
+            same color will apply to all points residing in the same entity path
+            that don't have a color specified.
 
-             Points within a single line do not have to share the same color, the line
-             will have differently colored segments as appropriate.
-             If all points within a single entity path (i.e. a line) share the same
-             color, then this color will be used as the line color in the plot legend.
-             Otherwise, the line will appear gray in the legend.
+            Points within a single line do not have to share the same color, the line
+            will have differently colored segments as appropriate.
+            If all points within a single entity path (i.e. a line) share the same
+            color, then this color will be used as the line color in the plot legend.
+            Otherwise, the line will appear gray in the legend.
         label:
-             An optional label for the point.
+            An optional label for the point.
 
-             TODO(#1289): This won't show up on points at the moment, as our plots don't yet
-             support displaying labels for individual points.
-             If all points within a single entity path (i.e. a line) share the same label, then
-             this label will be used as the label for the line itself. Otherwise, the
-             line will be named after the entity path. The plot itself is named after
-             the space it's in.
+            TODO(#1289): This won't show up on points at the moment, as our plots don't yet
+            support displaying labels for individual points.
+            If all points within a single entity path (i.e. a line) share the same label, then
+            this label will be used as the label for the line itself. Otherwise, the
+            line will be named after the entity path. The plot itself is named after
+            the space it's in.
         scattered:
-             Specifies whether a point in a scatter plot should form a continuous line.
+            Specifies whether a point in a scatter plot should form a continuous line.
 
-             If set to true, this scalar will be drawn as a point, akin to a scatterplot.
-             Otherwise, it will form a continuous line with its neighbors.
-             Points within a single line do not have to all share the same scatteredness:
-             the line will switch between a scattered and a continuous representation as
-             required.
+            If set to true, this scalar will be drawn as a point, akin to a scatterplot.
+            Otherwise, it will form a continuous line with its neighbors.
+            Points within a single line do not have to all share the same scatteredness:
+            the line will switch between a scattered and a continuous representation as
+            required.
         """
 
         # You can define your own __init__ function as a member of TimeSeriesScalarExt in time_series_scalar_ext.py
