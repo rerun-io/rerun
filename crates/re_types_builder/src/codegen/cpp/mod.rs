@@ -2059,7 +2059,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
                 lines.push(format!("### `{name}`:"));
             }
             lines.push("```cpp,ignore".into());
-            lines.extend(example.lines.iter().map(|line| format!("{line}")));
+            lines.extend(example.lines.iter().cloned());
             lines.push("```".into());
             if examples.peek().is_some() {
                 // blank line between examples
