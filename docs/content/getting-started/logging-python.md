@@ -158,7 +158,7 @@ We can represent the scaffolding using a batch of 3D line strips:
 ```python
 rr.log(
     "dna/structure/scaffolding",
-    rr.LineStrips3D(np.stack(points1, points2, axis=1), colors=[128, 128, 128])
+    rr.LineStrips3D(np.stack((points1, points2), axis=1), colors=[128, 128, 128])
 )
 ```
 
