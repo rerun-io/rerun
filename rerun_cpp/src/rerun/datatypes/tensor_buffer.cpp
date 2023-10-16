@@ -304,7 +304,8 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "TODO(andreas): list types in unions are not yet supported"
+                            "Failed to serialize TensorBuffer: list types in unions not yet "
+                            "implemented"
                         );
                         break;
                     }
