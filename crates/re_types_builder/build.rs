@@ -17,11 +17,6 @@ fn should_run() -> bool {
     #![allow(clippy::match_same_arms)]
     use re_build_tools::Environment;
 
-    if cfg!(target_os = "windows") {
-        // TODO(#2591): Codegen is currently disabled on Windows due to hashing issues, likely because of `\r` in files
-        return false;
-    }
-
     match Environment::detect() {
         // we should have been run before publishing
         Environment::PublishingCrates => false,
