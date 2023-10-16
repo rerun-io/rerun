@@ -220,8 +220,8 @@ impl EntityTree {
         time_point: &TimePoint,
         path_op: &PathOp,
     ) -> Vec<ComponentPath> {
-        use re_types_core::Archetype as _;
         use re_types::{archetypes::Clear, components::ClearIsRecursive};
+        use re_types_core::Archetype as _;
 
         re_tracing::profile_function!();
 

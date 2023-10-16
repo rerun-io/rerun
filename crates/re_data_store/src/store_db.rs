@@ -7,8 +7,8 @@ use re_log_types::{
     ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
     PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
-use re_types_core::Loggable;
 use re_types::components::InstanceKey;
+use re_types_core::Loggable;
 
 use crate::{Error, TimesPerTimeline};
 

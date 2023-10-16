@@ -7,12 +7,12 @@
 use polars_core::prelude::JoinType;
 use re_arrow_store::{polars_util, test_row, DataStore, RangeQuery, TimeRange};
 use re_log_types::{build_frame_nr, EntityPath, TimeType, Timeline};
-use re_types_core::Loggable as _;
 use re_types::datagen::build_some_positions2d;
 use re_types::{
     components::{InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
 };
+use re_types_core::Loggable as _;
 
 fn main() {
     let mut store = DataStore::new(InstanceKey::name(), Default::default());

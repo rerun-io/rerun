@@ -3,11 +3,11 @@ mod common;
 use re_arrow_store::DataStore;
 use re_log_types::{build_frame_nr, DataRow, RowId};
 use re_query::query_archetype;
-use re_types_core::Loggable as _;
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D},
 };
+use re_types_core::Loggable as _;
 
 #[test]
 fn simple_query() {

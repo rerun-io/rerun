@@ -1,7 +1,7 @@
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, RowId};
-use re_types_core::{Archetype, ComponentName, Loggable};
 use re_types::components::InstanceKey;
+use re_types_core::{Archetype, ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 

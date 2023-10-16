@@ -4,8 +4,8 @@ use arrow2::{
 };
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
-use re_types_core::{Archetype, Component, Loggable};
 use re_types::components::InstanceKey;
+use re_types_core::{Archetype, Component, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 

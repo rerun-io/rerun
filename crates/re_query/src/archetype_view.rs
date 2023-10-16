@@ -3,11 +3,11 @@ use std::{collections::BTreeMap, marker::PhantomData};
 use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
 use re_log_types::{DataCell, RowId};
+use re_types::components::InstanceKey;
 use re_types_core::{
     Archetype, Component, ComponentName, DeserializationError, DeserializationResult, Loggable,
     SerializationResult,
 };
-use re_types::components::InstanceKey;
 
 use crate::QueryError;
 

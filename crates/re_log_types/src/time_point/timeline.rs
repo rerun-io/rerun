@@ -18,10 +18,7 @@ impl Default for TimelineName {
 /// A time frame/space, e.g. `log_time` or `frame_nr`, coupled with the type of time
 /// it keeps.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Deserialize, serde::Serialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Timeline {
     /// Name of the timeline (e.g. "log_time").
     name: TimelineName,

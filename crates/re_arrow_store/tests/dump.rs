@@ -8,9 +8,9 @@ use re_arrow_store::{
     TimeInt, TimeRange, Timeline,
 };
 use re_log_types::{build_frame_nr, build_log_time, DataTable, EntityPath, TableId};
-use re_types_core::Loggable as _;
 use re_types::components::InstanceKey;
 use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
+use re_types_core::Loggable as _;
 
 // --- Dump ---
 
