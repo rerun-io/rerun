@@ -17,13 +17,12 @@ namespace rerun {
     namespace archetypes {
         /// **Archetype**: How we interpret the coordinate system of an entity/space.
         ///
-        /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or
-        /// left-handed?
+        /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
         ///
         /// The three coordinates are always ordered as [x, y, z].
         ///
-        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis
-        /// points down, and the Z axis points forward.
+        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+        /// down, and the Z axis points forward.
         ///
         /// ## Example
         ///
@@ -40,11 +39,10 @@ namespace rerun {
         ///     auto rec = rerun::RecordingStream("rerun_example_view_coordinates");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     rec.log("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
+        ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
         ///     rec.log(
         ///         "world/xyz",
-        ///         rerun::Arrows3D::from_vectors({{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0,
-        ///         0.0, 1.0}}
+        ///         rerun::Arrows3D::from_vectors({{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}}
         ///         ).with_colors({{255, 0, 0}, {0, 255, 0}, {0, 0, 255}})
         ///     );
         /// }
@@ -52,11 +50,9 @@ namespace rerun {
         struct ViewCoordinates {
             rerun::components::ViewCoordinates xyz;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:

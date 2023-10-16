@@ -148,6 +148,10 @@ rerun-web *ARGS:
 codegen *ARGS:
     pixi run codegen {{ARGS}}
 
+# Print the contents of an .rrd file
+print *ARGS:
+    just rerun print {{ARGS}}
+
 # To easily run examples on the web, see https://github.com/rukai/cargo-run-wasm.
 # Temporary solution while we wait for our own xtasks!
 run-wasm *ARGS:

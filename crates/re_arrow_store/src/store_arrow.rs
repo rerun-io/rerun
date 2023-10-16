@@ -4,7 +4,7 @@ use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 use nohash_hasher::IntMap;
 use re_log_types::{
     DataCellColumn, DataTable, DataTableResult, RowId, Timeline, COLUMN_INSERT_ID,
-    COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
+    COLUMN_NUM_INSTANCES,
 };
 use re_types::ComponentName;
 
@@ -149,8 +149,7 @@ fn serialize_control_columns(
         columns.push(insert_id_column);
     }
 
-    let (row_id_field, row_id_column) =
-        DataTable::serialize_control_column(COLUMN_ROW_ID, col_row_id)?;
+    let (row_id_field, row_id_column) = DataTable::serialize_control_column(col_row_id)?;
     schema.fields.push(row_id_field);
     columns.push(row_id_column);
 

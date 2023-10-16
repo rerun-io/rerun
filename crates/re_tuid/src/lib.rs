@@ -7,10 +7,6 @@
 //!
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(
-    feature = "arrow2_convert",
-    derive(arrow2_convert::ArrowSerialize, arrow2_convert::ArrowDeserialize)
-)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct Tuid {
     /// Approximate nanoseconds since epoch.
@@ -21,21 +17,12 @@ pub struct Tuid {
     inc: u64,
 }
 
-#[cfg(feature = "arrow2_convert")]
-arrow2_convert::arrow_enable_vec_for_type!(Tuid);
+#[cfg(feature = "arrow")]
+pub mod arrow;
 
-// TODO(#3741): shouldn't have to write this manually
-#[cfg(feature = "arrow2_convert")]
-impl arrow2_convert::field::ArrowField for Tuid {
-    type Type = Self;
-
-    fn data_type() -> arrow2::datatypes::DataType {
-        let datatype = arrow2::datatypes::DataType::Struct(<[_]>::into_vec(Box::new([
-            <u64 as arrow2_convert::field::ArrowField>::field("time_ns"),
-            <u64 as arrow2_convert::field::ArrowField>::field("inc"),
-        ])));
-        arrow2::datatypes::DataType::Extension("rerun.tuid".into(), Box::new(datatype), None)
-    }
+pub mod external {
+    #[cfg(feature = "arrow")]
+    pub use re_types;
 }
 
 impl std::fmt::Display for Tuid {

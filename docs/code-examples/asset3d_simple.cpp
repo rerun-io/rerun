@@ -20,6 +20,6 @@ int main(int argc, char* argv[]) {
     auto rec = rerun::RecordingStream("rerun_example_asset3d_simple");
     rec.connect("127.0.0.1:9876").throw_on_failure();
 
-    rec.log("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
+    rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
     rec.log("world/asset", rerun::Asset3D::from_file(path));
 }

@@ -21,7 +21,7 @@ InsertTrailingCommas: Wrapped
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All
 PointerAlignment: Left
-ReflowComments: true
+ReflowComments: false # This can break example code in docstrings
 SeparateDefinitionBlocks: Always
 SpacesBeforeTrailingComments: 1
 
