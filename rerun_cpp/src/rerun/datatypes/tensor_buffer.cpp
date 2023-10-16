@@ -63,6 +63,11 @@ namespace rerun {
                     arrow::list(arrow::field("item", arrow::uint8(), false)),
                     false
                 ),
+                arrow::field(
+                    "NV12",
+                    arrow::list(arrow::field("item", arrow::uint8(), false)),
+                    false
+                ),
             });
             return datatype;
         }
@@ -121,6 +126,10 @@ namespace rerun {
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
                         std::make_shared<arrow::DoubleBuilder>(memory_pool)
+                    ),
+                    std::make_shared<arrow::ListBuilder>(
+                        memory_pool,
+                        std::make_shared<arrow::UInt8Builder>(memory_pool)
                     ),
                     std::make_shared<arrow::ListBuilder>(
                         memory_pool,
@@ -279,6 +288,17 @@ namespace rerun {
                         break;
                     }
                     case detail::TensorBufferTag::JPEG: {
+                        auto variant_builder =
+                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
+                        (void)variant_builder;
+                        return Error(
+                            ErrorCode::NotImplemented,
+                            "Failed to serialize TensorBuffer: list types in unions not yet "
+                            "implemented"
+                        );
+                        break;
+                    }
+                    case detail::TensorBufferTag::NV12: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
                         (void)variant_builder;
