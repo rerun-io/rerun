@@ -23,8 +23,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// **Archetype**: 2D boxes with half-extents and optional center, rotations, rotations,
-        /// colors etc.
+        /// **Archetype**: 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
         ///
         /// ## Example
         ///
@@ -34,16 +33,14 @@ namespace rerun {
         ///
         /// #include <rerun.hpp>
         ///
-        /// namespace rr = rerun;
-        ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_box2d");
+        ///     auto rec = rerun::RecordingStream("rerun_example_box2d");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     rec.log("simple", rr::Boxes2D::from_mins_and_sizes({{-1.f, -1.f}}, {{2.f, 2.f}}));
+        ///     rec.log("simple", rerun::Boxes2D::from_mins_and_sizes({{-1.f, -1.f}}, {{2.f, 2.f}}));
         ///
         ///     // Log an extra rect to set the view bounds
-        ///     rec.log("bounds", rr::Boxes2D::from_sizes({{4.f, 3.f}}));
+        ///     rec.log("bounds", rerun::Boxes2D::from_sizes({{4.f, 3.f}}));
         /// }
         /// ```
         struct Boxes2D {
@@ -77,11 +74,9 @@ namespace rerun {
             /// Unique identifiers for each individual boxes in the batch.
             std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
@@ -111,11 +106,11 @@ namespace rerun {
             /// input data.
             static Boxes2D from_sizes(const std::vector<datatypes::Vec2D>& sizes);
 
-            /// Creates new `Boxes2D` with `centers` and `half_sizes` created from centers and
-            /// (full) sizes.
+            /// Creates new `Boxes2D` with `centers` and `half_sizes` created from centers and (full)
+            /// sizes.
             ///
-            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
-            /// half-sizes from the input data.
+            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
+            /// from the input data.
             static Boxes2D from_centers_and_sizes(
                 ComponentBatch<components::Position2D> centers,
                 const std::vector<datatypes::Vec2D>& sizes
@@ -125,11 +120,11 @@ namespace rerun {
                 return boxes;
             }
 
-            /// Creates new `Boxes2D` with `half_sizes` and `centers` created from minimums and
-            /// (full) sizes.
+            /// Creates new `Boxes2D` with `half_sizes` and `centers` created from minimums and (full)
+            /// sizes.
             ///
-            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
-            /// half-sizes from the input data.
+            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
+            /// from the input data.
             static Boxes2D from_mins_and_sizes(
                 const std::vector<datatypes::Vec2D>& mins,
                 const std::vector<datatypes::Vec2D>& sizes

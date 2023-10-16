@@ -22,9 +22,7 @@ namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class Transform3DTag : uint8_t {
-                /// Having a special empty state makes it possible to implement move-semantics. We
-                /// need to be able to leave the object in a state which we can run the destructor
-                /// on.
+                /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 NONE = 0,
                 TranslationAndMat3x3,
                 TranslationRotationScale,
@@ -40,8 +38,7 @@ namespace rerun {
                 ~Transform3DData() {}
 
                 void swap(Transform3DData &other) noexcept {
-                    // This bitwise swap would fail for self-referential types, but we don't have
-                    // any of those.
+                    // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(Transform3DData)];
                     void *otherbytes = reinterpret_cast<void *>(&other);
                     void *thisbytes = reinterpret_cast<void *>(this);
@@ -68,7 +65,7 @@ namespace rerun {
                 return *this;
             }
 
-            Transform3D(Transform3D &&other) noexcept : _tag(detail::Transform3DTag::NONE) {
+            Transform3D(Transform3D &&other) noexcept : Transform3D() {
                 this->swap(other);
             }
 
@@ -78,9 +75,7 @@ namespace rerun {
             }
 
             void swap(Transform3D &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 

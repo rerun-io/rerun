@@ -37,8 +37,6 @@ namespace rerun {
         /// #include <string>
         /// #include <vector>
         ///
-        /// namespace rr = rerun;
-        ///
         /// int main(int argc, char* argv[]) {
         ///     std::vector<std::string> args(argv, argv + argc);
         ///
@@ -49,11 +47,11 @@ namespace rerun {
         ///
         ///     std::string path = args[1];
         ///
-        ///     auto rec = rr::RecordingStream("rerun_example_asset3d_simple");
+        ///     auto rec = rerun::RecordingStream("rerun_example_asset3d_simple");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     rec.log("world", rr::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
-        ///     rec.log("world/asset", rr::Asset3D::from_file(path));
+        ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
+        ///     rec.log("world/asset", rerun::Asset3D::from_file(path));
         /// }
         /// ```
         struct Asset3D {
@@ -64,8 +62,7 @@ namespace rerun {
             ///
             /// Supported values:
             /// * `model/gltf-binary`
-            /// * `model/obj` (.mtl material files are not supported yet, references are silently
-            /// ignored)
+            /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
             ///
             /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.
@@ -76,11 +73,9 @@ namespace rerun {
             /// Applies a transformation to the asset itself without impacting its children.
             std::optional<rerun::components::OutOfTreeTransform3D> transform;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
@@ -108,8 +103,8 @@ namespace rerun {
             ///
             /// The [`MediaType`] will be guessed from the file extension.
             ///
-            /// If no [`MediaType`] can be guessed at the moment, the Rerun Viewer will try to guess
-            /// one from the data at render-time. If it can't, rendering will fail with an error.
+            /// If no [`MediaType`] can be guessed at the moment, the Rerun Viewer will try to guess one
+            /// from the data at render-time. If it can't, rendering will fail with an error.
             static Asset3D from_file(const std::filesystem::path& path) {
                 std::ifstream file(path, std::ios::binary);
                 if (!file) {
@@ -128,8 +123,8 @@ namespace rerun {
 
             /// Creates a new [`Asset3D`] from the given `bytes`.
             ///
-            /// If no [`MediaType`] is specified, the Rerun Viewer will try to guess one from the
-            /// data at render-time. If it can't, rendering will fail with an error.
+            /// If no [`MediaType`] is specified, the Rerun Viewer will try to guess one from the data
+            /// at render-time. If it can't, rendering will fail with an error.
             static Asset3D from_bytes(
                 const std::vector<uint8_t> bytes,
                 std::optional<rerun::components::MediaType> media_type
@@ -150,8 +145,7 @@ namespace rerun {
             ///
             /// Supported values:
             /// * `model/gltf-binary`
-            /// * `model/obj` (.mtl material files are not supported yet, references are silently
-            /// ignored)
+            /// * `model/obj` (.mtl material files are not supported yet, references are silently ignored)
             ///
             /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.

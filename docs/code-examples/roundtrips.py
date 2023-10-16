@@ -19,29 +19,29 @@ from os.path import isfile, join
 #
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
-opt_out_entirely = {
-    "annotation_context_connections": ["cpp"],
-    "annotation_context_segmentation": ["cpp"],
-    "annotation_context_rects": ["cpp"], # TODO(#2919): Needs support for log_timeless
-    "any_values": ["cpp", "rust"], # Only implemented for Python
-    "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
-    "asset3d_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
-    "bar_chart": ["cpp"],
-    "custom_data": ["cpp"],
-    "depth_image_3d": ["cpp"],
-    "depth_image_simple": ["cpp"],
-    "extra_values": ["cpp", "rust"], # Only implemented for Python
-    "image_advanced": ["cpp", "rust"], # Missing example for Rust
-    "image_simple": ["cpp"],
+opt_out_run = {
+    "annotation_context_connections": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "annotation_context_segmentation": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "annotation_context_rects": [],
+    "any_values": ["cpp", "rust"], # Not yet implemented
+    "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "asset3d_simple": [],
+    "bar_chart": ["cpp"], # TODO(#2919): Serializing tensors not yet implemented in C++
+    "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "depth_image_3d": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "depth_image_simple": ["cpp"],  # TODO(#2919): Not yet implemented in C++
+    "extra_values": ["cpp", "rust"], # Missing examples
+    "image_advanced": ["cpp", "rust"], # Missing examples
+    "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
-    "pinhole_simple": ["cpp"],
-    "scalar_multiple_plots": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
-    "scalar_simple": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
-    "segmentation_image_simple": ["cpp"],
-    "tensor_simple": ["cpp"],
-    "text_log_integration": ["cpp"],
-    "view_coordinates_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
+    "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
+    "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "scalar_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "tensor_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "view_coordinates_simple": [],
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
@@ -59,6 +59,7 @@ opt_out_compare = {
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }
 
 extra_args = {
@@ -150,18 +151,18 @@ def main() -> None:
     examples.sort()
 
     print("----------------------------------------------------------")
-    print(f"Building {len(examples)} examples…")
+    print(f"Running {len(examples)} examples…")
 
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
-            example_opt_out_entirely = opt_out_entirely.get(example, [])
+            example_opt_out_entirely = opt_out_run.get(example, [])
             for language in ["cpp", "py", "rust"]:
                 if language in example_opt_out_entirely:
                     continue
-                job = pool.apply_async(build_example, (example, language, args))
+                job = pool.apply_async(run_example, (example, language, args))
                 jobs.append(job)
-        print(f"Waiting for {len(jobs)} build jobs to finish…")
+        print(f"Waiting for {len(jobs)} runs to finish…")
         for job in jobs:
             job.get()
 
@@ -173,7 +174,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print(f"Comparing example '{example}'…")
 
-        example_opt_out_entirely = opt_out_entirely.get(example, [])
+        example_opt_out_entirely = opt_out_run.get(example, [])
         example_opt_out_compare = opt_out_compare.get(example, [])
 
         if "rust" in example_opt_out_entirely:
@@ -194,7 +195,7 @@ def main() -> None:
     print("All tests passed!")
 
 
-def build_example(example: str, language: str, args: argparse.Namespace) -> None:
+def run_example(example: str, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
         cpp_output_path = run_roundtrip_cpp(example, args.release)
         check_non_empty_rrd(cpp_output_path)
@@ -209,10 +210,14 @@ def build_example(example: str, language: str, args: argparse.Namespace) -> None
 
 
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
+    env = os.environ.copy()
+
     # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
     # the batcher will happily insert uninitialized padding bytes as needed!
-    env = os.environ.copy()
     env["RERUN_FLUSH_NUM_ROWS"] = "0"
+
+    # Turn on strict mode to catch errors early
+    env["RERUN_STRICT"] = "1"
 
     if save_path:
         # NOTE: Force the recording stream to write to disk!

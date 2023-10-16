@@ -20,9 +20,7 @@ namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class AngleTag : uint8_t {
-                /// Having a special empty state makes it possible to implement move-semantics. We
-                /// need to be able to leave the object in a state which we can run the destructor
-                /// on.
+                /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 NONE = 0,
                 Radians,
                 Degrees,
@@ -38,8 +36,7 @@ namespace rerun {
                 ~AngleData() {}
 
                 void swap(AngleData &other) noexcept {
-                    // This bitwise swap would fail for self-referential types, but we don't have
-                    // any of those.
+                    // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(AngleData)];
                     void *otherbytes = reinterpret_cast<void *>(&other);
                     void *thisbytes = reinterpret_cast<void *>(this);
@@ -66,7 +63,7 @@ namespace rerun {
                 return *this;
             }
 
-            Angle(Angle &&other) noexcept : _tag(detail::AngleTag::NONE) {
+            Angle(Angle &&other) noexcept : Angle() {
                 this->swap(other);
             }
 
@@ -76,9 +73,7 @@ namespace rerun {
             }
 
             void swap(Angle &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 

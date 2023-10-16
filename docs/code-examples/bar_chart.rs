@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log(
         "bar_chart",
-        &rerun::BarChart::new(vec![8_i64, 4, 0, 9, 1, 4, 1, 6, 9, 0]),
+        &rerun::BarChart::new([8_i64, 4, 0, 9, 1, 4, 1, 6, 9, 0].as_slice()),
     )?;
 
     rerun::native_viewer::show(storage.take())?;

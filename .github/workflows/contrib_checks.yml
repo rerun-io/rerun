@@ -282,15 +282,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build and run C++ minimal example
-        shell: bash
-        run: ./examples/cpp/minimal/build_and_run.sh --werror
-
       - name: Build and run rerun_cpp tests
         shell: bash
         run: ./rerun_cpp/build_and_run_tests.sh --werror
 
-      - name: Build code examples
+      - name: Build examples
         shell: bash
-        run: ./docs/code-examples/build_all.sh --werror
+        run: ./examples/cpp/build_all.sh --werror
 
+      - name: Build doc-code examples
+        shell: bash
+        run: ./docs/code-examples/cpp_build_all.sh --werror

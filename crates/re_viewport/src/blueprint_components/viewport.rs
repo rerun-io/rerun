@@ -6,24 +6,6 @@ pub use re_viewer_context::SpaceViewId;
 
 pub const VIEWPORT_PATH: &str = "viewport";
 
-/// A flag indicating space views should be automatically populated
-///
-/// ## Example
-/// ```
-/// # use re_viewport::blueprint_components::AutoSpaceViews;
-/// # use arrow2_convert::field::ArrowField;
-/// # use arrow2::datatypes::{DataType, Field};
-/// assert_eq!(
-///     AutoSpaceViews::data_type(),
-///     DataType::Boolean
-/// );
-/// ```
-#[derive(Clone, Default, ArrowField, ArrowSerialize, ArrowDeserialize)]
-#[arrow_field(transparent)]
-pub struct AutoSpaceViews(pub bool);
-
-re_log_types::arrow2convert_component_shim!(AutoSpaceViews as "rerun.blueprint.AutoSpaceViews");
-
 /// Whether a space view is maximized
 ///
 /// ## Example

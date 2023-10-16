@@ -24,9 +24,7 @@ namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class AffixFuzzer4Tag : uint8_t {
-                /// Having a special empty state makes it possible to implement move-semantics. We
-                /// need to be able to leave the object in a state which we can run the destructor
-                /// on.
+                /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 NONE = 0,
                 single_required,
                 many_required,
@@ -45,8 +43,7 @@ namespace rerun {
                 ~AffixFuzzer4Data() {}
 
                 void swap(AffixFuzzer4Data &other) noexcept {
-                    // This bitwise swap would fail for self-referential types, but we don't have
-                    // any of those.
+                    // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(AffixFuzzer4Data)];
                     void *otherbytes = reinterpret_cast<void *>(&other);
                     void *thisbytes = reinterpret_cast<void *>(this);
@@ -88,7 +85,7 @@ namespace rerun {
                 return *this;
             }
 
-            AffixFuzzer4(AffixFuzzer4 &&other) noexcept : _tag(detail::AffixFuzzer4Tag::NONE) {
+            AffixFuzzer4(AffixFuzzer4 &&other) noexcept : AffixFuzzer4() {
                 this->swap(other);
             }
 
@@ -122,9 +119,7 @@ namespace rerun {
             }
 
             void swap(AffixFuzzer4 &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 

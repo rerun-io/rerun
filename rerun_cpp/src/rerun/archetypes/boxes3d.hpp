@@ -23,8 +23,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// **Archetype**: 3D boxes with half-extents and optional center, rotations, rotations,
-        /// colors etc.
+        /// **Archetype**: 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
         ///
         /// ## Example
         ///
@@ -34,31 +33,30 @@ namespace rerun {
         ///
         /// #include <rerun.hpp>
         ///
-        /// namespace rr = rerun;
-        ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_box3d_batch");
+        ///     auto rec = rerun::RecordingStream("rerun_example_box3d_batch");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///     rec.log(
         ///         "batch",
-        ///         rr::Boxes3D::from_centers_and_half_sizes(
+        ///         rerun::Boxes3D::from_centers_and_half_sizes(
         ///             {{2.0f, 0.0f, 0.0f}, {-2.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 2.0f}},
         ///             {{2.0f, 2.0f, 1.0f}, {1.0f, 1.0f, 0.5f}, {2.0f, 0.5f, 1.0f}}
         ///         )
         ///             .with_rotations({
-        ///                 rr::datatypes::Quaternion::IDENTITY,
-        ///                 rr::datatypes::Quaternion(0.0f, 0.0f, 0.382683f, 0.923880f), // 45
-        ///                 degrees around Z rr::datatypes::RotationAxisAngle(
+        ///                 rerun::datatypes::Quaternion::IDENTITY,
+        ///                 // 45 degrees around Z
+        ///                 rerun::datatypes::Quaternion(0.0f, 0.0f, 0.382683f, 0.923880f),
+        ///                 rerun::datatypes::RotationAxisAngle(
         ///                     {0.0f, 1.0f, 0.0f},
-        ///                     rr::datatypes::Angle::degrees(30.0f)
+        ///                     rerun::datatypes::Angle::degrees(30.0f)
         ///                 ),
         ///             })
         ///             .with_radii({0.025f})
         ///             .with_colors({
-        ///                 rr::datatypes::Rgba32(255, 0, 0),
-        ///                 rr::datatypes::Rgba32(0, 255, 0),
-        ///                 rr::datatypes::Rgba32(0, 0, 255),
+        ///                 rerun::datatypes::Rgba32(255, 0, 0),
+        ///                 rerun::datatypes::Rgba32(0, 255, 0),
+        ///                 rerun::datatypes::Rgba32(0, 0, 255),
         ///             })
         ///             .with_labels({"red", "green", "blue"})
         ///     );
@@ -90,11 +88,9 @@ namespace rerun {
             /// Unique identifiers for each individual boxes in the batch.
             std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
@@ -125,11 +121,11 @@ namespace rerun {
             /// TODO(#3794): This should not take an std::vector.
             static Boxes3D from_sizes(const std::vector<datatypes::Vec3D>& sizes);
 
-            /// Creates new `Boxes3D` with `centers` and `half_sizes` created from centers and
-            /// (full) sizes.
+            /// Creates new `Boxes3D` with `centers` and `half_sizes` created from centers and (full)
+            /// sizes.
             ///
-            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
-            /// half-sizes from the input data.
+            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
+            /// from the input data.
             /// TODO(#3794): This should not take an std::vector.
             static Boxes3D from_centers_and_sizes(
                 ComponentBatch<components::Position3D> centers,
@@ -140,11 +136,11 @@ namespace rerun {
                 return boxes;
             }
 
-            /// Creates new `Boxes3D` with `half_sizes` and `centers` created from minimums and
-            /// (full) sizes.
+            /// Creates new `Boxes3D` with `half_sizes` and `centers` created from minimums and (full)
+            /// sizes.
             ///
-            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
-            /// half-sizes from the input data.
+            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
+            /// from the input data.
             /// TODO(#3794): This should not take an std::vector.
             static Boxes3D from_mins_and_sizes(
                 const std::vector<datatypes::Vec3D>& mins,

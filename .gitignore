@@ -5,6 +5,7 @@ crates/re_types/source_hash.txt
 crates/re_types_builder/source_hash.txt
 
 # C++ and CMake stuff:
+*.a
 *.bin
 *.o
 **/build/
@@ -28,6 +29,9 @@ _deps
 __pycache__
 *.pyc
 *.so
+
+# Pixi environment
+.pixi
 
 .gdb_history
 perf.data*

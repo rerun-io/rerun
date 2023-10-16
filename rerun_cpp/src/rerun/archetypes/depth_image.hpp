@@ -26,11 +26,10 @@ namespace rerun {
             /// The depth-image data. Should always be a rank-2 tensor.
             rerun::components::TensorData data;
 
-            /// An optional floating point value that specifies how long a meter is in the native
-            /// depth units.
+            /// An optional floating point value that specifies how long a meter is in the native depth units.
             ///
-            /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter
-            /// precision and a range of up to ~65 meters (2^16 / 1000).
+            /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
+            /// and a range of up to ~65 meters (2^16 / 1000).
             std::optional<rerun::components::DepthMeter> meter;
 
             /// An optional floating point value that specifies the 2D drawing order.
@@ -38,11 +37,9 @@ namespace rerun {
             /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
@@ -51,11 +48,10 @@ namespace rerun {
 
             explicit DepthImage(rerun::components::TensorData _data) : data(std::move(_data)) {}
 
-            /// An optional floating point value that specifies how long a meter is in the native
-            /// depth units.
+            /// An optional floating point value that specifies how long a meter is in the native depth units.
             ///
-            /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter
-            /// precision and a range of up to ~65 meters (2^16 / 1000).
+            /// For instance: with uint16, perhaps meter=1000 which would mean you have millimeter precision
+            /// and a range of up to ~65 meters (2^16 / 1000).
             DepthImage with_meter(rerun::components::DepthMeter _meter) && {
                 meter = std::move(_meter);
                 return std::move(*this);

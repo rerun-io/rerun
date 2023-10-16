@@ -2,19 +2,17 @@
 #include <rerun/archetypes/boxes3d.hpp>
 #include <rerun/recording_stream.hpp>
 
-namespace rr = rerun;
-
 int main(int argc, char** argv) {
-    auto rec = rr::RecordingStream("rerun_example_roundtrip_box3d");
+    auto rec = rerun::RecordingStream("rerun_example_roundtrip_box3d");
     rec.save(argv[1]).throw_on_failure();
 
     rec.log(
         "boxes3d",
-        rr::archetypes::Boxes3D::from_half_sizes({{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}})
+        rerun::archetypes::Boxes3D::from_half_sizes({{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}})
             .with_centers({{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}})
             .with_rotations({
-                rr::datatypes::Quaternion(0.f, 1.f, 2.f, 3.f),
-                rr::datatypes::RotationAxisAngle(
+                rerun::datatypes::Quaternion(0.f, 1.f, 2.f, 3.f),
+                rerun::datatypes::RotationAxisAngle(
                     {0.f, 1.f, 2.f},
                     rerun::datatypes::Angle::degrees(45.f)
                 ),

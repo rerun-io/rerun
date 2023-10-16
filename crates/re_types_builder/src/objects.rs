@@ -191,17 +191,25 @@ impl std::ops::Index<&str> for Objects {
 pub enum ObjectKind {
     Datatype,
     Component,
+    Blueprint,
     Archetype,
 }
 
 impl ObjectKind {
-    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
+    pub const ALL: [Self; 4] = [
+        Self::Datatype,
+        Self::Component,
+        Self::Blueprint,
+        Self::Archetype,
+    ];
 
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
         if pkg_name.starts_with("rerun.datatypes") {
             ObjectKind::Datatype
+        } else if pkg_name.starts_with("rerun.blueprint") {
+            ObjectKind::Blueprint
         } else if pkg_name.starts_with("rerun.components") {
             ObjectKind::Component
         } else if pkg_name.starts_with("rerun.archetypes") {
@@ -214,6 +222,7 @@ impl ObjectKind {
     pub fn plural_snake_case(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "datatypes",
+            ObjectKind::Blueprint => "blueprint",
             ObjectKind::Component => "components",
             ObjectKind::Archetype => "archetypes",
         }
@@ -222,6 +231,7 @@ impl ObjectKind {
     pub fn singular_name(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "Datatype",
+            ObjectKind::Blueprint => "Blueprint",
             ObjectKind::Component => "Component",
             ObjectKind::Archetype => "Archetype",
         }
@@ -230,6 +240,7 @@ impl ObjectKind {
     pub fn plural_name(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "Datatypes",
+            ObjectKind::Blueprint => "Blueprint",
             ObjectKind::Component => "Components",
             ObjectKind::Archetype => "Archetypes",
         }
@@ -241,17 +252,18 @@ impl ObjectKind {
 pub struct Docs {
     /// General documentation for the object.
     ///
-    /// Each entry in the vector is a raw line, extracted as-is from the fbs definition.
-    /// Trim it yourself if needed!
+    /// Each entry in the vector is a line of comment,
+    /// excluding the leading space end trailing newline,
+    /// i.e. the `COMMENT` from `/// COMMENT\n`
     ///
     /// See also [`Docs::tagged_docs`].
     pub doc: Vec<String>,
 
     /// Tagged documentation for the object.
     ///
-    /// Each entry maps a tag value to a bunch of lines.
-    /// Each entry in the vector is a raw line, extracted as-is from the fbs definition.
-    /// Trim it yourself if needed!
+    /// Each entry in the vector is a line of comment,
+    /// excluding the leading space end trailing newline,
+    /// i.e. the `COMMENT` from `/// \py COMMENT\n`
     ///
     /// E.g. the following will be associated with the `py` tag:
     /// ```flatbuffers
@@ -300,12 +312,22 @@ impl Docs {
             // NOTE: discard tagged lines!
             .filter(|line| !line.trim().starts_with('\\'))
             .flat_map(|line| {
+                assert!(!line.ends_with('\n'));
+                assert!(!line.ends_with('\r'));
+
                 if let Some((_, path)) = line.split_once("\\include:") {
                     include_file(&mut included_files, path)
                         .lines()
                         .map(|line| line.to_owned())
                         .collect_vec()
+                } else if let Some(line) = line.strip_prefix(' ') {
+                    // Removed space between `///` and comment.
+                    vec![line.to_owned()]
                 } else {
+                    assert!(
+                        line.is_empty(),
+                        "{filepath}: Comments should start with a single space; found {line:?}"
+                    );
                     vec![line.to_owned()]
                 }
             })
@@ -322,7 +344,14 @@ impl Docs {
                     trimmed.starts_with('\\').then(|| {
                         let tag = trimmed.split_whitespace().next().unwrap();
                         let line = &trimmed[tag.len()..];
-                        (tag[1..].to_owned(), line.to_owned())
+                        let tag = tag[1..].to_owned();
+                        if let Some(line) = line.strip_prefix(' ') {
+                            // Removed space between tag and comment.
+                            (tag, line.to_owned())
+                        } else {
+                            assert!(line.is_empty());
+                            (tag, String::default())
+                        }
                     })
                 })
                 .flat_map(|(tag, line)| {
@@ -1271,9 +1300,23 @@ fn filepath_from_declaration_file(
     include_dir_path: impl AsRef<Utf8Path>,
     declaration_file: impl AsRef<str>,
 ) -> Utf8PathBuf {
-    include_dir_path.as_ref().join("rerun").join(
-        Utf8PathBuf::from(declaration_file.as_ref())
-            .to_string()
-            .replace("//", ""),
-    )
+    // It seems fbs is *very* confused about UNC paths on windows!
+    let declaration_file = declaration_file.as_ref();
+    let declaration_file = declaration_file
+        .strip_prefix("//")
+        .map_or(declaration_file, |f| {
+            f.trim_start_matches("../").trim_start_matches("/?/")
+        });
+
+    let declaration_file = Utf8PathBuf::from(declaration_file);
+    if declaration_file.is_absolute() {
+        declaration_file
+    } else {
+        include_dir_path
+            .as_ref()
+            .join("rerun")
+            .join(crate::format_path(&declaration_file))
+    }
+    .canonicalize_utf8()
+    .expect("Failed to canonicalize declaration path")
 }

@@ -33,11 +33,6 @@ fn should_run() -> bool {
     #![allow(clippy::match_same_arms)]
     use re_build_tools::Environment;
 
-    if cfg!(target_os = "windows") {
-        // TODO(#2591): Codegen is currently disabled on Windows due to hashing issues, likely because of `\r` in files
-        return false;
-    }
-
     if re_build_tools::get_and_track_env_var("CARGO_FEATURE___OPT_OUT_OF_AUTO_REBUILD").is_ok() {
         eprintln!("__opt_out_of_auto_rebuild feature detected: Skipping re_types/build.rs");
         return false;

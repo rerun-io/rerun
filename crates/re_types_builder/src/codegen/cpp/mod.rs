@@ -11,12 +11,14 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
 
-use crate::codegen::common::write_file;
 use crate::{
-    codegen::{autogen_warning, common::collect_examples_for_api_docs},
-    ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects, Type,
+    codegen::{
+        autogen_warning,
+        common::{collect_examples_for_api_docs, write_file},
+    },
+    format_path, ArrowRegistry, Docs, ElementType, Object, ObjectField, ObjectKind,
+    ObjectSpecifics, Objects, Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
-use crate::{Object, ObjectSpecifics, Reporter, ATTR_CPP_NO_FIELD_CTORS};
 
 use self::array_builder::{
     arrow_array_builder_type, arrow_array_builder_type_object,
@@ -53,7 +55,7 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {source_path:?}.\n"));
+        code.push_str(&format!("// Based on {:?}.\n", format_path(source_path)));
     }
 
     code.push('\n');
@@ -62,9 +64,9 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         .to_string()
         .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
         .replace(NEWLINE_TOKEN, "\n") // Should only happen inside header extensions.
-        .replace(&format!("{NORMAL_COMMENT_PREFIX_TOKEN:?} \""), "//")
+        .replace(&format!("{NORMAL_COMMENT_PREFIX_TOKEN:?} \""), "// ")
         .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
-        .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
+        .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "/// ")
         .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
         .replace(&format!("{ANGLE_BRACKET_LEFT_TOKEN:?} \""), "<")
         .replace(&format!("\" {ANGLE_BRACKET_RIGHT_TOKEN:?}"), ">")
@@ -323,7 +325,7 @@ impl QuotedObject {
     ) -> Self {
         match obj.specifics {
             crate::ObjectSpecifics::Struct => match obj.kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
+                ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
                     Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
                 }
                 ObjectKind::Archetype => {
@@ -964,7 +966,7 @@ impl QuotedObject {
                         }
 
                         // Move-constructor:
-                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : _tag(detail::#tag_typename::NONE) {
+                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : #pascal_case_ident() {
                             this->swap(other);
                         }
 
@@ -980,10 +982,8 @@ impl QuotedObject {
 
                         // This is useful for easily implementing the move constructor and assignment operators:
                         void swap(#pascal_case_ident& other) noexcept {
-                            // Swap tags:
-                            auto tag_temp = this->_tag;
-                            this->_tag = other._tag;
-                            other._tag = tag_temp;
+                            // Swap tags: Not using std::swap here causes a warning for some gcc version about potentially uninitialized data.
+                            std::swap(this->_tag, other._tag);
 
                             // Swap data:
                             this->_data.swap(other._data);
@@ -1427,9 +1427,10 @@ fn quote_fill_arrow_array_builder(
                     let variant_name = format_ident!("{}", variant.name);
 
                     let variant_append = if variant.typ.is_plural() {
+                        let error = format!("Failed to serialize {}: list types in unions not yet implemented", obj.name); // TODO(#2919)
                         quote! {
                             (void)#variant_builder;
-                            return Error(ErrorCode::NotImplemented, "TODO(andreas): list types in unions are not yet supported");
+                            return Error(ErrorCode::NotImplemented, #error);
                         }
                     } else {
                         let variant_accessor = quote!(union_instance._data);
@@ -1634,11 +1635,18 @@ fn quote_append_single_value_to_builder(
         | Type::Int32
         | Type::Int64
         | Type::Bool
-        | Type::Float16
         | Type::Float32
         | Type::Float64
         | Type::String => {
             quote!(ARROW_RETURN_NOT_OK(#value_builder->Append(#value_access));)
+        }
+        Type::Float16 => {
+            // Cast `rerun::half` to a `uint16_t``
+            quote! {
+                ARROW_RETURN_NOT_OK(#value_builder->Append(
+                    *reinterpret_cast<const uint16_t*>(&(#value_access))
+                ));
+            }
         }
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
             let num_items_per_element = quote_num_items_per_value(typ, &value_access);
@@ -1653,12 +1661,21 @@ fn quote_append_single_value_to_builder(
                 | ElementType::Int32
                 | ElementType::Int64
                 | ElementType::Bool
-                | ElementType::Float16
                 | ElementType::Float32
                 | ElementType::Float64 => {
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
                         ARROW_RETURN_NOT_OK(#value_builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(#num_items_per_element), nullptr));
+                    }
+                }
+                ElementType::Float16 => {
+                    // We need to convert `rerun::half` to `uint16_t`:
+                    let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
+                    quote! {
+                        ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
+                            reinterpret_cast<const uint16_t*>(#field_ptr_accessor),
+                            static_cast<int64_t>(#num_items_per_element), nullptr)
+                        );
                     }
                 }
                 ElementType::String => {
@@ -1832,7 +1849,7 @@ fn quote_constants_header_and_cpp(
                 quote!(const char #obj_type_ident::INDICATOR_COMPONENT_NAME[] = #indicator_fqname),
             );
         }
-        ObjectKind::Datatype => {}
+        ObjectKind::Datatype | ObjectKind::Blueprint => {}
     }
 
     (hpp, cpp)
@@ -1893,7 +1910,10 @@ fn quote_variable(
             Type::Int32 => quote! { std::optional<int32_t> #name },
             Type::Int64 => quote! { std::optional<int64_t> #name },
             Type::Bool => quote! { std::optional<bool> #name },
-            Type::Float16 => quote! { std::optional<uint16_t> #name },
+            Type::Float16 => {
+                includes.insert_rerun("half.hpp");
+                quote! { std::optional<rerun::half> #name }
+            }
             Type::Float32 => quote! { std::optional<float> #name },
             Type::Float64 => quote! { std::optional<double> #name },
             Type::String => {
@@ -1928,7 +1948,10 @@ fn quote_variable(
             Type::Int32 => quote! { int32_t #name },
             Type::Int64 => quote! { int64_t #name },
             Type::Bool => quote! { bool #name },
-            Type::Float16 => quote! { uint16_t #name },
+            Type::Float16 => {
+                includes.insert_rerun("half.hpp");
+                quote! { rerun::half #name }
+            }
             Type::Float32 => quote! { float #name },
             Type::Float64 => quote! { double #name },
             Type::String => {
@@ -1966,7 +1989,10 @@ fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream
         ElementType::Int32 => quote! { int32_t },
         ElementType::Int64 => quote! { int64_t },
         ElementType::Bool => quote! { bool },
-        ElementType::Float16 => quote! { uint16_t },
+        ElementType::Float16 => {
+            includes.insert_rerun("half.hpp");
+            quote! { rerun::half }
+        }
         ElementType::Float32 => quote! { float },
         ElementType::Float64 => quote! { double },
         ElementType::String => {
@@ -1994,7 +2020,7 @@ fn quote_obj_docs(obj: &Object) -> TokenStream {
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
-        *first_line = format!(" **{}**:{}", obj.kind.singular_name(), first_line);
+        *first_line = format!("**{}**: {}", obj.kind.singular_name(), first_line);
     }
 
     quote_doc_lines(&lines)
@@ -2029,13 +2055,13 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
             } = &example.base;
 
             if let Some(title) = title {
-                lines.push(format!(" ### {title}"));
+                lines.push(format!("### {title}"));
             } else {
                 lines.push(format!("### `{name}`:"));
             }
-            lines.push(" ```cpp,ignore".into());
-            lines.extend(example.lines.iter().map(|line| format!(" {line}")));
-            lines.push(" ```".into());
+            lines.push("```cpp,ignore".into());
+            lines.extend(example.lines.iter().cloned());
+            lines.push("```".into());
             if examples.peek().is_some() {
                 // blank line between examples
                 lines.push(String::new());

@@ -1,0 +1,19 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint;
+
+// ---
+
+/// The state of the panels.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+struct PanelView (
+  "attr.rust.derive": "Copy"
+) {
+  is_expanded: bool (order: 100);
+}

@@ -19,8 +19,6 @@ At any time, you can checkout the complete code listing for this tutorial [here]
 
 We assume you have working Python and `rerun-sdk` installations. If not, check out the [setup page](python.md).
 
-For this tutorial you will also need to `pip install numpy scipy`.
-
 ## Initializing the SDK
 
 Start by opening your editor of choice and creating a new file called `dna_example.py`.
@@ -73,7 +71,6 @@ from math import tau
 import numpy as np
 from rerun_demo.data import build_color_spiral
 from rerun_demo.util import bounce_lerp
-from scipy.spatial.transform import Rotation
 ```
 ---
 
@@ -158,7 +155,7 @@ We can represent the scaffolding using a batch of 3D line strips:
 ```python
 rr.log(
     "dna/structure/scaffolding",
-    rr.LineStrips3D(np.stack(points1, points2, axis=1), colors=[128, 128, 128])
+    rr.LineStrips3D(np.stack((points1, points2), axis=1), colors=[128, 128, 128])
 )
 ```
 
@@ -278,9 +275,6 @@ Now it's just a matter of combining the two: we need to log the transform of the
 Either expand the previous loop to include logging transforms or
 simply add a second loop like this:
 ```python
-# new imports
-from scipy.spatial.transform import Rotation
-
 for i in range(400):
     time = i * 0.01
     rr.set_time_seconds("stable_time", time)
