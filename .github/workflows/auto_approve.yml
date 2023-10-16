@@ -1,6 +1,6 @@
 name: "Auto Approve Workflow Runs"
 
-on: pull_request
+on: pull_request_target
 
 permissions:
   actions: "write"
