@@ -180,7 +180,7 @@ jobs:
         if: ${{ inputs.UPLOAD_COMMIT }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "./target/release/${{ needs.set-config.outputs.LIB_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/commit/${{ steps.short-sha.outputs.SHORT_SHA }}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
 
@@ -188,6 +188,6 @@ jobs:
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "./target/release/${{ needs.set-config.outputs.LIB_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
