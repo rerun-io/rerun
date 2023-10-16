@@ -18,13 +18,13 @@ use re_arrow_store::{
 use re_log_types::{
     build_frame_nr, DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline,
 };
+use re_types_core::{ComponentName, Loggable as _};
 use re_types::datagen::{
     build_some_colors, build_some_instances, build_some_instances_from, build_some_positions2d,
 };
 use re_types::{
     components::{Color, InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
-    ComponentName, Loggable as _,
 };
 
 // --- LatestComponentsAt ---

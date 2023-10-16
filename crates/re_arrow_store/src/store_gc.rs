@@ -1,8 +1,8 @@
 use ahash::{HashMap, HashSet};
 
 use nohash_hasher::IntMap;
-use re_log_types::{EntityPathHash, RowId, SizeBytes as _, TimeInt, TimeRange, Timeline};
-use re_types::ComponentName;
+use re_log_types::{EntityPathHash, RowId, TimeInt, TimeRange, Timeline};
+use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{
     store::{IndexedBucketInner, IndexedTable, PersistentIndexedTable},

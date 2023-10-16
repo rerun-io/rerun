@@ -9,12 +9,12 @@ use arrow2::array::{Array, PrimitiveArray, StructArray, UnionArray};
 use criterion::Criterion;
 use itertools::Itertools;
 
-use re_log_types::{DataCell, SizeBytes as _};
+use re_log_types::DataCell;
+use re_types_core::{Component, SizeBytes as _};
 use re_types::datagen::{build_some_instances, build_some_positions2d};
 use re_types::{
     components::{InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
-    Component,
 };
 
 // ---

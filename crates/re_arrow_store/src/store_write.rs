@@ -6,10 +6,11 @@ use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, SizeBytes as _, TimeInt,
-    TimePoint, TimeRange,
+    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, TimeInt, TimePoint,
+    TimeRange,
 };
-use re_types::{components::InstanceKey, ComponentName, ComponentNameSet, Loggable};
+use re_types_core::{ComponentName, ComponentNameSet, Loggable, SizeBytes as _};
+use re_types::components::InstanceKey;
 
 use crate::{
     store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
