@@ -81,7 +81,7 @@ def main() -> None:
     print("All tests passed successfully!")
 
 
-def run_example(example: str, args: list[str]) -> None:
+def run_example(example: str, extra_args: list[str]) -> None:
     # sys.executable: the absolute path of the executable binary for the Python interpreter
     python_executable = sys.executable
     if python_executable is None:
@@ -92,7 +92,10 @@ def run_example(example: str, args: list[str]) -> None:
     )
     time.sleep(0.3)  # Wait for rerun server to start to remove a logged warning
 
-    python_process = subprocess.Popen([python_executable, example, "--connect", "--addr", f"127.0.0.1:{PORT}"] + args)
+    run_env = os.environ.copy()
+    run_env["RERUN_STRICT"] = "1"
+    cmd = [python_executable, example, "--connect", "--addr", f"127.0.0.1:{PORT}"] + extra_args
+    python_process = subprocess.Popen(cmd, env=run_env)
 
     print("Waiting for python process to finish…")
     returncode = python_process.wait(timeout=30)

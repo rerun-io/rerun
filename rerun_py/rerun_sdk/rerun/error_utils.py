@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import functools
 import inspect
+import os
 import threading
 import warnings
 from types import TracebackType
@@ -15,9 +16,24 @@ __all__ = [
 
 _TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
 
+
+def default_strict_mode() -> bool:
+    if "RERUN_STRICT" in os.environ:
+        var = os.environ["RERUN_STRICT"].lower()
+        if var in ("0", "false", "off", "no"):
+            return False
+        elif var in ("1", "true", "on", "yes"):
+            return True
+        else:
+            print(f"Expected RERUN_STRICT to be one of 0/1 false/true off/on no/yes, found {var}")
+            return _strict_mode
+    else:
+        return False
+
+
 # If `True`, we raise exceptions on use error (wrong parameter types, etc.).
 # If `False` we catch all errors and log a warning instead.
-_strict_mode = False
+_strict_mode = default_strict_mode()
 
 _rerun_exception_ctx = threading.local()
 
@@ -30,7 +46,8 @@ def strict_mode() -> bool:
     will result in exception being raised.
     When strict mode is on, such problems are instead logged as warnings.
 
-    The default is OFF.
+    The default is controlled with the `RERUN_STRICT` environment variable,
+    or `False` if it is not set.
     """
     # If strict was set explicitly, we are in struct mode
     if getattr(_rerun_exception_ctx, "strict_mode", None) is not None:
@@ -47,7 +64,8 @@ def set_strict_mode(mode: bool) -> None:
     will result in exception being raised.
     When strict mode is off, such problems are instead logged as warnings.
 
-    The default is OFF.
+    The default is controlled with the `RERUN_STRICT` environment variable,
+    or `False` if it is not set.
     """
     global _strict_mode
 
