@@ -14,7 +14,6 @@ mod rebuild_detector;
 
 pub(crate) use self::rebuild_detector::Packages;
 
-pub use self::git::{git_branch, git_commit_hash, git_commit_short_hash};
 pub use self::hashing::{
     compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_file_hash,
     compute_strings_hash, iter_dir, read_versioning_hash, write_versioning_hash,
@@ -143,14 +142,8 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
     }
 
     if export_git_info {
-        set_env(
-            "RE_BUILD_GIT_HASH",
-            &git::git_commit_hash().unwrap_or_default(),
-        );
-        set_env(
-            "RE_BUILD_GIT_BRANCH",
-            &git::git_branch().unwrap_or_default(),
-        );
+        set_env("RE_BUILD_GIT_HASH", &git::commit_hash().unwrap_or_default());
+        set_env("RE_BUILD_GIT_BRANCH", &git::branch().unwrap_or_default());
 
         // Make sure the above are up-to-date
         git::rebuild_if_branch_or_commit_changes();
@@ -255,9 +248,4 @@ fn rust_llvm_versions() -> anyhow::Result<(String, String)> {
         rustc_version.unwrap_or_else(|| "unknown".to_owned()),
         llvm_version.unwrap_or_else(|| "unknown".to_owned()),
     ))
-}
-
-/// Returns info parsed from an invocation of the `cargo metadata` command
-pub fn cargo_metadata() -> anyhow::Result<cargo_metadata::Metadata> {
-    Ok(cargo_metadata::MetadataCommand::new().exec()?)
 }

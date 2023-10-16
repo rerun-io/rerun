@@ -15,6 +15,44 @@
 
 use std::path::Path;
 
+use xshell::cmd;
+use xshell::Shell;
+
+type AnyError = Box<dyn std::error::Error + Send + Sync + 'static>;
+type Result<T, E = AnyError> = std::result::Result<T, E>;
+
+#[derive(Debug)]
+struct Error(String);
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for Error {}
+
+macro_rules! error {
+    ($lit:literal) => (Error($lit.to_owned()));
+    ($($tt:tt)*) => (Error(format!($($tt)*)));
+}
+
+macro_rules! bail {
+    ($lit:literal) => (return Err(error!($lit)));
+    ($($tt:tt)*) => (return Err(error!($($tt)*).into()));
+}
+
+fn git_branch_name(sh: &Shell) -> Result<String> {
+    Ok(String::from_utf8(
+        cmd!(sh, "git rev-parse --abbrev-ref HEAD").output()?.stdout,
+    )?)
+}
+
+fn git_short_hash(sh: &Shell) -> Result<String> {
+    let full_hash = String::from_utf8(cmd!(sh, "git rev-parse HEAD").output()?.stdout)?;
+    Ok(full_hash.trim()[0..7].to_string())
+}
+
 fn parse_release_version(branch: &str) -> Option<&str> {
     // release-\d+.\d+.\d+(-alpha.\d+)?
 
@@ -98,7 +136,7 @@ struct Example {
     readme: Frontmatter,
 }
 
-fn examples() -> anyhow::Result<Vec<Example>> {
+fn examples() -> Result<Vec<Example>> {
     let mut examples = vec![];
     let dir = "../../examples/python";
     assert!(std::path::Path::new(dir).exists(), "Failed to find {dir}");
@@ -130,7 +168,7 @@ fn examples() -> anyhow::Result<Vec<Example>> {
     Ok(examples)
 }
 
-fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatter>> {
+fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
     let path = path.as_ref();
     let content = std::fs::read_to_string(path)?;
     let content = content.replace('\r', ""); // Windows, god damn you
@@ -139,11 +177,11 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
         return Ok(None);
     };
     let Some(end) = content.find("---") else {
-        anyhow::bail!("{:?} has invalid frontmatter", path);
+        bail!("{:?} has invalid frontmatter", path);
     };
     Ok(Some(serde_yaml::from_str(&content[..end]).map_err(
         |e| {
-            anyhow::anyhow!(
+            error!(
                 "failed to read {:?}: {e}",
                 path.parent().unwrap().file_name().unwrap()
             )
@@ -151,43 +189,32 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
     )?))
 }
 
-fn get_base_url() -> anyhow::Result<String> {
-    if let Ok(base_url) = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL") {
-        // override via env var
-        return Ok(base_url);
+fn get_base_url() -> Result<String> {
+    let mut base_url = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL")
+        .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
+
+    if re_build_tools::is_on_ci() {
+        let sh = Shell::new()?;
+        let branch = git_branch_name(&sh)?;
+        // If we are on `main`, leave the base url at `version/nightly`
+        if branch != "main" {
+            if let Some(version) = parse_release_version(&branch) {
+                // In builds on `release-x.y.z` branches, use `version/{x.y.z}`.
+                base_url = format!("https://demo.rerun.io/version/{version}");
+            } else {
+                // On any other branch, use `commit/{short_sha}`.
+                let sha = git_short_hash(&sh)?;
+                base_url = format!("https://demo.rerun.io/commit/{sha}");
+            }
+        }
     }
 
-    let branch = re_build_tools::git_branch()?;
-    if branch == "main" || !re_build_tools::is_on_ci() {
-        // on `main` and local builds, use `version/nightly`
-        // this will point to data uploaded by `.github/workflows/reusable_upload_web_demo.yml`
-        // on every commit to the `main` branch
-        return Ok("https://demo.rerun.io/version/nightly".into());
-    }
-
-    if parse_release_version(&branch).is_some() {
-        let metadata = re_build_tools::cargo_metadata()?;
-        let workspace_root = metadata
-            .root_package()
-            .ok_or_else(|| anyhow::anyhow!("failed to find workspace root"))?;
-
-        // on `release-x.y.z` builds, use `version/{crate_version}`
-        // this will point to data uploaded by `.github/workflows/reusable_build_and_publish_web.yml`
-        return Ok(format!(
-            "https://demo.rerun.io/version/{}",
-            workspace_root.version
-        ));
-    }
-
-    // any other branch that is not `main`, use `commit/{sha}`
-    // this will point to data uploaded by `.github/workflows/reusable_upload_web_demo.yml`
-    let sha = re_build_tools::git_commit_short_hash()?;
-    Ok(format!("https://demo.rerun.io/commit/{sha}"))
+    Ok(base_url)
 }
 
 const MANIFEST_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/examples_manifest.json");
 
-fn write_examples_manifest() -> anyhow::Result<()> {
+fn write_examples_manifest() -> Result<()> {
     let base_url = get_base_url()?;
 
     let mut manifest = vec![];

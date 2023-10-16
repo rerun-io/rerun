@@ -43,8 +43,7 @@ pub fn rebuild_if_branch_or_commit_changes() {
     }
 }
 
-/// Get the full commit hash
-pub fn git_commit_hash() -> anyhow::Result<String> {
+pub fn commit_hash() -> anyhow::Result<String> {
     let git_hash = run_command("git", &["rev-parse", "HEAD"])?;
     if git_hash.is_empty() {
         anyhow::bail!("empty commit hash");
@@ -52,13 +51,7 @@ pub fn git_commit_hash() -> anyhow::Result<String> {
     Ok(git_hash)
 }
 
-/// Get the first 7 characters of the commit hash
-pub fn git_commit_short_hash() -> anyhow::Result<String> {
-    Ok(git_commit_hash()?[0..7].to_string())
-}
-
-/// Get the current git branch name
-pub fn git_branch() -> anyhow::Result<String> {
+pub fn branch() -> anyhow::Result<String> {
     run_command("git", &["symbolic-ref", "--short", "HEAD"])
 }
 
