@@ -24,8 +24,8 @@ use re_types::datagen::{
 use re_types::{
     components::{Color, InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
-    ComponentName, Loggable as _,
 };
+use re_types_core::{ComponentName, Loggable as _};
 
 // --- LatestComponentsAt ---
 

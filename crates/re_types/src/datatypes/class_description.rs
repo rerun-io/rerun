@@ -54,8 +54,8 @@ impl<'a> From<&'a ClassDescription> for ::std::borrow::Cow<'a, ClassDescription>
     }
 }
 
-impl crate::Loggable for ClassDescription {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for ClassDescription {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -101,13 +101,13 @@ impl crate::Loggable for ClassDescription {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -265,19 +265,19 @@ impl crate::Loggable for ClassDescription {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field {
                                 name: "info".to_owned(),
@@ -324,7 +324,7 @@ impl crate::Loggable for ClassDescription {
                     .collect();
                 let info = {
                     if !arrays_by_name.contains_key("info") {
-                        return Err(crate::DeserializationError::missing_struct_field(
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "info",
                         ))
@@ -337,7 +337,7 @@ impl crate::Loggable for ClassDescription {
                 };
                 let keypoint_annotations = {
                     if !arrays_by_name.contains_key("keypoint_annotations") {
-                        return Err(crate::DeserializationError::missing_struct_field(
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "keypoint_annotations",
                         ))
@@ -349,7 +349,7 @@ impl crate::Loggable for ClassDescription {
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
+                                ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type:
@@ -385,10 +385,12 @@ impl crate::Loggable for ClassDescription {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -404,14 +406,14 @@ impl crate::Loggable for ClassDescription {
                                 })
                                 .transpose()
                             })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
                 };
                 let keypoint_connections = {
                     if !arrays_by_name.contains_key("keypoint_connections") {
-                        return Err(crate::DeserializationError::missing_struct_field(
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "keypoint_connections",
                         ))
@@ -423,7 +425,7 @@ impl crate::Loggable for ClassDescription {
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
+                                ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: <crate::datatypes::KeypointPair>::arrow_datatype(
@@ -459,10 +461,12 @@ impl crate::Loggable for ClassDescription {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -478,7 +482,7 @@ impl crate::Loggable for ClassDescription {
                                 })
                                 .transpose()
                             })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -491,15 +495,15 @@ impl crate::Loggable for ClassDescription {
                     opt.map(|(info, keypoint_annotations, keypoint_connections)| {
                         Ok(Self {
                             info: info
-                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.ClassDescription#info")?,
                             keypoint_annotations: keypoint_annotations
-                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                                 .with_context(
                                     "rerun.datatypes.ClassDescription#keypoint_annotations",
                                 )?,
                             keypoint_connections: keypoint_connections
-                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                                 .with_context(
                                     "rerun.datatypes.ClassDescription#keypoint_connections",
                                 )?,
@@ -507,7 +511,7 @@ impl crate::Loggable for ClassDescription {
                     })
                     .transpose()
                 })
-                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.ClassDescription")?
             }
         })

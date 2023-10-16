@@ -547,7 +547,7 @@ impl DecodedTensor {
     }
 
     pub fn decode_jpeg_bytes(
-        jpeg_bytes: &crate::ArrowBuffer<u8>,
+        jpeg_bytes: &::re_types_core::ArrowBuffer<u8>,
         [expected_height, expected_width, expected_channels]: [u64; 3],
     ) -> Result<DecodedTensor, TensorImageLoadError> {
         re_tracing::profile_function!();

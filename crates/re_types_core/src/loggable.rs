@@ -162,7 +162,7 @@ impl ComponentName {
     /// Used for most UI elements.
     ///
     /// ```
-    /// # use re_types::ComponentName;
+    /// # use re_types_core::ComponentName;
     /// assert_eq!(ComponentName::from("rerun.components.Position2D").short_name(), "Position2D");
     /// ```
     #[inline]
@@ -221,7 +221,7 @@ impl DatatypeName {
     /// Used for most UI elements.
     ///
     /// ```
-    /// # use re_types::DatatypeName;
+    /// # use re_types_core::DatatypeName;
     /// assert_eq!(DatatypeName::from("rerun.datatypes.Vec2D").short_name(), "Vec2D");
     /// ```
     #[inline]

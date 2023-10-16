@@ -6,8 +6,8 @@ use re_query::range_archetype;
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D},
-    Loggable as _,
 };
+use re_types_core::Loggable as _;
 
 #[test]
 fn simple_range() {

@@ -15,16 +15,16 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct AffixFuzzer11(pub Option<crate::ArrowBuffer<f32>>);
+pub struct AffixFuzzer11(pub Option<::re_types_core::ArrowBuffer<f32>>);
 
-impl From<Option<crate::ArrowBuffer<f32>>> for AffixFuzzer11 {
+impl From<Option<::re_types_core::ArrowBuffer<f32>>> for AffixFuzzer11 {
     #[inline]
-    fn from(many_floats_optional: Option<crate::ArrowBuffer<f32>>) -> Self {
+    fn from(many_floats_optional: Option<::re_types_core::ArrowBuffer<f32>>) -> Self {
         Self(many_floats_optional)
     }
 }
 
-impl From<AffixFuzzer11> for Option<crate::ArrowBuffer<f32>> {
+impl From<AffixFuzzer11> for Option<::re_types_core::ArrowBuffer<f32>> {
     #[inline]
     fn from(value: AffixFuzzer11) -> Self {
         value.0
@@ -45,8 +45,8 @@ impl<'a> From<&'a AffixFuzzer11> for ::std::borrow::Cow<'a, AffixFuzzer11> {
     }
 }
 
-impl crate::Loggable for AffixFuzzer11 {
-    type Name = crate::ComponentName;
+impl ::re_types_core::Loggable for AffixFuzzer11 {
+    type Name = ::re_types_core::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -68,13 +68,13 @@ impl crate::Loggable for AffixFuzzer11 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -126,19 +126,19 @@ impl crate::Loggable for AffixFuzzer11 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
                             data_type: DataType::Float32,
@@ -158,7 +158,7 @@ impl crate::Loggable for AffixFuzzer11 {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            crate::DeserializationError::datatype_mismatch(
+                            ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::Float32,
                                 arrow_data_inner.data_type().clone(),
                             )
@@ -178,7 +178,7 @@ impl crate::Loggable for AffixFuzzer11 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > arrow_data_inner.len() {
-                            return Err(crate::DeserializationError::offset_slice_oob(
+                            return Err(::re_types_core::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 arrow_data_inner.len(),
                             ));
@@ -190,18 +190,18 @@ impl crate::Loggable for AffixFuzzer11 {
                                 .clone()
                                 .sliced_unchecked(start as usize, end - start as usize)
                         };
-                        let data = crate::ArrowBuffer::from(data);
+                        let data = ::re_types_core::ArrowBuffer::from(data);
                         Ok(data)
                     })
                     .transpose()
                 })
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.testing.components.AffixFuzzer11#many_floats_optional")
         .with_context("rerun.testing.components.AffixFuzzer11")?)
     }

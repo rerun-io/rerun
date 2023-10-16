@@ -5,7 +5,9 @@ use std::{
 
 use crossbeam::channel::{Receiver, Sender};
 
-use crate::{DataRow, DataTable, SizeBytes, TableId};
+use re_types_core::SizeBytes as _;
+
+use crate::{DataRow, DataTable, TableId};
 
 // ---
 
