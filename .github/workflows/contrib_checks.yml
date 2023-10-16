@@ -91,7 +91,7 @@ jobs:
       - name: Codegen
         uses: actions-rs/cargo@v1
         with:
-          command: codegen
+          command: codegen --force
 
       - name: No Diffs From Running Codegen
         run: |
