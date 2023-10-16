@@ -2,6 +2,9 @@ name: "Auto Approve Workflow Runs"
 
 on: pull_request
 
+permissions:
+  actions: "write"
+
 jobs:
   auto-approve-workflow:
     runs-on: ubuntu-latest
@@ -9,7 +12,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: "Print comments"
+      - name: Approve workflow run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "comments: ${{ github.event.pull_request.comments }}"
+          set +e
+
+          comments=$(gh pr view --json comments)
+
+          # The enum values are explained here:
+          # https://docs.github.com/en/graphql/reference/enums#commentauthorassociation
+          expr='
+          .comments
+            | map(select(.authorAssociation | IN("COLLABORATOR", "MEMBER", "OWNER")))
+            | any(.body | contains("@rerun-bot approve"))
+          '
+
+          if [ $(echo "$comments" | jq "$expr") = "true" ]; then
+            echo "can approve run_id:${{ github.run_id }}"
+          fi
 
