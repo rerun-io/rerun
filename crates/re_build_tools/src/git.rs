@@ -57,9 +57,28 @@ pub fn git_commit_short_hash() -> anyhow::Result<String> {
     Ok(git_commit_hash()?[0..7].to_string())
 }
 
+fn parse_branch_from_github_ref() -> Option<String> {
+    // The ref given is fully-formed, meaning that for branches the format is refs/heads/<branch_name>,
+    // for pull requests it is refs/pull/<pr_number>/merge, and for tags it is refs/tags/<tag_name>.
+    // For example, refs/heads/feature-branch-1.
+    // https://docs.github.com/en/actions/learn-github-actions/variables#default-environment-variables
+
+    let github_ref = std::env::var("GITHUB_REF").ok()?;
+    let branch = github_ref
+        .strip_prefix("refs/")?
+        .split_once('/')?
+        .1
+        .to_owned();
+    Some(branch)
+}
+
 /// Get the current git branch name
 pub fn git_branch() -> anyhow::Result<String> {
-    run_command("git", &["symbolic-ref", "--short", "HEAD"])
+    if let Some(branch) = parse_branch_from_github_ref() {
+        Ok(branch)
+    } else {
+        run_command("git", &["symbolic-ref", "--short", "HEAD"])
+    }
 }
 
 /// From <https://git-scm.com/docs/git-rev-parse>:
