@@ -4,7 +4,8 @@ use arrow2::{
 };
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
-use re_types::{components::InstanceKey, Archetype, Component, Loggable};
+use re_types_core::{Archetype, Component, Loggable};
+use re_types::components::InstanceKey;
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 
@@ -58,7 +59,7 @@ pub fn iter_column<'a, C: Component + 'a>(
 
 pub fn df_builder1<'a, C0>(c0: &'a [Option<C0>]) -> crate::Result<DataFrame>
 where
-    C0: re_types::Component + Clone + 'a,
+    C0: re_types_core::Component + Clone + 'a,
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
 {
     let array0 = C0::to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
@@ -73,8 +74,8 @@ pub fn df_builder2<'a, C0, C1>(
     c1: &'a [Option<C1>],
 ) -> crate::Result<DataFrame>
 where
-    C0: re_types::Component + Clone + 'a,
-    C1: re_types::Component + Clone + 'a,
+    C0: re_types_core::Component + Clone + 'a,
+    C1: re_types_core::Component + Clone + 'a,
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
     &'a C1: Into<::std::borrow::Cow<'a, C1>>,
 {
@@ -93,9 +94,9 @@ pub fn df_builder3<'a, C0, C1, C2>(
     c2: &'a [Option<C2>],
 ) -> crate::Result<DataFrame>
 where
-    C0: re_types::Component + Clone + 'a,
-    C1: re_types::Component + Clone + 'a,
-    C2: re_types::Component + Clone + 'a,
+    C0: re_types_core::Component + Clone + 'a,
+    C1: re_types_core::Component + Clone + 'a,
+    C2: re_types_core::Component + Clone + 'a,
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
     &'a C1: Into<::std::borrow::Cow<'a, C1>>,
     &'a C2: Into<::std::borrow::Cow<'a, C2>>,
@@ -134,7 +135,10 @@ impl ComponentWithInstances {
 }
 
 impl<A: Archetype> ArchetypeView<A> {
-    pub fn as_df1<'a, C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a>(
+    pub fn as_df1<
+        'a,
+        C1: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+    >(
         &self,
     ) -> crate::Result<DataFrame> {
         let array0 = InstanceKey::to_arrow(self.iter_instance_keys())?;
@@ -151,8 +155,8 @@ impl<A: Archetype> ArchetypeView<A> {
 
     pub fn as_df2<
         'a,
-        C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
-        C2: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
+        C1: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+        C2: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
     >(
         &self,
     ) -> crate::Result<DataFrame> {

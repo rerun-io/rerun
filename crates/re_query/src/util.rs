@@ -1,7 +1,7 @@
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
 use re_data_store::ExtraQueryHistory;
 use re_log_types::EntityPath;
-use re_types::Archetype;
+use re_types_core::Archetype;
 
 use crate::{query_archetype, range::range_archetype, ArchetypeView};
 

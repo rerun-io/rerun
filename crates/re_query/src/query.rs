@@ -1,6 +1,7 @@
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{DataRow, EntityPath, RowId};
-use re_types::{components::InstanceKey, Archetype, ComponentName, Loggable};
+use re_types_core::{Archetype, ComponentName, Loggable};
+use re_types::components::InstanceKey;
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 
@@ -76,7 +77,7 @@ pub fn get_component_with_instances(
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::Timeline;
-/// # use re_types::Component;
+/// # use re_types_core::Component;
 /// # use re_types::components::{Position2D, Color};
 /// # use re_types::archetypes::Points2D;
 /// # let store = re_query::__populate_example_store();

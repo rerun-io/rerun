@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt};
 use re_log_types::EntityPath;
-use re_types::{Archetype, ComponentName};
+use re_types_core::{Archetype, ComponentName};
 
 use crate::{get_component_with_instances, ArchetypeView, ComponentWithInstances};
 

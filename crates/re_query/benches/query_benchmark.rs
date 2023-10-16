@@ -7,10 +7,10 @@ use itertools::Itertools;
 use re_arrow_store::{DataStore, LatestAtQuery};
 use re_log_types::{entity_path, DataRow, EntityPath, Index, RowId, TimeInt, TimeType, Timeline};
 use re_query::query_archetype;
+use re_types_core::Loggable as _;
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D, Text},
-    Loggable as _,
 };
 
 // ---
