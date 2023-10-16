@@ -19,28 +19,28 @@ from os.path import isfile, join
 #
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
-opt_out_entirely = {
-    "annotation_context_connections": ["cpp"], # Not yet implemented in C++
-    "annotation_context_segmentation": ["cpp"], # Not yet implemented in C++
+opt_out_run = {
+    "annotation_context_connections": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "annotation_context_segmentation": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "annotation_context_rects": [],
-    "any_values": ["cpp", "rust"], # Only implemented for Python
-    "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
+    "any_values": ["cpp", "rust"], # Not yet implemented
+    "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "asset3d_simple": [],
-    "bar_chart": ["cpp"], # Serializing tensors not yet implemented in C++
-    "custom_data": ["cpp"], # Not yet implemented in C++
-    "depth_image_3d": ["cpp"], # Not yet implemented in C++
-    "depth_image_simple": ["cpp"],  # Not yet implemented in C++
-    "extra_values": ["cpp", "rust"], # Only implemented for Python
-    "image_advanced": ["cpp", "rust"], # Missing example for Rust
-    "image_simple": ["cpp"], # Not yet implemented in C++
+    "bar_chart": ["cpp"], # TODO(#2919): Serializing tensors not yet implemented in C++
+    "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "depth_image_3d": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "depth_image_simple": ["cpp"],  # TODO(#2919): Not yet implemented in C++
+    "extra_values": ["cpp", "rust"], # Missing examples
+    "image_advanced": ["cpp", "rust"], # Missing examples
+    "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
-    "pinhole_simple": ["cpp"], # Seg-faults in C++
-    "scalar_multiple_plots": ["cpp"], # Not yet implemented in C++
-    "scalar_simple": ["cpp"], # Not yet implemented in C++
-    "segmentation_image_simple": ["cpp"], # Not yet implemented in C++
-    "tensor_simple": ["cpp"], # Not yet implemented in C++
-    "text_log_integration": ["cpp"], # Not yet implemented in C++
+    "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
+    "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "scalar_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "tensor_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "view_coordinates_simple": [],
 
     # This is this script, it's not an example.
@@ -156,7 +156,7 @@ def main() -> None:
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
-            example_opt_out_entirely = opt_out_entirely.get(example, [])
+            example_opt_out_entirely = opt_out_run.get(example, [])
             for language in ["cpp", "py", "rust"]:
                 if language in example_opt_out_entirely:
                     continue
@@ -174,7 +174,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print(f"Comparing example '{example}'…")
 
-        example_opt_out_entirely = opt_out_entirely.get(example, [])
+        example_opt_out_entirely = opt_out_run.get(example, [])
         example_opt_out_compare = opt_out_compare.get(example, [])
 
         if "rust" in example_opt_out_entirely:
