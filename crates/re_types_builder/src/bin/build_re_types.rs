@@ -15,7 +15,6 @@ const DEFINITIONS_DIR_PATH: &str = "crates/re_types/definitions";
 const ENTRYPOINT_PATH: &str = "crates/re_types/definitions/rerun/archetypes.fbs";
 const DOC_EXAMPLES_DIR_PATH: &str = "docs/code-examples";
 const CPP_OUTPUT_DIR_PATH: &str = "rerun_cpp";
-const RUST_OUTPUT_DIR_PATH: &str = "crates/re_types/.";
 const PYTHON_OUTPUT_DIR_PATH: &str = "rerun_py/rerun_sdk/rerun";
 const PYTHON_TESTING_OUTPUT_DIR_PATH: &str = "rerun_py/tests/test_types";
 const DOCS_CONTENT_DIR_PATH: &str = "docs/content/reference/types";
@@ -72,7 +71,6 @@ fn main() {
     let definitions_dir_path = workspace_dir.join(DEFINITIONS_DIR_PATH);
     let entrypoint_path = workspace_dir.join(ENTRYPOINT_PATH);
     let cpp_output_dir_path = workspace_dir.join(CPP_OUTPUT_DIR_PATH);
-    let rust_output_dir_path = workspace_dir.join(RUST_OUTPUT_DIR_PATH);
     let python_output_dir_path = workspace_dir.join(PYTHON_OUTPUT_DIR_PATH);
     let python_testing_output_dir_path = workspace_dir.join(PYTHON_TESTING_OUTPUT_DIR_PATH);
     let docs_content_dir_path = workspace_dir.join(DOCS_CONTENT_DIR_PATH);
@@ -120,7 +118,7 @@ fn main() {
         ),
         || re_types_builder::generate_rust_code(
             &reporter,
-            rust_output_dir_path,
+            workspace_dir,
             &objects,
             &arrow_registry
         ),
