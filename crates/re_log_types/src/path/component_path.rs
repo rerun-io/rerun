@@ -1,10 +1,15 @@
-use crate::{path::EntityPath, ComponentName};
+use re_types_core::ComponentName;
+
+use crate::path::EntityPath;
 
 /// A [`EntityPath`] plus a [`ComponentName`].
 ///
 /// Example: `camera / "left" / points / #42`.`color`
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize, serde::Serialize)
+)]
 pub struct ComponentPath {
     /// `camera / "left" / points / #42`
     pub entity_path: EntityPath,

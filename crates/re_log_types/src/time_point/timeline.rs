@@ -1,6 +1,6 @@
 use arrow2::datatypes::{DataType, TimeUnit};
 
-use crate::{time::TimeZone, SizeBytes, TimeRange, TimeType};
+use crate::{time::TimeZone, TimeRange, TimeType};
 
 re_string_interner::declare_new_type!(
     /// The name of a timeline. Often something like `"log_time"` or `"frame_nr"`.
@@ -18,7 +18,10 @@ impl Default for TimelineName {
 /// A time frame/space, e.g. `log_time` or `frame_nr`, coupled with the type of time
 /// it keeps.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize, serde::Serialize)
+)]
 pub struct Timeline {
     /// Name of the timeline (e.g. "log_time").
     name: TimelineName,
@@ -126,7 +129,7 @@ impl Timeline {
 
 impl nohash_hasher::IsEnabled for Timeline {}
 
-impl SizeBytes for Timeline {
+impl re_types_core::SizeBytes for Timeline {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

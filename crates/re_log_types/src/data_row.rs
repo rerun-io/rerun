@@ -1,9 +1,10 @@
 use ahash::HashSetExt;
 use nohash_hasher::IntSet;
-use re_types::{AsComponents, ComponentName};
 use smallvec::SmallVec;
 
-use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint};
+use re_types_core::{AsComponents, ComponentName, SizeBytes};
+
+use crate::{DataCell, DataCellError, DataTable, EntityPath, TableId, TimePoint};
 
 // ---
 
@@ -278,7 +279,7 @@ impl DataRow {
         row_id: RowId,
         timepoint: TimePoint,
         entity_path: EntityPath,
-        comp_batches: impl IntoIterator<Item = &'a dyn re_types::ComponentBatch>,
+        comp_batches: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 

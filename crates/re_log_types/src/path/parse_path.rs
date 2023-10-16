@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use re_types::{components::InstanceKey, ComponentName};
+use re_types_core::ComponentName;
+use re_types::components::InstanceKey;
 
 use crate::{ComponentPath, DataPath, EntityPath, EntityPathPart, Index};
 

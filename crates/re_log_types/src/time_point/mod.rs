@@ -5,7 +5,7 @@ mod timeline;
 
 use crate::{
     time::{Time, TimeZone},
-    SizeBytes, TimeRange,
+    TimeRange,
 };
 
 // Re-exports
@@ -20,7 +20,10 @@ pub use timeline::{Timeline, TimelineName};
 /// Timeless data will show up on all timelines, past and future,
 /// and will hit all time queries. In other words, it is always there.
 #[derive(Clone, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Deserialize, serde::Serialize)
+)]
 pub struct TimePoint(BTreeMap<Timeline, TimeInt>);
 
 impl From<BTreeMap<Timeline, TimeInt>> for TimePoint {
@@ -93,7 +96,7 @@ impl TimePoint {
     }
 }
 
-impl SizeBytes for TimePoint {
+impl re_types_core::SizeBytes for TimePoint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         type K = Timeline;

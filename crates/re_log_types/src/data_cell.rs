@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
 use arrow2::datatypes::DataType;
-use re_types::{Component, ComponentBatch, ComponentName, DeserializationError};
 
-use crate::SizeBytes;
+use re_types_core::{Component, ComponentBatch, ComponentName, DeserializationError, SizeBytes};
 
 // ---
 
@@ -16,10 +15,10 @@ pub enum DataCellError {
     Arrow(#[from] arrow2::error::Error),
 
     #[error("Could not deserialize data from Arrow: {0}")]
-    LoggableDeserialize(#[from] re_types::DeserializationError),
+    LoggableDeserialize(#[from] re_types_core::DeserializationError),
 
     #[error("Could not serialize data from Arrow: {0}")]
-    LoggableSerialize(#[from] re_types::SerializationError),
+    LoggableSerialize(#[from] re_types_core::SerializationError),
 
     // Needed to handle TryFrom<T> -> T
     #[error("Infallible")]
@@ -75,9 +74,9 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// # use arrow2_convert::field::ArrowField as _;
 /// # use itertools::Itertools as _;
 /// #
-/// # use re_log_types::{DataCell};
+/// # use re_log_types::DataCell;
 /// # use re_log_types::example_components::MyPoint;
-/// # use re_types::Loggable as _;
+/// # use re_types_core::Loggable as _;
 /// #
 /// let points: &[MyPoint] = &[
 ///     MyPoint { x: 10.0, y: 10.0 },
@@ -166,7 +165,9 @@ pub struct DataCellInner {
 impl DataCell {
     /// Builds a new `DataCell` from a component batch.
     #[inline]
-    pub fn from_component_batch(batch: &dyn ComponentBatch) -> re_types::SerializationResult<Self> {
+    pub fn from_component_batch(
+        batch: &dyn ComponentBatch,
+    ) -> re_types_core::SerializationResult<Self> {
         batch
             .to_arrow()
             .map(|arrow| DataCell::from_arrow(batch.name(), arrow))
@@ -647,7 +648,8 @@ impl DataCellInner {
 fn data_cell_sizes() {
     use crate::DataCell;
     use arrow2::array::UInt64Array;
-    use re_types::{components::InstanceKey, Loggable as _};
+    use re_types_core::Loggable as _;
+    use re_types::components::InstanceKey;
 
     // not computed
     // NOTE: Unsized cells are illegal in debug mode and will flat out crash.
