@@ -241,10 +241,19 @@ macro_rules! tensor_type {
         }
 
         impl From<Vec<$type>> for TensorData {
-            fn from(value: Vec<$type>) -> Self {
+            fn from(vec: Vec<$type>) -> Self {
                 TensorData {
-                    shape: vec![TensorDimension::unnamed(value.len() as u64)],
-                    buffer: TensorBuffer::$variant(value.into()),
+                    shape: vec![TensorDimension::unnamed(vec.len() as u64)],
+                    buffer: TensorBuffer::$variant(vec.into()),
+                }
+            }
+        }
+
+        impl From<&[$type]> for TensorData {
+            fn from(slice: &[$type]) -> Self {
+                TensorData {
+                    shape: vec![TensorDimension::unnamed(slice.len() as u64)],
+                    buffer: TensorBuffer::$variant(slice.into()),
                 }
             }
         }

@@ -20,8 +20,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// **Datatype**: Representation of an affine transform via separate translation, rotation &
-        /// scale.
+        /// **Datatype**: Representation of an affine transform via separate translation, rotation & scale.
         struct TranslationRotationScale3D {
             /// 3D translation vector, applied last.
             std::optional<rerun::datatypes::Vec3D> translation;
@@ -32,8 +31,7 @@ namespace rerun {
             /// 3D scale, applied first.
             std::optional<rerun::datatypes::Scale3D> scale;
 
-            /// If true, this transform is from the parent space to the space where the transform
-            /// was logged.
+            /// If true, this transform is from the parent space to the space where the transform was logged.
             ///
             /// If false (default), the transform maps from this space to its parent,
             /// i.e. the translation is the position in the parent space.

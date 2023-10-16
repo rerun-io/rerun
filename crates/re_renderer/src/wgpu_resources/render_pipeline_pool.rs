@@ -1,4 +1,3 @@
-use anyhow::Context as _;
 use smallvec::SmallVec;
 
 use crate::debug_label::DebugLabel;
@@ -102,23 +101,36 @@ pub struct RenderPipelineDesc {
     pub multisample: wgpu::MultisampleState,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum RenderPipelineCreationError {
+    #[error("Referenced pipeline layout not found: {0}")]
+    PipelineLayout(PoolError),
+
+    #[error("Referenced vertex shader not found: {0}")]
+    VertexShaderNotFound(PoolError),
+
+    #[error("Referenced fragment shader not found: {0}")]
+    FragmentShaderNotFound(PoolError),
+}
+
 impl RenderPipelineDesc {
     fn create_render_pipeline(
         &self,
         device: &wgpu::Device,
         pipeline_layouts: &GpuPipelineLayoutPool,
         shader_modules: &GpuShaderModulePool,
-    ) -> anyhow::Result<wgpu::RenderPipeline> {
+    ) -> Result<wgpu::RenderPipeline, RenderPipelineCreationError> {
         let pipeline_layout = pipeline_layouts
             .get_resource(self.pipeline_layout)
-            .context("referenced pipeline layout not found")?;
+            .map_err(RenderPipelineCreationError::PipelineLayout)?;
 
         let vertex_shader_module = shader_modules
             .get(self.vertex_handle)
-            .context("referenced vertex shader not found")?;
+            .map_err(RenderPipelineCreationError::VertexShaderNotFound)?;
+
         let fragment_shader_module = shader_modules
             .get(self.fragment_handle)
-            .context("referenced fragment shader not found")?;
+            .map_err(RenderPipelineCreationError::FragmentShaderNotFound)?;
 
         let buffers = self
             .vertex_buffers
@@ -211,10 +223,7 @@ impl GpuRenderPipelinePool {
                     Some(sm)
                 }
                 Err(err) => {
-                    re_log::error!(
-                        err = re_error::format(err),
-                        "couldn't recompile render pipeline"
-                    );
+                    re_log::error!("Failed to compile render pipeline: {}", err);
                     None
                 }
             }

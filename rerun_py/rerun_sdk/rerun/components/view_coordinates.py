@@ -36,13 +36,13 @@ class ViewCoordinates(ViewCoordinatesExt):
     For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
     down, and the Z axis points forward.
 
-    The following constants are used to represent the different directions.
-     Up = 1
-     Down = 2
-     Right = 3
-     Left = 4
-     Forward = 5
-     Back = 6
+    The following constants are used to represent the different directions:
+     * Up = 1
+     * Down = 2
+     * Right = 3
+     * Left = 4
+     * Forward = 5
+     * Back = 6
     """
 
     def __init__(self: Any, coordinates: ViewCoordinatesLike):
@@ -52,7 +52,7 @@ class ViewCoordinates(ViewCoordinatesExt):
         Parameters
         ----------
         coordinates:
-             The directions of the [x, y, z] axes.
+            The directions of the [x, y, z] axes.
         """
 
         # You can define your own __init__ function as a member of ViewCoordinatesExt in view_coordinates_ext.py

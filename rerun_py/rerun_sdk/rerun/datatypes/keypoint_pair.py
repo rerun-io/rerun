@@ -42,9 +42,9 @@ class KeypointPair(KeypointPairExt):
         Parameters
         ----------
         keypoint0:
-             The first point of the pair.
+            The first point of the pair.
         keypoint1:
-             The second point of the pair.
+            The second point of the pair.
         """
 
         # You can define your own __init__ function as a member of KeypointPairExt in keypoint_pair_ext.py

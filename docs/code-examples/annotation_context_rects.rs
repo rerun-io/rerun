@@ -8,8 +8,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log_timeless(
         "/",
         &rerun::AnnotationContext::new([
-            (1, "red", rerun::Rgba32::from(0xFF0000FF)),
-            (2, "green", rerun::Rgba32::from(0x00FF00FF)),
+            (1, "red", rerun::Rgba32::from_rgb(255, 0, 0)),
+            (2, "green", rerun::Rgba32::from_rgb(0, 255, 0)),
         ]),
     )?;
 

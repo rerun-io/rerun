@@ -11,12 +11,14 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
 
-use crate::codegen::common::write_file;
 use crate::{
-    codegen::{autogen_warning, common::collect_examples_for_api_docs},
-    ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects, Type,
+    codegen::{
+        autogen_warning,
+        common::{collect_examples_for_api_docs, write_file},
+    },
+    format_path, ArrowRegistry, Docs, ElementType, Object, ObjectField, ObjectKind,
+    ObjectSpecifics, Objects, Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
-use crate::{Object, ObjectSpecifics, Reporter, ATTR_CPP_NO_FIELD_CTORS};
 
 use self::array_builder::{
     arrow_array_builder_type, arrow_array_builder_type_object,
@@ -53,7 +55,7 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {source_path:?}.\n"));
+        code.push_str(&format!("// Based on {:?}.\n", format_path(source_path)));
     }
 
     code.push('\n');
@@ -62,9 +64,9 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
         .to_string()
         .replace(&format!("{NEWLINE_TOKEN:?}"), "\n")
         .replace(NEWLINE_TOKEN, "\n") // Should only happen inside header extensions.
-        .replace(&format!("{NORMAL_COMMENT_PREFIX_TOKEN:?} \""), "//")
+        .replace(&format!("{NORMAL_COMMENT_PREFIX_TOKEN:?} \""), "// ")
         .replace(&format!("\" {NORMAL_COMMENT_SUFFIX_TOKEN:?}"), "\n")
-        .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "///")
+        .replace(&format!("{DOC_COMMENT_PREFIX_TOKEN:?} \""), "/// ")
         .replace(&format!("\" {DOC_COMMENT_SUFFIX_TOKEN:?}"), "\n")
         .replace(&format!("{ANGLE_BRACKET_LEFT_TOKEN:?} \""), "<")
         .replace(&format!("\" {ANGLE_BRACKET_RIGHT_TOKEN:?}"), ">")
@@ -323,7 +325,7 @@ impl QuotedObject {
     ) -> Self {
         match obj.specifics {
             crate::ObjectSpecifics::Struct => match obj.kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
+                ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
                     Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
                 }
                 ObjectKind::Archetype => {
@@ -1425,9 +1427,10 @@ fn quote_fill_arrow_array_builder(
                     let variant_name = format_ident!("{}", variant.name);
 
                     let variant_append = if variant.typ.is_plural() {
+                        let error = format!("Failed to serialize {}: list types in unions not yet implemented", obj.name); // TODO(#2919)
                         quote! {
                             (void)#variant_builder;
-                            return Error(ErrorCode::NotImplemented, "TODO(andreas): list types in unions are not yet supported");
+                            return Error(ErrorCode::NotImplemented, #error);
                         }
                     } else {
                         let variant_accessor = quote!(union_instance._data);
@@ -1846,7 +1849,7 @@ fn quote_constants_header_and_cpp(
                 quote!(const char #obj_type_ident::INDICATOR_COMPONENT_NAME[] = #indicator_fqname),
             );
         }
-        ObjectKind::Datatype => {}
+        ObjectKind::Datatype | ObjectKind::Blueprint => {}
     }
 
     (hpp, cpp)
@@ -2017,7 +2020,7 @@ fn quote_obj_docs(obj: &Object) -> TokenStream {
 
     if let Some(first_line) = lines.first_mut() {
         // Prefix with object kind:
-        *first_line = format!(" **{}**:{}", obj.kind.singular_name(), first_line);
+        *first_line = format!("**{}**: {}", obj.kind.singular_name(), first_line);
     }
 
     quote_doc_lines(&lines)
@@ -2052,13 +2055,13 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
             } = &example.base;
 
             if let Some(title) = title {
-                lines.push(format!(" ### {title}"));
+                lines.push(format!("### {title}"));
             } else {
                 lines.push(format!("### `{name}`:"));
             }
-            lines.push(" ```cpp,ignore".into());
-            lines.extend(example.lines.iter().map(|line| format!(" {line}")));
-            lines.push(" ```".into());
+            lines.push("```cpp,ignore".into());
+            lines.extend(example.lines.iter().cloned());
+            lines.push("```".into());
             if examples.peek().is_some() {
                 // blank line between examples
                 lines.push(String::new());

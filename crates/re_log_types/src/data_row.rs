@@ -106,21 +106,8 @@ impl SizeBytes for DataCellRow {
 // ---
 
 /// A unique ID for a [`DataRow`].
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    arrow2_convert::ArrowField,
-    arrow2_convert::ArrowSerialize,
-    arrow2_convert::ArrowDeserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(transparent)]
 pub struct RowId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for RowId {
@@ -169,6 +156,8 @@ impl std::ops::DerefMut for RowId {
         &mut self.0
     }
 }
+
+re_tuid::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 
 /// A row's worth of data, i.e. an event: a list of [`DataCell`]s associated with an auto-generated
 /// `RowId`, a user-specified [`TimePoint`] and [`EntityPath`], and an expected number of

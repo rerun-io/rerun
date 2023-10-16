@@ -124,10 +124,5 @@ harness = false
 required-features = ["testing"]
 
 [[bench]]
-name = "arrow2_convert"
-harness = false
-required-features = ["testing"]
-
-[[bench]]
 name = "vectors"
 harness = false
