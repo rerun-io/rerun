@@ -90,12 +90,12 @@ pub mod coordinates {
     pub use re_types::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3};
 }
 
-pub use re_types::{
-    archetypes, components, datatypes, Archetype, ArchetypeName, AsComponents, Component,
-    ComponentBatch, ComponentName, Datatype, DatatypeBatch, DatatypeName,
-    GenericIndicatorComponent, Loggable, LoggableBatch, MaybeOwnedComponentBatch,
-    NamedIndicatorComponent,
+pub use re_types_core::{
+    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentName, Datatype,
+    DatatypeBatch, DatatypeName, GenericIndicatorComponent, Loggable, LoggableBatch,
+    MaybeOwnedComponentBatch, NamedIndicatorComponent,
 };
+pub use re_types::{archetypes, components, datatypes};
 
 mod prelude {
     // Import all archetypes into the global namespace to minimize

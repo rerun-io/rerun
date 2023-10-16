@@ -9,7 +9,8 @@ use re_log_types::{
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
     StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
+use re_types_core::{AsComponents, ComponentBatch, SerializationError};
+use re_types::components::InstanceKey;
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
