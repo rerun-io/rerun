@@ -105,6 +105,7 @@ web-sys = { workspace = true, features = ["Window"] }
 
 [build-dependencies]
 re_build_tools.workspace = true
+cargo_metadata = "0.15"
 
 # External
 serde = { workspace = true, features = ["derive"] }

@@ -15,6 +15,7 @@
 
 use std::path::Path;
 
+use cargo_metadata::Metadata;
 use xshell::cmd;
 use xshell::Shell;
 
@@ -43,14 +44,24 @@ macro_rules! bail {
 }
 
 fn git_branch_name(sh: &Shell) -> Result<String> {
-    Ok(String::from_utf8(
-        cmd!(sh, "git rev-parse --abbrev-ref HEAD").output()?.stdout,
-    )?)
+    let mut branch_name =
+        String::from_utf8(cmd!(sh, "git branch --show-current").output()?.stdout)?;
+    branch_name.truncate(branch_name.trim_end().len()); // trim trailing whitespace in-place
+    Ok(branch_name)
 }
 
 fn git_short_hash(sh: &Shell) -> Result<String> {
     let full_hash = String::from_utf8(cmd!(sh, "git rev-parse HEAD").output()?.stdout)?;
     Ok(full_hash.trim()[0..7].to_string())
+}
+
+fn cargo_metadata(sh: &Shell) -> Result<Metadata> {
+    let metadata = String::from_utf8(
+        cmd!(sh, "cargo metadata --format-version 1")
+            .output()?
+            .stdout,
+    )?;
+    Ok(cargo_metadata::MetadataCommand::parse(metadata)?)
 }
 
 fn parse_release_version(branch: &str) -> Option<&str> {
@@ -190,26 +201,38 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> Result<Option<Frontmatter>> {
 }
 
 fn get_base_url() -> Result<String> {
-    let mut base_url = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL")
-        .unwrap_or_else(|_e| "https://demo.rerun.io/version/nightly".into());
-
-    if re_build_tools::is_on_ci() {
-        let sh = Shell::new()?;
-        let branch = git_branch_name(&sh)?;
-        // If we are on `main`, leave the base url at `version/nightly`
-        if branch != "main" {
-            if let Some(version) = parse_release_version(&branch) {
-                // In builds on `release-x.y.z` branches, use `version/{x.y.z}`.
-                base_url = format!("https://demo.rerun.io/version/{version}");
-            } else {
-                // On any other branch, use `commit/{short_sha}`.
-                let sha = git_short_hash(&sh)?;
-                base_url = format!("https://demo.rerun.io/commit/{sha}");
-            }
-        }
+    if let Ok(base_url) = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL") {
+        // override via env var
+        return Ok(base_url);
     }
 
-    Ok(base_url)
+    let sh = Shell::new()?;
+    let branch = git_branch_name(&sh)?;
+    if branch == "main" || !re_build_tools::is_on_ci() {
+        // on `main` and local builds, use `version/nightly`
+        // this will point to data uploaded by `.github/workflows/reusable_upload_web_demo.yml`
+        // on every commit to the `main` branch
+        return Ok("https://demo.rerun.io/version/nightly".into());
+    }
+
+    if parse_release_version(&branch).is_some() {
+        let metadata = cargo_metadata(&sh)?;
+        let workspace_root = metadata
+            .root_package()
+            .ok_or_else(|| error!("failed to find workspace root"))?;
+
+        // on `release-x.y.z` builds, use `version/{crate_version}`
+        // this will point to data uploaded by `.github/workflows/reusable_build_and_publish_web.yml`
+        return Ok(format!(
+            "https://demo.rerun.io/version/{}",
+            workspace_root.version
+        ));
+    }
+
+    // any other branch that is not `main`, use `commit/{sha}`
+    // this will point to data uploaded by `.github/workflows/reusable_upload_web_demo.yml`
+    let sha = git_short_hash(&sh)?;
+    Ok(format!("https://demo.rerun.io/commit/{sha}"))
 }
 
 const MANIFEST_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/examples_manifest.json");

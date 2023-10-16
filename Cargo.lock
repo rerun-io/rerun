@@ -4780,6 +4780,7 @@ dependencies = [
  "arrow2",
  "arrow2_convert",
  "bytemuck",
+ "cargo_metadata",
  "cfg-if",
  "eframe",
  "egui",
