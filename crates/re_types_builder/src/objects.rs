@@ -1283,11 +1283,10 @@ fn filepath_from_declaration_file(
     if declaration_file.is_absolute() {
         declaration_file
     } else {
-        include_dir_path.as_ref().join("rerun").join(
-            Utf8PathBuf::from(declaration_file)
-                .to_string()
-                .replace("//", ""),
-        )
+        include_dir_path
+            .as_ref()
+            .join("rerun")
+            .join(crate::format_path(&declaration_file))
     }
     .canonicalize_utf8()
     .expect("Failed to canonicalize declaration path")

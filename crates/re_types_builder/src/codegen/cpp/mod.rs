@@ -16,7 +16,7 @@ use crate::{
         autogen_warning,
         common::{collect_examples_for_api_docs, write_file},
     },
-    path_to_string, ArrowRegistry, Docs, ElementType, Object, ObjectField, ObjectKind,
+    format_path, ArrowRegistry, Docs, ElementType, Object, ObjectField, ObjectKind,
     ObjectSpecifics, Objects, Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
 
@@ -55,7 +55,7 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {:?}.\n", path_to_string(source_path)));
+        code.push_str(&format!("// Based on {:?}.\n", format_path(source_path)));
     }
 
     code.push('\n');
