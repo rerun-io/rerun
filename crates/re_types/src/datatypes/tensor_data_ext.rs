@@ -1,7 +1,4 @@
-use crate::{
-    archetypes::Tensor,
-    tensor_data::{TensorCastError, TensorDataType, TensorElement},
-};
+use crate::tensor_data::{TensorCastError, TensorDataType, TensorElement};
 
 #[cfg(feature = "image")]
 use crate::tensor_data::{DecodedTensor, TensorImageLoadError, TensorImageSaveError};
@@ -210,7 +207,7 @@ impl TensorData {
         };
         match self.image_height_width_channels() {
             Some([h, w, _]) => {
-                let uv_offset = (w * h) as u64;
+                let uv_offset = w * h;
                 let luma = ((buf[(y * w + x) as usize] as f64) - 16.0) / 216.0;
                 let u = ((buf[(uv_offset + (y / 2) * w + x) as usize] as f64) - 128.0) / 224.0;
                 let v =
@@ -242,7 +239,7 @@ impl TensorData {
 
 // ----------------------------------------------------------------------------
 
-macro_rules! tensor_type {
+macro_rules! ndarray_from_tensor {
     ($type:ty, $variant:ident) => {
         impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, $type> {
             type Error = TensorCastError;
@@ -258,7 +255,11 @@ macro_rules! tensor_type {
                 }
             }
         }
+    };
+}
 
+macro_rules! tensor_from_ndarray {
+    ($type:ty, $variant:ident) => {
         impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, $type, D>>
             for TensorData
         {
@@ -323,6 +324,13 @@ macro_rules! tensor_type {
     };
 }
 
+macro_rules! tensor_type {
+    ($type:ty, $variant:ident) => {
+        ndarray_from_tensor!($type, $variant);
+        tensor_from_ndarray!($type, $variant);
+    };
+}
+
 tensor_type!(u16, U16);
 tensor_type!(u32, U32);
 tensor_type!(u64, U64);
@@ -337,7 +345,9 @@ tensor_type!(arrow2::types::f16, F16);
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
 
-// Manual expension of tensor_type! macro for `u8` types. We need to do this, because u8 can store encoded data
+tensor_from_ndarray!(u8, U8);
+
+// Manual expansion of ndarray_from_tensor! macro for `u8` types. We need to do this, because u8 can store encoded data
 impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, u8> {
     type Error = TensorCastError;
 

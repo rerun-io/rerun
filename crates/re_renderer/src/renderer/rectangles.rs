@@ -49,7 +49,7 @@ pub enum TextureFilterMin {
 }
 
 /// Describes how the color information is encoded in the texture.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ShaderDecoding {
     Nv12,
 }

@@ -706,11 +706,11 @@ fn tensor_pixel_value_ui(
                 if let Some([r, g, b]) = match &tensor.buffer {
                     TensorBuffer::Nv12(_) => tensor.get_nv12_pixel(x, y),
                     _ => {
-                        if let (Some(r), Some(g), Some(b)) = (
+                        if let [Some(r), Some(g), Some(b)] = [
                             tensor.get_with_image_coords(x, y, 0),
                             tensor.get_with_image_coords(x, y, 1),
                             tensor.get_with_image_coords(x, y, 2),
-                        ) {
+                        ] {
                             Some([r, g, b])
                         } else {
                             None
