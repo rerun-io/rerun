@@ -4222,7 +4222,6 @@ dependencies = [
  "re_renderer",
  "re_tracing",
  "re_types",
- "re_types_core",
  "re_ui",
  "re_viewer_context",
  "rfd",

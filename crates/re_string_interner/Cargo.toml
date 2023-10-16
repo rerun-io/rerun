@@ -16,11 +16,15 @@ version.workspace = true
 all-features = true
 
 
+[features]
+serde = ["dep:serde"]
+
+
 [dependencies]
 ahash.workspace = true
 nohash-hasher = "0.2"
 once_cell.workspace = true
 parking_lot.workspace = true
 
-# Optional dependencies:
-serde = { version = "1", optional = true }
+# Optional dependencies
+serde = { workspace = true, optional = true }
