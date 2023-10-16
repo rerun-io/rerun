@@ -32,7 +32,6 @@ opt_out_run = {
     "image_advanced": ["cpp", "rust"], # Missing examples
     "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
-    "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
     "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
@@ -50,7 +49,7 @@ opt_out_run = {
 opt_out_compare = {
     "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "asset3d_out_of_tree": ["py", "rust"], # # float precision issues
-    "mesh3d_partial_updates": ["py", "rust"], # float precision issues
+    "mesh3d_partial_updates": ["cpp", "py", "rust"], # float precision issues
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs

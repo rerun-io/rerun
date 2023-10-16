@@ -9,12 +9,12 @@ int main() {
     auto rec = rerun::RecordingStream("rerun_example_mesh3d_simple");
     rec.connect("127.0.0.1:9876").throw_on_failure();
 
-    std::vector<rerun::components::Position3D> vertex_positions = {
+    rerun::Position3D vertex_positions[3] = {
         {0.0, 0.0, 0.0},
         {1.0, 0.0, 0.0},
         {0.0, 1.0, 0.0},
     };
-    std::vector<rerun::components::Color> vertex_colors = {
+    rerun::Color vertex_colors[3] = {
         {255, 0, 0},
         {0, 255, 0},
         {0, 0, 255},
