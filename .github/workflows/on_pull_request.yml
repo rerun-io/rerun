@@ -47,19 +47,10 @@ jobs:
   bundle-and-upload-rerun_cpp:
     name: "Bundle and upload rerun_cpp"
     needs: [build-rerun_c-and-upload]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Add SHORT_SHA env property with commit short sha
-        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
-
-      - name: Install packaging
-        run: |
-          python3 -m pip install packaging google-cloud-storage
-
-      - name: "Bundle & Upload rerun_cpp"
-        run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ env.SHORT_SHA }} --platform-filter=linux
+    uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
+    with:
+      PLATFORM_FILTER: "linux"
+    secrets: inherit
 
   build-web:
     name: "Build Web"

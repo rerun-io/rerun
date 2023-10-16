@@ -1,0 +1,59 @@
+name: Reusable C++ bundling and upload
+
+on:
+  workflow_call:
+    inputs:
+      PLATFORM_FILTER:
+        required: false
+        type: string
+      UPLOAD_COMMIT_OVERRIDE:
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  bundle-and-upload-rerun_cpp:
+    name: C++ bundling and upload
+
+    permissions:
+      contents: "read"
+      id-token: "write"
+      pull-requests: "write"
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.x
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: ">= 363.0.0"
+
+      - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
+        id: "short-sha"
+        run: |
+          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
+          fi
+          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: "Bundle & Upload rerun_cpp"
+        run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.short-sha.outputs.SHORT_SHA }} --platform-filter=${{ inputs.PLATFORM_FILTER }}
