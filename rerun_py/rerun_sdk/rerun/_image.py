@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import io
 import pathlib
-from typing import IO, Iterable, Tuple
+from typing import IO, Iterable
 
 import numpy as np
 from PIL import Image as PILImage
@@ -38,9 +38,9 @@ class NV12(ImageFormat):
     """NV12 format."""
 
     name = "NV12"
-    size_hint: Tuple[int, int]
+    size_hint: tuple[int, int]
 
-    def __init__(self, size_hint: Tuple[int, int]) -> None:
+    def __init__(self, size_hint: tuple[int, int]) -> None:
         """
         An NV12 encoded image.
 
