@@ -45,13 +45,6 @@ serde = ["dep:serde", "re_string_interner/serde"]
 ## Only useful for testing purposes.
 testing = []
 
-## Special hack!
-##
-## If you configure rust-analyzer to set `--all-features,
-## then this feature will be set and that will ensure that
-## `rust-analyzer` won't run the (expensive) `build.rs`!
-__opt_out_of_auto_rebuild = []
-
 
 [dependencies]
 # Rerun
