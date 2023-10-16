@@ -206,12 +206,10 @@ impl ::re_types_core::Loggable for TensorDimension {
                     .collect();
                 let size = {
                     if !arrays_by_name.contains_key("size") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "size",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "size",
+                        ))
                         .with_context("rerun.datatypes.TensorDimension");
                     }
                     let arrow_data = &**arrays_by_name["size"];
@@ -230,12 +228,10 @@ impl ::re_types_core::Loggable for TensorDimension {
                 };
                 let name = {
                     if !arrays_by_name.contains_key("name") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "name",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "name",
+                        ))
                         .with_context("rerun.datatypes.TensorDimension");
                     }
                     let arrow_data = &**arrays_by_name["name"];

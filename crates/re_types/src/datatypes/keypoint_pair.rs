@@ -208,12 +208,10 @@ impl ::re_types_core::Loggable for KeypointPair {
                     .collect();
                 let keypoint0 = {
                     if !arrays_by_name.contains_key("keypoint0") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "keypoint0",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "keypoint0",
+                        ))
                         .with_context("rerun.datatypes.KeypointPair");
                     }
                     let arrow_data = &**arrays_by_name["keypoint0"];
@@ -233,12 +231,10 @@ impl ::re_types_core::Loggable for KeypointPair {
                 };
                 let keypoint1 = {
                     if !arrays_by_name.contains_key("keypoint1") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "keypoint1",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "keypoint1",
+                        ))
                         .with_context("rerun.datatypes.KeypointPair");
                     }
                     let arrow_data = &**arrays_by_name["keypoint1"];

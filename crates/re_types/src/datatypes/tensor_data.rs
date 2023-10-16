@@ -231,12 +231,10 @@ impl ::re_types_core::Loggable for TensorData {
                     .collect();
                 let shape = {
                     if !arrays_by_name.contains_key("shape") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "shape",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "shape",
+                        ))
                         .with_context("rerun.datatypes.TensorData");
                     }
                     let arrow_data = &**arrays_by_name["shape"];
@@ -262,60 +260,53 @@ impl ::re_types_core::Loggable for TensorData {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::datatypes::TensorDimension::from_arrow_opt(
-                                        arrow_data_inner,
-                                    )
+                                crate::datatypes::TensorDimension::from_arrow_opt(arrow_data_inner)
                                     .with_context("rerun.datatypes.TensorData#shape")?
                                     .into_iter()
                                     .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default)
-                                                .collect();
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data
+                                        .iter()
+                                        .cloned()
+                                        .map(Option::unwrap_or_default)
+                                        .collect();
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 let buffer = {
                     if !arrays_by_name.contains_key("buffer") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "buffer",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "buffer",
+                        ))
                         .with_context("rerun.datatypes.TensorData");
                     }
                     let arrow_data = &**arrays_by_name["buffer"];

@@ -173,12 +173,10 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                     .collect();
                 let single_optional_union = {
                     if !arrays_by_name.contains_key("single_optional_union") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "single_optional_union",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "single_optional_union",
+                        ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer5");
                     }
                     let arrow_data = &**arrays_by_name["single_optional_union"];

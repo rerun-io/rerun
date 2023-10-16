@@ -297,18 +297,20 @@ impl ::re_types_core::Loggable for Scale3D {
                         let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::FixedSizeList(
-                                    Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    3usize,
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    ),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.Scale3D#ThreeD")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -321,58 +323,53 @@ impl ::re_types_core::Loggable for Scale3D {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Float32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Float32,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.Scale3D#ThreeD")?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets,
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, end)| {
-                                            debug_assert!(end - start == 3usize);
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                                offsets,
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, end)| {
+                                    debug_assert!(end - start == 3usize);
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default);
-                                            let arr = array_init::from_iter(data).unwrap();
-                                            Ok(arr)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
+                                    Ok(arr)
                                 })
-                                .map(|res_or_opt| {
-                                    res_or_opt
-                                        .map(|res_or_opt| {
-                                            res_or_opt.map(|v| crate::datatypes::Vec3D(v))
-                                        })
+                                .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let uniform = {
                     if 2usize >= arrow_data_arrays.len() {

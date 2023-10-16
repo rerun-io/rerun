@@ -228,12 +228,10 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                     .collect();
                 let single_half = {
                     if !arrays_by_name.contains_key("single_half") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "single_half",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "single_half",
+                        ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer21");
                     }
                     let arrow_data = &**arrays_by_name["single_half"];
@@ -252,12 +250,10 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                 };
                 let many_halves = {
                     if !arrays_by_name.contains_key("many_halves") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "many_halves",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "many_halves",
+                        ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer21");
                     }
                     let arrow_data = &**arrays_by_name["many_halves"];
@@ -285,10 +281,12 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float16Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Float16,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Float16,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context(
                                         "rerun.testing.datatypes.AffixFuzzer21#many_halves",
                                     )?
@@ -296,39 +294,36 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(

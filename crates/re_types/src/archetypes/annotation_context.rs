@@ -98,8 +98,7 @@ impl AnnotationContext {
 }
 
 /// Indicator component for the [`AnnotationContext`] [`::re_types_core::Archetype`]
-pub type AnnotationContextIndicator =
-    ::re_types_core::GenericIndicatorComponent<AnnotationContext>;
+pub type AnnotationContextIndicator = ::re_types_core::GenericIndicatorComponent<AnnotationContext>;
 
 impl ::re_types_core::Archetype for AnnotationContext {
     type Indicator = AnnotationContextIndicator;

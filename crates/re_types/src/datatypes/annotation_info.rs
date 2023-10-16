@@ -271,12 +271,10 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                     .collect();
                 let id = {
                     if !arrays_by_name.contains_key("id") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "id",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "id",
+                        ))
                         .with_context("rerun.datatypes.AnnotationInfo");
                     }
                     let arrow_data = &**arrays_by_name["id"];
@@ -295,12 +293,10 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 };
                 let label = {
                     if !arrays_by_name.contains_key("label") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "label",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "label",
+                        ))
                         .with_context("rerun.datatypes.AnnotationInfo");
                     }
                     let arrow_data = &**arrays_by_name["label"];
@@ -355,12 +351,10 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 };
                 let color = {
                     if !arrays_by_name.contains_key("color") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "color",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "color",
+                        ))
                         .with_context("rerun.datatypes.AnnotationInfo");
                     }
                     let arrow_data = &**arrays_by_name["color"];

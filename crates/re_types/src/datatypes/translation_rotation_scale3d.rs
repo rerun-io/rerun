@@ -316,12 +316,10 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                     .collect();
                 let translation = {
                     if !arrays_by_name.contains_key("translation") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "translation",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "translation",
+                        ))
                         .with_context("rerun.datatypes.TranslationRotationScale3D");
                     }
                     let arrow_data = &**arrays_by_name["translation"];
@@ -357,10 +355,12 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Float32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Float32,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context(
                                         "rerun.datatypes.TranslationRotationScale3D#translation",
                                     )?
@@ -369,56 +369,47 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets,
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, end)| {
-                                            debug_assert!(end - start == 3usize);
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                                offsets,
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, end)| {
+                                    debug_assert!(end - start == 3usize);
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default);
-                                            let arr = array_init::from_iter(data).unwrap();
-                                            Ok(arr)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
+                                    Ok(arr)
                                 })
-                                .map(|res_or_opt| {
-                                    res_or_opt
-                                        .map(|res_or_opt| {
-                                            res_or_opt.map(|v| crate::datatypes::Vec3D(v))
-                                        })
+                                .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 let rotation = {
                     if !arrays_by_name.contains_key("rotation") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "rotation",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "rotation",
+                        ))
                         .with_context("rerun.datatypes.TranslationRotationScale3D");
                     }
                     let arrow_data = &**arrays_by_name["rotation"];
@@ -428,12 +419,10 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                 };
                 let scale = {
                     if !arrays_by_name.contains_key("scale") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "scale",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "scale",
+                        ))
                         .with_context("rerun.datatypes.TranslationRotationScale3D");
                     }
                     let arrow_data = &**arrays_by_name["scale"];
@@ -443,12 +432,10 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                 };
                 let from_parent = {
                     if !arrays_by_name.contains_key("from_parent") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "from_parent",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "from_parent",
+                        ))
                         .with_context("rerun.datatypes.TranslationRotationScale3D");
                     }
                     let arrow_data = &**arrays_by_name["from_parent"];

@@ -157,12 +157,10 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                     .collect();
                 let value = {
                     if !arrays_by_name.contains_key("value") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "value",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "value",
+                        ))
                         .with_context("rerun.testing.datatypes.FlattenedScalar");
                     }
                     let arrow_data = &**arrays_by_name["value"];

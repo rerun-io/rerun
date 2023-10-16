@@ -89,8 +89,7 @@ impl DisconnectedSpace {
 }
 
 /// Indicator component for the [`DisconnectedSpace`] [`::re_types_core::Archetype`]
-pub type DisconnectedSpaceIndicator =
-    ::re_types_core::GenericIndicatorComponent<DisconnectedSpace>;
+pub type DisconnectedSpaceIndicator = ::re_types_core::GenericIndicatorComponent<DisconnectedSpace>;
 
 impl ::re_types_core::Archetype for DisconnectedSpace {
     type Indicator = DisconnectedSpaceIndicator;

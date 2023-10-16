@@ -231,12 +231,10 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                     .collect();
                 let axis = {
                     if !arrays_by_name.contains_key("axis") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "axis",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "axis",
+                        ))
                         .with_context("rerun.datatypes.RotationAxisAngle");
                     }
                     let arrow_data = &**arrays_by_name["axis"];
@@ -270,66 +268,59 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Float32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Float32,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.RotationAxisAngle#axis")?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets,
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, end)| {
-                                            debug_assert!(end - start == 3usize);
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                                offsets,
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, end)| {
+                                    debug_assert!(end - start == 3usize);
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default);
-                                            let arr = array_init::from_iter(data).unwrap();
-                                            Ok(arr)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
+                                    Ok(arr)
                                 })
-                                .map(|res_or_opt| {
-                                    res_or_opt
-                                        .map(|res_or_opt| {
-                                            res_or_opt.map(|v| crate::datatypes::Vec3D(v))
-                                        })
+                                .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 let angle = {
                     if !arrays_by_name.contains_key("angle") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "angle",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "angle",
+                        ))
                         .with_context("rerun.datatypes.RotationAxisAngle");
                     }
                     let arrow_data = &**arrays_by_name["angle"];

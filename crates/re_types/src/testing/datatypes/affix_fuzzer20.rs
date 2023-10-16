@@ -219,12 +219,10 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                     .collect();
                 let p = {
                     if !arrays_by_name.contains_key("p") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "p",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "p",
+                        ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer20");
                     }
                     let arrow_data = &**arrays_by_name["p"];
@@ -246,12 +244,10 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                 };
                 let s = {
                     if !arrays_by_name.contains_key("s") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "s",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "s",
+                        ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer20");
                     }
                     let arrow_data = &**arrays_by_name["s"];

@@ -320,9 +320,7 @@ impl ::re_types_core::Loggable for Transform3D {
                                         translation_rotation_scale.get_unchecked(offset as usize)
                                     }
                                     .clone()
-                                    .ok_or_else(
-                                        ::re_types_core::DeserializationError::missing_data,
-                                    )
+                                    .ok_or_else(::re_types_core::DeserializationError::missing_data)
                                     .with_context(
                                         "rerun.datatypes.Transform3D#TranslationRotationScale",
                                     )?

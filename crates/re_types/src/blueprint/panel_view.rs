@@ -163,12 +163,10 @@ impl ::re_types_core::Loggable for PanelView {
                     .collect();
                 let is_expanded = {
                     if !arrays_by_name.contains_key("is_expanded") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "is_expanded",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "is_expanded",
+                        ))
                         .with_context("rerun.blueprint.PanelView");
                     }
                     let arrow_data = &**arrays_by_name["is_expanded"];

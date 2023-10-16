@@ -179,33 +179,33 @@ impl ::re_types_core::Loggable for LineStrip3D {
         re_tracing::profile_function!();
         use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        Ok(
-            {
-                let arrow_data = arrow_data
-                    .as_any()
-                    .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                        DataType::List(
-                            Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
-                                is_nullable: false,
-                                metadata: [].into(),
-                            }),
-                        ),
+        Ok({
+            let arrow_data = arrow_data
+                .as_any()
+                .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                .ok_or_else(|| {
+                    ::re_types_core::DeserializationError::datatype_mismatch(
+                        DataType::List(Box::new(Field {
+                            name: "item".to_owned(),
+                            data_type: <crate::datatypes::Vec3D>::arrow_datatype(),
+                            is_nullable: false,
+                            metadata: [].into(),
+                        })),
                         arrow_data.data_type().clone(),
-                    ))
-                    .with_context("rerun.components.LineStrip3D#points")?;
-                if arrow_data.is_empty() {
-                    Vec::new()
-                } else {
-                    let arrow_data_inner = {
-                        let arrow_data_inner = &**arrow_data.values();
-                        {
-                            let arrow_data_inner = arrow_data_inner
-                                .as_any()
-                                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                                .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                    )
+                })
+                .with_context("rerun.components.LineStrip3D#points")?;
+            if arrow_data.is_empty() {
+                Vec::new()
+            } else {
+                let arrow_data_inner = {
+                    let arrow_data_inner = &**arrow_data.values();
+                    {
+                        let arrow_data_inner = arrow_data_inner
+                            .as_any()
+                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(
                                         Box::new(Field {
                                             name: "item".to_owned(),
@@ -216,120 +216,105 @@ impl ::re_types_core::Loggable for LineStrip3D {
                                         3usize,
                                     ),
                                     arrow_data_inner.data_type().clone(),
-                                ))
-                                .with_context("rerun.components.LineStrip3D#points")?;
-                            if arrow_data_inner.is_empty() {
-                                Vec::new()
-                            } else {
-                                let offsets = (0..)
-                                    .step_by(3usize)
-                                    .zip(
-                                        (3usize..).step_by(3usize).take(arrow_data_inner.len()),
-                                    );
-                                let arrow_data_inner_inner = {
-                                    let arrow_data_inner_inner = &**arrow_data_inner.values();
-                                    arrow_data_inner_inner
-                                        .as_any()
-                                        .downcast_ref::<Float32Array>()
-                                        .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                )
+                            })
+                            .with_context("rerun.components.LineStrip3D#points")?;
+                        if arrow_data_inner.is_empty() {
+                            Vec::new()
+                        } else {
+                            let offsets = (0..)
+                                .step_by(3usize)
+                                .zip((3usize..).step_by(3usize).take(arrow_data_inner.len()));
+                            let arrow_data_inner_inner = {
+                                let arrow_data_inner_inner = &**arrow_data_inner.values();
+                                arrow_data_inner_inner
+                                    .as_any()
+                                    .downcast_ref::<Float32Array>()
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
                                             DataType::Float32,
                                             arrow_data_inner_inner.data_type().clone(),
-                                        ))
-                                        .with_context("rerun.components.LineStrip3D#points")?
-                                        .into_iter()
-                                        .map(|opt| opt.copied())
-                                        .collect::<Vec<_>>()
-                                };
-                                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                        offsets,
-                                        arrow_data_inner.validity(),
-                                    )
-                                    .map(|elem| {
-                                        elem
-                                            .map(|(start, end)| {
-                                                debug_assert!(end - start == 3usize);
-                                                if end as usize > arrow_data_inner_inner.len() {
-                                                    return Err(
-                                                        ::re_types_core::DeserializationError::offset_slice_oob(
-                                                            (start, end),
-                                                            arrow_data_inner_inner.len(),
-                                                        ),
-                                                    );
-                                                }
-
-                                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                                let data = unsafe {
-                                                    arrow_data_inner_inner
-                                                        .get_unchecked(start as usize..end as usize)
-                                                };
-                                                let data = data
-                                                    .iter()
-                                                    .cloned()
-                                                    .map(Option::unwrap_or_default);
-                                                let arr = array_init::from_iter(data).unwrap();
-                                                Ok(arr)
-                                            })
-                                            .transpose()
+                                        )
                                     })
-                                    .map(|res_or_opt| {
-                                        res_or_opt
-                                            .map(|res_or_opt| {
-                                                res_or_opt.map(|v| crate::datatypes::Vec3D(v))
-                                            })
-                                    })
-                                    .collect::<
-                                        ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                    >()?
-                            }
-                                .into_iter()
-                        }
-                            .collect::<Vec<_>>()
-                    };
-                    let offsets = arrow_data.offsets();
-                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                            offsets.iter().zip(offsets.lengths()),
-                            arrow_data.validity(),
-                        )
-                        .map(|elem| {
-                            elem
-                                .map(|(start, len)| {
-                                    let start = *start as usize;
-                                    let end = start + len;
-                                    if end as usize > arrow_data_inner.len() {
+                                    .with_context("rerun.components.LineStrip3D#points")?
+                                    .into_iter()
+                                    .map(|opt| opt.copied())
+                                    .collect::<Vec<_>>()
+                            };
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets,
+                                arrow_data_inner.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, end)| {
+                                    debug_assert!(end - start == 3usize);
+                                    if end as usize > arrow_data_inner_inner.len() {
                                         return Err(
                                             ::re_types_core::DeserializationError::offset_slice_oob(
                                                 (start, end),
-                                                arrow_data_inner.len(),
+                                                arrow_data_inner_inner.len(),
                                             ),
                                         );
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     let data = unsafe {
-                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                        arrow_data_inner_inner
+                                            .get_unchecked(start as usize..end as usize)
                                     };
-                                    let data = data
-                                        .iter()
-                                        .cloned()
-                                        .map(Option::unwrap_or_default)
-                                        .collect();
-                                    Ok(data)
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
+                                    Ok(arr)
                                 })
                                 .transpose()
-                        })
-                        .collect::<
-                            ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                        >()?
-                }
-                    .into_iter()
-            }
-                .map(|v| {
-                    v.ok_or_else(::re_types_core::DeserializationError::missing_data)
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
+                                })
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
+                    .collect::<Vec<_>>()
+                };
+                let offsets = arrow_data.offsets();
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    offsets.iter().zip(offsets.lengths()),
+                    arrow_data.validity(),
+                )
+                .map(|elem| {
+                    elem.map(|(start, len)| {
+                        let start = *start as usize;
+                        let end = start + len;
+                        if end as usize > arrow_data_inner.len() {
+                            return Err(::re_types_core::DeserializationError::offset_slice_oob(
+                                (start, end),
+                                arrow_data_inner.len(),
+                            ));
+                        }
+
+                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                        let data =
+                            unsafe { arrow_data_inner.get_unchecked(start as usize..end as usize) };
+                        let data = data
+                            .iter()
+                            .cloned()
+                            .map(Option::unwrap_or_default)
+                            .collect();
+                        Ok(data)
+                    })
+                    .transpose()
                 })
-                .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.components.LineStrip3D#points")
-                .with_context("rerun.components.LineStrip3D")?,
-        )
+                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+            }
+            .into_iter()
+        }
+        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+        .map(|res| res.map(|v| Some(Self(v))))
+        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+        .with_context("rerun.components.LineStrip3D#points")
+        .with_context("rerun.components.LineStrip3D")?)
     }
 }

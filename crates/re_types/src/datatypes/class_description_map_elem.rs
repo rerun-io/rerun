@@ -200,12 +200,10 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                     .collect();
                 let class_id = {
                     if !arrays_by_name.contains_key("class_id") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "class_id",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "class_id",
+                        ))
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");
                     }
                     let arrow_data = &**arrays_by_name["class_id"];
@@ -225,12 +223,10 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                 };
                 let class_description = {
                     if !arrays_by_name.contains_key("class_description") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "class_description",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "class_description",
+                        ))
                         .with_context("rerun.datatypes.ClassDescriptionMapElem");
                     }
                     let arrow_data = &**arrays_by_name["class_description"];

@@ -105,8 +105,7 @@ impl SegmentationImage {
 }
 
 /// Indicator component for the [`SegmentationImage`] [`::re_types_core::Archetype`]
-pub type SegmentationImageIndicator =
-    ::re_types_core::GenericIndicatorComponent<SegmentationImage>;
+pub type SegmentationImageIndicator = ::re_types_core::GenericIndicatorComponent<SegmentationImage>;
 
 impl ::re_types_core::Archetype for SegmentationImage {
     type Indicator = SegmentationImageIndicator;

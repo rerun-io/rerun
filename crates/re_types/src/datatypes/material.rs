@@ -182,12 +182,10 @@ impl ::re_types_core::Loggable for Material {
                     .collect();
                 let albedo_factor = {
                     if !arrays_by_name.contains_key("albedo_factor") {
-                        return Err(
-                            ::re_types_core::DeserializationError::missing_struct_field(
-                                Self::arrow_datatype(),
-                                "albedo_factor",
-                            ),
-                        )
+                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "albedo_factor",
+                        ))
                         .with_context("rerun.datatypes.Material");
                     }
                     let arrow_data = &**arrays_by_name["albedo_factor"];
