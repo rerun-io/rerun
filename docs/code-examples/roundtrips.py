@@ -59,6 +59,7 @@ opt_out_compare = {
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "quick_start_connect":  ["cpp", "py", "rust"], # The implementation can be different as they are just examples for the end user.
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }
