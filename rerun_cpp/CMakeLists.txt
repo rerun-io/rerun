@@ -74,9 +74,9 @@ if(NOT DEFINED RERUN_C_LIB_DEFAULT)
     set(RERUN_C_DEFAULT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/)
 
     if(APPLE)
-        if(${CMAKE_SYSTEM_PROCESSOR} EQUAL "x86_64")
+        if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_x64.a)
-        elseif(${CMAKE_SYSTEM_PROCESSOR} EQUAL "arm64")
+        elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_arm64.a)
         else()
             message(WARNING "Unknown architecture ${CMAKE_SYSTEM_PROCESSOR}, can't find rerun_c library.")
@@ -92,10 +92,14 @@ if(NOT DEFINED RERUN_C_LIB_DEFAULT)
     endif()
 endif()
 
-set(RERUN_C_LIB ${RERUN_C_LIB_DEFAULT} CACHE FILEPATH "\
+set(RERUN_C_LIB ${RERUN_C_LIB_DEFAULT} CACHE PATH "\
 Where to find the rerun_c library.\n\
 If not specified, a local rerun_c with the current system architecture will be used."
 )
+
+if("${RERUN_C_LIB}" STREQUAL "")
+    message(FATAL_ERROR "RERUN_C_LIB is not set.")
+endif()
 
 target_link_libraries(rerun_sdk PRIVATE ${RERUN_C_LIB})
 
