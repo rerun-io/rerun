@@ -4,4 +4,4 @@ mod space_view;
 mod viewport;
 
 pub use space_view::SpaceViewComponent;
-pub use viewport::{AutoSpaceViews, SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH};
+pub use viewport::{SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH};

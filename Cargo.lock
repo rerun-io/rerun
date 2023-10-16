@@ -4777,7 +4777,6 @@ dependencies = [
  "ahash 0.8.3",
  "anyhow",
  "arrow2",
- "arrow2_convert",
  "bytemuck",
  "cfg-if",
  "eframe",

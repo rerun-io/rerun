@@ -24,4 +24,8 @@ include "./archetypes/view_coordinates.fbs";
 
 include "./testing/archetypes/fuzzy.fbs";
 
+// NOTE: The current file is the entrypoint for codegen, and so we need to import
+// the blueprint types here otherwise nothing will.
+include "./blueprint.fbs";
+
 namespace rerun.archetypes;

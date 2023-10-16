@@ -191,17 +191,25 @@ impl std::ops::Index<&str> for Objects {
 pub enum ObjectKind {
     Datatype,
     Component,
+    Blueprint,
     Archetype,
 }
 
 impl ObjectKind {
-    pub const ALL: [Self; 3] = [Self::Datatype, Self::Component, Self::Archetype];
+    pub const ALL: [Self; 4] = [
+        Self::Datatype,
+        Self::Component,
+        Self::Blueprint,
+        Self::Archetype,
+    ];
 
     // TODO(#2364): use an attr instead of the path
     pub fn from_pkg_name(pkg_name: impl AsRef<str>) -> Self {
         let pkg_name = pkg_name.as_ref().replace(".testing", "");
         if pkg_name.starts_with("rerun.datatypes") {
             ObjectKind::Datatype
+        } else if pkg_name.starts_with("rerun.blueprint") {
+            ObjectKind::Blueprint
         } else if pkg_name.starts_with("rerun.components") {
             ObjectKind::Component
         } else if pkg_name.starts_with("rerun.archetypes") {
@@ -214,6 +222,7 @@ impl ObjectKind {
     pub fn plural_snake_case(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "datatypes",
+            ObjectKind::Blueprint => "blueprint",
             ObjectKind::Component => "components",
             ObjectKind::Archetype => "archetypes",
         }
@@ -222,6 +231,7 @@ impl ObjectKind {
     pub fn singular_name(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "Datatype",
+            ObjectKind::Blueprint => "Blueprint",
             ObjectKind::Component => "Component",
             ObjectKind::Archetype => "Archetype",
         }
@@ -230,6 +240,7 @@ impl ObjectKind {
     pub fn plural_name(&self) -> &'static str {
         match self {
             ObjectKind::Datatype => "Datatypes",
+            ObjectKind::Blueprint => "Blueprint",
             ObjectKind::Component => "Components",
             ObjectKind::Archetype => "Archetypes",
         }
