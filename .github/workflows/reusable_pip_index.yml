@@ -29,7 +29,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha) }}
+          ref: ${{ inputs.COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
       - name: Set up Python
         uses: actions/setup-python@v2
