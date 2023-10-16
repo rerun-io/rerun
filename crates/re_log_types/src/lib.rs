@@ -218,10 +218,7 @@ impl std::fmt::Display for ApplicationId {
 /// The most general log message sent from the SDK to the server.
 #[must_use]
 #[derive(Clone, Debug, PartialEq)] // `PartialEq` used for tests in another crate
-#[cfg_attr(
-    feature = "serde",
-    derive(serde::Deserialize, serde::Serialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[allow(clippy::large_enum_variant)]
 pub enum LogMsg {
     /// A new recording has begun.
@@ -399,14 +396,14 @@ impl PathOp {
 
 // ---------------------------------------------------------------------------
 
-/// Implements [`::re_types_core::Component`] for `T: arrow2_convert::{Serialize, Deserialize}`.
+/// Implements [`::re_types::Component`] for `T: arrow2_convert::{Serialize, Deserialize}`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! arrow2convert_component_shim {
     ($entity:ident as $fqname:expr) => {
 
-        impl ::re_types_core::Loggable for $entity {
-            type Name = ::re_types_core::ComponentName;
+        impl ::re_types::Loggable for $entity {
+            type Name = ::re_types::ComponentName;
 
             #[inline]
             fn name() -> Self::Name {
@@ -421,7 +418,7 @@ macro_rules! arrow2convert_component_shim {
             #[inline]
             fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-            ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+            ) -> ::re_types::SerializationResult<Box<dyn arrow2::array::Array>>
             where
                 Self: Clone + 'a,
             {
@@ -434,14 +431,14 @@ macro_rules! arrow2convert_component_shim {
 
                 let arrow = arrow2_convert::serialize::TryIntoArrow::try_into_arrow(vec.iter())
                     .map_err(|err| {
-                        ::re_types_core::SerializationError::ArrowConvertFailure(err.to_string())
+                        ::re_types::SerializationError::ArrowConvertFailure(err.to_string())
                     })?;
 
                 Ok(arrow)
             }
 
             #[inline]
-            fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+            fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> ::re_types::DeserializationResult<Vec<Option<Self>>>
             where
                 Self: Sized
             {
