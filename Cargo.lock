@@ -4180,7 +4180,7 @@ dependencies = [
 name = "re_data_store"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
-w "criterion",
+ "criterion",
  "document-features",
  "itertools 0.11.0",
  "mimalloc",
