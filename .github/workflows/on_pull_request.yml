@@ -50,6 +50,7 @@ jobs:
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
     with:
       PLATFORM_FILTER: "linux"
+      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   build-web:
