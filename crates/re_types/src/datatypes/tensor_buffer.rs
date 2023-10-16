@@ -19,19 +19,19 @@
 /// Tensor elements are stored in a contiguous buffer of a single type.
 #[derive(Clone, PartialEq)]
 pub enum TensorBuffer {
-    U8(crate::ArrowBuffer<u8>),
-    U16(crate::ArrowBuffer<u16>),
-    U32(crate::ArrowBuffer<u32>),
-    U64(crate::ArrowBuffer<u64>),
-    I8(crate::ArrowBuffer<i8>),
-    I16(crate::ArrowBuffer<i16>),
-    I32(crate::ArrowBuffer<i32>),
-    I64(crate::ArrowBuffer<i64>),
-    F16(crate::ArrowBuffer<arrow2::types::f16>),
-    F32(crate::ArrowBuffer<f32>),
-    F64(crate::ArrowBuffer<f64>),
-    Jpeg(crate::ArrowBuffer<u8>),
-    Nv12(crate::ArrowBuffer<u8>),
+    U8(::re_types_core::ArrowBuffer<u8>),
+    U16(::re_types_core::ArrowBuffer<u16>),
+    U32(::re_types_core::ArrowBuffer<u32>),
+    U64(::re_types_core::ArrowBuffer<u64>),
+    I8(::re_types_core::ArrowBuffer<i8>),
+    I16(::re_types_core::ArrowBuffer<i16>),
+    I32(::re_types_core::ArrowBuffer<i32>),
+    I64(::re_types_core::ArrowBuffer<i64>),
+    F16(::re_types_core::ArrowBuffer<arrow2::types::f16>),
+    F32(::re_types_core::ArrowBuffer<f32>),
+    F64(::re_types_core::ArrowBuffer<f64>),
+    Jpeg(::re_types_core::ArrowBuffer<u8>),
+    Nv12(::re_types_core::ArrowBuffer<u8>),
 }
 
 impl<'a> From<TensorBuffer> for ::std::borrow::Cow<'a, TensorBuffer> {
@@ -2140,7 +2140,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<::arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
+                                ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
@@ -2160,7 +2160,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
                                             DataType::UInt8,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -2178,10 +2178,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2190,12 +2192,12 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                             .clone()
                                             .sliced_unchecked(start as usize, end - start as usize)
                                     };
-                                    let data = crate::ArrowBuffer::from(data);
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
                                     Ok(data)
                                 })
                                 .transpose()
                             })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -2440,17 +2442,21 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 }),
                                 13i8 => TensorBuffer::Nv12({
                                     if offset as usize >= nv12.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            nv12.len(),
-                                        ))
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_oob(
+                                                offset as _,
+                                                nv12.len(),
+                                            ),
+                                        )
                                         .with_context("rerun.datatypes.TensorBuffer#NV12");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { nv12.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .ok_or_else(
+                                            ::re_types_core::DeserializationError::missing_data,
+                                        )
                                         .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                 }),
                                 _ => {
