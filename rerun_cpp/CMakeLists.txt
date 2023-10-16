@@ -74,8 +74,13 @@ if(NOT DEFINED RERUN_C_LIB_DEFAULT)
     set(RERUN_C_DEFAULT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/)
 
     if(APPLE)
-        # TODO(andreas): x64 support.
-        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_arm64.a)
+        if(${CMAKE_SYSTEM_PROCESSOR} EQUAL "x86_64")
+            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_x64.a)
+        elseif(${CMAKE_SYSTEM_PROCESSOR} EQUAL "arm64")
+            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_arm64.a)
+        else()
+            message(WARNING "Unknown architecture ${CMAKE_SYSTEM_PROCESSOR}, can't find rerun_c library.")
+        endif()
     elseif(UNIX) # if(LINUX) # CMake 3.25
         # TODO(andreas): Arm support.
         set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_x64.a)
@@ -83,7 +88,7 @@ if(NOT DEFINED RERUN_C_LIB_DEFAULT)
         # TODO(andreas): Arm support.
         set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__win_x64.lib)
     else()
-        message(FATAL_ERROR "Unsupported platform.")
+        message(WARNING "Unsupported platform ${RERUN_C_LIB_DEFAULT}, can't find rerun_c library.")
     endif()
 endif()
 
