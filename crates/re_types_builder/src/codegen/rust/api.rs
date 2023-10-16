@@ -529,7 +529,7 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
         } else {
             "Examples"
         };
-        lines.push(format!(" ## {section_title}"));
+        lines.push(format!("## {section_title}"));
         lines.push(Default::default());
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
@@ -538,20 +538,15 @@ fn doc_as_lines(reporter: &Reporter, virtpath: &str, fqname: &str, docs: &Docs) 
             } = &example.base;
 
             if let Some(title) = title {
-                lines.push(format!(" ### {title}"));
+                lines.push(format!("### {title}"));
             } else {
                 lines.push(format!("### `{name}`:"));
             }
-            lines.push(" ```ignore".into());
-            lines.extend(example.lines.into_iter().map(|line| format!(" {line}")));
-            lines.push(" ```".into());
+            lines.push("```ignore".into());
+            lines.extend(example.lines.into_iter());
+            lines.push("```".into());
             if let Some(image) = &image {
-                lines.extend(
-                    image
-                        .image_stack()
-                        .into_iter()
-                        .map(|line| format!(" {line}")),
-                );
+                lines.extend(image.image_stack().into_iter());
             }
             if examples.peek().is_some() {
                 // blank line between examples
@@ -580,7 +575,10 @@ fn quote_doc_lines(lines: &[String]) -> TokenStream {
 
     impl quote::ToTokens for DocCommentTokenizer<'_> {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            tokens.extend(self.0.iter().map(|line| quote!(# [doc = #line])));
+            tokens.extend(self.0.iter().map(|line| {
+                let line = format!(" {line}"); // add space between `///` and comment
+                quote!(# [doc = #line])
+            }));
         }
     }
 
@@ -708,7 +706,7 @@ fn quote_trait_impls_from_obj(
     let name = format_ident!("{name}");
 
     match kind {
-        ObjectKind::Datatype | ObjectKind::Component => {
+        ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
             let quoted_kind = if *kind == ObjectKind::Datatype {
                 quote!(Datatype)
             } else {

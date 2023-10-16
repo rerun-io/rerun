@@ -24,9 +24,7 @@ namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class TensorBufferTag : uint8_t {
-                /// Having a special empty state makes it possible to implement move-semantics. We
-                /// need to be able to leave the object in a state which we can run the destructor
-                /// on.
+                /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 NONE = 0,
                 U8,
                 U16,
@@ -75,8 +73,7 @@ namespace rerun {
                 ~TensorBufferData() {}
 
                 void swap(TensorBufferData &other) noexcept {
-                    // This bitwise swap would fail for self-referential types, but we don't have
-                    // any of those.
+                    // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(TensorBufferData)];
                     void *otherbytes = reinterpret_cast<void *>(&other);
                     void *thisbytes = reinterpret_cast<void *>(this);

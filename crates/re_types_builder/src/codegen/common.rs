@@ -303,7 +303,13 @@ pub fn remove_old_files_from_folder(
 ) {
     re_tracing::profile_function!();
     re_log::debug!("Checking for old files in {folder_path}");
-    for entry in std::fs::read_dir(folder_path).unwrap().flatten() {
+
+    let iter = std::fs::read_dir(folder_path).ok();
+    if iter.is_none() {
+        return;
+    }
+
+    for entry in iter.unwrap().flatten() {
         if entry.file_type().unwrap().is_dir() {
             continue;
         }

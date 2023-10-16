@@ -66,9 +66,16 @@ impl<T> From<Vec<T>> for ArrowBuffer<T> {
     }
 }
 
+impl<T: Clone> From<&[T]> for ArrowBuffer<T> {
+    #[inline]
+    fn from(value: &[T]) -> Self {
+        Self(value.iter().cloned().collect()) // TODO(emilk): avoid extra clones
+    }
+}
+
 impl<T> FromIterator<T> for ArrowBuffer<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        iter.into_iter().collect::<Vec<_>>().into()
+        Self(Buffer::from_iter(iter))
     }
 }
 

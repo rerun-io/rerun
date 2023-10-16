@@ -73,23 +73,23 @@ class LineStrips2D(Archetype):
         Parameters
         ----------
         strips:
-             All the actual 2D line strips that make up the batch.
+            All the actual 2D line strips that make up the batch.
         radii:
-             Optional radii for the line strips.
+            Optional radii for the line strips.
         colors:
-             Optional colors for the line strips.
+            Optional colors for the line strips.
         labels:
-             Optional text labels for the line strips.
+            Optional text labels for the line strips.
         draw_order:
-             An optional floating point value that specifies the 2D drawing order of each line strip.
+            An optional floating point value that specifies the 2D drawing order of each line strip.
 
-             Objects with higher values are drawn on top of those with lower values.
+            Objects with higher values are drawn on top of those with lower values.
         class_ids:
-             Optional `ClassId`s for the lines.
+            Optional `ClassId`s for the lines.
 
-             The class ID provides colors and labels if not specified explicitly.
+            The class ID provides colors and labels if not specified explicitly.
         instance_keys:
-             Unique identifiers for each individual line strip in the batch.
+            Unique identifiers for each individual line strip in the batch.
         """
 
         # You can define your own __init__ function as a member of LineStrips2DExt in line_strips2d_ext.py

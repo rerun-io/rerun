@@ -287,6 +287,13 @@ pub mod components;
 /// They all implement the [`Datatype`] trait.
 pub mod datatypes;
 
+/// Blueprint-related types.
+///
+/// They all implement the [`Component`] trait.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+pub mod blueprint;
+
 mod archetype;
 mod loggable;
 mod loggable_batch;

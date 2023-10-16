@@ -31,15 +31,15 @@ class TextDocument(Archetype):
         Parameters
         ----------
         text:
-             Contents of the text document.
+            Contents of the text document.
         media_type:
-             The Media Type of the text.
+            The Media Type of the text.
 
-             For instance:
-             * `text/plain`
-             * `text/markdown`
+            For instance:
+            * `text/plain`
+            * `text/markdown`
 
-             If omitted, `text/plain` is assumed.
+            If omitted, `text/plain` is assumed.
         """
 
         # You can define your own __init__ function as a member of TextDocumentExt in text_document_ext.py

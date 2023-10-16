@@ -23,13 +23,13 @@
 /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
 /// down, and the Z axis points forward.
 ///
-/// The following constants are used to represent the different directions.
-///  Up = 1
-///  Down = 2
-///  Right = 3
-///  Left = 4
-///  Forward = 5
-///  Back = 6
+/// The following constants are used to represent the different directions:
+///  * Up = 1
+///  * Down = 2
+///  * Right = 3
+///  * Left = 4
+///  * Forward = 5
+///  * Back = 6
 #[derive(Clone, Debug, Copy, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct ViewCoordinates(

@@ -61,11 +61,11 @@ class AnnotationInfo(AnnotationInfoExt):
         Parameters
         ----------
         id:
-             `ClassId` or `KeypointId` to which this annotation info belongs.
+            `ClassId` or `KeypointId` to which this annotation info belongs.
         label:
-             The label that will be shown in the UI.
+            The label that will be shown in the UI.
         color:
-             The color that will be applied to the annotated entity.
+            The color that will be applied to the annotated entity.
         """
 
         # You can define your own __init__ function as a member of AnnotationInfoExt in annotation_info_ext.py

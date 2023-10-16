@@ -23,8 +23,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// **Archetype**: 3D boxes with half-extents and optional center, rotations, rotations,
-        /// colors etc.
+        /// **Archetype**: 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
         ///
         /// ## Example
         ///
@@ -89,11 +88,9 @@ namespace rerun {
             /// Unique identifiers for each individual boxes in the batch.
             std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
@@ -124,11 +121,11 @@ namespace rerun {
             /// TODO(#3794): This should not take an std::vector.
             static Boxes3D from_sizes(const std::vector<datatypes::Vec3D>& sizes);
 
-            /// Creates new `Boxes3D` with `centers` and `half_sizes` created from centers and
-            /// (full) sizes.
+            /// Creates new `Boxes3D` with `centers` and `half_sizes` created from centers and (full)
+            /// sizes.
             ///
-            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
-            /// half-sizes from the input data.
+            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
+            /// from the input data.
             /// TODO(#3794): This should not take an std::vector.
             static Boxes3D from_centers_and_sizes(
                 ComponentBatch<components::Position3D> centers,
@@ -139,11 +136,11 @@ namespace rerun {
                 return boxes;
             }
 
-            /// Creates new `Boxes3D` with `half_sizes` and `centers` created from minimums and
-            /// (full) sizes.
+            /// Creates new `Boxes3D` with `half_sizes` and `centers` created from minimums and (full)
+            /// sizes.
             ///
-            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and
-            /// half-sizes from the input data.
+            /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
+            /// from the input data.
             /// TODO(#3794): This should not take an std::vector.
             static Boxes3D from_mins_and_sizes(
                 const std::vector<datatypes::Vec3D>& mins,

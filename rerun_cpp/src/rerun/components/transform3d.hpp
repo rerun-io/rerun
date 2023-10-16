@@ -19,8 +19,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// **Component**: An affine transform between two 3D spaces, represented in a given
-        /// direction.
+        /// **Component**: An affine transform between two 3D spaces, represented in a given direction.
         struct Transform3D {
             /// Representation of the transform.
             rerun::datatypes::Transform3D repr;

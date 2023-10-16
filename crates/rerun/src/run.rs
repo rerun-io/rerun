@@ -5,7 +5,7 @@ use clap::Subcommand;
 use itertools::Itertools;
 
 use re_data_source::DataSource;
-use re_log_types::{LogMsg, PythonVersion};
+use re_log_types::{DataTable, LogMsg, PythonVersion, SetStoreInfo};
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 #[cfg(feature = "web_viewer")]
@@ -103,13 +103,9 @@ struct Args {
     #[clap(long)]
     skip_welcome_screen: bool,
 
-    /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
-    #[clap(long)]
-    strict: bool,
-
     /// Ingest data and then quit once the goodbye message has been received.
     ///
-    /// Used for testing together with the `--strict` argument.
+    /// Used for testing together with `RERUN_PANIC_ON_WARN=1`.
     ///
     /// Fails if no messages are received, or if no messages are received within a dozen or so seconds.
     #[clap(long)]
@@ -169,6 +165,9 @@ enum Command {
         #[clap(long, default_value_t = false)]
         full_dump: bool,
     },
+
+    /// Print the contents of an .rrd file.
+    Print { rrd_path: String },
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -274,11 +273,6 @@ where
         return Ok(0);
     }
 
-    if args.strict {
-        re_log::add_boxed_logger(Box::new(StrictLogger {})).expect("Failed to enter --strict mode");
-        re_log::info!("--strict mode: any warning or error will cause Rerun to panic.");
-    }
-
     let res = if let Some(command) = &args.command {
         match command {
             #[cfg(feature = "analytics")]
@@ -292,6 +286,11 @@ where
                 let path_to_rrd1 = PathBuf::from(path_to_rrd1);
                 let path_to_rrd2 = PathBuf::from(path_to_rrd2);
                 run_compare(&path_to_rrd1, &path_to_rrd2, *full_dump)
+            }
+
+            Command::Print { rrd_path } => {
+                let rrd_path = PathBuf::from(&rrd_path);
+                print_rrd(&rrd_path).with_context(|| format!("path: {rrd_path:?}"))
             }
 
             #[cfg(feature = "native_viewer")]
@@ -335,20 +334,19 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
         use re_data_store::StoreDb;
         use re_log_types::StoreId;
 
-        let rrd_file = std::fs::File::open(path_to_rrd)
-            .with_context(|| format!("couldn't open rrd file contents at {path_to_rrd:?}"))?;
+        let rrd_file =
+            std::fs::File::open(path_to_rrd).context("couldn't open rrd file contents")?;
 
         let mut stores: std::collections::HashMap<StoreId, StoreDb> = Default::default();
         let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
         let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
         for msg in decoder {
-            let msg = msg
-                .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
+            let msg = msg.context("decode rrd message")?;
             stores
                 .entry(msg.store_id().clone())
                 .or_insert(re_data_store::StoreDb::new(msg.store_id().clone()))
                 .add(&msg)
-                .with_context(|| format!("couldn't decode rrd file contents at {path_to_rrd:?}"))?;
+                .context("decode rrd file contents")?;
         }
 
         let mut stores = stores
@@ -356,13 +354,10 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
             .filter(|store| store.store_kind() == re_log_types::StoreKind::Recording)
             .collect_vec();
 
-        anyhow::ensure!(
-            !stores.is_empty(),
-            "no data recording found in rrd file at {path_to_rrd:?}"
-        );
+        anyhow::ensure!(!stores.is_empty(), "no data recording found in rrd file");
         anyhow::ensure!(
             stores.len() == 1,
-            "more than one data recording found in rrd file at {path_to_rrd:?}"
+            "more than one data recording found in rrd file"
         );
 
         let store = stores.pop().unwrap(); // safe, ensured above
@@ -370,8 +365,10 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
         Ok(store.store().to_data_table()?)
     }
 
-    let table1 = compute_uber_table(path_to_rrd1)?;
-    let table2 = compute_uber_table(path_to_rrd2)?;
+    let table1 =
+        compute_uber_table(path_to_rrd1).with_context(|| format!("path: {path_to_rrd1:?}"))?;
+    let table2 =
+        compute_uber_table(path_to_rrd2).with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
     if full_dump {
         println!("{table1}");
@@ -379,6 +376,27 @@ fn run_compare(path_to_rrd1: &Path, path_to_rrd2: &Path, full_dump: bool) -> any
     }
 
     re_log_types::DataTable::similar(&table1, &table2)
+}
+
+fn print_rrd(rrd_path: &Path) -> anyhow::Result<()> {
+    let rrd_file = std::fs::File::open(rrd_path)?;
+    let version_policy = re_log_encoding::decoder::VersionPolicy::Error;
+    let decoder = re_log_encoding::decoder::Decoder::new(version_policy, rrd_file)?;
+    for msg in decoder {
+        let msg = msg.context("decode rrd message")?;
+        match msg {
+            LogMsg::SetStoreInfo(msg) => {
+                let SetStoreInfo { row_id: _, info } = msg;
+                println!("{info:#?}");
+            }
+            LogMsg::ArrowMsg(_row_id, arrow_msg) => {
+                let table =
+                    DataTable::from_arrow_msg(&arrow_msg).context("Decode arrow message")?;
+                println!("{table}");
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(feature = "analytics")]
@@ -695,36 +713,4 @@ fn reset_viewer() -> anyhow::Result<()> {
         eprintln!("Rerun state was already cleared.");
         Ok(())
     }
-}
-
-// ----------------------------------------------------------------------------
-
-use re_log::external::log;
-
-struct StrictLogger {}
-
-impl log::Log for StrictLogger {
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        match metadata.level() {
-            log::Level::Error | log::Level::Warn => true,
-            log::Level::Info | log::Level::Debug | log::Level::Trace => false,
-        }
-    }
-
-    fn log(&self, record: &log::Record<'_>) {
-        let level = match record.level() {
-            log::Level::Error => "error",
-            log::Level::Warn => "warning",
-            log::Level::Info | log::Level::Debug | log::Level::Trace => return,
-        };
-
-        eprintln!("{level} logged in --strict mode: {}", record.args());
-        eprintln!(
-            "{}",
-            re_crash_handler::callstack_from(&["log::__private_api_log"])
-        );
-        std::process::exit(1);
-    }
-
-    fn flush(&self) {}
 }

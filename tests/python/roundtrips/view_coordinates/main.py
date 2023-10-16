@@ -16,7 +16,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_view_coordinates")
 
-    rr.log("/", rr.ViewCoordinates.RDF)
+    rr.log("/", rr.ViewCoordinates.RDF, timeless=True)
 
     rr.script_teardown(args)
 

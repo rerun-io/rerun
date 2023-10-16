@@ -179,7 +179,7 @@ namespace rerun {
 
         /// Logs one or more archetype and/or component batches.
         ///
-        /// Logs any failure via `Error::log_on_failure`
+        /// Failures are handled with `Error::handle`.
         ///
         /// @param archetypes_or_component_batches
         /// Any type for which the `AsComponents<T>` trait is implemented.
@@ -188,8 +188,7 @@ namespace rerun {
         /// @see try_log
         template <typename... Ts>
         void log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
-            try_log_with_timeless(entity_path, false, archetypes_or_component_batches...)
-                .log_on_failure();
+            try_log_with_timeless(entity_path, false, archetypes_or_component_batches...).handle();
         }
 
         /// Logs one or more archetype and/or component batches as timeless data.
@@ -198,7 +197,7 @@ namespace rerun {
         /// far into the past. All timestamp data associated with this message will be dropped right
         /// before sending it to Rerun.
         ///
-        /// Logs any failure via `Error::log_on_failure`
+        /// Failures are handled with `Error::handle`.
         ///
         /// @param archetypes_or_component_batches
         /// Any type for which the `AsComponents<T>` trait is implemented.
@@ -207,8 +206,7 @@ namespace rerun {
         /// @see try_log
         template <typename... Ts>
         void log_timeless(const char* entity_path, const Ts&... archetypes_or_component_batches) {
-            try_log_with_timeless(entity_path, true, archetypes_or_component_batches...)
-                .log_on_failure();
+            try_log_with_timeless(entity_path, true, archetypes_or_component_batches...).handle();
         }
 
         /// Logs one or more archetype and/or component batches.
