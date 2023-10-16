@@ -4237,7 +4237,6 @@ name = "re_format"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
  "arrow2",
- "arrow2_convert",
  "comfy-table",
  "re_tuid",
 ]
@@ -4683,12 +4682,13 @@ name = "re_tuid"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
  "arrow2",
- "arrow2_convert",
  "criterion",
  "document-features",
  "getrandom",
  "once_cell",
+ "re_types",
  "serde",
+ "thiserror",
  "web-time",
 ]
 
@@ -4699,7 +4699,6 @@ dependencies = [
  "anyhow",
  "array-init",
  "arrow2",
- "arrow2_convert",
  "backtrace",
  "bytemuck",
  "document-features",
