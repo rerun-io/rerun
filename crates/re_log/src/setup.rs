@@ -49,6 +49,12 @@ pub fn setup_native_logging() {
     let mut stderr_logger = env_logger::Builder::new();
     stderr_logger.parse_filters(&log_filter);
     crate::add_boxed_logger(Box::new(stderr_logger.build())).expect("Failed to install logger");
+
+    if env_var_bool("RERUN_PANIC_ON_WARN") == Some(true) {
+        crate::add_boxed_logger(Box::new(PanicOnWarn {}))
+            .expect("Failed to enable RERUN_PANIC_ON_WARN");
+        crate::info!("RERUN_PANIC_ON_WARN: any warning or error will cause Rerun to panic.");
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -59,4 +65,46 @@ pub fn setup_web_logging() {
         log::LevelFilter::Debug,
     )))
     .expect("Failed to install logger");
+}
+
+// ----------------------------------------------------------------------------
+
+#[cfg(not(target_arch = "wasm32"))]
+fn env_var_bool(name: &str) -> Option<bool> {
+    std::env::var(name).ok()
+        .and_then(|s| match s.to_lowercase().as_str() {
+            "0" | "false" | "off" | "no" => Some(false),
+            "1" | "true" | "on" | "yes" => Some(true),
+            _ => {
+                crate::warn!(
+                    "Invalid value for environment variable {name}={s:?}. Expected 'on' or 'off'. It will be ignored"
+                );
+                None
+            }
+        })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+struct PanicOnWarn {}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl log::Log for PanicOnWarn {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        match metadata.level() {
+            log::Level::Error | log::Level::Warn => true,
+            log::Level::Info | log::Level::Debug | log::Level::Trace => false,
+        }
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        let level = match record.level() {
+            log::Level::Error => "error",
+            log::Level::Warn => "warning",
+            log::Level::Info | log::Level::Debug | log::Level::Trace => return,
+        };
+
+        panic!("{level} logged with RERUN_PANIC_ON_WARN: {}", record.args());
+    }
+
+    fn flush(&self) {}
 }
