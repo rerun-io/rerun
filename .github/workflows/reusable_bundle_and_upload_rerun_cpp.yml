@@ -21,17 +21,15 @@ jobs:
       pull-requests: "write"
 
     runs-on: ubuntu-latest
+    # Need container for arrow dependency.
+    container:
+      image: rerunio/ci_docker:0.10.0
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.x
 
       - id: "auth"
         uses: google-github-actions/auth@v1
