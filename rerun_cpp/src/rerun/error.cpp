@@ -3,7 +3,32 @@
 #include <arrow/status.h>
 #include <rerun.h>
 
+#include <cstdlib> // For getenv
+#include <string>
+
 namespace rerun {
+    bool is_strict_mode() {
+        const char* env = getenv("RERUN_STRICT");
+        if (env == nullptr) {
+            return false;
+        }
+
+        const std::string v = env; // so we can compare string with operator ==, 21st centry style
+
+        if (v == "1" || v == "true" || v == "yes" || v == "on") {
+            return true;
+        } else if (v == "0" || v == "false" || v == "no" || v == "off") {
+            return false;
+        } else {
+            fprintf(
+                stderr,
+                "Expected env-var RERUN_STRICT to be 0/1 true/false yes/no on/off, found '%s'",
+                env
+            );
+            return false;
+        }
+    }
+
     static StatusLogHandler global_log_handler = nullptr;
     static void* global_log_handler_user_data = nullptr;
 
@@ -75,11 +100,20 @@ namespace rerun {
         global_log_handler_user_data = userdata;
     }
 
-    void Error::log() const {
-        if (global_log_handler) {
+    void Error::handle() const {
+        if (is_ok()) {
+            // ok!
+        } else if (global_log_handler) {
             global_log_handler(*this, global_log_handler_user_data);
+        } else if (is_strict_mode()) {
+#ifdef __cpp_exceptions
+            throw_on_failure();
+#else
+            fprintf(stderr, "Rerun ERROR: %s\n", description.c_str());
+            abort();
+#endif
         } else {
-            fprintf(stderr, "ERROR: %s\n", description.c_str());
+            fprintf(stderr, "Rerun ERROR: %s\n", description.c_str());
         }
     }
 } // namespace rerun
