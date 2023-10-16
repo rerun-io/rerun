@@ -22,10 +22,8 @@ from os.path import isfile, join
 opt_out_run = {
     "annotation_context_connections": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "annotation_context_segmentation": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "annotation_context_rects": [],
     "any_values": ["cpp", "rust"], # Not yet implemented
     "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "asset3d_simple": [],
     "bar_chart": ["cpp"], # TODO(#2919): Serializing tensors not yet implemented in C++
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "depth_image_3d": ["cpp"], # TODO(#2919): Not yet implemented in C++
@@ -37,11 +35,9 @@ opt_out_run = {
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
     "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "scalar_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "tensor_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "view_coordinates_simple": [],
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
