@@ -5,7 +5,7 @@
 #include <cmath>
 #include <numeric>
 
-#define TAU (static_cast<float>(M_PI) * 2.0f)
+const float TAU = static_cast<float>(2.0 * M_PI);
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_arrow3d");

@@ -29,7 +29,7 @@ namespace rerun {
         ///
         /// namespace rrd = rerun::datatypes;
         ///
-        /// const float pi = static_cast<float>(M_PI);
+        /// const float TAU = static_cast<float>(2.0 * M_PI);
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_transform3d");
@@ -46,7 +46,7 @@ namespace rerun {
         ///     rec.log(
         ///         "base/rotated_scaled",
         ///         rerun::Transform3D(
-        ///             rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(pi / 4.0f)),
+        ///             rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(TAU / 8.0f)),
         ///             2.0f
         ///         )
         ///     );
