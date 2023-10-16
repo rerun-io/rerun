@@ -1,10 +1,14 @@
-//! Helper binary for running the codegen manually. Useful during development!
+//! This binary runs the codegen manually.
+//!
+//! It is easiest to call this using `just codegen`,
+//! which will set up the necessary tools.
 
-use camino::Utf8Path;
 use re_build_tools::{
     read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
 };
 use re_types_builder::{compute_re_types_hash, SourceLocations};
+
+use camino::Utf8Path;
 
 const RE_TYPES_SOURCE_HASH_PATH: &str = "crates/re_types/source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "crates/re_types/definitions";
