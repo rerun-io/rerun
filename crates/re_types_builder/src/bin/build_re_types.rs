@@ -31,6 +31,7 @@ macro_rules! join {
 
 fn main() {
     re_log::setup_native_logging();
+
     // This isn't a build.rs script, so opt out of cargo build instrctinsr
     set_output_cargo_build_instructions(false);
 
@@ -40,12 +41,16 @@ fn main() {
         .unwrap();
 
     let mut profiler = re_tracing::Profiler::default();
+    let mut always_run = false;
 
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
             "--help" => {
-                println!("Usage: [--help] [--profile]");
+                println!("Usage: [--help] [--force] [--profile]");
                 return;
+            }
+            "--force" => {
+                always_run = true;
             }
             "--profile" => profiler.start(),
             _ => {
@@ -64,7 +69,6 @@ fn main() {
     let re_types_builder_source_hash_path = workspace_dir.join(RE_TYPES_BUILDER_SOURCE_HASH_PATH);
     let definitions_dir_path = workspace_dir.join(DEFINITIONS_DIR_PATH);
     let entrypoint_path = workspace_dir.join(ENTRYPOINT_PATH);
-    let doc_examples_dir_path = workspace_dir.join(DOC_EXAMPLES_DIR_PATH);
     let cpp_output_dir_path = workspace_dir.join(CPP_OUTPUT_DIR_PATH);
     let rust_output_dir_path = workspace_dir.join(RUST_OUTPUT_DIR_PATH);
     let python_output_dir_path = workspace_dir.join(PYTHON_OUTPUT_DIR_PATH);
@@ -72,16 +76,33 @@ fn main() {
     let docs_content_dir_path = workspace_dir.join(DOCS_CONTENT_DIR_PATH);
 
     let cur_hash = read_versioning_hash(&re_types_source_hash_path);
-    eprintln!("cur_hash: {cur_hash:?}");
-
-    let builder_hash = compute_re_types_builder_hash();
+    re_log::debug!("cur_hash: {cur_hash:?}");
 
     let new_hash = compute_re_types_hash(&SourceLocations {
-        definitions_dir: definitions_dir_path.as_str(),
-        doc_examples_dir: doc_examples_dir_path.as_str(),
-        python_output_dir: python_output_dir_path.as_str(),
-        cpp_output_dir: cpp_output_dir_path.as_str(),
+        definitions_dir: DEFINITIONS_DIR_PATH,
+        doc_examples_dir: DOC_EXAMPLES_DIR_PATH,
+        python_output_dir: PYTHON_OUTPUT_DIR_PATH,
+        cpp_output_dir: CPP_OUTPUT_DIR_PATH,
     });
+
+    if let Some(cur_hash) = cur_hash {
+        if cur_hash == new_hash {
+            if always_run {
+                re_log::info!(
+                    "The hash hasn't changed, but --force was passed, so we'll run anyway."
+                );
+            } else {
+                re_log::info!("Returning early: no changes detected (and --force wasn't set).");
+                return;
+            }
+        } else {
+            re_log::info!("Change detected");
+        }
+    } else {
+        re_log::info!("Missing {re_types_source_hash_path:?} (first time running codegen)");
+    }
+
+    let builder_hash = compute_re_types_builder_hash();
 
     re_log::info!("Running codegen…");
     let (report, reporter) = re_types_builder::report::init();
