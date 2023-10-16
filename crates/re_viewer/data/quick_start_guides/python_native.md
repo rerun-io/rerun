@@ -26,8 +26,7 @@ This will open a new recording that looks like this:
 
 ### Logging your own data
 
-Instead of a pre-packaged demo, you can log your own data. Copy and paste the following snippet in a new
-Python file and execute it to create a new recording in this viewer:
+Instead of a pre-packaged demo, you can log your own data. Copy and paste the following snippet in a new Python file and execute it to create a new recording in this viewer:
 
 ```python
 import rerun as rr

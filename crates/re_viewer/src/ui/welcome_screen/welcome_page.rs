@@ -60,16 +60,21 @@ fn onboarding_content_ui(
                 Visualize synchronized data from multiple processes, locally or over a network.",
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
-                if large_text_button(ui, "C++").clicked() {
-                    open_quick_start(
-                        command_sender,
-                        [
-                            include_str!("../../../data/quick_start_guides/cpp_native.md"),
-                            include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
-                        ],
-                        "C++ Quick Start",
-                        "cpp_quick_start",
-                    );
+                //TODO(#3870): enable with C++ guides are completed
+                if false {
+                    if large_text_button(ui, "C++").clicked() {
+                        open_quick_start(
+                            command_sender,
+                            [
+                                include_str!("../../../data/quick_start_guides/cpp_native.md"),
+                                include_str!(
+                                    "../../../data/quick_start_guides/how_does_it_work.md"
+                                ),
+                            ],
+                            "C++ Quick Start",
+                            "cpp_quick_start",
+                        );
+                    }
                 }
                 if large_text_button(ui, "Python").clicked() {
                     open_quick_start(
@@ -133,7 +138,7 @@ fn onboarding_content_ui(
         },
     ];
 
-    // Shrink images if needed so user can see all of the content buttons
+    // Shrink images if needed so user can see all the content buttons
     let max_image_height = ui.available_height() - 300.0;
 
     let centering_vspace = (ui.available_height() - 650.0) / 2.0;
