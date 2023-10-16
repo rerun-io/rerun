@@ -225,11 +225,11 @@ where
         .map(|(name, data_type)| {
             Cell::new(format!(
                 "{}\n---\n{}",
-                name.replace("rerun.archetypes.", "")
-                    .replace("rerun.components.", "")
-                    .replace("rerun.datatypes.", "")
-                    .replace("rerun.controls.", "")
-                    .replace("rerun.", ""),
+                name.trim_start_matches("rerun.archetypes.")
+                    .trim_start_matches("rerun.components.")
+                    .trim_start_matches("rerun.datatypes.")
+                    .trim_start_matches("rerun.controls.")
+                    .trim_start_matches("rerun."),
                 DisplayDataType(data_type.clone())
             ))
         });
