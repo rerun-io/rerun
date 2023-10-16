@@ -29,8 +29,6 @@ namespace rerun {
         ///
         /// ### Simple line plot
         /// ```cpp,ignore
-        /// // Log a `TextDocument`
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>
@@ -39,14 +37,9 @@ namespace rerun {
         ///     auto rec = rerun::RecordingStream("rerun_example_scalar");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
-        ///     rec.log("text_document", rerun::archetypes::TextDocument("Hello, TextDocument!"));
-        ///
-        ///     for (int step = 0 : step <64 : ++step) {
+        ///     for (int step = 0; step <64; ++step) {
         ///         rec.set_time_sequence("step", step);
-        ///         rec.log(
-        ///             "scalar",
-        ///             &rerun::TimeSeriesScalar(std::sin(static_cast<double>(step) / 10.0).sin()),
-        ///         );
+        ///         rec.log("scalar", rerun::TimeSeriesScalar(std::sin(static_cast<double>(step) / 10.0)));
         ///     }
         /// }
         /// ```

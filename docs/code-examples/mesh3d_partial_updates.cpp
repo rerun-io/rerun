@@ -37,7 +37,7 @@ int main() {
     for (int i = 1; i < 300; ++i) {
         rec.set_time_sequence("frame", i);
 
-        const auto factor = std::fabsf(std::sinf(static_cast<float>(i) * 0.04f));
+        const auto factor = fabsf(sinf(static_cast<float>(i) * 0.04f));
         const auto modified_vertex_positions = {
             mul_pos(factor, vertex_positions[0]),
             mul_pos(factor, vertex_positions[1]),
