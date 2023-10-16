@@ -44,6 +44,10 @@ jobs:
         with:
           version: ">= 363.0.0"
 
+      - name: Install python gcs library
+        run: |
+          python3 -m pip install google-cloud-storage
+
       - name: Add SHORT_SHA env property with commit short sha
         shell: bash
         id: "short-sha"
