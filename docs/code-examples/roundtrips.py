@@ -36,6 +36,7 @@ opt_out_run = {
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
+    "quick_start_connect": [],  # These are example scripts not for round-trips
     "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "scalar_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
