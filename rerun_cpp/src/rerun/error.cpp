@@ -13,7 +13,8 @@ namespace rerun {
             return false;
         }
 
-        const std::string v = env; // so we can compare string with operator ==, 21st centry style
+        std::string v = env;
+        std::transform(v.begin(), v.end(), v.begin(), [](char c) { return std::tolower(c); });
 
         if (v == "1" || v == "true" || v == "yes" || v == "on") {
             return true;
