@@ -72,7 +72,6 @@ re_analytics = { workspace = true, optional = true }
 # External
 ahash.workspace = true
 anyhow.workspace = true
-arrow2.workspace = true
 bytemuck.workspace = true
 cfg-if.workspace = true
 eframe = { workspace = true, default-features = false, features = [

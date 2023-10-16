@@ -22,7 +22,7 @@ pub mod arrow;
 
 pub mod external {
     #[cfg(feature = "arrow")]
-    pub use re_types;
+    pub use re_types_core;
 }
 
 impl std::fmt::Display for Tuid {

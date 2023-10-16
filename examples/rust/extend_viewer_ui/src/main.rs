@@ -180,7 +180,7 @@ fn component_ui(
 }
 
 fn format_arrow(value: &dyn arrow2::array::Array) -> String {
-    use re_log_types::SizeBytes as _;
+    use re_types::SizeBytes as _;
 
     let bytes = value.total_size_bytes();
     if bytes < 256 {

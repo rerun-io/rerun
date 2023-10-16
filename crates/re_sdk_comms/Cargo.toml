@@ -18,10 +18,10 @@ all-features = true
 
 [features]
 ## Enable the client (SDK-side).
-client = []
+client = ["re_log_encoding/encoder"]
 
 ## Enable the server.
-server = []
+server = ["re_log_encoding/decoder"]
 
 
 [dependencies]
@@ -35,4 +35,4 @@ crossbeam.workspace = true
 document-features.workspace = true
 rand = { workspace = true, features = ["std", "std_rng", "small_rng"] }
 thiserror.workspace = true
-tokio = { workspace = true, features = ["io-util", "net"] }
+tokio = { workspace = true, features = ["io-util", "net", "rt"] }

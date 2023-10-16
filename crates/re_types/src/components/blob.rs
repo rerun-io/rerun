@@ -17,16 +17,16 @@
 /// **Component**: A binary blob of data.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
-pub struct Blob(pub crate::ArrowBuffer<u8>);
+pub struct Blob(pub ::re_types_core::ArrowBuffer<u8>);
 
-impl From<crate::ArrowBuffer<u8>> for Blob {
+impl From<::re_types_core::ArrowBuffer<u8>> for Blob {
     #[inline]
-    fn from(data: crate::ArrowBuffer<u8>) -> Self {
+    fn from(data: ::re_types_core::ArrowBuffer<u8>) -> Self {
         Self(data)
     }
 }
 
-impl From<Blob> for crate::ArrowBuffer<u8> {
+impl From<Blob> for ::re_types_core::ArrowBuffer<u8> {
     #[inline]
     fn from(value: Blob) -> Self {
         value.0
@@ -47,8 +47,8 @@ impl<'a> From<&'a Blob> for ::std::borrow::Cow<'a, Blob> {
     }
 }
 
-impl crate::Loggable for Blob {
-    type Name = crate::ComponentName;
+impl ::re_types_core::Loggable for Blob {
+    type Name = ::re_types_core::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -70,13 +70,13 @@ impl crate::Loggable for Blob {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -126,19 +126,19 @@ impl crate::Loggable for Blob {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
                             data_type: DataType::UInt8,
@@ -158,7 +158,7 @@ impl crate::Loggable for Blob {
                         .as_any()
                         .downcast_ref::<UInt8Array>()
                         .ok_or_else(|| {
-                            crate::DeserializationError::datatype_mismatch(
+                            ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::UInt8,
                                 arrow_data_inner.data_type().clone(),
                             )
@@ -176,7 +176,7 @@ impl crate::Loggable for Blob {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > arrow_data_inner.len() {
-                            return Err(crate::DeserializationError::offset_slice_oob(
+                            return Err(::re_types_core::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 arrow_data_inner.len(),
                             ));
@@ -188,18 +188,18 @@ impl crate::Loggable for Blob {
                                 .clone()
                                 .sliced_unchecked(start as usize, end - start as usize)
                         };
-                        let data = crate::ArrowBuffer::from(data);
+                        let data = ::re_types_core::ArrowBuffer::from(data);
                         Ok(data)
                     })
                     .transpose()
                 })
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
-        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.components.Blob#data")
         .with_context("rerun.components.Blob")?)
     }

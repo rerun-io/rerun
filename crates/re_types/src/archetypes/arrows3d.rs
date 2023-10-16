@@ -91,10 +91,10 @@ pub struct Arrows3D {
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Vector3D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Arrows3DIndicator".into(),
@@ -102,7 +102,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usi
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
@@ -113,7 +113,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Vector3D".into(),
@@ -131,40 +131,40 @@ impl Arrows3D {
     pub const NUM_COMPONENTS: usize = 8usize;
 }
 
-/// Indicator component for the [`Arrows3D`] [`crate::Archetype`]
-pub type Arrows3DIndicator = crate::GenericIndicatorComponent<Arrows3D>;
+/// Indicator component for the [`Arrows3D`] [`::re_types_core::Archetype`]
+pub type Arrows3DIndicator = ::re_types_core::GenericIndicatorComponent<Arrows3D>;
 
-impl crate::Archetype for Arrows3D {
+impl ::re_types_core::Archetype for Arrows3D {
     type Indicator = Arrows3DIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Arrows3D".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Arrows3DIndicator = Arrows3DIndicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -173,9 +173,9 @@ impl crate::Archetype for Arrows3D {
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
-    ) -> crate::DeserializationResult<Self> {
+    ) -> ::re_types_core::DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -183,13 +183,13 @@ impl crate::Archetype for Arrows3D {
         let vectors = {
             let array = arrays_by_name
                 .get("rerun.components.Vector3D")
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Arrows3D#vectors")?;
             <crate::components::Vector3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Arrows3D#vectors")?
                 .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Arrows3D#vectors")?
         };
         let origins = if let Some(array) = arrays_by_name.get("rerun.components.Position3D") {
@@ -197,8 +197,8 @@ impl crate::Archetype for Arrows3D {
                 <crate::components::Position3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#origins")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Arrows3D#origins")?
             })
         } else {
@@ -209,8 +209,8 @@ impl crate::Archetype for Arrows3D {
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#radii")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Arrows3D#radii")?
             })
         } else {
@@ -221,8 +221,8 @@ impl crate::Archetype for Arrows3D {
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#colors")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Arrows3D#colors")?
             })
         } else {
@@ -233,8 +233,8 @@ impl crate::Archetype for Arrows3D {
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#labels")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Arrows3D#labels")?
             })
         } else {
@@ -245,8 +245,8 @@ impl crate::Archetype for Arrows3D {
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#class_ids")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Arrows3D#class_ids")?
             })
         } else {
@@ -258,8 +258,8 @@ impl crate::Archetype for Arrows3D {
                 <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Arrows3D#instance_keys")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Arrows3D#instance_keys")?
             })
         } else {
@@ -277,31 +277,31 @@ impl crate::Archetype for Arrows3D {
     }
 }
 
-impl crate::AsComponents for Arrows3D {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for Arrows3D {
+    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.vectors as &dyn crate::ComponentBatch).into()),
+            Some((&self.vectors as &dyn ::re_types_core::ComponentBatch).into()),
             self.origins
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.radii
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.colors
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.labels
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.class_ids
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.instance_keys
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

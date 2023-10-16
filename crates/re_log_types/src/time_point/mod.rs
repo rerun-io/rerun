@@ -5,7 +5,7 @@ mod timeline;
 
 use crate::{
     time::{Time, TimeZone},
-    SizeBytes, TimeRange,
+    TimeRange,
 };
 
 // Re-exports
@@ -93,7 +93,7 @@ impl TimePoint {
     }
 }
 
-impl SizeBytes for TimePoint {
+impl re_types_core::SizeBytes for TimePoint {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         type K = Timeline;

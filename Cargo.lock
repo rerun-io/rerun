@@ -4115,6 +4115,7 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
+ "re_types_core",
  "smallvec",
  "thiserror",
  "tinyvec",
@@ -4194,6 +4195,7 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "re_types",
+ "re_types_core",
  "serde",
  "thiserror",
 ]
@@ -4314,6 +4316,7 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types",
+ "re_types_core",
  "rmp-serde",
  "serde",
  "serde_bytes",
@@ -4366,6 +4369,7 @@ dependencies = [
  "re_log_types",
  "re_tracing",
  "re_types",
+ "re_types_core",
  "thiserror",
 ]
 
@@ -4448,6 +4452,7 @@ dependencies = [
  "re_sdk_comms",
  "re_smart_channel",
  "re_types",
+ "re_types_core",
  "re_web_viewer_server",
  "re_ws_comms",
  "similar-asserts",
@@ -4686,9 +4691,8 @@ dependencies = [
  "document-features",
  "getrandom",
  "once_cell",
- "re_types",
+ "re_types_core",
  "serde",
- "thiserror",
  "web-time",
 ]
 
@@ -4699,7 +4703,6 @@ dependencies = [
  "anyhow",
  "array-init",
  "arrow2",
- "backtrace",
  "bytemuck",
  "document-features",
  "ecolor",
@@ -4714,11 +4717,10 @@ dependencies = [
  "rand",
  "rayon",
  "re_build_tools",
- "re_error",
  "re_log",
- "re_string_interner",
  "re_tracing",
  "re_types_builder",
+ "re_types_core",
  "serde",
  "similar-asserts",
  "smallvec",
@@ -4755,6 +4757,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_types_core"
+version = "0.10.0-alpha.7+dev"
+dependencies = [
+ "anyhow",
+ "arrow2",
+ "backtrace",
+ "document-features",
+ "re_error",
+ "re_string_interner",
+ "re_tracing",
+ "serde",
+ "smallvec",
+ "thiserror",
+]
+
+[[package]]
 name = "re_ui"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
@@ -4776,7 +4794,6 @@ version = "0.10.0-alpha.7+dev"
 dependencies = [
  "ahash 0.8.3",
  "anyhow",
- "arrow2",
  "bytemuck",
  "cfg-if",
  "eframe",

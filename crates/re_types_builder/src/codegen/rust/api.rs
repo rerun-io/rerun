@@ -627,7 +627,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Float16 => quote!(arrow2::types::f16),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
-            Type::String => quote!(crate::ArrowString),
+            Type::String => quote!(::re_types_core::ArrowString),
             Type::Array { elem_type, length } => {
                 if *unwrap {
                     quote!(#elem_type)
@@ -639,7 +639,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
                 if *unwrap {
                     quote!(#elem_type)
                 } else if elem_type.backed_by_arrow_buffer() {
-                    quote!(crate::ArrowBuffer<#elem_type>)
+                    quote!(::re_types_core::ArrowBuffer<#elem_type>)
                 } else {
                     quote!(Vec<#elem_type>)
                 }
@@ -665,7 +665,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Float16 => quote!(arrow2::types::f16),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
-            ElementType::String => quote!(crate::ArrowString),
+            ElementType::String => quote!(::re_types_core::ArrowString),
             ElementType::Object(fqname) => quote_fqname_as_type_path(fqname),
         }
         .to_tokens(tokens);
@@ -752,19 +752,19 @@ fn quote_trait_impls_from_obj(
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>>
+                    fn from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> ::re_types_core::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
                         re_tracing::profile_function!();
 
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
-                        use crate::{Loggable as _, ResultExt as _};
+                        use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         // This code-path cannot have null fields. If it does have a validity mask
                         // all bits must indicate valid data.
                         if let Some(validity) = arrow_data.validity() {
                             if validity.unset_bits() != 0 {
-                                return Err(crate::DeserializationError::missing_data());
+                                return Err(::re_types_core::DeserializationError::missing_data());
                             }
                         }
 
@@ -778,8 +778,8 @@ fn quote_trait_impls_from_obj(
             quote! {
                 #into_cow
 
-                impl crate::Loggable for #name {
-                    type Name = crate::#kind_name;
+                impl ::re_types_core::Loggable for #name {
+                    type Name = ::re_types_core::#kind_name;
 
                     #[inline]
                     fn name() -> Self::Name {
@@ -797,28 +797,30 @@ fn quote_trait_impls_from_obj(
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     fn to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-                    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+                    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
                     where
                         Self: Clone + 'a
                     {
                         re_tracing::profile_function!();
 
                         use ::arrow2::{datatypes::*, array::*};
-                        use crate::{Loggable as _, ResultExt as _};
+                        use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         Ok(#quoted_serializer)
                     }
 
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
-                    fn from_arrow_opt(arrow_data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>>
+                    fn from_arrow_opt(
+                        arrow_data: &dyn ::arrow2::array::Array,
+                    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized
                     {
                         re_tracing::profile_function!();
 
                         use ::arrow2::{datatypes::*, array::*, buffer::*};
-                        use crate::{Loggable as _, ResultExt as _};
+                        use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         Ok(#quoted_deserializer)
                     }
@@ -867,7 +869,7 @@ fn quote_trait_impls_from_obj(
 
             let quoted_indicator_name = format_ident!("{indicator_name}");
             let quoted_indicator_doc =
-                format!("Indicator component for the [`{name}`] [`crate::Archetype`]");
+                format!("Indicator component for the [`{name}`] [`::re_types_core::Archetype`]");
 
             let (num_required, required) =
                 compute_components(obj, ATTR_RERUN_COMPONENT_REQUIRED, []);
@@ -903,13 +905,13 @@ fn quote_trait_impls_from_obj(
                     // the nullability of individual elements (i.e. instances)!
                     match (is_plural, is_nullable) {
                         (true, true) => quote! {
-                            self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into())
+                            self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into())
                         },
                         (false, true) => quote! {
-                            self.#field_name.as_ref().map(|comp| (comp as &dyn crate::ComponentBatch).into())
+                            self.#field_name.as_ref().map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into())
                         },
                         (_, false) => quote! {
-                            Some((&self.#field_name as &dyn crate::ComponentBatch).into())
+                            Some((&self.#field_name as &dyn ::re_types_core::ComponentBatch).into())
                         }
                     }
                 }))
@@ -930,8 +932,8 @@ fn quote_trait_impls_from_obj(
                     let quoted_collection = if is_plural {
                         quote! {
                             .into_iter()
-                            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                            .collect::<crate::DeserializationResult<Vec<_>>>()
+                            .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                            .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                             .with_context(#obj_field_fqname)?
                         }
                     } else {
@@ -939,7 +941,7 @@ fn quote_trait_impls_from_obj(
                             .into_iter()
                             .next()
                             .flatten()
-                            .ok_or_else(crate::DeserializationError::missing_data)
+                            .ok_or_else(::re_types_core::DeserializationError::missing_data)
                             .with_context(#obj_field_fqname)?
                         }
                     };
@@ -962,7 +964,7 @@ fn quote_trait_impls_from_obj(
                         quote! {{
                             let array = arrays_by_name
                                 .get(#field_typ_fqname_str)
-                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)?;
 
                             <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
@@ -974,16 +976,16 @@ fn quote_trait_impls_from_obj(
             };
 
             quote! {
-                static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_required]> =
+                static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; #num_required]> =
                     once_cell::sync::Lazy::new(|| {[#required]});
 
-                static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_recommended]> =
+                static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; #num_recommended]> =
                     once_cell::sync::Lazy::new(|| {[#recommended]});
 
-                static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_optional]> =
+                static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; #num_optional]> =
                     once_cell::sync::Lazy::new(|| {[#optional]});
 
-                static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; #num_all]> =
+                static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; #num_all]> =
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
 
                 impl #name {
@@ -991,50 +993,50 @@ fn quote_trait_impls_from_obj(
                 }
 
                 #[doc = #quoted_indicator_doc]
-                pub type #quoted_indicator_name = crate::GenericIndicatorComponent<#name>;
+                pub type #quoted_indicator_name = ::re_types_core::GenericIndicatorComponent<#name>;
 
-                impl crate::Archetype for #name {
+                impl ::re_types_core::Archetype for #name {
                     type Indicator = #quoted_indicator_name;
 
                     #[inline]
-                    fn name() -> crate::ArchetypeName {
+                    fn name() -> ::re_types_core::ArchetypeName {
                         #fqname.into()
                     }
 
                     #[inline]
-                    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+                    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
                         static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
-                        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+                        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
                     }
 
                     #[inline]
-                    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+                    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
                         REQUIRED_COMPONENTS.as_slice().into()
                     }
 
                     #[inline]
-                    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]>  {
+                    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]>  {
                         RECOMMENDED_COMPONENTS.as_slice().into()
                     }
 
                     #[inline]
-                    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]>  {
+                    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]>  {
                         OPTIONAL_COMPONENTS.as_slice().into()
                     }
 
                     // NOTE: Don't rely on default implementation so that we can keep everything static.
                     #[inline]
-                    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]>  {
+                    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]>  {
                         ALL_COMPONENTS.as_slice().into()
                     }
 
                     #[inline]
                     fn from_arrow(
                         arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
-                    ) -> crate::DeserializationResult<Self> {
+                    ) -> ::re_types_core::DeserializationResult<Self> {
                         re_tracing::profile_function!();
 
-                        use crate::{Loggable as _, ResultExt as _};
+                        use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
                             .into_iter()
@@ -1048,11 +1050,11 @@ fn quote_trait_impls_from_obj(
                     }
                 }
 
-                impl crate::AsComponents for #name {
-                    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+                impl ::re_types_core::AsComponents for #name {
+                    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
                         re_tracing::profile_function!();
 
-                        use crate::Archetype as _;
+                        use ::re_types_core::Archetype as _;
 
                         [#(#all_component_batches,)*].into_iter().flatten().collect()
                     }

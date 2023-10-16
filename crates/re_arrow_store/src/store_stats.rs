@@ -1,6 +1,6 @@
 use nohash_hasher::IntMap;
-use re_log_types::{SizeBytes, TimePoint, TimeRange};
-use re_types::ComponentName;
+use re_log_types::{TimePoint, TimeRange};
+use re_types_core::{ComponentName, SizeBytes};
 
 use crate::{
     store::IndexedBucketInner, ClusterCellCache, DataStore, DataTypeRegistry, IndexedBucket,

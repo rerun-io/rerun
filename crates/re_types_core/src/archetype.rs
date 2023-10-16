@@ -15,7 +15,7 @@ use crate::{Component, Loggable, LoggableBatch};
 /// layer of abstraction opens opportunities for nicer APIs & tools that wouldn't be possible
 /// otherwise.
 ///
-/// E.g. consider the [`crate::archetypes::Points3D`] archetype, which represents the set of
+/// E.g. consider the `crate::archetypes::Points3D` archetype, which represents the set of
 /// components to consider when working with a 3D point cloud within Rerun.
 pub trait Archetype {
     /// The associated indicator component, whose presence indicates that the high-level
@@ -134,7 +134,7 @@ impl ArchetypeName {
     /// Used for most UI elements.
     ///
     /// ```
-    /// # use re_types::ArchetypeName;
+    /// # use re_types_core::ArchetypeName;
     /// assert_eq!(ArchetypeName::from("rerun.archetypes.Points3D").short_name(), "Points3D");
     /// ```
     #[inline]
