@@ -34,7 +34,7 @@ import rerun as rr
 import numpy as np
 
 # Initialize the SDK and give our recording a unique name
-rr.init("my_own_data")
+rr.init("rerun_example_data")
 
 # Connect to a local viewer using the default port
 rr.connect()
