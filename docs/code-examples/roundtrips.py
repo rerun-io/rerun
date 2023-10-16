@@ -26,7 +26,7 @@ opt_out_entirely = {
     "any_values": ["cpp", "rust"], # Only implemented for Python
     "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "asset3d_simple": [],
-    "bar_chart": [],
+    "bar_chart": ["cpp"], # Serializing tensors not yet implemented in C++
     "custom_data": ["cpp"], # Not yet implemented in C++
     "depth_image_3d": ["cpp"], # Not yet implemented in C++
     "depth_image_simple": ["cpp"],  # Not yet implemented in C++
