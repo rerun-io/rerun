@@ -17,28 +17,7 @@ Note that the Rerun SDK requires a working installation of Rust 1.72+.
 Add the following code to your `main.rs` file:
 
 ```rust
-use rerun::{demo_util::grid, external::glam};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create a new `RecordingStream` which sends data over TCP to the viewer process.
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_demo_rs")
-        .connect("127.0.0.1:9876".parse()?, None)?;
-
-    // Create some data using the `grid` utility function.
-    let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
-    let colors = grid(glam::Vec3::ZERO, glam::Vec3::splat(255.0), 10)
-        .map(|v| rerun::Color::from_rgb(v.x as u8, v.y as u8, v.z as u8));
-
-    // Log the "my_points" entity with our data, using the `Points3D` archetype.
-    rec.log(
-        "my_points",
-        &rerun::Points3D::new(points)
-            .with_colors(colors)
-            .with_radii([0.5]),
-    )?;
-
-    Ok(())
-}
+${EXAMPLE_CODE}
 ```
 
 You can now run your application:

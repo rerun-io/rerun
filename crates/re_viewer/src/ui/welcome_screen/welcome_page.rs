@@ -72,6 +72,9 @@ fn onboarding_content_ui(
                                     "../../../data/quick_start_guides/how_does_it_work.md"
                                 ),
                             ],
+                            include_str!(
+                                "../../../../../docs/code-examples/quick_start_connect.cpp"
+                            ),
                             "C++ Quick Start",
                             "cpp_quick_start",
                         );
@@ -84,6 +87,7 @@ fn onboarding_content_ui(
                             include_str!("../../../data/quick_start_guides/python_native.md"),
                             include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
                         ],
+                        include_str!("../../../../../docs/code-examples/quick_start_connect.py"),
                         "Python Quick Start",
                         "python_quick_start",
                     );
@@ -95,6 +99,7 @@ fn onboarding_content_ui(
                             include_str!("../../../data/quick_start_guides/rust_native.md"),
                             include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
                         ],
+                        include_str!("../../../../../docs/code-examples/quick_start_connect.rs"),
                         "Rust Quick Start",
                         "rust_quick_start",
                     );
@@ -269,13 +274,20 @@ fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32, max_im
     });
 }
 
+/// Open a Quick Start recording
+///
+/// The `parts` are joined with newlines to form the markdown, and the spacial tag
+/// `"${EXAMPLE_CODE}"` is replaced with the content of th `example_code` variable.
 fn open_quick_start<'a>(
     command_sender: &re_viewer_context::CommandSender,
     parts: impl IntoIterator<Item = &'a str>,
+    example_code: &str,
     app_id: &str,
     entity_path: &str,
 ) {
-    let markdown = parts.into_iter().join("\n");
+    let mut markdown = parts.into_iter().join("\n");
+    markdown = markdown.replace("${EXAMPLE_CODE}", example_code);
+
     let res = open_markdown_recording(command_sender, markdown.as_str(), app_id, entity_path);
     if let Err(err) = res {
         re_log::error!("Failed to load quick start: {}", err);

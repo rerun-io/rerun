@@ -36,6 +36,10 @@ name = "asset3d_out_of_tree"
 path = "asset3d_out_of_tree.rs"
 
 [[bin]]
+name = "box2d_simple"
+path = "box2d_simple.rs"
+
+[[bin]]
 name = "box3d_simple"
 path = "box3d_simple.rs"
 
@@ -132,8 +136,8 @@ name = "point3d_simple"
 path = "point3d_simple.rs"
 
 [[bin]]
-name = "box2d_simple"
-path = "box2d_simple.rs"
+name = "quick_start_connect"
+path = "quick_start_connect.rs"
 
 [[bin]]
 name = "scalar_simple"
