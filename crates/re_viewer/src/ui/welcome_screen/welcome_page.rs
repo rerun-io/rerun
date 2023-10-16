@@ -61,6 +61,7 @@ fn onboarding_content_ui(
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
                 //TODO(#3870): enable with C++ guides are completed
+                #[allow(clippy::collapsible_if)]
                 if false {
                     if large_text_button(ui, "C++").clicked() {
                         open_quick_start(
