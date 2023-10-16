@@ -36,6 +36,7 @@ jobs:
 
           if [ $(echo "$comments" | jq "$expr") = "true" ]; then
             echo "approving workflow run ${{ github.run_id }}"
+            # https://docs.github.com/en/rest/actions/workflow-runs?apiVersion=2022-11-28#approve-a-workflow-run-for-a-fork-pull-request
             curl -L \
               -X POST \
               -H "Accept: application/vnd.github+json" \
