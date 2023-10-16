@@ -3,7 +3,8 @@
 #include <arrow/status.h>
 #include <rerun.h>
 
-#include <cstdlib> // For getenv
+#include <algorithm> // For std::transform
+#include <cstdlib>   // For getenv
 #include <string>
 
 namespace rerun {
