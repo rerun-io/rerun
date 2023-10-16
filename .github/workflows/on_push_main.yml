@@ -237,6 +237,8 @@ jobs:
         build-rerun_c-and-upload-windows,
       ]
     runs-on: ubuntu-latest
+    container:
+      image: rerunio/ci_docker:0.10.0
     steps:
       - uses: actions/checkout@v4
       - name: Add SHORT_SHA env property with commit short sha
