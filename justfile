@@ -19,12 +19,24 @@ lint: toml-lint py-lint rs-lint
 
 ### C and C++
 
+# Clear the C++ build directories
+cpp-clean:
+    rm -rf build CMakeCache.txt CMakeFiles
+
 cpp-format:
     #!/usr/bin/env bash
     fd --extension h --exec clang-format -i
     fd --extension hpp --exec clang-format -i
     fd --extension c --exec clang-format -i
     fd --extension cpp --exec clang-format -i
+
+# Build our C++ SDK and tests
+cpp-build:
+    pixi run cpp-build
+
+# Run our C++ tests
+cpp-test:
+    pixi run cpp-test
 
 ### Python
 
