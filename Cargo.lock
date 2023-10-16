@@ -4826,7 +4826,6 @@ dependencies = [
  "web-sys",
  "web-time",
  "wgpu",
- "xshell",
 ]
 
 [[package]]
