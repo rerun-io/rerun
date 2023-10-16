@@ -57,6 +57,19 @@ pub fn setup_native_logging() {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+pub fn setup_web_logging() {
+    crate::multi_logger::init().expect("Failed to set logger");
+    log::set_max_level(log::LevelFilter::Debug);
+    crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(
+        log::LevelFilter::Debug,
+    )))
+    .expect("Failed to install logger");
+}
+
+// ----------------------------------------------------------------------------
+
+#[cfg(not(target_arch = "wasm32"))]
 fn env_var_bool(name: &str) -> Option<bool> {
     std::env::var(name).ok()
         .and_then(|s| match s.to_lowercase().as_str() {
@@ -71,20 +84,10 @@ fn env_var_bool(name: &str) -> Option<bool> {
         })
 }
 
-#[cfg(target_arch = "wasm32")]
-pub fn setup_web_logging() {
-    crate::multi_logger::init().expect("Failed to set logger");
-    log::set_max_level(log::LevelFilter::Debug);
-    crate::add_boxed_logger(Box::new(crate::web_logger::WebLogger::new(
-        log::LevelFilter::Debug,
-    )))
-    .expect("Failed to install logger");
-}
-
-// ----------------------------------------------------------------------------
-
+#[cfg(not(target_arch = "wasm32"))]
 struct PanicOnWarn {}
 
+#[cfg(not(target_arch = "wasm32"))]
 impl log::Log for PanicOnWarn {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
         match metadata.level() {
