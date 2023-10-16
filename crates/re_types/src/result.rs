@@ -22,6 +22,13 @@ pub enum SerializationError {
 
     #[error("arrow2-convert serialization Failed: {0}")]
     ArrowConvertFailure(String),
+
+    #[error("{fqname} doesn't support deserialization: {reason}")]
+    NotImplemented {
+        fqname: String,
+        reason: String,
+        backtrace: _Backtrace,
+    },
 }
 
 impl std::fmt::Debug for SerializationError {
@@ -49,12 +56,22 @@ impl SerializationError {
         }
     }
 
+    #[inline]
+    pub fn not_implemented(fqname: impl AsRef<str>, reason: impl AsRef<str>) -> Self {
+        Self::NotImplemented {
+            fqname: fqname.as_ref().into(),
+            reason: reason.as_ref().into(),
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
     /// Returns the _unresolved_ backtrace associated with this error, if it exists.
     ///
     /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
     pub fn backtrace(&self) -> Option<_Backtrace> {
         match self {
-            Self::MissingExtensionMetadata { backtrace, .. } => Some(backtrace.clone()),
+            Self::MissingExtensionMetadata { backtrace, .. }
+            | Self::NotImplemented { backtrace, .. } => Some(backtrace.clone()),
             SerializationError::Context { .. } | SerializationError::ArrowConvertFailure(_) => None,
         }
     }
@@ -92,6 +109,17 @@ pub enum DeserializationError {
     MissingStructField {
         datatype: ::arrow2::datatypes::DataType,
         field_name: String,
+        backtrace: _Backtrace,
+    },
+
+    #[error(
+        "Found {field1_length} {field1_name:?} values vs. {field2_length} {field2_name:?} values"
+    )]
+    MismatchedStructFieldLengths {
+        field1_name: String,
+        field1_length: usize,
+        field2_name: String,
+        field2_length: usize,
         backtrace: _Backtrace,
     },
 
@@ -174,6 +202,22 @@ impl DeserializationError {
     }
 
     #[inline]
+    pub fn mismatched_struct_field_lengths(
+        field1_name: impl AsRef<str>,
+        field1_length: usize,
+        field2_name: impl AsRef<str>,
+        field2_length: usize,
+    ) -> Self {
+        Self::MismatchedStructFieldLengths {
+            field1_name: field1_name.as_ref().into(),
+            field1_length,
+            field2_name: field2_name.as_ref().into(),
+            field2_length,
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
+    #[inline]
     pub fn missing_union_arm(
         datatype: arrow2::datatypes::DataType,
         arm_name: impl AsRef<str>,
@@ -230,6 +274,7 @@ impl DeserializationError {
             } => source.backtrace(),
             DeserializationError::NotImplemented { backtrace, .. }
             | DeserializationError::MissingStructField { backtrace, .. }
+            | DeserializationError::MismatchedStructFieldLengths { backtrace, .. }
             | DeserializationError::MissingUnionArm { backtrace, .. }
             | DeserializationError::MissingData { backtrace }
             | DeserializationError::MissingComponent { backtrace, .. }
