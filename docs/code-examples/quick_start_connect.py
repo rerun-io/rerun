@@ -1,3 +1,5 @@
+"""Connect to the viewer and log some data."""
+
 import rerun as rr
 import numpy as np
 

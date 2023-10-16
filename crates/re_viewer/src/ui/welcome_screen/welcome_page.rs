@@ -73,7 +73,7 @@ fn onboarding_content_ui(
                                 ),
                             ],
                             include_str!(
-                                "../../../../../docs/code-examples/quick_start_connect.cpp"
+                                "../../../data/quick_start_guides/quick_start_connect.cpp"
                             ),
                             "C++ Quick Start",
                             "cpp_quick_start",
@@ -87,7 +87,7 @@ fn onboarding_content_ui(
                             include_str!("../../../data/quick_start_guides/python_native.md"),
                             include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
                         ],
-                        include_str!("../../../../../docs/code-examples/quick_start_connect.py"),
+                        include_str!("../../../data/quick_start_guides/quick_start_connect.py"),
                         "Python Quick Start",
                         "python_quick_start",
                     );
@@ -99,7 +99,7 @@ fn onboarding_content_ui(
                             include_str!("../../../data/quick_start_guides/rust_native.md"),
                             include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
                         ],
-                        include_str!("../../../../../docs/code-examples/quick_start_connect.rs"),
+                        include_str!("../../../data/quick_start_guides/quick_start_connect.rs"),
                         "Rust Quick Start",
                         "rust_quick_start",
                     );

@@ -1,3 +1,5 @@
+//! Connect to the viewer and log some data.
+
 use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
