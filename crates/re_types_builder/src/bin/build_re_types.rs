@@ -4,9 +4,8 @@ use camino::Utf8Path;
 use re_build_tools::{
     read_versioning_hash, set_output_cargo_build_instructions, write_versioning_hash,
 };
-use re_types_builder::{compute_re_types_builder_hash, compute_re_types_hash, SourceLocations};
+use re_types_builder::{compute_re_types_hash, SourceLocations};
 
-const RE_TYPES_BUILDER_SOURCE_HASH_PATH: &str = "crates/re_types_builder/source_hash.txt";
 const RE_TYPES_SOURCE_HASH_PATH: &str = "crates/re_types/source_hash.txt";
 const DEFINITIONS_DIR_PATH: &str = "crates/re_types/definitions";
 const ENTRYPOINT_PATH: &str = "crates/re_types/definitions/rerun/archetypes.fbs";
@@ -66,7 +65,6 @@ fn main() {
         .unwrap();
 
     let re_types_source_hash_path = workspace_dir.join(RE_TYPES_SOURCE_HASH_PATH);
-    let re_types_builder_source_hash_path = workspace_dir.join(RE_TYPES_BUILDER_SOURCE_HASH_PATH);
     let definitions_dir_path = workspace_dir.join(DEFINITIONS_DIR_PATH);
     let entrypoint_path = workspace_dir.join(ENTRYPOINT_PATH);
     let cpp_output_dir_path = workspace_dir.join(CPP_OUTPUT_DIR_PATH);
@@ -101,8 +99,6 @@ fn main() {
     } else {
         re_log::info!("Missing {re_types_source_hash_path:?} (first time running codegen)");
     }
-
-    let builder_hash = compute_re_types_builder_hash();
 
     re_log::info!("Running codegen…");
     let (report, reporter) = re_types_builder::report::init();
@@ -142,7 +138,6 @@ fn main() {
     report.finalize();
 
     write_versioning_hash(re_types_source_hash_path, new_hash);
-    write_versioning_hash(re_types_builder_source_hash_path, builder_hash);
 
     re_log::info!("Done.");
 }
