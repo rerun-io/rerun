@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-You can now your application:
+You can now run your application:
 
 ```shell
 cargo run
