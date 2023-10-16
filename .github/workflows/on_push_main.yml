@@ -244,7 +244,7 @@ jobs:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
       - name: "Bundle & Upload rerun_cpp"
-        run: python ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ env.SHORT_SHA }}
+        run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ env.SHORT_SHA }}
 
   pre-release:
     name: Pre Release
@@ -264,9 +264,6 @@ jobs:
     steps:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
-
-      - name: "Bundle & Upload rerun_cpp"
-        run: python ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ env.SHORT_SHA }}
 
       # First delete the old prerelease. If we don't do this, we don't get things like
       # proper source-archives and changelog info.
