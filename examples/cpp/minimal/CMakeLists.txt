@@ -15,7 +15,7 @@ else()
 
     # Download the rerun_sdk
     include(FetchContent)
-    FetchContent_Declare(rerun_sdk URL ${RERUN_CPP_URL} DOWNLOAD_EXTRACT_TIMESTAMP YES)
+    FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP YES URL ${RERUN_CPP_URL})
     FetchContent_MakeAvailable(rerun_sdk)
 
     # Rerun requires C++17, but you can use an evern newer version.
