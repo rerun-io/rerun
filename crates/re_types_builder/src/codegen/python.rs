@@ -297,7 +297,7 @@ impl PythonCodeGenerator {
             let ext_class = ExtensionClass::new(reporter, &kind_path, obj);
 
             let names = match obj.kind {
-                ObjectKind::Datatype | ObjectKind::Component => {
+                ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
                     let name = &obj.name;
 
                     if obj.is_delegating_component() {
@@ -411,15 +411,9 @@ impl PythonCodeGenerator {
                 code.push_text(&clause, 1, 0);
             }
 
-            code.push_unindented_text(
-                format!(
-                    "
-                __all__ = [{manifest}]
-
-                ",
-                ),
-                0,
-            );
+            if !manifest.is_empty() {
+                code.push_unindented_text(format!("\n__all__ = [{manifest}]\n\n\n"), 0);
+            }
 
             let obj_code = if obj.is_struct() {
                 code_for_struct(reporter, arrow_registry, &ext_class, objects, obj)
@@ -508,7 +502,9 @@ fn write_init_file(
         let names = names.join(", ");
         code.push_text(&format!("from .{module} import {names}"), 1, 0);
     }
-    code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+    if !manifest.is_empty() {
+        code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
+    }
     files_to_write.insert(path, code);
 }
 
@@ -751,7 +747,7 @@ fn code_for_struct(
 
     match kind {
         ObjectKind::Archetype => (),
-        ObjectKind::Component | ObjectKind::Datatype => {
+        ObjectKind::Datatype | ObjectKind::Blueprint | ObjectKind::Component => {
             code.push_text(
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
@@ -901,7 +897,7 @@ fn code_for_union(
         ObjectKind::Component => {
             unreachable!("component may not be a union")
         }
-        ObjectKind::Datatype => {
+        ObjectKind::Datatype | ObjectKind::Blueprint => {
             code.push_text(
                 quote_arrow_support_from_obj(arrow_registry, ext_class, objects, obj),
                 1,
@@ -1222,6 +1218,8 @@ fn quote_import_clauses_from_fqname(fqname: &str) -> String {
         "from .. import datatypes".to_owned()
     } else if from.starts_with("rerun.components") {
         "from .. import components".to_owned()
+    } else if from.starts_with("rerun.blueprint") {
+        "from .. import blueprint".to_owned()
     } else if from.starts_with("rerun.archetypes") {
         // NOTE: This is assuming importing other archetypes is legal… which whether it is or
         // isn't for this code generator to say.
@@ -1416,6 +1414,8 @@ fn fqname_to_type(fqname: &str) -> String {
         format!("datatypes.{class}")
     } else if from.starts_with("rerun.components") {
         format!("components.{class}")
+    } else if from.starts_with("rerun.blueprint") {
+        format!("blueprint.{class}")
     } else if from.starts_with("rerun.archetypes") {
         // NOTE: This is assuming importing other archetypes is legal… which whether it is or
         // isn't for this code generator to say.
@@ -1475,7 +1475,7 @@ fn quote_arrow_support_from_obj(
         format!("{name}ArrayLike")
     };
 
-    if obj.kind == ObjectKind::Datatype {
+    if obj.kind == ObjectKind::Datatype || obj.kind == ObjectKind::Blueprint {
         type_superclasses.push("BaseExtensionType".to_owned());
         batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
     } else if obj.kind == ObjectKind::Component {
@@ -1684,6 +1684,7 @@ fn quote_init_method(
     };
     let doc_typedesc = match obj.kind {
         ObjectKind::Datatype => "datatype",
+        ObjectKind::Blueprint => "blueprint",
         ObjectKind::Component => "component",
         ObjectKind::Archetype => "archetype",
     };

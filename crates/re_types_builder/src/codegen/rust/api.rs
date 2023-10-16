@@ -706,7 +706,7 @@ fn quote_trait_impls_from_obj(
     let name = format_ident!("{name}");
 
     match kind {
-        ObjectKind::Datatype | ObjectKind::Component => {
+        ObjectKind::Datatype | ObjectKind::Component | ObjectKind::Blueprint => {
             let quoted_kind = if *kind == ObjectKind::Datatype {
                 quote!(Datatype)
             } else {

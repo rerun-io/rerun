@@ -210,10 +210,14 @@ def run_example(example: str, language: str, args: argparse.Namespace) -> None:
 
 
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
+    env = os.environ.copy()
+
     # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
     # the batcher will happily insert uninitialized padding bytes as needed!
-    env = os.environ.copy()
     env["RERUN_FLUSH_NUM_ROWS"] = "0"
+
+    # Turn on strict mode to catch errors early
+    env["RERUN_STRICT"] = "1"
 
     if save_path:
         # NOTE: Force the recording stream to write to disk!
