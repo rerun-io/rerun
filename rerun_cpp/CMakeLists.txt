@@ -63,10 +63,7 @@ endif()
 # Make sure the compiler can find include files for rerun
 # when other libraries or executables link to rerun:
 # Note that we have to use different path for within the repo and exporting the project:
-target_include_directories(rerun_sdk PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
-    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/src>
-)
+target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------------------
 # Setup rerun_c dependency:
