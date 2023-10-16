@@ -412,15 +412,7 @@ impl PythonCodeGenerator {
             }
 
             if !manifest.is_empty() {
-                code.push_unindented_text(
-                    format!(
-                        "
-                __all__ = [{manifest}]
-
-                ",
-                    ),
-                    0,
-                );
+                code.push_unindented_text(format!("\n__all__ = [{manifest}]\n\n\n"), 0);
             }
 
             let obj_code = if obj.is_struct() {
