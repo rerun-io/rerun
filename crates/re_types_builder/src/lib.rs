@@ -392,14 +392,15 @@ pub fn generate_cpp_code(
 /// ```
 pub fn generate_rust_code(
     reporter: &Reporter,
-    output_crate_path: impl AsRef<Utf8Path>,
+    workspace_path: impl Into<Utf8PathBuf>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
-    let mut gen = RustCodeGenerator::new(output_crate_path.as_ref());
-    let filepaths = gen.generate(reporter, objects, arrow_registry);
-    generate_gitattributes_for_generated_files(&output_crate_path, filepaths.into_iter());
+    let mut gen = RustCodeGenerator::new(workspace_path);
+    let _filepaths = gen.generate(reporter, objects, arrow_registry);
+    // TODO
+    // generate_gitattributes_for_generated_files(&gen.crate_path, filepaths.into_iter());
 }
 
 /// Generates Python code.
