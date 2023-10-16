@@ -48,13 +48,13 @@ opt_out_run = {
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 opt_out_compare = {
-    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "asset3d_out_of_tree": ["py", "rust"], # # float precision issues
     "mesh3d_partial_updates": ["py", "rust"], # float precision issues
-    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }
 
