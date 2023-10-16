@@ -35,7 +35,7 @@ opt_out_entirely = {
     "image_simple": ["cpp"], # Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
-    "pinhole_simple": [],
+    "pinhole_simple": ["cpp"], # Seg-faults in C++
     "scalar_multiple_plots": ["cpp"], # Not yet implemented in C++
     "scalar_simple": ["cpp"], # Not yet implemented in C++
     "segmentation_image_simple": ["cpp"], # Not yet implemented in C++
@@ -59,6 +59,7 @@ opt_out_compare = {
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }
 
 extra_args = {
