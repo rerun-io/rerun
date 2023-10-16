@@ -1,8 +1,5 @@
 //! The core types and traits that power Rerun's data model.
 //!
-//! This crate contains both the IDL definitions for Rerun types (flatbuffers) as well as the code
-//! generated from those using `re_types_builder`.
-//!
 //! The [`Archetype`] trait is the core of this crate and is a good starting point to get familiar
 //! with the code.
 //! An archetype is a logical collection of batches of [`Component`]s that play well with each other.
@@ -13,9 +10,6 @@
 //! [`ComponentBatch`]: the atomic unit of (de)serialization.
 //!
 //! Internally, [`Component`]s are implemented using many different [`Datatype`]s.
-//!
-//! All builtin archetypes, components and datatypes can be found in their respective top-level
-//! modules.
 
 // ---
 
