@@ -16,6 +16,7 @@
 -r multiprocessing/requirements.txt
 -r multithreading/requirements.txt
 -r notebook/requirements.txt
+-r nv12/requirements.txt
 -r objectron/requirements.txt
 -r open_photogrammetry_format/requirements.txt
 -r plots/requirements.txt
@@ -25,5 +26,4 @@
 -r segment_anything_model/requirements.txt
 -r signed_distance_fields/requirements.txt
 -r structure_from_motion/requirements.txt
--r nv12/requirements.txt
 -r template/requirements.txt
