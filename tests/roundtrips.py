@@ -155,10 +155,15 @@ def main() -> None:
 
 
 def roundtrip_env() -> dict[str, str]:
+    env = os.environ.copy()
+
     # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
     # the batcher will happily insert uninitialized padding bytes as needed!
-    env = os.environ.copy()
     env["RERUN_FLUSH_NUM_ROWS"] = "0"
+
+    # Turn on strict mode to catch errors early
+    env["RERUN_STRICT"] = "1"
+
     return env
 
 
