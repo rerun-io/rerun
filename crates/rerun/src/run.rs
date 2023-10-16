@@ -103,13 +103,9 @@ struct Args {
     #[clap(long)]
     skip_welcome_screen: bool,
 
-    /// Exit with a non-zero exit code if any warning or error is logged. Useful for tests.
-    #[clap(long)]
-    strict: bool,
-
     /// Ingest data and then quit once the goodbye message has been received.
     ///
-    /// Used for testing together with the `--strict` argument.
+    /// Used for testing together with `RERUN_PANIC_ON_WARN=1`.
     ///
     /// Fails if no messages are received, or if no messages are received within a dozen or so seconds.
     #[clap(long)]
@@ -275,11 +271,6 @@ where
     if args.version {
         println!("{build_info}");
         return Ok(0);
-    }
-
-    if args.strict {
-        re_log::add_boxed_logger(Box::new(StrictLogger {})).expect("Failed to enter --strict mode");
-        re_log::info!("--strict mode: any warning or error will cause Rerun to panic.");
     }
 
     let res = if let Some(command) = &args.command {
@@ -722,36 +713,4 @@ fn reset_viewer() -> anyhow::Result<()> {
         eprintln!("Rerun state was already cleared.");
         Ok(())
     }
-}
-
-// ----------------------------------------------------------------------------
-
-use re_log::external::log;
-
-struct StrictLogger {}
-
-impl log::Log for StrictLogger {
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        match metadata.level() {
-            log::Level::Error | log::Level::Warn => true,
-            log::Level::Info | log::Level::Debug | log::Level::Trace => false,
-        }
-    }
-
-    fn log(&self, record: &log::Record<'_>) {
-        let level = match record.level() {
-            log::Level::Error => "error",
-            log::Level::Warn => "warning",
-            log::Level::Info | log::Level::Debug | log::Level::Trace => return,
-        };
-
-        eprintln!("{level} logged in --strict mode: {}", record.args());
-        eprintln!(
-            "{}",
-            re_crash_handler::callstack_from(&["log::__private_api_log"])
-        );
-        std::process::exit(1);
-    }
-
-    fn flush(&self) {}
 }

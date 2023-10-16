@@ -87,15 +87,16 @@ def run_example(example: str, extra_args: list[str]) -> None:
     if python_executable is None:
         python_executable = "python3"
 
-    rerun_process = subprocess.Popen(
-        [python_executable, "-m", "rerun", "--port", str(PORT), "--strict", "--test-receive"]
-    )
-    time.sleep(0.3)  # Wait for rerun server to start to remove a logged warning
+    env = os.environ.copy()
+    env["RERUN_STRICT"] = "1"
+    env["RERUN_PANIC_ON_WARN"] = "1"
 
-    run_env = os.environ.copy()
-    run_env["RERUN_STRICT"] = "1"
+    cmd = [python_executable, "-m", "rerun", "--port", str(PORT), "--test-receive"]
+    rerun_process = subprocess.Popen(cmd, env=env)
+    time.sleep(0.5)  # Wait for rerun server to start to remove a logged warning
+
     cmd = [python_executable, example, "--connect", "--addr", f"127.0.0.1:{PORT}"] + extra_args
-    python_process = subprocess.Popen(cmd, env=run_env)
+    python_process = subprocess.Popen(cmd, env=env)
 
     print("Waiting for python process to finish…")
     returncode = python_process.wait(timeout=30)

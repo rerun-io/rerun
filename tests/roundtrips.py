@@ -164,6 +164,9 @@ def roundtrip_env() -> dict[str, str]:
     # Turn on strict mode to catch errors early
     env["RERUN_STRICT"] = "1"
 
+    # Treat any warning as panics
+    env["RERUN_PANIC_ON_WARN"] = "1"
+
     return env
 
 

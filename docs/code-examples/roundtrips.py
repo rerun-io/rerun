@@ -219,6 +219,9 @@ def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
     # Turn on strict mode to catch errors early
     env["RERUN_STRICT"] = "1"
 
+    # Treat any warning as panics
+    env["RERUN_PANIC_ON_WARN"] = "1"
+
     if save_path:
         # NOTE: Force the recording stream to write to disk!
         env["_RERUN_TEST_FORCE_SAVE"] = save_path
