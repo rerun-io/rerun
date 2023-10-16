@@ -4,7 +4,7 @@ use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new `RecordingStream` which sends data over TCP to the viewer process.
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_demo_rs")
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_demo")
         .connect("127.0.0.1:9876".parse()?, None)?;
 
     // Create some data using the `grid` utility function.
