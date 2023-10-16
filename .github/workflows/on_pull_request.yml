@@ -44,6 +44,17 @@ jobs:
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
+  bundle-and-upload-rerun_cpp:
+    name: "Bundle and upload rerun_cpp"
+    needs: [build-rerun_c-and-upload]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: "Bundle & Upload rerun_cpp"
+        run: python ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ env.SHORT_SHA }} --platform-filter=linux
+
   build-web:
     name: "Build Web"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
@@ -124,4 +135,3 @@ jobs:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
-

@@ -227,6 +227,23 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}
     secrets: inherit
 
+  bundle-and-upload-rerun_cpp:
+    name: "Bundle and upload rerun_cpp"
+    needs:
+      [
+        build-rerun_c-and-upload-linux,
+        build-rerun_c-and-upload-macos-intel,
+        build-rerun_c-and-upload-macos-arm,
+        build-rerun_c-and-upload-windows,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add SHORT_SHA env property with commit short sha
+        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: "Bundle & Upload rerun_cpp"
+        run: python ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ env.SHORT_SHA }}
+
   pre-release:
     name: Pre Release
     concurrency:
@@ -245,6 +262,9 @@ jobs:
     steps:
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+
+      - name: "Bundle & Upload rerun_cpp"
+        run: python ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ env.SHORT_SHA }}
 
       # First delete the old prerelease. If we don't do this, we don't get things like
       # proper source-archives and changelog info.
@@ -273,7 +293,14 @@ jobs:
 
             ## Wheels can be installed with:
             ```
-            pip install --pre -f https://build.rerun.io/commit/${{ env.SHORT_SHA}}/wheels --upgrade rerun-sdk
+            pip install --pre -f https://build.rerun.io/commit/${{ env.SHORT_SHA }}/wheels --upgrade rerun-sdk
+            ```
+
+            ## CMake fetch-content for C++ SDK
+            ```
+            include(FetchContent)
+            FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp.zip)
+            FetchContent_MakeAvailable(rerun_sdk)
             ```
 
             ## Static libraries for rerun_c
@@ -290,4 +317,3 @@ jobs:
           allowUpdates: true
           removeArtifacts: true
           replacesArtifacts: true
-

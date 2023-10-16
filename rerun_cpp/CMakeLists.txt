@@ -92,10 +92,11 @@ if(NOT DEFINED RERUN_C_LIB_DEFAULT)
     endif()
 endif()
 
-set(RERUN_C_LIB ${RERUN_C_LIB_DEFAULT} CACHE PATH "\
+set(RERUN_C_LIB ${RERUN_C_LIB_DEFAULT} CACHE FILEPATH "\
 Where to find the rerun_c library.\n\
 If not specified, a local rerun_c with the current system architecture will be used."
 )
+
 target_link_libraries(rerun_sdk PRIVATE ${RERUN_C_LIB})
 
 # -----------------------------------------------------------------------------

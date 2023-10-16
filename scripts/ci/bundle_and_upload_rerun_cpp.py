@@ -14,7 +14,7 @@ import tempfile
 from google.cloud import storage
 
 
-def download_rerun_c(target_dir: str, git_hash: str) -> None:
+def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None) -> None:
     os.mkdir(target_dir)
 
     # See reusable_build_and_upload_rerun_c.yml for available libraries.
@@ -25,6 +25,9 @@ def download_rerun_c(target_dir: str, git_hash: str) -> None:
         ("macos-intel/librerun_c.a", "librerun_c__macos_x64.a"),
         ("windows/librerun_c.a", "librerun_c__win_x64.a"),
     ]:
+        if platform_filter is not None and src.startswith(platform_filter) is False:
+            continue
+
         url = f"https://build.rerun.io/commit/{git_hash}/rerun_c/{src}"
         logging.info(f"Downloading rerun_c from {url}")
 
@@ -86,6 +89,7 @@ def main() -> None:
         type=str,
         help="Git hash for which we're downloading rerun_c and uploading rerun_cpp.",
     )
+    parser.add_argument("--platform-filter", type=str, default=None, help="If set, only the specified platform will be fetched for rerun_c.")
     parser.add_argument("--no-upload", help="If true, don't upload rerun_cpp.", action="store_true")
     parser.add_argument("--skip-test", help="If true, don't test rerun_cpp after upload.", action="store_true")
     parser.add_argument(
@@ -100,7 +104,7 @@ def main() -> None:
         package_dir = scratch_dir + "/" + package_name
         os.mkdir(package_dir)
 
-        download_rerun_c(package_dir + "/lib", git_hash)
+        download_rerun_c(package_dir + "/lib", git_hash, args.platform_filter)
         shutil.copy("rerun_cpp/CMakeLists.txt", package_dir + "/CMakeLists.txt")
         shutil.copytree("rerun_cpp/src/", package_dir + "/src/")
 
