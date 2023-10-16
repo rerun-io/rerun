@@ -5,8 +5,7 @@ use nohash_hasher::IntMap;
 use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
 use re_log_types::{
     ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
-    PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimePoint,
-    Timeline,
+    PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
 use re_types::{components::InstanceKey, Loggable as _};
 
@@ -242,19 +241,10 @@ impl StoreDb {
     ///
     /// This is useful to programmatically create recordings from within the viewer, which cannot
     /// use the `re_sdk`, which is not Wasm-compatible.
-    pub fn from_rows(
-        app_id: impl Into<ApplicationId>,
+    pub fn from_info_and_rows(
+        store_info: StoreInfo,
         rows: impl IntoIterator<Item = DataRow>,
-    ) -> anyhow::Result<Self> {
-        let store_info = StoreInfo {
-            application_id: app_id.into(),
-            store_id: StoreId::random(StoreKind::Recording),
-            is_official_example: true,
-            started: Time::now(),
-            store_source: StoreSource::Viewer,
-            store_kind: StoreKind::Recording,
-        };
-
+    ) -> Result<Self, Error> {
         let mut store_db = StoreDb::new(store_info.store_id.clone());
 
         store_db.set_store_info(SetStoreInfo {

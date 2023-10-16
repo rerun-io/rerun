@@ -2,7 +2,9 @@ use super::{large_text_button, status_strings, url_large_text_button, WelcomeScr
 use egui::{NumExt, Ui};
 use itertools::Itertools;
 use re_data_store::StoreDb;
-use re_log_types::{DataRow, EntityPath, LogMsg, RowId, TimePoint};
+use re_log_types::{
+    DataRow, EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimePoint,
+};
 use re_smart_channel::ReceiveSet;
 use re_ui::UICommandSender;
 use re_viewer_context::{SystemCommand, SystemCommandSender};
@@ -264,11 +266,11 @@ fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32, max_im
 fn open_quick_start<'a>(
     command_sender: &re_viewer_context::CommandSender,
     parts: impl IntoIterator<Item = &'a str>,
-    app_id: impl AsRef<str>,
-    entity_path: impl AsRef<str>,
+    app_id: &str,
+    entity_path: &str,
 ) {
     let markdown = parts.into_iter().join("\n");
-    let res = open_markdown_recording(command_sender, markdown, app_id, entity_path);
+    let res = open_markdown_recording(command_sender, markdown.as_str(), app_id, entity_path);
     if let Err(err) = res {
         re_log::error!("Failed to load quick start: {}", err);
     }
@@ -276,21 +278,30 @@ fn open_quick_start<'a>(
 
 fn open_markdown_recording(
     command_sender: &re_viewer_context::CommandSender,
-    markdown: impl AsRef<str>,
-    app_id: impl AsRef<str>,
-    entity_path: impl AsRef<str>,
+    markdown: &str,
+    app_id: &str,
+    entity_path: &str,
 ) -> anyhow::Result<()> {
-    let text_doc = re_types::archetypes::TextDocument::new(markdown.as_ref())
+    let text_doc = re_types::archetypes::TextDocument::new(markdown)
         .with_media_type(re_types::components::MediaType::markdown());
 
     let row = DataRow::from_archetype(
         RowId::random(),
         TimePoint::timeless(),
-        EntityPath::from(entity_path.as_ref()),
+        EntityPath::from(entity_path),
         &text_doc,
     )?;
 
-    let store_db = StoreDb::from_rows(app_id.as_ref(), [row])?;
+    let store_info = StoreInfo {
+        application_id: app_id.into(),
+        store_id: StoreId::random(StoreKind::Recording),
+        is_official_example: true,
+        started: Time::now(),
+        store_source: StoreSource::Viewer,
+        store_kind: StoreKind::Recording,
+    };
+
+    let store_db = StoreDb::from_info_and_rows(store_info, [row])?;
     command_sender.send_system(SystemCommand::LoadStoreDb(store_db));
 
     Ok(())

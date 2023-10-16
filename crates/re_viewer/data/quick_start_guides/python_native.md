@@ -7,7 +7,7 @@ The Rerun SDK is available on [PyPI](https://pypi.org/) under the
 Python package:
 
 ```sh
-pip3 install rerun-sdk
+pip install rerun-sdk
 ```
 
 ### Try out the viewer
@@ -16,7 +16,7 @@ The Rerun SDK comes with a demo that can be used to try the viewer. You can send
 to this viewer using the following command:
 
 ```sh
-python3 -m rerun_sdk.demo --connect
+python -m rerun_sdk.demo --connect
 ```
 
 This will open a new recording that looks like this:
