@@ -38,9 +38,9 @@ class MeshProperties(MeshPropertiesExt):
         Parameters
         ----------
         indices:
-             A flattened array of vertex indices that describe the mesh's triangles.
+            A flattened array of vertex indices that describe the mesh's triangles.
 
-             Its length must be divisible by 3.
+            Its length must be divisible by 3.
         """
 
         # You can define your own __init__ function as a member of MeshPropertiesExt in mesh_properties_ext.py

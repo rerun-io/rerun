@@ -22,8 +22,8 @@ namespace rerun {
         /// **Datatype**: A multi-dimensional `Tensor` of data.
         ///
         /// The number of dimensions and their respective lengths is specified by the `shape` field.
-        /// The dimensions are ordered from outermost to innermost. For example, in the common case
-        /// of a 2D RGB Image, the shape would be `[height, width, channel]`.
+        /// The dimensions are ordered from outermost to innermost. For example, in the common case of
+        /// a 2D RGB Image, the shape would be `[height, width, channel]`.
         ///
         /// These dimensions are combined with an index to look up values from the `buffer` field,
         /// which stores a contiguous array of typed values.

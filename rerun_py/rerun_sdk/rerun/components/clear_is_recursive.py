@@ -35,7 +35,7 @@ class ClearIsRecursive(ClearIsRecursiveExt):
         Parameters
         ----------
         recursive:
-             If true, also clears all recursive children entities.
+            If true, also clears all recursive children entities.
         """
 
         # You can define your own __init__ function as a member of ClearIsRecursiveExt in clear_is_recursive_ext.py

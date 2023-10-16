@@ -47,9 +47,9 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
         Parameters
         ----------
         class_id:
-             The key: the class ID.
+            The key: the class ID.
         class_description:
-             The value: class name, color, etc.
+            The value: class name, color, etc.
         """
 
         # You can define your own __init__ function as a member of ClassDescriptionMapElemExt in class_description_map_elem_ext.py

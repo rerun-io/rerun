@@ -141,10 +141,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
 
     write_frontmatter(&mut page, &object.name, None);
     putln!(page);
-    for mut line in top_level_docs {
-        if line.starts_with(char::is_whitespace) {
-            line.remove(0);
-        }
+    for line in top_level_docs {
         putln!(page, "{line}");
     }
     putln!(page);

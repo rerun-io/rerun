@@ -5,7 +5,7 @@
 #include <cmath>
 #include <numeric>
 
-#define TAU (static_cast<float>(M_PI) * 2.0f)
+const float TAU = static_cast<float>(2.0 * M_PI);
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_arrow3d");
@@ -18,8 +18,8 @@ int main() {
     for (int i = 0; i < 100; ++i) {
         origins.push_back({0, 0, 0});
 
-        float angle = TAU * i * 0.01f;
-        float length = log2f(i + 1);
+        float angle = TAU * static_cast<float>(i) * 0.01f;
+        float length = log2f(static_cast<float>(i + 1));
         vectors.push_back({length * sinf(angle), 0.0, length * cosf(angle)});
 
         uint8_t c = static_cast<uint8_t>(round(angle / TAU * 255.0f));

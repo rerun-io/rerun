@@ -241,17 +241,18 @@ impl ObjectKind {
 pub struct Docs {
     /// General documentation for the object.
     ///
-    /// Each entry in the vector is a raw line, extracted as-is from the fbs definition.
-    /// Trim it yourself if needed!
+    /// Each entry in the vector is a line of comment,
+    /// excluding the leading space end trailing newline,
+    /// i.e. the `COMMENT` from `/// COMMENT\n`
     ///
     /// See also [`Docs::tagged_docs`].
     pub doc: Vec<String>,
 
     /// Tagged documentation for the object.
     ///
-    /// Each entry maps a tag value to a bunch of lines.
-    /// Each entry in the vector is a raw line, extracted as-is from the fbs definition.
-    /// Trim it yourself if needed!
+    /// Each entry in the vector is a line of comment,
+    /// excluding the leading space end trailing newline,
+    /// i.e. the `COMMENT` from `/// \py COMMENT\n`
     ///
     /// E.g. the following will be associated with the `py` tag:
     /// ```flatbuffers
@@ -300,12 +301,22 @@ impl Docs {
             // NOTE: discard tagged lines!
             .filter(|line| !line.trim().starts_with('\\'))
             .flat_map(|line| {
+                assert!(!line.ends_with('\n'));
+                assert!(!line.ends_with('\r'));
+
                 if let Some((_, path)) = line.split_once("\\include:") {
                     include_file(&mut included_files, path)
                         .lines()
                         .map(|line| line.to_owned())
                         .collect_vec()
+                } else if let Some(line) = line.strip_prefix(' ') {
+                    // Removed space between `///` and comment.
+                    vec![line.to_owned()]
                 } else {
+                    assert!(
+                        line.is_empty(),
+                        "{filepath}: Comments should start with a single space; found {line:?}"
+                    );
                     vec![line.to_owned()]
                 }
             })
@@ -322,7 +333,14 @@ impl Docs {
                     trimmed.starts_with('\\').then(|| {
                         let tag = trimmed.split_whitespace().next().unwrap();
                         let line = &trimmed[tag.len()..];
-                        (tag[1..].to_owned(), line.to_owned())
+                        let tag = tag[1..].to_owned();
+                        if let Some(line) = line.strip_prefix(' ') {
+                            // Removed space between tag and comment.
+                            (tag, line.to_owned())
+                        } else {
+                            assert!(line.is_empty());
+                            (tag, String::default())
+                        }
                     })
                 })
                 .flat_map(|(tag, line)| {

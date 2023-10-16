@@ -79,7 +79,7 @@ namespace rerun {
         if (global_log_handler) {
             global_log_handler(*this, global_log_handler_user_data);
         } else {
-            fprintf(stderr, "%s\n", description.c_str());
+            fprintf(stderr, "ERROR: %s\n", description.c_str());
         }
     }
 } // namespace rerun

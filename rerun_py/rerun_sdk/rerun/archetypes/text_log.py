@@ -63,13 +63,13 @@ class TextLog(Archetype):
         Parameters
         ----------
         text:
-             The body of the message.
+            The body of the message.
         level:
-             The verbosity level of the message.
+            The verbosity level of the message.
 
-             This can be used to filter the log messages in the Rerun Viewer.
+            This can be used to filter the log messages in the Rerun Viewer.
         color:
-             Optional color to use for the log line in the Rerun Viewer.
+            Optional color to use for the log line in the Rerun Viewer.
         """
 
         # You can define your own __init__ function as a member of TextLogExt in text_log_ext.py
