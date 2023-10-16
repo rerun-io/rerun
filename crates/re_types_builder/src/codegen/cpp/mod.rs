@@ -1427,9 +1427,10 @@ fn quote_fill_arrow_array_builder(
                     let variant_name = format_ident!("{}", variant.name);
 
                     let variant_append = if variant.typ.is_plural() {
+                        let error = format!("Failed to serialize {}: list types in unions not yet implemented", obj.name); // TODO(#2919)
                         quote! {
                             (void)#variant_builder;
-                            return Error(ErrorCode::NotImplemented, "TODO(andreas): list types in unions are not yet supported");
+                            return Error(ErrorCode::NotImplemented, #error);
                         }
                     } else {
                         let variant_accessor = quote!(union_instance._data);
