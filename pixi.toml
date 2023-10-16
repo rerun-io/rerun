@@ -37,7 +37,7 @@ cpp-prepare = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 cpp-build = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",
 ] }
-cpp-test = { cmd = "./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
+cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build",
 ] }
 
