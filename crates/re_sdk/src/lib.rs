@@ -25,7 +25,9 @@ mod log_integration;
 // -------------
 // Public items:
 
-pub use self::recording_stream::{RecordingStream, RecordingStreamBuilder, RecordingStreamResult};
+pub use self::recording_stream::{
+    RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,
+};
 
 pub use re_sdk_comms::{default_flush_timeout, default_server_addr};
 

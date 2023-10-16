@@ -1,20 +1,19 @@
-use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, InstancePath, InstancePathHash};
+use re_arrow_store::{LatestAtQuery, VersionedComponent};
+use re_data_store::{EntityPath, EntityProperties};
 use re_log_types::RowId;
 use re_types::{
-    archetypes::Tensor,
-    components::{InstanceKey, TensorData},
-    tensor_data::DecodedTensor,
-    Archetype, ComponentNameSet,
+    archetypes::Tensor, components::TensorData, tensor_data::DecodedTensor, Archetype,
+    ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem,
+    SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 #[derive(Default)]
 pub struct TensorSystem {
-    pub tensors: std::collections::BTreeMap<InstancePath, (RowId, DecodedTensor)>,
+    pub tensors: std::collections::BTreeMap<EntityPath, (RowId, DecodedTensor)>,
 }
 
 impl NamedViewSystem for TensorSystem {
@@ -35,6 +34,28 @@ impl ViewPartSystem for TensorSystem {
         std::iter::once(Tensor::indicator().name()).collect()
     }
 
+    fn heuristic_filter(
+        &self,
+        store: &re_arrow_store::DataStore,
+        ent_path: &EntityPath,
+        _ctx: HeuristicFilterContext,
+        query: &LatestAtQuery,
+        entity_components: &ComponentNameSet,
+    ) -> bool {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+            return false;
+        }
+
+        // The tensor view can't display anything with less than two dimensions.
+        if let Some(tensor) =
+            store.query_latest_component::<re_types::components::TensorData>(ent_path, query)
+        {
+            !tensor.is_vector()
+        } else {
+            false
+        }
+    }
+
     fn execute(
         &mut self,
         ctx: &mut ViewerContext<'_>,
@@ -43,14 +64,14 @@ impl ViewPartSystem for TensorSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let store = &ctx.store_db.entity_db.data_store;
+        let store = ctx.store_db.store();
         for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(tensor) =
                 store.query_latest_component::<TensorData>(ent_path, &timeline_query)
             {
-                self.load_tensor_entity(ctx, ent_path, tensor.row_id, &props, tensor.value);
+                self.load_tensor_entity(ctx, ent_path, &props, tensor);
             }
         }
 
@@ -67,19 +88,16 @@ impl TensorSystem {
         &mut self,
         ctx: &ViewerContext<'_>,
         ent_path: &EntityPath,
-        row_id: RowId,
         _props: &EntityProperties,
-        tensor: TensorData,
+        tensor: VersionedComponent<TensorData>,
     ) {
-        // NOTE: Tensors don't support batches at the moment so always splat.
-        let tensor_path_hash = InstancePathHash::entity_splat(ent_path).versioned(row_id);
         match ctx
             .cache
-            .entry(|c: &mut TensorDecodeCache| c.entry(tensor_path_hash, tensor.0))
+            .entry(|c: &mut TensorDecodeCache| c.entry(tensor.row_id, tensor.value.0))
         {
-            Ok(tensor) => {
-                let instance_path = InstancePath::instance(ent_path.clone(), InstanceKey(0));
-                self.tensors.insert(instance_path, (row_id, tensor));
+            Ok(decoded_tensor) => {
+                self.tensors
+                    .insert(ent_path.clone(), (tensor.row_id, decoded_tensor));
             }
             Err(err) => {
                 re_log::warn_once!("Failed to decode decoding tensor at path {ent_path}: {err}");

@@ -9,7 +9,7 @@ from rerun._log import log
 from rerun.any_value import AnyValues
 from rerun.archetypes import BarChart, Tensor
 from rerun.datatypes.tensor_data import TensorData, TensorDataLike
-from rerun.error_utils import _send_warning
+from rerun.error_utils import _send_warning_or_raise
 from rerun.log_deprecated.log_decorator import log_decorator
 from rerun.recording_stream import RecordingStream
 
@@ -69,7 +69,9 @@ def log_tensor(
 
     """
     if meter is not None:
-        _send_warning("The `meter` argument is deprecated for use with `log_tensor`. Use `log_depth_image` instead.", 1)
+        _send_warning_or_raise(
+            "The `meter` argument is deprecated for use with `log_tensor`. Use `log_depth_image` instead.", 1
+        )
 
     _log_tensor(
         entity_path,

@@ -81,19 +81,13 @@ pub fn save_database_to_file(
     path: std::path::PathBuf,
     time_selection: Option<(re_data_store::Timeline, re_log_types::TimeRangeF)>,
 ) -> anyhow::Result<impl FnOnce() -> anyhow::Result<std::path::PathBuf>> {
-    use itertools::Itertools as _;
     use re_arrow_store::TimeRange;
 
     re_tracing::profile_function!();
 
-    let begin_rec_msg = store_db
-        .recording_msg()
+    let set_store_info_msg = store_db
+        .store_info_msg()
         .map(|msg| LogMsg::SetStoreInfo(msg.clone()));
-
-    let ent_op_msgs = store_db
-        .iter_entity_op_msgs()
-        .map(|msg| LogMsg::EntityPathOpMsg(store_db.store_id().clone(), msg.clone()))
-        .collect_vec();
 
     let time_filter = time_selection.map(|(timeline, range)| {
         (
@@ -102,8 +96,7 @@ pub fn save_database_to_file(
         )
     });
     let data_msgs: Result<Vec<_>, _> = store_db
-        .entity_db
-        .data_store
+        .store()
         .to_data_tables(time_filter)
         .map(|table| {
             table
@@ -116,9 +109,8 @@ pub fn save_database_to_file(
     use re_log_types::LogMsg;
     let data_msgs = data_msgs.with_context(|| "Failed to export to data tables")?;
 
-    let msgs = std::iter::once(begin_rec_msg)
+    let msgs = std::iter::once(set_store_info_msg)
         .flatten() // option
-        .chain(ent_op_msgs)
         .chain(data_msgs);
 
     Ok(move || {

@@ -22,8 +22,8 @@ use crate::{
         },
         StringExt as _,
     },
-    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind,
+    Objects, Reporter, Type, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE,
     ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
 };
@@ -151,7 +151,7 @@ fn generate_object_file(
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = obj.relative_filepath() {
-        code.push_str(&format!("// Based on {source_path:?}.\n\n"));
+        code.push_str(&format!("// Based on {:?}.\n\n", format_path(source_path)));
     }
 
     code.push_str("#![allow(trivial_numeric_casts)]\n");

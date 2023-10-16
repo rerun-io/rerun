@@ -9,7 +9,7 @@ def test_disconnected_space() -> None:
         # DisconnectedSpaceLike: bool
         True,
         # DisconnectedSpaceLike: DisconnectedSpace
-        DisconnectedSpace(True),
+        DisconnectedSpace(),
     ]
 
     for disconnected_space in disconnected_spaces:

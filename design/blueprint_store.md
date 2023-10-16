@@ -135,7 +135,7 @@ This means a trivial expression like: `rr.show(rrb.Points3D("points"))` is still
 
 As a further simplification, the Blueprint will allow for the direct inclusion of static data, allowing users to bypass
 the data-logging APIs entirely for simple use-cases that don't require temporal information.  This will be accomplished
-by allowing `rrb.Data` objects to be constructured from any Rerun-loggable object.
+by allowing `rrb.Data` objects to be constructed from any Rerun-loggable object.
 
 Data that is a *query* from the recording store references an entity path used seprately by the logging APIs:
 ```python

@@ -24,9 +24,9 @@
 
 #include <cstdint>
 #include <optional>
-#include <rerun/arrow.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/data_cell.hpp>
+#include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 #include <vector>
@@ -34,244 +34,177 @@
 namespace rerun {
     namespace archetypes {
         struct AffixFuzzer4 {
-            std::optional<std::vector<rerun::components::AffixFuzzer1>> fuzz2101;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer1>> fuzz2101;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer2>> fuzz2102;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer2>> fuzz2102;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer3>> fuzz2103;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer3>> fuzz2103;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer4>> fuzz2104;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer4>> fuzz2104;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer5>> fuzz2105;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer5>> fuzz2105;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer6>> fuzz2106;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer6>> fuzz2106;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer7>> fuzz2107;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer7>> fuzz2107;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer8>> fuzz2108;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer8>> fuzz2108;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer9>> fuzz2109;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer9>> fuzz2109;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer10>> fuzz2110;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer10>> fuzz2110;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer11>> fuzz2111;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer11>> fuzz2111;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer12>> fuzz2112;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer12>> fuzz2112;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer13>> fuzz2113;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer13>> fuzz2113;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer14>> fuzz2114;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer14>> fuzz2114;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer15>> fuzz2115;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer15>> fuzz2115;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer16>> fuzz2116;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer16>> fuzz2116;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer17>> fuzz2117;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer17>> fuzz2117;
 
-            std::optional<std::vector<rerun::components::AffixFuzzer18>> fuzz2118;
+            std::optional<ComponentBatch<rerun::components::AffixFuzzer18>> fuzz2118;
 
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             AffixFuzzer4() = default;
+            AffixFuzzer4(AffixFuzzer4&& other) = default;
 
-            AffixFuzzer4& with_fuzz2101(std::vector<rerun::components::AffixFuzzer1> _fuzz2101) {
+            AffixFuzzer4 with_fuzz2101(ComponentBatch<rerun::components::AffixFuzzer1> _fuzz2101
+            ) && {
                 fuzz2101 = std::move(_fuzz2101);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2101(rerun::components::AffixFuzzer1 _fuzz2101) {
-                fuzz2101 = std::vector(1, std::move(_fuzz2101));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2102(std::vector<rerun::components::AffixFuzzer2> _fuzz2102) {
+            AffixFuzzer4 with_fuzz2102(ComponentBatch<rerun::components::AffixFuzzer2> _fuzz2102
+            ) && {
                 fuzz2102 = std::move(_fuzz2102);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2102(rerun::components::AffixFuzzer2 _fuzz2102) {
-                fuzz2102 = std::vector(1, std::move(_fuzz2102));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2103(std::vector<rerun::components::AffixFuzzer3> _fuzz2103) {
+            AffixFuzzer4 with_fuzz2103(ComponentBatch<rerun::components::AffixFuzzer3> _fuzz2103
+            ) && {
                 fuzz2103 = std::move(_fuzz2103);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2103(rerun::components::AffixFuzzer3 _fuzz2103) {
-                fuzz2103 = std::vector(1, std::move(_fuzz2103));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2104(std::vector<rerun::components::AffixFuzzer4> _fuzz2104) {
+            AffixFuzzer4 with_fuzz2104(ComponentBatch<rerun::components::AffixFuzzer4> _fuzz2104
+            ) && {
                 fuzz2104 = std::move(_fuzz2104);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2104(rerun::components::AffixFuzzer4 _fuzz2104) {
-                fuzz2104 = std::vector(1, std::move(_fuzz2104));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2105(std::vector<rerun::components::AffixFuzzer5> _fuzz2105) {
+            AffixFuzzer4 with_fuzz2105(ComponentBatch<rerun::components::AffixFuzzer5> _fuzz2105
+            ) && {
                 fuzz2105 = std::move(_fuzz2105);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2105(rerun::components::AffixFuzzer5 _fuzz2105) {
-                fuzz2105 = std::vector(1, std::move(_fuzz2105));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2106(std::vector<rerun::components::AffixFuzzer6> _fuzz2106) {
+            AffixFuzzer4 with_fuzz2106(ComponentBatch<rerun::components::AffixFuzzer6> _fuzz2106
+            ) && {
                 fuzz2106 = std::move(_fuzz2106);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2106(rerun::components::AffixFuzzer6 _fuzz2106) {
-                fuzz2106 = std::vector(1, std::move(_fuzz2106));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2107(std::vector<rerun::components::AffixFuzzer7> _fuzz2107) {
+            AffixFuzzer4 with_fuzz2107(ComponentBatch<rerun::components::AffixFuzzer7> _fuzz2107
+            ) && {
                 fuzz2107 = std::move(_fuzz2107);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2107(rerun::components::AffixFuzzer7 _fuzz2107) {
-                fuzz2107 = std::vector(1, std::move(_fuzz2107));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2108(std::vector<rerun::components::AffixFuzzer8> _fuzz2108) {
+            AffixFuzzer4 with_fuzz2108(ComponentBatch<rerun::components::AffixFuzzer8> _fuzz2108
+            ) && {
                 fuzz2108 = std::move(_fuzz2108);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2108(rerun::components::AffixFuzzer8 _fuzz2108) {
-                fuzz2108 = std::vector(1, std::move(_fuzz2108));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2109(std::vector<rerun::components::AffixFuzzer9> _fuzz2109) {
+            AffixFuzzer4 with_fuzz2109(ComponentBatch<rerun::components::AffixFuzzer9> _fuzz2109
+            ) && {
                 fuzz2109 = std::move(_fuzz2109);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2109(rerun::components::AffixFuzzer9 _fuzz2109) {
-                fuzz2109 = std::vector(1, std::move(_fuzz2109));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2110(std::vector<rerun::components::AffixFuzzer10> _fuzz2110) {
+            AffixFuzzer4 with_fuzz2110(ComponentBatch<rerun::components::AffixFuzzer10> _fuzz2110
+            ) && {
                 fuzz2110 = std::move(_fuzz2110);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2110(rerun::components::AffixFuzzer10 _fuzz2110) {
-                fuzz2110 = std::vector(1, std::move(_fuzz2110));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2111(std::vector<rerun::components::AffixFuzzer11> _fuzz2111) {
+            AffixFuzzer4 with_fuzz2111(ComponentBatch<rerun::components::AffixFuzzer11> _fuzz2111
+            ) && {
                 fuzz2111 = std::move(_fuzz2111);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2111(rerun::components::AffixFuzzer11 _fuzz2111) {
-                fuzz2111 = std::vector(1, std::move(_fuzz2111));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2112(std::vector<rerun::components::AffixFuzzer12> _fuzz2112) {
+            AffixFuzzer4 with_fuzz2112(ComponentBatch<rerun::components::AffixFuzzer12> _fuzz2112
+            ) && {
                 fuzz2112 = std::move(_fuzz2112);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2112(rerun::components::AffixFuzzer12 _fuzz2112) {
-                fuzz2112 = std::vector(1, std::move(_fuzz2112));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2113(std::vector<rerun::components::AffixFuzzer13> _fuzz2113) {
+            AffixFuzzer4 with_fuzz2113(ComponentBatch<rerun::components::AffixFuzzer13> _fuzz2113
+            ) && {
                 fuzz2113 = std::move(_fuzz2113);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2113(rerun::components::AffixFuzzer13 _fuzz2113) {
-                fuzz2113 = std::vector(1, std::move(_fuzz2113));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2114(std::vector<rerun::components::AffixFuzzer14> _fuzz2114) {
+            AffixFuzzer4 with_fuzz2114(ComponentBatch<rerun::components::AffixFuzzer14> _fuzz2114
+            ) && {
                 fuzz2114 = std::move(_fuzz2114);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2114(rerun::components::AffixFuzzer14 _fuzz2114) {
-                fuzz2114 = std::vector(1, std::move(_fuzz2114));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2115(std::vector<rerun::components::AffixFuzzer15> _fuzz2115) {
+            AffixFuzzer4 with_fuzz2115(ComponentBatch<rerun::components::AffixFuzzer15> _fuzz2115
+            ) && {
                 fuzz2115 = std::move(_fuzz2115);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2115(rerun::components::AffixFuzzer15 _fuzz2115) {
-                fuzz2115 = std::vector(1, std::move(_fuzz2115));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2116(std::vector<rerun::components::AffixFuzzer16> _fuzz2116) {
+            AffixFuzzer4 with_fuzz2116(ComponentBatch<rerun::components::AffixFuzzer16> _fuzz2116
+            ) && {
                 fuzz2116 = std::move(_fuzz2116);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2116(rerun::components::AffixFuzzer16 _fuzz2116) {
-                fuzz2116 = std::vector(1, std::move(_fuzz2116));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2117(std::vector<rerun::components::AffixFuzzer17> _fuzz2117) {
+            AffixFuzzer4 with_fuzz2117(ComponentBatch<rerun::components::AffixFuzzer17> _fuzz2117
+            ) && {
                 fuzz2117 = std::move(_fuzz2117);
-                return *this;
+                return std::move(*this);
             }
 
-            AffixFuzzer4& with_fuzz2117(rerun::components::AffixFuzzer17 _fuzz2117) {
-                fuzz2117 = std::vector(1, std::move(_fuzz2117));
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2118(std::vector<rerun::components::AffixFuzzer18> _fuzz2118) {
+            AffixFuzzer4 with_fuzz2118(ComponentBatch<rerun::components::AffixFuzzer18> _fuzz2118
+            ) && {
                 fuzz2118 = std::move(_fuzz2118);
-                return *this;
-            }
-
-            AffixFuzzer4& with_fuzz2118(rerun::components::AffixFuzzer18 _fuzz2118) {
-                fuzz2118 = std::vector(1, std::move(_fuzz2118));
-                return *this;
+                return std::move(*this);
             }
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return 0;
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::AffixFuzzer4> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::AffixFuzzer4& archetype
+        );
+    };
 } // namespace rerun

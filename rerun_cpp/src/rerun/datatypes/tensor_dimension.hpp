@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -25,6 +26,16 @@ namespace rerun {
 
             /// The name of this dimension, e.g. "width", "height", "channel", "batch', ….
             std::optional<std::string> name;
+
+          public:
+            // Extensions to generated type defined in 'tensor_dimension_ext.cpp'
+
+            /// Nameless dimension.
+            TensorDimension(size_t size_) : size(size_) {}
+
+            /// Dimension with name.
+            TensorDimension(size_t size_, std::string name_)
+                : size(size_), name(std::move(name_)) {}
 
           public:
             TensorDimension() = default;

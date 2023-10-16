@@ -1,3 +1,4 @@
+use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, InstancePathHash};
 use re_query::{ArchetypeView, QueryError};
 use re_types::{
@@ -6,8 +7,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem, ResolvedAnnotationInfos,
+    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -78,7 +79,7 @@ impl Points2DPart {
 
         let (annotation_infos, keypoints) =
             process_annotations_and_keypoints::<Position2D, Points2D>(
-                query,
+                query.latest_at,
                 arch_view,
                 &ent_context.annotations,
                 |p| (*p).into(),
@@ -87,28 +88,34 @@ impl Points2DPart {
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let radii = process_radii(arch_view, ent_path)?;
 
-        if arch_view.num_instances() <= self.max_labels {
-            // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+        let positions = arch_view
+            .iter_required_component::<Position2D>()?
+            .map(|pt| pt.into());
 
-            let instance_path_hashes_for_picking = {
-                re_tracing::profile_scope!("instance_hashes");
-                arch_view
-                    .iter_instance_keys()
-                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
-                    .collect::<Vec<_>>()
-            };
+        let picking_instance_ids = arch_view
+            .iter_instance_keys()
+            .map(picking_id_from_instance_key);
 
-            self.data.ui_labels.extend(Self::process_labels(
-                arch_view,
-                &instance_path_hashes_for_picking,
-                &colors,
-                &annotation_infos,
-            )?);
-        }
+        let positions: Vec<glam::Vec3> = {
+            re_tracing::profile_scope!("collect_positions");
+            positions.collect()
+        };
+        let radii: Vec<_> = {
+            re_tracing::profile_scope!("collect_radii");
+            radii.collect()
+        };
+        let colors: Vec<_> = {
+            re_tracing::profile_scope!("collect_colors");
+            colors.collect()
+        };
+        let picking_instance_ids: Vec<_> = {
+            re_tracing::profile_scope!("collect_picking_instance_ids");
+            picking_instance_ids.collect()
+        };
 
         {
+            re_tracing::profile_scope!("to_gpu");
+
             let mut point_builder = ent_context.shared_render_builders.points();
             let point_batch = point_builder
                 .batch("2d points")
@@ -120,31 +127,6 @@ impl Points2DPart {
                 .world_from_obj(ent_context.world_from_entity)
                 .outline_mask_ids(ent_context.highlight.overall)
                 .picking_object_id(re_renderer::PickingLayerObjectId(ent_path.hash64()));
-
-            let positions = arch_view
-                .iter_required_component::<Position2D>()?
-                .map(|pt| pt.into());
-
-            let picking_instance_ids = arch_view
-                .iter_instance_keys()
-                .map(picking_id_from_instance_key);
-
-            let positions: Vec<glam::Vec3> = {
-                re_tracing::profile_scope!("collect_positions");
-                positions.collect()
-            };
-            let radii: Vec<_> = {
-                re_tracing::profile_scope!("collect_radii");
-                radii.collect()
-            };
-            let colors: Vec<_> = {
-                re_tracing::profile_scope!("collect_colors");
-                colors.collect()
-            };
-            let picking_instance_ids: Vec<_> = {
-                re_tracing::profile_scope!("collect_picking_instance_ids");
-                picking_instance_ids.collect()
-            };
 
             let mut point_range_builder =
                 point_batch.add_points_2d(&positions, &radii, &colors, &picking_instance_ids);
@@ -168,14 +150,33 @@ impl Points2DPart {
             }
         };
 
-        load_keypoint_connections(ent_context, ent_path, &keypoints);
-
         self.data.extend_bounding_box_with_points(
-            arch_view
-                .iter_required_component::<Position2D>()?
-                .map(|pt| pt.into()),
+            positions.iter().copied(),
             ent_context.world_from_entity,
         );
+
+        load_keypoint_connections(ent_context, ent_path, &keypoints);
+
+        if arch_view.num_instances() <= self.max_labels {
+            // Max labels is small enough that we can afford iterating on the colors again.
+            let colors =
+                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+
+            let instance_path_hashes_for_picking = {
+                re_tracing::profile_scope!("instance_hashes");
+                arch_view
+                    .iter_instance_keys()
+                    .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
+                    .collect::<Vec<_>>()
+            };
+
+            self.data.ui_labels.extend(Self::process_labels(
+                arch_view,
+                &instance_path_hashes_for_picking,
+                &colors,
+                &annotation_infos,
+            )?);
+        }
 
         Ok(())
     }
@@ -197,6 +198,29 @@ impl ViewPartSystem for Points2DPart {
 
     fn indicator_components(&self) -> ComponentNameSet {
         std::iter::once(Points2D::indicator().name()).collect()
+    }
+
+    fn heuristic_filter(
+        &self,
+        _store: &re_arrow_store::DataStore,
+        _ent_path: &EntityPath,
+        ctx: HeuristicFilterContext,
+        _query: &LatestAtQuery,
+        entity_components: &ComponentNameSet,
+    ) -> bool {
+        if !default_heuristic_filter(entity_components, &self.indicator_components()) {
+            return false;
+        }
+
+        // 2D parts can only ever be rendered properly as part of a 3D scene if the
+        // transform graph includes a pinhole projection. Pinholes only map from 2D children
+        // to 3D parents, so if the required pinhole exists, it must be an ancestor.
+        // Filter them otherwise to avoid ending up with 2D content mixed into 3D scenes.
+        if ctx.class == "3D" && !ctx.has_ancestor_pinhole {
+            return false;
+        }
+
+        true
     }
 
     fn execute(

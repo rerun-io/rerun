@@ -1,0 +1,67 @@
+# Pixi is a package management tool for developers.
+# Before running a task, pixi ensures that all listed dependencies are installed first.
+#
+# Run the tasks with `pixi run TASK`, e.g. `pixi run codegen`.
+# Extra CLI argument after `pixi run TASK` are passed to the task cmd.
+# Lists tasks with `pixi task list`
+#
+# Type `pixi shell` to enter the pixi environment.
+#
+# https://prefix.dev/docs/pixi/overview
+
+[project]
+name = "rerun"
+authors = ["rerun.io <opensource@rerun.io>"]
+channels = ["conda-forge"]
+description = "Log images, point clouds, etc, and visualize them effortlessly"
+homepage = "https://rerun.io"
+license = "MIT OR Apache-2.0"
+platforms = ["linux-64", "osx-arm64", "osx-64", "win-64"]
+readme = "README.md"
+repository = "https://github.com/rerun-io/rerun"
+version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
+
+
+[tasks]
+# Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
+
+# Run the codegen. Optionally pass `--profile` argument if you want.
+codegen = "cargo run --package re_types_builder -- "
+
+py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
+py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
+  "py-build",
+] }
+
+cpp-prepare = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-build = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
+  "cpp-prepare",
+] }
+cpp-test = { cmd = "./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
+  "cpp-build",
+] }
+
+
+[dependencies]
+arrow-cpp = "10.0.1"
+attrs = ">=23.1.0"
+black = "23.3.0"
+c-compiler = "1.6.0.*"
+clang = ">=15,<16"
+clang-tools = ">=15,<16"
+cmake = "3.27.6"
+cxx-compiler = "1.6.0.*"
+flatbuffers = ">=23"
+maturin = ">=0.14,<0.15"
+ninja = "1.11.1"
+pip = ">=23"
+pyarrow = "10.0.1"
+pytest = ">=7"
+python = ">=3.8,<3.12"
+ruff = "0.0.276"
+semver = ">=2.13,<2.14"
+typing_extensions = ">4.5"
+wheel = ">=0.38,<0.39"
+
+[target.linux-64.dependencies]
+patchelf = ">=0.17"

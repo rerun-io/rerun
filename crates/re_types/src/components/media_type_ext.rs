@@ -70,6 +70,18 @@ impl MediaType {
     /// Tries to guess the media type of the file at `path` based on its extension.
     #[inline]
     pub fn guess_from_path(path: impl AsRef<std::path::Path>) -> Option<Self> {
+        let path = path.as_ref();
+
+        // `mime_guess` considers `.obj` to be a a tgif… but really it's way more likely to be an obj.
+        if path
+            .extension()
+            .and_then(|ext| ext.to_str().map(|s| s.to_lowercase()))
+            .as_deref()
+            == Some("obj")
+        {
+            return Some(Self::obj());
+        }
+
         mime_guess::from_path(path)
             .first_raw()
             .map(ToOwned::to_owned)

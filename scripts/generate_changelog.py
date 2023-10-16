@@ -172,6 +172,8 @@ def main() -> None:
             misc.append(summary)
         else:
             title = pr_info.pr_title if pr_info else title  # We prefer the PR title if available
+            title = title.rstrip(".")  # Some people enjoy ending their titles with an unnecessary period
+
             labels = pr_info.labels if pr_info else []
 
             if "exclude from changelog" in labels:

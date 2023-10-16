@@ -95,10 +95,7 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut StoreDb) {
             DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 1, [component])
                 .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
 
-        welcome_screen_blueprint
-            .entity_db
-            .try_add_data_row(&row)
-            .unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
+        welcome_screen_blueprint.add_data_row(&row).unwrap(); // Can only fail if we have the wrong number of instances for the component, and we don't
     }
 }
 

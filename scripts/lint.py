@@ -18,7 +18,6 @@ from gitignore_parser import parse_gitignore
 
 # -----------------------------------------------------------------------------
 
-todo_pattern = re.compile(r'TODO([^_"(]|$)')
 debug_format_of_err = re.compile(r"\{\:#?\?\}.*, err")
 error_match_name = re.compile(r"Err\((\w+)\)")
 error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
@@ -28,14 +27,21 @@ else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
 ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
 
-any_todo_pattern = re.compile(r"TODO\(.*\)")
-legal_todo_inner_pattern = re.compile(
-    r"TODO\(((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+)(?:,\s*((?:[a-zA-Z\-_/]+)?#\d+|[a-zA-Z]+))*\)"
-)
-
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 
 double_the = re.compile(r"\bthe the\b")
+
+
+def is_valid_todo_part(part: str) -> bool:
+    part = part.strip()
+
+    if re.match(r"^[\w/-]*#\d+$", part):
+        return True  # org/repo#42 or #42
+
+    if re.match(r"^[a-z][a-z0-9_]+$", part):
+        return True  # user-name
+
+    return False
 
 
 def lint_line(line: str, file_extension: str = "rs") -> str | None:
@@ -74,7 +80,12 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if "todo!()" in line:
         return 'todo!() should be written as todo!("$details")'
 
-    if todo_pattern.search(line):
+    if m := re.search(r"TODO\(([^)]*)\)", line):
+        parts = m.group(1).split(",")
+        if len(parts) == 0 or not all(is_valid_todo_part(p) for p in parts):
+            return "TODOs should be formatted as either TODO(name), TODO(#42) or TODO(org/repo#42)"
+
+    if re.search(r'TODO([^_"(]|$)', line):
         return "TODO:s should be written as `TODO(yourname): what to do`"
 
     if "{err:?}" in line or "{err:#?}" in line or debug_format_of_err.search(line):
@@ -86,15 +97,13 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if anyhow_result.search(line):
         return "Prefer using anyhow::Result<>"
 
-    m = re.search(error_map_err_name, line) or re.search(error_match_name, line)
-    if m:
+    if m := re.search(error_map_err_name, line) or re.search(error_match_name, line):
         name = m.group(1)
         # if name not in ("err", "_err", "_"):
         if name in ("e", "error"):
             return "Errors should be called 'err', '_err' or '_'"
 
-    m = re.search(else_return, line)
-    if m:
+    if m := re.search(else_return, line):
         match = m.group(0)
         if match != "else { return; };":
             # Because cargo fmt doesn't handle let-else
@@ -108,9 +117,6 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
 
     if explicit_quotes.search(line):
         return "Prefer using {:?} - it will also escape newlines etc"
-
-    if any_todo_pattern.search(line) and not legal_todo_inner_pattern.search(line):
-        return "TODOs should be formatted as either TODO(name), TODO(#42) or TODO(org/repo#42)"
 
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
@@ -132,6 +138,7 @@ def test_lint_line() -> None:
         "TODO(#42):",
         "TODO(#42,#43):",
         "TODO(#42, #43):",
+        "TODO(n4m3/w1th-numb3r5#42)",
         "TODO(rust-lang/rust#42):",
         "TODO(rust-lang/rust#42,rust-lang/rust#43):",
         "TODO(rust-lang/rust#42, rust-lang/rust#43):",
@@ -222,6 +229,9 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
         line = line.strip()
         prev_line = prev_line.strip()
 
+        if "template<" in prev_line:
+            return False  # C++ template inside Rust code that generates C++ code.
+
         if is_empty(prev_line) or prev_line.strip().startswith("```"):
             return False
 
@@ -297,6 +307,10 @@ def test_lint_vertical_spacing() -> None:
         type Response = Response<Body>;
         type Error = hyper::Error;
         """,
+        """
+        template<typename T>
+        struct AsComponents;
+        """,  # C++ template inside Rust code that generates C++ code.
     ]
 
     should_fail = [

@@ -390,7 +390,7 @@ impl TimePanel {
                         time_area_painter,
                         tree_max_y,
                         None,
-                        &ctx.store_db.entity_db.tree,
+                        &ctx.store_db.entity_db().tree,
                         ui,
                     );
                 } else {
@@ -399,7 +399,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         tree_max_y,
-                        &ctx.store_db.entity_db.tree,
+                        &ctx.store_db.entity_db().tree,
                         ui,
                     );
                 }
@@ -417,13 +417,7 @@ impl TimePanel {
         tree: &EntityTree,
         ui: &mut egui::Ui,
     ) {
-        if !tree
-            .prefix_times
-            .has_timeline(ctx.rec_cfg.time_ctrl.timeline())
-            && tree.num_timeless_messages() == 0
-        {
-            return; // ignore entities that have no data for the current timeline, nor any timeless data.
-        }
+        let tree_has_data_in_current_timeline = ctx.tree_has_data_in_current_timeline(tree);
 
         // The last part of the path component
         let text = if let Some(last_path_part) = last_path_part {
@@ -478,7 +472,7 @@ impl TimePanel {
         let response_rect = response.rect;
         self.next_col_right = self.next_col_right.max(response_rect.right());
 
-        // From the left of the label, all the way to the rightmost of the time panel
+        // From the left of the label, all the way to the right-most of the time panel
         let full_width_rect = Rect::from_x_y_ranges(
             response_rect.left()..=ui.max_rect().right(),
             response_rect.y_range(),
@@ -489,7 +483,7 @@ impl TimePanel {
         // ----------------------------------------------
 
         // show the data in the time area:
-        if is_visible {
+        if is_visible && tree_has_data_in_current_timeline {
             let row_rect =
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
 
@@ -547,12 +541,8 @@ impl TimePanel {
             for component_name in re_data_ui::ui_visible_components(tree.components.keys()) {
                 let data = &tree.components[component_name];
 
-                if !data.times.has_timeline(ctx.rec_cfg.time_ctrl.timeline())
-                    && data.num_timeless_messages() == 0
-                {
-                    continue; // ignore fields that have no data for the current timeline
-                }
-
+                let component_has_data_in_current_timeline =
+                    ctx.component_has_data_in_current_timeline(data);
                 let component_path = ComponentPath::new(tree.path.clone(), *component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = Item::ComponentPath(component_path);
@@ -587,29 +577,35 @@ impl TimePanel {
 
                 let response_rect = response.rect;
 
+                let empty_messages_over_time = TimeHistogram::default();
+                let messages_over_time = data
+                    .times
+                    .get(ctx.rec_cfg.time_ctrl.timeline())
+                    .unwrap_or(&empty_messages_over_time);
+
+                // `data.times` does not contain timeless. Need to add those manually:
+                let total_num_messages =
+                    messages_over_time.total_count() + data.num_timeless_messages() as u64;
+                response.on_hover_ui(|ui| {
+                    if total_num_messages == 0 {
+                        ui.label(ctx.re_ui.warning_text(format!(
+                            "No event logged on timeline {:?}",
+                            ctx.rec_cfg.time_ctrl.timeline().name()
+                        )));
+                    } else {
+                        ui.label(format!("Number of events: {total_num_messages}"));
+                    }
+                });
+
                 self.next_col_right = self.next_col_right.max(response_rect.right());
 
-                // From the left of the label, all the way to the rightmost of the time panel
+                // From the left of the label, all the way to the right-most of the time panel
                 let full_width_rect = Rect::from_x_y_ranges(
                     response_rect.left()..=ui.max_rect().right(),
                     response_rect.y_range(),
                 );
                 let is_visible = ui.is_rect_visible(full_width_rect);
-
-                if is_visible {
-                    let empty_messages_over_time = TimeHistogram::default();
-                    let messages_over_time = data
-                        .times
-                        .get(ctx.rec_cfg.time_ctrl.timeline())
-                        .unwrap_or(&empty_messages_over_time);
-
-                    // `data.times` does not contain timeless. Need to add those manually:
-                    let total_num_messages =
-                        messages_over_time.total_count() + data.num_timeless_messages() as u64;
-                    response.on_hover_ui(|ui| {
-                        ui.label(format!("Number of events: {total_num_messages}"));
-                    });
-
+                if is_visible && component_has_data_in_current_timeline {
                     // show the data in the time area:
                     let row_rect = Rect::from_x_y_ranges(
                         time_area_response.rect.x_range(),
@@ -781,7 +777,7 @@ fn is_time_safe_to_show(
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = store_db.entity_db.tree.prefix_times.get(timeline) {
+    if let Some(times) = store_db.entity_db().tree.prefix_times.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
@@ -826,7 +822,7 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .store_db
-        .entity_db
+        .entity_db()
         .tree
         .prefix_times
         .get(ctx.rec_cfg.time_ctrl.timeline())
@@ -859,7 +855,7 @@ fn view_everything(x_range: &Rangef, timeline_axis: &TimelineAxis) -> TimeView {
     let factor = if width_sans_gaps > 0.0 {
         width / width_sans_gaps
     } else {
-        1.0 // too narrow to fit everything anyways
+        1.0 // too narrow to fit everything anyway
     };
 
     let min = timeline_axis.min();

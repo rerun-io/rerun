@@ -7,7 +7,7 @@ import rerun_bindings as bindings
 
 from . import components as cmp
 from ._baseclasses import AsComponents, ComponentBatchLike
-from .error_utils import _send_warning, catch_and_log_exceptions
+from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
 __all__ = ["log", "IndicatorComponentBatch", "AsComponents"]
@@ -67,6 +67,11 @@ def log(
     This is the main entry point for logging data to rerun. It can be used to log anything
     that implements the [`rerun.AsComponents`][] interface, or a collection of `ComponentBatchLike`
     objects.
+
+    When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
+    for identifying the data. Note that the path prefix "rerun/" is considered reserved for use by the Rerun SDK
+    itself and should not be used for logging user data. This is where Rerun will log additional information
+    such as warnings.
 
     The most common way to log is with one of the rerun archetypes, all of which implement
     the `AsComponents` interface.
@@ -217,7 +222,7 @@ def log_components(
 
         # Skip components which were logged multiple times.
         if name in added:
-            _send_warning(
+            _send_warning_or_raise(
                 f"Component {name} was included multiple times. Only the first instance will be used.",
                 depth_to_user_code=1,
             )

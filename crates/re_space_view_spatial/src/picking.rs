@@ -84,7 +84,7 @@ impl PickingContext {
 
     pub fn new(
         pointer_in_ui: egui::Pos2,
-        space2d_from_ui: eframe::emath::RectTransform,
+        space2d_from_ui: egui::emath::RectTransform,
         ui_clip_rect: egui::Rect,
         pixels_from_points: f32,
         eye: &Eye,

@@ -21,6 +21,14 @@ pub struct Annotations {
 }
 
 impl Annotations {
+    #[inline]
+    pub fn missing() -> Self {
+        Self {
+            row_id: MISSING_ROW_ID,
+            class_map: Default::default(),
+        }
+    }
+
     pub fn try_from_view(view: &ArchetypeView<AnnotationContext>) -> Option<Self> {
         re_tracing::profile_function!();
 
@@ -143,13 +151,19 @@ pub struct ResolvedAnnotationInfo {
 
 impl ResolvedAnnotationInfo {
     /// `rgba` should be unmultiplied
+    #[inline]
     pub fn color(
         &self,
-        rgba: Option<&[u8; 4]>,
+        rgba: Option<[u8; 4]>,
         default_color: DefaultColor<'_>,
     ) -> re_renderer::Color32 {
         if let Some([r, g, b, a]) = rgba {
-            re_renderer::Color32::from_rgba_unmultiplied(*r, *g, *b, *a)
+            if a == 255 {
+                // Common-case optimization
+                re_renderer::Color32::from_rgb(r, g, b)
+            } else {
+                re_renderer::Color32::from_rgba_unmultiplied(r, g, b, a)
+            }
         } else if let Some(color) = self.annotation_info.as_ref().and_then(|info| {
             info.color
                 .map(|c| c.into())
@@ -168,6 +182,7 @@ impl ResolvedAnnotationInfo {
         }
     }
 
+    #[inline]
     pub fn label(&self, label: Option<&str>) -> Option<String> {
         if let Some(label) = label {
             Some(label.to_owned())
@@ -220,7 +235,7 @@ impl AnnotationMap {
 
         let mut visited = IntSet::<EntityPath>::default();
 
-        let data_store = &ctx.store_db.entity_db.data_store;
+        let data_store = ctx.store_db.store();
 
         // This logic is borrowed from `iter_ancestor_meta_field`, but using the arrow-store instead
         // not made generic as `AnnotationContext` was the only user of that function
@@ -279,10 +294,5 @@ impl AnnotationMap {
 const MISSING_ROW_ID: RowId = RowId::ZERO;
 
 lazy_static! {
-    pub static ref MISSING_ANNOTATIONS: Arc<Annotations> = {
-        Arc::new(Annotations {
-            row_id: MISSING_ROW_ID,
-            class_map: Default::default(),
-        })
-    };
+    pub static ref MISSING_ANNOTATIONS: Arc<Annotations> = Arc::new(Annotations::missing());
 }

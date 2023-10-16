@@ -70,6 +70,7 @@ impl RerunServer {
             let (tcp_stream, _) = tokio::select! {
                 res = self.listener.accept() => res?,
                 _ = shutdown_rx.recv() => {
+                    re_log::debug!("Shutting down WebSocket server");
                     return Ok(());
                 }
             };

@@ -1,10 +1,10 @@
 use std::{io::ErrorKind, time::Instant};
 
 use rand::{Rng as _, SeedableRng};
+use tokio::net::{TcpListener, TcpStream};
 
 use re_log_types::{LogMsg, TimePoint, TimeType, TimelineName};
 use re_smart_channel::{Receiver, Sender};
-use tokio::net::{TcpListener, TcpStream};
 
 #[derive(thiserror::Error, Debug)]
 pub enum ServerError {
@@ -249,7 +249,7 @@ impl CongestionManager {
         #[allow(clippy::match_same_arms)]
         match msg {
             // we don't want to drop any of these
-            LogMsg::SetStoreInfo(_) | LogMsg::EntityPathOpMsg(_, _) => true,
+            LogMsg::SetStoreInfo(_) => true,
 
             LogMsg::ArrowMsg(_, arrow_msg) => self.should_send_time_point(&arrow_msg.timepoint_max),
         }

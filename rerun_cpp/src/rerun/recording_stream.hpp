@@ -3,7 +3,7 @@
 #include <cstdint> // uint32_t etc.
 #include <vector>
 
-#include "component_batch.hpp"
+#include "as_components.hpp"
 #include "error.hpp"
 
 namespace rerun {
@@ -121,130 +121,197 @@ namespace rerun {
         void flush_blocking();
 
         // -----------------------------------------------------------------------------------------
+        // Methods for controlling time.
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+        ///
+        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
+        /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time, remove_timeline
+        void set_time_sequence(const char* timeline_name, int64_t sequence_nr);
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
+        ///
+        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
+        /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time, remove_timeline
+        void set_time_seconds(const char* timeline_name, double seconds);
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
+        ///
+        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, remove_timeline
+        void set_time_nanos(const char* timeline_name, int64_t nanos);
+
+        /// Stops logging to the specified timeline for subsequent log calls.
+        ///
+        /// The timeline is still there, but it will not be updated with any new data.
+        ///
+        /// No-op if the timeline doesn't exist.
+        ///
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, remove_timeline
+        void disable_timeline(const char* timeline_name);
+
+        /// Clears out the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.reset_time()`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, remove_timeline
+        void reset_time();
+
+        // -----------------------------------------------------------------------------------------
         // Methods for logging.
 
-        /// Logs an archetype.
-        ///
-        /// Prefer this interface for ease of use over the more general `log_component_batches`
-        /// interface.
-        ///
-        /// Logs any failure via `Error::log_on_failure`
-        template <typename T>
-        void log(const char* entity_path, const T& archetype) {
-            log_archetype(entity_path, archetype);
-        }
-
-        /// @copydoc log
-        template <typename T>
-        void log_archetype(const char* entity_path, const T& archetype) {
-            try_log_archetype(entity_path, archetype).log_on_failure();
-        }
-
-        /// Logs a an archetype, returning an error on failure.
-        ///
-        /// @see log_archetype
-        template <typename T>
-        Error try_log_archetype(const char* entity_path, const T& archetype) {
-            return try_log_component_batches(
-                entity_path,
-                archetype.num_instances(),
-                archetype.as_component_batches()
-            );
-        }
-
-        /// Logs a single component batch.
-        ///
-        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
-        /// built-in archetypes.
+        /// Logs one or more archetype and/or component batches.
         ///
         /// Logs any failure via `Error::log_on_failure`
         ///
-        /// @param component_batch
-        /// Expects component batch as std::vector, std::array or C arrays.
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
         ///
-        /// @see try_log_component_batch, log_component_batches, try_log_component_batches
-        template <typename T>
-        void log_component_batch(const char* entity_path, const T& component_batch) {
-            const auto batch = AnonymousComponentBatch(component_batch);
-            try_log_component_batches(entity_path, batch.num_instances, batch).log_on_failure();
-        }
-
-        /// Logs a single component batch.
-        ///
-        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
-        /// built-in archetypes.
-        ///
-        /// @param component_batch
-        /// Expects component batch as std::vector, std::array or C arrays.
-        ///
-        /// @see log_component_batch, log_component_batches, try_log_component_batches
-        template <typename T>
-        Error try_log_component_batch(const char* entity_path, const T& component_batch) {
-            const auto batch = AnonymousComponentBatch(component_batch);
-            return try_log_component_batches(entity_path, batch.num_instances, batch);
-        }
-
-        /// Logs several component batches.
-        ///
-        /// This forms the "medium level API", for easy to use high level api, prefer `log` to log
-        /// built-in archetypes.
-        ///
-        /// Logs any failure via `Error::log_on_failure`
-        ///
-        /// @param component_batches
-        /// Expects component batches as std::vector, std::array or C arrays.
-        ///
-        /// @param num_instances
-        /// Specify the expected number of component instances present in each
-        /// list. Each can have either:
-        /// - exactly `num_instances` instances,
-        /// - a single instance (splat),
-        /// - or zero instance (clear).
-        ///
-        /// @see try_log_component_batches
+        /// @see try_log
         template <typename... Ts>
-        void log_component_batches(
-            const char* entity_path, size_t num_instances, const Ts&... component_batches
-        ) {
-            try_log_component_batches(entity_path, num_instances, component_batches...)
+        void log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            try_log_with_timeless(entity_path, false, archetypes_or_component_batches...)
                 .log_on_failure();
         }
 
-        /// Logs several component batches, returning an error on failure.
+        /// Logs one or more archetype and/or component batches as timeless data.
         ///
+        /// Timeless data is present on all timelines and behaves as if it was recorded infinitely
+        /// far into the past. All timestamp data associated with this message will be dropped right
+        /// before sending it to Rerun.
         ///
-        /// @param num_instances
-        /// Specify the expected number of component instances present in each
-        /// list. Each can have either:
-        /// - exactly `num_instances` instances,
-        /// - a single instance (splat),
-        /// - or zero instance (clear).
+        /// Logs any failure via `Error::log_on_failure`
         ///
-        /// @see log_component_batches
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        ///
+        /// @see try_log
         template <typename... Ts>
-        Error try_log_component_batches(
-            const char* entity_path, size_t num_instances, const Ts&... component_batches
-        ) {
-            return try_log_component_batches(
-                entity_path,
-                num_instances,
-                {AnonymousComponentBatch(component_batches)...}
-            );
+        void log_timeless(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            try_log_with_timeless(entity_path, true, archetypes_or_component_batches...)
+                .log_on_failure();
         }
 
-        /// @copydoc try_log_component_batches
-        Error try_log_component_batches(
-            const char* entity_path, size_t num_instances,
-            const std::vector<AnonymousComponentBatch>& component_lists
+        /// Logs one or more archetype and/or component batches.
+        ///
+        /// Returns an error if an error occurs during serialization or logging.
+        ///
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        ///
+        /// @see try_log
+        template <typename... Ts>
+        Error try_log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            return try_log_with_timeless(entity_path, false, archetypes_or_component_batches...);
+        }
+
+        /// Logs one or more archetype and/or component batches as timeless data.
+        ///
+        /// Timeless data is present on all timelines and behaves as if it was recorded infinitely
+        /// far into the past. All timestamp data associated with this message will be dropped right
+        /// before sending it to Rerun.
+        ///
+        /// Returns an error if an error occurs during serialization or logging.
+        ///
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        ///
+        /// @see try_log
+        template <typename... Ts>
+        Error try_log_timeless(
+            const char* entity_path, const Ts&... archetypes_or_component_batches
+        ) {
+            return try_log_with_timeless(entity_path, true, archetypes_or_component_batches...);
+        }
+
+        /// Logs one or more archetype and/or component batches optionally timeless.
+        ///
+        /// Returns an error if an error occurs during serialization or logging.
+        ///
+        /// @param archetypes_or_component_batches
+        /// Any type for which the `AsComponents<T>` trait is implemented.
+        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        ///
+        /// @see log, try_log, log_timeless, try_log_timeless
+        template <typename... Ts>
+        Error try_log_with_timeless(
+            const char* entity_path, bool timeless, const Ts&... archetypes_or_component_batches
+        ) {
+            std::vector<SerializedComponentBatch> serialized_batches;
+            Error err;
+            (
+                [&] {
+                    if (err.is_err()) {
+                        return;
+                    }
+
+                    const Result<std::vector<SerializedComponentBatch>> serialization_result =
+                        AsComponents<Ts>().serialize(archetypes_or_component_batches);
+                    if (serialization_result.is_err()) {
+                        err = serialization_result.error;
+                        return;
+                    }
+
+                    if (serialized_batches.empty()) {
+                        // Fast path for the first batch (which is usually the only one!)
+                        serialized_batches = std::move(serialization_result.value);
+                    } else {
+                        serialized_batches.insert(
+                            serialized_batches.end(),
+                            std::make_move_iterator(serialization_result.value.begin()),
+                            std::make_move_iterator(serialization_result.value.end())
+                        );
+                    }
+                }(),
+                ...
+            );
+            RR_RETURN_NOT_OK(err);
+
+            return try_log_serialized_batches(entity_path, timeless, serialized_batches);
+        }
+
+        /// Logs several serialized batches batches, returning an error on failure.
+        ///
+        /// The number of instances in each batch must either be equal to the maximum or:
+        /// - zero instances - implies a clear
+        /// - single instance (but other instances have more) - causes a splat
+        Error try_log_serialized_batches(
+            const char* entity_path, bool timeless,
+            const std::vector<SerializedComponentBatch>& batches
         );
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
         /// @param num_instances
         /// Each cell is expected to hold exactly `num_instances` instances.
+        ///
+        /// @param inject_time
+        /// If set to `true`, the row's timestamp data will be overridden using the recording
+        /// streams internal clock.
         Error try_log_data_row(
             const char* entity_path, size_t num_instances, size_t num_data_cells,
-            const DataCell* data_cells
+            const DataCell* data_cells, bool inject_time
         );
 
       private:

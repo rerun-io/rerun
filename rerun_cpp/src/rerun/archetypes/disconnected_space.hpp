@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "../arrow.hpp"
 #include "../component_batch.hpp"
 #include "../components/disconnected_space.hpp"
 #include "../data_cell.hpp"
+#include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -31,20 +31,17 @@ namespace rerun {
         ///
         /// #include <rerun.hpp>
         ///
-        /// namespace rr = rerun;
-        ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_disconnected_space");
+        ///     auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///     // These two points can be projected into the same space..
-        ///     rec.log("world/room1/point", rr::Points3D(rr::datatypes::Vec3D{0.0f, 0.0f, 0.0f}));
-        ///     rec.log("world/room2/point", rr::Points3D(rr::datatypes::Vec3D{1.0f, 1.0f, 1.0f}));
+        ///     rec.log("world/room1/point", rerun::Points3D({{0.0f, 0.0f, 0.0f}}));
+        ///     rec.log("world/room2/point", rerun::Points3D({{1.0f, 1.0f, 1.0f}}));
         ///
         ///     // ..but this one lives in a completely separate space!
-        ///     rec.log("world/wormhole", rr::DisconnectedSpace(true));
-        ///     rec.log("world/wormhole/point",
-        ///     rr::Points3D(rr::datatypes::Vec3D{2.0f, 2.0f, 2.0f}));
+        ///     rec.log("world/wormhole", rerun::DisconnectedSpace(true));
+        ///     rec.log("world/wormhole/point", rerun::Points3D({{2.0f, 2.0f, 2.0f}}));
         /// }
         /// ```
         struct DisconnectedSpace {
@@ -53,28 +50,33 @@ namespace rerun {
             /// Name of the indicator component, used to identify the archetype when converting to a
             /// list of components.
             static const char INDICATOR_COMPONENT_NAME[];
+            /// Indicator component, used to identify the archetype when converting to a list of
+            /// components.
+            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             DisconnectedSpace() = default;
+            DisconnectedSpace(DisconnectedSpace&& other) = default;
 
-            DisconnectedSpace(rerun::components::DisconnectedSpace _disconnected_space)
+            explicit DisconnectedSpace(rerun::components::DisconnectedSpace _disconnected_space)
                 : disconnected_space(std::move(_disconnected_space)) {}
 
             /// Returns the number of primary instances of this archetype.
             size_t num_instances() const {
                 return 1;
             }
-
-            /// Creates an `AnonymousComponentBatch` out of the associated indicator component. This
-            /// allows for associating arbitrary indicator components with arbitrary data. Check out
-            /// the `manual_indicator` API example to see what's possible.
-            static AnonymousComponentBatch indicator();
-
-            /// Collections all component lists into a list of component collections. *Attention:*
-            /// The returned vector references this instance and does not take ownership of any
-            /// data. Adding any new components to this archetype will invalidate the returned
-            /// component lists!
-            std::vector<AnonymousComponentBatch> as_component_batches() const;
         };
+
     } // namespace archetypes
+
+    template <typename T>
+    struct AsComponents;
+
+    template <>
+    struct AsComponents<archetypes::DisconnectedSpace> {
+        /// Serialize all set component batches.
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            const archetypes::DisconnectedSpace& archetype
+        );
+    };
 } // namespace rerun

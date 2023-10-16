@@ -11,7 +11,7 @@ namespace rerun.archetypes;
 
 /// 3D arrows with optional colors, radii, labels, etc.
 ///
-/// \example arrow3d_simple title="Simple batch of 3D Arrows" image="https://static.rerun.io/arrow3d_simple/c8a8b1cbca40acdf02fb5bf264658ad66e07ca40/1200w.png"
+/// \example arrow3d_simple title="Simple batch of 3D Arrows" image="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1200w.png"
 table Arrows3D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",

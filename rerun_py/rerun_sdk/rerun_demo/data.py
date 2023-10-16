@@ -81,7 +81,7 @@ def build_rect_pyramid(count=20, width=100, height=100):
     y = np.linspace(0, height, count)
     widths = np.linspace(float(width) / count, width, count)
     heights = 0.8 * np.ones(count) * height / count
-    rects = np.array(list(zip(x, y, widths, heights)))
+    rects = np.stack((x, y, widths, heights), axis=1)
     colors = turbo_colormap_data[np.linspace(0, len(turbo_colormap_data) - 1, count, dtype=int)]
 
     return RectPyramid(rects, RectFormat.XCYCWH, colors)

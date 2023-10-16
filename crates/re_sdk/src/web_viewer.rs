@@ -2,6 +2,18 @@ use re_log_types::LogMsg;
 use re_web_viewer_server::{WebViewerServerHandle, WebViewerServerPort};
 use re_ws_comms::{RerunServerHandle, RerunServerPort};
 
+/// Failure to host a web viewer and/or Rerun server.
+#[derive(thiserror::Error, Debug)]
+pub enum WebViewerSinkError {
+    /// Failure to host the web viewer.
+    #[error(transparent)]
+    WebViewerServer(#[from] re_web_viewer_server::WebViewerServerError),
+
+    /// Failure to host the Rerun WebSocket server.
+    #[error(transparent)]
+    RerunServer(#[from] re_ws_comms::RerunServerError),
+}
+
 /// A [`crate::sink::LogSink`] tied to a hosted Rerun web viewer. This internally stores two servers:
 /// * A [`re_ws_comms::RerunServer`] to relay messages from the sink to a websocket connection
 /// * A [`re_web_viewer_server::WebViewerServer`] to serve the Wasm+HTML
@@ -23,7 +35,7 @@ impl WebViewerSink {
         bind_ip: &str,
         web_port: WebViewerServerPort,
         ws_port: RerunServerPort,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self, WebViewerSinkError> {
         // TODO(cmc): the sources here probably don't make much sense…
         let (rerun_tx, rerun_rx) = re_smart_channel::smart_channel(
             re_smart_channel::SmartMessageSource::Sdk,
@@ -114,7 +126,7 @@ pub fn new_sink(
     bind_ip: &str,
     web_port: WebViewerServerPort,
     ws_port: RerunServerPort,
-) -> anyhow::Result<Box<dyn crate::sink::LogSink>> {
+) -> Result<Box<dyn crate::sink::LogSink>, WebViewerSinkError> {
     Ok(Box::new(WebViewerSink::new(
         open_browser,
         bind_ip,

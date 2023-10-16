@@ -169,10 +169,9 @@ jobs:
     runs-on: ubuntu-latest
     if: inputs.UPDATE_LATEST
     steps:
-      - name: Setup Node
-        uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
         with:
-          node-version: 18
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha) }}
 
       - name: Re-deploy rerun.io
         uses: ./.github/actions/deploy-vercel

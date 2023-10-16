@@ -9,7 +9,7 @@ mod client;
 use std::{fmt::Display, str::FromStr};
 
 #[cfg(feature = "client")]
-pub use client::Connection;
+pub use client::viewer_to_server;
 
 #[cfg(feature = "server")]
 mod server;
@@ -28,6 +28,7 @@ pub const PROTOCOL: &str = "ws";
 
 // ----------------------------------------------------------------------------
 
+/// Failure to host the Rerun WebSocket server.
 #[derive(thiserror::Error, Debug)]
 pub enum RerunServerError {
     #[error("Failed to bind to WebSocket port {0}: {1}")]

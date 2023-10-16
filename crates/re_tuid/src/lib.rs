@@ -24,7 +24,7 @@ pub struct Tuid {
 #[cfg(feature = "arrow2_convert")]
 arrow2_convert::arrow_enable_vec_for_type!(Tuid);
 
-// TODO(#1774): shouldn't have to write this manually
+// TODO(#3741): shouldn't have to write this manually
 #[cfg(feature = "arrow2_convert")]
 impl arrow2_convert::field::ArrowField for Tuid {
     type Type = Self;

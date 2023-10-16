@@ -35,7 +35,6 @@ pub fn connect_to_ws_url(
         }
     };
 
-    let connection = re_ws_comms::Connection::viewer_to_server(url.to_owned(), callback)?;
-    std::mem::drop(connection); // Never close the connection. TODO(emilk): is this wise?
+    re_ws_comms::viewer_to_server(url.to_owned(), callback)?;
     Ok(rx)
 }

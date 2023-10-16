@@ -5,6 +5,7 @@ from fractions import Fraction
 import numpy as np
 import pytest
 import rerun as rr
+import torch
 from rerun.components import Transform3D, Transform3DBatch
 from rerun.datatypes import (
     Angle,
@@ -50,6 +51,7 @@ ROTATION_3D_INPUT = [
     [1, 2, 3, 4],
     [1.0, 2.0, 3.0, 4.0],
     np.array([1, 2, 3, 4]),
+    torch.tensor([1, 2, 3, 4]),
     Quaternion(xyzw=[1, 2, 3, 4]),
     Quaternion(xyzw=[1.0, 2.0, 3.0, 4.0]),
     Quaternion(xyzw=np.array([1, 2, 3, 4])),

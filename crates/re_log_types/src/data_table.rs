@@ -926,7 +926,7 @@ impl DataTable {
             (&**chunk.get(control_index(COLUMN_ROW_ID)?).unwrap()).try_into_collection()?;
         let col_entity_path =
             (&**chunk.get(control_index(COLUMN_ENTITY_PATH)?).unwrap()).try_into_collection()?;
-        // TODO(#1712): This is unnecessarily slow…
+        // TODO(#3741): This is unnecessarily slow…
         let col_num_instances =
             (&**chunk.get(control_index(COLUMN_NUM_INSTANCES)?).unwrap()).try_into_collection()?;
 
@@ -1005,7 +1005,7 @@ impl DataTable {
                 .downcast_ref::<ListArray<i32>>()
                 .ok_or(DataTableError::NotAColumn(component.to_string()))?
                 .iter()
-                // TODO(#1805): Schema metadata gets cloned in every single array.
+                // TODO(#3741): Schema metadata gets cloned in every single array.
                 // This'll become a problem as soon as we enable batching.
                 .map(|array| array.map(|values| DataCell::from_arrow(component, values)))
                 .collect(),

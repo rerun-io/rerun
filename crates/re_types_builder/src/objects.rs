@@ -1271,9 +1271,23 @@ fn filepath_from_declaration_file(
     include_dir_path: impl AsRef<Utf8Path>,
     declaration_file: impl AsRef<str>,
 ) -> Utf8PathBuf {
-    include_dir_path.as_ref().join("rerun").join(
-        Utf8PathBuf::from(declaration_file.as_ref())
-            .to_string()
-            .replace("//", ""),
-    )
+    // It seems fbs is *very* confused about UNC paths on windows!
+    let declaration_file = declaration_file.as_ref();
+    let declaration_file = declaration_file
+        .strip_prefix("//")
+        .map_or(declaration_file, |f| {
+            f.trim_start_matches("../").trim_start_matches("/?/")
+        });
+
+    let declaration_file = Utf8PathBuf::from(declaration_file);
+    if declaration_file.is_absolute() {
+        declaration_file
+    } else {
+        include_dir_path
+            .as_ref()
+            .join("rerun")
+            .join(crate::format_path(&declaration_file))
+    }
+    .canonicalize_utf8()
+    .expect("Failed to canonicalize declaration path")
 }

@@ -6,9 +6,9 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::{register_contexts, PrimitiveCounter},
+    contexts::{register_spatial_contexts, PrimitiveCounter},
     heuristics::{auto_spawn_heuristic, update_object_property_heuristics},
-    parts::{calculate_bounding_box, register_parts, CamerasPart},
+    parts::{calculate_bounding_box, register_3d_spatial_parts, CamerasPart},
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
 };
@@ -35,8 +35,9 @@ impl SpaceViewClass for SpatialSpaceView3D {
         &self,
         system_registry: &mut re_viewer_context::SpaceViewSystemRegistry,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        register_contexts(system_registry)?;
-        register_parts(system_registry)?;
+        register_spatial_contexts(system_registry)?;
+        register_3d_spatial_parts(system_registry)?;
+
         Ok(())
     }
 
@@ -62,21 +63,17 @@ impl SpaceViewClass for SpatialSpaceView3D {
         );
 
         if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
-            // If there's a camera at a non-root path, make 3D view higher priority.
-            if per_system_entities
-                .get(&CamerasPart::name())
-                .map_or(false, |c| {
-                    if c.contains(space_origin) {
-                        c.len() > 1 // Need another camera!
-                    } else {
-                        !c.is_empty()
-                    }
-                })
-            {
-                // TODO(andreas): It would be nice to just return `AutoSpawnHeuristic::AlwaysSpawn` here
-                // but AlwaysSpawn does not prevent other `SpawnClassWithHighestScoreForRoot` instances
-                // from being added to the view.
-                score += 100.0;
+            if let Some(camera_paths) = per_system_entities.get(&CamerasPart::name()) {
+                // If there is a camera at the origin, this cannot be a 3D space -- it must be 2D
+                if camera_paths.contains(space_origin) {
+                    return AutoSpawnHeuristic::NeverSpawn;
+                } else if !camera_paths.is_empty() {
+                    // If there's a camera at a non-root path, make 3D view higher priority.
+                    // TODO(andreas): It would be nice to just return `AutoSpawnHeuristic::AlwaysSpawn` here
+                    // but AlwaysSpawn does not prevent other `SpawnClassWithHighestScoreForRoot` instances
+                    // from being added to the view.
+                    score += 100.0;
+                }
             }
 
             AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(score)

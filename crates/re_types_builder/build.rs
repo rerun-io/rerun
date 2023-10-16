@@ -4,9 +4,7 @@ use std::path::Path;
 
 use xshell::{cmd, Shell};
 
-use re_build_tools::{
-    compute_file_hash, is_tracked_env_var_set, read_versioning_hash, write_versioning_hash,
-};
+use re_build_tools::{compute_file_hash, read_versioning_hash, write_versioning_hash};
 
 // ---
 
@@ -15,24 +13,38 @@ use re_build_tools::{
 const SOURCE_HASH_PATH: &str = "./source_hash.txt";
 const FBS_REFLECTION_DEFINITION_PATH: &str = "./definitions/reflection.fbs";
 
+fn should_run() -> bool {
+    #![allow(clippy::match_same_arms)]
+    use re_build_tools::Environment;
+
+    match Environment::detect() {
+        // we should have been run before publishing
+        Environment::PublishingCrates => false,
+
+        // The code we're generating here is actual source code that gets committed into the repository.
+        Environment::CI => false,
+
+        Environment::DeveloperInWorkspace => {
+            // This `build.rs` depends on having `flatc` installed,
+            // and when some random contributor clones our repository,
+            // they likely won't have it, and we shouldn't need it.
+            // We really only need this `build.rs` for the convenience of
+            // developers who changes the input file (reflection.fbs),
+            // which again is rare.
+            // So: we only run this `build.rs` automatically after a developer
+            // has once run the codegen MANUALLY first using `cargo codegen`.
+            // That will produce the `source_hash.txt` file.
+
+            Path::new(SOURCE_HASH_PATH).exists()
+        }
+
+        // We ship pre-built source files for users
+        Environment::UsedAsDependency => false,
+    }
+}
+
 fn main() {
-    if cfg!(target_os = "windows") {
-        // TODO(#2591): Codegen is temporarily disabled on Windows due to hashing issues.
-        return;
-    }
-
-    if !is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
-        // Only run if we are in the rerun workspace, not on users machines.
-        return;
-    }
-    if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
-        // We don't need to rebuild - we should have done so beforehand!
-        // See `RELEASES.md`
-        return;
-    }
-
-    // Only re-build if source-hash exists
-    if !Path::new(SOURCE_HASH_PATH).exists() {
+    if !should_run() {
         return;
     }
 

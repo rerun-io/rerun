@@ -8,7 +8,7 @@ import pyarrow as pa
 
 from .._validators import find_non_empty_dim_indices
 from ..datatypes import TensorBufferType
-from ..error_utils import _send_warning, catch_and_log_exceptions
+from ..error_utils import _send_warning_or_raise, catch_and_log_exceptions
 
 if TYPE_CHECKING:
     from .._image import ImageEncoded
@@ -48,7 +48,7 @@ class ImageExt:
             tensor_data_arrow = self.data.as_arrow_array()
 
             if tensor_data_arrow[0].value["buffer"].type_code == self.JPEG_TYPE_ID:
-                _send_warning(
+                _send_warning_or_raise(
                     "Image is already compressed as JPEG. Ignoring compression request.",
                     1,
                     recording=None,
@@ -104,12 +104,12 @@ class ImageExt:
 
         # TODO(#3239): What `recording` should we be passing here? How should we be getting it?
         if num_non_empty_dims < 2 or 3 < num_non_empty_dims:
-            _send_warning(f"Expected image, got array of shape {shape_dims}", 1, recording=None)
+            _send_warning_or_raise(f"Expected image, got array of shape {shape_dims}", 1, recording=None)
 
         if num_non_empty_dims == 3:
             depth = shape_dims[non_empty_dims[-1]]
             if depth not in (3, 4):
-                _send_warning(
+                _send_warning_or_raise(
                     f"Expected image 3 (RGB) or 4 (RGBA). Instead got array of shape {shape_dims}",
                     1,
                     recording=None,

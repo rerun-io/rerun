@@ -94,43 +94,76 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    Error RecordingStream::try_log_component_batches(
-        const char* entity_path, size_t num_instances,
-        const std::vector<AnonymousComponentBatch>& component_lists
+    void RecordingStream::set_time_sequence(const char* timeline_name, int64_t sequence_nr) {
+        rr_error status = {};
+        rr_recording_stream_set_time_sequence(_id, timeline_name, sequence_nr, &status);
+        Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::set_time_seconds(const char* timeline_name, double seconds) {
+        rr_error status = {};
+        rr_recording_stream_set_time_seconds(_id, timeline_name, seconds, &status);
+        Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::set_time_nanos(const char* timeline_name, int64_t nanos) {
+        rr_error status = {};
+        rr_recording_stream_set_time_nanos(_id, timeline_name, nanos, &status);
+        Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::disable_timeline(const char* timeline_name) {
+        rr_error status = {};
+        rr_recording_stream_disable_timeline(_id, timeline_name, &status);
+        Error(status).log_on_failure(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::reset_time() {
+        rr_recording_stream_reset_time(_id);
+    }
+
+    Error RecordingStream::try_log_serialized_batches(
+        const char* entity_path, bool timeless, const std::vector<SerializedComponentBatch>& batches
     ) {
-        if (num_instances == 0) {
-            return Error::ok();
+        size_t num_instances_max = 0;
+        for (const auto& batch : batches) {
+            num_instances_max = std::max(num_instances_max, batch.num_instances);
         }
 
         std::vector<DataCell> instanced;
         std::vector<DataCell> splatted;
 
-        for (const auto& component_list : component_lists) {
-            const auto result = component_list.to_data_cell();
-            if (result.is_err()) {
-                return result.error;
-            }
-            if (num_instances > 1 && component_list.num_instances == 1) {
-                splatted.push_back(result.value);
+        for (const auto& batch : batches) {
+            if (num_instances_max > 1 && batch.num_instances == 1) {
+                splatted.push_back(batch.data_cell);
             } else {
-                instanced.push_back(result.value);
+                instanced.push_back(batch.data_cell);
             }
         }
 
+        bool inject_time = !timeless;
+
         if (!splatted.empty()) {
             splatted.push_back(components::InstanceKey::to_data_cell(&splat_key, 1).value);
-            auto result = try_log_data_row(entity_path, 1, splatted.size(), splatted.data());
+            auto result =
+                try_log_data_row(entity_path, 1, splatted.size(), splatted.data(), inject_time);
             if (result.is_err()) {
                 return result;
             }
         }
 
-        return try_log_data_row(entity_path, num_instances, instanced.size(), instanced.data());
+        return try_log_data_row(
+            entity_path,
+            num_instances_max,
+            instanced.size(),
+            instanced.data(),
+            inject_time
+        );
     }
 
     Error RecordingStream::try_log_data_row(
         const char* entity_path, size_t num_instances, size_t num_data_cells,
-        const DataCell* data_cells
+        const DataCell* data_cells, bool inject_time
     ) {
         // Map to C API:
         std::vector<rr_data_cell> c_data_cells(num_data_cells);
@@ -154,7 +187,7 @@ namespace rerun {
         c_data_row.data_cells = c_data_cells.data();
 
         rr_error status = {};
-        rr_log(_id, &c_data_row, true, &status);
+        rr_recording_stream_log(_id, &c_data_row, inject_time, &status);
         return status;
     }
 } // namespace rerun
