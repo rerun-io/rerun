@@ -89,7 +89,12 @@ def main() -> None:
         type=str,
         help="Git hash for which we're downloading rerun_c and uploading rerun_cpp.",
     )
-    parser.add_argument("--platform-filter", type=str, default=None, help="If set, only the specified platform will be fetched for rerun_c.")
+    parser.add_argument(
+        "--platform-filter",
+        type=str,
+        default=None,
+        help="If set, only the specified platform will be fetched for rerun_c.",
+    )
     parser.add_argument("--no-upload", help="If true, don't upload rerun_cpp.", action="store_true")
     parser.add_argument("--skip-test", help="If true, don't test rerun_cpp after upload.", action="store_true")
     parser.add_argument(
