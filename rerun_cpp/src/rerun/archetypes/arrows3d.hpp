@@ -35,7 +35,7 @@ namespace rerun {
         /// #include <cmath>
         /// #include <numeric>
         ///
-        /// #define TAU (static_cast<float>(M_PI) * 2.0f)
+        /// const float TAU = static_cast<float>(2.0 * M_PI);
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_arrow3d");
@@ -48,8 +48,8 @@ namespace rerun {
         ///     for (int i = 0; i <100; ++i) {
         ///         origins.push_back({0, 0, 0});
         ///
-        ///         float angle = TAU * i * 0.01f;
-        ///         float length = log2f(i + 1);
+        ///         float angle = TAU * static_cast<float>(i) * 0.01f;
+        ///         float length = log2f(static_cast<float>(i + 1));
         ///         vectors.push_back({length * sinf(angle), 0.0, length * cosf(angle)});
         ///
         ///         uint8_t c = static_cast<uint8_t>(round(angle / TAU * 255.0f));
@@ -91,18 +91,16 @@ namespace rerun {
             /// Unique identifiers for each individual point in the batch.
             std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
             // Extensions to generated type defined in 'arrows3d_ext.cpp'
 
-            /// Creates new 3D arrows pointing in the given directions, with a base at the origin
-            /// (0, 0, 0).
+            /// Creates new 3D arrows pointing in the given directions, with a base at the origin (0, 0,
+            /// 0).
             static Arrows3D from_vectors(ComponentBatch<components::Vector3D> vectors_) {
                 Arrows3D arrows;
                 arrows.vectors = std::move(vectors_);

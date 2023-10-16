@@ -10,7 +10,7 @@ struct Args {
 }
 
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
-    rec.log("/", &ViewCoordinates::RDF)?;
+    rec.log_timeless("/", &ViewCoordinates::RDF)?;
     Ok(())
 }
 

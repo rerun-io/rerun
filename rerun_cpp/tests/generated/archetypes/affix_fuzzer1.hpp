@@ -78,11 +78,9 @@ namespace rerun {
 
             rerun::components::AffixFuzzer21 fuzz1021;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:

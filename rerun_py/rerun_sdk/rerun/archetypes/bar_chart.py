@@ -52,7 +52,7 @@ class BarChart(BarChartExt, Archetype):
         Parameters
         ----------
         values:
-             The values. Should always be a rank-1 tensor.
+            The values. Should always be a rank-1 tensor.
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py

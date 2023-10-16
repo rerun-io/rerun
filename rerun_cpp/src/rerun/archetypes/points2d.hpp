@@ -51,8 +51,7 @@ namespace rerun {
         ///     });
         ///     std::vector<rerun::components::Color> colors(10);
         ///     std::generate(colors.begin(), colors.end(), [&] {
-        ///         return rerun::components::Color(dist_color(gen), dist_color(gen),
-        ///         dist_color(gen));
+        ///         return rerun::components::Color(dist_color(gen), dist_color(gen), dist_color(gen));
         ///     });
         ///     std::vector<rerun::components::Radius> radii(10);
         ///     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
@@ -90,19 +89,18 @@ namespace rerun {
             ///
             /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
             /// default to 0.
-            /// This is useful to identify points within a single classification (which is
-            /// identified with `class_id`). E.g. the classification might be 'Person' and the
-            /// keypoints refer to joints on a detected skeleton.
+            /// This is useful to identify points within a single classification (which is identified
+            /// with `class_id`).
+            /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
+            /// detected skeleton.
             std::optional<ComponentBatch<rerun::components::KeypointId>> keypoint_ids;
 
             /// Unique identifiers for each individual point in the batch.
             std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
@@ -150,9 +148,10 @@ namespace rerun {
             ///
             /// If keypoint IDs are passed in but no class IDs were specified, the class ID will
             /// default to 0.
-            /// This is useful to identify points within a single classification (which is
-            /// identified with `class_id`). E.g. the classification might be 'Person' and the
-            /// keypoints refer to joints on a detected skeleton.
+            /// This is useful to identify points within a single classification (which is identified
+            /// with `class_id`).
+            /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
+            /// detected skeleton.
             Points2D with_keypoint_ids(ComponentBatch<rerun::components::KeypointId> _keypoint_ids
             ) && {
                 keypoint_ids = std::move(_keypoint_ids);
