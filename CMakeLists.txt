@@ -59,8 +59,11 @@ endif()
 set(RERUN_REPOSITORY YES)
 
 # Set version number.
-# TODO: add to ci script?
-set(RERUN_VERSION "0.10.0")
+# Read it from the Rust toml with a regex so we don't have another place to maintain!
+file(READ "Cargo.toml" CARGO_TOML)
+string(REGEX MATCH "\nversion = \"([a-z0-9\.\+-]+)\"\n" _ ${CARGO_TOML})
+set(RERUN_VERSION ${CMAKE_MATCH_1})
+message(INFO "Rerun version ${RERUN_VERSION}")
 
 # ------------------------------------------------------------------------------
 # Loguru logging library (https://github.com/emilk/loguru):

@@ -20,7 +20,7 @@ if(DEFINED RERUN_REPOSITORY)
     # execute process doesn't fail if the process fails.
     # `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
     # which isn't default on Ubuntu LTS as of writing, causing unnecessary friction.
-    # TODO: use add_custom_command instead so this runs at build time! https://cmake.org/cmake/help/latest/command/add_custom_command.html#command:add_custom_command
+    # TODO(andreas): use add_custom_command instead so this runs at build time! https://cmake.org/cmake/help/latest/command/add_custom_command.html#command:add_custom_command
     execute_process(COMMAND cargo build --release -p re_types RESULT_VARIABLE ret) # Generates most of the C++ source files
 
     if(NOT(ret EQUAL "0"))
