@@ -11,12 +11,14 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
 
-use crate::codegen::common::write_file;
 use crate::{
-    codegen::{autogen_warning, common::collect_examples_for_api_docs},
-    ArrowRegistry, Docs, ElementType, ObjectField, ObjectKind, Objects, Type,
+    codegen::{
+        autogen_warning,
+        common::{collect_examples_for_api_docs, write_file},
+    },
+    format_path, ArrowRegistry, Docs, ElementType, Object, ObjectField, ObjectKind,
+    ObjectSpecifics, Objects, Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
-use crate::{Object, ObjectSpecifics, Reporter, ATTR_CPP_NO_FIELD_CTORS};
 
 use self::array_builder::{
     arrow_array_builder_type, arrow_array_builder_type_object,
@@ -53,7 +55,7 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
     if let Some(source_path) = source_path {
-        code.push_str(&format!("// Based on {source_path:?}.\n"));
+        code.push_str(&format!("// Based on {:?}.\n", format_path(source_path)));
     }
 
     code.push('\n');

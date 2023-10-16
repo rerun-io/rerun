@@ -13,8 +13,8 @@ use crate::{
         common::{collect_examples_for_api_docs, Example},
         StringExt as _,
     },
-    ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind, Objects,
-    Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind,
+    Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use super::common::ExampleInfo;
@@ -329,7 +329,7 @@ impl PythonCodeGenerator {
             let mut code = String::new();
             code.push_text(&format!("# {}", autogen_warning!()), 1, 0);
             if let Some(source_path) = obj.relative_filepath() {
-                code.push_text(&format!("# Based on {source_path:?}."), 2, 0);
+                code.push_text(&format!("# Based on {:?}.", format_path(source_path)), 2, 0);
                 code.push_text(
                     &format!(
                         "# You can extend this class by creating a {:?} class in {:?}.",
