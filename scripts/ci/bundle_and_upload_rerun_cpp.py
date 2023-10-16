@@ -13,6 +13,16 @@ import tempfile
 from google.cloud import storage
 
 
+def run(
+    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
+) -> None:
+    print(f"> {subprocess.list2cmdline(args)}")
+    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
+    assert (
+        result.returncode == 0
+    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+
+
 def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None) -> None:
     logging.info("Downloading rerun_c...")
 
@@ -30,9 +40,7 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None
             continue
 
         url = f"https://build.rerun.io/commit/{git_hash}/rerun_c/{src}"
-
-        if os.system(f"curl -L -o {target_dir}/{dst} {url}") != 0:
-            raise RuntimeError(f"Failed to download {url}")
+        run(["curl", "-L", "-o", f"{target_dir}/{dst}", url])
 
 
 def upload_rerun_cpp(rerun_zip: str, git_hash: str) -> None:
@@ -51,20 +59,8 @@ def test_rerun_cpp(git_hash: str) -> None:
 
     with tempfile.TemporaryDirectory() as testdir:
         shutil.copytree("examples/cpp/minimal/", testdir, dirs_exist_ok=True)
-
-        args = ["cmake", f"-DRERUN_CPP_URL=https://build.rerun.io/commit/{git_hash}/rerun_cpp.zip", "."]
-        logging.info(f"> {subprocess.list2cmdline(args)}")
-        result = subprocess.run(args, cwd=testdir, check=False, capture_output=True, text=True)
-        assert (
-            result.returncode == 0
-        ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
-
-        args = ["cmake", "--build", ".", "--parallel", str(multiprocessing.cpu_count())]
-        logging.info(f"> {subprocess.list2cmdline(args)}")
-        result = subprocess.run(args, cwd=testdir, check=False, capture_output=True, text=True)
-        assert (
-            result.returncode == 0
-        ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
+        run(["cmake", f"-DRERUN_CPP_URL=https://build.rerun.io/commit/{git_hash}/rerun_cpp.zip", "."], cwd=testdir)
+        run(["cmake", "--build", ".", "--parallel", str(multiprocessing.cpu_count())], cwd=testdir)
 
 
 def main() -> None:
@@ -107,7 +103,7 @@ def main() -> None:
 
         logging.info(f"Packaging {package_dir}.zip...")
         rerun_zip = shutil.make_archive(
-            scratch_dir + "/" + package_dir, "zip", root_dir=scratch_dir, base_dir=package_dir
+            scratch_dir + "/" + package_name, "zip", root_dir=scratch_dir, base_dir=package_name
         )
 
         if args.local_path is not None:
