@@ -34,8 +34,8 @@ impl<'a> From<&'a AffixFuzzer20> for ::std::borrow::Cow<'a, AffixFuzzer20> {
     }
 }
 
-impl crate::Loggable for AffixFuzzer20 {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for AffixFuzzer20 {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -65,13 +65,13 @@ impl crate::Loggable for AffixFuzzer20 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -180,20 +180,20 @@ impl crate::Loggable for AffixFuzzer20 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data =
                 arrow_data
                     .as_any()
                     .downcast_ref::<::arrow2::array::StructArray>()
                     .ok_or_else(|| {
-                        crate::DeserializationError::datatype_mismatch(
+                        ::re_types_core::DeserializationError::datatype_mismatch(
                             DataType::Struct(vec![
                             Field { name : "p".to_owned(), data_type : < crate
                             ::testing::datatypes::PrimitiveComponent >
@@ -219,10 +219,12 @@ impl crate::Loggable for AffixFuzzer20 {
                     .collect();
                 let p = {
                     if !arrays_by_name.contains_key("p") {
-                        return Err(crate::DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "p",
-                        ))
+                        return Err(
+                            ::re_types_core::DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "p",
+                            ),
+                        )
                         .with_context("rerun.testing.datatypes.AffixFuzzer20");
                     }
                     let arrow_data = &**arrays_by_name["p"];
@@ -230,7 +232,7 @@ impl crate::Loggable for AffixFuzzer20 {
                         .as_any()
                         .downcast_ref::<UInt32Array>()
                         .ok_or_else(|| {
-                            crate::DeserializationError::datatype_mismatch(
+                            ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::UInt32,
                                 arrow_data.data_type().clone(),
                             )
@@ -244,10 +246,12 @@ impl crate::Loggable for AffixFuzzer20 {
                 };
                 let s = {
                     if !arrays_by_name.contains_key("s") {
-                        return Err(crate::DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "s",
-                        ))
+                        return Err(
+                            ::re_types_core::DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "s",
+                            ),
+                        )
                         .with_context("rerun.testing.datatypes.AffixFuzzer20");
                     }
                     let arrow_data = &**arrays_by_name["s"];
@@ -256,7 +260,7 @@ impl crate::Loggable for AffixFuzzer20 {
                             .as_any()
                             .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
                             .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
+                                ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::Utf8,
                                     arrow_data.data_type().clone(),
                                 )
@@ -273,10 +277,12 @@ impl crate::Loggable for AffixFuzzer20 {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > arrow_data_buf.len() {
-                                    return Err(crate::DeserializationError::offset_slice_oob(
-                                        (start, end),
-                                        arrow_data_buf.len(),
-                                    ));
+                                    return Err(
+                                        ::re_types_core::DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_buf.len(),
+                                        ),
+                                    );
                                 }
 
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -289,13 +295,13 @@ impl crate::Loggable for AffixFuzzer20 {
                         .map(|res_or_opt| {
                             res_or_opt.map(|res_or_opt| {
                                 res_or_opt.map(|v| {
-                                    crate::testing::datatypes::StringComponent(crate::ArrowString(
-                                        v,
-                                    ))
+                                    crate::testing::datatypes::StringComponent(
+                                        ::re_types_core::ArrowString(v),
+                                    )
                                 })
                             })
                         })
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
                         .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?
                         .into_iter()
                     }
@@ -307,15 +313,15 @@ impl crate::Loggable for AffixFuzzer20 {
                 .map(|opt| {
                     opt.map(|(p, s)| {
                         Ok(Self {
-                            p: p.ok_or_else(crate::DeserializationError::missing_data)
+                            p: p.ok_or_else(::re_types_core::DeserializationError::missing_data)
                                 .with_context("rerun.testing.datatypes.AffixFuzzer20#p")?,
-                            s: s.ok_or_else(crate::DeserializationError::missing_data)
+                            s: s.ok_or_else(::re_types_core::DeserializationError::missing_data)
                                 .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?,
                         })
                     })
                     .transpose()
                 })
-                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.testing.datatypes.AffixFuzzer20")?
             }
         })

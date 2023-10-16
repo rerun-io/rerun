@@ -51,16 +51,16 @@ pub struct BarChart {
     pub values: crate::components::TensorData,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.BarChartIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
@@ -73,40 +73,40 @@ impl BarChart {
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`BarChart`] [`crate::Archetype`]
-pub type BarChartIndicator = crate::GenericIndicatorComponent<BarChart>;
+/// Indicator component for the [`BarChart`] [`::re_types_core::Archetype`]
+pub type BarChartIndicator = ::re_types_core::GenericIndicatorComponent<BarChart>;
 
-impl crate::Archetype for BarChart {
+impl ::re_types_core::Archetype for BarChart {
     type Indicator = BarChartIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.BarChart".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
         static INDICATOR: BarChartIndicator = BarChartIndicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -115,9 +115,9 @@ impl crate::Archetype for BarChart {
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
-    ) -> crate::DeserializationResult<Self> {
+    ) -> ::re_types_core::DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -125,27 +125,27 @@ impl crate::Archetype for BarChart {
         let values = {
             let array = arrays_by_name
                 .get("rerun.components.TensorData")
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.BarChart#values")?;
             <crate::components::TensorData>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.BarChart#values")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.BarChart#values")?
         };
         Ok(Self { values })
     }
 }
 
-impl crate::AsComponents for BarChart {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for BarChart {
+    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.values as &dyn crate::ComponentBatch).into()),
+            Some((&self.values as &dyn ::re_types_core::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

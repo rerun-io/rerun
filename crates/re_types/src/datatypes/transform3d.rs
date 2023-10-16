@@ -38,8 +38,8 @@ impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
     }
 }
 
-impl crate::Loggable for Transform3D {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for Transform3D {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -79,13 +79,13 @@ impl crate::Loggable for Transform3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -197,19 +197,19 @@ impl crate::Loggable for Transform3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(
                             vec![
                             Field { name : "_null_markers".to_owned(), data_type :
@@ -237,14 +237,14 @@ impl crate::Loggable for Transform3D {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        crate::DeserializationError::datatype_mismatch(
+                        ::re_types_core::DeserializationError::datatype_mismatch(
                             Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.datatypes.Transform3D")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
-                    return Err(crate::DeserializationError::offset_slice_oob(
+                    return Err(::re_types_core::DeserializationError::offset_slice_oob(
                         (0, arrow_data_types.len()),
                         arrow_data_offsets.len(),
                     ))
@@ -281,10 +281,12 @@ impl crate::Loggable for Transform3D {
                             Ok(Some(match typ {
                                 1i8 => Transform3D::TranslationAndMat3x3({
                                     if offset as usize >= translation_and_mat3x3.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            translation_and_mat3x3.len(),
-                                        ))
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_oob(
+                                                offset as _,
+                                                translation_and_mat3x3.len(),
+                                            ),
+                                        )
                                         .with_context(
                                             "rerun.datatypes.Transform3D#TranslationAndMat3x3",
                                         );
@@ -293,17 +295,21 @@ impl crate::Loggable for Transform3D {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { translation_and_mat3x3.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .ok_or_else(
+                                            ::re_types_core::DeserializationError::missing_data,
+                                        )
                                         .with_context(
                                             "rerun.datatypes.Transform3D#TranslationAndMat3x3",
                                         )?
                                 }),
                                 2i8 => Transform3D::TranslationRotationScale({
                                     if offset as usize >= translation_rotation_scale.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            translation_rotation_scale.len(),
-                                        ))
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_oob(
+                                                offset as _,
+                                                translation_rotation_scale.len(),
+                                            ),
+                                        )
                                         .with_context(
                                             "rerun.datatypes.Transform3D#TranslationRotationScale",
                                         );
@@ -314,23 +320,27 @@ impl crate::Loggable for Transform3D {
                                         translation_rotation_scale.get_unchecked(offset as usize)
                                     }
                                     .clone()
-                                    .ok_or_else(crate::DeserializationError::missing_data)
+                                    .ok_or_else(
+                                        ::re_types_core::DeserializationError::missing_data,
+                                    )
                                     .with_context(
                                         "rerun.datatypes.Transform3D#TranslationRotationScale",
                                     )?
                                 }),
                                 _ => {
-                                    return Err(crate::DeserializationError::missing_union_arm(
-                                        Self::arrow_datatype(),
-                                        "<invalid>",
-                                        *typ as _,
-                                    ))
+                                    return Err(
+                                        ::re_types_core::DeserializationError::missing_union_arm(
+                                            Self::arrow_datatype(),
+                                            "<invalid>",
+                                            *typ as _,
+                                        ),
+                                    )
                                     .with_context("rerun.datatypes.Transform3D");
                                 }
                             }))
                         }
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.datatypes.Transform3D")?
             }
         })

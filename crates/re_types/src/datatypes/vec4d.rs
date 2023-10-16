@@ -47,8 +47,8 @@ impl<'a> From<&'a Vec4D> for ::std::borrow::Cow<'a, Vec4D> {
     }
 }
 
-impl crate::Loggable for Vec4D {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for Vec4D {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -73,13 +73,13 @@ impl crate::Loggable for Vec4D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -135,19 +135,19 @@ impl crate::Loggable for Vec4D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::FixedSizeList(
                             Box::new(Field {
                                 name: "item".to_owned(),
@@ -173,7 +173,7 @@ impl crate::Loggable for Vec4D {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            crate::DeserializationError::datatype_mismatch(
+                            ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::Float32,
                                 arrow_data_inner.data_type().clone(),
                             )
@@ -191,7 +191,7 @@ impl crate::Loggable for Vec4D {
                     elem.map(|(start, end)| {
                         debug_assert!(end - start == 4usize);
                         if end as usize > arrow_data_inner.len() {
-                            return Err(crate::DeserializationError::offset_slice_oob(
+                            return Err(::re_types_core::DeserializationError::offset_slice_oob(
                                 (start, end),
                                 arrow_data_inner.len(),
                             ));
@@ -206,13 +206,13 @@ impl crate::Loggable for Vec4D {
                     })
                     .transpose()
                 })
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
-        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.datatypes.Vec4D#xyzw")
         .with_context("rerun.datatypes.Vec4D")?)
     }

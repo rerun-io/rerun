@@ -38,8 +38,8 @@ impl<'a> From<&'a Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
     }
 }
 
-impl crate::Loggable for Rotation3D {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for Rotation3D {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -79,13 +79,13 @@ impl crate::Loggable for Rotation3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -228,19 +228,19 @@ impl crate::Loggable for Rotation3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(
                             vec![
                                 Field {
@@ -278,14 +278,14 @@ impl crate::Loggable for Rotation3D {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        crate::DeserializationError::datatype_mismatch(
+                        ::re_types_core::DeserializationError::datatype_mismatch(
                             Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.datatypes.Rotation3D")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
-                    return Err(crate::DeserializationError::offset_slice_oob(
+                    return Err(::re_types_core::DeserializationError::offset_slice_oob(
                         (0, arrow_data_types.len()),
                         arrow_data_offsets.len(),
                     ))
@@ -300,20 +300,18 @@ impl crate::Loggable for Rotation3D {
                         let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        4usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
+                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    4usize,
+                                ),
+                                arrow_data.data_type().clone(),
+                            ))
                             .with_context("rerun.datatypes.Rotation3D#Quaternion")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -326,51 +324,58 @@ impl crate::Loggable for Rotation3D {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        crate::DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
+                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DataType::Float32,
+                                        arrow_data_inner.data_type().clone(),
+                                    ))
                                     .with_context("rerun.datatypes.Rotation3D#Quaternion")?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets,
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, end)| {
-                                    debug_assert!(end - start == 4usize);
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_inner.len(),
-                                        ));
-                                    }
+                                    offsets,
+                                    arrow_data.validity(),
+                                )
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, end)| {
+                                            debug_assert!(end - start == 4usize);
+                                            if end as usize > arrow_data_inner.len() {
+                                                return Err(
+                                                    ::re_types_core::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner.len(),
+                                                    ),
+                                                );
+                                            }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                    };
-                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                            };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default);
+                                            let arr = array_init::from_iter(data).unwrap();
+                                            Ok(arr)
+                                        })
+                                        .transpose()
                                 })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| crate::datatypes::Quaternion(v))
+                                .map(|res_or_opt| {
+                                    res_or_opt
+                                        .map(|res_or_opt| {
+                                            res_or_opt.map(|v| crate::datatypes::Quaternion(v))
+                                        })
                                 })
-                            })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<
+                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
+                                >()?
                         }
-                        .into_iter()
+                            .into_iter()
                     }
-                    .collect::<Vec<_>>()
+                        .collect::<Vec<_>>()
                 };
                 let axis_angle = {
                     if 2usize >= arrow_data_arrays.len() {
@@ -393,46 +398,56 @@ impl crate::Loggable for Rotation3D {
                             Ok(Some(match typ {
                                 1i8 => Rotation3D::Quaternion({
                                     if offset as usize >= quaternion.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            quaternion.len(),
-                                        ))
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_oob(
+                                                offset as _,
+                                                quaternion.len(),
+                                            ),
+                                        )
                                         .with_context("rerun.datatypes.Rotation3D#Quaternion");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { quaternion.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .ok_or_else(
+                                            ::re_types_core::DeserializationError::missing_data,
+                                        )
                                         .with_context("rerun.datatypes.Rotation3D#Quaternion")?
                                 }),
                                 2i8 => Rotation3D::AxisAngle({
                                     if offset as usize >= axis_angle.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
-                                            offset as _,
-                                            axis_angle.len(),
-                                        ))
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_oob(
+                                                offset as _,
+                                                axis_angle.len(),
+                                            ),
+                                        )
                                         .with_context("rerun.datatypes.Rotation3D#AxisAngle");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { axis_angle.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .ok_or_else(
+                                            ::re_types_core::DeserializationError::missing_data,
+                                        )
                                         .with_context("rerun.datatypes.Rotation3D#AxisAngle")?
                                 }),
                                 _ => {
-                                    return Err(crate::DeserializationError::missing_union_arm(
-                                        Self::arrow_datatype(),
-                                        "<invalid>",
-                                        *typ as _,
-                                    ))
+                                    return Err(
+                                        ::re_types_core::DeserializationError::missing_union_arm(
+                                            Self::arrow_datatype(),
+                                            "<invalid>",
+                                            *typ as _,
+                                        ),
+                                    )
                                     .with_context("rerun.datatypes.Rotation3D");
                                 }
                             }))
                         }
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                     .with_context("rerun.datatypes.Rotation3D")?
             }
         })

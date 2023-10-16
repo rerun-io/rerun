@@ -20,7 +20,7 @@ use crate::{
 ///
 /// There is a 1:1 relationship between `quote_arrow_deserializer` and `Loggable::from_arrow_opt`:
 /// ```ignore
-/// fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Option<Self>>> {
+/// fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>> {
 ///     Ok(#quoted_deserializer)
 /// }
 /// ```
@@ -87,7 +87,7 @@ pub fn quote_arrow_deserializer(
             quote!(.map(Ok))
         } else {
             // error context is appended below during final collection
-            quote!(.map(|v| v.ok_or_else(crate::DeserializationError::missing_data)))
+            quote!(.map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data)))
         };
 
         let quoted_remapping = if is_tuple_struct {
@@ -101,7 +101,7 @@ pub fn quote_arrow_deserializer(
             #quoted_unwrapping
             #quoted_remapping
             // NOTE: implicit Vec<Result> to Result<Vec>
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
             // NOTE: double context so the user can see the transparent shenanigans going on in the
             // error.
             .with_context(#obj_field_fqname)
@@ -134,7 +134,7 @@ pub fn quote_arrow_deserializer(
                             // looking for at comptime… there's no guarantee it's actually there at
                             // runtime!
                             if !arrays_by_name.contains_key(#field_name) {
-                                return Err(crate::DeserializationError::missing_struct_field(
+                                return Err(::re_types_core::DeserializationError::missing_struct_field(
                                     #quoted_datatype, #field_name,
                                 )).with_context(#obj_fqname);
                             }
@@ -161,7 +161,7 @@ pub fn quote_arrow_deserializer(
                     } else {
                         quote! {
                             #quoted_obj_field_name: #quoted_obj_field_name
-                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)?
                         }
                     }
@@ -196,7 +196,7 @@ pub fn quote_arrow_deserializer(
                         )
                         .map(|opt| opt.map(|(#(#quoted_field_names),*)| Ok(Self { #(#quoted_unwrappings,)* })).transpose())
                         // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context(#obj_fqname)?
                     }
                 }}
@@ -235,7 +235,7 @@ pub fn quote_arrow_deserializer(
                                     // send data in.
                                     return Ok(Vec::new());
 
-                                    // return Err(crate::DeserializationError::missing_union_arm(
+                                    // return Err(::re_types_core::DeserializationError::missing_union_arm(
                                     //     #quoted_datatype, #obj_field_fqname, #i,
                                     // )).with_context(#obj_fqname);
                                 }
@@ -260,7 +260,7 @@ pub fn quote_arrow_deserializer(
                         quote!()
                     } else {
                         quote! {
-                            .ok_or_else(crate::DeserializationError::missing_data)
+                            .ok_or_else(::re_types_core::DeserializationError::missing_data)
                             .with_context(#obj_field_fqname)?
                         }
                     };
@@ -271,7 +271,7 @@ pub fn quote_arrow_deserializer(
                             // boundchecks manually first, otherwise rustc completely chokes
                             // when indexing the data (as in: a 100x perf drop)!
                             if offset as usize >= #quoted_obj_field_name.len() {
-                                return Err(crate::DeserializationError::offset_oob(
+                                return Err(::re_types_core::DeserializationError::offset_oob(
                                     offset as _, #quoted_obj_field_name.len()
                                 )).with_context(#obj_field_fqname);
                             }
@@ -303,13 +303,13 @@ pub fn quote_arrow_deserializer(
 
                         let #data_src_offsets = #data_src.offsets()
                             // NOTE: expected dense union, got a sparse one instead
-                            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(
+                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
                                 #quoted_datatype, #data_src.data_type().clone(),
                             )).with_context(#obj_fqname)?;
 
                         if #data_src_types.len() != #data_src_offsets.len() {
                             // NOTE: need one offset array per union arm!
-                            return Err(crate::DeserializationError::offset_slice_oob(
+                            return Err(::re_types_core::DeserializationError::offset_slice_oob(
                                 (0, #data_src_types.len()), #data_src_offsets.len(),
                             )).with_context(#obj_fqname);
                         }
@@ -329,7 +329,7 @@ pub fn quote_arrow_deserializer(
                                     Ok(Some(match typ {
                                         #(#quoted_branches,)*
                                         _ => {
-                                            return Err(crate::DeserializationError::missing_union_arm(
+                                            return Err(::re_types_core::DeserializationError::missing_union_arm(
                                                 #quoted_datatype, "<invalid>", *typ as _,
                                             )).with_context(#obj_fqname);
                                         }
@@ -337,7 +337,7 @@ pub fn quote_arrow_deserializer(
                                 }
                             })
                             // NOTE: implicit Vec<Result> to Result<Vec>
-                            .collect::<crate::DeserializationResult<Vec<_>>>()
+                            .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                             .with_context(#obj_fqname)?
                     }
                 }}
@@ -429,7 +429,7 @@ fn quote_arrow_field_deserializer(
                 objects,
                 datatype,
                 IteratorKind::ResultOptionValue,
-                quote!(crate::ArrowString).into(),
+                quote!(::re_types_core::ArrowString).into(),
             );
 
             let data_src_buf = format_ident!("{data_src}_buf");
@@ -454,7 +454,7 @@ fn quote_arrow_field_deserializer(
                         // when slicing the data (as in: a 100x perf drop)!
                         if end as usize > #data_src_buf.len() {
                             // error context is appended below during final collection
-                            return Err(crate::DeserializationError::offset_slice_oob(
+                            return Err(::re_types_core::DeserializationError::offset_slice_oob(
                                 (start, end), #data_src_buf.len(),
                             ));
                         }
@@ -468,7 +468,7 @@ fn quote_arrow_field_deserializer(
                 )
                 #quoted_iter_transparency
                 // NOTE: implicit Vec<Result> to Result<Vec>
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
                 .with_context(#obj_field_fqname)?
                 .into_iter()
             }}
@@ -526,7 +526,7 @@ fn quote_arrow_field_deserializer(
                                 // when slicing the data (as in: a 100x perf drop)!
                                 if end as usize > #data_src_inner.len() {
                                     // error context is appended below during final collection
-                                    return Err(crate::DeserializationError::offset_slice_oob(
+                                    return Err(::re_types_core::DeserializationError::offset_slice_oob(
                                         (start, end), #data_src_inner.len(),
                                     ));
                                 }
@@ -561,8 +561,8 @@ fn quote_arrow_field_deserializer(
                                 //
                                 // // NOTE: We don't support nullable inner elements in our IDL, so
                                 // // this can only be a case of malformed data.
-                                // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-                                // .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                                // .map(|opt| opt.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                                // .collect::<::re_types_core::DeserializationResult<Vec<_>>>()?;
 
                                 // NOTE: Unwrapping cannot fail: the length must be correct.
                                 let arr = array_init::from_iter(data).unwrap();
@@ -572,7 +572,7 @@ fn quote_arrow_field_deserializer(
                         )
                         #quoted_iter_transparency
                         // NOTE: implicit Vec<Result> to Result<Vec>
-                        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                 }
                 .into_iter()
             }}
@@ -610,7 +610,7 @@ fn quote_arrow_field_deserializer(
                 InnerRepr::BufferT => quote! {
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
-                    let data = crate::ArrowBuffer::from(data);
+                    let data = ::re_types_core::ArrowBuffer::from(data);
                 },
                 InnerRepr::NativeIterable => quote! {
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -643,8 +643,8 @@ fn quote_arrow_field_deserializer(
                         //
                         // // NOTE: We don't support nullable inner elements in our IDL, so
                         // // this can only be a case of malformed data.
-                        // .map(|opt| opt.ok_or_else(crate::DeserializationError::missing_data))
-                        // .collect::<crate::DeserializationResult<Vec<_>>>()?;
+                        // .map(|opt| opt.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        // .collect::<::re_types_core::DeserializationResult<Vec<_>>>()?;
                 },
             };
 
@@ -678,7 +678,7 @@ fn quote_arrow_field_deserializer(
                             // when slicing the data (as in: a 100x perf drop)!
                             if end as usize > #data_src_inner.len() {
                                 // error context is appended below during final collection
-                                return Err(crate::DeserializationError::offset_slice_oob(
+                                return Err(::re_types_core::DeserializationError::offset_slice_oob(
                                     (start, end), #data_src_inner.len(),
                                 ));
                             }
@@ -689,7 +689,7 @@ fn quote_arrow_field_deserializer(
                         }).transpose()
                     )
                     // NOTE: implicit Vec<Result> to Result<Vec>
-                    .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                    .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                 }
                 .into_iter()
             }}
@@ -722,7 +722,7 @@ fn quote_array_downcast(
         #arr
             .as_any()
             .downcast_ref::<#cast_as>()
-            .ok_or_else(|| crate::DeserializationError::datatype_mismatch(#expected, #arr.data_type().clone()))
+            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(#expected, #arr.data_type().clone()))
             .with_context(#location)
     }
 }
@@ -834,7 +834,7 @@ fn quote_iterator_transparency(
 ///
 /// There is a 1:1 relationship between `quote_arrow_deserializer_buffer_slice` and `Loggable::from_arrow`:
 /// ```ignore
-/// fn from_arrow(data: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
+/// fn from_arrow(data: &dyn ::arrow2::array::Array) -> ::re_types_core::DeserializationResult<Vec<Self>> {
 ///     Ok(#quoted_deserializer_)
 /// }
 /// ```

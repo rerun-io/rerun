@@ -57,8 +57,8 @@ impl<'a> From<&'a AffixFuzzer5> for ::std::borrow::Cow<'a, AffixFuzzer5> {
     }
 }
 
-impl crate::Loggable for AffixFuzzer5 {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for AffixFuzzer5 {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -80,13 +80,13 @@ impl crate::Loggable for AffixFuzzer5 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -138,19 +138,19 @@ impl crate::Loggable for AffixFuzzer5 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
                             name: "single_optional_union".to_owned(),
                             data_type: <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
@@ -173,10 +173,12 @@ impl crate::Loggable for AffixFuzzer5 {
                     .collect();
                 let single_optional_union = {
                     if !arrays_by_name.contains_key("single_optional_union") {
-                        return Err(crate::DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "single_optional_union",
-                        ))
+                        return Err(
+                            ::re_types_core::DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "single_optional_union",
+                            ),
+                        )
                         .with_context("rerun.testing.datatypes.AffixFuzzer5");
                     }
                     let arrow_data = &**arrays_by_name["single_optional_union"];
@@ -196,7 +198,7 @@ impl crate::Loggable for AffixFuzzer5 {
                     })
                     .transpose()
                 })
-                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.testing.datatypes.AffixFuzzer5")?
             }
         })

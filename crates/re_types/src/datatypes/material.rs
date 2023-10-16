@@ -59,8 +59,8 @@ impl<'a> From<&'a Material> for ::std::borrow::Cow<'a, Material> {
     }
 }
 
-impl crate::Loggable for Material {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for Material {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -82,13 +82,13 @@ impl crate::Loggable for Material {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -147,19 +147,19 @@ impl crate::Loggable for Material {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
                             name: "albedo_factor".to_owned(),
                             data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
@@ -182,10 +182,12 @@ impl crate::Loggable for Material {
                     .collect();
                 let albedo_factor = {
                     if !arrays_by_name.contains_key("albedo_factor") {
-                        return Err(crate::DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "albedo_factor",
-                        ))
+                        return Err(
+                            ::re_types_core::DeserializationError::missing_struct_field(
+                                Self::arrow_datatype(),
+                                "albedo_factor",
+                            ),
+                        )
                         .with_context("rerun.datatypes.Material");
                     }
                     let arrow_data = &**arrays_by_name["albedo_factor"];
@@ -193,7 +195,7 @@ impl crate::Loggable for Material {
                         .as_any()
                         .downcast_ref::<UInt32Array>()
                         .ok_or_else(|| {
-                            crate::DeserializationError::datatype_mismatch(
+                            ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::UInt32,
                                 arrow_data.data_type().clone(),
                             )
@@ -211,7 +213,7 @@ impl crate::Loggable for Material {
                     opt.map(|(albedo_factor)| Ok(Self { albedo_factor }))
                         .transpose()
                 })
-                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.Material")?
             }
         })

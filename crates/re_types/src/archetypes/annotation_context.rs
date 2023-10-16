@@ -75,16 +75,16 @@ pub struct AnnotationContext {
     pub context: crate::components::AnnotationContext,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.AnnotationContext".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.AnnotationContextIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.AnnotationContext".into(),
@@ -97,40 +97,41 @@ impl AnnotationContext {
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`AnnotationContext`] [`crate::Archetype`]
-pub type AnnotationContextIndicator = crate::GenericIndicatorComponent<AnnotationContext>;
+/// Indicator component for the [`AnnotationContext`] [`::re_types_core::Archetype`]
+pub type AnnotationContextIndicator =
+    ::re_types_core::GenericIndicatorComponent<AnnotationContext>;
 
-impl crate::Archetype for AnnotationContext {
+impl ::re_types_core::Archetype for AnnotationContext {
     type Indicator = AnnotationContextIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.AnnotationContext".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
         static INDICATOR: AnnotationContextIndicator = AnnotationContextIndicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -139,9 +140,9 @@ impl crate::Archetype for AnnotationContext {
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
-    ) -> crate::DeserializationResult<Self> {
+    ) -> ::re_types_core::DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -149,27 +150,27 @@ impl crate::Archetype for AnnotationContext {
         let context = {
             let array = arrays_by_name
                 .get("rerun.components.AnnotationContext")
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.AnnotationContext#context")?;
             <crate::components::AnnotationContext>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.AnnotationContext#context")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(::re_types_core::DeserializationError::missing_data)
                 .with_context("rerun.archetypes.AnnotationContext#context")?
         };
         Ok(Self { context })
     }
 }
 
-impl crate::AsComponents for AnnotationContext {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for AnnotationContext {
+    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.context as &dyn crate::ComponentBatch).into()),
+            Some((&self.context as &dyn ::re_types_core::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

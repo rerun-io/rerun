@@ -15,16 +15,16 @@
 #![allow(clippy::unnecessary_cast)]
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct AffixFuzzer10(pub Option<crate::ArrowString>);
+pub struct AffixFuzzer10(pub Option<::re_types_core::ArrowString>);
 
-impl From<Option<crate::ArrowString>> for AffixFuzzer10 {
+impl From<Option<::re_types_core::ArrowString>> for AffixFuzzer10 {
     #[inline]
-    fn from(single_string_optional: Option<crate::ArrowString>) -> Self {
+    fn from(single_string_optional: Option<::re_types_core::ArrowString>) -> Self {
         Self(single_string_optional)
     }
 }
 
-impl From<AffixFuzzer10> for Option<crate::ArrowString> {
+impl From<AffixFuzzer10> for Option<::re_types_core::ArrowString> {
     #[inline]
     fn from(value: AffixFuzzer10) -> Self {
         value.0
@@ -45,8 +45,8 @@ impl<'a> From<&'a AffixFuzzer10> for ::std::borrow::Cow<'a, AffixFuzzer10> {
     }
 }
 
-impl crate::Loggable for AffixFuzzer10 {
-    type Name = crate::ComponentName;
+impl ::re_types_core::Loggable for AffixFuzzer10 {
+    type Name = ::re_types_core::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -63,13 +63,13 @@ impl crate::Loggable for AffixFuzzer10 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -116,19 +116,19 @@ impl crate::Loggable for AffixFuzzer10 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Utf8,
                         arrow_data.data_type().clone(),
                     )
@@ -145,7 +145,7 @@ impl crate::Loggable for AffixFuzzer10 {
                     let start = *start as usize;
                     let end = start + len;
                     if end as usize > arrow_data_buf.len() {
-                        return Err(crate::DeserializationError::offset_slice_oob(
+                        return Err(::re_types_core::DeserializationError::offset_slice_oob(
                             (start, end),
                             arrow_data_buf.len(),
                         ));
@@ -158,15 +158,15 @@ impl crate::Loggable for AffixFuzzer10 {
                 .transpose()
             })
             .map(|res_or_opt| {
-                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| ::re_types_core::ArrowString(v)))
             })
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")?
             .into_iter()
         }
         .map(Ok)
         .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.testing.components.AffixFuzzer10#single_string_optional")
         .with_context("rerun.testing.components.AffixFuzzer10")?)
     }
