@@ -4,11 +4,18 @@
 
 #include <rerun/recording_stream.hpp>
 
+uint32_t as_uint(float f) {
+    // Dont do `*reinterpret_cast<const uint32_t*>(&x)` since it breaks strict aliasing rules.
+    uint32_t n;
+    memcpy(&n, &f, sizeof(float));
+    return n;
+}
+
 // Adopted from https://stackoverflow.com/a/60047308
 // IEEE-754 16-bit floating-point format (without infinity): 1-5-10, exp-15, +-131008.0, +-6.1035156E-5, +-5.9604645E-8, 3.311 digits
 rerun::half float_to_half(const float x) {
     // round-to-nearest-even: add last bit after truncated mantissa1
-    const uint32_t b = *reinterpret_cast<const uint32_t*>(&x) + 0x00001000;
+    const uint32_t b = as_uint(x) + 0x00001000;
     const uint32_t e = (b & 0x7F800000) >> 23; // exponent
     // mantissa; in line below: 0x007FF000 = 0x00800000-0x00001000 = decimal indicator flag - initial rounding
     const uint32_t m = b & 0x007FFFFF;
@@ -34,13 +41,13 @@ int main(int argc, char** argv) {
 
     // 5x4 mono image. Pixel = x * y * 123.4
     {
-        std::vector<rerun::half> halfs;
+        std::vector<rerun::half> data;
         for (auto y = 0; y < 4; ++y) {
             for (auto x = 0; x < 5; ++x) {
-                halfs.push_back(float_to_half(x * y * 123.4f));
+                data.push_back(float_to_half(x * y * 123.4f));
             }
         }
-        auto img = rerun::datatypes::TensorData({4, 5}, std::move(halfs));
+        auto img = rerun::datatypes::TensorData({4, 5}, std::move(data));
         rec.log("image_f16", rerun::archetypes::Image(img));
     }
 }

@@ -10,7 +10,7 @@ int main() {
     const int HEIGHT = 8;
     const int WIDTH = 12;
     std::vector<uint8_t> data(WIDTH * HEIGHT * 3, 0);
-    for (auto i = 0; i < data.size(); i += 3) {
+    for (size_t i = 0; i < data.size(); i += 3) {
         data[i] = 255;
     }
     for (auto y = 0; y < 4; ++y) { // top half
