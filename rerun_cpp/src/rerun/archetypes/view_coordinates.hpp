@@ -28,8 +28,6 @@ namespace rerun {
         ///
         /// ### View coordinates for adjusting the eye camera
         /// ```cpp,ignore
-        /// // Change the view coordinates for the scene.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>

@@ -27,8 +27,6 @@ namespace rerun {
         ///
         /// ### Segmentation
         /// ```cpp,ignore
-        /// // Log a segmentation image with annotations.
-        ///
         /// #include <rerun.hpp>
         ///
         /// int main() {

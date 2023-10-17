@@ -20,8 +20,6 @@
 ///
 /// ### Simple 2D boxes
 /// ```ignore
-/// //! Log some very simple 2D boxes.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
 ///

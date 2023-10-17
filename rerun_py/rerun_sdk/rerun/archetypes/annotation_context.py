@@ -33,7 +33,6 @@ class AnnotationContext(Archetype):
     -------
     ### Segmentation:
     ```python
-
     import numpy as np
     import rerun as rr
 

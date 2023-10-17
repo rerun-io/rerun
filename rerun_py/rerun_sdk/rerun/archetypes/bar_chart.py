@@ -28,7 +28,6 @@ class BarChart(BarChartExt, Archetype):
     -------
     ### Simple bar chart:
     ```python
-
     import rerun as rr
 
     rr.init("rerun_example_bar_chart", spawn=True)

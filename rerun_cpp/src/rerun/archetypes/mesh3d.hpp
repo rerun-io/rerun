@@ -28,8 +28,6 @@ namespace rerun {
         ///
         /// ### Simple indexed 3D mesh
         /// ```cpp,ignore
-        /// // Log a simple colored triangle.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>

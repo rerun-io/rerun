@@ -23,8 +23,6 @@
 ///
 /// ### Simple line plot
 /// ```ignore
-/// //! Log a scalar over time.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_scalar").memory()?;
 ///

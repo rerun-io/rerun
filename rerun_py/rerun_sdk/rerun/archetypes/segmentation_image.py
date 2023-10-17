@@ -34,7 +34,6 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     -------
     ### Simple segmentation image:
     ```python
-
     import numpy as np
     import rerun as rr
 

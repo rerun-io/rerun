@@ -24,8 +24,6 @@ namespace rerun {
         ///
         /// ### Simple bar chart
         /// ```cpp,ignore
-        /// // Log a batch of 3D arrows.
-        ///
         /// #include <rerun.hpp>
         ///
         /// int main() {

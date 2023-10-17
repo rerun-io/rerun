@@ -28,8 +28,6 @@ namespace rerun {
         ///
         /// ### Simple batch of 3D Arrows
         /// ```cpp,ignore
-        /// // Log a batch of 3D arrows.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>

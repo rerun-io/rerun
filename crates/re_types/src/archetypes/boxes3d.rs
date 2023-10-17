@@ -20,8 +20,6 @@
 ///
 /// ### Batch of 3D boxes
 /// ```ignore
-/// //! Log a batch of oriented bounding boxes.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_box3d_batch").memory()?;

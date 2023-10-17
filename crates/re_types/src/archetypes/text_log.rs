@@ -20,8 +20,6 @@
 ///
 /// ### `text_log_integration`:
 /// ```ignore
-/// //! Shows integration of Rerun's `TextLog` with the native logging interface.
-///
 /// use rerun::external::log;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

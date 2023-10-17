@@ -20,8 +20,6 @@
 ///
 /// ### Flat
 /// ```ignore
-/// //! Log a batch of 3D arrows.
-///
 /// use rerun::external::glam;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

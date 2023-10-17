@@ -27,8 +27,6 @@ namespace rerun {
         ///
         /// ### Many strips
         /// ```cpp,ignore
-        /// // Log a batch of 3d line strips.
-        ///
         /// #include <rerun.hpp>
         ///
         /// int main() {

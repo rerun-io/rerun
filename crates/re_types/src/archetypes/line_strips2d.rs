@@ -20,8 +20,6 @@
 ///
 /// ### `line_strip2d_batch`:
 /// ```ignore
-/// //! Log a batch of 2d line strips.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;

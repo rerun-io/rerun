@@ -260,7 +260,13 @@ pub fn collect_examples_for_api_docs<'a>(
                     return Err(err).with_context(|| format!("couldn't open code example {path:?}"))
                 }
             };
-            let mut content = content.split('\n').map(String::from).collect_vec();
+            let mut content = content
+                .split('\n')
+                .map(String::from)
+                .skip_while(|line| line.starts_with("//") || line.starts_with(r#"""""#)) // Skip leading comments.
+                .skip_while(|line| line.trim().is_empty()) // Strip leading empty lines.
+                .collect_vec();
+
             // trim trailing blank lines
             while content.last().is_some_and(is_blank) {
                 content.pop();

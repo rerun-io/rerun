@@ -28,8 +28,6 @@
 ///
 /// ### `image_simple`:
 /// ```ignore
-/// //! Create and log an image
-///
 /// use ndarray::{s, Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

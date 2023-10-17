@@ -34,7 +34,6 @@ class Image(ImageExt, Archetype):
     -------
     ### `image_simple`:
     ```python
-
     import numpy as np
     import rerun as rr
 

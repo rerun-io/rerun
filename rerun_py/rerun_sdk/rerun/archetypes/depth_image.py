@@ -29,7 +29,6 @@ class DepthImage(DepthImageExt, Archetype):
     -------
     ### Depth to 3D example:
     ```python
-
     import numpy as np
     import rerun as rr
 
