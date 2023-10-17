@@ -13,8 +13,7 @@ use pyo3::{
 
 use re_viewer_context::SpaceViewId;
 use re_viewport::{
-    blueprint_components::{SpaceViewComponent, VIEWPORT_PATH},
-    SpaceViewBlueprint,
+    blueprint::SpaceViewComponent, blueprint_components::VIEWPORT_PATH, SpaceViewBlueprint,
 };
 
 use re_log_types::{DataRow, StoreKind};

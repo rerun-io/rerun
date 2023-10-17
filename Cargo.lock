@@ -4907,6 +4907,7 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_viewer_context",
+ "rmp-serde",
  "serde",
  "tinyvec",
 ]
