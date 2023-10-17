@@ -1,14 +1,18 @@
+pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
+
 /// Implements the codegen pass.
 pub trait CodeGenerator {
     /// Generates user-facing code from [`crate::Objects`].
     ///
-    /// Returns the paths of all generated files.
+    /// Returns the expected paths and contents of all generated files.
+    /// It is the responsibility of the caller to actually do something with that data (e.g. write
+    /// them to disk).
     fn generate(
         &mut self,
         reporter: &crate::Reporter,
         objects: &crate::Objects,
         arrow_registry: &crate::ArrowRegistry,
-    ) -> std::collections::BTreeSet<camino::Utf8PathBuf>;
+    ) -> GeneratedFiles;
 }
 
 // ---
@@ -29,7 +33,7 @@ pub(crate) use macros::autogen_warning; // Hack for declaring macros as `pub(cra
 
 // ---
 
-mod common;
+pub(crate) mod common;
 use self::common::{get_documentation, StringExt};
 
 mod cpp;
