@@ -154,9 +154,9 @@ impl CppCodeGenerator {
                     &folder_path_sdk
                 };
                 let filepath = folder_path.join(format!("{filename_stem}.{extension}"));
-                let inserted = files_to_write.insert(filepath, contents);
+                let previous = files_to_write.insert(filepath, contents);
                 assert!(
-                    inserted.is_none(),
+                    previous.is_none(),
                     "Multiple objects with the same name: {:?}",
                     obj.name
                 );

@@ -393,12 +393,11 @@ pub fn generate_cpp_code(
 
         files.par_iter().for_each(|(filepath, contents)| {
             // There's more than cpp/hpp files in here, don't run clang-format on them!
-            let contents =
-                if filepath.extension() == Some("cpp") || filepath.extension() == Some("hpp") {
-                    format_code(contents)
-                } else {
-                    contents.clone()
-                };
+            let contents = if matches!(filepath.extension(), Some("cpp" | "hpp")) {
+                format_code(contents)
+            } else {
+                contents.clone()
+            };
             crate::codegen::common::write_file(filepath, &contents);
         });
     }
@@ -459,9 +458,6 @@ pub fn generate_rust_code(
 
         re_tracing::profile_function!();
 
-        // TODO(emilk): running `cargo fmt` once for each file is very slow.
-        // It would probably be faster to write all files to a temporary folder, run carg-fmt on
-        // that folder, and then copy the results to the final destination (if the files has changed).
         files.par_iter().for_each(|(path, source)| {
             write_file(path, source.clone());
         });
