@@ -28,7 +28,6 @@ opt_out_run = {
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "tensor_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
 
