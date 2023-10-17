@@ -55,7 +55,8 @@ impl TensorData {
                     _ => None,
                 }
             }
-            TensorBuffer::U8(_)
+            TensorBuffer::Jpeg(_)
+            | TensorBuffer::U8(_)
             | TensorBuffer::U16(_)
             | TensorBuffer::U32(_)
             | TensorBuffer::U64(_)
@@ -89,7 +90,6 @@ impl TensorData {
                     _ => None,
                 }
             }
-            TensorBuffer::Jpeg(_) => None,
         }
     }
 
