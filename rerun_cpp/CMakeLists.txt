@@ -11,7 +11,7 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
 
 add_library(rerun_sdk ${rerun_sdk_SRC})
 
-# Rerun needs C++17.
+# Rerun needs at least C++17.
 set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
 
 # ------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ if(DEFINED RERUN_REPOSITORY)
     # `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
     # which isn't default on Ubuntu LTS as of writing, causing unnecessary friction.
     # TODO(andreas): use add_custom_command instead so this runs at build time! https://cmake.org/cmake/help/latest/command/add_custom_command.html#command:add_custom_command
-    execute_process(COMMAND cargo build --release -p re_types RESULT_VARIABLE ret) # Generates most of the C++ source files
+    execute_process(COMMAND just codegen RESULT_VARIABLE ret) # Generates most of the C++ source files
 
     if(NOT(ret EQUAL "0"))
         message(FATAL_ERROR "Failed to build re_types in order to generate C++ source files.")
@@ -48,7 +48,7 @@ if(DEFINED RERUN_REPOSITORY)
     # We don't want to force this on any user!
     set_default_warning_settings(rerun_sdk)
 
-    # Put Rerun.h into the same place where it's on a user's machine and apply CMake variables like version number.
+    # Put `rerun.h` into the same place where it's on a user's machine and apply CMake variables like version number.
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src/rerun.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h"

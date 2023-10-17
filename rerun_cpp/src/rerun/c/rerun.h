@@ -29,12 +29,12 @@ enum {
 /// Special value for `rr_recording_stream` methods to indicate the most appropriate
 /// globally available recording stream for recordings.
 /// (i.e. thread-local first, then global scope)
-#define RERUN_REC_STREAM_CURRENT_RECORDING (0xFFFFFFFF)
+#define RERUN_REC_STREAM_CURRENT_RECORDING 0xFFFFFFFF
 
 /// Special value for `rr_recording_stream` methods to indicate the most appropriate
 /// globally available recording stream for blueprints.
 /// (i.e. thread-local first, then global scope)
-#define RERUN_REC_STREAM_CURRENT_BLUEPRINT (0xFFFFFFFE)
+#define RERUN_REC_STREAM_CURRENT_BLUEPRINT 0xFFFFFFFE
 
 /// A unique handle for a recording stream.
 /// A recording stream handles everything related to logging data into Rerun.
