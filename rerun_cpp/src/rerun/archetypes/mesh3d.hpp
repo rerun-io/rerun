@@ -40,9 +40,9 @@ namespace rerun {
         ///     rec.connect("127.0.0.1:9876").throw_on_failure();
         ///
         ///     const rerun::Position3D vertex_positions[3] = {
-        ///         {0.0, 1.0, 0.0},
-        ///         {1.0, 0.0, 0.0},
-        ///         {0.0, 0.0, 0.0},
+        ///         {0.0f, 1.0f, 0.0f},
+        ///         {1.0f, 0.0f, 0.0f},
+        ///         {0.0f, 0.0f, 0.0f},
         ///     };
         ///     const rerun::Color vertex_colors[3] = {
         ///         {0, 0, 255},
