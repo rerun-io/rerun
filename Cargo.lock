@@ -4764,6 +4764,7 @@ dependencies = [
  "arrow2",
  "backtrace",
  "document-features",
+ "once_cell",
  "re_error",
  "re_string_interner",
  "re_tracing",

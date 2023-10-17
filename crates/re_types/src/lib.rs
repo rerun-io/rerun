@@ -192,7 +192,20 @@ pub const DISPLAY_PRECISION: usize = 3;
 ///
 /// A special archetype is [`Clear`][archetypes::Clear] which resets all the components
 /// of an already logged entity.
-pub mod archetypes;
+pub mod archetypes {
+
+    // Some archetypes (e.g. `Clear`) are so fundamental and used everywhere that we want
+    // them to be exposed by `re_types_core` directly; that way we don't force a dependency on the
+    // `re_types` behemoth just so one can use one of these fundamental types.
+    //
+    // To do so, re-inject `re_types_core`'s archetypes into our own module.
+
+    #[path = "../archetypes/mod.rs"]
+    mod _archetypes;
+
+    pub use self::_archetypes::*;
+    pub use re_types_core::archetypes::*;
+}
 
 /// Components are the basic building blocks of [`archetypes`].
 ///
