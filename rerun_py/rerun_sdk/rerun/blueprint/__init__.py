@@ -17,6 +17,13 @@ from .space_view_component import (
     SpaceViewComponentLike,
     SpaceViewComponentType,
 )
+from .space_view_maximized import (
+    SpaceViewMaximized,
+    SpaceViewMaximizedArrayLike,
+    SpaceViewMaximizedBatch,
+    SpaceViewMaximizedLike,
+    SpaceViewMaximizedType,
+)
 
 __all__ = [
     "AutoSpaceViews",
@@ -34,4 +41,9 @@ __all__ = [
     "SpaceViewComponentBatch",
     "SpaceViewComponentLike",
     "SpaceViewComponentType",
+    "SpaceViewMaximized",
+    "SpaceViewMaximizedArrayLike",
+    "SpaceViewMaximizedBatch",
+    "SpaceViewMaximizedLike",
+    "SpaceViewMaximizedType",
 ]

@@ -6,26 +6,6 @@ pub use re_viewer_context::SpaceViewId;
 
 pub const VIEWPORT_PATH: &str = "viewport";
 
-/// Whether a space view is maximized
-///
-/// ## Example
-/// ```
-/// # use re_viewport::blueprint_components::SpaceViewMaximized;
-/// # use arrow2_convert::field::ArrowField;
-/// # use arrow2::datatypes::{DataType, Field};
-/// assert_eq!(
-///     SpaceViewMaximized::data_type(),
-///     DataType::Binary
-/// );
-/// ```
-#[derive(Clone, Default, Debug, PartialEq, Eq, ArrowField, ArrowSerialize, ArrowDeserialize)]
-#[arrow_field(transparent)]
-pub struct SpaceViewMaximized(
-    #[arrow_field(type = "SerdeField<Option<SpaceViewId>>")] pub Option<SpaceViewId>,
-);
-
-re_log_types::arrow2convert_component_shim!(SpaceViewMaximized as "rerun.blueprint.Maximized");
-
 /// The layout of a `Viewport`
 ///
 /// ## Example
@@ -64,17 +44,3 @@ impl Default for ViewportLayout {
 }
 
 re_log_types::arrow2convert_component_shim!(ViewportLayout as "rerun.blueprint.ViewportLayout");
-
-#[test]
-fn test_maximized_roundtrip() {
-    use arrow2_convert::{deserialize::TryIntoCollection, serialize::TryIntoArrow};
-
-    for data in [
-        [SpaceViewMaximized(None)],
-        [SpaceViewMaximized(Some(SpaceViewId::random()))],
-    ] {
-        let array: Box<dyn arrow2::array::Array> = data.try_into_arrow().unwrap();
-        let ret: Vec<SpaceViewMaximized> = array.try_into_collection().unwrap();
-        assert_eq!(&data, ret.as_slice());
-    }
-}

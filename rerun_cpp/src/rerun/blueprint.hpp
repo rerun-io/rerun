@@ -5,3 +5,4 @@
 #include "blueprint/auto_space_views.hpp"
 #include "blueprint/panel_view.hpp"
 #include "blueprint/space_view_component.hpp"
+#include "blueprint/space_view_maximized.hpp"

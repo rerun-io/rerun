@@ -11,8 +11,8 @@ use re_viewer_context::{
 };
 
 use crate::{
-    blueprint::{AutoSpaceViews, SpaceViewComponent},
-    blueprint_components::{SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH},
+    blueprint::{AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized},
+    blueprint_components::{ViewportLayout, VIEWPORT_PATH},
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
     space_view_heuristics::{default_created_space_views, identify_entities_per_system_per_class},

@@ -2,4 +2,4 @@
 
 mod viewport;
 
-pub use viewport::{SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH};
+pub use viewport::{ViewportLayout, VIEWPORT_PATH};
