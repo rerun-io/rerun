@@ -38,8 +38,7 @@ namespace rerun {
         ///
         ///     rec.log(
         ///         "tensor",
-        ///         rerun::Tensor(rerun::TensorData({8, 6, 3, 5}, data))
-        ///             .with_names({"batch", "channel", "height", "width"})
+        ///         rerun::Tensor({8, 6, 3, 5}, data).with_names({"batch", "channel", "height", "width"})
         ///     );
         /// }
         /// ```
@@ -54,6 +53,13 @@ namespace rerun {
 
           public:
             // Extensions to generated type defined in 'tensor_ext.cpp'
+
+            /// New Tensor from dimensions and tensor buffer.
+            Tensor(
+                std::vector<rerun::datatypes::TensorDimension> shape,
+                rerun::datatypes::TensorBuffer buffer
+            )
+                : Tensor(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
             /// Update the `names` of the contained [`TensorData`] dimensions.
             ///

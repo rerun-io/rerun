@@ -10,6 +10,13 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
+        /// New Tensor from dimensions and tensor buffer.
+        Tensor(
+            std::vector<rerun::datatypes::TensorDimension> shape,
+            rerun::datatypes::TensorBuffer buffer
+        )
+            : Tensor(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
         /// Update the `names` of the contained [`TensorData`] dimensions.
         ///
         /// Any existing Dimension names will be be overwritten.

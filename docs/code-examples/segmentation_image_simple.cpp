@@ -28,5 +28,5 @@ int main() {
         })
     );
 
-    rec.log("image", rerun::SegmentationImage(rerun::TensorData({HEIGHT, WIDTH}, std::move(data))));
+    rec.log("image", rerun::SegmentationImage({HEIGHT, WIDTH}, std::move(data)));
 }

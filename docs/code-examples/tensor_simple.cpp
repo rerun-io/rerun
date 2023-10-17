@@ -16,7 +16,6 @@ int main() {
 
     rec.log(
         "tensor",
-        rerun::Tensor(rerun::TensorData({8, 6, 3, 5}, data))
-            .with_names({"batch", "channel", "height", "width"})
+        rerun::Tensor({8, 6, 3, 5}, data).with_names({"batch", "channel", "height", "width"})
     );
 }

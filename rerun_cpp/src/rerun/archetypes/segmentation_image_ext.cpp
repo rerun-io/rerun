@@ -10,6 +10,17 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
+        /// New SegmentationImage from dimensions and tensor buffer.
+        ///
+        /// Sets dimensions to width/height if they are not specified.
+        /// Calls Error::handle() if the shape is not rank 2.
+        SegmentationImage(
+            std::vector<rerun::datatypes::TensorDimension> shape,
+            rerun::datatypes::TensorBuffer buffer
+        )
+            : SegmentationImage(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {
+        }
+
         /// New segmentation image from tensor data.
         ///
         /// Sets dimensions to width/height if they are not specified.

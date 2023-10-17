@@ -58,7 +58,7 @@ namespace rerun {
         ///
         ///     rec.log(
         ///         "world/camera/depth",
-        ///         rerun::DepthImage(rerun::TensorData({HEIGHT, WIDTH}, std::move(data))).with_meter(10000.0)
+        ///         rerun::DepthImage({HEIGHT, WIDTH}, std::move(data)).with_meter(10000.0)
         ///     );
         /// }
         /// ```
@@ -84,6 +84,16 @@ namespace rerun {
 
           public:
             // Extensions to generated type defined in 'depth_image_ext.cpp'
+
+            /// New DepthImage from dimensions and tensor buffer.
+            ///
+            /// Sets dimensions to width/height if they are not specified.
+            /// Calls Error::handle() if the shape is not rank 2.
+            DepthImage(
+                std::vector<rerun::datatypes::TensorDimension> shape,
+                rerun::datatypes::TensorBuffer buffer
+            )
+                : DepthImage(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
             /// New depth image from tensor data.
             ///

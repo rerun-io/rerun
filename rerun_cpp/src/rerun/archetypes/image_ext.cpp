@@ -10,10 +10,22 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
+        /// New image from dimensions and tensor buffer.
+        ///
+        /// Sets dimensions to width/height/channel if they are not specified.
+        /// Calls Error::handle() if the shape is not rank 2 or 3 or
+        /// has neither 1, 3 or 4 channels.
+        Image(
+            std::vector<rerun::datatypes::TensorDimension> shape,
+            rerun::datatypes::TensorBuffer buffer
+        )
+            : Image(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
         /// New image from tensor data.
         ///
         /// Sets dimensions to width/height if they are not specified.
-        /// Calls Error::handle() if the shape is not rank 2.
+        /// Calls Error::handle() if the shape is not rank 2 or 3 or
+        /// has neither 1, 3 or 4 channels.
         explicit Image(rerun::components::TensorData _data);
         // [CODEGEN COPY TO HEADER END]
 #endif
