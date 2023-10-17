@@ -26,7 +26,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
 
     let mut array_image = Array::<f16, _>::default((4, 5).f());
 
-    // 4x5 mono image. Pixel = x * y * 123.4
+    // 5x4 mono image. Pixel = x * y * 123.4
     for y in 0..4 {
         for x in 0..5 {
             *array_image.get_mut((y, x)).unwrap() = f16::from_f32(x as f32 * y as f32 * 123.4);

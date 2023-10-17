@@ -7,20 +7,11 @@ int main(int argc, char** argv) {
     auto rec = rerun::RecordingStream("rerun_example_roundtrip_tensor");
     rec.save(argv[1]).throw_on_failure();
 
-    std::vector<rerun::datatypes::TensorDimension> dimensions{
-        rerun::datatypes::TensorDimension{3},
-        rerun::datatypes::TensorDimension{4},
-        rerun::datatypes::TensorDimension{5},
-        rerun::datatypes::TensorDimension{6},
-    };
+    std::vector<rerun::datatypes::TensorDimension> dimensions{{3, 4, 5, 6}};
 
-    std::vector<int32_t> data;
-    for (auto i = 0; i < 360; ++i) {
-        data.push_back(i);
-    }
+    std::vector<int32_t> data(360);
+    std::generate(data.begin(), data.end(), [n = 0]() mutable { return n++; });
 
-    // TODO(jleibs) Tensor data can't actually be logged yet because C++ Unions
-    // don't supported nested list-types.
     rec.log(
         "tensor",
         rerun::archetypes::Tensor(

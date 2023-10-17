@@ -30,7 +30,7 @@ def main() -> None:
 
     rr.log("image", rr.Image(image))
 
-    # 4x5 mono image. Pixel = x * y * 123.4
+    # 5x4 mono image. Pixel = x * y * 123.4
     image = np.zeros((4, 5), dtype=np.float16)
     for i in range(4):
         for j in range(5):
