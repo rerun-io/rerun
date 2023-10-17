@@ -53,7 +53,7 @@ namespace rerun {
         ///         }
         ///     }
         ///
-        ///     rec.log("image", rerun::Image(rerun::TensorData({HEIGHT, WIDTH}, std::move(data))));
+        ///     rec.log("image", rerun::Image(rerun::TensorData({HEIGHT, WIDTH, 3}, std::move(data))));
         /// }
         /// ```
         struct Image {

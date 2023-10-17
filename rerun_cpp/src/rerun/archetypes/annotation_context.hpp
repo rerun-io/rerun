@@ -49,8 +49,8 @@ namespace rerun {
         ///     for (auto y = 0; y <4; ++y) {                   // top half
         ///         std::fill_n(data.begin() + y * WIDTH, 6, 1); // left half
         ///     }
-        ///     for (auto y = 4; y <8; ++y) {                        // bottom half
-        ///         std::fill_n(data.begin() + y * WIDTH + 6, 12, 2); // right half
+        ///     for (auto y = 4; y <8; ++y) {                       // bottom half
+        ///         std::fill_n(data.begin() + y * WIDTH + 6, 6, 2); // right half
         ///     }
         ///
         ///     rec.log(

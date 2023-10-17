@@ -28,6 +28,15 @@ namespace rerun {
                     .handle();
                 return;
             }
+            if (shape.size() == 3 && shape[2].size != 1 && shape[2].size != 3 &&
+                shape[2].size != 4) {
+                Error(
+                    ErrorCode::InvalidTensorDimension,
+                    "Only images with 1, 3 and 4 channels are supported."
+                )
+                    .handle();
+                return;
+            }
 
             if (!shape[0].name.has_value()) {
                 shape[0].name = "height";
@@ -35,7 +44,7 @@ namespace rerun {
             if (!shape[1].name.has_value()) {
                 shape[1].name = "width";
             }
-            if (!shape[2].name.has_value()) {
+            if (shape.size() > 2 && !shape[2].name.has_value()) {
                 shape[2].name = "depth";
             }
         }
