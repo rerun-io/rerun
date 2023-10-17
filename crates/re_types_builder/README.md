@@ -10,4 +10,5 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 This crate implements Rerun's code generation tools.
 
 These tools translate language-agnostic IDL definitions (flatbuffers) into code.
-They are invoked from `re_types`' build script (`build.rs`).
+
+You can generate the code with `just codegen`.

@@ -1,15 +1,15 @@
 use std::collections::BTreeMap;
 
-use re_types::{ComponentName, Loggable};
-
 use ahash::HashMap;
 use itertools::{izip, Itertools as _};
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
+use re_types_core::{ComponentName, Loggable, SizeBytes};
+
 use crate::{
     data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
-    RowId, SizeBytes, TimePoint, Timeline,
+    RowId, TimePoint, Timeline,
 };
 
 // ---
@@ -37,10 +37,10 @@ pub enum DataTableError {
     Arrow(#[from] arrow2::error::Error),
 
     #[error("Could not serialize component instances to/from Arrow: {0}")]
-    Serialization(#[from] re_types::SerializationError),
+    Serialization(#[from] re_types_core::SerializationError),
 
     #[error("Could not deserialize component instances to/from Arrow: {0}")]
-    Deserialization(#[from] re_types::DeserializationError),
+    Deserialization(#[from] re_types_core::DeserializationError),
 
     // Needed to handle TryFrom<T> -> T
     #[error("Infallible")]
@@ -685,7 +685,7 @@ impl DataTable {
     }
 
     /// Serializes a single control column: an iterable of dense arrow-like data.
-    pub fn serialize_control_column<'a, C: re_types::Component + 'a>(
+    pub fn serialize_control_column<'a, C: re_types_core::Component + 'a>(
         values: &'a [C],
     ) -> DataTableResult<(Field, Box<dyn Array>)>
     where

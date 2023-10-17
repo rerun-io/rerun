@@ -10,7 +10,7 @@ use arrow2::{
 };
 use polars_core::{functions::diag_concat_df, prelude::*};
 use re_log_types::{DataCell, DataTable};
-use re_types::ComponentName;
+use re_types_core::ComponentName;
 
 use crate::{
     store::InsertIdVec, ArrayExt, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,

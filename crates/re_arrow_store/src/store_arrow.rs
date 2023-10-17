@@ -6,7 +6,7 @@ use re_log_types::{
     DataCellColumn, DataTable, DataTableResult, RowId, Timeline, COLUMN_INSERT_ID,
     COLUMN_NUM_INSTANCES,
 };
-use re_types::ComponentName;
+use re_types_core::ComponentName;
 
 use crate::store::{IndexedBucket, IndexedBucketInner, PersistentIndexedTable};
 

@@ -138,10 +138,18 @@ fn tensor_ui(
                     );
                 }
 
+                let shape = match tensor.image_height_width_channels() {
+                    Some([h, w, c]) => vec![
+                        TensorDimension::height(h),
+                        TensorDimension::width(w),
+                        TensorDimension::depth(c),
+                    ],
+                    None => tensor.shape.clone(),
+                };
                 ui.label(format!(
                     "{} x {}{}",
                     tensor.dtype(),
-                    format_tensor_shape_single_line(tensor.shape()),
+                    format_tensor_shape_single_line(shape.as_slice()),
                     if original_tensor.buffer.is_compressed_image() {
                         " (compressed)"
                     } else {
@@ -216,6 +224,9 @@ fn tensor_ui(
                     }
 
                     if let Some([_h, _w, channels]) = tensor.image_height_width_channels() {
+                        if let TensorBuffer::Nv12(_) = &tensor.buffer {
+                            return;
+                        }
                         if channels == 3 {
                             if let TensorBuffer::U8(data) = &tensor.buffer {
                                 ui.collapsing("Histogram", |ui| {
@@ -231,7 +242,7 @@ fn tensor_ui(
 }
 
 fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
-    let [w, h] = colormapped_texture.texture.width_height();
+    let [w, h] = colormapped_texture.width_height();
     egui::vec2(w as f32, h as f32)
 }
 
@@ -360,6 +371,11 @@ pub fn tensor_summary_ui_grid_contents(
             ));
             ui.end_row();
         }
+        TensorBuffer::Nv12(_) => {
+            re_ui.grid_left_hand_label(ui, "Encoding");
+            ui.label("NV12");
+            ui.end_row();
+        }
     }
 
     let TensorStats {
@@ -379,8 +395,9 @@ pub fn tensor_summary_ui_grid_contents(
     }
     // Show finite range only if it is different from the actual range.
     if let (true, Some((min, max))) = (range != finite_range, finite_range) {
-        ui.label("Finite data range")
-            .on_hover_text("The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds");
+        ui.label("Finite data range").on_hover_text(
+            "The finite values (ignoring all NaN & -Inf/+Inf) of the tensor range within these bounds"
+        );
         ui.monospace(format!(
             "[{} - {}]",
             re_format::format_f64(*min),
@@ -439,8 +456,8 @@ fn show_zoomed_image_region_tooltip(
                     use egui::remap_clamp;
 
                     let center_texel = [
-                        (remap_clamp(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize),
-                        (remap_clamp(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize),
+                        remap_clamp(pointer_pos.x, image_rect.x_range(), 0.0..=w as f32) as isize,
+                        remap_clamp(pointer_pos.y, image_rect.y_range(), 0.0..=h as f32) as isize,
                     ];
                     show_zoomed_image_region_area_outline(
                         parent_ui.ctx(),
@@ -562,7 +579,7 @@ fn try_show_zoomed_image_region(
     )?;
 
     const POINTS_PER_TEXEL: f32 = 5.0;
-    let size = Vec2::splat((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32 * POINTS_PER_TEXEL);
+    let size = Vec2::splat(((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32) * POINTS_PER_TEXEL);
 
     let (_id, zoom_rect) = ui.allocate_space(size);
     let painter = ui.painter();
@@ -574,7 +591,10 @@ fn try_show_zoomed_image_region(
         let image_rect_on_screen = egui::Rect::from_min_size(
             zoom_rect.center()
                 - POINTS_PER_TEXEL
-                    * egui::vec2(center_texel[0] as f32 + 0.5, center_texel[1] as f32 + 0.5),
+                    * egui::vec2(
+                        (center_texel[0] as f32) + 0.5,
+                        (center_texel[1] as f32) + 0.5,
+                    ),
             POINTS_PER_TEXEL * egui::vec2(width as f32, height as f32),
         );
 
@@ -610,7 +630,11 @@ fn try_show_zoomed_image_region(
             let zoom = rect.width();
             let image_rect_on_screen = egui::Rect::from_min_size(
                 rect.center()
-                    - zoom * egui::vec2(center_texel[0] as f32 + 0.5, center_texel[1] as f32 + 0.5),
+                    - zoom
+                        * egui::vec2(
+                            (center_texel[0] as f32) + 0.5,
+                            (center_texel[1] as f32) + 0.5,
+                        ),
                 zoom * egui::vec2(width as f32, height as f32),
             );
             gpu_bridge::render_image(
@@ -661,7 +685,7 @@ fn tensor_pixel_value_ui(
             // This is a depth map
             if let Some(raw_value) = tensor.get(&[y, x]) {
                 let raw_value = raw_value.as_f64();
-                let meters = raw_value / meter as f64;
+                let meters = raw_value / (meter as f64);
                 ui.label("Depth:");
                 if meters < 1.0 {
                     ui.monospace(format!("{:.1} mm", meters * 1e3));
@@ -679,11 +703,20 @@ fn tensor_pixel_value_ui(
                 .map(|v| format!("Val: {v}")),
             3 => {
                 // TODO(jleibs): Track RGB ordering somehow -- don't just assume it
-                if let (Some(r), Some(g), Some(b)) = (
-                    tensor.get_with_image_coords(x, y, 0),
-                    tensor.get_with_image_coords(x, y, 1),
-                    tensor.get_with_image_coords(x, y, 2),
-                ) {
+                if let Some([r, g, b]) = match &tensor.buffer {
+                    TensorBuffer::Nv12(_) => tensor.get_nv12_pixel(x, y),
+                    _ => {
+                        if let [Some(r), Some(g), Some(b)] = [
+                            tensor.get_with_image_coords(x, y, 0),
+                            tensor.get_with_image_coords(x, y, 1),
+                            tensor.get_with_image_coords(x, y, 2),
+                        ] {
+                            Some([r, g, b])
+                        } else {
+                            None
+                        }
+                    }
+                } {
                     match (r, g, b) {
                         (TensorElement::U8(r), TensorElement::U8(g), TensorElement::U8(b)) => {
                             Some(format!("R: {r}, G: {g}, B: {b}, #{r:02X}{g:02X}{b:02X}"))

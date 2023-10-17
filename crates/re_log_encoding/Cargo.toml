@@ -42,7 +42,7 @@ thiserror.workspace = true
 web-time.workspace = true
 
 # Optional external dependencies:
-rmp-serde = { version = "1", optional = true }
+rmp-serde = { workspace = true, optional = true }
 lz4_flex = { version = "0.10", optional = true }
 
 # Web dependencies:
@@ -53,11 +53,11 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3.52", features = ["Window"] }
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen"] }
+re_types = { workspace = true, features = ["datagen", "serde"] }
 
 criterion = "0.5"
 mimalloc.workspace = true
-serde_test = { version = "1" }
+serde_test.workspace = true
 
 [lib]
 bench = false

@@ -21,7 +21,7 @@ pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstance
 #[cfg(feature = "serde")]
 pub use editable_auto_value::EditableAutoValue;
 use re_log_types::DataTableError;
-pub use re_log_types::{ComponentName, EntityPath, EntityPathPart, Index, TimeInt, Timeline};
+pub use re_log_types::{EntityPath, EntityPathPart, Index, TimeInt, Timeline};
 
 // ----------------------------------------------------------------------------
 

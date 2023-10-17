@@ -328,12 +328,12 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
         &cpp_extensions_hash,
     ]);
 
-    eprintln!("re_types_builder_hash: {re_types_builder_hash:?}");
-    eprintln!("definitions_hash: {definitions_hash:?}");
-    eprintln!("doc_examples_hash: {doc_examples_hash:?}");
-    eprintln!("python_extensions_hash: {python_extensions_hash:?}");
-    eprintln!("cpp_extensions_hash: {cpp_extensions_hash:?}");
-    eprintln!("new_hash: {new_hash:?}");
+    re_log::debug!("re_types_builder_hash: {re_types_builder_hash:?}");
+    re_log::debug!("definitions_hash: {definitions_hash:?}");
+    re_log::debug!("doc_examples_hash: {doc_examples_hash:?}");
+    re_log::debug!("python_extensions_hash: {python_extensions_hash:?}");
+    re_log::debug!("cpp_extensions_hash: {cpp_extensions_hash:?}");
+    re_log::debug!("new_hash: {new_hash:?}");
 
     new_hash
 }

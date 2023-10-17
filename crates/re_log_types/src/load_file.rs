@@ -38,7 +38,8 @@ pub fn data_cells_from_file_path(
 
     match extension.as_str() {
         "glb" | "gltf" | "obj" => {
-            use re_types::{archetypes::Asset3D, AsComponents as _};
+            use re_types::archetypes::Asset3D;
+            use re_types_core::AsComponents as _;
             let cells: Result<Vec<_>, _> = Asset3D::from_file(file_path)?
                 // TODO(#3414): this should be a method of `Archetype`
                 .as_component_batches()
@@ -70,8 +71,7 @@ pub fn data_cells_from_file_path(
 }
 
 fn image_indicator_cell() -> DataCell {
-    use re_types::Archetype as _;
-
+    use re_types_core::Archetype as _;
     let indicator = re_types::archetypes::Image::indicator();
     DataCell::from_arrow(
         indicator.name(),
@@ -96,7 +96,8 @@ pub fn data_cells_from_file_contents(
 
     match extension.as_str() {
         "glb" | "gltf" | "obj" => {
-            use re_types::{archetypes::Asset3D, components::MediaType, AsComponents as _};
+            use re_types::{archetypes::Asset3D, components::MediaType};
+            use re_types_core::AsComponents as _;
             let cells: Result<Vec<_>, _> =
                 Asset3D::from_bytes(bytes, MediaType::guess_from_path(file_name))
                     .as_component_batches()

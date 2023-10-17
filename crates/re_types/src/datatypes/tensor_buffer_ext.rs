@@ -18,6 +18,7 @@ impl TensorBuffer {
             Self::F32(_) => TensorDataType::F32,
             Self::F64(_) => TensorDataType::F64,
             Self::Jpeg(_) => TensorDataType::U8,
+            Self::Nv12(_) => TensorDataType::U8,
         }
     }
 
@@ -36,6 +37,7 @@ impl TensorBuffer {
             Self::F32(buf) => buf.size_in_bytes(),
             Self::F64(buf) => buf.size_in_bytes(),
             Self::Jpeg(buf) => buf.size_in_bytes(),
+            Self::Nv12(buf) => buf.size_in_bytes(),
         }
     }
 
@@ -57,7 +59,7 @@ impl TensorBuffer {
             | Self::F32(_)
             | Self::F64(_) => false,
 
-            Self::Jpeg(_) => true,
+            Self::Jpeg(_) | Self::Nv12(_) => true,
         }
     }
 }
@@ -77,6 +79,7 @@ impl std::fmt::Debug for TensorBuffer {
             Self::F32(_) => write!(f, "F32({} bytes)", self.size_in_bytes()),
             Self::F64(_) => write!(f, "F64({} bytes)", self.size_in_bytes()),
             Self::Jpeg(_) => write!(f, "JPEG({} bytes)", self.size_in_bytes()),
+            Self::Nv12(_) => write!(f, "NV12({} bytes)", self.size_in_bytes()),
         }
     }
 }

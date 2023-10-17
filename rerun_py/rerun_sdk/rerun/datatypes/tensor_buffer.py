@@ -53,9 +53,11 @@ class TensorBuffer(TensorBufferExt):
     F64 (npt.NDArray[np.float64]):
 
     JPEG (npt.NDArray[np.uint8]):
+
+    NV12 (npt.NDArray[np.uint8]):
     """
 
-    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg"] = field(
+    kind: Literal["u8", "u16", "u32", "u64", "i8", "i16", "i32", "i64", "f16", "f32", "f64", "jpeg", "nv12"] = field(
         default="u8"
     )
 
@@ -172,6 +174,12 @@ class TensorBufferType(BaseExtensionType):
                     ),
                     pa.field(
                         "JPEG",
+                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                        nullable=False,
+                        metadata={},
+                    ),
+                    pa.field(
+                        "NV12",
                         pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
                         nullable=False,
                         metadata={},

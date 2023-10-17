@@ -16,6 +16,7 @@
 -r multiprocessing/requirements.txt
 -r multithreading/requirements.txt
 -r notebook/requirements.txt
+-r nv12/requirements.txt
 -r objectron/requirements.txt
 -r open_photogrammetry_format/requirements.txt
 -r plots/requirements.txt

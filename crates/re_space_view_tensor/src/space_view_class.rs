@@ -327,7 +327,7 @@ fn paint_tensor_slice(
         &tensor_stats,
         state,
     )?;
-    let [width, height] = colormapped_texture.texture.width_height();
+    let [width, height] = colormapped_texture.width_height();
 
     let img_size = egui::vec2(width as _, height as _);
     let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
@@ -735,7 +735,7 @@ fn selectors_ui(ui: &mut egui::Ui, state: &mut PerTensorState, tensor: &TensorDa
                 // Make the slider as big as needed:
                 const MIN_SLIDER_WIDTH: f32 = 64.0;
                 if ui.available_width() >= MIN_SLIDER_WIDTH {
-                    ui.spacing_mut().slider_width = (size as f32 * 4.0)
+                    ui.spacing_mut().slider_width = ((size as f32) * 4.0)
                         .at_least(MIN_SLIDER_WIDTH)
                         .at_most(ui.available_width());
                     ui.add(egui::Slider::new(selector_value, 0..=size - 1).show_value(false))

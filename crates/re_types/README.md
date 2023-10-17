@@ -10,3 +10,5 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 The standard Rerun data types, component types, and archetypes.
 
 This crate includes both the language-agnostic definitions (flatbuffers IDL) as well as the generated code.
+
+Generated the code with `just codegen`.

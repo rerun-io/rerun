@@ -57,10 +57,6 @@ pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName}
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
 
-// Re-export `ComponentName` for convenience
-pub use re_types::ComponentName;
-pub use re_types::SizeBytes;
-
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::data_table_batcher::{
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
@@ -76,7 +72,9 @@ pub use self::load_file::{data_cells_from_file_contents, FromFileError};
 pub mod external {
     pub use arrow2;
     pub use arrow2_convert;
+
     pub use re_tuid;
+    pub use re_types_core;
 }
 
 #[macro_export]
@@ -402,14 +400,14 @@ impl PathOp {
 
 // ---------------------------------------------------------------------------
 
-/// Implements [`re_types::Component`] for `T: arrow2_convert::{Serialize, Deserialize}`.
+/// Implements [`::re_types::Component`] for `T: arrow2_convert::{Serialize, Deserialize}`.
 #[doc(hidden)]
 #[macro_export]
 macro_rules! arrow2convert_component_shim {
     ($entity:ident as $fqname:expr) => {
 
-        impl re_types::Loggable for $entity {
-            type Name = re_types::ComponentName;
+        impl ::re_types::Loggable for $entity {
+            type Name = ::re_types::ComponentName;
 
             #[inline]
             fn name() -> Self::Name {
@@ -424,7 +422,7 @@ macro_rules! arrow2convert_component_shim {
             #[inline]
             fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-            ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
+            ) -> ::re_types::SerializationResult<Box<dyn arrow2::array::Array>>
             where
                 Self: Clone + 'a,
             {
@@ -437,14 +435,14 @@ macro_rules! arrow2convert_component_shim {
 
                 let arrow = arrow2_convert::serialize::TryIntoArrow::try_into_arrow(vec.iter())
                     .map_err(|err| {
-                        re_types::SerializationError::ArrowConvertFailure(err.to_string())
+                        ::re_types::SerializationError::ArrowConvertFailure(err.to_string())
                     })?;
 
                 Ok(arrow)
             }
 
             #[inline]
-            fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
+            fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> ::re_types::DeserializationResult<Vec<Option<Self>>>
             where
                 Self: Sized
             {

@@ -20,10 +20,10 @@ all-features = true
 default = []
 
 ## Enable (de)serialization using Arrow.
-arrow = ["dep:re_types", "dep:arrow2", "dep:thiserror"]
+arrow = ["dep:re_types_core", "dep:arrow2"]
 
 ## Enable (de)serialization using serde.
-serde = ["dep:serde"]
+serde = ["dep:serde", "re_types_core?/serde"]
 
 
 [dependencies]
@@ -34,11 +34,10 @@ web-time.workspace = true
 
 # Optional dependencies
 
-re_types = { workspace = true, optional = true }
+re_types_core = { workspace = true, optional = true }
 
 arrow2 = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
-thiserror = { workspace = true, optional = true }
 
 [dev-dependencies]
 criterion = "0.5"

@@ -3,9 +3,10 @@ use std::{collections::BTreeMap, marker::PhantomData};
 use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
 use re_log_types::{DataCell, RowId};
-use re_types::{
-    components::InstanceKey, Archetype, Component, ComponentName, DeserializationError,
-    DeserializationResult, Loggable, SerializationResult,
+use re_types::components::InstanceKey;
+use re_types_core::{
+    Archetype, Component, ComponentName, DeserializationError, DeserializationResult, Loggable,
+    SerializationResult,
 };
 
 use crate::QueryError;
@@ -322,7 +323,7 @@ impl<A: Archetype> ArchetypeView<A> {
             .next()
             .ok_or_else(|| DeserializationError::MissingComponent {
                 component: C::name(),
-                backtrace: re_types::_Backtrace::new_unresolved(),
+                backtrace: re_types_core::_Backtrace::new_unresolved(),
             })?;
         let count = 1 + iter.count();
         if count != 1 {

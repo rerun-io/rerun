@@ -102,6 +102,11 @@ namespace rerun {
                 case detail::TensorBufferTag::F64: {
                     return _data.f64.size();
                 }
+                case detail::TensorBufferTag::NV12: {
+                    assert(
+                        false && "Can't ask for the number of elements in an NV12 encoded image"
+                    );
+                }
                 case detail::TensorBufferTag::JPEG: {
                     assert(false && "Can't ask for the number of elements in a JPEG");
                 }

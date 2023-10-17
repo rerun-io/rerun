@@ -38,6 +38,7 @@ namespace rerun {
                 F32,
                 F64,
                 JPEG,
+                NV12,
             };
 
             union TensorBufferData {
@@ -64,6 +65,8 @@ namespace rerun {
                 std::vector<double> f64;
 
                 std::vector<uint8_t> jpeg;
+
+                std::vector<uint8_t> nv12;
 
                 TensorBufferData() {}
 
@@ -135,6 +138,10 @@ namespace rerun {
                     }
                     case detail::TensorBufferTag::JPEG: {
                         _data.jpeg = other._data.jpeg;
+                        break;
+                    }
+                    case detail::TensorBufferTag::NV12: {
+                        _data.nv12 = other._data.nv12;
                         break;
                     }
                     case detail::TensorBufferTag::NONE:
@@ -223,6 +230,11 @@ namespace rerun {
                     case detail::TensorBufferTag::JPEG: {
                         typedef std::vector<uint8_t> TypeAlias;
                         _data.jpeg.~TypeAlias();
+                        break;
+                    }
+                    case detail::TensorBufferTag::NV12: {
+                        typedef std::vector<uint8_t> TypeAlias;
+                        _data.nv12.~TypeAlias();
                         break;
                     }
                 }
@@ -369,6 +381,14 @@ namespace rerun {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::JPEG;
                 new (&self._data.jpeg) TypeAlias(std::move(jpeg));
+                return self;
+            }
+
+            static TensorBuffer nv12(std::vector<uint8_t> nv12) {
+                typedef std::vector<uint8_t> TypeAlias;
+                TensorBuffer self;
+                self._tag = detail::TensorBufferTag::NV12;
+                new (&self._data.nv12) TypeAlias(std::move(nv12));
                 return self;
             }
 

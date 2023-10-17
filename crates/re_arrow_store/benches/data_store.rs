@@ -15,8 +15,8 @@ use re_types::datagen::build_some_instances;
 use re_types::{
     components::InstanceKey,
     testing::{build_some_large_structs, LargeStruct},
-    ComponentName, Loggable as _,
 };
+use re_types_core::{ComponentName, Loggable as _};
 
 criterion_group!(benches, insert, latest_at, latest_at_missing, range, gc);
 criterion_main!(benches);

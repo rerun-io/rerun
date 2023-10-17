@@ -2,7 +2,7 @@ use arrow2::{
     array::{StructArray, UInt64Array},
     datatypes::{DataType, Field},
 };
-use re_types::Loggable;
+use re_types_core::Loggable;
 
 use crate::Tuid;
 
@@ -23,7 +23,7 @@ impl<'a> From<&'a Tuid> for ::std::borrow::Cow<'a, Tuid> {
 }
 
 impl Loggable for Tuid {
-    type Name = re_types::ComponentName;
+    type Name = re_types_core::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -40,11 +40,11 @@ impl Loggable for Tuid {
 
     fn to_arrow_opt<'a>(
         _data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: 'a,
     {
-        Err(re_types::SerializationError::not_implemented(
+        Err(re_types_core::SerializationError::not_implemented(
             Self::name(),
             "TUIDs are never nullable, use `to_arrow()` instead",
         ))
@@ -53,7 +53,7 @@ impl Loggable for Tuid {
     #[inline]
     fn to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
-    ) -> re_types::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a,
     {
@@ -75,11 +75,11 @@ impl Loggable for Tuid {
 
     fn from_arrow(
         array: &dyn ::arrow2::array::Array,
-    ) -> re_types::DeserializationResult<Vec<Self>> {
+    ) -> re_types_core::DeserializationResult<Vec<Self>> {
         let expected_datatype = Self::arrow_datatype();
         let actual_datatype = array.data_type().to_logical_type();
         if actual_datatype != &expected_datatype {
-            return Err(re_types::DeserializationError::datatype_mismatch(
+            return Err(re_types_core::DeserializationError::datatype_mismatch(
                 expected_datatype,
                 actual_datatype.clone(),
             ));
@@ -119,7 +119,7 @@ impl Loggable for Tuid {
 
         if time_ns_buffer.len() != inc_buffer.len() {
             return Err(
-                re_types::DeserializationError::mismatched_struct_field_lengths(
+                re_types_core::DeserializationError::mismatched_struct_field_lengths(
                     "time_ns",
                     time_ns_buffer.len(),
                     "inc",
@@ -137,7 +137,7 @@ impl Loggable for Tuid {
     }
 }
 
-/// Implements [`re_types::Component`] for any given type that is a simple wrapper
+/// Implements [`re_types_core::Component`] for any given type that is a simple wrapper
 /// (newtype) around a [`Tuid`].
 ///
 /// Usage:
@@ -161,8 +161,8 @@ macro_rules! delegate_arrow_tuid {
             }
         }
 
-        impl ::re_types::Loggable for $typ {
-            type Name = ::re_types::ComponentName;
+        impl ::re_types_core::Loggable for $typ {
+            type Name = ::re_types_core::ComponentName;
 
             #[inline]
             fn name() -> Self::Name {
@@ -177,11 +177,11 @@ macro_rules! delegate_arrow_tuid {
             #[inline]
             fn to_arrow_opt<'a>(
                 values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-            ) -> re_types::SerializationResult<Box<dyn ::arrow2::array::Array>>
+            ) -> re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
             where
                 Self: 'a,
             {
-                Err(re_types::SerializationError::not_implemented(
+                Err(re_types_core::SerializationError::not_implemented(
                     Self::name(),
                     "TUIDs are never nullable, use `to_arrow()` instead",
                 ))
@@ -190,12 +190,12 @@ macro_rules! delegate_arrow_tuid {
             #[inline]
             fn to_arrow<'a>(
                 values: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
-            ) -> re_types::SerializationResult<Box<dyn ::arrow2::array::Array>> {
+            ) -> re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>> {
                 let values = values.into_iter().map(|value| {
                     let value: ::std::borrow::Cow<'a, Self> = value.into();
                     value.into_owned()
                 });
-                <$crate::Tuid as ::re_types::Loggable>::to_arrow(
+                <$crate::Tuid as ::re_types_core::Loggable>::to_arrow(
                     values.into_iter().map(|$typ(tuid)| tuid),
                 )
             }
@@ -203,11 +203,13 @@ macro_rules! delegate_arrow_tuid {
             #[inline]
             fn from_arrow(
                 array: &dyn arrow2::array::Array,
-            ) -> re_types::DeserializationResult<Vec<Self>> {
-                Ok(<$crate::Tuid as ::re_types::Loggable>::from_arrow(array)?
-                    .into_iter()
-                    .map(|tuid| Self(tuid))
-                    .collect())
+            ) -> re_types_core::DeserializationResult<Vec<Self>> {
+                Ok(
+                    <$crate::Tuid as ::re_types_core::Loggable>::from_arrow(array)?
+                        .into_iter()
+                        .map(|tuid| Self(tuid))
+                        .collect(),
+                )
             }
         }
     };
