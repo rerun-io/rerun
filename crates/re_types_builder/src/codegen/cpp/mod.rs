@@ -912,6 +912,20 @@ impl QuotedObject {
                         #trivial_memcpy
                     }
                 }
+            } else if trivial_memcpy_cases.is_empty() {
+                quote! {
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #comment
+                    #pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
+                        switch (other._tag) {
+                            #(#placement_new_arms)*
+
+                            case detail::#tag_typename::NONE:
+                                break;
+                        }
+                    }
+                }
             } else {
                 quote! {
                     #NEWLINE_TOKEN
