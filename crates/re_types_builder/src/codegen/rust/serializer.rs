@@ -40,7 +40,7 @@ pub fn quote_arrow_serializer(
 
     let quoted_bitmap = |var| {
         quote! {
-            let #var: Option<::arrow2::bitmap::Bitmap> = {
+            let #var: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
                 // NOTE: Don't compute a bitmap if there isn't at least one null element.
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
@@ -475,9 +475,10 @@ fn quote_arrow_field_serializer(
             quote! {{
                 // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                 // about it while building the backing buffer since it's all offsets driven.
-                let inner_data: ::arrow2::buffer::Buffer<u8> = #data_src.iter().flatten() #quoted_transparent_mapping.collect();
+                let inner_data: ::re_types_core::external::arrow2::buffer::Buffer<u8> =
+                    #data_src.iter().flatten() #quoted_transparent_mapping.collect();
 
-                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                let offsets = ::re_types_core::external::arrow2::offset::Offsets::<i32>::try_from_lengths(
                     #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length )
                 ).unwrap().into();
 
@@ -574,7 +575,7 @@ fn quote_arrow_field_serializer(
 
             let quoted_create = if let DataType::List(_) = datatype {
                 quote! {
-                    let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                    let offsets = ::re_types_core::external::arrow2::offset::Offsets::<i32>::try_from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum. #quoted_num_instances).unwrap_or_default())
                     ).unwrap().into();
 
@@ -603,32 +604,33 @@ fn quote_arrow_field_serializer(
             // validity-mask for the corresponding inner type. We can undo this
             // if we make the C++ and Python codegen match the rust behavior or
             // make our comparison tests more lenient.
-            let quoted_inner_bitmap =
-                if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
-                    quote! {
-                        let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
-                            #bitmap_src.as_ref().map(|bitmap| {
-                                bitmap
-                                    .iter()
-                                    .map(|i| std::iter::repeat(i).take(#count))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
-                    }
-                } else {
-                    // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
-                    quote! {
-                        let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                    }
-                };
+            let quoted_inner_bitmap = if let DataType::FixedSizeList(_, count) =
+                datatype.to_logical_type()
+            {
+                quote! {
+                    let #quoted_inner_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> =
+                        #bitmap_src.as_ref().map(|bitmap| {
+                            bitmap
+                                .iter()
+                                .map(|i| std::iter::repeat(i).take(#count))
+                                .flatten()
+                                .collect::<Vec<_>>()
+                                .into()
+                        });
+                }
+            } else {
+                // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
+                quote! {
+                    let #quoted_inner_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = None;
+                }
+            };
 
             // TODO(cmc): We should be checking this, but right now we don't because we don't
             // support intra-list nullability.
             _ = is_nullable;
             match inner_repr {
                 InnerRepr::ArrowBuffer => quote! {{
-                    use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                    use ::re_types_core::external::arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                     let #quoted_inner_data: Buffer<_> = #data_src
                         .iter()
@@ -639,7 +641,7 @@ fn quote_arrow_field_serializer(
                     #quoted_create
                 }},
                 InnerRepr::NativeIterable => quote! {{
-                    use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                    use ::re_types_core::external::arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                     let #quoted_inner_data: Vec<_> = #data_src
                         .iter()

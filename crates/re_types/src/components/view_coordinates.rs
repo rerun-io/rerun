@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Component**: How we interpret the coordinate system of an entity/space.
 ///
 /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
@@ -76,7 +78,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::FixedSizeList(
             Box::new(Field {
                 name: "item".to_owned(),
@@ -91,13 +93,13 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -110,12 +112,12 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                use ::re_types_core::external::arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
@@ -123,7 +125,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                     .cloned()
                     .map(Some)
                     .collect();
-                let data0_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                let data0_inner_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> =
                     data0_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
@@ -152,18 +154,18 @@ impl ::re_types_core::Loggable for ViewCoordinates {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                .downcast_ref::<::re_types_core::external::arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::FixedSizeList(
@@ -201,7 +203,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     offsets,
                     arrow_data.validity(),
                 )
@@ -238,14 +240,14 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn from_arrow(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         if let Some(validity) = arrow_data.validity() {
             if validity.unset_bits() != 0 {
                 return Err(::re_types_core::DeserializationError::missing_data());
@@ -255,7 +257,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
             let slice = {
                 let arrow_data = arrow_data
                     .as_any()
-                    .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                    .downcast_ref::<::re_types_core::external::arrow2::array::FixedSizeListArray>()
                     .ok_or_else(|| {
                         ::re_types_core::DeserializationError::datatype_mismatch(
                             DataType::FixedSizeList(

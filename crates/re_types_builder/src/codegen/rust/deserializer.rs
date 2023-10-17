@@ -168,7 +168,7 @@ pub fn quote_arrow_deserializer(
                 });
 
                 let quoted_downcast = {
-                    let cast_as = quote!(::arrow2::array::StructArray);
+                    let cast_as = quote!(::re_types_core::external::arrow2::array::StructArray);
                     quote_array_downcast(obj_fqname, &data_src, cast_as, datatype)
                 };
                 quote! {{
@@ -190,7 +190,7 @@ pub fn quote_arrow_deserializer(
 
                         #(#quoted_field_deserializers;)*
 
-                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                        ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
                             ::itertools::izip!(#(#quoted_field_names),*),
                             #data_src.validity(),
                         )
@@ -286,7 +286,7 @@ pub fn quote_arrow_deserializer(
                 });
 
                 let quoted_downcast = {
-                    let cast_as = quote!(::arrow2::array::UnionArray);
+                    let cast_as = quote!(::re_types_core::external::arrow2::array::UnionArray);
                     quote_array_downcast(obj_fqname, &data_src, &cast_as, datatype)
                 };
 
@@ -421,7 +421,7 @@ fn quote_arrow_field_deserializer(
 
         DataType::Utf8 => {
             let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::Utf8Array<i32>);
+                let cast_as = quote!(::re_types_core::external::arrow2::array::Utf8Array<i32>);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
@@ -439,7 +439,7 @@ fn quote_arrow_field_deserializer(
                 let #data_src_buf = #data_src.values();
 
                 let offsets = #data_src.offsets();
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     offsets.iter().zip(offsets.lengths()),
                     #data_src.validity(),
                 )
@@ -486,7 +486,7 @@ fn quote_arrow_field_deserializer(
             );
 
             let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::FixedSizeListArray);
+                let cast_as = quote!(::re_types_core::external::arrow2::array::FixedSizeListArray);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
@@ -513,7 +513,7 @@ fn quote_arrow_field_deserializer(
                         #quoted_inner.collect::<Vec<_>>()
                     };
 
-                    arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, #data_src.validity())
+                    ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(offsets, #data_src.validity())
                         .map(|elem| elem.map(|(start, end)| {
                                 // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
 
@@ -597,7 +597,7 @@ fn quote_arrow_field_deserializer(
             );
 
             let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::ListArray<i32>);
+                let cast_as = quote!(::re_types_core::external::arrow2::array::ListArray<i32>);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
@@ -663,7 +663,7 @@ fn quote_arrow_field_deserializer(
                     };
 
                     let offsets = #data_src.offsets();
-                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                    ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
                         offsets.iter().zip(offsets.lengths()),
                         #data_src.validity(),
                     )
@@ -954,7 +954,7 @@ fn quote_arrow_field_deserializer_buffer_slice(
             );
 
             let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::FixedSizeListArray);
+                let cast_as = quote!(::re_types_core::external::arrow2::array::FixedSizeListArray);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 

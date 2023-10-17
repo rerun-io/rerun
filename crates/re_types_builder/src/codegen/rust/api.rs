@@ -151,6 +151,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::too_many_arguments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     code.push_str("#![allow(clippy::unnecessary_cast)]\n");
+    code.push_str("\nuse ::re_types_core::external::arrow2;\n");
 
     let mut acc = TokenStream::new();
 
@@ -700,12 +701,14 @@ fn quote_trait_impls_from_obj(
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> ::re_types_core::DeserializationResult<Vec<Self>>
+                    fn from_arrow(
+                        arrow_data: &dyn arrow2::array::Array,
+                    ) -> ::re_types_core::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
                         re_tracing::profile_function!();
 
-                        use ::arrow2::{datatypes::*, array::*, buffer::*};
+                        use arrow2::{datatypes::*, array::*, buffer::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         // This code-path cannot have null fields. If it does have a validity mask
@@ -737,7 +740,7 @@ fn quote_trait_impls_from_obj(
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
                     fn arrow_datatype() -> arrow2::datatypes::DataType {
-                        use ::arrow2::datatypes::*;
+                        use arrow2::datatypes::*;
                         #datatype
                     }
 
@@ -745,13 +748,13 @@ fn quote_trait_impls_from_obj(
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     fn to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-                    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+                    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
                     where
                         Self: Clone + 'a
                     {
                         re_tracing::profile_function!();
 
-                        use ::arrow2::{datatypes::*, array::*};
+                        use arrow2::{datatypes::*, array::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         Ok(#quoted_serializer)
@@ -760,14 +763,14 @@ fn quote_trait_impls_from_obj(
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     fn from_arrow_opt(
-                        arrow_data: &dyn ::arrow2::array::Array,
+                        arrow_data: &dyn arrow2::array::Array,
                     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized
                     {
                         re_tracing::profile_function!();
 
-                        use ::arrow2::{datatypes::*, array::*, buffer::*};
+                        use arrow2::{datatypes::*, array::*, buffer::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         Ok(#quoted_deserializer)
@@ -980,7 +983,10 @@ fn quote_trait_impls_from_obj(
 
                     #[inline]
                     fn from_arrow(
-                        arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
+                        arrow_data: impl IntoIterator<Item = (
+                            arrow2::datatypes::Field,
+                            Box<dyn arrow2::array::Array>,
+                        )>,
                     ) -> ::re_types_core::DeserializationResult<Self> {
                         re_tracing::profile_function!();
 

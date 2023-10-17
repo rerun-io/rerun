@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Datatype**: Representation of an affine transform via a 3x3 affine matrix paired with a translation.
 ///
 /// First applies the matrix, then the translation.
@@ -57,7 +59,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "translation".to_owned(),
@@ -83,13 +85,13 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -98,7 +100,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -119,12 +121,16 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let translation_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let translation_bitmap: Option<
+                            ::re_types_core::external::arrow2::bitmap::Bitmap,
+                        > = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let translation_inner_data: Vec<_> = translation
                                 .iter()
                                 .map(|datum| {
@@ -138,15 +144,16 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let translation_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
-                                translation_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
-                                        .iter()
-                                        .map(|i| std::iter::repeat(i).take(3usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
+                            let translation_inner_bitmap: Option<
+                                ::re_types_core::external::arrow2::bitmap::Bitmap,
+                            > = translation_bitmap.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(3usize))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
                                     Box::new(Field {
@@ -185,12 +192,16 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let mat3x3_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let mat3x3_bitmap: Option<
+                            ::re_types_core::external::arrow2::bitmap::Bitmap,
+                        > = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let mat3x3_inner_data: Vec<_> = mat3x3
                                 .iter()
                                 .map(|datum| {
@@ -204,15 +215,16 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let mat3x3_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
-                                mat3x3_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
-                                        .iter()
-                                        .map(|i| std::iter::repeat(i).take(9usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
+                            let mat3x3_inner_bitmap: Option<
+                                ::re_types_core::external::arrow2::bitmap::Bitmap,
+                            > = mat3x3_bitmap.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(9usize))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
                                     Box::new(Field {
@@ -248,7 +260,9 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let from_parent_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let from_parent_bitmap: Option<
+                            ::re_types_core::external::arrow2::bitmap::Bitmap,
+                        > = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -271,18 +285,18 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
+                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
@@ -331,22 +345,24 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TranslationAndMat3x3#translation")?;
+                            .downcast_ref::<
+                                ::re_types_core::external::arrow2::array::FixedSizeListArray,
+                            >()
+                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                ),
+                                arrow_data.data_type().clone(),
+                            ))
+                            .with_context(
+                                "rerun.datatypes.TranslationAndMat3x3#translation",
+                            )?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -358,12 +374,10 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
+                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DataType::Float32,
+                                        arrow_data_inner.data_type().clone(),
+                                    ))
                                     .with_context(
                                         "rerun.datatypes.TranslationAndMat3x3#translation",
                                     )?
@@ -371,40 +385,47 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets,
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, end)| {
-                                    debug_assert!(end - start == 3usize);
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
-                                    }
+                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets,
+                                    arrow_data.validity(),
+                                )
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, end)| {
+                                            debug_assert!(end - start == 3usize);
+                                            if end as usize > arrow_data_inner.len() {
+                                                return Err(
+                                                    ::re_types_core::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner.len(),
+                                                    ),
+                                                );
+                                            }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                    };
-                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                            };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default);
+                                            let arr = array_init::from_iter(data).unwrap();
+                                            Ok(arr)
+                                        })
+                                        .transpose()
                                 })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
+                                .map(|res_or_opt| {
+                                    res_or_opt
+                                        .map(|res_or_opt| {
+                                            res_or_opt.map(|v| crate::datatypes::Vec3D(v))
+                                        })
                                 })
-                            })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<
+                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
+                                >()?
                         }
-                        .into_iter()
+                            .into_iter()
                     }
                 };
                 let mat3x3 = {
@@ -419,22 +440,24 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        9usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
-                            .with_context("rerun.datatypes.TranslationAndMat3x3#mat3x3")?;
+                            .downcast_ref::<
+                                ::re_types_core::external::arrow2::array::FixedSizeListArray,
+                            >()
+                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    9usize,
+                                ),
+                                arrow_data.data_type().clone(),
+                            ))
+                            .with_context(
+                                "rerun.datatypes.TranslationAndMat3x3#mat3x3",
+                            )?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -446,51 +469,58 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
-                                    .with_context("rerun.datatypes.TranslationAndMat3x3#mat3x3")?
+                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DataType::Float32,
+                                        arrow_data_inner.data_type().clone(),
+                                    ))
+                                    .with_context(
+                                        "rerun.datatypes.TranslationAndMat3x3#mat3x3",
+                                    )?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets,
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, end)| {
-                                    debug_assert!(end - start == 9usize);
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
-                                    }
+                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets,
+                                    arrow_data.validity(),
+                                )
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, end)| {
+                                            debug_assert!(end - start == 9usize);
+                                            if end as usize > arrow_data_inner.len() {
+                                                return Err(
+                                                    ::re_types_core::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner.len(),
+                                                    ),
+                                                );
+                                            }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                    };
-                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                            };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default);
+                                            let arr = array_init::from_iter(data).unwrap();
+                                            Ok(arr)
+                                        })
+                                        .transpose()
                                 })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| crate::datatypes::Mat3x3(v))
+                                .map(|res_or_opt| {
+                                    res_or_opt
+                                        .map(|res_or_opt| {
+                                            res_or_opt.map(|v| crate::datatypes::Mat3x3(v))
+                                        })
                                 })
-                            })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<
+                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
+                                >()?
                         }
-                        .into_iter()
+                            .into_iter()
                     }
                 };
                 let from_parent = {
@@ -514,7 +544,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         .with_context("rerun.datatypes.TranslationAndMat3x3#from_parent")?
                         .into_iter()
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(translation, mat3x3, from_parent),
                     arrow_data.validity(),
                 )

@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Datatype**: 3D scaling factor, part of a transform representation.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Scale3D {
@@ -49,7 +51,7 @@ impl ::re_types_core::Loggable for Scale3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Union(
             vec![
                 Field {
@@ -79,13 +81,13 @@ impl ::re_types_core::Loggable for Scale3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -118,12 +120,16 @@ impl ::re_types_core::Loggable for Scale3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let three_d_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let three_d_bitmap: Option<
+                            ::re_types_core::external::arrow2::bitmap::Bitmap,
+                        > = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let three_d_inner_data: Vec<_> = three_d
                                 .iter()
                                 .map(|datum| {
@@ -137,15 +143,16 @@ impl ::re_types_core::Loggable for Scale3D {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let three_d_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
-                                three_d_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
-                                        .iter()
-                                        .map(|i| std::iter::repeat(i).take(3usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
+                            let three_d_inner_bitmap: Option<
+                                ::re_types_core::external::arrow2::bitmap::Bitmap,
+                            > = three_d_bitmap.as_ref().map(|bitmap| {
+                                bitmap
+                                    .iter()
+                                    .map(|i| std::iter::repeat(i).take(3usize))
+                                    .flatten()
+                                    .collect::<Vec<_>>()
+                                    .into()
+                            });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
                                     Box::new(Field {
@@ -182,7 +189,9 @@ impl ::re_types_core::Loggable for Scale3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let uniform_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let uniform_bitmap: Option<
+                            ::re_types_core::external::arrow2::bitmap::Bitmap,
+                        > = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -225,18 +234,18 @@ impl ::re_types_core::Loggable for Scale3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::UnionArray>()
+                .downcast_ref::<::re_types_core::external::arrow2::array::UnionArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(
@@ -296,21 +305,21 @@ impl ::re_types_core::Loggable for Scale3D {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
-                                    DataType::FixedSizeList(
-                                        Box::new(Field {
-                                            name: "item".to_owned(),
-                                            data_type: DataType::Float32,
-                                            is_nullable: false,
-                                            metadata: [].into(),
-                                        }),
-                                        3usize,
-                                    ),
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
+                            .downcast_ref::<
+                                ::re_types_core::external::arrow2::array::FixedSizeListArray,
+                            >()
+                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                DataType::FixedSizeList(
+                                    Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Float32,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    }),
+                                    3usize,
+                                ),
+                                arrow_data.data_type().clone(),
+                            ))
                             .with_context("rerun.datatypes.Scale3D#ThreeD")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -323,53 +332,58 @@ impl ::re_types_core::Loggable for Scale3D {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
-                                            DataType::Float32,
-                                            arrow_data_inner.data_type().clone(),
-                                        )
-                                    })
+                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DataType::Float32,
+                                        arrow_data_inner.data_type().clone(),
+                                    ))
                                     .with_context("rerun.datatypes.Scale3D#ThreeD")?
                                     .into_iter()
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
-                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets,
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem.map(|(start, end)| {
-                                    debug_assert!(end - start == 3usize);
-                                    if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
-                                    }
+                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                    offsets,
+                                    arrow_data.validity(),
+                                )
+                                .map(|elem| {
+                                    elem
+                                        .map(|(start, end)| {
+                                            debug_assert!(end - start == 3usize);
+                                            if end as usize > arrow_data_inner.len() {
+                                                return Err(
+                                                    ::re_types_core::DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner.len(),
+                                                    ),
+                                                );
+                                            }
 
-                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    let data = unsafe {
-                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                    };
-                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
-                                    let arr = array_init::from_iter(data).unwrap();
-                                    Ok(arr)
+                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                            let data = unsafe {
+                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                            };
+                                            let data = data
+                                                .iter()
+                                                .cloned()
+                                                .map(Option::unwrap_or_default);
+                                            let arr = array_init::from_iter(data).unwrap();
+                                            Ok(arr)
+                                        })
+                                        .transpose()
                                 })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
+                                .map(|res_or_opt| {
+                                    res_or_opt
+                                        .map(|res_or_opt| {
+                                            res_or_opt.map(|v| crate::datatypes::Vec3D(v))
+                                        })
                                 })
-                            })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                                .collect::<
+                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
+                                >()?
                         }
-                        .into_iter()
+                            .into_iter()
                     }
-                    .collect::<Vec<_>>()
+                        .collect::<Vec<_>>()
                 };
                 let uniform = {
                     if 2usize >= arrow_data_arrays.len() {

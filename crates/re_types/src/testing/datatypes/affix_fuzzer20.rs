@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct AffixFuzzer20 {
     pub p: crate::testing::datatypes::PrimitiveComponent,
@@ -45,7 +47,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "p".to_owned(),
@@ -65,13 +67,13 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -80,7 +82,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -98,7 +100,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let p_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let p_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -131,32 +133,25 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let s_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let s_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let inner_data: ::arrow2::buffer::Buffer<u8> = s
-                                .iter()
-                                .flatten()
-                                .flat_map(|datum| {
-                                    let crate::testing::datatypes::StringComponent(data0) = datum;
-                                    data0.0.clone()
-                                })
-                                .collect();
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                s.iter().map(|opt| {
-                                    opt.as_ref()
-                                        .map(|datum| {
-                                            let crate::testing::datatypes::StringComponent(data0) =
-                                                datum;
-                                            data0.0.len()
-                                        })
-                                        .unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
+                            let inner_data: ::re_types_core::external::arrow2::buffer::Buffer<u8> =
+                                s.iter()
+                                    .flatten()
+                                    .flat_map(|datum| {
+                                        let crate::testing::datatypes::StringComponent(data0) =
+                                            datum;
+                                        data0.0.clone()
+                                    })
+                                    .collect();
+                            let offsets =
+                        ::re_types_core::external::arrow2::offset::Offsets:: < i32 >
+                        ::try_from_lengths(s.iter().map(| opt | opt.as_ref().map(| datum
+                        | { let crate ::testing::datatypes::StringComponent(data0) =
+                        datum; data0.0.len() }).unwrap_or_default())).unwrap().into();
 
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
@@ -179,19 +174,19 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data =
                 arrow_data
                     .as_any()
-                    .downcast_ref::<::arrow2::array::StructArray>()
+                    .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
                     .ok_or_else(|| {
                         ::re_types_core::DeserializationError::datatype_mismatch(
                             DataType::Struct(vec![
@@ -254,55 +249,59 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::Utf8Array<i32>>()
-                            .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
-                                    DataType::Utf8,
-                                    arrow_data.data_type().clone(),
-                                )
-                            })
+                            .downcast_ref::<
+                                ::re_types_core::external::arrow2::array::Utf8Array<i32>,
+                            >()
+                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                DataType::Utf8,
+                                arrow_data.data_type().clone(),
+                            ))
                             .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
-                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                            offsets.iter().zip(offsets.lengths()),
-                            arrow_data.validity(),
-                        )
-                        .map(|elem| {
-                            elem.map(|(start, len)| {
-                                let start = *start as usize;
-                                let end = start + len;
-                                if end as usize > arrow_data_buf.len() {
-                                    return Err(
-                                        ::re_types_core::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ),
-                                    );
-                                }
+                        ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem
+                                    .map(|(start, len)| {
+                                        let start = *start as usize;
+                                        let end = start + len;
+                                        if end as usize > arrow_data_buf.len() {
+                                            return Err(
+                                                ::re_types_core::DeserializationError::offset_slice_oob(
+                                                    (start, end),
+                                                    arrow_data_buf.len(),
+                                                ),
+                                            );
+                                        }
 
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                let data =
-                                    unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
-                                Ok(data)
+                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                        let data = unsafe {
+                                            arrow_data_buf.clone().sliced_unchecked(start, len)
+                                        };
+                                        Ok(data)
+                                    })
+                                    .transpose()
                             })
-                            .transpose()
-                        })
-                        .map(|res_or_opt| {
-                            res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| {
-                                    crate::testing::datatypes::StringComponent(
-                                        ::re_types_core::ArrowString(v),
-                                    )
-                                })
+                            .map(|res_or_opt| {
+                                res_or_opt
+                                    .map(|res_or_opt| {
+                                        res_or_opt
+                                            .map(|v| crate::testing::datatypes::StringComponent(
+                                                ::re_types_core::ArrowString(v),
+                                            ))
+                                    })
                             })
-                        })
-                        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
-                        .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?
-                        .into_iter()
+                            .collect::<
+                                ::re_types_core::DeserializationResult<Vec<Option<_>>>,
+                            >()
+                            .with_context("rerun.testing.datatypes.AffixFuzzer20#s")?
+                            .into_iter()
                     }
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(p, s),
                     arrow_data.validity(),
                 )

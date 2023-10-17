@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Blueprint**: The state of the panels.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
@@ -60,8 +62,8 @@ impl ::re_types_core::Loggable for PanelView {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn arrow_datatype() -> ::re_types_core::external::arrow2::datatypes::DataType {
-        use ::re_types_core::external::arrow2::datatypes::*;
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
+        use arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "is_expanded".to_owned(),
             data_type: DataType::Boolean,
@@ -73,15 +75,13 @@ impl ::re_types_core::Loggable for PanelView {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<
-        Box<dyn ::re_types_core::external::arrow2::array::Array>,
-    >
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::re_types_core::external::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -131,14 +131,14 @@ impl ::re_types_core::Loggable for PanelView {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::re_types_core::external::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::re_types_core::external::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
