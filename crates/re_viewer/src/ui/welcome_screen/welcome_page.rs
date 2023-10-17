@@ -365,7 +365,11 @@ fn safari_warning() -> &'static str {
     // See this page for more information on User Agent sniffing (and why/how to avoid it):
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Browser_detection_using_the_user_agent
 
-    let is_safari = user_agent().is_some_and(|user_agent| user_agent.contains("Safari"));
+    let is_safari = user_agent().is_some_and(|user_agent| {
+        user_agent.contains("Safari")
+            && !user_agent.contains("Chrome")
+            && !user_agent.contains("Chromium")
+    });
 
     if is_safari {
         "**Note**: This browser appears to be Safari. If you are unable to copy the code, please \
