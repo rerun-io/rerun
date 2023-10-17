@@ -24,7 +24,7 @@ def run(
 
 
 def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None) -> None:
-    logging.info("Downloading rerun_c...")
+    logging.info("Downloading rerun_c…")
 
     os.mkdir(target_dir)
 
@@ -44,7 +44,7 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None
 
 
 def upload_rerun_cpp(rerun_zip: str, git_hash: str) -> None:
-    logging.info("Uploading to gcloud...")
+    logging.info("Uploading to gcloud…")
 
     gcs = storage.Client("rerun-open")
     bucket = gcs.bucket("rerun-builds")
@@ -55,7 +55,7 @@ def upload_rerun_cpp(rerun_zip: str, git_hash: str) -> None:
 
 
 def test_rerun_cpp(git_hash: str) -> None:
-    logging.info("Testing uploaded artifact...")
+    logging.info("Testing uploaded artifact…")
 
     with tempfile.TemporaryDirectory() as testdir:
         shutil.copytree("examples/cpp/minimal/", testdir, dirs_exist_ok=True)
@@ -97,11 +97,11 @@ def main() -> None:
 
         download_rerun_c(package_dir + "/lib", git_hash, args.platform_filter)
 
-        logging.info("Copying files...")
+        logging.info("Copying files…")
         shutil.copy("rerun_cpp/CMakeLists.txt", package_dir + "/CMakeLists.txt")
         shutil.copytree("rerun_cpp/src/", package_dir + "/src/")
 
-        logging.info(f"Packaging {package_dir}.zip...")
+        logging.info(f"Packaging {package_dir}.zip…")
         rerun_zip = shutil.make_archive(
             scratch_dir + "/" + package_name, "zip", root_dir=scratch_dir, base_dir=package_name
         )
