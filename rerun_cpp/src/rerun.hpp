@@ -32,6 +32,7 @@ namespace rerun {
     using components::Vector3D;
 
     using datatypes::Angle;
+    using datatypes::AnnotationInfo;
     using datatypes::ClassDescription;
     using datatypes::Float32;
     using datatypes::KeypointPair;

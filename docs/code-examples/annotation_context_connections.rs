@@ -1,4 +1,4 @@
-//! Log some very simple points.
+//! Log annotation context with connections between keypoints.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =

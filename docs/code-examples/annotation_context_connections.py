@@ -1,3 +1,5 @@
+"""Log annotation context with connections between keypoints."""
+
 import rerun as rr
 from rerun.datatypes import ClassDescription
 

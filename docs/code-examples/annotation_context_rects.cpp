@@ -10,8 +10,8 @@ int main() {
     rec.log_timeless(
         "/",
         rerun::AnnotationContext({
-            rerun::datatypes::AnnotationInfo(1, "red", rerun::datatypes::Rgba32(255, 0, 0)),
-            rerun::datatypes::AnnotationInfo(2, "green", rerun::datatypes::Rgba32(0, 255, 0)),
+            rerun::AnnotationInfo(1, "red", rerun::Rgba32(255, 0, 0)),
+            rerun::AnnotationInfo(2, "green", rerun::Rgba32(0, 255, 0)),
         })
     );
 
