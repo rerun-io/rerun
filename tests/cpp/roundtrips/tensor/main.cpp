@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <optional>
 #include <rerun/archetypes/tensor.hpp>
 #include <rerun/datatypes/tensor_data.hpp>

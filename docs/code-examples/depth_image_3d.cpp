@@ -2,6 +2,8 @@
 
 #include <rerun.hpp>
 
+#include <algorithm>
+
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_depth_image");
     rec.connect("127.0.0.1:9876").throw_on_failure();
