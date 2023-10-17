@@ -55,7 +55,6 @@ SCENARIO("segmentation image can be created from tensor data" TEST_TAG) {
         rerun::datatypes::TensorData data(
             {
                 {
-                    // (🎶 Sie sind geheimnisvoll, doch sie sind supertoll 🎶)
                     rerun::datatypes::TensorDimension(1, "tick"),
                     rerun::datatypes::TensorDimension(2, "trick"),
                     rerun::datatypes::TensorDimension(3, "track"),
