@@ -25,7 +25,6 @@ opt_out_run = {
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
-    "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
     "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
