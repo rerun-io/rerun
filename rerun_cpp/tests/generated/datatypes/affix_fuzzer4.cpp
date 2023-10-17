@@ -49,6 +49,7 @@ namespace rerun {
 
             return Result(std::make_shared<arrow::DenseUnionBuilder>(
                 memory_pool,
+                // Children:
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
                     rerun::datatypes::AffixFuzzer3::new_arrow_array_builder(memory_pool).value,
