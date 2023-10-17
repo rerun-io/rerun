@@ -61,15 +61,19 @@ namespace rerun {
             AffixFuzzer4(const AffixFuzzer4& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer4Tag::single_required: {
-                        _data.single_required = other._data.single_required;
+                        typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
+                        new (&_data.single_required) TypeAlias(other._data.single_required);
                         break;
                     }
                     case detail::AffixFuzzer4Tag::many_required: {
-                        _data.many_required = other._data.many_required;
+                        typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
+                        new (&_data.many_required) TypeAlias(other._data.many_required);
                         break;
                     }
                     case detail::AffixFuzzer4Tag::many_optional: {
-                        _data.many_optional = other._data.many_optional;
+                        typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>
+                            TypeAlias;
+                        new (&_data.many_optional) TypeAlias(other._data.many_optional);
                         break;
                     }
                     case detail::AffixFuzzer4Tag::NONE:

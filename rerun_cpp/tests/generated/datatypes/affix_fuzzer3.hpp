@@ -64,7 +64,8 @@ namespace rerun {
             AffixFuzzer3(const AffixFuzzer3& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer3Tag::craziness: {
-                        _data.craziness = other._data.craziness;
+                        typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
+                        new (&_data.craziness) TypeAlias(other._data.craziness);
                         break;
                     }
                     case detail::AffixFuzzer3Tag::NONE:

@@ -94,55 +94,68 @@ namespace rerun {
             TensorBuffer(const TensorBuffer& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::TensorBufferTag::U8: {
-                        _data.u8 = other._data.u8;
+                        typedef std::vector<uint8_t> TypeAlias;
+                        new (&_data.u8) TypeAlias(other._data.u8);
                         break;
                     }
                     case detail::TensorBufferTag::U16: {
-                        _data.u16 = other._data.u16;
+                        typedef std::vector<uint16_t> TypeAlias;
+                        new (&_data.u16) TypeAlias(other._data.u16);
                         break;
                     }
                     case detail::TensorBufferTag::U32: {
-                        _data.u32 = other._data.u32;
+                        typedef std::vector<uint32_t> TypeAlias;
+                        new (&_data.u32) TypeAlias(other._data.u32);
                         break;
                     }
                     case detail::TensorBufferTag::U64: {
-                        _data.u64 = other._data.u64;
+                        typedef std::vector<uint64_t> TypeAlias;
+                        new (&_data.u64) TypeAlias(other._data.u64);
                         break;
                     }
                     case detail::TensorBufferTag::I8: {
-                        _data.i8 = other._data.i8;
+                        typedef std::vector<int8_t> TypeAlias;
+                        new (&_data.i8) TypeAlias(other._data.i8);
                         break;
                     }
                     case detail::TensorBufferTag::I16: {
-                        _data.i16 = other._data.i16;
+                        typedef std::vector<int16_t> TypeAlias;
+                        new (&_data.i16) TypeAlias(other._data.i16);
                         break;
                     }
                     case detail::TensorBufferTag::I32: {
-                        _data.i32 = other._data.i32;
+                        typedef std::vector<int32_t> TypeAlias;
+                        new (&_data.i32) TypeAlias(other._data.i32);
                         break;
                     }
                     case detail::TensorBufferTag::I64: {
-                        _data.i64 = other._data.i64;
+                        typedef std::vector<int64_t> TypeAlias;
+                        new (&_data.i64) TypeAlias(other._data.i64);
                         break;
                     }
                     case detail::TensorBufferTag::F16: {
-                        _data.f16 = other._data.f16;
+                        typedef std::vector<rerun::half> TypeAlias;
+                        new (&_data.f16) TypeAlias(other._data.f16);
                         break;
                     }
                     case detail::TensorBufferTag::F32: {
-                        _data.f32 = other._data.f32;
+                        typedef std::vector<float> TypeAlias;
+                        new (&_data.f32) TypeAlias(other._data.f32);
                         break;
                     }
                     case detail::TensorBufferTag::F64: {
-                        _data.f64 = other._data.f64;
+                        typedef std::vector<double> TypeAlias;
+                        new (&_data.f64) TypeAlias(other._data.f64);
                         break;
                     }
                     case detail::TensorBufferTag::JPEG: {
-                        _data.jpeg = other._data.jpeg;
+                        typedef std::vector<uint8_t> TypeAlias;
+                        new (&_data.jpeg) TypeAlias(other._data.jpeg);
                         break;
                     }
                     case detail::TensorBufferTag::NV12: {
-                        _data.nv12 = other._data.nv12;
+                        typedef std::vector<uint8_t> TypeAlias;
+                        new (&_data.nv12) TypeAlias(other._data.nv12);
                         break;
                     }
                     case detail::TensorBufferTag::NONE:

@@ -867,8 +867,8 @@ impl QuotedObject {
 
         let copy_constructor = {
             // Note that `switch` on an enum without handling all cases causes `-Wswitch-enum` warning!
-            let mut copy_match_arms = Vec::new();
-            let mut default_match_arms = Vec::new();
+            let mut placement_new_arms = Vec::new();
+            let mut trivial_memcpy_cases = Vec::new();
             for obj_field in &obj.fields {
                 let tag_ident = format_ident!("{}", obj_field.name);
                 let case = quote!(case detail::#tag_typename::#tag_ident:);
@@ -877,12 +877,18 @@ impl QuotedObject {
                 // but is typically the reason why we need to do this in the first place - if we'd always memcpy we'd get double-free errors.
                 // (As with swap, we generously assume that objects are rellocatable)
                 if obj_field.typ.has_default_destructor(objects) {
-                    default_match_arms.push(case);
+                    trivial_memcpy_cases.push(case);
                 } else {
+                    // the `this->_data` union is not yet initialized, so we must use placement new:
+                    let typedef_declaration =
+                        quote_variable(&mut hpp_includes, obj_field, &format_ident!("TypeAlias"));
+                    hpp_includes.insert_system("new"); // placement-new
+
                     let field_ident = format_ident!("{}", obj_field.snake_case_name());
-                    copy_match_arms.push(quote! {
+                    placement_new_arms.push(quote! {
                         #case {
-                            _data.#field_ident = other._data.#field_ident;
+                            typedef #typedef_declaration;
+                            new (&_data.#field_ident) TypeAlias(other._data.#field_ident);
                             break;
                         }
                     });
@@ -897,7 +903,7 @@ impl QuotedObject {
 
             let comment = quote_doc_comment("Copy constructor");
 
-            if copy_match_arms.is_empty() {
+            if placement_new_arms.is_empty() {
                 quote! {
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
@@ -913,10 +919,10 @@ impl QuotedObject {
                     #comment
                     #pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
                         switch (other._tag) {
-                            #(#copy_match_arms)*
+                            #(#placement_new_arms)*
 
                             case detail::#tag_typename::NONE:
-                            #(#default_match_arms)*
+                            #(#trivial_memcpy_cases)*
                             #trivial_memcpy
                                 break;
                         }
