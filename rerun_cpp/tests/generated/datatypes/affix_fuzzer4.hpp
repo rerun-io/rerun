@@ -57,6 +57,7 @@ namespace rerun {
         struct AffixFuzzer4 {
             AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::NONE) {}
 
+            /// Copy constructor
             AffixFuzzer4(const AffixFuzzer4& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer4Tag::single_required: {

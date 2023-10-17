@@ -55,6 +55,7 @@ namespace rerun {
         struct Rotation3D {
             Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
 
+            /// Copy constructor
             Rotation3D(const Rotation3D& other) : _tag(other._tag) {
                 const void* otherbytes = reinterpret_cast<const void*>(&other._data);
                 void* thisbytes = reinterpret_cast<void*>(&this->_data);

@@ -895,21 +895,33 @@ impl QuotedObject {
                 std::memcpy(thisbytes, otherbytes, sizeof(detail::#data_typename));
             };
 
-            if copy_match_arms.is_empty() {
-                quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
-                    #trivial_memcpy
-                })
-            } else {
-                quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
-                    switch (other._tag) {
-                        #(#copy_match_arms)*
+            let comment = quote_doc_comment("Copy constructor");
 
-                        case detail::#tag_typename::NONE:
-                        #(#default_match_arms)*
+            if copy_match_arms.is_empty() {
+                quote! {
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #comment
+                    #pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
                         #trivial_memcpy
-                            break;
                     }
-                })
+                }
+            } else {
+                quote! {
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #comment
+                    #pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
+                        switch (other._tag) {
+                            #(#copy_match_arms)*
+
+                            case detail::#tag_typename::NONE:
+                            #(#default_match_arms)*
+                            #trivial_memcpy
+                                break;
+                        }
+                    }
+                }
             }
         };
 

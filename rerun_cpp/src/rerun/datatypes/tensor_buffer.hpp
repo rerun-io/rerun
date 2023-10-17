@@ -90,6 +90,7 @@ namespace rerun {
         struct TensorBuffer {
             TensorBuffer() : _tag(detail::TensorBufferTag::NONE) {}
 
+            /// Copy constructor
             TensorBuffer(const TensorBuffer& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::TensorBufferTag::U8: {

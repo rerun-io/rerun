@@ -54,6 +54,7 @@ namespace rerun {
         struct Scale3D {
             Scale3D() : _tag(detail::Scale3DTag::NONE) {}
 
+            /// Copy constructor
             Scale3D(const Scale3D& other) : _tag(other._tag) {
                 const void* otherbytes = reinterpret_cast<const void*>(&other._data);
                 void* thisbytes = reinterpret_cast<void*>(&this->_data);
