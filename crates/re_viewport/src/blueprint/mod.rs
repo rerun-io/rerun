@@ -5,7 +5,10 @@ mod space_view_component;
 mod space_view_component_ext;
 mod space_view_maximized;
 mod space_view_maximized_ext;
+mod viewport_layout;
+mod viewport_layout_ext;
 
 pub use self::auto_space_views::AutoSpaceViews;
 pub use self::space_view_component::SpaceViewComponent;
 pub use self::space_view_maximized::SpaceViewMaximized;
+pub use self::viewport_layout::ViewportLayout;

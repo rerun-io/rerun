@@ -24,6 +24,13 @@ from .space_view_maximized import (
     SpaceViewMaximizedLike,
     SpaceViewMaximizedType,
 )
+from .viewport_layout import (
+    ViewportLayout,
+    ViewportLayoutArrayLike,
+    ViewportLayoutBatch,
+    ViewportLayoutLike,
+    ViewportLayoutType,
+)
 
 __all__ = [
     "AutoSpaceViews",
@@ -46,4 +53,9 @@ __all__ = [
     "SpaceViewMaximizedBatch",
     "SpaceViewMaximizedLike",
     "SpaceViewMaximizedType",
+    "ViewportLayout",
+    "ViewportLayoutArrayLike",
+    "ViewportLayoutBatch",
+    "ViewportLayoutLike",
+    "ViewportLayoutType",
 ]

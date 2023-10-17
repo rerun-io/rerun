@@ -574,7 +574,7 @@ fn quote_arrow_field_serializer(
                                     })
                                     .transpose()
                                 })
-                                .collect::<::re_types_core::SerializationResult<Vec<_>>>()?;
+                                .collect::<::re_types_core::SerializationResult<Vec<_>>>()?
                             }
                         } else {
                             quote! {
