@@ -3,10 +3,9 @@ use std::{collections::BTreeMap, marker::PhantomData};
 use arrow2::array::{Array, PrimitiveArray};
 use re_format::arrow;
 use re_log_types::{DataCell, RowId};
-use re_types::components::InstanceKey;
 use re_types_core::{
-    Archetype, Component, ComponentName, DeserializationError, DeserializationResult, Loggable,
-    SerializationResult,
+    components::InstanceKey, Archetype, Component, ComponentName, DeserializationError,
+    DeserializationResult, Loggable, SerializationResult,
 };
 
 use crate::QueryError;
@@ -41,7 +40,7 @@ impl ComponentWithInstances {
 
     /// Returns the array of [`InstanceKey`]s.
     #[inline]
-    pub fn instance_keys(&self) -> Vec<re_types::components::InstanceKey> {
+    pub fn instance_keys(&self) -> Vec<InstanceKey> {
         re_tracing::profile_function!();
         self.instance_keys.to_native::<InstanceKey>()
     }
