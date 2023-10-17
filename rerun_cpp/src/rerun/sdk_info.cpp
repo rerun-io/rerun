@@ -1,5 +1,5 @@
 #include "sdk_info.hpp"
-#include <rerun.h>
+#include "c/rerun.h"
 
 namespace rerun {
     const char* version_string() {

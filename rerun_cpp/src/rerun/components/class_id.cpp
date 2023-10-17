@@ -14,13 +14,13 @@ namespace rerun {
     namespace components {
         const char ClassId::NAME[] = "rerun.components.ClassId";
 
-        const std::shared_ptr<arrow::DataType> &ClassId::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& ClassId::arrow_datatype() {
             static const auto datatype = rerun::datatypes::ClassId::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::UInt16Builder>> ClassId::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -30,7 +30,7 @@ namespace rerun {
         }
 
         Error ClassId::fill_arrow_array_builder(
-            arrow::UInt16Builder *builder, const ClassId *elements, size_t num_elements
+            arrow::UInt16Builder* builder, const ClassId* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -45,7 +45,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::ClassId) == sizeof(ClassId));
             RR_RETURN_NOT_OK(rerun::datatypes::ClassId::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::ClassId *>(elements),
+                reinterpret_cast<const rerun::datatypes::ClassId*>(elements),
                 num_elements
             ));
 
@@ -53,10 +53,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> ClassId::to_data_cell(
-            const ClassId *instances, size_t num_instances
+            const ClassId* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = ClassId::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);

@@ -10,7 +10,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Scale3D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Scale3D::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field("ThreeD", rerun::datatypes::Vec3D::arrow_datatype(), false),
@@ -20,7 +20,7 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::DenseUnionBuilder>> Scale3D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -39,7 +39,7 @@ namespace rerun {
         }
 
         Error Scale3D::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder *builder, const Scale3D *elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const Scale3D* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -53,7 +53,7 @@ namespace rerun {
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto &union_instance = elements[elem_idx];
+                const auto& union_instance = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
 
                 auto variant_index = static_cast<int>(union_instance._tag);
@@ -62,24 +62,21 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::Scale3DTag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::Scale3DTag::ThreeD: {
                         auto variant_builder =
-                            static_cast<arrow::FixedSizeListBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::FixedSizeListBuilder*>(variant_builder_untyped);
                         RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
                             variant_builder,
                             &union_instance._data.three_d,
                             1
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::Scale3DTag::Uniform: {
                         auto variant_builder =
-                            static_cast<arrow::FloatBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
                         ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.uniform));
-                        break;
-                    }
+                    } break;
                 }
             }
 

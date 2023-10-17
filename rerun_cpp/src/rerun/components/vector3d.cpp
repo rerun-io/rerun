@@ -14,13 +14,13 @@ namespace rerun {
     namespace components {
         const char Vector3D::NAME[] = "rerun.components.Vector3D";
 
-        const std::shared_ptr<arrow::DataType> &Vector3D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Vector3D::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Vec3D::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Vector3D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -30,7 +30,7 @@ namespace rerun {
         }
 
         Error Vector3D::fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder *builder, const Vector3D *elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const Vector3D* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -45,7 +45,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::Vec3D) == sizeof(Vector3D));
             RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Vec3D *>(elements),
+                reinterpret_cast<const rerun::datatypes::Vec3D*>(elements),
                 num_elements
             ));
 
@@ -53,10 +53,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> Vector3D::to_data_cell(
-            const Vector3D *instances, size_t num_instances
+            const Vector3D* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = Vector3D::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);
