@@ -27,8 +27,6 @@ namespace rerun {
             : shape(std::move(shape_)), buffer(std::move(buffer_)) {}
 
         // [CODEGEN COPY TO HEADER END]
-    };
 #endif
-
-} // namespace datatypes
+    } // namespace datatypes
 } // namespace rerun
