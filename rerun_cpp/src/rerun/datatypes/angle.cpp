@@ -20,12 +20,13 @@ namespace rerun {
         Result<std::shared_ptr<arrow::DenseUnionBuilder>> Angle::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(std::make_shared<arrow::DenseUnionBuilder>(
                 memory_pool,
+                // Children:
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
@@ -38,10 +39,10 @@ namespace rerun {
         Error Angle::fill_arrow_array_builder(
             arrow::DenseUnionBuilder *builder, const Angle *elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."

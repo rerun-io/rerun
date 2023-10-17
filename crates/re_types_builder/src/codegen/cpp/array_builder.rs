@@ -6,7 +6,7 @@ use crate::{Object, ObjectSpecifics, Objects, Type};
 use super::{
     forward_decl::{ForwardDecl, ForwardDecls},
     includes::Includes,
-    quote_fqname_as_type_path, quote_integer,
+    quote_comment, quote_fqname_as_type_path, quote_integer, NEWLINE_TOKEN,
 };
 
 pub fn arrow_array_builder_type(typ: &Type, objects: &Objects) -> Ident {
@@ -189,9 +189,12 @@ pub fn quote_arrow_array_builder_type_instantiation(
                         }
                     }
                     ObjectSpecifics::Union { .. } => {
+                        let children_comment = quote_comment("Children:");
                         quote! {
                              std::make_shared<arrow::#builder_type>(
                                  memory_pool,
+                                 #NEWLINE_TOKEN
+                                 #children_comment
                                  std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                                      std::make_shared<arrow::NullBuilder>(memory_pool), #(#field_builders,)*
                                  }),

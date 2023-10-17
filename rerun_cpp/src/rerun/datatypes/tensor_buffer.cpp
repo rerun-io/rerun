@@ -75,12 +75,13 @@ namespace rerun {
         Result<std::shared_ptr<arrow::DenseUnionBuilder>> TensorBuffer::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(std::make_shared<arrow::DenseUnionBuilder>(
                 memory_pool,
+                // Children:
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
                     std::make_shared<arrow::ListBuilder>(
@@ -143,10 +144,10 @@ namespace rerun {
         Error TensorBuffer::fill_arrow_array_builder(
             arrow::DenseUnionBuilder *builder, const TensorBuffer *elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -169,144 +170,159 @@ namespace rerun {
                     case detail::TensorBufferTag::U8: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::UInt8Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.u8.data(),
+                            static_cast<int64_t>(union_instance._data.u8.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::U16: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::UInt16Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.u16.data(),
+                            static_cast<int64_t>(union_instance._data.u16.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::U32: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::UInt32Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.u32.data(),
+                            static_cast<int64_t>(union_instance._data.u32.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::U64: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::UInt64Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.u64.data(),
+                            static_cast<int64_t>(union_instance._data.u64.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::I8: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::Int8Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.i8.data(),
+                            static_cast<int64_t>(union_instance._data.i8.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::I16: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::Int16Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.i16.data(),
+                            static_cast<int64_t>(union_instance._data.i16.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::I32: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::Int32Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.i32.data(),
+                            static_cast<int64_t>(union_instance._data.i32.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::I64: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::Int64Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.i64.data(),
+                            static_cast<int64_t>(union_instance._data.i64.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::F16: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::HalfFloatBuilder *>(variant_builder->value_builder()
+                            );
+                        const rerun::half *values = union_instance._data.f16.data();
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            reinterpret_cast<const uint16_t *>(values),
+                            static_cast<int64_t>(union_instance._data.f16.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::F32: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::FloatBuilder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.f32.data(),
+                            static_cast<int64_t>(union_instance._data.f32.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::F64: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::DoubleBuilder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.f64.data(),
+                            static_cast<int64_t>(union_instance._data.f64.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::JPEG: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::UInt8Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.jpeg.data(),
+                            static_cast<int64_t>(union_instance._data.jpeg.size())
+                        ));
                         break;
                     }
                     case detail::TensorBufferTag::NV12: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder *>(variant_builder_untyped);
-                        (void)variant_builder;
-                        return Error(
-                            ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
-                        );
+                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+                        auto value_builder =
+                            static_cast<arrow::UInt8Builder *>(variant_builder->value_builder());
+                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                            union_instance._data.nv12.data(),
+                            static_cast<int64_t>(union_instance._data.nv12.size())
+                        ));
                         break;
                     }
                 }
