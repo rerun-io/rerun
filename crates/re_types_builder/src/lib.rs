@@ -517,22 +517,133 @@ pub fn generate_python_code(
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
+
+    // 1. Generate code files.
     let mut gen =
         PythonCodeGenerator::new(output_pkg_path.as_ref(), testing_output_pkg_path.as_ref());
-    let filepaths = gen.generate(reporter, objects, arrow_registry);
-    generate_gitattributes_for_generated_files(
-        &output_pkg_path,
-        filepaths
-            .iter()
-            .filter(|f| f.starts_with(output_pkg_path.as_ref()))
-            .cloned(),
-    );
-    generate_gitattributes_for_generated_files(
-        &testing_output_pkg_path,
-        filepaths
-            .into_iter()
-            .filter(|f| f.starts_with(testing_output_pkg_path.as_ref())),
-    );
+    let mut files = gen.generate(reporter, objects, arrow_registry);
+    // 2. Generate attribute files.
+    generate_gitattributes_for_generated_files(&mut files);
+    // 3. Write all files.
+    write_files(&gen.pkg_path, &gen.testing_pkg_path, &files);
+    // 4. Remove orphaned files.
+    crate::codegen::common::remove_orphaned_files(reporter, &files);
+
+    fn write_files(pkg_path: &Utf8Path, testing_pkg_path: &Utf8Path, files: &GeneratedFiles) {
+        use rayon::prelude::*;
+
+        re_tracing::profile_function!();
+
+        // Running `black` once for each file is very slow, so we write all
+        // files to a temporary folder, format it, and copy back the results.
+
+        let tempdir = tempfile::tempdir().unwrap();
+        let tempdir_path = Utf8PathBuf::try_from(tempdir.path().to_owned()).unwrap();
+
+        files.par_iter().for_each(|(filepath, source)| {
+            let formatted_source_path =
+                format_path_for_tmp_dir(pkg_path, testing_pkg_path, filepath, &tempdir_path);
+            crate::codegen::common::write_file(&formatted_source_path, source);
+        });
+
+        format_python_dir(&tempdir_path).unwrap();
+
+        // Read back and copy to the final destination:
+        files.par_iter().for_each(|(filepath, _original_source)| {
+            let formatted_source_path =
+                format_path_for_tmp_dir(pkg_path, testing_pkg_path, filepath, &tempdir_path);
+            let formatted_source = std::fs::read_to_string(formatted_source_path).unwrap();
+            crate::codegen::common::write_file(filepath, &formatted_source);
+        });
+    }
+
+    fn format_path_for_tmp_dir(
+        pkg_path: &Utf8Path,
+        testing_pkg_path: &Utf8Path,
+        filepath: &Utf8Path,
+        tempdir_path: &Utf8Path,
+    ) -> Utf8PathBuf {
+        // If the prefix is pkg_path, strip it, and then append to tempdir
+        // However, if the prefix is testing_pkg_path, strip it and insert an extra
+        // "testing" to avoid name collisions.
+        filepath.strip_prefix(pkg_path).map_or_else(
+            |_| {
+                tempdir_path
+                    .join("testing")
+                    .join(filepath.strip_prefix(testing_pkg_path).unwrap())
+            },
+            |f| tempdir_path.join(f),
+        )
+    }
+
+    fn format_python_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
+
+        // The order below is important and sadly we need to call black twice. Ruff does not yet
+        // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
+        //
+        // 1) Call black, which among others things fixes line-length
+        // 2) Call ruff, which requires line-lengths to be correct
+        // 3) Call black again to cleanup some whitespace issues ruff might introduce
+
+        run_black_on_dir(dir).context("black")?;
+        run_ruff_on_dir(dir).context("ruff")?;
+        run_black_on_dir(dir).context("black")?;
+        Ok(())
+    }
+
+    fn python_project_path() -> Utf8PathBuf {
+        let path = crate::rerun_workspace_path()
+            .join("rerun_py")
+            .join("pyproject.toml");
+        assert!(path.exists(), "Failed to find {path:?}");
+        path
+    }
+
+    fn run_black_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
+        use std::process::{Command, Stdio};
+
+        let proc = Command::new("black")
+            .arg(format!("--config={}", python_project_path()))
+            .arg(dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        let output = proc.wait_with_output()?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+            anyhow::bail!("{stdout}\n{stderr}")
+        }
+    }
+
+    fn run_ruff_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
+        re_tracing::profile_function!();
+        use std::process::{Command, Stdio};
+
+        let proc = Command::new("ruff")
+            .arg(format!("--config={}", python_project_path()))
+            .arg("--fix")
+            .arg(dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
+
+        let output = proc.wait_with_output()?;
+
+        if output.status.success() {
+            Ok(())
+        } else {
+            let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
+            anyhow::bail!("{stdout}\n{stderr}")
+        }
+    }
 }
 
 pub fn generate_docs(
