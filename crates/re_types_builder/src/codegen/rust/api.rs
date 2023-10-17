@@ -86,14 +86,14 @@ impl RustCodeGenerator {
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
-            let crate_name = "re_types"; // NOTE: this will support other values soon
-            let module_name = obj.kind.plural_snake_case();
+            let crate_name = super::util::crate_name(obj);
+            let module_name = super::util::module_name(obj);
 
-            let crate_path = crates_root_path.join(crate_name);
+            let crate_path = crates_root_path.join(&crate_name);
             let module_path = if obj.is_testing() {
-                crate_path.join("src/testing").join(module_name)
+                crate_path.join("src/testing").join(&module_name)
             } else {
-                crate_path.join("src").join(module_name)
+                crate_path.join("src").join(&module_name)
             };
 
             let filename_stem = obj.snake_case_name();
@@ -112,10 +112,12 @@ impl RustCodeGenerator {
             files_to_write.insert(filepath, code);
         }
 
-        for (_crate_name, _module_name, is_testing, module_path) in all_modules {
+        for (crate_name, module_name, is_testing, module_path) in all_modules {
             let relevant_objs = &ordered_objects
                 .iter()
                 .filter(|obj| obj.is_testing() == is_testing)
+                .filter(|obj| super::util::crate_name(obj) == crate_name)
+                .filter(|obj| super::util::module_name(obj) == module_name)
                 .copied()
                 .collect_vec();
 

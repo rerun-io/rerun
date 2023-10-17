@@ -122,3 +122,16 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
 
     output
 }
+
+/// Returns the crate name of an object, accounting for overrides.
+pub fn crate_name(obj: &Object) -> String {
+    obj.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)
+        .unwrap_or_else(|| "re_types".to_owned())
+}
+
+/// Returns the module name of an object.
+//
+// NOTE: Might want a module override at some point.
+pub fn module_name(obj: &Object) -> String {
+    obj.kind.plural_snake_case().to_owned()
+}
