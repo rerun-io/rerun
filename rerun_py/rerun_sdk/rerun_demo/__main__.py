@@ -21,7 +21,7 @@ def run_cube(args: argparse.Namespace):
     for t in range(STEPS):
         rr.set_time_sequence("step", t)
         cube = build_color_grid(10, 10, 10, twist=twists[t])
-        rr.log_points("cube", positions=cube.positions, colors=cube.colors, radii=0.5)
+        rr.log("cube", rr.Points3D(positions=cube.positions, colors=cube.colors, radii=0.5))
 
     rr.script_teardown(args)
 
