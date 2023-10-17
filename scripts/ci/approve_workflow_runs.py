@@ -61,6 +61,8 @@ def main() -> None:
         for workflow_run in repo.get_workflow_runs(branch=pr.head.ref):
             if workflow_run.status == "action_required" or workflow_run.conclusion == "action_required":
                 approve(args.github_token, workflow_run)
+
+        # We only need one approval
         return
 
 
