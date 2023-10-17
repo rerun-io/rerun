@@ -392,7 +392,14 @@ pub fn generate_cpp_code(
         re_tracing::profile_scope!("write_files");
 
         files.par_iter().for_each(|(filepath, contents)| {
-            crate::codegen::common::write_file(filepath, &format_code(contents));
+            // There's more than cpp/hpp files in here, don't run clang-format on them!
+            let contents =
+                if filepath.extension() == Some("cpp") || filepath.extension() == Some("hpp") {
+                    format_code(contents)
+                } else {
+                    contents.clone()
+                };
+            crate::codegen::common::write_file(filepath, &contents);
         });
     }
     // 4. Remove orphaned files.
