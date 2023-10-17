@@ -16,6 +16,18 @@ impl Transform3D {
         Self::new(TranslationRotationScale3D::from_translation(translation))
     }
 
+    /// From a rotation
+    #[inline]
+    pub fn from_rotation(rotation: impl Into<Rotation3D>) -> Self {
+        Self::new(TranslationRotationScale3D::from_rotation(rotation))
+    }
+
+    /// From a scale
+    #[inline]
+    pub fn from_scale(scale: impl Into<Scale3D>) -> Self {
+        Self::new(TranslationRotationScale3D::from_scale(scale))
+    }
+
     /// From a translation applied after a rotation, known as a rigid transformation.
     #[inline]
     pub fn from_translation_rotation(
