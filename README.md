@@ -102,4 +102,4 @@ The commercial product targets the needs specific to teams that build and run co
 2. Run `pip install rerun_sdk<…>.whl` (replace `<…>` with the actual filename)
 3. Test it: `rerun --version`
 
-# Random edit
+# Random Edit
