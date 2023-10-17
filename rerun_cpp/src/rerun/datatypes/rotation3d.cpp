@@ -67,8 +67,7 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::Rotation3DTag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::Rotation3DTag::Quaternion: {
                         auto variant_builder =
                             static_cast<arrow::FixedSizeListBuilder*>(variant_builder_untyped);
@@ -77,8 +76,7 @@ namespace rerun {
                             &union_instance._data.quaternion,
                             1
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::Rotation3DTag::AxisAngle: {
                         auto variant_builder =
                             static_cast<arrow::StructBuilder*>(variant_builder_untyped);
@@ -89,8 +87,7 @@ namespace rerun {
                                 1
                             )
                         );
-                        break;
-                    }
+                    } break;
                 }
             }
 

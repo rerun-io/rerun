@@ -165,8 +165,7 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::TensorBufferTag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::U8: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -177,8 +176,7 @@ namespace rerun {
                             union_instance._data.u8.data(),
                             static_cast<int64_t>(union_instance._data.u8.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::U16: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -189,8 +187,7 @@ namespace rerun {
                             union_instance._data.u16.data(),
                             static_cast<int64_t>(union_instance._data.u16.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::U32: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -201,8 +198,7 @@ namespace rerun {
                             union_instance._data.u32.data(),
                             static_cast<int64_t>(union_instance._data.u32.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::U64: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -213,8 +209,7 @@ namespace rerun {
                             union_instance._data.u64.data(),
                             static_cast<int64_t>(union_instance._data.u64.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::I8: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -225,8 +220,7 @@ namespace rerun {
                             union_instance._data.i8.data(),
                             static_cast<int64_t>(union_instance._data.i8.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::I16: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -237,8 +231,7 @@ namespace rerun {
                             union_instance._data.i16.data(),
                             static_cast<int64_t>(union_instance._data.i16.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::I32: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -249,8 +242,7 @@ namespace rerun {
                             union_instance._data.i32.data(),
                             static_cast<int64_t>(union_instance._data.i32.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::I64: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -261,8 +253,7 @@ namespace rerun {
                             union_instance._data.i64.data(),
                             static_cast<int64_t>(union_instance._data.i64.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::F16: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -274,8 +265,7 @@ namespace rerun {
                             reinterpret_cast<const uint16_t*>(values),
                             static_cast<int64_t>(union_instance._data.f16.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::F32: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -286,8 +276,7 @@ namespace rerun {
                             union_instance._data.f32.data(),
                             static_cast<int64_t>(union_instance._data.f32.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::F64: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -298,8 +287,7 @@ namespace rerun {
                             union_instance._data.f64.data(),
                             static_cast<int64_t>(union_instance._data.f64.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::JPEG: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -310,8 +298,7 @@ namespace rerun {
                             union_instance._data.jpeg.data(),
                             static_cast<int64_t>(union_instance._data.jpeg.size())
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::NV12: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -322,8 +309,7 @@ namespace rerun {
                             union_instance._data.nv12.data(),
                             static_cast<int64_t>(union_instance._data.nv12.size())
                         ));
-                        break;
-                    }
+                    } break;
                 }
             }
 

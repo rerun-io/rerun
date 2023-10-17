@@ -66,17 +66,16 @@ namespace rerun {
                     case detail::AffixFuzzer3Tag::craziness: {
                         typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
                         new (&_data.craziness) TypeAlias(other._data.craziness);
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer3Tag::degrees:
                     case detail::AffixFuzzer3Tag::radians:
-                    case detail::AffixFuzzer3Tag::fixed_size_shenanigans:
+                    case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
                         const void* otherbytes = reinterpret_cast<const void*>(&other._data);
                         void* thisbytes = reinterpret_cast<void*>(&this->_data);
                         std::memcpy(thisbytes, otherbytes, sizeof(detail::AffixFuzzer3Data));
-                        break;
-                    case detail::AffixFuzzer3Tag::NONE:
-                        break;
+                    } break;
+                    case detail::AffixFuzzer3Tag::NONE: {
+                    } break;
                 }
             }
 
@@ -98,22 +97,21 @@ namespace rerun {
             ~AffixFuzzer3() {
                 switch (this->_tag) {
                     case detail::AffixFuzzer3Tag::NONE: {
-                        break; // Nothing to destroy
-                    }
+                        // Nothing to destroy
+                    } break;
                     case detail::AffixFuzzer3Tag::degrees: {
-                        break; // has a trivial destructor
-                    }
+                        // has a trivial destructor
+                    } break;
                     case detail::AffixFuzzer3Tag::radians: {
-                        break; // has a trivial destructor
-                    }
+                        // has a trivial destructor
+                    } break;
                     case detail::AffixFuzzer3Tag::craziness: {
                         typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
                         _data.craziness.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
-                        break; // has a trivial destructor
-                    }
+                        // has a trivial destructor
+                    } break;
                 }
             }
 

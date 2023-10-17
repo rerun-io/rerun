@@ -60,20 +60,17 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::AngleTag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::AngleTag::Radians: {
                         auto variant_builder =
                             static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
                         ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.radians));
-                        break;
-                    }
+                    } break;
                     case detail::AngleTag::Degrees: {
                         auto variant_builder =
                             static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
                         ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.degrees));
-                        break;
-                    }
+                    } break;
                 }
             }
 

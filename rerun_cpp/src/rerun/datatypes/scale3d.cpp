@@ -62,8 +62,7 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::Scale3DTag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::Scale3DTag::ThreeD: {
                         auto variant_builder =
                             static_cast<arrow::FixedSizeListBuilder*>(variant_builder_untyped);
@@ -72,14 +71,12 @@ namespace rerun {
                             &union_instance._data.three_d,
                             1
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::Scale3DTag::Uniform: {
                         auto variant_builder =
                             static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
                         ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.uniform));
-                        break;
-                    }
+                    } break;
                 }
             }
 

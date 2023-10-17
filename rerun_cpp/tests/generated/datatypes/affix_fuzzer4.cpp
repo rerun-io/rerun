@@ -90,8 +90,7 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::AffixFuzzer4Tag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer4Tag::single_required: {
                         auto variant_builder =
                             static_cast<arrow::DenseUnionBuilder*>(variant_builder_untyped);
@@ -100,8 +99,7 @@ namespace rerun {
                             &union_instance._data.single_required,
                             1
                         ));
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer4Tag::many_required: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -110,8 +108,7 @@ namespace rerun {
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer4::many_required: objects (Object(\"rerun.testing.datatypes.AffixFuzzer3\")) in unions not yet implemented"
                         );
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer4Tag::many_optional: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -120,8 +117,7 @@ namespace rerun {
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer4::many_optional: nullable list types in unions not yet implemented"
                         );
-                        break;
-                    }
+                    } break;
                 }
             }
 

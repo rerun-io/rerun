@@ -75,8 +75,7 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::Transform3DTag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::Transform3DTag::TranslationAndMat3x3: {
                         auto variant_builder =
                             static_cast<arrow::StructBuilder*>(variant_builder_untyped);
@@ -87,8 +86,7 @@ namespace rerun {
                                 1
                             )
                         );
-                        break;
-                    }
+                    } break;
                     case detail::Transform3DTag::TranslationRotationScale: {
                         auto variant_builder =
                             static_cast<arrow::StructBuilder*>(variant_builder_untyped);
@@ -99,8 +97,7 @@ namespace rerun {
                                 1
                             )
                         );
-                        break;
-                    }
+                    } break;
                 }
             }
 

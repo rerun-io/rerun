@@ -85,14 +85,12 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::AffixFuzzer3Tag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer3Tag::degrees: {
                         auto variant_builder =
                             static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
                         ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.degrees));
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer3Tag::radians: {
                         auto variant_builder =
                             static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
@@ -102,8 +100,7 @@ namespace rerun {
                         } else {
                             ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
                         }
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer3Tag::craziness: {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
@@ -112,8 +109,7 @@ namespace rerun {
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer3::craziness: objects (Object(\"rerun.testing.datatypes.AffixFuzzer1\")) in unions not yet implemented"
                         );
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
                         auto variant_builder =
                             static_cast<arrow::FixedSizeListBuilder*>(variant_builder_untyped);
@@ -122,8 +118,7 @@ namespace rerun {
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer3::fixed_size_shenanigans: FixedSizeListBuilder in unions not yet implemented"
                         );
-                        break;
-                    }
+                    } break;
                 }
             }
 

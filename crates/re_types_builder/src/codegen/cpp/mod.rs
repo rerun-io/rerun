@@ -813,8 +813,9 @@ impl QuotedObject {
                 let comment = quote_comment("Nothing to destroy");
                 quote! {
                     case detail::#tag_typename::NONE: {
-                        break; #comment
-                    }
+                        #NEWLINE_TOKEN
+                        #comment
+                    } break;
                 }
             })
             .chain(obj.fields.iter().map(|obj_field| {
@@ -825,8 +826,9 @@ impl QuotedObject {
                     let comment = quote_comment("has a trivial destructor");
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
-                            break; #comment
-                        }
+                            #NEWLINE_TOKEN
+                            #comment
+                        } break;
                     }
                 } else if let Type::Array { elem_type, length } = &obj_field.typ {
                     // We need special casing for destroying arrays in C++:
@@ -838,8 +840,7 @@ impl QuotedObject {
                             for (size_t i = #length; i > 0; i -= 1) {
                                 _data.#field_ident[i-1].~TypeAlias();
                             }
-                            break;
-                        }
+                        } break;
                     }
                 } else {
                     let typedef_declaration =
@@ -849,8 +850,7 @@ impl QuotedObject {
                         case detail::#tag_typename::#tag_ident: {
                             typedef #typedef_declaration;
                             _data.#field_ident.~TypeAlias();
-                            break;
-                        }
+                        } break;
                     }
                 }
             }))
@@ -889,8 +889,7 @@ impl QuotedObject {
                         #case {
                             typedef #typedef_declaration;
                             new (&_data.#field_ident) TypeAlias(other._data.#field_ident);
-                            break;
-                        }
+                        } break;
                     });
                 }
             }
@@ -921,8 +920,9 @@ impl QuotedObject {
                         switch (other._tag) {
                             #(#placement_new_arms)*
 
-                            case detail::#tag_typename::NONE:
-                                break; // there is nothing to copy
+                            case detail::#tag_typename::NONE: {
+                                // there is nothing to copy
+                            } break;
                         }
                     }
                 }
@@ -935,12 +935,13 @@ impl QuotedObject {
                         switch (other._tag) {
                             #(#placement_new_arms)*
 
-                            #(#trivial_memcpy_cases)*
+                            #(#trivial_memcpy_cases)* {
                                 #trivial_memcpy
-                                break;
+                            } break;
 
-                            case detail::#tag_typename::NONE:
-                                break; // there is nothing to copy
+                            case detail::#tag_typename::NONE: {
+                                // there is nothing to copy
+                            } break;
                         }
                     }
                 }
@@ -1537,8 +1538,7 @@ fn quote_fill_arrow_array_builder(
                         case detail::#tag_name::#variant_name: {
                             auto #variant_builder = static_cast<arrow::#arrow_builder_type*>(variant_builder_untyped);
                             #variant_append
-                            break;
-                        }
+                        } break;
                     }
                 });
 
@@ -1557,8 +1557,7 @@ fn quote_fill_arrow_array_builder(
                         switch (union_instance._tag) {
                             case detail::#tag_name::NONE: {
                                 ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                                break;
-                            }
+                            } break;
                             #(#tag_cases)*
                         }
                     }
