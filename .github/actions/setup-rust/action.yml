@@ -26,6 +26,9 @@ inputs:
   service_account:
     type: string
     required: true
+  targets:
+    type: string
+    required: false
 
 runs:
   using: "composite"
@@ -42,6 +45,11 @@ runs:
         # and the components/targets specified in our `rust-toolchain` file.
         # It might break at some point: https://github.com/rust-lang/rustup/issues/1397
         rustup show
+      shell: bash
+
+    - name: Install additional targets
+      if: ${{ inputs.targets != '' }}
+      run: rustup target add ${{ inputs.targets }}
       shell: bash
 
     # Rust-cache will cache our dependencies, which is a large chunk of the build
