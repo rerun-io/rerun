@@ -24,7 +24,6 @@ opt_out_run = {
     "annotation_context_segmentation": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "any_values": ["cpp", "rust"], # Not yet implemented
     "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "bar_chart": ["cpp"], # TODO(#2919): Serializing tensors not yet implemented in C++
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "depth_image_3d": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "depth_image_simple": ["cpp"],  # TODO(#2919): Not yet implemented in C++
