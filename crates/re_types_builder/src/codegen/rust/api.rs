@@ -101,7 +101,10 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let code = generate_object_file(reporter, objects, arrow_registry, obj);
+            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
+            if crate_name == "re_types_core" {
+                code = code.replace("::re_types_core", "crate");
+            }
 
             all_modules.insert((
                 crate_name,

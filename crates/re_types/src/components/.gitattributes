@@ -11,7 +11,6 @@ disconnected_space.rs linguist-generated=true
 draw_order.rs linguist-generated=true
 half_sizes2d.rs linguist-generated=true
 half_sizes3d.rs linguist-generated=true
-instance_key.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true
 line_strip2d.rs linguist-generated=true
 line_strip3d.rs linguist-generated=true

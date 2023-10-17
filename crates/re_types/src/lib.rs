@@ -199,7 +199,20 @@ pub mod archetypes;
 /// They all implement the [`Component`] trait.
 ///
 /// Each component is a wrapper around a [`datatype`][datatypes].
-pub mod components;
+pub mod components {
+
+    // Some components (e.g. `InstanceKey`) are so fundamental and used everywhere that we want
+    // them to be exposed by `re_types_core` directly; that way we don't force a dependency on the
+    // `re_types` behemoth just so one can use one of these fundamental types.
+    //
+    // To do so, re-inject `re_types_core`'s components into our own module.
+
+    #[path = "../components/mod.rs"]
+    mod _components;
+
+    pub use self::_components::*;
+    pub use re_types_core::components::*;
+}
 
 /// The low-level datatypes that [`components`] are built from.
 ///
