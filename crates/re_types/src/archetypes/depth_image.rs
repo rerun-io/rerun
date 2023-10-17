@@ -23,7 +23,6 @@
 ///
 /// ### Depth to 3D example
 /// ```ignore
-/// //! Create and log a depth image.
 /// use ndarray::{s, Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

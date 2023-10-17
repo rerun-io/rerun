@@ -28,8 +28,6 @@ namespace rerun {
         ///
         /// ### Randomly distributed 3D points with varying color and radius
         /// ```cpp,ignore
-        /// // Log some random points with color and radii.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm>

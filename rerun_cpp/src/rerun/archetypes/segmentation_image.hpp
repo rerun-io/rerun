@@ -7,6 +7,7 @@
 #include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
+#include "../error.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -39,11 +40,17 @@ namespace rerun {
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
+            // Extensions to generated type defined in 'segmentation_image_ext.cpp'
+
+            /// New segmentation image from tensor data.
+            ///
+            /// Sets dimensions to width/height if they are not specified.
+            /// Calls Error::handle() if the shape is not rank 2.
+            explicit SegmentationImage(rerun::components::TensorData _data);
+
+          public:
             SegmentationImage() = default;
             SegmentationImage(SegmentationImage&& other) = default;
-
-            explicit SegmentationImage(rerun::components::TensorData _data)
-                : data(std::move(_data)) {}
 
             /// An optional floating point value that specifies the 2D drawing order.
             ///

@@ -22,8 +22,6 @@
 ///
 /// ### Simple bar chart
 /// ```ignore
-/// //! Create and log a bar chart
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_bar_chart").memory()?;
 ///

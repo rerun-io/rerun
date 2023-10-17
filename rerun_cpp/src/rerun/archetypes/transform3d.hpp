@@ -21,8 +21,6 @@ namespace rerun {
         ///
         /// ### Variety of 3D transforms
         /// ```cpp,ignore
-        /// // Log some transforms.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>

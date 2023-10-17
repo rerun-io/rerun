@@ -20,8 +20,6 @@
 ///
 /// ### Simple Tensor
 /// ```ignore
-/// //! Create and log a tensor.
-///
 /// use ndarray::{Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -20,8 +20,6 @@
 ///
 /// ### Randomly distributed 3D points with varying color and radius
 /// ```ignore
-/// //! Log some random points with color and radii.
-///
 /// use rand::{distributions::Uniform, Rng as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

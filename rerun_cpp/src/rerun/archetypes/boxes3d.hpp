@@ -29,8 +29,6 @@ namespace rerun {
         ///
         /// ### Batch of 3D boxes
         /// ```cpp,ignore
-        /// // Log a batch of oriented bounding boxes.
-        ///
         /// #include <rerun.hpp>
         ///
         /// int main() {

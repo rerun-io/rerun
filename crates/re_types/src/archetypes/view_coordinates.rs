@@ -27,8 +27,6 @@
 ///
 /// ### View coordinates for adjusting the eye camera
 /// ```ignore
-/// //! Change the view coordinates for the scene.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_view_coordinates").memory()?;

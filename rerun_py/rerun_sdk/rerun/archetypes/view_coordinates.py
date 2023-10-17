@@ -33,7 +33,6 @@ class ViewCoordinates(ViewCoordinatesExt, Archetype):
     -------
     ### View coordinates for adjusting the eye camera:
     ```python
-
     import rerun as rr
 
     rr.init("rerun_example_view_coordinates", spawn=True)

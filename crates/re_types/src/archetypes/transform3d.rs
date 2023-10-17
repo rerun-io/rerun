@@ -20,8 +20,6 @@
 ///
 /// ### Variety of 3D transforms
 /// ```ignore
-/// //! Log some transforms.
-///
 /// use std::f32::consts::TAU;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -28,8 +28,6 @@
 ///
 /// ### Segmentation
 /// ```ignore
-/// //! Log a segmentation image with annotations.
-///
 /// use ndarray::{s, Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

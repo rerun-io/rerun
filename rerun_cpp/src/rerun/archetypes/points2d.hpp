@@ -29,8 +29,6 @@ namespace rerun {
         ///
         /// ### Randomly distributed 2D points with varying color and radius
         /// ```cpp,ignore
-        /// // Log some very simple points.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm>

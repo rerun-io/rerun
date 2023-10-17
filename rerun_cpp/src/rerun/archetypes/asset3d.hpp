@@ -28,8 +28,6 @@ namespace rerun {
         ///
         /// ### Simple 3D asset
         /// ```cpp,ignore
-        /// // Log a batch of 3D arrows.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <filesystem>

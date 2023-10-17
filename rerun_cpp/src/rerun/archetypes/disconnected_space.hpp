@@ -26,8 +26,6 @@ namespace rerun {
         ///
         /// ### Disconnected Space
         /// ```cpp,ignore
-        /// // Disconnect two spaces.
-        ///
         /// #include <rerun.hpp>
         ///
         /// int main() {

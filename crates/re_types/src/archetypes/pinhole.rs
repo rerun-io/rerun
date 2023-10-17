@@ -20,8 +20,6 @@
 ///
 /// ### Simple Pinhole Camera
 /// ```ignore
-/// //! Log a pinhole and a random image.
-///
 /// use ndarray::{Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

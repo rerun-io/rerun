@@ -21,8 +21,6 @@ namespace rerun {
         ///
         /// ### Flat
         /// ```cpp,ignore
-        /// // Log a batch of 3D arrows.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>

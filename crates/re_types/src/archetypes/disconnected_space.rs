@@ -25,8 +25,6 @@
 ///
 /// ### Disconnected Space
 /// ```ignore
-/// //! Disconnect two spaces.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").memory()?;

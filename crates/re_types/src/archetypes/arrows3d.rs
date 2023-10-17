@@ -20,8 +20,6 @@
 ///
 /// ### Simple batch of 3D Arrows
 /// ```ignore
-/// //! Log a batch of 3D arrows.
-///
 /// use std::f32::consts::TAU;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {

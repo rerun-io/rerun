@@ -24,8 +24,6 @@ namespace rerun {
         ///
         /// ### Simple Pinhole Camera
         /// ```cpp,ignore
-        /// // Log a pinhole and a random image.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm>

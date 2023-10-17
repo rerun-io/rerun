@@ -28,8 +28,6 @@ namespace rerun {
         ///
         /// ### `line_strip2d_batch`:
         /// ```cpp,ignore
-        /// // Log a batch of 2d line strips.
-        ///
         /// #include <rerun.hpp>
         ///
         /// int main() {

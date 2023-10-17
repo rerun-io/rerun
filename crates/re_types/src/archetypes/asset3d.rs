@@ -22,8 +22,6 @@
 ///
 /// ### Simple 3D asset
 /// ```ignore
-/// //! Log a simple 3D asset.
-///
 /// use rerun::external::anyhow;
 ///
 /// fn main() -> anyhow::Result<()> {

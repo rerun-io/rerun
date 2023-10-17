@@ -29,8 +29,6 @@ namespace rerun {
         ///
         /// ### Simple 2D boxes
         /// ```cpp,ignore
-        /// // Log some simple 2D boxes.
-        ///
         /// #include <rerun.hpp>
         ///
         /// int main() {
