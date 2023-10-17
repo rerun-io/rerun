@@ -542,10 +542,26 @@ pub fn generate_docs(
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
+
     re_log::info!("Generating docs to {}", output_docs_dir.as_ref());
+
+    // 1. Generate code files.
     let mut gen = DocsCodeGenerator::new(output_docs_dir.as_ref());
-    let filepaths = gen.generate(reporter, objects, arrow_registry);
-    generate_gitattributes_for_generated_files(&output_docs_dir, filepaths.into_iter());
+    let mut files = gen.generate(reporter, objects, arrow_registry);
+    // 2. Generate attribute files.
+    generate_gitattributes_for_generated_files(&mut files);
+    // 3. Write all files.
+    {
+        use rayon::prelude::*;
+
+        re_tracing::profile_scope!("write_files");
+
+        files.par_iter().for_each(|(filepath, contents)| {
+            crate::codegen::common::write_file(filepath, contents);
+        });
+    }
+    // 4. Remove orphaned files.
+    crate::codegen::common::remove_orphaned_files(reporter, &files);
 }
 
 pub(crate) fn rerun_workspace_path() -> camino::Utf8PathBuf {
