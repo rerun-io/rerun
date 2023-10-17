@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
-    // Log the initial state of our triangle
+    // Log the initial state of our triangle:
     rec.set_time_sequence("frame", 0);
     rec.log(
         "triangle",

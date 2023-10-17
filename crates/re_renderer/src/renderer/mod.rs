@@ -21,8 +21,8 @@ pub use test_triangle::TestTriangleDrawData;
 
 mod rectangles;
 pub use rectangles::{
-    ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, TextureFilterMag,
-    TextureFilterMin, TexturedRect,
+    ColorMapper, ColormappedTexture, RectangleDrawData, RectangleOptions, ShaderDecoding,
+    TextureFilterMag, TextureFilterMin, TexturedRect,
 };
 
 mod mesh_renderer;

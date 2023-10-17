@@ -192,6 +192,14 @@ impl StoreHub {
         }
     }
 
+    /// Insert a new recording into the [`StoreHub`].
+    ///
+    /// Note that the recording is not automatically made active. Use [`StoreHub::set_recording_id`]
+    /// if needed.
+    pub fn insert_recording(&mut self, store_db: StoreDb) {
+        self.store_dbs.insert_recording(store_db);
+    }
+
     /// Mutable access to a [`StoreDb`] by id
     pub fn store_db_mut(&mut self, store_id: &StoreId) -> &mut StoreDb {
         self.store_dbs.store_db_entry(store_id)

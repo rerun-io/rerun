@@ -1,12 +1,14 @@
 use super::{large_text_button, status_strings, url_large_text_button, WelcomeScreenResponse};
 use egui::{NumExt, Ui};
-use re_log_types::LogMsg;
+use itertools::Itertools;
+use re_data_store::StoreDb;
+use re_log_types::{
+    DataRow, EntityPath, LogMsg, RowId, StoreId, StoreInfo, StoreKind, StoreSource, Time, TimePoint,
+};
 use re_smart_channel::ReceiveSet;
 use re_ui::UICommandSender;
+use re_viewer_context::{SystemCommand, SystemCommandSender};
 
-//const CPP_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/cpp";
-const PYTHON_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/python";
-const RUST_QUICKSTART: &str = "https://www.rerun.io/docs/getting-started/rust";
 const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
 /// Show the welcome page.
@@ -58,10 +60,50 @@ fn onboarding_content_ui(
                 Visualize synchronized data from multiple processes, locally or over a network.",
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
-                // TODO(ab): activate when C++ is ready!
-                // url_large_text_button(ui, "C++", CPP_QUICKSTART);
-                url_large_text_button(ui, "Python", PYTHON_QUICKSTART);
-                url_large_text_button(ui, "Rust", RUST_QUICKSTART);
+                //TODO(#3870): enable with C++ guides are completed
+                #[allow(clippy::collapsible_if)]
+                if false {
+                    if large_text_button(ui, "C++").clicked() {
+                        open_quick_start(
+                            command_sender,
+                            [
+                                include_str!("../../../data/quick_start_guides/cpp_native.md"),
+                                include_str!(
+                                    "../../../data/quick_start_guides/how_does_it_work.md"
+                                ),
+                            ],
+                            include_str!(
+                                "../../../data/quick_start_guides/quick_start_connect.cpp"
+                            ),
+                            "C++ Quick Start",
+                            "cpp_quick_start",
+                        );
+                    }
+                }
+                if large_text_button(ui, "Python").clicked() {
+                    open_quick_start(
+                        command_sender,
+                        [
+                            include_str!("../../../data/quick_start_guides/python_native.md"),
+                            include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
+                        ],
+                        include_str!("../../../data/quick_start_guides/quick_start_connect.py"),
+                        "Python Quick Start",
+                        "python_quick_start",
+                    );
+                }
+                if large_text_button(ui, "Rust").clicked() {
+                    open_quick_start(
+                        command_sender,
+                        [
+                            include_str!("../../../data/quick_start_guides/rust_native.md"),
+                            include_str!("../../../data/quick_start_guides/how_does_it_work.md"),
+                        ],
+                        include_str!("../../../data/quick_start_guides/quick_start_connect.rs"),
+                        "Rust Quick Start",
+                        "rust_quick_start",
+                    );
+                }
 
                 false
             }),
@@ -102,7 +144,7 @@ fn onboarding_content_ui(
         },
     ];
 
-    // Shrink images if needed so user can see all of the content buttons
+    // Shrink images if needed so user can see all the content buttons
     let max_image_height = ui.available_height() - 300.0;
 
     let centering_vspace = (ui.available_height() - 650.0) / 2.0;
@@ -230,4 +272,55 @@ fn image_banner(ui: &mut egui::Ui, icon: &re_ui::Icon, column_width: f32, max_im
                 .rounding(egui::Rounding::same(8.)),
         );
     });
+}
+
+/// Open a Quick Start recording
+///
+/// The `parts` are joined with newlines to form the markdown, and the spacial tag
+/// `"${EXAMPLE_CODE}"` is replaced with the content of th `example_code` variable.
+fn open_quick_start<'a>(
+    command_sender: &re_viewer_context::CommandSender,
+    parts: impl IntoIterator<Item = &'a str>,
+    example_code: &str,
+    app_id: &str,
+    entity_path: &str,
+) {
+    let mut markdown = parts.into_iter().join("\n");
+    markdown = markdown.replace("${EXAMPLE_CODE}", example_code);
+
+    let res = open_markdown_recording(command_sender, markdown.as_str(), app_id, entity_path);
+    if let Err(err) = res {
+        re_log::error!("Failed to load quick start: {}", err);
+    }
+}
+
+fn open_markdown_recording(
+    command_sender: &re_viewer_context::CommandSender,
+    markdown: &str,
+    app_id: &str,
+    entity_path: &str,
+) -> anyhow::Result<()> {
+    let text_doc = re_types::archetypes::TextDocument::new(markdown)
+        .with_media_type(re_types::components::MediaType::markdown());
+
+    let row = DataRow::from_archetype(
+        RowId::random(),
+        TimePoint::timeless(),
+        EntityPath::from(entity_path),
+        &text_doc,
+    )?;
+
+    let store_info = StoreInfo {
+        application_id: app_id.into(),
+        store_id: StoreId::random(StoreKind::Recording),
+        is_official_example: true,
+        started: Time::now(),
+        store_source: StoreSource::Viewer,
+        store_kind: StoreKind::Recording,
+    };
+
+    let store_db = StoreDb::from_info_and_rows(store_info, [row])?;
+    command_sender.send_system(SystemCommand::LoadStoreDb(store_db));
+
+    Ok(())
 }

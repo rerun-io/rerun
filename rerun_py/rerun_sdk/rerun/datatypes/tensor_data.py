@@ -155,6 +155,12 @@ class TensorDataType(BaseExtensionType):
                                     nullable=False,
                                     metadata={},
                                 ),
+                                pa.field(
+                                    "NV12",
+                                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
+                                    nullable=False,
+                                    metadata={},
+                                ),
                             ]
                         ),
                         nullable=False,

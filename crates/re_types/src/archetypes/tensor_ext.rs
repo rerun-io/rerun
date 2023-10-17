@@ -1,7 +1,6 @@
-use crate::{
-    datatypes::{TensorData, TensorDimension},
-    ArrowString,
-};
+use crate::datatypes::{TensorData, TensorDimension};
+
+use re_types_core::ArrowString;
 
 use super::Tensor;
 

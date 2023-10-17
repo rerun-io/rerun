@@ -161,6 +161,14 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
                     stream.log("as-carray", c_style_array);
                     stream.log_timeless("as-carray", c_style_array);
                 }
+                THEN("components as std::initializer_list can be logged") {
+                    const auto c_style_array = {
+                        rerun::components::Position2D{1.0, 2.0},
+                        rerun::components::Position2D{4.0, 5.0},
+                    };
+                    stream.log("as-initializer-list", c_style_array);
+                    stream.log_timeless("as-initializer-list", c_style_array);
+                }
                 THEN("components as std::array can be logged") {
                     stream.log(
                         "as-array",

@@ -1,5 +1,5 @@
 use re_format::{format_bytes, format_number};
-use re_log_types::SizeBytes as _;
+use re_types_core::SizeBytes as _;
 
 use crate::{DataStore, IndexedBucket, IndexedTable, PersistentIndexedTable};
 

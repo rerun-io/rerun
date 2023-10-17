@@ -11,7 +11,7 @@ fn bench_tuid(c: &mut Criterion) {
 #[cfg(feature = "arrow")]
 fn bench_arrow(c: &mut Criterion) {
     use arrow2::array::Array;
-    use re_types::Loggable as _;
+    use re_types_core::Loggable as _;
 
     for elem_count in [1, 1000] {
         {

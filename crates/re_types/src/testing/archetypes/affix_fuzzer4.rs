@@ -36,13 +36,13 @@ pub struct AffixFuzzer4 {
     pub fuzz2118: Option<Vec<crate::testing::components::AffixFuzzer18>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.testing.components.AffixFuzzer4Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 19usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 19usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.InstanceKey".into(),
@@ -67,7 +67,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 19usize
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 20usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 20usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer4Indicator".into(),
@@ -97,40 +97,40 @@ impl AffixFuzzer4 {
     pub const NUM_COMPONENTS: usize = 20usize;
 }
 
-/// Indicator component for the [`AffixFuzzer4`] [`crate::Archetype`]
-pub type AffixFuzzer4Indicator = crate::GenericIndicatorComponent<AffixFuzzer4>;
+/// Indicator component for the [`AffixFuzzer4`] [`::re_types_core::Archetype`]
+pub type AffixFuzzer4Indicator = ::re_types_core::GenericIndicatorComponent<AffixFuzzer4>;
 
-impl crate::Archetype for AffixFuzzer4 {
+impl ::re_types_core::Archetype for AffixFuzzer4 {
     type Indicator = AffixFuzzer4Indicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.testing.archetypes.AffixFuzzer4".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
         static INDICATOR: AffixFuzzer4Indicator = AffixFuzzer4Indicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -139,9 +139,9 @@ impl crate::Archetype for AffixFuzzer4 {
         arrow_data: impl IntoIterator<
             Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
         >,
-    ) -> crate::DeserializationResult<Self> {
+    ) -> ::re_types_core::DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -152,8 +152,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer1>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2101")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2101")?
                 })
             } else {
@@ -165,8 +165,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer2>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2102")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2102")?
                 })
             } else {
@@ -178,8 +178,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer3>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2103")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2103")?
                 })
             } else {
@@ -191,8 +191,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer4>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2104")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2104")?
                 })
             } else {
@@ -204,8 +204,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer5>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2105")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2105")?
                 })
             } else {
@@ -217,8 +217,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer6>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2106")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2106")?
                 })
             } else {
@@ -230,8 +230,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer7>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2107")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2107")?
                 })
             } else {
@@ -243,8 +243,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer8>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2108")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2108")?
                 })
             } else {
@@ -256,8 +256,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer9>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2109")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2109")?
                 })
             } else {
@@ -269,8 +269,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer10>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2110")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2110")?
                 })
             } else {
@@ -282,8 +282,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer11>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2111")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2111")?
                 })
             } else {
@@ -295,8 +295,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer12>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2112")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2112")?
                 })
             } else {
@@ -308,8 +308,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer13>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2113")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2113")?
                 })
             } else {
@@ -321,8 +321,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer14>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2114")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2114")?
                 })
             } else {
@@ -334,8 +334,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer15>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2115")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2115")?
                 })
             } else {
@@ -347,8 +347,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer16>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2116")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2116")?
                 })
             } else {
@@ -360,8 +360,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer17>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2117")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2117")?
                 })
             } else {
@@ -373,8 +373,8 @@ impl crate::Archetype for AffixFuzzer4 {
                     <crate::testing::components::AffixFuzzer18>::from_arrow_opt(&**array)
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2118")?
                         .into_iter()
-                        .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                        .collect::<crate::DeserializationResult<Vec<_>>>()
+                        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+                        .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
                         .with_context("rerun.testing.archetypes.AffixFuzzer4#fuzz2118")?
                 })
             } else {
@@ -403,66 +403,66 @@ impl crate::Archetype for AffixFuzzer4 {
     }
 }
 
-impl crate::AsComponents for AffixFuzzer4 {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for AffixFuzzer4 {
+    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
             self.fuzz2101
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2102
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2103
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2104
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2105
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2106
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2107
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2108
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2109
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2110
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2111
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2112
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2113
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2114
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2115
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2116
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2117
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
             self.fuzz2118
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

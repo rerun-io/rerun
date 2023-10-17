@@ -22,10 +22,8 @@ from os.path import isfile, join
 opt_out_run = {
     "annotation_context_connections": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "annotation_context_segmentation": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "annotation_context_rects": [],
     "any_values": ["cpp", "rust"], # Not yet implemented
     "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "asset3d_simple": [],
     "bar_chart": ["cpp"], # TODO(#2919): Serializing tensors not yet implemented in C++
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "depth_image_3d": ["cpp"], # TODO(#2919): Not yet implemented in C++
@@ -34,14 +32,12 @@ opt_out_run = {
     "image_advanced": ["cpp", "rust"], # Missing examples
     "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
-    "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
     "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
+    "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "scalar_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "tensor_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "view_coordinates_simple": [],
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
@@ -52,13 +48,14 @@ opt_out_run = {
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 opt_out_compare = {
-    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "asset3d_out_of_tree": ["py", "rust"], # # float precision issues
-    "mesh3d_partial_updates": ["py", "rust"], # float precision issues
-    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "mesh3d_partial_updates": ["cpp", "py", "rust"], # float precision issues
+    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "quick_start_connect":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
+    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }
 

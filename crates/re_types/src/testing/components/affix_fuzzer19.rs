@@ -53,8 +53,8 @@ impl<'a> From<&'a AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
     }
 }
 
-impl crate::Loggable for AffixFuzzer19 {
-    type Name = crate::ComponentName;
+impl ::re_types_core::Loggable for AffixFuzzer19 {
+    type Name = ::re_types_core::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -76,13 +76,13 @@ impl crate::Loggable for AffixFuzzer19 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -109,20 +109,20 @@ impl crate::Loggable for AffixFuzzer19 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
         use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok(
             crate::testing::datatypes::AffixFuzzer5::from_arrow_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady")?
                 .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+                .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
                 .map(|res| res.map(|v| Some(Self(v))))
-                .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
                 .with_context("rerun.testing.components.AffixFuzzer19#just_a_table_nothing_shady")
                 .with_context("rerun.testing.components.AffixFuzzer19")?,
         )

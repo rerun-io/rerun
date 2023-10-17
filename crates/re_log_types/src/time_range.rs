@@ -1,6 +1,6 @@
 use std::ops::RangeInclusive;
 
-use crate::{SizeBytes, TimeInt, TimeReal};
+use crate::{TimeInt, TimeReal};
 
 // ----------------------------------------------------------------------------
 
@@ -68,7 +68,7 @@ impl TimeRange {
     }
 }
 
-impl SizeBytes for TimeRange {
+impl re_types_core::SizeBytes for TimeRange {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         0

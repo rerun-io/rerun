@@ -1,6 +1,6 @@
 use re_log_types::{DataCell, DataRow, EntityPath, RowId, TimePoint, Timeline};
 
-use re_types::{Component, ComponentName};
+use re_types_core::{Component, ComponentName};
 
 use crate::{DataStore, LatestAtQuery};
 
@@ -35,7 +35,7 @@ impl<C: Component> std::ops::Deref for VersionedComponent<C> {
 }
 
 impl DataStore {
-    /// Get the latest value for a given [`re_types::Component`] and the associated [`RowId`].
+    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`].
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -110,7 +110,7 @@ impl DataStore {
         None
     }
 
-    /// Get the latest value for a given [`re_types::Component`] and the associated [`RowId`], assuming it is timeless.
+    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`], assuming it is timeless.
     ///
     /// This assumes that the row we get from the store only contains a single instance for this
     /// component; it will log a warning otherwise.
@@ -132,7 +132,7 @@ impl DataStore {
 // --- Write ---
 
 impl DataStore {
-    /// Stores a single value for a given [`re_types::Component`].
+    /// Stores a single value for a given [`re_types_core::Component`].
     ///
     /// This is a best-effort helper, it will merely log errors on failure.
     pub fn insert_component<'a, C>(
@@ -172,7 +172,7 @@ impl DataStore {
         }
     }
 
-    /// Stores a single empty value for a given [`re_log_types::ComponentName`].
+    /// Stores a single empty value for a given [`re_types_core::ComponentName`].
     ///
     /// This is a best-effort helper, it will merely log errors on failure.
     pub fn insert_empty_component(

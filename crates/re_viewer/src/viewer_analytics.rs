@@ -181,6 +181,7 @@ impl ViewerAnalytics {
                     re_log_types::FileSource::DragAndDrop => "file_drag_and_drop".to_owned(),
                     re_log_types::FileSource::FileDialog => "file_dialog".to_owned(),
                 },
+                StoreSource::Viewer => "viewer".to_owned(),
                 StoreSource::Other(other) => other.clone(),
             };
 
@@ -210,7 +211,7 @@ impl ViewerAnalytics {
                     self.deregister("llvm_version"); // can't be both!
                 }
                 StoreSource::CSdk => {} // TODO(andreas): Send version and set it.
-                StoreSource::Unknown | StoreSource::Other(_) => {}
+                StoreSource::Unknown | StoreSource::Viewer | StoreSource::Other(_) => {}
             }
 
             self.register("store_source", store_source);
