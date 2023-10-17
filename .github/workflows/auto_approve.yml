@@ -1,0 +1,38 @@
+name: "Approve Workflow Runs"
+
+on:
+  pull_request_target:
+  issue_comment:
+    types: [created, edited]
+
+permissions:
+  actions: "write"
+
+jobs:
+  approve-workflow-runs:
+    name: "Check for approval"
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'pull_request' || github.event.issue.pull_request }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+
+      - name: Install dependencies
+        run: |
+          pip install PyGithub==1.59.0 requests>=2.31,<3
+
+      - name: Wait a few seconds
+        run: |
+          # Give GitHub a bit of time to synchronize everything
+          sleep 10s
+
+      - name: Approve workflow runs
+        run: |
+          python3 scripts/ci/approve_workflow_runs.py \
+            --github-token "${{ secrets.GITHUB_TOKEN }}" \
+            --github-repository "rerun-io/rerun"
+            --pr-number "${{ github.event.pull_request.number || github.event.issue.number }}"
+
