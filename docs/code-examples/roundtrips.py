@@ -33,6 +33,7 @@ opt_out_run = {
     "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
+    "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "tensor_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
@@ -53,6 +54,7 @@ opt_out_compare = {
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "quick_start_connect":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }

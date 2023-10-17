@@ -211,7 +211,7 @@ impl EntityDb {
 
 // ----------------------------------------------------------------------------
 
-/// A in-memory database built from a stream of [`LogMsg`]es.
+/// An in-memory database built from a stream of [`LogMsg`]es.
 ///
 /// NOTE: all mutation is to be done via public functions!
 pub struct StoreDb {
@@ -236,6 +236,27 @@ impl StoreDb {
             set_store_info: None,
             entity_db: Default::default(),
         }
+    }
+
+    /// Helper function to create a recording from a [`StoreInfo`] and a some [`DataRow`]s.
+    ///
+    /// This is useful to programmatically create recordings from within the viewer, which cannot
+    /// use the `re_sdk`, which is not Wasm-compatible.
+    pub fn from_info_and_rows(
+        store_info: StoreInfo,
+        rows: impl IntoIterator<Item = DataRow>,
+    ) -> Result<Self, Error> {
+        let mut store_db = StoreDb::new(store_info.store_id.clone());
+
+        store_db.set_store_info(SetStoreInfo {
+            row_id: RowId::random(),
+            info: store_info,
+        });
+        for row in rows {
+            store_db.add_data_row(&row)?;
+        }
+
+        Ok(store_db)
     }
 
     #[inline]

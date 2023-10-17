@@ -344,6 +344,9 @@ pub enum StoreSource {
         file_source: FileSource,
     },
 
+    /// Generated from the viewer itself.
+    Viewer,
+
     /// Perhaps from some manual data ingestion?
     Other(String),
 }
@@ -360,6 +363,7 @@ impl std::fmt::Display for StoreSource {
                 FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
                 FileSource::FileDialog => write!(f, "File via file dialog"),
             },
+            Self::Viewer => write!(f, "Viewer-generated"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }

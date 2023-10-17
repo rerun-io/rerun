@@ -349,6 +349,12 @@ impl App {
                 }
             }
 
+            SystemCommand::LoadStoreDb(store_db) => {
+                let store_id = store_db.store_id().clone();
+                store_hub.insert_recording(store_db);
+                store_hub.set_recording_id(store_id);
+            }
+
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 let blueprint_db = store_hub.store_db_mut(&blueprint_id);

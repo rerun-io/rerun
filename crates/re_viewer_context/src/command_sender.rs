@@ -1,4 +1,5 @@
 use re_data_source::DataSource;
+use re_data_store::StoreDb;
 use re_log_types::{DataRow, StoreId};
 use re_ui::{UICommand, UICommandSender};
 
@@ -9,6 +10,9 @@ use re_ui::{UICommand, UICommandSender};
 pub enum SystemCommand {
     /// Load some data.
     LoadDataSource(DataSource),
+
+    /// Load some log messages.
+    LoadStoreDb(StoreDb),
 
     /// Reset the `Viewer` to the default state
     ResetViewer,
