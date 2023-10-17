@@ -14,13 +14,13 @@ namespace rerun {
     namespace components {
         const char TensorData::NAME[] = "rerun.components.TensorData";
 
-        const std::shared_ptr<arrow::DataType> &TensorData::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& TensorData::arrow_datatype() {
             static const auto datatype = rerun::datatypes::TensorData::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> TensorData::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -30,7 +30,7 @@ namespace rerun {
         }
 
         Error TensorData::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const TensorData *elements, size_t num_elements
+            arrow::StructBuilder* builder, const TensorData* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -45,7 +45,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::TensorData) == sizeof(TensorData));
             RR_RETURN_NOT_OK(rerun::datatypes::TensorData::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::TensorData *>(elements),
+                reinterpret_cast<const rerun::datatypes::TensorData*>(elements),
                 num_elements
             ));
 
@@ -53,10 +53,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> TensorData::to_data_cell(
-            const TensorData *instances, size_t num_instances
+            const TensorData* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = TensorData::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);

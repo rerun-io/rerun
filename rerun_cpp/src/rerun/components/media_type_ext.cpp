@@ -12,7 +12,7 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
-            MediaType(const char *media_type) : value(media_type) {}
+            MediaType(const char* media_type) : value(media_type) {}
 
             // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can
             // declare these constants directly in there.

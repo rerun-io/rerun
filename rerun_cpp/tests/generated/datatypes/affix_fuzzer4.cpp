@@ -10,7 +10,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer4::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer4::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field(
@@ -41,7 +41,7 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::DenseUnionBuilder>> AffixFuzzer4::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -67,7 +67,7 @@ namespace rerun {
         }
 
         Error AffixFuzzer4::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder *builder, const AffixFuzzer4 *elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const AffixFuzzer4* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -81,7 +81,7 @@ namespace rerun {
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto &union_instance = elements[elem_idx];
+                const auto& union_instance = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
 
                 auto variant_index = static_cast<int>(union_instance._tag);
@@ -94,7 +94,7 @@ namespace rerun {
                     }
                     case detail::AffixFuzzer4Tag::single_required: {
                         auto variant_builder =
-                            static_cast<arrow::DenseUnionBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::DenseUnionBuilder*>(variant_builder_untyped);
                         RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
                             variant_builder,
                             &union_instance._data.single_required,
@@ -104,7 +104,7 @@ namespace rerun {
                     }
                     case detail::AffixFuzzer4Tag::many_required: {
                         auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
@@ -114,7 +114,7 @@ namespace rerun {
                     }
                     case detail::AffixFuzzer4Tag::many_optional: {
                         auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,

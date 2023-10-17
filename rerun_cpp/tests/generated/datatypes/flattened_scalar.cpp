@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &FlattenedScalar::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& FlattenedScalar::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("value", arrow::float32(), false),
             });
@@ -16,7 +16,7 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> FlattenedScalar::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -32,7 +32,7 @@ namespace rerun {
         }
 
         Error FlattenedScalar::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const FlattenedScalar *elements, size_t num_elements
+            arrow::StructBuilder* builder, const FlattenedScalar* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -45,7 +45,7 @@ namespace rerun {
             }
 
             {
-                auto field_builder = static_cast<arrow::FloatBuilder *>(builder->field_builder(0));
+                auto field_builder = static_cast<arrow::FloatBuilder*>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].value));

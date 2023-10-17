@@ -45,11 +45,11 @@ namespace rerun {
 
                 ~AffixFuzzer3Data() {}
 
-                void swap(AffixFuzzer3Data &other) noexcept {
+                void swap(AffixFuzzer3Data& other) noexcept {
                     // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(AffixFuzzer3Data)];
-                    void *otherbytes = reinterpret_cast<void *>(&other);
-                    void *thisbytes = reinterpret_cast<void *>(this);
+                    void* otherbytes = reinterpret_cast<void*>(&other);
+                    void* thisbytes = reinterpret_cast<void*>(this);
                     std::memcpy(temp, thisbytes, sizeof(AffixFuzzer3Data));
                     std::memcpy(thisbytes, otherbytes, sizeof(AffixFuzzer3Data));
                     std::memcpy(otherbytes, temp, sizeof(AffixFuzzer3Data));
@@ -60,7 +60,7 @@ namespace rerun {
         struct AffixFuzzer3 {
             AffixFuzzer3() : _tag(detail::AffixFuzzer3Tag::NONE) {}
 
-            AffixFuzzer3(const AffixFuzzer3 &other) : _tag(other._tag) {
+            AffixFuzzer3(const AffixFuzzer3& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer3Tag::craziness: {
                         _data.craziness = other._data.craziness;
@@ -70,24 +70,24 @@ namespace rerun {
                     case detail::AffixFuzzer3Tag::degrees:
                     case detail::AffixFuzzer3Tag::radians:
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans:
-                        const void *otherbytes = reinterpret_cast<const void *>(&other._data);
-                        void *thisbytes = reinterpret_cast<void *>(&this->_data);
+                        const void* otherbytes = reinterpret_cast<const void*>(&other._data);
+                        void* thisbytes = reinterpret_cast<void*>(&this->_data);
                         std::memcpy(thisbytes, otherbytes, sizeof(detail::AffixFuzzer3Data));
                         break;
                 }
             }
 
-            AffixFuzzer3 &operator=(const AffixFuzzer3 &other) noexcept {
+            AffixFuzzer3& operator=(const AffixFuzzer3& other) noexcept {
                 AffixFuzzer3 tmp(other);
                 this->swap(tmp);
                 return *this;
             }
 
-            AffixFuzzer3(AffixFuzzer3 &&other) noexcept : AffixFuzzer3() {
+            AffixFuzzer3(AffixFuzzer3&& other) noexcept : AffixFuzzer3() {
                 this->swap(other);
             }
 
-            AffixFuzzer3 &operator=(AffixFuzzer3 &&other) noexcept {
+            AffixFuzzer3& operator=(AffixFuzzer3&& other) noexcept {
                 this->swap(other);
                 return *this;
             }
@@ -114,7 +114,7 @@ namespace rerun {
                 }
             }
 
-            void swap(AffixFuzzer3 &other) noexcept {
+            void swap(AffixFuzzer3& other) noexcept {
                 std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
@@ -151,16 +151,16 @@ namespace rerun {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType> &arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool *memory_pool
+                arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder *builder, const AffixFuzzer3 *elements, size_t num_elements
+                arrow::DenseUnionBuilder* builder, const AffixFuzzer3* elements, size_t num_elements
             );
 
           private:

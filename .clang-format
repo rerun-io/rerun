@@ -15,6 +15,7 @@ BinPackArguments: false
 BreakStringLiterals: false
 ColumnLimit: 100
 ContinuationIndentWidth: 4
+DerivePointerAlignment: false
 EmptyLineBeforeAccessModifier: LogicalBlock
 IndentWidth: 4
 IndentWrappedFunctionNames: true

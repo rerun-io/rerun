@@ -14,13 +14,13 @@ namespace rerun {
     namespace components {
         const char HalfSizes2D::NAME[] = "rerun.components.HalfSizes2D";
 
-        const std::shared_ptr<arrow::DataType> &HalfSizes2D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& HalfSizes2D::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Vec2D::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::FixedSizeListBuilder>> HalfSizes2D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -30,7 +30,7 @@ namespace rerun {
         }
 
         Error HalfSizes2D::fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder *builder, const HalfSizes2D *elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const HalfSizes2D* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -45,7 +45,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(HalfSizes2D));
             RR_RETURN_NOT_OK(rerun::datatypes::Vec2D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Vec2D *>(elements),
+                reinterpret_cast<const rerun::datatypes::Vec2D*>(elements),
                 num_elements
             ));
 
@@ -53,10 +53,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> HalfSizes2D::to_data_cell(
-            const HalfSizes2D *instances, size_t num_instances
+            const HalfSizes2D* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = HalfSizes2D::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);

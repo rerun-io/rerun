@@ -72,11 +72,11 @@ namespace rerun {
 
                 ~TensorBufferData() {}
 
-                void swap(TensorBufferData &other) noexcept {
+                void swap(TensorBufferData& other) noexcept {
                     // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(TensorBufferData)];
-                    void *otherbytes = reinterpret_cast<void *>(&other);
-                    void *thisbytes = reinterpret_cast<void *>(this);
+                    void* otherbytes = reinterpret_cast<void*>(&other);
+                    void* thisbytes = reinterpret_cast<void*>(this);
                     std::memcpy(temp, thisbytes, sizeof(TensorBufferData));
                     std::memcpy(thisbytes, otherbytes, sizeof(TensorBufferData));
                     std::memcpy(otherbytes, temp, sizeof(TensorBufferData));
@@ -90,7 +90,7 @@ namespace rerun {
         struct TensorBuffer {
             TensorBuffer() : _tag(detail::TensorBufferTag::NONE) {}
 
-            TensorBuffer(const TensorBuffer &other) : _tag(other._tag) {
+            TensorBuffer(const TensorBuffer& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::TensorBufferTag::U8: {
                         _data.u8 = other._data.u8;
@@ -145,24 +145,24 @@ namespace rerun {
                         break;
                     }
                     case detail::TensorBufferTag::NONE:
-                        const void *otherbytes = reinterpret_cast<const void *>(&other._data);
-                        void *thisbytes = reinterpret_cast<void *>(&this->_data);
+                        const void* otherbytes = reinterpret_cast<const void*>(&other._data);
+                        void* thisbytes = reinterpret_cast<void*>(&this->_data);
                         std::memcpy(thisbytes, otherbytes, sizeof(detail::TensorBufferData));
                         break;
                 }
             }
 
-            TensorBuffer &operator=(const TensorBuffer &other) noexcept {
+            TensorBuffer& operator=(const TensorBuffer& other) noexcept {
                 TensorBuffer tmp(other);
                 this->swap(tmp);
                 return *this;
             }
 
-            TensorBuffer(TensorBuffer &&other) noexcept : TensorBuffer() {
+            TensorBuffer(TensorBuffer&& other) noexcept : TensorBuffer() {
                 this->swap(other);
             }
 
-            TensorBuffer &operator=(TensorBuffer &&other) noexcept {
+            TensorBuffer& operator=(TensorBuffer&& other) noexcept {
                 this->swap(other);
                 return *this;
             }
@@ -283,7 +283,7 @@ namespace rerun {
             /// You may NOT call this for JPEG buffers.
             size_t num_elems() const;
 
-            void swap(TensorBuffer &other) noexcept {
+            void swap(TensorBuffer& other) noexcept {
                 std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
@@ -393,16 +393,16 @@ namespace rerun {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType> &arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool *memory_pool
+                arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder *builder, const TensorBuffer *elements, size_t num_elements
+                arrow::DenseUnionBuilder* builder, const TensorBuffer* elements, size_t num_elements
             );
 
           private:

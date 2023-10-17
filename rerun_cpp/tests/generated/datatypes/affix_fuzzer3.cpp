@@ -10,7 +10,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer3::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer3::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field("degrees", arrow::float32(), false),
@@ -34,7 +34,7 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::DenseUnionBuilder>> AffixFuzzer3::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -62,7 +62,7 @@ namespace rerun {
         }
 
         Error AffixFuzzer3::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder *builder, const AffixFuzzer3 *elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const AffixFuzzer3* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -76,7 +76,7 @@ namespace rerun {
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto &union_instance = elements[elem_idx];
+                const auto& union_instance = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
 
                 auto variant_index = static_cast<int>(union_instance._tag);
@@ -89,14 +89,14 @@ namespace rerun {
                     }
                     case detail::AffixFuzzer3Tag::degrees: {
                         auto variant_builder =
-                            static_cast<arrow::FloatBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
                         ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.degrees));
                         break;
                     }
                     case detail::AffixFuzzer3Tag::radians: {
                         auto variant_builder =
-                            static_cast<arrow::FloatBuilder *>(variant_builder_untyped);
-                        const auto &element = union_instance._data;
+                            static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
+                        const auto& element = union_instance._data;
                         if (element.radians.has_value()) {
                             ARROW_RETURN_NOT_OK(variant_builder->Append(element.radians.value()));
                         } else {
@@ -106,7 +106,7 @@ namespace rerun {
                     }
                     case detail::AffixFuzzer3Tag::craziness: {
                         auto variant_builder =
-                            static_cast<arrow::ListBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
@@ -116,7 +116,7 @@ namespace rerun {
                     }
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
                         auto variant_builder =
-                            static_cast<arrow::FixedSizeListBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::FixedSizeListBuilder*>(variant_builder_untyped);
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
