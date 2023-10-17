@@ -1,6 +1,6 @@
 //! Helpers common to all codegen passes.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use anyhow::Context as _;
 use camino::Utf8PathBuf;
