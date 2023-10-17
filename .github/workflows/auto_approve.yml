@@ -38,6 +38,6 @@ jobs:
         run: |
           python3 scripts/ci/approve_workflow_runs.py \
             --github-token "${{ secrets.GITHUB_TOKEN }}" \
-            --github-repository "rerun-io/rerun"
+            --github-repository "rerun-io/rerun" \
             --pr-number "${{ github.event.pull_request.number || github.event.issue.number }}"
 
