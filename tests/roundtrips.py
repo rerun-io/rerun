@@ -25,10 +25,8 @@ opt_out = {
     "asset3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "bar_chart": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "depth_image": ["cpp"],  # TODO(#3380)
-    "image": ["cpp"],  # TODO(#3380)
+    "image": ["cpp"],  # TODO(#3380): Need a half precision library in C++
     "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "segmentation_image": ["cpp"],  # TODO(#3380)
     "tensor": ["cpp"],  # TODO(#3380)
     "time_series_scalar": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "transform3d": [
