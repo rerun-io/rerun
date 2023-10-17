@@ -14,13 +14,13 @@ namespace rerun {
     namespace components {
         const char PinholeProjection::NAME[] = "rerun.components.PinholeProjection";
 
-        const std::shared_ptr<arrow::DataType> &PinholeProjection::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& PinholeProjection::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Mat3x3::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::FixedSizeListBuilder>>
-            PinholeProjection::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+            PinholeProjection::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
@@ -29,7 +29,7 @@ namespace rerun {
         }
 
         Error PinholeProjection::fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder *builder, const PinholeProjection *elements,
+            arrow::FixedSizeListBuilder* builder, const PinholeProjection* elements,
             size_t num_elements
         ) {
             if (builder == nullptr) {
@@ -45,7 +45,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::Mat3x3) == sizeof(PinholeProjection));
             RR_RETURN_NOT_OK(rerun::datatypes::Mat3x3::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Mat3x3 *>(elements),
+                reinterpret_cast<const rerun::datatypes::Mat3x3*>(elements),
                 num_elements
             ));
 
@@ -53,10 +53,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> PinholeProjection::to_data_cell(
-            const PinholeProjection *instances, size_t num_instances
+            const PinholeProjection* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = PinholeProjection::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);

@@ -227,6 +227,18 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}
     secrets: inherit
 
+  bundle-and-upload-rerun_cpp:
+    name: "Bundle and upload rerun_cpp"
+    needs:
+      [
+        build-rerun_c-and-upload-linux,
+        build-rerun_c-and-upload-macos-intel,
+        build-rerun_c-and-upload-macos-arm,
+        build-rerun_c-and-upload-windows,
+      ]
+    uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
+    secrets: inherit
+
   pre-release:
     name: Pre Release
     concurrency:
@@ -240,6 +252,7 @@ jobs:
         build-rerun_c-and-upload-macos-intel,
         build-rerun_c-and-upload-macos-arm,
         build-rerun_c-and-upload-windows,
+        bundle-and-upload-rerun_cpp,
       ]
     runs-on: "ubuntu-latest"
     steps:
@@ -273,7 +286,14 @@ jobs:
 
             ## Wheels can be installed with:
             ```
-            pip install --pre -f https://build.rerun.io/commit/${{ env.SHORT_SHA}}/wheels --upgrade rerun-sdk
+            pip install --pre -f https://build.rerun.io/commit/${{ env.SHORT_SHA }}/wheels --upgrade rerun-sdk
+            ```
+
+            ## CMake fetch-content for C++ SDK
+            ```
+            include(FetchContent)
+            FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp_sdk.zip)
+            FetchContent_MakeAvailable(rerun_sdk)
             ```
 
             ## Static libraries for rerun_c
@@ -290,4 +310,3 @@ jobs:
           allowUpdates: true
           removeArtifacts: true
           replacesArtifacts: true
-

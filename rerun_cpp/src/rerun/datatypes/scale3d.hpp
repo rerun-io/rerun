@@ -38,11 +38,11 @@ namespace rerun {
 
                 ~Scale3DData() {}
 
-                void swap(Scale3DData &other) noexcept {
+                void swap(Scale3DData& other) noexcept {
                     // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(Scale3DData)];
-                    void *otherbytes = reinterpret_cast<void *>(&other);
-                    void *thisbytes = reinterpret_cast<void *>(this);
+                    void* otherbytes = reinterpret_cast<void*>(&other);
+                    void* thisbytes = reinterpret_cast<void*>(this);
                     std::memcpy(temp, thisbytes, sizeof(Scale3DData));
                     std::memcpy(thisbytes, otherbytes, sizeof(Scale3DData));
                     std::memcpy(otherbytes, temp, sizeof(Scale3DData));
@@ -54,28 +54,29 @@ namespace rerun {
         struct Scale3D {
             Scale3D() : _tag(detail::Scale3DTag::NONE) {}
 
-            Scale3D(const Scale3D &other) : _tag(other._tag) {
-                const void *otherbytes = reinterpret_cast<const void *>(&other._data);
-                void *thisbytes = reinterpret_cast<void *>(&this->_data);
+            /// Copy constructor
+            Scale3D(const Scale3D& other) : _tag(other._tag) {
+                const void* otherbytes = reinterpret_cast<const void*>(&other._data);
+                void* thisbytes = reinterpret_cast<void*>(&this->_data);
                 std::memcpy(thisbytes, otherbytes, sizeof(detail::Scale3DData));
             }
 
-            Scale3D &operator=(const Scale3D &other) noexcept {
+            Scale3D& operator=(const Scale3D& other) noexcept {
                 Scale3D tmp(other);
                 this->swap(tmp);
                 return *this;
             }
 
-            Scale3D(Scale3D &&other) noexcept : Scale3D() {
+            Scale3D(Scale3D&& other) noexcept : Scale3D() {
                 this->swap(other);
             }
 
-            Scale3D &operator=(Scale3D &&other) noexcept {
+            Scale3D& operator=(Scale3D&& other) noexcept {
                 this->swap(other);
                 return *this;
             }
 
-            void swap(Scale3D &other) noexcept {
+            void swap(Scale3D& other) noexcept {
                 std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
@@ -107,16 +108,16 @@ namespace rerun {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType> &arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool *memory_pool
+                arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder *builder, const Scale3D *elements, size_t num_elements
+                arrow::DenseUnionBuilder* builder, const Scale3D* elements, size_t num_elements
             );
 
           private:

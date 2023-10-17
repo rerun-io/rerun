@@ -13,14 +13,14 @@ namespace rerun {
     namespace components {
         const char ViewCoordinates::NAME[] = "rerun.components.ViewCoordinates";
 
-        const std::shared_ptr<arrow::DataType> &ViewCoordinates::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& ViewCoordinates::arrow_datatype() {
             static const auto datatype =
                 arrow::fixed_size_list(arrow::field("item", arrow::uint8(), false), 3);
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::FixedSizeListBuilder>>
-            ViewCoordinates::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+            ViewCoordinates::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
@@ -33,7 +33,7 @@ namespace rerun {
         }
 
         Error ViewCoordinates::fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder *builder, const ViewCoordinates *elements,
+            arrow::FixedSizeListBuilder* builder, const ViewCoordinates* elements,
             size_t num_elements
         ) {
             if (builder == nullptr) {
@@ -46,7 +46,7 @@ namespace rerun {
                 );
             }
 
-            auto value_builder = static_cast<arrow::UInt8Builder *>(builder->value_builder());
+            auto value_builder = static_cast<arrow::UInt8Builder*>(builder->value_builder());
 
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
             static_assert(sizeof(elements[0].coordinates) == sizeof(elements[0]));
@@ -60,10 +60,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> ViewCoordinates::to_data_cell(
-            const ViewCoordinates *instances, size_t num_instances
+            const ViewCoordinates* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = ViewCoordinates::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);

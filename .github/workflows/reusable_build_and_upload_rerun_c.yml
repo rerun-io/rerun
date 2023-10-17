@@ -82,7 +82,6 @@ jobs:
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
-      RUN_TESTS: ${{ steps.set-config.outputs.run_tests }}
       CONTAINER: ${{ steps.set-config.outputs.container }}
       LIB_NAME: ${{ steps.set-config.outputs.lib_name }}
     steps:
@@ -93,28 +92,24 @@ jobs:
             linux)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              run_tests="true"
               container="{'image': 'rerunio/ci_docker:0.10.0'}"
               lib_name="librerun_c.a"
               ;;
             windows)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
-              run_tests="true"
               container="null"
               lib_name="rerun_c.lib"
               ;;
             macos-arm)
               runner="macos-latest"
               target="aarch64-apple-darwin"
-              run_tests="false"
               container="null"
               lib_name="librerun_c.a"
               ;;
             macos-intel)
               runner="macos-latest"
               target="x86_64-apple-darwin"
-              run_tests="false"
               container="null"
               lib_name="librerun_c.a"
               ;;
@@ -122,7 +117,6 @@ jobs:
           esac
           echo "runner=$runner" >> "$GITHUB_OUTPUT"
           echo "target=$target" >> "$GITHUB_OUTPUT"
-          echo "run_tests=$run_tests" >> "$GITHUB_OUTPUT"
           echo "container=$container" >> "$GITHUB_OUTPUT"
           echo "lib_name=$lib_name" >> "$GITHUB_OUTPUT"
 
@@ -163,7 +157,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --locked -p rerun_c --release
+          args: --locked -p rerun_c --release --target ${{ needs.set-config.outputs.TARGET }}
 
       - id: "auth"
         uses: google-github-actions/auth@v1
@@ -182,19 +176,18 @@ jobs:
           fi
           echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: "Upload web-viewer (commit)"
+      - name: "Upload rerun_c (commit)"
         if: ${{ inputs.UPLOAD_COMMIT }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "./target/release/${{ needs.set-config.outputs.LIB_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/commit/${{ steps.short-sha.outputs.SHORT_SHA }}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
 
-      - name: "Upload web-viewer (adhoc)"
+      - name: "Upload rerun_c (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "./target/release/${{ needs.set-config.outputs.LIB_NAME }}"
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
-
