@@ -295,7 +295,9 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let many_floats_optional_inner_data: Buffer<_> = many_floats_optional
                                 .iter()
                                 .flatten()

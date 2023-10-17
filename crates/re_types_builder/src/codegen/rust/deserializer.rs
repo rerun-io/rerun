@@ -7,7 +7,7 @@ use crate::{
         arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path, ArrowDataTypeTokenizer},
         util::is_tuple_struct_from_obj,
     },
-    ArrowRegistry, Object, ObjectKind, Objects,
+    ArrowRegistry, Object, ObjectField, ObjectKind, Objects,
 };
 
 // ---
@@ -78,6 +78,7 @@ pub fn quote_arrow_deserializer(
             objects,
             &arrow_registry.get(&obj_field.fqname),
             obj_field.is_nullable,
+            Some(obj_field),
             obj_field_fqname,
             &data_src,
             InnerRepr::NativeIterable,
@@ -122,6 +123,7 @@ pub fn quote_arrow_deserializer(
                         objects,
                         &arrow_registry.get(&obj_field.fqname),
                         obj_field.is_nullable,
+                        Some(obj_field),
                         obj_field.fqname.as_str(),
                         &data_src,
                         InnerRepr::NativeIterable,
@@ -215,6 +217,7 @@ pub fn quote_arrow_deserializer(
                             objects,
                             &arrow_registry.get(&obj_field.fqname),
                             obj_field.is_nullable,
+                            Some(obj_field),
                             obj_field.fqname.as_str(),
                             &data_src,
                             InnerRepr::NativeIterable,
@@ -373,6 +376,7 @@ fn quote_arrow_field_deserializer(
     objects: &Objects,
     datatype: &DataType,
     is_nullable: bool,
+    obj_field: Option<&ObjectField>,
     obj_field_fqname: &str,
     data_src: &proc_macro2::Ident, // &dyn ::arrow2::array::Array
     inner_repr: InnerRepr,
@@ -480,6 +484,7 @@ fn quote_arrow_field_deserializer(
                 objects,
                 inner.data_type(),
                 inner.is_nullable,
+                None,
                 obj_field_fqname,
                 &data_src_inner,
                 InnerRepr::NativeIterable,
@@ -591,6 +596,7 @@ fn quote_arrow_field_deserializer(
                 objects,
                 inner.data_type(),
                 inner.is_nullable,
+                None,
                 obj_field_fqname,
                 &data_src_inner,
                 inner_repr,
@@ -601,17 +607,34 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
+            let serde_type = obj_field.and_then(|obj_field| {
+                obj_field.try_get_attr::<String>(crate::ATTR_RUST_SERDE_TYPE)
+            });
+
             let quoted_collect_inner = match inner_repr {
                 InnerRepr::BufferT => quote!(),
                 InnerRepr::NativeIterable => quote!(.collect::<Vec<_>>()),
             };
 
             let quoted_inner_data_range = match inner_repr {
-                InnerRepr::BufferT => quote! {
-                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                    let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
-                    let data = ::re_types_core::ArrowBuffer::from(data);
-                },
+                InnerRepr::BufferT => {
+                    if let Some(serde_type) = serde_type.as_deref() {
+                        let quoted_serde_type: syn::TypePath = syn::parse_str(serde_type).unwrap();
+                        quote! {
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
+                            let data = rmp_serde::from_slice::<#quoted_serde_type>(data.as_slice()).map_err(|err| {
+                                ::re_types_core::DeserializationError::serde_failure(err.to_string())
+                            })?;
+                        }
+                    } else {
+                        quote! {
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            let data = unsafe { #data_src_inner.clone().sliced_unchecked(start as usize,  end - start as usize) };
+                            let data = ::re_types_core::ArrowBuffer::from(data);
+                        }
+                    }
+                }
                 InnerRepr::NativeIterable => quote! {
                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     let data = unsafe { #data_src_inner.get_unchecked(start as usize .. end as usize) };

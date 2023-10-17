@@ -20,8 +20,15 @@ pub enum SerializationError {
         backtrace: _Backtrace,
     },
 
-    #[error("arrow2-convert serialization Failed: {0}")]
+    // TODO: del
+    #[error("arrow2-convert serialization failed: {0}")]
     ArrowConvertFailure(String),
+
+    #[error("serde-based serialization (`attr.rust.serde_type`) failed: {reason}")]
+    SerdeFailure {
+        reason: String,
+        backtrace: _Backtrace,
+    },
 
     #[error("{fqname} doesn't support deserialization: {reason}")]
     NotImplemented {
@@ -57,6 +64,14 @@ impl SerializationError {
     }
 
     #[inline]
+    pub fn serde_failure(reason: impl AsRef<str>) -> Self {
+        Self::SerdeFailure {
+            reason: reason.as_ref().into(),
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
+    #[inline]
     pub fn not_implemented(fqname: impl AsRef<str>, reason: impl AsRef<str>) -> Self {
         Self::NotImplemented {
             fqname: fqname.as_ref().into(),
@@ -71,6 +86,7 @@ impl SerializationError {
     pub fn backtrace(&self) -> Option<_Backtrace> {
         match self {
             Self::MissingExtensionMetadata { backtrace, .. }
+            | Self::SerdeFailure { backtrace, .. }
             | Self::NotImplemented { backtrace, .. } => Some(backtrace.clone()),
             SerializationError::Context { .. } | SerializationError::ArrowConvertFailure(_) => None,
         }
@@ -155,8 +171,15 @@ pub enum DeserializationError {
         backtrace: _Backtrace,
     },
 
+    // TODO: del
     #[error("arrow2-convert deserialization Failed: {0}")]
     ArrowConvertFailure(String),
+
+    #[error("serde-based deserialization (`attr.rust.serde_type`) failed: {reason}")]
+    SerdeFailure {
+        reason: String,
+        backtrace: _Backtrace,
+    },
 
     #[error("Datacell deserialization Failed: {0}")]
     DataCellError(String),
@@ -262,6 +285,14 @@ impl DeserializationError {
         }
     }
 
+    #[inline]
+    pub fn serde_failure(reason: impl AsRef<str>) -> Self {
+        Self::SerdeFailure {
+            reason: reason.as_ref().into(),
+            backtrace: ::backtrace::Backtrace::new_unresolved(),
+        }
+    }
+
     /// Returns the _unresolved_ backtrace associated with this error, if it exists.
     ///
     /// Call `resolve()` on the returned [`_Backtrace`] to resolve it (costly!).
@@ -280,9 +311,8 @@ impl DeserializationError {
             | DeserializationError::MissingComponent { backtrace, .. }
             | DeserializationError::DatatypeMismatch { backtrace, .. }
             | DeserializationError::OffsetOutOfBounds { backtrace, .. }
-            | DeserializationError::OffsetSliceOutOfBounds { backtrace, .. } => {
-                Some(backtrace.clone())
-            }
+            | DeserializationError::OffsetSliceOutOfBounds { backtrace, .. }
+            | DeserializationError::SerdeFailure { backtrace, .. } => Some(backtrace.clone()),
             DeserializationError::ArrowConvertFailure(_)
             | DeserializationError::DataCellError(_)
             | DeserializationError::ValidationError(_) => None,

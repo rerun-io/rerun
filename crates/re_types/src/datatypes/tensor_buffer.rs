@@ -280,7 +280,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let u8_inner_data: Buffer<_> = u8
                                 .iter()
                                 .flatten()
@@ -334,7 +336,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let u16_inner_data: Buffer<_> = u16
                                 .iter()
                                 .flatten()
@@ -388,7 +392,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let u32_inner_data: Buffer<_> = u32
                                 .iter()
                                 .flatten()
@@ -442,7 +448,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let u64_inner_data: Buffer<_> = u64
                                 .iter()
                                 .flatten()
@@ -496,7 +504,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let i8_inner_data: Buffer<_> = i8
                                 .iter()
                                 .flatten()
@@ -546,7 +556,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let i16_inner_data: Buffer<_> = i16
                                 .iter()
                                 .flatten()
@@ -600,7 +612,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let i32_inner_data: Buffer<_> = i32
                                 .iter()
                                 .flatten()
@@ -654,7 +668,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let i64_inner_data: Buffer<_> = i64
                                 .iter()
                                 .flatten()
@@ -708,7 +724,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let f16_inner_data: Buffer<_> = f16
                                 .iter()
                                 .flatten()
@@ -762,7 +780,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let f32_inner_data: Buffer<_> = f32
                                 .iter()
                                 .flatten()
@@ -816,7 +836,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let f64_inner_data: Buffer<_> = f64
                                 .iter()
                                 .flatten()
@@ -870,7 +892,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let jpeg_inner_data: Buffer<_> = jpeg
                                 .iter()
                                 .flatten()
@@ -924,7 +948,9 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use ::re_types_core::external::arrow2::{
+                                buffer::Buffer, offset::OffsetsBuffer,
+                            };
                             let nv12_inner_data: Buffer<_> = nv12
                                 .iter()
                                 .flatten()

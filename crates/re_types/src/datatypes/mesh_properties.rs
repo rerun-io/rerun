@@ -121,7 +121,9 @@ impl ::re_types_core::Loggable for MeshProperties {
                         any_nones.then(|| somes.into())
                     };
                     {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                        use ::re_types_core::external::arrow2::{
+                            buffer::Buffer, offset::OffsetsBuffer,
+                        };
                         let indices_inner_data: Buffer<_> = indices
                             .iter()
                             .flatten()

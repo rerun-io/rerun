@@ -96,7 +96,7 @@ impl ::re_types_core::Loggable for Blob {
                 any_nones.then(|| somes.into())
             };
             {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                use ::re_types_core::external::arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Buffer<_> = data0
                     .iter()
                     .flatten()
