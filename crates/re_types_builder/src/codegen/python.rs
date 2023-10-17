@@ -5,7 +5,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
-use rayon::prelude::*;
 
 use crate::{
     codegen::{
@@ -13,8 +12,9 @@ use crate::{
         common::{collect_examples_for_api_docs, Example},
         StringExt as _,
     },
-    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, Object, ObjectField, ObjectKind,
-    Objects, Reporter, Type, ATTR_PYTHON_ALIASES, ATTR_PYTHON_ARRAY_ALIASES,
+    format_path, ArrowRegistry, CodeGenerator, Docs, ElementType, GeneratedFiles, Object,
+    ObjectField, ObjectKind, Objects, Reporter, Type, ATTR_PYTHON_ALIASES,
+    ATTR_PYTHON_ARRAY_ALIASES,
 };
 
 use super::common::ExampleInfo;
@@ -75,8 +75,8 @@ impl PythonObjectExt for Object {
 }
 
 pub struct PythonCodeGenerator {
-    pkg_path: Utf8PathBuf,
-    testing_pkg_path: Utf8PathBuf,
+    pub pkg_path: Utf8PathBuf,
+    pub testing_pkg_path: Utf8PathBuf,
 }
 
 impl PythonCodeGenerator {
@@ -94,8 +94,8 @@ impl CodeGenerator for PythonCodeGenerator {
         reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
-    ) -> BTreeSet<Utf8PathBuf> {
-        let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
+    ) -> GeneratedFiles {
+        let mut files_to_write = GeneratedFiles::default();
 
         for object_kind in ObjectKind::ALL {
             self.generate_folder(
@@ -122,16 +122,7 @@ impl CodeGenerator for PythonCodeGenerator {
             */
         }
 
-        self.write_files(&files_to_write);
-
-        let filepaths = files_to_write.keys().cloned().collect();
-
-        for kind in ObjectKind::ALL {
-            let folder_path = self.pkg_path.join(kind.plural_snake_case());
-            super::common::remove_old_files_from_folder(reporter, folder_path, &filepaths);
-        }
-
-        filepaths
+        files_to_write
     }
 }
 
@@ -435,50 +426,6 @@ impl PythonCodeGenerator {
         // rerun/{datatypes|components|archetypes}/__init__.py
         write_init_file(&kind_path, &mods, files_to_write);
         write_init_file(&test_kind_path, &test_mods, files_to_write);
-    }
-
-    fn write_files(&self, files_to_write: &BTreeMap<Utf8PathBuf, String>) {
-        re_tracing::profile_function!();
-
-        // Running `black` once for each file is very slow, so we write all
-        // files to a temporary folder, format it, and copy back the results.
-
-        let tempdir = tempfile::tempdir().unwrap();
-        let tempdir_path = Utf8PathBuf::try_from(tempdir.path().to_owned()).unwrap();
-
-        files_to_write.par_iter().for_each(|(filepath, source)| {
-            let formatted_source_path = self.format_path_for_tmp_dir(filepath, &tempdir_path);
-            super::common::write_file(&formatted_source_path, source);
-        });
-
-        format_python_dir(&tempdir_path).unwrap();
-
-        // Read back and copy to the final destination:
-        files_to_write
-            .par_iter()
-            .for_each(|(filepath, _original_source)| {
-                let formatted_source_path = self.format_path_for_tmp_dir(filepath, &tempdir_path);
-                let formatted_source = std::fs::read_to_string(formatted_source_path).unwrap();
-                super::common::write_file(filepath, &formatted_source);
-            });
-    }
-
-    fn format_path_for_tmp_dir(
-        &self,
-        filepath: &Utf8Path,
-        tempdir_path: &Utf8PathBuf,
-    ) -> Utf8PathBuf {
-        // If the prefix is pkg_path, strip it, and then append to tempdir
-        // However, if the prefix is testing_pkg_path, strip it and insert an extra
-        // "testing" to avoid name collisions.
-        filepath.strip_prefix(&self.pkg_path).map_or_else(
-            |_| {
-                tempdir_path
-                    .join("testing")
-                    .join(filepath.strip_prefix(&self.testing_pkg_path).unwrap())
-            },
-            |f| tempdir_path.join(f),
-        )
     }
 }
 
@@ -1854,73 +1801,4 @@ fn quote_metadata_map(metadata: &BTreeMap<String, String>) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     format!("{{{kvs}}}")
-}
-
-fn format_python_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
-    re_tracing::profile_function!();
-
-    // The order below is important and sadly we need to call black twice. Ruff does not yet
-    // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
-    //
-    // 1) Call black, which among others things fixes line-length
-    // 2) Call ruff, which requires line-lengths to be correct
-    // 3) Call black again to cleanup some whitespace issues ruff might introduce
-
-    run_black_on_dir(dir).context("black")?;
-    run_ruff_on_dir(dir).context("ruff")?;
-    run_black_on_dir(dir).context("black")?;
-    Ok(())
-}
-
-fn python_project_path() -> Utf8PathBuf {
-    let path = crate::rerun_workspace_path()
-        .join("rerun_py")
-        .join("pyproject.toml");
-    assert!(path.exists(), "Failed to find {path:?}");
-    path
-}
-
-fn run_black_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
-    re_tracing::profile_function!();
-    use std::process::{Command, Stdio};
-
-    let proc = Command::new("black")
-        .arg(format!("--config={}", python_project_path()))
-        .arg(dir)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = proc.wait_with_output()?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
-        anyhow::bail!("{stdout}\n{stderr}")
-    }
-}
-
-fn run_ruff_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
-    re_tracing::profile_function!();
-    use std::process::{Command, Stdio};
-
-    let proc = Command::new("ruff")
-        .arg(format!("--config={}", python_project_path()))
-        .arg("--fix")
-        .arg(dir)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = proc.wait_with_output()?;
-
-    if output.status.success() {
-        Ok(())
-    } else {
-        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_owned();
-        anyhow::bail!("{stdout}\n{stderr}")
-    }
 }
