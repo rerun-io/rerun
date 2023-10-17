@@ -23,8 +23,6 @@ opt_out_run = {
     "any_values": ["cpp", "rust"], # Not yet implemented
     "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "depth_image_3d": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "depth_image_simple": ["cpp"],  # TODO(#2919): Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
     "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
