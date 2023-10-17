@@ -18,7 +18,7 @@ mod viewer_analytics;
 
 /// Auto-generated blueprint-related types.
 ///
-/// They all implement the [`Component`] trait.
+/// They all implement the [`re_types_core::Component`] trait.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 pub mod blueprint;
