@@ -270,9 +270,9 @@ namespace rerun {
                         auto value_builder =
                             static_cast<arrow::HalfFloatBuilder *>(variant_builder->value_builder()
                             );
-                        const rerun::half *halfs = union_instance._data.f16.data();
+                        const rerun::half *values = union_instance._data.f16.data();
                         ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            reinterpret_cast<const uint16_t *>(halfs),
+                            reinterpret_cast<const uint16_t *>(values),
                             static_cast<int64_t>(union_instance._data.f16.size())
                         ));
                         break;
