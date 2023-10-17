@@ -1426,11 +1426,73 @@ fn quote_fill_arrow_array_builder(
                     let arrow_builder_type = arrow_array_builder_type(&variant.typ, objects);
                     let variant_name = format_ident!("{}", variant.name);
 
-                    let variant_append = if variant.typ.is_plural() {
-                        let error = format!("Failed to serialize {}::{}: list types in unions not yet implemented", obj.name, variant.name); // TODO(#2919)
-                        quote! {
-                            (void)#variant_builder;
-                            return Error(ErrorCode::NotImplemented, #error);
+                    let variant_append = if let Some(element_type) = variant.typ.plural_inner() {
+                        if variant.is_nullable {
+                            let error = format!("Failed to serialize {}::{}: nullable list types in unions not yet implemented", obj.name, variant.name);
+                            quote! {
+                                (void)#variant_builder;
+                                return Error(ErrorCode::NotImplemented, #error);
+                            }
+                        } else if arrow_builder_type == "ListBuilder" {
+                            let field_name = format_ident!("{}", variant.snake_case_name());
+
+                            if *element_type == ElementType::Float16 {
+                                // We need an extra cast for float16:
+                                quote! {
+                                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                                    auto value_builder =
+                                        static_cast<arrow::HalfFloatBuilder *>(variant_builder->value_builder());
+                                    const rerun::half* halfs = union_instance._data.#field_name.data();
+                                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                                        reinterpret_cast<const uint16_t*>(halfs),
+                                        static_cast<int64_t>(union_instance._data.#field_name.size())
+                                    ));
+                                }
+                            } else {
+                                let type_builder_name = match element_type {
+                                    ElementType::UInt8 => Some("UInt8Builder"),
+                                    ElementType::UInt16 => Some("UInt16Builder"),
+                                    ElementType::UInt32 => Some("UInt32Builder"),
+                                    ElementType::UInt64 => Some("UInt64Builder"),
+                                    ElementType::Int8 => Some("Int8Builder"),
+                                    ElementType::Int16 => Some("Int16Builder"),
+                                    ElementType::Int32 => Some("Int32Builder"),
+                                    ElementType::Int64 => Some("Int64Builder"),
+                                    ElementType::Bool => Some("BoolBuilder"),
+                                    ElementType::Float16 => Some("HalfFloatBuilder"),
+                                    ElementType::Float32 => Some("FloatBuilder"),
+                                    ElementType::Float64 => Some("DoubleBuilder"),
+                                    ElementType::String => Some("StringBuilder"),
+                                    ElementType::Object(_) => None,
+                                };
+
+                                if let Some(type_builder_name) = type_builder_name {
+                                    let typ_builder_ident = format_ident!("{type_builder_name}");
+
+                                    quote! {
+                                        ARROW_RETURN_NOT_OK(variant_builder->Append());
+
+                                        auto value_builder =
+                                            static_cast<arrow::#typ_builder_ident *>(variant_builder->value_builder());
+                                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                                            union_instance._data.#field_name.data(),
+                                            static_cast<int64_t>(union_instance._data.#field_name.size())
+                                        ));
+                                    }
+                                } else {
+                                    let error = format!("Failed to serialize {}::{}: objects ({:?}) in unions not yet implemented", obj.name, variant.name, element_type);
+                                    quote! {
+                                        (void)#variant_builder;
+                                        return Error(ErrorCode::NotImplemented, #error);
+                                    }
+                                }
+                            }
+                        } else {
+                            let error = format!("Failed to serialize {}::{}: {} in unions not yet implemented", obj.name, variant.name, arrow_builder_type);
+                            quote! {
+                                (void)#variant_builder;
+                                return Error(ErrorCode::NotImplemented, #error);
+                            }
                         }
                     } else {
                         let variant_accessor = quote!(union_instance._data);
@@ -1589,7 +1651,7 @@ fn quote_append_single_field_to_builder(
     element_accessor: &TokenStream,
     includes: &mut Includes,
 ) -> TokenStream {
-    let field_name = format_ident!("{}", crate::to_snake_case(&field.name));
+    let field_name = format_ident!("{}", field.snake_case_name());
     let value_access = if field.is_nullable {
         quote!(element.#field_name.value())
     } else {

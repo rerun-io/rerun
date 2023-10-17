@@ -108,7 +108,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize AffixFuzzer4::many_required: list types in unions not yet implemented"
+                            "Failed to serialize AffixFuzzer4::many_required: objects (Object(\"rerun.testing.datatypes.AffixFuzzer3\")) in unions not yet implemented"
                         );
                         break;
                     }
@@ -118,7 +118,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize AffixFuzzer4::many_optional: list types in unions not yet implemented"
+                            "Failed to serialize AffixFuzzer4::many_optional: nullable list types in unions not yet implemented"
                         );
                         break;
                     }
