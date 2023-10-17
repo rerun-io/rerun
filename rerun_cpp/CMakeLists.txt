@@ -17,18 +17,11 @@ set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
 # ------------------------------------------------------------------------------
 # Rerun development setup only:
 if(DEFINED RERUN_REPOSITORY)
-    # execute process doesn't fail if the process fails.
-    # `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
-    # which isn't default on Ubuntu LTS as of writing, causing unnecessary friction.
     # TODO(andreas): use add_custom_command instead so this runs at build time! https://cmake.org/cmake/help/latest/command/add_custom_command.html#command:add_custom_command
-    execute_process(COMMAND just codegen RESULT_VARIABLE ret) # Generates most of the C++ source files
-
-    if(NOT(ret EQUAL "0"))
-        message(FATAL_ERROR "Failed to build re_types in order to generate C++ source files.")
-    endif()
-
     execute_process(COMMAND cargo build --release -p rerun_c RESULT_VARIABLE ret) # We link against this, so must be up-to-date
 
+    # execute process doesn't fail if the process fails.
+    # `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
     if(NOT(ret EQUAL "0"))
         message(FATAL_ERROR "Failed to build rerun_c.")
     endif()
