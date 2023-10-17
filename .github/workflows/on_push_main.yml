@@ -292,7 +292,7 @@ jobs:
             ## CMake fetch-content for C++ SDK
             ```
             include(FetchContent)
-            FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp.zip)
+            FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp_sdk.zip)
             FetchContent_MakeAvailable(rerun_sdk)
             ```
 

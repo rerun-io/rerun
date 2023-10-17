@@ -29,7 +29,7 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None
     os.mkdir(target_dir)
 
     # See reusable_build_and_upload_rerun_c.yml for available libraries.
-    # See rerun_cpp/CMakeLists.txt for library names.
+    # See rerun_cpp_sdk/CMakeLists.txt for library names.
     for src, dst in [
         ("linux/librerun_c.a", "librerun_c__linux_x64.a"),
         ("macos-arm/librerun_c.a", "librerun_c__macos_arm64.a"),
@@ -43,15 +43,15 @@ def download_rerun_c(target_dir: str, git_hash: str, platform_filter: str = None
         run(["curl", "-L", "-o", f"{target_dir}/{dst}", url])
 
 
-def upload_rerun_cpp(rerun_zip: str, git_hash: str) -> None:
+def upload_rerun_cpp_sdk(rerun_zip: str, git_hash: str) -> None:
     logging.info("Uploading to gcloud…")
 
     gcs = storage.Client("rerun-open")
     bucket = gcs.bucket("rerun-builds")
-    destination = bucket.blob(f"commit/{git_hash}/rerun_cpp.zip")
+    destination = bucket.blob(f"commit/{git_hash}/rerun_cpp_sdk.zip")
     destination.content_type = "application/zip"
     destination.upload_from_filename(rerun_zip)
-    logging.info(f"Uploaded to https://build.rerun.io/commit/{git_hash}/rerun_cpp.zip")
+    logging.info(f"Uploaded to https://build.rerun.io/commit/{git_hash}/rerun_cpp_sdk.zip")
 
 
 def test_rerun_cpp(git_hash: str) -> None:
@@ -59,7 +59,7 @@ def test_rerun_cpp(git_hash: str) -> None:
 
     with tempfile.TemporaryDirectory() as testdir:
         shutil.copytree("examples/cpp/minimal/", testdir, dirs_exist_ok=True)
-        run(["cmake", f"-DRERUN_CPP_URL=https://build.rerun.io/commit/{git_hash}/rerun_cpp.zip", "."], cwd=testdir)
+        run(["cmake", f"-DRERUN_CPP_URL=https://build.rerun.io/commit/{git_hash}/rerun_cpp_sdk.zip", "."], cwd=testdir)
         run(["cmake", "--build", ".", "--parallel", str(multiprocessing.cpu_count())], cwd=testdir)
 
 
@@ -67,13 +67,13 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO)
 
     parser = argparse.ArgumentParser(
-        description="Bundle and upload rerun_cpp sdk. Assumes rerun_c already built & uploaded."
+        description="Bundle and upload rerun_cpp_sdk. Assumes rerun_c already built & uploaded."
     )
     parser.add_argument(
         "--git-hash",
         required=True,
         type=str,
-        help="Git hash for which we're downloading rerun_c and uploading rerun_cpp.",
+        help="Git hash for which we're downloading rerun_c and uploading rerun_cpp_sdk.",
     )
     parser.add_argument(
         "--platform-filter",
@@ -81,17 +81,17 @@ def main() -> None:
         default=None,
         help="If set, only the specified platform will be fetched for rerun_c.",
     )
-    parser.add_argument("--no-upload", help="If true, don't upload rerun_cpp.", action="store_true")
-    parser.add_argument("--skip-test", help="If true, don't test rerun_cpp after upload.", action="store_true")
+    parser.add_argument("--no-upload", help="If true, don't upload rerun_cpp_sdk.", action="store_true")
+    parser.add_argument("--skip-test", help="If true, don't test rerun_cpp_sdk after upload.", action="store_true")
     parser.add_argument(
-        "--local-path", required=False, default=None, type=str, help="If set, rerun_cpp bundle will be written on disk."
+        "--local-path", required=False, default=None, type=str, help="If set, rerun_cpp_sdk bundle will be written on disk."
     )
     args = parser.parse_args()
 
     git_hash = args.git_hash[:7]
 
     with tempfile.TemporaryDirectory() as scratch_dir:
-        package_name = "rerun_cpp"
+        package_name = "rerun_cpp_sdk"
         package_dir = scratch_dir + "/" + package_name
         os.mkdir(package_dir)
 
@@ -107,11 +107,11 @@ def main() -> None:
         )
 
         if args.local_path is not None:
-            logging.info(f"Copying rerun_cpp bundle to local path from '{rerun_zip}' to '{args.local_path}'")
+            logging.info(f"Copying rerun_cpp_sdk bundle to local path from '{rerun_zip}' to '{args.local_path}'")
             shutil.copy(rerun_zip, args.local_path)
 
         if args.no_upload is not True:
-            upload_rerun_cpp(rerun_zip, git_hash)
+            upload_rerun_cpp_sdk(rerun_zip, git_hash)
 
     if args.skip_test is not True and args.no_upload is not True:
         test_rerun_cpp(git_hash)
