@@ -29,6 +29,7 @@ inputs:
   targets:
     type: string
     required: false
+    description: "One or more space separated target triplets that will be ensured to be supported."
 
 runs:
   using: "composite"
