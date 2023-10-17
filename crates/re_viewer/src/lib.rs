@@ -16,6 +16,13 @@ mod store_hub;
 mod ui;
 mod viewer_analytics;
 
+/// Auto-generated blueprint-related types.
+///
+/// They all implement the [`Component`] trait.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+pub mod blueprint;
+
 pub(crate) use {
     app_state::AppState,
     ui::{memory_panel, selection_panel},

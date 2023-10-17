@@ -693,7 +693,7 @@ fn set_panels(
     timeline_view_expanded: Option<bool>,
     blueprint: Option<&PyRecordingStream>,
 ) {
-    use rerun::external::re_types::blueprint::PanelView;
+    use rerun::external::re_viewer::blueprint::PanelView;
 
     if let Some(expanded) = blueprint_view_expanded {
         set_panel(PanelView::BLUEPRINT_VIEW_PATH, expanded, blueprint);
@@ -711,7 +711,7 @@ fn set_panel(entity_path: &str, is_expanded: bool, blueprint: Option<&PyRecordin
         return;
     };
 
-    use rerun::external::re_types::blueprint::PanelView;
+    use rerun::external::re_viewer::blueprint::PanelView;
 
     // TODO(jleibs): Validation this is a valid blueprint path?
     let entity_path = parse_entity_path(entity_path);
@@ -781,7 +781,7 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
         return;
     };
 
-    use rerun::external::re_types::blueprint::AutoSpaceViews;
+    use rerun::external::re_viewport::blueprint::AutoSpaceViews;
 
     let enable_auto_space = AutoSpaceViews(enabled);
 

@@ -125,6 +125,8 @@ pub mod external {
 
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
+    #[cfg(feature = "native_viewer")]
+    pub use re_viewer::external::*;
 
     #[cfg(feature = "sdk")]
     pub use re_sdk::external::*;

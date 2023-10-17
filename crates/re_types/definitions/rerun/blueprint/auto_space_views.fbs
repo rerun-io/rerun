@@ -15,8 +15,10 @@ namespace rerun.blueprint;
 struct AutoSpaceViews (
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, Default",
+  "attr.rust.override_crate": "re_viewport",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {
   enabled: bool (order: 100);
 }
+

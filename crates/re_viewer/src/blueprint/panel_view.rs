@@ -60,8 +60,8 @@ impl ::re_types_core::Loggable for PanelView {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+    fn arrow_datatype() -> ::re_types_core::external::arrow2::datatypes::DataType {
+        use ::re_types_core::external::arrow2::datatypes::*;
         DataType::Struct(vec![Field {
             name: "is_expanded".to_owned(),
             data_type: DataType::Boolean,
@@ -73,12 +73,14 @@ impl ::re_types_core::Loggable for PanelView {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<
+        Box<dyn ::re_types_core::external::arrow2::array::Array>,
+    >
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::external::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
@@ -88,7 +90,7 @@ impl ::re_types_core::Loggable for PanelView {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -105,7 +107,9 @@ impl ::re_types_core::Loggable for PanelView {
                             (datum.is_some(), datum)
                         })
                         .unzip();
-                    let is_expanded_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                    let is_expanded_bitmap: Option<
+                        ::re_types_core::external::arrow2::bitmap::Bitmap,
+                    > = {
                         let any_nones = somes.iter().any(|some| !*some);
                         any_nones.then(|| somes.into())
                     };
@@ -127,18 +131,18 @@ impl ::re_types_core::Loggable for PanelView {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn ::re_types_core::external::arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::external::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
+                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
@@ -182,7 +186,7 @@ impl ::re_types_core::Loggable for PanelView {
                         .with_context("rerun.blueprint.PanelView#is_expanded")?
                         .into_iter()
                 };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(is_expanded),
                     arrow_data.validity(),
                 )

@@ -206,13 +206,6 @@ pub mod components;
 /// They all implement the [`Datatype`] trait.
 pub mod datatypes;
 
-/// Blueprint-related types.
-///
-/// They all implement the [`Component`] trait.
-///
-/// Unstable. Used for the ongoing blueprint experimentations.
-pub mod blueprint;
-
 #[cfg(feature = "datagen")]
 pub mod datagen;
 

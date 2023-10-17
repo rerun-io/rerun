@@ -12,7 +12,13 @@ mod viewport;
 mod viewport_blueprint;
 mod viewport_blueprint_ui;
 
-pub mod blueprint_components;
+/// Auto-generated blueprint-related types.
+///
+/// They all implement the [`Component`] trait.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+pub mod blueprint;
+pub mod blueprint_components; // NOTE: will be merged into `mod blueprint` soon
 
 pub use space_info::SpaceInfoCollection;
 pub use space_view::SpaceViewBlueprint;
