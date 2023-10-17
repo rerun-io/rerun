@@ -37,6 +37,7 @@ namespace rerun {
         InvalidStringArgument,
         InvalidRecordingStreamHandle,
         InvalidSocketAddress,
+        InvalidTensorDimension,
 
         // Recording stream errors
         _CategoryRecordingStream = 0x0000'0100,

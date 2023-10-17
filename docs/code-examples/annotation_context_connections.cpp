@@ -11,16 +11,16 @@ int main() {
     // connections between keypoints.
     rec.log_timeless(
         "/",
-        rerun::AnnotationContext{{rerun::ClassDescription{
+        rerun::AnnotationContext({rerun::ClassDescription{
             0,
             {
-                {0, "zero", rerun::Rgba32(255, 0, 0)},
-                {1, "one", rerun::Rgba32(0, 255, 0)},
-                {2, "two", rerun::Rgba32(0, 0, 255)},
-                {3, "three", rerun::Rgba32(255, 255, 0)},
+                rerun::AnnotationInfo(0, "zero", rerun::Rgba32(255, 0, 0)),
+                rerun::AnnotationInfo(1, "one", rerun::Rgba32(0, 255, 0)),
+                rerun::AnnotationInfo(2, "two", rerun::Rgba32(0, 0, 255)),
+                rerun::AnnotationInfo(3, "three", rerun::Rgba32(255, 255, 0)),
             },
             {{0, 2}, {1, 2}, {2, 3}},
-        }}}
+        }})
     );
 
     // Log some points with different keypoint IDs

@@ -20,8 +20,6 @@ from os.path import isfile, join
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 opt_out_run = {
-    "annotation_context_connections": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "annotation_context_segmentation": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "any_values": ["cpp", "rust"], # Not yet implemented
     "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
