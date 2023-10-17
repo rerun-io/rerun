@@ -10,13 +10,11 @@ int main() {
     const int HEIGHT = 8;
     const int WIDTH = 12;
     std::vector<uint16_t> data(WIDTH * HEIGHT, 65535);
-    for (auto y = 0; y < 4; ++y) { // top half
-        auto row = data.begin() + y * WIDTH;
-        std::fill(row, row + 6, 20000); // left half
+    for (auto y = 0; y < 4; ++y) {                       // top half
+        std::fill_n(data.begin() + y * WIDTH, 6, 20000); // left half
     }
-    for (auto y = 4; y < 8; ++y) { // bottom half
-        auto row = data.begin() + y * WIDTH;
-        std::fill(row + 6, row + 12, 45000); // right half
+    for (auto y = 4; y < 8; ++y) {                           // bottom half
+        std::fill_n(data.begin() + y * WIDTH + 6, 6, 45000); // right half
     }
 
     rec.log(
