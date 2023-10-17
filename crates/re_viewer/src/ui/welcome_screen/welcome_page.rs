@@ -350,10 +350,12 @@ fn open_markdown_recording(
 /// The User-Agent of the user's browser.
 fn user_agent() -> Option<String> {
     #[cfg(target_arch = "wasm32")]
-    eframe::web::user_agent()
+    let result = eframe::web::user_agent();
 
     #[cfg(not(target_arch = "wasm32"))]
-    None
+    let result = None;
+
+    result
 }
 
 /// Are we running on Safari?
