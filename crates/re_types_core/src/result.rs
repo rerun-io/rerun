@@ -20,6 +20,7 @@ pub enum SerializationError {
         backtrace: _Backtrace,
     },
 
+    // TODO: del
     #[error("arrow2-convert serialization failed: {0}")]
     ArrowConvertFailure(String),
 
@@ -170,6 +171,7 @@ pub enum DeserializationError {
         backtrace: _Backtrace,
     },
 
+    // TODO: del
     #[error("arrow2-convert deserialization Failed: {0}")]
     ArrowConvertFailure(String),
 
