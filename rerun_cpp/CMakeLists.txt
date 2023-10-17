@@ -11,64 +11,108 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
 
 add_library(rerun_sdk ${rerun_sdk_SRC})
 
-set_default_warning_settings(rerun_sdk)
+# Rerun needs at least C++17.
+set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
 
 # ------------------------------------------------------------------------------
+# Rerun development setup only:
+if(DEFINED RERUN_REPOSITORY)
+    # TODO(andreas): use add_custom_command instead so this runs at build time! https://cmake.org/cmake/help/latest/command/add_custom_command.html#command:add_custom_command
+    execute_process(COMMAND cargo build --release -p rerun_c RESULT_VARIABLE ret) # We link against this, so must be up-to-date
 
-# For rerun.h (Rerun C SDK):
-include_directories(SYSTEM ${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src)
+    # execute process doesn't fail if the process fails.
+    # `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
+    if(NOT(ret EQUAL "0"))
+        message(FATAL_ERROR "Failed to build rerun_c.")
+    endif()
+
+    # Overwrite where to find rerun_c library.
+    if(APPLE)
+        set(RERUN_C_LIB_DEFAULT ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
+    elseif(UNIX) # if(LINUX) # CMake 3.25
+        set(RERUN_C_LIB_DEFAULT ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
+    elseif(WIN32)
+        set(RERUN_C_LIB_DEFAULT ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/rerun_c.lib)
+    else()
+        message(FATAL_ERROR "Unsupported platform.")
+    endif()
+
+    # Set very strict warning settings when we're testing the SDK.
+    # We don't want to force this on any user!
+    set_default_warning_settings(rerun_sdk)
+
+    # Put `rerun.h` into the same place where it's on a user's machine and apply CMake variables like version number.
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src/rerun.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h"
+    )
+
+    # Add tests!
+    add_subdirectory(tests)
+endif()
+
+# ------------------------------------------------------------------------------
 
 # Make sure the compiler can find include files for rerun
 # when other libraries or executables link to rerun:
-# TODO(andreas): These should be prefixed `rerun/`.
+# Note that we have to use different path for within the repo and exporting the project:
 target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------------------
-# execute process doesn't fail if the process fails.
-# `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
-# which isn't default on Ubuntu LTS as of writing, causing unnecessary friction.
-execute_process(COMMAND cargo build --release -p re_types RESULT_VARIABLE ret) # Generates most of the C++ source files
+# Setup rerun_c dependency:
+if(NOT DEFINED RERUN_C_LIB_DEFAULT)
+    set(RERUN_C_DEFAULT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/)
 
-if(NOT(ret EQUAL "0"))
-    message(FATAL_ERROR "Failed to build re_types in order to generate C++ source files.")
+    if(APPLE)
+        if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_x64.a)
+        elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64")
+            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_arm64.a)
+        else()
+            message(WARNING "Unknown architecture ${CMAKE_SYSTEM_PROCESSOR}, can't find rerun_c library.")
+        endif()
+    elseif(UNIX) # if(LINUX) # CMake 3.25
+        # TODO(andreas): Arm support.
+        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_x64.a)
+    elseif(WIN32)
+        # TODO(andreas): Arm support.
+        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__win_x64.lib)
+    else()
+        message(WARNING "Unsupported platform ${RERUN_C_LIB_DEFAULT}, can't find rerun_c library.")
+    endif()
 endif()
 
-execute_process(COMMAND cargo build --release -p rerun_c RESULT_VARIABLE ret) # We link against this, so must be up-to-date
+set(RERUN_C_LIB ${RERUN_C_LIB_DEFAULT} CACHE PATH "\
+Where to find the rerun_c library.\n\
+If not specified, a local rerun_c with the current system architecture will be used."
+)
 
-if(NOT(ret EQUAL "0"))
-    message(FATAL_ERROR "Failed to build rerun_c.")
+if("${RERUN_C_LIB}" STREQUAL "")
+    message(FATAL_ERROR "RERUN_C_LIB is not set.")
 endif()
 
-# ------------------------------------------------------------------------------
-if(APPLE)
-    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
-    target_link_libraries(rerun_sdk PRIVATE "-framework CoreFoundation" "-framework IOKit")
-elseif(UNIX) # if(LINUX) # CMake 3.25
-    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
-    target_link_libraries(rerun_sdk PRIVATE "-lm -ldl -pthread")
-elseif(WIN32)
-    # TODO(andreas): Why not static linkage?
-    target_link_libraries(rerun_sdk PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/rerun_c.lib)
-    target_link_libraries(rerun_sdk PUBLIC ws2_32.dll Bcrypt.dll Userenv.dll)
-endif()
+target_link_libraries(rerun_sdk PRIVATE ${RERUN_C_LIB})
 
 # -----------------------------------------------------------------------------
 # Arrow:
-option(ARROW_LINK_SHARED "Link to the Arrow shared library" ON)
+option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ON)
 
 find_package(Arrow REQUIRED)
 
-# Arrow requires a C++17 compliant compiler
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-message(STATUS "Arrow version: ${ARROW_VERSION}")
-message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
-
-if(ARROW_LINK_SHARED)
+if(RERUN_ARROW_LINK_SHARED)
+    message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_shared)
 else()
+    message(STATUS "Arrow version: ${ARROW_VERSION}")
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_static)
 endif()
 
 # -----------------------------------------------------------------------------
-add_subdirectory(tests)
+# Other dependencies:
+if(APPLE)
+    target_link_libraries(rerun_sdk PRIVATE "-framework CoreFoundation" "-framework IOKit")
+elseif(UNIX) # if(LINUX) # CMake 3.25
+    target_link_libraries(rerun_sdk PRIVATE "-lm -ldl -pthread")
+elseif(WIN32)
+    target_link_libraries(rerun_sdk PUBLIC ws2_32.dll Bcrypt.dll Userenv.dll)
+endif()

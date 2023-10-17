@@ -1,7 +1,7 @@
 #include "error.hpp"
+#include "c/rerun.h"
 
 #include <arrow/status.h>
-#include <rerun.h>
 
 #include <algorithm> // For std::transform
 #include <cstdlib>   // For getenv
