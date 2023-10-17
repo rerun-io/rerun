@@ -34,3 +34,12 @@ attribute "attr.rust.union_default";
 
 /// Sets the visibility of `new` to `pub(crate)` so it is only available to extension methods.
 attribute "attr.rust.new_pub_crate";
+
+// TODO
+attribute "attr.rust.serde_type";
+
+// TODO
+attribute "attr.rust.override_crate";
+
+// TODO
+attribute "attr.rust.override_module";

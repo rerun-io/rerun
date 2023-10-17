@@ -4721,6 +4721,7 @@ dependencies = [
  "re_tracing",
  "re_types_builder",
  "re_types_core",
+ "rmp-serde",
  "serde",
  "similar-asserts",
  "smallvec",
@@ -4903,8 +4904,10 @@ dependencies = [
  "re_space_view",
  "re_tracing",
  "re_types",
+ "re_types_core",
  "re_ui",
  "re_viewer_context",
+ "rmp-serde",
  "serde",
  "tinyvec",
 ]

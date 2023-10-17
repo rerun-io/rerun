@@ -28,6 +28,7 @@ re_renderer = { workspace = true, default-features = false, features = [
   "serde",
 ] }
 re_tracing.workspace = true
+re_types_core.workspace = true
 re_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
@@ -42,5 +43,6 @@ glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 nohash-hasher.workspace = true
+rmp-serde = "1.1" # TODO
 serde.workspace = true
 tinyvec.workspace = true

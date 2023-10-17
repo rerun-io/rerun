@@ -39,11 +39,22 @@ glam = ["dep:glam"]
 image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
 
 ## Enable (de)serialization using serde.
-serde = ["dep:serde"]
+serde = ["dep:rmp-serde", "dep:serde"]
 
 ## Include testing archetypes/components/datatypes into the crate.
 ## Only useful for testing purposes.
 testing = []
+
+## Include blueprint support types used by `attr.rust.serde_type`.
+## Unstable. Used for the ongoing blueprint experimentations.
+# _blueprint = ["dep:re_viewport"]
+
+## Special hack!
+##
+## If you configure rust-analyzer to set `--all-features,
+## then this feature will be set and that will ensure that
+## `rust-analyzer` won't run the (expensive) `build.rs`!
+__opt_out_of_auto_rebuild = []
 
 
 [dependencies]
@@ -51,6 +62,9 @@ testing = []
 re_log.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
+
+# Rerun (optional)
+# re_viewport = { workspace = true, optional = true }
 
 # External
 anyhow.workspace = true
@@ -77,6 +91,7 @@ ecolor = { workspace = true, optional = true }
 glam = { workspace = true, optional = true }
 image = { workspace = true, optional = true, default-features = false }
 rand = { workspace = true, optional = true, features = ["std", "std_rng"] }
+rmp-serde = { version = "1.1", optional = true }                            # TODO
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 zune-core = { workspace = true, optional = true }
 zune-jpeg = { workspace = true, optional = true }

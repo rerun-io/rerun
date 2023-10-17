@@ -20,3 +20,7 @@ struct AutoSpaceViews (
 ) {
   enabled: bool (order: 100);
 }
+
+// TODO
+  // "attr.rust.override_crate": "re_viewport",
+  // "attr.rust.override_module": "blueprint_components",

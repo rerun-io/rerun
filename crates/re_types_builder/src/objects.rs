@@ -138,6 +138,8 @@ impl Objects {
         // Remove whole objects marked as transparent.
         this.objects.retain(|_, obj| !obj.is_transparent());
 
+        dbg!(&this.objects["rerun.blueprint.SpaceViewComponent"]);
+
         this
     }
 }

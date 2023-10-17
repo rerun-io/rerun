@@ -1,7 +1,7 @@
 //! Potentially user-facing components to be used in blueprints.
 
-mod space_view;
+mod space_view_component;
 mod viewport;
 
-pub use space_view::SpaceViewComponent;
-pub use viewport::{SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH};
+pub use self::space_view_component::SpaceViewComponent;
+pub use self::viewport::{SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH};

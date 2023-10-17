@@ -1,2 +1,3 @@
 include "./blueprint/auto_space_views.fbs";
 include "./blueprint/panel_view.fbs";
+include "./blueprint/space_view.fbs";

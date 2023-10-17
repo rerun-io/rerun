@@ -211,6 +211,7 @@ pub mod datatypes;
 /// They all implement the [`Component`] trait.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
+// #[cfg(feature = "_blueprint")] TODO
 pub mod blueprint;
 
 #[cfg(feature = "datagen")]

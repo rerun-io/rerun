@@ -20,7 +20,10 @@ pub use viewport::{Viewport, ViewportState};
 pub use viewport_blueprint::ViewportBlueprint;
 
 pub mod external {
+    pub use re_data_store;
+    pub use re_renderer;
     pub use re_space_view;
+    pub use re_viewer_context;
 }
 
 /// Utility for querying a pinhole archetype instance.

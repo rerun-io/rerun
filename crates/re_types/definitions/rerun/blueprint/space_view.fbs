@@ -9,15 +9,12 @@ namespace rerun.blueprint;
 
 // ---
 
-/// The state of the panels.
+/// A view of a space.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-struct PanelView (
-  "attr.rust.derive": "Copy"
+table SpaceViewComponent (
+  "attr.rust.derive_only": "Clone",
+  "attr.rust.override_crate": "re_viewport"
 ) {
-  is_expanded: bool (order: 100);
+  space_view: [ubyte] (order: 100, "attr.rust.serde_type": "crate::SpaceViewBlueprint");
 }
-
-// TODO
-  // "attr.rust.override_crate": "re_viewer",
-  // "attr.rust.override_module": "blueprint_components"
