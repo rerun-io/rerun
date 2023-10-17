@@ -6,6 +6,7 @@
 #include "../component_batch.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
+#include "../error.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -16,6 +17,32 @@
 namespace rerun {
     namespace archetypes {
         /// **Archetype**: A generic n-dimensional Tensor.
+        ///
+        /// ## Example
+        ///
+        /// ### Simple Tensor
+        /// ```cpp,ignore
+        /// #include <rerun.hpp>
+        ///
+        /// #include <random>
+        ///
+        /// int main() {
+        ///     auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///
+        ///     std::default_random_engine gen;
+        ///     std::uniform_int_distribution<uint8_t> dist(0, 255);
+        ///
+        ///     std::vector<uint8_t> data(8 * 6 * 3 * 5);
+        ///     std::generate(data.begin(), data.end(), [&] { return dist(gen); });
+        ///
+        ///     rec.log(
+        ///         "tensor",
+        ///         rerun::Tensor(rerun::TensorData({8, 6, 3, 5}, data))
+        ///             .with_names({"batch", "channel", "height", "width"})
+        ///     );
+        /// }
+        /// ```
         struct Tensor {
             /// The tensor data
             rerun::components::TensorData data;
@@ -24,6 +51,19 @@ namespace rerun {
             static const char INDICATOR_COMPONENT_NAME[];
             /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+
+          public:
+            // Extensions to generated type defined in 'tensor_ext.cpp'
+
+            /// Update the `names` of the contained [`TensorData`] dimensions.
+            ///
+            /// Any existing Dimension names will be be overwritten.
+            ///
+            /// If too many, or too few names are provided, this function will call
+            /// Error::handle and then proceed to only update the subset of names that it can.
+            ///
+            /// TODO(#3794): don't use std::vector here.
+            Tensor with_names(std::vector<std::string> names) &&;
 
           public:
             Tensor() = default;
