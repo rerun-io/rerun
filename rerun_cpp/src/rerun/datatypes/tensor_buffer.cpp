@@ -172,8 +172,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -183,8 +182,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -194,8 +192,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -205,8 +202,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -216,8 +212,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -227,8 +222,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -238,8 +232,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -249,8 +242,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -260,8 +252,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -271,8 +262,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -282,8 +272,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -293,8 +282,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -304,8 +292,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet "
-                            "implemented"
+                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
                         );
                         break;
                     }

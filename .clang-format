@@ -12,6 +12,7 @@ AllowShortIfStatementsOnASingleLine: Never
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 BinPackArguments: false
+BreakStringLiterals: false
 ColumnLimit: 100
 ContinuationIndentWidth: 4
 EmptyLineBeforeAccessModifier: LogicalBlock
