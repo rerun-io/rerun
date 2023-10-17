@@ -550,7 +550,21 @@ fn quote_field_type_from_typ(typ: &Type, unwrap: bool) -> (TokenStream, bool) {
 }
 
 fn quote_field_type_from_object_field(obj_field: &ObjectField) -> TokenStream {
-    let (quoted_type, _) = quote_field_type_from_typ(&obj_field.typ, false);
+    let serde_type = obj_field.try_get_attr::<String>(crate::ATTR_RUST_SERDE_TYPE);
+    let quoted_type = if let Some(serde_type) = serde_type {
+        assert_eq!(
+            &obj_field.typ,
+            &Type::Vector {
+                elem_type: ElementType::UInt8
+            },
+            "`attr.rust.serde_type` may only be used on fields of type `[ubyte]`",
+        );
+
+        let quoted_serde_type: syn::TypePath = syn::parse_str(&serde_type).unwrap();
+        quote!(#quoted_serde_type)
+    } else {
+        quote_field_type_from_typ(&obj_field.typ, false).0
+    };
     if obj_field.is_nullable {
         quote!(Option<#quoted_type>)
     } else {
