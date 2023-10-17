@@ -14,13 +14,13 @@ namespace rerun {
     namespace components {
         const char AffixFuzzer1::NAME[] = "rerun.testing.components.AffixFuzzer1";
 
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer1::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer1::arrow_datatype() {
             static const auto datatype = rerun::datatypes::AffixFuzzer1::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> AffixFuzzer1::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -31,7 +31,7 @@ namespace rerun {
         }
 
         Error AffixFuzzer1::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const AffixFuzzer1 *elements, size_t num_elements
+            arrow::StructBuilder* builder, const AffixFuzzer1* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -46,7 +46,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::AffixFuzzer1) == sizeof(AffixFuzzer1));
             RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer1::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::AffixFuzzer1 *>(elements),
+                reinterpret_cast<const rerun::datatypes::AffixFuzzer1*>(elements),
                 num_elements
             ));
 
@@ -54,10 +54,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> AffixFuzzer1::to_data_cell(
-            const AffixFuzzer1 *instances, size_t num_instances
+            const AffixFuzzer1* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = AffixFuzzer1::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);

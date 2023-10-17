@@ -31,7 +31,6 @@ opt_out_run = {
     "image_advanced": ["cpp", "rust"], # Missing examples
     "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
-    "pinhole_simple": ["cpp"], # TODO(#2919): Seg-faults in C++
     "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++

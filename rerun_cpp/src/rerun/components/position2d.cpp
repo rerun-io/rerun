@@ -14,13 +14,13 @@ namespace rerun {
     namespace components {
         const char Position2D::NAME[] = "rerun.components.Position2D";
 
-        const std::shared_ptr<arrow::DataType> &Position2D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Position2D::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Vec2D::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Position2D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -30,7 +30,7 @@ namespace rerun {
         }
 
         Error Position2D::fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder *builder, const Position2D *elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const Position2D* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -45,7 +45,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(Position2D));
             RR_RETURN_NOT_OK(rerun::datatypes::Vec2D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Vec2D *>(elements),
+                reinterpret_cast<const rerun::datatypes::Vec2D*>(elements),
                 num_elements
             ));
 
@@ -53,10 +53,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> Position2D::to_data_cell(
-            const Position2D *instances, size_t num_instances
+            const Position2D* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = Position2D::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);

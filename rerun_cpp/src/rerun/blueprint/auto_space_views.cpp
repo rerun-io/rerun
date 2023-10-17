@@ -8,13 +8,13 @@
 
 namespace rerun {
     namespace blueprint {
-        const std::shared_ptr<arrow::DataType> &AutoSpaceViews::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& AutoSpaceViews::arrow_datatype() {
             static const auto datatype = arrow::boolean();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::BooleanBuilder>> AutoSpaceViews::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -24,7 +24,7 @@ namespace rerun {
         }
 
         Error AutoSpaceViews::fill_arrow_array_builder(
-            arrow::BooleanBuilder *builder, const AutoSpaceViews *elements, size_t num_elements
+            arrow::BooleanBuilder* builder, const AutoSpaceViews* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -38,7 +38,7 @@ namespace rerun {
 
             static_assert(sizeof(*elements) == sizeof(elements->enabled));
             ARROW_RETURN_NOT_OK(builder->AppendValues(
-                reinterpret_cast<const uint8_t *>(&elements->enabled),
+                reinterpret_cast<const uint8_t*>(&elements->enabled),
                 static_cast<int64_t>(num_elements)
             ));
 

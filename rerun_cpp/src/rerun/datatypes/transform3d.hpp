@@ -37,11 +37,11 @@ namespace rerun {
 
                 ~Transform3DData() {}
 
-                void swap(Transform3DData &other) noexcept {
+                void swap(Transform3DData& other) noexcept {
                     // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(Transform3DData)];
-                    void *otherbytes = reinterpret_cast<void *>(&other);
-                    void *thisbytes = reinterpret_cast<void *>(this);
+                    void* otherbytes = reinterpret_cast<void*>(&other);
+                    void* thisbytes = reinterpret_cast<void*>(this);
                     std::memcpy(temp, thisbytes, sizeof(Transform3DData));
                     std::memcpy(thisbytes, otherbytes, sizeof(Transform3DData));
                     std::memcpy(otherbytes, temp, sizeof(Transform3DData));
@@ -53,28 +53,29 @@ namespace rerun {
         struct Transform3D {
             Transform3D() : _tag(detail::Transform3DTag::NONE) {}
 
-            Transform3D(const Transform3D &other) : _tag(other._tag) {
-                const void *otherbytes = reinterpret_cast<const void *>(&other._data);
-                void *thisbytes = reinterpret_cast<void *>(&this->_data);
+            /// Copy constructor
+            Transform3D(const Transform3D& other) : _tag(other._tag) {
+                const void* otherbytes = reinterpret_cast<const void*>(&other._data);
+                void* thisbytes = reinterpret_cast<void*>(&this->_data);
                 std::memcpy(thisbytes, otherbytes, sizeof(detail::Transform3DData));
             }
 
-            Transform3D &operator=(const Transform3D &other) noexcept {
+            Transform3D& operator=(const Transform3D& other) noexcept {
                 Transform3D tmp(other);
                 this->swap(tmp);
                 return *this;
             }
 
-            Transform3D(Transform3D &&other) noexcept : Transform3D() {
+            Transform3D(Transform3D&& other) noexcept : Transform3D() {
                 this->swap(other);
             }
 
-            Transform3D &operator=(Transform3D &&other) noexcept {
+            Transform3D& operator=(Transform3D&& other) noexcept {
                 this->swap(other);
                 return *this;
             }
 
-            void swap(Transform3D &other) noexcept {
+            void swap(Transform3D& other) noexcept {
                 std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
@@ -107,16 +108,16 @@ namespace rerun {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType> &arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool *memory_pool
+                arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder *builder, const Transform3D *elements, size_t num_elements
+                arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
             );
 
           private:

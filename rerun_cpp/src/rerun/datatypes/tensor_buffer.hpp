@@ -72,11 +72,11 @@ namespace rerun {
 
                 ~TensorBufferData() {}
 
-                void swap(TensorBufferData &other) noexcept {
+                void swap(TensorBufferData& other) noexcept {
                     // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(TensorBufferData)];
-                    void *otherbytes = reinterpret_cast<void *>(&other);
-                    void *thisbytes = reinterpret_cast<void *>(this);
+                    void* otherbytes = reinterpret_cast<void*>(&other);
+                    void* thisbytes = reinterpret_cast<void*>(this);
                     std::memcpy(temp, thisbytes, sizeof(TensorBufferData));
                     std::memcpy(thisbytes, otherbytes, sizeof(TensorBufferData));
                     std::memcpy(otherbytes, temp, sizeof(TensorBufferData));
@@ -90,79 +90,77 @@ namespace rerun {
         struct TensorBuffer {
             TensorBuffer() : _tag(detail::TensorBufferTag::NONE) {}
 
-            TensorBuffer(const TensorBuffer &other) : _tag(other._tag) {
+            /// Copy constructor
+            TensorBuffer(const TensorBuffer& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::TensorBufferTag::U8: {
-                        _data.u8 = other._data.u8;
-                        break;
-                    }
+                        typedef std::vector<uint8_t> TypeAlias;
+                        new (&_data.u8) TypeAlias(other._data.u8);
+                    } break;
                     case detail::TensorBufferTag::U16: {
-                        _data.u16 = other._data.u16;
-                        break;
-                    }
+                        typedef std::vector<uint16_t> TypeAlias;
+                        new (&_data.u16) TypeAlias(other._data.u16);
+                    } break;
                     case detail::TensorBufferTag::U32: {
-                        _data.u32 = other._data.u32;
-                        break;
-                    }
+                        typedef std::vector<uint32_t> TypeAlias;
+                        new (&_data.u32) TypeAlias(other._data.u32);
+                    } break;
                     case detail::TensorBufferTag::U64: {
-                        _data.u64 = other._data.u64;
-                        break;
-                    }
+                        typedef std::vector<uint64_t> TypeAlias;
+                        new (&_data.u64) TypeAlias(other._data.u64);
+                    } break;
                     case detail::TensorBufferTag::I8: {
-                        _data.i8 = other._data.i8;
-                        break;
-                    }
+                        typedef std::vector<int8_t> TypeAlias;
+                        new (&_data.i8) TypeAlias(other._data.i8);
+                    } break;
                     case detail::TensorBufferTag::I16: {
-                        _data.i16 = other._data.i16;
-                        break;
-                    }
+                        typedef std::vector<int16_t> TypeAlias;
+                        new (&_data.i16) TypeAlias(other._data.i16);
+                    } break;
                     case detail::TensorBufferTag::I32: {
-                        _data.i32 = other._data.i32;
-                        break;
-                    }
+                        typedef std::vector<int32_t> TypeAlias;
+                        new (&_data.i32) TypeAlias(other._data.i32);
+                    } break;
                     case detail::TensorBufferTag::I64: {
-                        _data.i64 = other._data.i64;
-                        break;
-                    }
+                        typedef std::vector<int64_t> TypeAlias;
+                        new (&_data.i64) TypeAlias(other._data.i64);
+                    } break;
                     case detail::TensorBufferTag::F16: {
-                        _data.f16 = other._data.f16;
-                        break;
-                    }
+                        typedef std::vector<rerun::half> TypeAlias;
+                        new (&_data.f16) TypeAlias(other._data.f16);
+                    } break;
                     case detail::TensorBufferTag::F32: {
-                        _data.f32 = other._data.f32;
-                        break;
-                    }
+                        typedef std::vector<float> TypeAlias;
+                        new (&_data.f32) TypeAlias(other._data.f32);
+                    } break;
                     case detail::TensorBufferTag::F64: {
-                        _data.f64 = other._data.f64;
-                        break;
-                    }
+                        typedef std::vector<double> TypeAlias;
+                        new (&_data.f64) TypeAlias(other._data.f64);
+                    } break;
                     case detail::TensorBufferTag::JPEG: {
-                        _data.jpeg = other._data.jpeg;
-                        break;
-                    }
+                        typedef std::vector<uint8_t> TypeAlias;
+                        new (&_data.jpeg) TypeAlias(other._data.jpeg);
+                    } break;
                     case detail::TensorBufferTag::NV12: {
-                        _data.nv12 = other._data.nv12;
-                        break;
-                    }
-                    case detail::TensorBufferTag::NONE:
-                        const void *otherbytes = reinterpret_cast<const void *>(&other._data);
-                        void *thisbytes = reinterpret_cast<void *>(&this->_data);
-                        std::memcpy(thisbytes, otherbytes, sizeof(detail::TensorBufferData));
-                        break;
+                        typedef std::vector<uint8_t> TypeAlias;
+                        new (&_data.nv12) TypeAlias(other._data.nv12);
+                    } break;
+                    case detail::TensorBufferTag::NONE: {
+                    } break;
                 }
             }
 
-            TensorBuffer &operator=(const TensorBuffer &other) noexcept {
+            TensorBuffer& operator=(const TensorBuffer& other) noexcept {
                 TensorBuffer tmp(other);
                 this->swap(tmp);
                 return *this;
             }
 
-            TensorBuffer(TensorBuffer &&other) noexcept : TensorBuffer() {
+            TensorBuffer(TensorBuffer&& other) noexcept : TensorBuffer() {
                 this->swap(other);
             }
 
-            TensorBuffer &operator=(TensorBuffer &&other) noexcept {
+            TensorBuffer& operator=(TensorBuffer&& other) noexcept {
                 this->swap(other);
                 return *this;
             }
@@ -170,73 +168,60 @@ namespace rerun {
             ~TensorBuffer() {
                 switch (this->_tag) {
                     case detail::TensorBufferTag::NONE: {
-                        break; // Nothing to destroy
-                    }
+                        // Nothing to destroy
+                    } break;
                     case detail::TensorBufferTag::U8: {
                         typedef std::vector<uint8_t> TypeAlias;
                         _data.u8.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::U16: {
                         typedef std::vector<uint16_t> TypeAlias;
                         _data.u16.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::U32: {
                         typedef std::vector<uint32_t> TypeAlias;
                         _data.u32.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::U64: {
                         typedef std::vector<uint64_t> TypeAlias;
                         _data.u64.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::I8: {
                         typedef std::vector<int8_t> TypeAlias;
                         _data.i8.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::I16: {
                         typedef std::vector<int16_t> TypeAlias;
                         _data.i16.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::I32: {
                         typedef std::vector<int32_t> TypeAlias;
                         _data.i32.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::I64: {
                         typedef std::vector<int64_t> TypeAlias;
                         _data.i64.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::F16: {
                         typedef std::vector<rerun::half> TypeAlias;
                         _data.f16.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::F32: {
                         typedef std::vector<float> TypeAlias;
                         _data.f32.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::F64: {
                         typedef std::vector<double> TypeAlias;
                         _data.f64.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::JPEG: {
                         typedef std::vector<uint8_t> TypeAlias;
                         _data.jpeg.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::TensorBufferTag::NV12: {
                         typedef std::vector<uint8_t> TypeAlias;
                         _data.nv12.~TypeAlias();
-                        break;
-                    }
+                    } break;
                 }
             }
 
@@ -283,7 +268,7 @@ namespace rerun {
             /// You may NOT call this for JPEG buffers.
             size_t num_elems() const;
 
-            void swap(TensorBuffer &other) noexcept {
+            void swap(TensorBuffer& other) noexcept {
                 std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
@@ -393,16 +378,16 @@ namespace rerun {
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType> &arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool *memory_pool
+                arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder *builder, const TensorBuffer *elements, size_t num_elements
+                arrow::DenseUnionBuilder* builder, const TensorBuffer* elements, size_t num_elements
             );
 
           private:

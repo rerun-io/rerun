@@ -813,8 +813,9 @@ impl QuotedObject {
                 let comment = quote_comment("Nothing to destroy");
                 quote! {
                     case detail::#tag_typename::NONE: {
-                        break; #comment
-                    }
+                        #NEWLINE_TOKEN
+                        #comment
+                    } break;
                 }
             })
             .chain(obj.fields.iter().map(|obj_field| {
@@ -825,8 +826,9 @@ impl QuotedObject {
                     let comment = quote_comment("has a trivial destructor");
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
-                            break; #comment
-                        }
+                            #NEWLINE_TOKEN
+                            #comment
+                        } break;
                     }
                 } else if let Type::Array { elem_type, length } = &obj_field.typ {
                     // We need special casing for destroying arrays in C++:
@@ -838,8 +840,7 @@ impl QuotedObject {
                             for (size_t i = #length; i > 0; i -= 1) {
                                 _data.#field_ident[i-1].~TypeAlias();
                             }
-                            break;
-                        }
+                        } break;
                     }
                 } else {
                     let typedef_declaration =
@@ -849,8 +850,7 @@ impl QuotedObject {
                         case detail::#tag_typename::#tag_ident: {
                             typedef #typedef_declaration;
                             _data.#field_ident.~TypeAlias();
-                            break;
-                        }
+                        } break;
                     }
                 }
             }))
@@ -867,8 +867,8 @@ impl QuotedObject {
 
         let copy_constructor = {
             // Note that `switch` on an enum without handling all cases causes `-Wswitch-enum` warning!
-            let mut copy_match_arms = Vec::new();
-            let mut default_match_arms = Vec::new();
+            let mut placement_new_arms = Vec::new();
+            let mut trivial_memcpy_cases = Vec::new();
             for obj_field in &obj.fields {
                 let tag_ident = format_ident!("{}", obj_field.name);
                 let case = quote!(case detail::#tag_typename::#tag_ident:);
@@ -877,14 +877,19 @@ impl QuotedObject {
                 // but is typically the reason why we need to do this in the first place - if we'd always memcpy we'd get double-free errors.
                 // (As with swap, we generously assume that objects are rellocatable)
                 if obj_field.typ.has_default_destructor(objects) {
-                    default_match_arms.push(case);
+                    trivial_memcpy_cases.push(case);
                 } else {
+                    // the `this->_data` union is not yet initialized, so we must use placement new:
+                    let typedef_declaration =
+                        quote_variable(&mut hpp_includes, obj_field, &format_ident!("TypeAlias"));
+                    hpp_includes.insert_system("new"); // placement-new
+
                     let field_ident = format_ident!("{}", obj_field.snake_case_name());
-                    copy_match_arms.push(quote! {
+                    placement_new_arms.push(quote! {
                         #case {
-                            _data.#field_ident = other._data.#field_ident;
-                            break;
-                        }
+                            typedef #typedef_declaration;
+                            new (&_data.#field_ident) TypeAlias(other._data.#field_ident);
+                        } break;
                     });
                 }
             }
@@ -895,21 +900,51 @@ impl QuotedObject {
                 std::memcpy(thisbytes, otherbytes, sizeof(detail::#data_typename));
             };
 
-            if copy_match_arms.is_empty() {
-                quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
-                    #trivial_memcpy
-                })
-            } else {
-                quote!(#pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
-                    switch (other._tag) {
-                        #(#copy_match_arms)*
+            let comment = quote_doc_comment("Copy constructor");
 
-                        case detail::#tag_typename::NONE:
-                        #(#default_match_arms)*
+            if placement_new_arms.is_empty() {
+                quote! {
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #comment
+                    #pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
                         #trivial_memcpy
-                            break;
                     }
-                })
+                }
+            } else if trivial_memcpy_cases.is_empty() {
+                quote! {
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #comment
+                    #pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
+                        switch (other._tag) {
+                            #(#placement_new_arms)*
+
+                            case detail::#tag_typename::NONE: {
+                                // there is nothing to copy
+                            } break;
+                        }
+                    }
+                }
+            } else {
+                quote! {
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #comment
+                    #pascal_case_ident(const #pascal_case_ident& other) : _tag(other._tag) {
+                        switch (other._tag) {
+                            #(#placement_new_arms)*
+
+                            #(#trivial_memcpy_cases)* {
+                                #trivial_memcpy
+                            } break;
+
+                            case detail::#tag_typename::NONE: {
+                                // there is nothing to copy
+                            } break;
+                        }
+                    }
+                }
             }
         };
 
@@ -1503,8 +1538,7 @@ fn quote_fill_arrow_array_builder(
                         case detail::#tag_name::#variant_name: {
                             auto #variant_builder = static_cast<arrow::#arrow_builder_type*>(variant_builder_untyped);
                             #variant_append
-                            break;
-                        }
+                        } break;
                     }
                 });
 
@@ -1523,8 +1557,7 @@ fn quote_fill_arrow_array_builder(
                         switch (union_instance._tag) {
                             case detail::#tag_name::NONE: {
                                 ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                                break;
-                            }
+                            } break;
                             #(#tag_cases)*
                         }
                     }

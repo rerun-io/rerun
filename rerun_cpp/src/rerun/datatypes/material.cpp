@@ -10,7 +10,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Material::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Material::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("albedo_factor", rerun::datatypes::Rgba32::arrow_datatype(), true),
             });
@@ -18,7 +18,7 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> Material::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -34,7 +34,7 @@ namespace rerun {
         }
 
         Error Material::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const Material *elements, size_t num_elements
+            arrow::StructBuilder* builder, const Material* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -47,10 +47,10 @@ namespace rerun {
             }
 
             {
-                auto field_builder = static_cast<arrow::UInt32Builder *>(builder->field_builder(0));
+                auto field_builder = static_cast<arrow::UInt32Builder*>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     if (element.albedo_factor.has_value()) {
                         RR_RETURN_NOT_OK(rerun::datatypes::Rgba32::fill_arrow_array_builder(
                             field_builder,

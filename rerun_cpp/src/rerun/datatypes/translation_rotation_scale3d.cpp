@@ -12,7 +12,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &TranslationRotationScale3D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& TranslationRotationScale3D::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("translation", rerun::datatypes::Vec3D::arrow_datatype(), true),
                 arrow::field("rotation", rerun::datatypes::Rotation3D::arrow_datatype(), true),
@@ -23,7 +23,7 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>>
-            TranslationRotationScale3D::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
+            TranslationRotationScale3D::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
             if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
@@ -41,7 +41,7 @@ namespace rerun {
         }
 
         Error TranslationRotationScale3D::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const TranslationRotationScale3D *elements,
+            arrow::StructBuilder* builder, const TranslationRotationScale3D* elements,
             size_t num_elements
         ) {
             if (builder == nullptr) {
@@ -56,10 +56,10 @@ namespace rerun {
 
             {
                 auto field_builder =
-                    static_cast<arrow::FixedSizeListBuilder *>(builder->field_builder(0));
+                    static_cast<arrow::FixedSizeListBuilder*>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     if (element.translation.has_value()) {
                         RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
                             field_builder,
@@ -73,10 +73,10 @@ namespace rerun {
             }
             {
                 auto field_builder =
-                    static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(1));
+                    static_cast<arrow::DenseUnionBuilder*>(builder->field_builder(1));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     if (element.rotation.has_value()) {
                         RR_RETURN_NOT_OK(rerun::datatypes::Rotation3D::fill_arrow_array_builder(
                             field_builder,
@@ -90,10 +90,10 @@ namespace rerun {
             }
             {
                 auto field_builder =
-                    static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(2));
+                    static_cast<arrow::DenseUnionBuilder*>(builder->field_builder(2));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     if (element.scale.has_value()) {
                         RR_RETURN_NOT_OK(rerun::datatypes::Scale3D::fill_arrow_array_builder(
                             field_builder,
@@ -106,8 +106,7 @@ namespace rerun {
                 }
             }
             {
-                auto field_builder =
-                    static_cast<arrow::BooleanBuilder *>(builder->field_builder(3));
+                auto field_builder = static_cast<arrow::BooleanBuilder*>(builder->field_builder(3));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].from_parent));
