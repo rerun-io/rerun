@@ -23,8 +23,7 @@ SCENARIO(
         from_manual.xyz = {
             rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Down,
-            rerun::components::ViewCoordinates::Forward
-        };
+            rerun::components::ViewCoordinates::Forward};
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }
