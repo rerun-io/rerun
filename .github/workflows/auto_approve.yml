@@ -1,7 +1,7 @@
 name: "Approve Workflow Runs"
 
 on:
-  pull_request:
+  pull_request_target:
   issue_comment:
     types: [created, edited]
 
@@ -13,7 +13,7 @@ jobs:
   approve-workflow-runs:
     name: "Check for approval"
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' || github.event.issue.pull_request }}
+    if: ${{ github.event_name == 'pull_request_target' || github.event.issue.pull_request }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
