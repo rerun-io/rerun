@@ -113,6 +113,8 @@
 )]
 mod reflection;
 
+use std::collections::BTreeMap;
+
 use anyhow::Context as _;
 use re_build_tools::{
     compute_crate_hash, compute_dir_filtered_hash, compute_dir_hash, compute_strings_hash,
@@ -136,7 +138,8 @@ pub mod report;
 
 pub use self::arrow_registry::{ArrowRegistry, LazyDatatype, LazyField};
 pub use self::codegen::{
-    CodeGenerator, CppCodeGenerator, DocsCodeGenerator, PythonCodeGenerator, RustCodeGenerator,
+    CodeGenerator, CppCodeGenerator, DocsCodeGenerator, GeneratedFiles, PythonCodeGenerator,
+    RustCodeGenerator,
 };
 pub use self::objects::{
     Attributes, Docs, ElementType, Object, ObjectField, ObjectKind, ObjectSpecifics, Objects, Type,
@@ -376,9 +379,34 @@ pub fn generate_cpp_code(
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
+
+    // 1. Generate code files.
     let mut gen = CppCodeGenerator::new(output_path.as_ref());
-    let filepaths = gen.generate(reporter, objects, arrow_registry);
-    generate_gitattributes_for_generated_files(&output_path, filepaths.into_iter());
+    let mut files = gen.generate(reporter, objects, arrow_registry);
+    // 2. Generate attribute files.
+    generate_gitattributes_for_generated_files(&mut files);
+    // 3. Write all files.
+    {
+        use rayon::prelude::*;
+
+        re_tracing::profile_scope!("write_files");
+
+        files.par_iter().for_each(|(filepath, contents)| {
+            crate::codegen::common::write_file(filepath, &format_code(contents));
+        });
+    }
+    // 4. Remove orphaned files.
+    // NOTE: In rerun_cpp we have a directory where we share generated code with handwritten code.
+    // Make sure to filter out that directory, or else we will end up removing those handwritten
+    // files.
+    let root_src = output_path.as_ref().join("src/rerun");
+    files.retain(|filepath, _| !filepath.starts_with(&root_src));
+    crate::codegen::common::remove_orphaned_files(reporter, &files);
+
+    fn format_code(code: &str) -> String {
+        clang_format::clang_format_with_style(code, &clang_format::ClangFormatStyle::File)
+            .expect("Failed to run clang-format")
+    }
 }
 
 /// Generates Rust code.
