@@ -1,12 +1,12 @@
 use crate::codegen::common::ExampleInfo;
 use crate::objects::FieldKind;
 use crate::CodeGenerator;
+use crate::GeneratedFiles;
 use crate::Object;
 use crate::ObjectKind;
 use crate::Objects;
 use crate::Reporter;
 use camino::Utf8PathBuf;
-use std::collections::BTreeSet;
 use std::fmt::Write;
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
@@ -36,10 +36,10 @@ impl CodeGenerator for DocsCodeGenerator {
         reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &crate::ArrowRegistry,
-    ) -> BTreeSet<camino::Utf8PathBuf> {
+    ) -> GeneratedFiles {
         re_tracing::profile_function!();
 
-        let mut filepaths = BTreeSet::new();
+        let mut files_to_write = GeneratedFiles::default();
 
         let (mut archetypes, mut components, mut datatypes) = (Vec::new(), Vec::new(), Vec::new());
         let object_map = &objects.objects;
@@ -62,8 +62,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 object.kind.plural_snake_case(),
                 object.snake_case_name()
             ));
-            super::common::write_file(&path, &page);
-            filepaths.insert(path);
+            files_to_write.insert(path, page);
         }
 
         for (kind, order, prelude, objects) in [
@@ -90,11 +89,10 @@ impl CodeGenerator for DocsCodeGenerator {
             let path = self
                 .docs_dir
                 .join(format!("{}.md", kind.plural_snake_case()));
-            super::common::write_file(&path, &page);
-            filepaths.insert(path);
+            files_to_write.insert(path, page);
         }
 
-        filepaths
+        files_to_write
     }
 }
 
