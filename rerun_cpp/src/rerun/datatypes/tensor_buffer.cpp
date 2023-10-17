@@ -172,7 +172,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::U8: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -182,7 +182,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::U16: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -192,7 +192,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::U32: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -202,7 +202,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::U64: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -212,7 +212,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::I8: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -222,7 +222,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::I16: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -232,7 +232,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::I32: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -242,7 +242,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::I64: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -252,7 +252,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::F16: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -262,7 +262,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::F32: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -272,7 +272,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::F64: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -282,7 +282,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::JPEG: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -292,7 +292,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize TensorBuffer: list types in unions not yet implemented"
+                            "Failed to serialize TensorBuffer::NV12: list types in unions not yet implemented"
                         );
                         break;
                     }

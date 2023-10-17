@@ -109,7 +109,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize AffixFuzzer3: list types in unions not yet implemented"
+                            "Failed to serialize AffixFuzzer3::craziness: list types in unions not yet implemented"
                         );
                         break;
                     }
@@ -119,7 +119,7 @@ namespace rerun {
                         (void)variant_builder;
                         return Error(
                             ErrorCode::NotImplemented,
-                            "Failed to serialize AffixFuzzer3: list types in unions not yet implemented"
+                            "Failed to serialize AffixFuzzer3::fixed_size_shenanigans: list types in unions not yet implemented"
                         );
                         break;
                     }
