@@ -84,7 +84,11 @@ def main() -> None:
     parser.add_argument("--no-upload", help="If true, don't upload rerun_cpp_sdk.", action="store_true")
     parser.add_argument("--skip-test", help="If true, don't test rerun_cpp_sdk after upload.", action="store_true")
     parser.add_argument(
-        "--local-path", required=False, default=None, type=str, help="If set, rerun_cpp_sdk bundle will be written on disk."
+        "--local-path",
+        required=False,
+        default=None,
+        type=str,
+        help="If set, rerun_cpp_sdk bundle will be written on disk.",
     )
     args = parser.parse_args()
 
