@@ -1177,7 +1177,7 @@ fn new_arrow_array_builder_method(
             name_and_parameters: quote!(new_arrow_array_builder(arrow::MemoryPool * memory_pool)),
         },
         definition_body: quote! {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
             #NEWLINE_TOKEN
@@ -1214,10 +1214,10 @@ fn fill_arrow_array_builder_method(
             },
         },
         definition_body: quote! {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Cannot serialize null pointer to arrow array.");
             }
             #NEWLINE_TOKEN

@@ -25,7 +25,7 @@ namespace rerun {
 
         Result<std::shared_ptr<arrow::StructBuilder>>
             ClassDescriptionMapElem::new_arrow_array_builder(arrow::MemoryPool *memory_pool) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -43,10 +43,10 @@ namespace rerun {
             arrow::StructBuilder *builder, const ClassDescriptionMapElem *elements,
             size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."

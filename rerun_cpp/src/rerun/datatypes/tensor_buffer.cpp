@@ -75,7 +75,7 @@ namespace rerun {
         Result<std::shared_ptr<arrow::DenseUnionBuilder>> TensorBuffer::new_arrow_array_builder(
             arrow::MemoryPool *memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -143,10 +143,10 @@ namespace rerun {
         Error TensorBuffer::fill_arrow_array_builder(
             arrow::DenseUnionBuilder *builder, const TensorBuffer *elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
