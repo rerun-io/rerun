@@ -922,7 +922,7 @@ impl QuotedObject {
                             #(#placement_new_arms)*
 
                             case detail::#tag_typename::NONE:
-                                break;
+                                break; // there is nothing to copy
                         }
                     }
                 }
@@ -935,10 +935,12 @@ impl QuotedObject {
                         switch (other._tag) {
                             #(#placement_new_arms)*
 
-                            case detail::#tag_typename::NONE:
                             #(#trivial_memcpy_cases)*
-                            #trivial_memcpy
+                                #trivial_memcpy
                                 break;
+
+                            case detail::#tag_typename::NONE:
+                                break; // there is nothing to copy
                         }
                     }
                 }

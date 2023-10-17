@@ -68,13 +68,14 @@ namespace rerun {
                         new (&_data.craziness) TypeAlias(other._data.craziness);
                         break;
                     }
-                    case detail::AffixFuzzer3Tag::NONE:
                     case detail::AffixFuzzer3Tag::degrees:
                     case detail::AffixFuzzer3Tag::radians:
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans:
                         const void* otherbytes = reinterpret_cast<const void*>(&other._data);
                         void* thisbytes = reinterpret_cast<void*>(&this->_data);
                         std::memcpy(thisbytes, otherbytes, sizeof(detail::AffixFuzzer3Data));
+                        break;
+                    case detail::AffixFuzzer3Tag::NONE:
                         break;
                 }
             }
