@@ -371,7 +371,7 @@ fn safari_warning() -> &'static str {
 
     if is_safari {
         "**Note**: This browser appears to be Safari. If you are unable to copy the code, please \
-        try a different browser (see [this issue](https://github.com/emilk/egui/issues/3480)."
+        try a different browser (see [this issue](https://github.com/emilk/egui/issues/3480))."
     } else {
         ""
     }
