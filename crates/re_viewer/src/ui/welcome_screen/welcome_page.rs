@@ -350,7 +350,7 @@ fn open_markdown_recording(
 /// The User-Agent of the user's browser.
 fn user_agent() -> Option<String> {
     #[cfg(target_arch = "wasm32")]
-    let result = web_sys::window()?.navigator().user_agent().ok();
+    let result = eframe::web::user_agent();
 
     #[cfg(not(target_arch = "wasm32"))]
     let result = None;
@@ -366,6 +366,7 @@ fn safari_warning() -> &'static str {
     //
     // See this page for more information on User Agent sniffing (and why/how to avoid it):
     // https://developer.mozilla.org/en-US/docs/Web/HTTP/Browser_detection_using_the_user_agent
+
     let is_safari = user_agent().is_some_and(|user_agent| user_agent.contains("Safari"));
 
     if is_safari {
