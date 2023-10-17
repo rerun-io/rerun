@@ -1,5 +1,7 @@
 ## Python Quick Start
 
+${SAFARI_WARNING}
+
 ### Installing the Rerun SDK
 
 The Rerun SDK is available on [PyPI](https://pypi.org/) under the
@@ -31,3 +33,5 @@ Instead of a pre-packaged demo, you can log your own data. Copy and paste the fo
 ```python
 ${EXAMPLE_CODE}
 ```
+
+${HOW_DOES_IT_WORK}
