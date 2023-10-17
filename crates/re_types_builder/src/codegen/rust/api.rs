@@ -5,7 +5,6 @@ use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use rayon::prelude::*;
 
 use crate::{
     codegen::{
@@ -54,7 +53,7 @@ impl CodeGenerator for RustCodeGenerator {
         reporter: &Reporter,
         objects: &Objects,
         arrow_registry: &ArrowRegistry,
-    ) -> BTreeSet<Utf8PathBuf> {
+    ) -> BTreeMap<Utf8PathBuf, String> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
@@ -67,26 +66,7 @@ impl CodeGenerator for RustCodeGenerator {
             );
         }
 
-        write_files(&files_to_write);
-        let filepaths = files_to_write.keys().cloned().collect();
-
-        let crate_name = "re_types"; // TODO: more soon
-        let crate_path = self.workspace_path.join("crates").join(crate_name);
-        for kind in ObjectKind::ALL {
-            let folder_path = crate_path.join("src").join(kind.plural_snake_case());
-            crate::codegen::common::remove_old_files_from_folder(reporter, folder_path, &filepaths);
-
-            let test_folder_path = crate_path
-                .join("src/testing")
-                .join(kind.plural_snake_case());
-            crate::codegen::common::remove_old_files_from_folder(
-                reporter,
-                test_folder_path,
-                &filepaths,
-            );
-        }
-
-        filepaths
+        files_to_write
     }
 }
 
@@ -106,7 +86,7 @@ impl RustCodeGenerator {
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
-            let crate_name = "re_types"; // TODO: will support other values soon
+            let crate_name = "re_types"; // NOTE: this will support other values soon
             let module_name = obj.kind.plural_snake_case();
 
             let crate_path = crates_root_path.join(crate_name);
@@ -238,43 +218,6 @@ fn generate_mod_file(
     }
 
     files_to_write.insert(path, code);
-}
-
-fn write_files(files_to_write: &BTreeMap<Utf8PathBuf, String>) {
-    re_tracing::profile_function!();
-    // TODO(emilk): running `cargo fmt` once for each file is very slow.
-    // It would probably be faster to write all files to a temporary folder, run carg-fmt on
-    // that folder, and then copy the results to the final destination (if the files has changed).
-    files_to_write.par_iter().for_each(|(path, source)| {
-        write_file(path, source.clone());
-    });
-}
-
-fn write_file(filepath: &Utf8PathBuf, mut code: String) {
-    re_tracing::profile_function!();
-
-    code = code.replace(" :: ", "::"); // Fix `bytemuck :: Pod` -> `bytemuck::Pod`.
-
-    // Even though we already have used `prettyplease` we also
-    // need to run `cargo fmt`, since it catches some things `prettyplease` missed.
-    // We need to run `cago fmt` several times because it is not idempotent;
-    // see https://github.com/rust-lang/rustfmt/issues/5824
-    for _ in 0..2 {
-        // NOTE: We're purposefully ignoring the error here.
-        //
-        // In the very unlikely chance that the user doesn't have the `fmt` component installed,
-        // there's still no good reason to fail the build.
-        //
-        // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
-
-        re_tracing::profile_scope!("rust-fmt");
-        use rust_format::Formatter as _;
-        if let Ok(formatted) = rust_format::RustFmt::default().format_str(&code) {
-            code = formatted;
-        }
-    }
-
-    crate::codegen::common::write_file(filepath, &code);
 }
 
 /// Replace `#[doc = "…"]` attributes with `/// …` doc comments,

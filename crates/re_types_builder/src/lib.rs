@@ -408,10 +408,56 @@ pub fn generate_rust_code(
     arrow_registry: &ArrowRegistry,
 ) {
     re_tracing::profile_function!();
+
+    // 1. Generate code files.
     let mut gen = RustCodeGenerator::new(workspace_path);
-    let _filepaths = gen.generate(reporter, objects, arrow_registry);
-    // TODO
-    // generate_gitattributes_for_generated_files(&gen.crate_path, filepaths.into_iter());
+    let mut files = gen.generate(reporter, objects, arrow_registry);
+    // 2. Generate attribute files.
+    generate_gitattributes_for_generated_files(&mut files);
+    // 3. Write all files.
+    write_files(&files);
+    // 4. Remove orphaned files.
+    crate::codegen::common::remove_orphaned_files(reporter, &files);
+
+    fn write_files(files: &GeneratedFiles) {
+        use rayon::prelude::*;
+
+        re_tracing::profile_function!();
+
+        // TODO(emilk): running `cargo fmt` once for each file is very slow.
+        // It would probably be faster to write all files to a temporary folder, run carg-fmt on
+        // that folder, and then copy the results to the final destination (if the files has changed).
+        files.par_iter().for_each(|(path, source)| {
+            write_file(path, source.clone());
+        });
+    }
+
+    fn write_file(filepath: &Utf8PathBuf, mut contents: String) {
+        re_tracing::profile_function!();
+
+        contents = contents.replace(" :: ", "::"); // Fix `bytemuck :: Pod` -> `bytemuck::Pod`.
+
+        // Even though we already have used `prettyplease` we also
+        // need to run `cargo fmt`, since it catches some things `prettyplease` missed.
+        // We need to run `cago fmt` several times because it is not idempotent;
+        // see https://github.com/rust-lang/rustfmt/issues/5824
+        for _ in 0..2 {
+            // NOTE: We're purposefully ignoring the error here.
+            //
+            // In the very unlikely chance that the user doesn't have the `fmt` component installed,
+            // there's still no good reason to fail the build.
+            //
+            // The CI will catch the unformatted file at PR time and complain appropriately anyhow.
+
+            re_tracing::profile_scope!("rust-fmt");
+            use rust_format::Formatter as _;
+            if let Ok(formatted) = rust_format::RustFmt::default().format_str(&contents) {
+                contents = formatted;
+            }
+        }
+
+        crate::codegen::common::write_file(filepath, &contents);
+    }
 }
 
 /// Generates Python code.
