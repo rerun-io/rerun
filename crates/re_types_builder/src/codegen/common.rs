@@ -6,7 +6,7 @@ use anyhow::Context as _;
 use camino::Utf8PathBuf;
 use itertools::Itertools as _;
 
-use crate::{Docs, Reporter};
+use crate::{Docs, GeneratedFiles, Reporter};
 
 fn is_blank<T: AsRef<str>>(line: T) -> bool {
     line.as_ref().chars().all(char::is_whitespace)
@@ -301,66 +301,71 @@ impl StringExt for String {
     }
 }
 
-/// Remove all files in the given folder that are not in the given set.
-pub fn remove_old_files_from_folder(
-    reporter: &Reporter,
-    folder_path: Utf8PathBuf,
-    filepaths: &BTreeSet<Utf8PathBuf>,
-) {
+/// Remove orphaned files in all directories present in `files`.
+pub fn remove_orphaned_files(reporter: &Reporter, files: &GeneratedFiles) {
     re_tracing::profile_function!();
-    re_log::debug!("Checking for old files in {folder_path}");
 
-    let iter = std::fs::read_dir(folder_path).ok();
-    if iter.is_none() {
-        return;
-    }
+    let folder_paths: BTreeSet<_> = files
+        .keys()
+        .filter_map(|filepath| filepath.parent())
+        .collect();
 
-    for entry in iter.unwrap().flatten() {
-        if entry.file_type().unwrap().is_dir() {
+    for folder_path in folder_paths {
+        re_log::debug!("Checking for orphaned files in {folder_path}");
+
+        let iter = std::fs::read_dir(folder_path).ok();
+        if iter.is_none() {
+            re_log::debug!("Skipping orphan check in {folder_path}: not a folder (?)");
             continue;
         }
-        let filepath = Utf8PathBuf::try_from(entry.path()).unwrap();
 
-        if let Some(stem) = filepath.as_str().strip_suffix("_ext.rs") {
-            let generated_path = Utf8PathBuf::try_from(format!("{stem}.rs")).unwrap();
-            if !generated_path.exists() {
-                reporter.error(
-                    filepath.as_str(),
-                    "",
-                    format!("Found orphaned {filepath} with no matching {generated_path}"),
-                );
+        for entry in iter.unwrap().flatten() {
+            if entry.file_type().unwrap().is_dir() {
+                continue;
             }
-            continue;
-        }
+            let filepath = Utf8PathBuf::try_from(entry.path()).unwrap();
 
-        if let Some(stem) = filepath.as_str().strip_suffix("_ext.py") {
-            let generated_path = Utf8PathBuf::try_from(format!("{stem}.py")).unwrap();
-            if !generated_path.exists() {
-                reporter.error(
-                    filepath.as_str(),
-                    "",
-                    format!("Found orphaned {filepath} with no matching {generated_path}"),
-                );
+            if let Some(stem) = filepath.as_str().strip_suffix("_ext.rs") {
+                let generated_path = Utf8PathBuf::try_from(format!("{stem}.rs")).unwrap();
+                if !generated_path.exists() {
+                    reporter.error(
+                        filepath.as_str(),
+                        "",
+                        format!("Found orphaned {filepath} with no matching {generated_path}"),
+                    );
+                }
+                continue;
             }
-            continue;
-        }
 
-        if let Some(stem) = filepath.as_str().strip_suffix("_ext.cpp") {
-            let generated_hpp_path = Utf8PathBuf::try_from(format!("{stem}.hpp")).unwrap();
-            if !generated_hpp_path.exists() {
-                reporter.error(
-                    filepath.as_str(),
-                    "",
-                    format!("Found orphaned {filepath} with no matching {generated_hpp_path}"),
-                );
+            if let Some(stem) = filepath.as_str().strip_suffix("_ext.py") {
+                let generated_path = Utf8PathBuf::try_from(format!("{stem}.py")).unwrap();
+                if !generated_path.exists() {
+                    reporter.error(
+                        filepath.as_str(),
+                        "",
+                        format!("Found orphaned {filepath} with no matching {generated_path}"),
+                    );
+                }
+                continue;
             }
-            continue;
-        }
 
-        if !filepaths.contains(&filepath) {
-            re_log::info!("Removing {filepath:?}");
-            if let Err(err) = std::fs::remove_file(&filepath) {
-                panic!("Failed to remove {filepath:?}: {err}");
+            if let Some(stem) = filepath.as_str().strip_suffix("_ext.cpp") {
+                let generated_hpp_path = Utf8PathBuf::try_from(format!("{stem}.hpp")).unwrap();
+                if !generated_hpp_path.exists() {
+                    reporter.error(
+                        filepath.as_str(),
+                        "",
+                        format!("Found orphaned {filepath} with no matching {generated_hpp_path}"),
+                    );
+                }
+                continue;
+            }
+
+            if !files.contains_key(&filepath) {
+                re_log::info!("Removing {filepath:?}");
+                if let Err(err) = std::fs::remove_file(&filepath) {
+                    panic!("Failed to remove {filepath:?}: {err}");
+                }
             }
         }
     }

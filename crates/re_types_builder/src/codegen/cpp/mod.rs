@@ -3,8 +3,6 @@ mod forward_decl;
 mod includes;
 mod method;
 
-use std::collections::BTreeSet;
-
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
 use proc_macro2::{Ident, TokenStream};
@@ -12,11 +10,8 @@ use quote::{format_ident, quote};
 use rayon::prelude::*;
 
 use crate::{
-    codegen::{
-        autogen_warning,
-        common::{collect_examples_for_api_docs, write_file},
-    },
-    format_path, ArrowRegistry, Docs, ElementType, Object, ObjectField, ObjectKind,
+    codegen::{autogen_warning, common::collect_examples_for_api_docs},
+    format_path, ArrowRegistry, Docs, ElementType, GeneratedFiles, Object, ObjectField, ObjectKind,
     ObjectSpecifics, Objects, Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
 
@@ -94,11 +89,6 @@ fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf
     code
 }
 
-fn format_code(code: &str) -> String {
-    clang_format::clang_format_with_style(code, &clang_format::ClangFormatStyle::File)
-        .expect("Failed to run clang-format")
-}
-
 pub struct CppCodeGenerator {
     output_path: Utf8PathBuf,
 }
@@ -109,11 +99,10 @@ impl crate::CodeGenerator for CppCodeGenerator {
         reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
-    ) -> BTreeSet<Utf8PathBuf> {
+    ) -> GeneratedFiles {
         ObjectKind::ALL
             .par_iter()
-            .map(|object_kind| self.generate_folder(reporter, objects, *object_kind))
-            .flatten()
+            .flat_map(|object_kind| self.generate_folder(reporter, objects, *object_kind))
             .collect()
     }
 }
@@ -127,14 +116,15 @@ impl CppCodeGenerator {
 
     fn generate_folder(
         &self,
-        reporter: &Reporter,
+        _reporter: &Reporter,
         objects: &Objects,
         object_kind: ObjectKind,
-    ) -> BTreeSet<Utf8PathBuf> {
+    ) -> GeneratedFiles {
         let folder_name = object_kind.plural_snake_case();
         let folder_path_sdk = self.output_path.join("src/rerun").join(folder_name);
         let folder_path_testing = self.output_path.join("tests/generated").join(folder_name);
-        let mut filepaths = BTreeSet::default();
+
+        let mut files_to_write = GeneratedFiles::default();
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
@@ -151,24 +141,22 @@ impl CppCodeGenerator {
             let (hpp, cpp) = generate_hpp_cpp(objects, obj, hpp_includes, &hpp_type_extensions);
 
             for (extension, tokens) in [("hpp", hpp), ("cpp", cpp)] {
-                let mut string = string_from_token_stream(&tokens, obj.relative_filepath());
+                let mut contents = string_from_token_stream(&tokens, obj.relative_filepath());
                 if let Some(hpp_extension_string) = &hpp_extension_string {
-                    string = string.replace(
+                    contents = contents.replace(
                         &format!("\"{HEADER_EXTENSION_TOKEN}\""), // NOLINT
                         hpp_extension_string,
                     );
                 }
-                let string = format_code(&string);
                 let folder_path = if obj.is_testing() {
                     &folder_path_testing
                 } else {
                     &folder_path_sdk
                 };
                 let filepath = folder_path.join(format!("{filename_stem}.{extension}"));
-                write_file(&filepath, &string);
-                let inserted = filepaths.insert(filepath);
+                let previous = files_to_write.insert(filepath, contents);
                 assert!(
-                    inserted,
+                    previous.is_none(),
                     "Multiple objects with the same name: {:?}",
                     obj.name
                 );
@@ -196,15 +184,11 @@ impl CppCodeGenerator {
                 .parent()
                 .unwrap()
                 .join(format!("{folder_name}.hpp"));
-            let string = string_from_token_stream(&tokens, None);
-            let string = format_code(&string);
-            write_file(&filepath, &string);
-            filepaths.insert(filepath);
+            let contents = string_from_token_stream(&tokens, None);
+            files_to_write.insert(filepath, contents);
         }
 
-        super::common::remove_old_files_from_folder(reporter, folder_path_sdk, &filepaths);
-
-        filepaths
+        files_to_write
     }
 }
 
