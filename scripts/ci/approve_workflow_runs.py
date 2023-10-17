@@ -17,8 +17,21 @@ import argparse
 
 import requests
 from github import Github
+from github.WorkflowRun import WorkflowRun
 
 APPROVAL = "@rerun-bot approve"
+
+
+def approve(github_token: str, workflow_run: WorkflowRun) -> None:
+    print(f"approving {workflow_run.id}")
+    requests.post(
+        f"https://api.github.com/repos/rerun-io/rerun/actions/runs/{workflow_run.id}/approve",
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {github_token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    ).raise_for_status()
 
 
 def main() -> None:
@@ -45,18 +58,9 @@ def main() -> None:
             continue
 
         print(f"found valid approval by {comment.user.login}")
-        for workflow_run in repo.get_workflow_runs(branch=pr.head.ref, status="action_required"):
+        for workflow_run in repo.get_workflow_runs(branch=pr.head.ref):
             if workflow_run.status == "action_required" or workflow_run.conclusion == "action_required":
-                print(f"approving {workflow_run.id}")
-                requests.post(
-                    f"https://api.github.com/repos/rerun-io/rerun/actions/runs/{workflow_run.id}/approve",
-                    headers={
-                        "Accept": "application/vnd.github+json",
-                        "Authorization": f"Bearer {args.github_token}",
-                        "X-GitHub-Api-Version": "2022-11-28",
-                    },
-                ).raise_for_status()
-
+                approve(args.github_token, workflow_run)
         return
 
 
