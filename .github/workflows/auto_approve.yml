@@ -12,13 +12,15 @@ jobs:
   approve-workflow-runs:
     name: "Check for approval"
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'pull_request' || github.event.issue.pull_request }}
+    if: ${{ github.event_name == 'pull_request_target' || github.event.issue.pull_request }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
 
       - name: Install dependencies
         run: |
@@ -27,7 +29,7 @@ jobs:
       - name: Wait a few seconds
         run: |
           # Give GitHub a bit of time to synchronize everything
-          sleep 10s
+          sleep 5s
 
       - name: Approve workflow runs
         run: |
