@@ -21,4 +21,3 @@ struct AutoSpaceViews (
 ) {
   enabled: bool (order: 100);
 }
-
