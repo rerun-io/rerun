@@ -98,7 +98,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -116,7 +116,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let id_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+                        let id_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -141,27 +141,31 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let label_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let label_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let inner_data: ::re_types_core::external::arrow2::buffer::Buffer<u8> =
-                                label
-                                    .iter()
-                                    .flatten()
-                                    .flat_map(|datum| {
-                                        let crate::datatypes::Utf8(data0) = datum;
-                                        data0.0.clone()
-                                    })
-                                    .collect();
-                            let offsets =
-                        ::re_types_core::external::arrow2::offset::Offsets:: < i32 >
-                        ::try_from_lengths(label.iter().map(| opt | opt.as_ref().map(|
-                        datum | { let crate ::datatypes::Utf8(data0) = datum; data0.0
-                        .len() }).unwrap_or_default())).unwrap().into();
+                            let inner_data: arrow2::buffer::Buffer<u8> = label
+                                .iter()
+                                .flatten()
+                                .flat_map(|datum| {
+                                    let crate::datatypes::Utf8(data0) = datum;
+                                    data0.0.clone()
+                                })
+                                .collect();
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                label.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| {
+                                            let crate::datatypes::Utf8(data0) = datum;
+                                            data0.0.len()
+                                        })
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
 
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
@@ -189,9 +193,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let color_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let color_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -232,7 +234,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
@@ -303,56 +305,50 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::Utf8Array<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::Utf8,
-                                arrow_data.data_type().clone(),
-                            ))
+                            .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::Utf8,
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.AnnotationInfo#label")?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
-                        ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                offsets.iter().zip(offsets.lengths()),
-                                arrow_data.validity(),
-                            )
-                            .map(|elem| {
-                                elem
-                                    .map(|(start, len)| {
-                                        let start = *start as usize;
-                                        let end = start + len;
-                                        if end as usize > arrow_data_buf.len() {
-                                            return Err(
-                                                ::re_types_core::DeserializationError::offset_slice_oob(
-                                                    (start, end),
-                                                    arrow_data_buf.len(),
-                                                ),
-                                            );
-                                        }
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            arrow_data.validity(),
+                        )
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end as usize > arrow_data_buf.len() {
+                                    return Err(
+                                        ::re_types_core::DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_buf.len(),
+                                        ),
+                                    );
+                                }
 
-                                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                        let data = unsafe {
-                                            arrow_data_buf.clone().sliced_unchecked(start, len)
-                                        };
-                                        Ok(data)
-                                    })
-                                    .transpose()
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data =
+                                    unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
                             })
-                            .map(|res_or_opt| {
-                                res_or_opt
-                                    .map(|res_or_opt| {
-                                        res_or_opt
-                                            .map(|v| crate::datatypes::Utf8(
-                                                ::re_types_core::ArrowString(v),
-                                            ))
-                                    })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| {
+                                    crate::datatypes::Utf8(::re_types_core::ArrowString(v))
+                                })
                             })
-                            .collect::<
-                                ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                            >()
-                            .with_context("rerun.datatypes.AnnotationInfo#label")?
-                            .into_iter()
+                        })
+                        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+                        .with_context("rerun.datatypes.AnnotationInfo#label")?
+                        .into_iter()
                     }
                 };
                 let color = {
@@ -378,7 +374,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Rgba32(v)))
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(id, label, color),
                     arrow_data.validity(),
                 )

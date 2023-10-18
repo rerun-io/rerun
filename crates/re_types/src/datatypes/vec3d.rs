@@ -94,12 +94,12 @@ impl ::re_types_core::Loggable for Vec3D {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                use ::re_types_core::external::arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
                     .iter()
                     .flatten()
@@ -107,7 +107,7 @@ impl ::re_types_core::Loggable for Vec3D {
                     .cloned()
                     .map(Some)
                     .collect();
-                let data0_inner_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> =
+                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                     data0_bitmap.as_ref().map(|bitmap| {
                         bitmap
                             .iter()
@@ -147,7 +147,7 @@ impl ::re_types_core::Loggable for Vec3D {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::FixedSizeListArray>()
+                .downcast_ref::<arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::FixedSizeList(
@@ -185,7 +185,7 @@ impl ::re_types_core::Loggable for Vec3D {
                         .map(|opt| opt.copied())
                         .collect::<Vec<_>>()
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     offsets,
                     arrow_data.validity(),
                 )

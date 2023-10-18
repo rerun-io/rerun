@@ -99,7 +99,7 @@ impl ::re_types_core::Loggable for Material {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -119,9 +119,7 @@ impl ::re_types_core::Loggable for Material {
                             (datum.is_some(), datum)
                         })
                         .unzip();
-                    let albedo_factor_bitmap: Option<
-                        ::re_types_core::external::arrow2::bitmap::Bitmap,
-                    > = {
+                    let albedo_factor_bitmap: Option<arrow2::bitmap::Bitmap> = {
                         let any_nones = somes.iter().any(|some| !*some);
                         any_nones.then(|| somes.into())
                     };
@@ -161,7 +159,7 @@ impl ::re_types_core::Loggable for Material {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
@@ -207,7 +205,7 @@ impl ::re_types_core::Loggable for Material {
                         .map(|opt| opt.copied())
                         .map(|res_or_opt| res_or_opt.map(|v| crate::datatypes::Rgba32(v)))
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(albedo_factor),
                     arrow_data.validity(),
                 )

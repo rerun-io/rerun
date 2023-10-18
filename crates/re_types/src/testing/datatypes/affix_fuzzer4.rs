@@ -136,9 +136,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let single_required_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let single_required_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -161,16 +159,12 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let many_required_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let many_required_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use ::re_types_core::external::arrow2::{
-                                buffer::Buffer, offset::OffsetsBuffer,
-                            };
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let many_required_inner_data: Vec<_> = many_required
                                 .iter()
                                 .flatten()
@@ -178,14 +172,14 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                 .cloned()
                                 .map(Some)
                                 .collect();
-                            let many_required_inner_bitmap: Option<
-                                ::re_types_core::external::arrow2::bitmap::Bitmap,
-                            > = None;
-                            let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(many_required.iter().map(| opt | opt
-                        .as_ref().map(| datum | datum.len()).unwrap_or_default()))
-                        .unwrap().into();
+                            let many_required_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                many_required.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
                             ListArray::new(
                                 DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
@@ -221,16 +215,12 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let many_optional_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let many_optional_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use ::re_types_core::external::arrow2::{
-                                buffer::Buffer, offset::OffsetsBuffer,
-                            };
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let many_optional_inner_data: Vec<_> = many_optional
                                 .iter()
                                 .flatten()
@@ -238,14 +228,14 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                 .cloned()
                                 .map(Some)
                                 .collect();
-                            let many_optional_inner_bitmap: Option<
-                                ::re_types_core::external::arrow2::bitmap::Bitmap,
-                            > = None;
-                            let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(many_optional.iter().map(| opt | opt
-                        .as_ref().map(| datum | datum.len()).unwrap_or_default()))
-                        .unwrap().into();
+                            let many_optional_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                many_optional.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
                             ListArray::new(
                                 DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
@@ -315,7 +305,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(
@@ -383,9 +373,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::List(
                                     Box::new(Field {
@@ -415,7 +403,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                     .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                     offsets.iter().zip(offsets.lengths()),
                                     arrow_data.validity(),
                                 )
@@ -462,9 +450,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::List(
                                     Box::new(Field {
@@ -494,7 +480,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                     .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
                                     offsets.iter().zip(offsets.lengths()),
                                     arrow_data.validity(),
                                 )

@@ -125,9 +125,7 @@ impl ::re_types_core::Loggable for Transform3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let translation_and_mat3x3_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let translation_and_mat3x3_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -157,9 +155,7 @@ impl ::re_types_core::Loggable for Transform3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let translation_rotation_scale_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let translation_rotation_scale_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -213,7 +209,7 @@ impl ::re_types_core::Loggable for Transform3D {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(

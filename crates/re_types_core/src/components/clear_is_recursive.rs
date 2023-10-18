@@ -88,7 +88,7 @@ impl crate::Loggable for ClearIsRecursive {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<crate::external::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };

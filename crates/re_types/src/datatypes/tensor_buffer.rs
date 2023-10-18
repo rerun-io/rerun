@@ -241,395 +241,819 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 })
                 .collect();
             UnionArray::new(
-                    <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                    data
-                        .iter()
-                        .map(|a| match a.as_deref() {
-                            None => 0,
-                            Some(TensorBuffer::U8(_)) => 1i8,
-                            Some(TensorBuffer::U16(_)) => 2i8,
-                            Some(TensorBuffer::U32(_)) => 3i8,
-                            Some(TensorBuffer::U64(_)) => 4i8,
-                            Some(TensorBuffer::I8(_)) => 5i8,
-                            Some(TensorBuffer::I16(_)) => 6i8,
-                            Some(TensorBuffer::I32(_)) => 7i8,
-                            Some(TensorBuffer::I64(_)) => 8i8,
-                            Some(TensorBuffer::F16(_)) => 9i8,
-                            Some(TensorBuffer::F32(_)) => 10i8,
-                            Some(TensorBuffer::F64(_)) => 11i8,
-                            Some(TensorBuffer::Jpeg(_)) => 12i8,
-                            Some(TensorBuffer::Nv12(_)) => 13i8,
-                        })
-                        .collect(),
-                    vec![
-                        NullArray::new(DataType::Null, data.iter().filter(| v | v
-                        .is_none()).count(),).boxed(), { let (somes, u8) : (Vec < _ >,
-                        Vec < _ >) = data.iter().filter(| datum | matches!(datum
-                        .as_deref(), Some(TensorBuffer::U8(_)))).map(| datum | { let
-                        datum = match datum.as_deref() { Some(TensorBuffer::U8(v)) =>
-                        Some(v.clone()), _ => None, }; (datum.is_some(), datum) })
-                        .unzip(); let u8_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let u8_inner_data : Buffer < _ > = u8
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let u8_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(u8.iter().map(| opt | opt.as_ref().map(|
-                        datum | datum.num_instances()).unwrap_or_default())).unwrap()
-                        .into(); ListArray::new(DataType::List(Box::new(Field { name :
-                        "item".to_owned(), data_type : DataType::UInt8, is_nullable :
-                        false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::UInt8, u8_inner_data,
-                        u8_inner_bitmap,).boxed(), u8_bitmap,).boxed() } }, { let (somes,
-                        u16) : (Vec < _ >, Vec < _ >) = data.iter().filter(| datum |
-                        matches!(datum.as_deref(), Some(TensorBuffer::U16(_)))).map(|
-                        datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::U16(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let u16_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let u16_inner_data : Buffer < _ > = u16
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let u16_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(u16.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::UInt16,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::UInt16, u16_inner_data,
-                        u16_inner_bitmap,).boxed(), u16_bitmap,).boxed() } }, { let
-                        (somes, u32) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::U32(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::U32(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let u32_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let u32_inner_data : Buffer < _ > = u32
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let u32_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(u32.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::UInt32,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::UInt32, u32_inner_data,
-                        u32_inner_bitmap,).boxed(), u32_bitmap,).boxed() } }, { let
-                        (somes, u64) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::U64(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::U64(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let u64_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let u64_inner_data : Buffer < _ > = u64
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let u64_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(u64.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::UInt64,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::UInt64, u64_inner_data,
-                        u64_inner_bitmap,).boxed(), u64_bitmap,).boxed() } }, { let
-                        (somes, i8) : (Vec < _ >, Vec < _ >) = data.iter().filter(| datum
-                        | matches!(datum.as_deref(), Some(TensorBuffer::I8(_)))).map(|
-                        datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::I8(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let i8_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let i8_inner_data : Buffer < _ > = i8
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let i8_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(i8.iter().map(| opt | opt.as_ref().map(|
-                        datum | datum.num_instances()).unwrap_or_default())).unwrap()
-                        .into(); ListArray::new(DataType::List(Box::new(Field { name :
-                        "item".to_owned(), data_type : DataType::Int8, is_nullable :
-                        false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::Int8, i8_inner_data,
-                        i8_inner_bitmap,).boxed(), i8_bitmap,).boxed() } }, { let (somes,
-                        i16) : (Vec < _ >, Vec < _ >) = data.iter().filter(| datum |
-                        matches!(datum.as_deref(), Some(TensorBuffer::I16(_)))).map(|
-                        datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::I16(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let i16_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let i16_inner_data : Buffer < _ > = i16
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let i16_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(i16.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::Int16,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::Int16, i16_inner_data,
-                        i16_inner_bitmap,).boxed(), i16_bitmap,).boxed() } }, { let
-                        (somes, i32) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::I32(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::I32(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let i32_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let i32_inner_data : Buffer < _ > = i32
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let i32_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(i32.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::Int32,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::Int32, i32_inner_data,
-                        i32_inner_bitmap,).boxed(), i32_bitmap,).boxed() } }, { let
-                        (somes, i64) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::I64(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::I64(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let i64_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let i64_inner_data : Buffer < _ > = i64
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let i64_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(i64.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::Int64,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::Int64, i64_inner_data,
-                        i64_inner_bitmap,).boxed(), i64_bitmap,).boxed() } }, { let
-                        (somes, f16) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::F16(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::F16(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let f16_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let f16_inner_data : Buffer < _ > = f16
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let f16_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(f16.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::Float16,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::Float16, f16_inner_data,
-                        f16_inner_bitmap,).boxed(), f16_bitmap,).boxed() } }, { let
-                        (somes, f32) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::F32(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::F32(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let f32_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let f32_inner_data : Buffer < _ > = f32
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let f32_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(f32.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::Float32,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::Float32, f32_inner_data,
-                        f32_inner_bitmap,).boxed(), f32_bitmap,).boxed() } }, { let
-                        (somes, f64) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::F64(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::F64(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let f64_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let f64_inner_data : Buffer < _ > = f64
-                        .iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _ >>
-                        ().concat().into(); let f64_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(f64.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::Float64,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::Float64, f64_inner_data,
-                        f64_inner_bitmap,).boxed(), f64_bitmap,).boxed() } }, { let
-                        (somes, jpeg) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::Jpeg(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::Jpeg(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let jpeg_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let jpeg_inner_data : Buffer < _ > =
-                        jpeg.iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _
-                        >> ().concat().into(); let jpeg_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(jpeg.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::UInt8,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::UInt8, jpeg_inner_data,
-                        jpeg_inner_bitmap,).boxed(), jpeg_bitmap,).boxed() } }, { let
-                        (somes, nv12) : (Vec < _ >, Vec < _ >) = data.iter().filter(|
-                        datum | matches!(datum.as_deref(), Some(TensorBuffer::Nv12(_))))
-                        .map(| datum | { let datum = match datum.as_deref() {
-                        Some(TensorBuffer::Nv12(v)) => Some(v.clone()), _ => None, };
-                        (datum.is_some(), datum) }).unzip(); let nv12_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let nv12_inner_data : Buffer < _ > =
-                        nv12.iter().flatten().map(| b | b.as_slice()).collect:: < Vec < _
-                        >> ().concat().into(); let nv12_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(nv12.iter().map(| opt | opt.as_ref()
-                        .map(| datum | datum.num_instances()).unwrap_or_default()))
-                        .unwrap().into(); ListArray::new(DataType::List(Box::new(Field {
-                        name : "item".to_owned(), data_type : DataType::UInt8,
-                        is_nullable : false, metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::UInt8, nv12_inner_data,
-                        nv12_inner_bitmap,).boxed(), nv12_bitmap,).boxed() } },
-                    ],
-                    Some({
-                        let mut u8_offset = 0;
-                        let mut u16_offset = 0;
-                        let mut u32_offset = 0;
-                        let mut u64_offset = 0;
-                        let mut i8_offset = 0;
-                        let mut i16_offset = 0;
-                        let mut i32_offset = 0;
-                        let mut i64_offset = 0;
-                        let mut f16_offset = 0;
-                        let mut f32_offset = 0;
-                        let mut f64_offset = 0;
-                        let mut jpeg_offset = 0;
-                        let mut nv12_offset = 0;
-                        let mut nulls_offset = 0;
-                        data.iter()
-                            .map(|v| match v.as_deref() {
-                                None => {
-                                    let offset = nulls_offset;
-                                    nulls_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::U8(_)) => {
-                                    let offset = u8_offset;
-                                    u8_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::U16(_)) => {
-                                    let offset = u16_offset;
-                                    u16_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::U32(_)) => {
-                                    let offset = u32_offset;
-                                    u32_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::U64(_)) => {
-                                    let offset = u64_offset;
-                                    u64_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::I8(_)) => {
-                                    let offset = i8_offset;
-                                    i8_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::I16(_)) => {
-                                    let offset = i16_offset;
-                                    i16_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::I32(_)) => {
-                                    let offset = i32_offset;
-                                    i32_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::I64(_)) => {
-                                    let offset = i64_offset;
-                                    i64_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::F16(_)) => {
-                                    let offset = f16_offset;
-                                    f16_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::F32(_)) => {
-                                    let offset = f32_offset;
-                                    f32_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::F64(_)) => {
-                                    let offset = f64_offset;
-                                    f64_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::Jpeg(_)) => {
-                                    let offset = jpeg_offset;
-                                    jpeg_offset += 1;
-                                    offset
-                                }
-                                Some(TensorBuffer::Nv12(_)) => {
-                                    let offset = nv12_offset;
-                                    nv12_offset += 1;
-                                    offset
-                                }
+                <crate::datatypes::TensorBuffer>::arrow_datatype(),
+                data.iter()
+                    .map(|a| match a.as_deref() {
+                        None => 0,
+                        Some(TensorBuffer::U8(_)) => 1i8,
+                        Some(TensorBuffer::U16(_)) => 2i8,
+                        Some(TensorBuffer::U32(_)) => 3i8,
+                        Some(TensorBuffer::U64(_)) => 4i8,
+                        Some(TensorBuffer::I8(_)) => 5i8,
+                        Some(TensorBuffer::I16(_)) => 6i8,
+                        Some(TensorBuffer::I32(_)) => 7i8,
+                        Some(TensorBuffer::I64(_)) => 8i8,
+                        Some(TensorBuffer::F16(_)) => 9i8,
+                        Some(TensorBuffer::F32(_)) => 10i8,
+                        Some(TensorBuffer::F64(_)) => 11i8,
+                        Some(TensorBuffer::Jpeg(_)) => 12i8,
+                        Some(TensorBuffer::Nv12(_)) => 13i8,
+                    })
+                    .collect(),
+                vec![
+                    NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count())
+                        .boxed(),
+                    {
+                        let (somes, u8): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U8(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::U8(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
                             })
-                            .collect()
-                    }),
-                )
-                .boxed()
+                            .unzip();
+                        let u8_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let u8_inner_data: Buffer<_> = u8
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let u8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                u8.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt8,
+                                    u8_inner_data,
+                                    u8_inner_bitmap,
+                                )
+                                .boxed(),
+                                u8_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, u16): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U16(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::U16(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let u16_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let u16_inner_data: Buffer<_> = u16
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let u16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                u16.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt16,
+                                    u16_inner_data,
+                                    u16_inner_bitmap,
+                                )
+                                .boxed(),
+                                u16_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, u32): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U32(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::U32(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let u32_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let u32_inner_data: Buffer<_> = u32
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let u32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                u32.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt32,
+                                    u32_inner_data,
+                                    u32_inner_bitmap,
+                                )
+                                .boxed(),
+                                u32_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, u64): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::U64(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::U64(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let u64_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let u64_inner_data: Buffer<_> = u64
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let u64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                u64.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt64,
+                                    u64_inner_data,
+                                    u64_inner_bitmap,
+                                )
+                                .boxed(),
+                                u64_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, i8): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I8(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::I8(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let i8_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let i8_inner_data: Buffer<_> = i8
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let i8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                i8.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(DataType::Int8, i8_inner_data, i8_inner_bitmap)
+                                    .boxed(),
+                                i8_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, i16): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I16(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::I16(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let i16_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let i16_inner_data: Buffer<_> = i16
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let i16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                i16.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::Int16,
+                                    i16_inner_data,
+                                    i16_inner_bitmap,
+                                )
+                                .boxed(),
+                                i16_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, i32): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I32(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::I32(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let i32_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let i32_inner_data: Buffer<_> = i32
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let i32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                i32.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::Int32,
+                                    i32_inner_data,
+                                    i32_inner_bitmap,
+                                )
+                                .boxed(),
+                                i32_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, i64): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::I64(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::I64(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let i64_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let i64_inner_data: Buffer<_> = i64
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let i64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                i64.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Int64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::Int64,
+                                    i64_inner_data,
+                                    i64_inner_bitmap,
+                                )
+                                .boxed(),
+                                i64_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, f16): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F16(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::F16(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let f16_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let f16_inner_data: Buffer<_> = f16
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let f16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                f16.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float16,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::Float16,
+                                    f16_inner_data,
+                                    f16_inner_bitmap,
+                                )
+                                .boxed(),
+                                f16_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, f32): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F32(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::F32(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let f32_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let f32_inner_data: Buffer<_> = f32
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let f32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                f32.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float32,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::Float32,
+                                    f32_inner_data,
+                                    f32_inner_bitmap,
+                                )
+                                .boxed(),
+                                f32_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, f64): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::F64(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::F64(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let f64_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let f64_inner_data: Buffer<_> = f64
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let f64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                f64.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Float64,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::Float64,
+                                    f64_inner_data,
+                                    f64_inner_bitmap,
+                                )
+                                .boxed(),
+                                f64_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, jpeg): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::Jpeg(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::Jpeg(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let jpeg_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let jpeg_inner_data: Buffer<_> = jpeg
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let jpeg_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                jpeg.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt8,
+                                    jpeg_inner_data,
+                                    jpeg_inner_bitmap,
+                                )
+                                .boxed(),
+                                jpeg_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, nv12): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .filter(|datum| matches!(datum.as_deref(), Some(TensorBuffer::Nv12(_))))
+                            .map(|datum| {
+                                let datum = match datum.as_deref() {
+                                    Some(TensorBuffer::Nv12(v)) => Some(v.clone()),
+                                    _ => None,
+                                };
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let nv12_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let nv12_inner_data: Buffer<_> = nv12
+                                .iter()
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            let nv12_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                nv12.iter().map(|opt| {
+                                    opt.as_ref()
+                                        .map(|datum| datum.num_instances())
+                                        .unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt8,
+                                    nv12_inner_data,
+                                    nv12_inner_bitmap,
+                                )
+                                .boxed(),
+                                nv12_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                ],
+                Some({
+                    let mut u8_offset = 0;
+                    let mut u16_offset = 0;
+                    let mut u32_offset = 0;
+                    let mut u64_offset = 0;
+                    let mut i8_offset = 0;
+                    let mut i16_offset = 0;
+                    let mut i32_offset = 0;
+                    let mut i64_offset = 0;
+                    let mut f16_offset = 0;
+                    let mut f32_offset = 0;
+                    let mut f64_offset = 0;
+                    let mut jpeg_offset = 0;
+                    let mut nv12_offset = 0;
+                    let mut nulls_offset = 0;
+                    data.iter()
+                        .map(|v| match v.as_deref() {
+                            None => {
+                                let offset = nulls_offset;
+                                nulls_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::U8(_)) => {
+                                let offset = u8_offset;
+                                u8_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::U16(_)) => {
+                                let offset = u16_offset;
+                                u16_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::U32(_)) => {
+                                let offset = u32_offset;
+                                u32_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::U64(_)) => {
+                                let offset = u64_offset;
+                                u64_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::I8(_)) => {
+                                let offset = i8_offset;
+                                i8_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::I16(_)) => {
+                                let offset = i16_offset;
+                                i16_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::I32(_)) => {
+                                let offset = i32_offset;
+                                i32_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::I64(_)) => {
+                                let offset = i64_offset;
+                                i64_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::F16(_)) => {
+                                let offset = f16_offset;
+                                f16_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::F32(_)) => {
+                                let offset = f32_offset;
+                                f32_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::F64(_)) => {
+                                let offset = f64_offset;
+                                f64_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::Jpeg(_)) => {
+                                let offset = jpeg_offset;
+                                jpeg_offset += 1;
+                                offset
+                            }
+                            Some(TensorBuffer::Nv12(_)) => {
+                                let offset = nv12_offset;
+                                nv12_offset += 1;
+                                offset
+                            }
+                        })
+                        .collect()
+                }),
+            )
+            .boxed()
         })
     }
 
@@ -646,7 +1070,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(
@@ -840,20 +1264,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#U8")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -863,50 +1285,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt8,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt8,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#U8")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let u16 = {
                     if 2usize >= arrow_data_arrays.len() {
@@ -916,20 +1337,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt16,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#U16")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -939,50 +1358,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt16Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt16,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt16,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#U16")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let u32 = {
                     if 3usize >= arrow_data_arrays.len() {
@@ -992,20 +1410,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt32,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#U32")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1015,50 +1431,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt32Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt32,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#U32")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let u64 = {
                     if 4usize >= arrow_data_arrays.len() {
@@ -1068,20 +1483,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt64,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#U64")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1091,50 +1504,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt64Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt64,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt64,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#U64")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let i8 = {
                     if 5usize >= arrow_data_arrays.len() {
@@ -1144,20 +1556,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int8,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#I8")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1167,50 +1577,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int8Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Int8,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Int8,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#I8")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let i16 = {
                     if 6usize >= arrow_data_arrays.len() {
@@ -1220,20 +1629,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int16,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#I16")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1243,50 +1650,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int16Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Int16,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Int16,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#I16")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let i32 = {
                     if 7usize >= arrow_data_arrays.len() {
@@ -1296,20 +1702,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int32,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#I32")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1319,50 +1723,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int32Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Int32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Int32,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#I32")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let i64 = {
                     if 8usize >= arrow_data_arrays.len() {
@@ -1372,20 +1775,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int64,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#I64")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1395,50 +1796,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Int64Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Int64,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Int64,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#I64")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let f16 = {
                     if 9usize >= arrow_data_arrays.len() {
@@ -1448,20 +1848,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float16,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#F16")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1471,50 +1869,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float16Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Float16,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Float16,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#F16")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let f32 = {
                     if 10usize >= arrow_data_arrays.len() {
@@ -1524,20 +1921,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#F32")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1547,50 +1942,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Float32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Float32,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#F32")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let f64 = {
                     if 11usize >= arrow_data_arrays.len() {
@@ -1600,20 +1994,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float64,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#F64")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1623,50 +2015,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float64Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Float64,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Float64,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#F64")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let jpeg = {
                     if 12usize >= arrow_data_arrays.len() {
@@ -1676,20 +2067,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#JPEG")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1699,50 +2088,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt8,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt8,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#JPEG")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 let nv12 = {
                     if 13usize >= arrow_data_arrays.len() {
@@ -1752,20 +2140,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.datatypes.TensorBuffer#NV12")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -1775,50 +2161,49 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt8,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt8,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = ::re_types_core::ArrowBuffer::from(data);
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = ::re_types_core::ArrowBuffer::from(data);
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
-                        .collect::<Vec<_>>()
+                    .collect::<Vec<_>>()
                 };
                 arrow_data_types
                     .iter()

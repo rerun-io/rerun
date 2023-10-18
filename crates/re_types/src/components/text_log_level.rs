@@ -102,12 +102,12 @@ impl ::re_types_core::Loggable for TextLogLevel {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                let inner_data: ::re_types_core::external::arrow2::buffer::Buffer<u8> = data0
+                let inner_data: arrow2::buffer::Buffer<u8> = data0
                     .iter()
                     .flatten()
                     .flat_map(|datum| {
@@ -116,16 +116,14 @@ impl ::re_types_core::Loggable for TextLogLevel {
                     })
                     .collect();
                 let offsets =
-                    ::re_types_core::external::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                        data0.iter().map(|opt| {
-                            opt.as_ref()
-                                .map(|datum| {
-                                    let crate::datatypes::Utf8(data0) = datum;
-                                    data0.0.len()
-                                })
-                                .unwrap_or_default()
-                        }),
-                    )
+                    arrow2::offset::Offsets::<i32>::try_from_lengths(data0.iter().map(|opt| {
+                        opt.as_ref()
+                            .map(|datum| {
+                                let crate::datatypes::Utf8(data0) = datum;
+                                data0.0.len()
+                            })
+                            .unwrap_or_default()
+                    }))
                     .unwrap()
                     .into();
 
@@ -156,7 +154,7 @@ impl ::re_types_core::Loggable for TextLogLevel {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::Utf8Array<i32>>()
+                .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Utf8,
@@ -166,7 +164,7 @@ impl ::re_types_core::Loggable for TextLogLevel {
                 .with_context("rerun.components.TextLogLevel#value")?;
             let arrow_data_buf = arrow_data.values();
             let offsets = arrow_data.offsets();
-            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+            arrow2::bitmap::utils::ZipValidity::new_with_validity(
                 offsets.iter().zip(offsets.lengths()),
                 arrow_data.validity(),
             )

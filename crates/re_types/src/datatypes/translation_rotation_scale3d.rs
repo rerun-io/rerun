@@ -109,7 +109,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -130,16 +130,12 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let translation_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let translation_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use ::re_types_core::external::arrow2::{
-                                buffer::Buffer, offset::OffsetsBuffer,
-                            };
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let translation_inner_data: Vec<_> = translation
                                 .iter()
                                 .map(|datum| {
@@ -153,16 +149,15 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let translation_inner_bitmap: Option<
-                                ::re_types_core::external::arrow2::bitmap::Bitmap,
-                            > = translation_bitmap.as_ref().map(|bitmap| {
-                                bitmap
-                                    .iter()
-                                    .map(|i| std::iter::repeat(i).take(3usize))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
+                            let translation_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                translation_bitmap.as_ref().map(|bitmap| {
+                                    bitmap
+                                        .iter()
+                                        .map(|i| std::iter::repeat(i).take(3usize))
+                                        .flatten()
+                                        .collect::<Vec<_>>()
+                                        .into()
+                                });
                             FixedSizeListArray::new(
                                 DataType::FixedSizeList(
                                     Box::new(Field {
@@ -201,9 +196,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let rotation_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let rotation_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -226,9 +219,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let scale_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let scale_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -248,9 +239,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let from_parent_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let from_parent_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -284,7 +273,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
@@ -339,21 +328,21 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::FixedSizeListArray,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::FixedSizeList(
-                                    Box::new(Field {
-                                        name: "item".to_owned(),
-                                        data_type: DataType::Float32,
-                                        is_nullable: false,
-                                        metadata: [].into(),
-                                    }),
-                                    3usize,
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                            .downcast_ref::<arrow2::array::FixedSizeListArray>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::FixedSizeList(
+                                        Box::new(Field {
+                                            name: "item".to_owned(),
+                                            data_type: DataType::Float32,
+                                            is_nullable: false,
+                                            metadata: [].into(),
+                                        }),
+                                        3usize,
+                                    ),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context(
                                 "rerun.datatypes.TranslationRotationScale3D#translation",
                             )?;
@@ -368,10 +357,12 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::Float32,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::Float32,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context(
                                         "rerun.datatypes.TranslationRotationScale3D#translation",
                                     )?
@@ -379,47 +370,40 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                                     .map(|opt| opt.copied())
                                     .collect::<Vec<_>>()
                             };
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets,
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, end)| {
-                                            debug_assert!(end - start == 3usize);
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets,
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, end)| {
+                                    debug_assert!(end - start == 3usize);
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner.get_unchecked(start as usize..end as usize)
-                                            };
-                                            let data = data
-                                                .iter()
-                                                .cloned()
-                                                .map(Option::unwrap_or_default);
-                                            let arr = array_init::from_iter(data).unwrap();
-                                            Ok(arr)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data.iter().cloned().map(Option::unwrap_or_default);
+                                    let arr = array_init::from_iter(data).unwrap();
+                                    Ok(arr)
                                 })
-                                .map(|res_or_opt| {
-                                    res_or_opt
-                                        .map(|res_or_opt| {
-                                            res_or_opt.map(|v| crate::datatypes::Vec3D(v))
-                                        })
+                                .transpose()
+                            })
+                            .map(|res_or_opt| {
+                                res_or_opt.map(|res_or_opt| {
+                                    res_or_opt.map(|v| crate::datatypes::Vec3D(v))
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 let rotation = {
@@ -469,7 +453,7 @@ impl ::re_types_core::Loggable for TranslationRotationScale3D {
                         .with_context("rerun.datatypes.TranslationRotationScale3D#from_parent")?
                         .into_iter()
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(translation, rotation, scale, from_parent),
                     arrow_data.validity(),
                 )

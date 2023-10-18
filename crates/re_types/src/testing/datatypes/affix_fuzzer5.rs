@@ -97,7 +97,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -120,9 +120,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                             (datum.is_some(), datum)
                         })
                         .unzip();
-                    let single_optional_union_bitmap: Option<
-                        ::re_types_core::external::arrow2::bitmap::Bitmap,
-                    > = {
+                    let single_optional_union_bitmap: Option<arrow2::bitmap::Bitmap> = {
                         let any_nones = somes.iter().any(|some| !*some);
                         any_nones.then(|| somes.into())
                     };
@@ -152,7 +150,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
@@ -188,7 +186,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                         .with_context("rerun.testing.datatypes.AffixFuzzer5#single_optional_union")?
                         .into_iter()
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(single_optional_union),
                     arrow_data.validity(),
                 )

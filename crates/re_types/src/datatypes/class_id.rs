@@ -101,7 +101,7 @@ impl ::re_types_core::Loggable for ClassId {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };

@@ -90,7 +90,7 @@ impl ::re_types_core::Loggable for PanelView {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -107,9 +107,7 @@ impl ::re_types_core::Loggable for PanelView {
                             (datum.is_some(), datum)
                         })
                         .unzip();
-                    let is_expanded_bitmap: Option<
-                        ::re_types_core::external::arrow2::bitmap::Bitmap,
-                    > = {
+                    let is_expanded_bitmap: Option<arrow2::bitmap::Bitmap> = {
                         let any_nones = somes.iter().any(|some| !*some);
                         any_nones.then(|| somes.into())
                     };
@@ -142,7 +140,7 @@ impl ::re_types_core::Loggable for PanelView {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
@@ -186,7 +184,7 @@ impl ::re_types_core::Loggable for PanelView {
                         .with_context("rerun.blueprint.PanelView#is_expanded")?
                         .into_iter()
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(is_expanded),
                     arrow_data.validity(),
                 )

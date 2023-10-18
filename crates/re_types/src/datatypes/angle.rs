@@ -117,9 +117,7 @@ impl ::re_types_core::Loggable for Angle {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let radians_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -142,9 +140,7 @@ impl ::re_types_core::Loggable for Angle {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let degrees_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -198,7 +194,7 @@ impl ::re_types_core::Loggable for Angle {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(

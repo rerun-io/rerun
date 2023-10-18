@@ -88,7 +88,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -106,9 +106,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let class_id_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let class_id_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -142,9 +140,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let class_description_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = {
+                        let class_description_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -173,7 +169,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
@@ -240,7 +236,7 @@ impl ::re_types_core::Loggable for ClassDescriptionMapElem {
                         .with_context("rerun.datatypes.ClassDescriptionMapElem#class_description")?
                         .into_iter()
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(class_id, class_description),
                     arrow_data.validity(),
                 )
