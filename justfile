@@ -187,7 +187,7 @@ toml-format:
 
 # Lint .toml files
 toml-lint:
-    taplo fmt --check
+    taplo fmt --check --diff
 
 
 ### Misc
