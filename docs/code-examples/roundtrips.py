@@ -75,6 +75,9 @@ def run(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
+    parser.add_argument("--no-py", action="store_true", help="Skip Python tests")
+    parser.add_argument("--no-cpp", action="store_true", help="Skip C++ tests")
+    # We don't allow skipping Rust - it is what we compate to at the moment
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
     parser.add_argument(
         "--no-cpp-build",
@@ -97,7 +100,9 @@ def main() -> None:
     if "RUST_LOG" in build_env:
         del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
 
-    if args.no_py_build:
+    if args.no_py:
+        pass  # No need to build the Python SDK
+    elif args.no_py_build:
         print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
     else:
         print("----------------------------------------------------------")
@@ -108,7 +113,9 @@ def main() -> None:
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
         print("")
 
-    if args.no_cpp_build:
+    if args.no_cpp:
+        pass  # No need to build the C++ SDK
+    elif args.no_cpp_build:
         print("Skipping cmake configure & build for rerun_c & rerun_cpp - assuming it is already built and up-to-date!")
     else:
         print("----------------------------------------------------------")
@@ -137,7 +144,7 @@ def main() -> None:
         examples = [
             filename
             for filename, extension in [os.path.splitext(file) for file in files]
-            if extension in (".cpp", ".py", ".rs")
+            if extension == ".cpp" and not args.no_cpp or extension == ".py" and not args.no_py or extension == ".rs"
         ]
 
     examples = list(set(examples))
@@ -146,11 +153,17 @@ def main() -> None:
     print("----------------------------------------------------------")
     print(f"Running {len(examples)} examples…")
 
+    active_languages = ["rust"]
+    if not args.no_cpp:
+        active_languages.append("cpp")
+    if not args.no_py:
+        active_languages.append("py")
+
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
             example_opt_out_entirely = opt_out_run.get(example, [])
-            for language in ["cpp", "py", "rust"]:
+            for language in active_languages:
                 if language in example_opt_out_entirely:
                     continue
                 job = pool.apply_async(run_example, (example, language, args))
@@ -177,11 +190,11 @@ def main() -> None:
         python_output_path = f"docs/code-examples/{example}_py.rrd"
         rust_output_path = f"docs/code-examples/{example}_rust.rrd"
 
-        if "py" not in example_opt_out_entirely and "py" not in example_opt_out_compare:
-            run_comparison(python_output_path, rust_output_path, args.full_dump)
-
-        if "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
+        if "cpp" in active_languages and "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
             run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+
+        if "py" in active_languages and "py" not in example_opt_out_entirely and "py" not in example_opt_out_compare:
+            run_comparison(python_output_path, rust_output_path, args.full_dump)
 
     print()
     print("----------------------------------------------------------")

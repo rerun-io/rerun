@@ -42,6 +42,13 @@ function(set_default_warning_settings target)
         if(${CMAKE_COMPILE_WARNING_AS_ERROR})
             target_compile_options(${target} PRIVATE -Werror)
         endif()
+
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            # Debug build with fsanatize:
+            target_compile_options(${target} PRIVATE -g -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fno-optimize-sibling-calls)
+            target_compile_options(${target} PRIVATE -fsanitize=address)
+            target_link_options(${target} PRIVATE -fsanitize=address)
+        endif()
     endif()
 endfunction()
 
