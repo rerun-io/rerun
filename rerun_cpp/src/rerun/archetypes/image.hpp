@@ -7,6 +7,7 @@
 #include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
+#include "../error.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
@@ -26,6 +27,35 @@ namespace rerun {
         ///
         /// Leading and trailing unit-dimensions are ignored, so that
         /// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
+        ///
+        /// ## Example
+        ///
+        /// ### `image_simple`:
+        /// ```cpp,ignore
+        /// #include <rerun.hpp>
+        ///
+        /// int main() {
+        ///     auto rec = rerun::RecordingStream("rerun_example_image_simple");
+        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///
+        ///     // Create a synthetic image.
+        ///     const int HEIGHT = 8;
+        ///     const int WIDTH = 12;
+        ///     std::vector<uint8_t> data(WIDTH * HEIGHT * 3, 0);
+        ///     for (size_t i = 0; i <data.size(); i += 3) {
+        ///         data[i] = 255;
+        ///     }
+        ///     for (auto y = 0; y <4; ++y) { // top half
+        ///         auto row = data.begin() + y * WIDTH * 3;
+        ///         for (auto i = 0; i <6 * 3; i += 3) { // left half
+        ///             row[i] = 0;
+        ///             row[i + 1] = 255;
+        ///         }
+        ///     }
+        ///
+        ///     rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, std::move(data)));
+        /// }
+        /// ```
         struct Image {
             /// The image data. Should always be a rank-2 or rank-3 tensor.
             rerun::components::TensorData data;
@@ -41,10 +71,24 @@ namespace rerun {
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
+            // Extensions to generated type defined in 'image_ext.cpp'
+
+            /// New Image from height/width/channel and tensor buffer.
+            ///
+            /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
+            /// Calls `Error::handle()` if the shape is not rank 2 or 3.
+            Image(std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+                : Image(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
+            /// New depth image from tensor data.
+            ///
+            /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
+            /// Calls `Error::handle()` if the shape is not rank 2 or 3.
+            explicit Image(rerun::components::TensorData _data);
+
+          public:
             Image() = default;
             Image(Image&& other) = default;
-
-            explicit Image(rerun::components::TensorData _data) : data(std::move(_data)) {}
 
             /// An optional floating point value that specifies the 2D drawing order.
             ///

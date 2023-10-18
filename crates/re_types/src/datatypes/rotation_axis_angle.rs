@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Datatype**: 3D rotation represented by a rotation around a given axis.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct RotationAxisAngle {
@@ -53,7 +55,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "axis".to_owned(),
@@ -73,13 +75,13 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -88,7 +90,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -106,7 +108,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let axis_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let axis_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -125,7 +127,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let axis_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                            let axis_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 axis_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
@@ -169,7 +171,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let angle_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let angle_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -187,18 +189,18 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
@@ -241,7 +243,7 @@ impl ::re_types_core::Loggable for RotationAxisAngle {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(

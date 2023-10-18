@@ -119,3 +119,10 @@ include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap_fiat.rrd"]
 locked = true
 name = "rerun_bindings"                                             # name of the .so library that the Python module will import
 python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]
+
+[tool.pytest.ini_options]
+# These conform to Python's Warning Filter syntax:
+# https://docs.python.org/3/library/warnings.html#warning-filter
+filterwarnings = """
+error
+"""

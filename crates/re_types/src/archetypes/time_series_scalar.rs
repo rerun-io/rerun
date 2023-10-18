@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Archetype**: Log a double-precision scalar that will be visualized as a time-series plot.
 ///
 /// The current simulation time will be used for the time/X-axis, hence scalars
@@ -172,9 +174,7 @@ impl ::re_types_core::Archetype for TimeSeriesScalar {
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
     ) -> ::re_types_core::DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};

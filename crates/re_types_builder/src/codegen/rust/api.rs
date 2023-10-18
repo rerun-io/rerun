@@ -86,14 +86,14 @@ impl RustCodeGenerator {
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
-            let crate_name = "re_types"; // NOTE: this will support other values soon
-            let module_name = obj.kind.plural_snake_case();
+            let crate_name = obj.crate_name();
+            let module_name = obj.module_name();
 
-            let crate_path = crates_root_path.join(crate_name);
+            let crate_path = crates_root_path.join(&crate_name);
             let module_path = if obj.is_testing() {
-                crate_path.join("src/testing").join(module_name)
+                crate_path.join("src/testing").join(&module_name)
             } else {
-                crate_path.join("src").join(module_name)
+                crate_path.join("src").join(&module_name)
             };
 
             let filename_stem = obj.snake_case_name();
@@ -101,7 +101,10 @@ impl RustCodeGenerator {
 
             let filepath = module_path.join(filename);
 
-            let code = generate_object_file(reporter, objects, arrow_registry, obj);
+            let mut code = generate_object_file(reporter, objects, arrow_registry, obj);
+            if crate_name == "re_types_core" {
+                code = code.replace("::re_types_core", "crate");
+            }
 
             all_modules.insert((
                 crate_name,
@@ -112,10 +115,12 @@ impl RustCodeGenerator {
             files_to_write.insert(filepath, code);
         }
 
-        for (_crate_name, _module_name, is_testing, module_path) in all_modules {
+        for (crate_name, module_name, is_testing, module_path) in all_modules {
             let relevant_objs = &ordered_objects
                 .iter()
                 .filter(|obj| obj.is_testing() == is_testing)
+                .filter(|obj| obj.crate_name() == crate_name)
+                .filter(|obj| obj.module_name() == module_name)
                 .copied()
                 .collect_vec();
 
@@ -149,6 +154,7 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::too_many_arguments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     code.push_str("#![allow(clippy::unnecessary_cast)]\n");
+    code.push_str("\nuse ::re_types_core::external::arrow2;\n");
 
     let mut acc = TokenStream::new();
 
@@ -698,12 +704,14 @@ fn quote_trait_impls_from_obj(
                 quote! {
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
-                    fn from_arrow(arrow_data: &dyn ::arrow2::array::Array) -> ::re_types_core::DeserializationResult<Vec<Self>>
+                    fn from_arrow(
+                        arrow_data: &dyn arrow2::array::Array,
+                    ) -> ::re_types_core::DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
                         re_tracing::profile_function!();
 
-                        use ::arrow2::{datatypes::*, array::*, buffer::*};
+                        use arrow2::{datatypes::*, array::*, buffer::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         // This code-path cannot have null fields. If it does have a validity mask
@@ -735,7 +743,7 @@ fn quote_trait_impls_from_obj(
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     #[inline]
                     fn arrow_datatype() -> arrow2::datatypes::DataType {
-                        use ::arrow2::datatypes::*;
+                        use arrow2::datatypes::*;
                         #datatype
                     }
 
@@ -743,13 +751,13 @@ fn quote_trait_impls_from_obj(
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     fn to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-                    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+                    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
                     where
                         Self: Clone + 'a
                     {
                         re_tracing::profile_function!();
 
-                        use ::arrow2::{datatypes::*, array::*};
+                        use arrow2::{datatypes::*, array::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         Ok(#quoted_serializer)
@@ -758,14 +766,14 @@ fn quote_trait_impls_from_obj(
                     // NOTE: Don't inline this, this gets _huge_.
                     #[allow(unused_imports, clippy::wildcard_imports)]
                     fn from_arrow_opt(
-                        arrow_data: &dyn ::arrow2::array::Array,
+                        arrow_data: &dyn arrow2::array::Array,
                     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized
                     {
                         re_tracing::profile_function!();
 
-                        use ::arrow2::{datatypes::*, array::*, buffer::*};
+                        use arrow2::{datatypes::*, array::*, buffer::*};
                         use ::re_types_core::{Loggable as _, ResultExt as _};
 
                         Ok(#quoted_deserializer)
@@ -978,7 +986,10 @@ fn quote_trait_impls_from_obj(
 
                     #[inline]
                     fn from_arrow(
-                        arrow_data: impl IntoIterator<Item = (::arrow2::datatypes::Field, Box<dyn::arrow2::array::Array>)>,
+                        arrow_data: impl IntoIterator<Item = (
+                            arrow2::datatypes::Field,
+                            Box<dyn arrow2::array::Array>,
+                        )>,
                     ) -> ::re_types_core::DeserializationResult<Self> {
                         re_tracing::profile_function!();
 

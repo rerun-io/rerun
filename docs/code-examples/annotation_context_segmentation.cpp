@@ -2,6 +2,8 @@
 
 #include <rerun.hpp>
 
+#include <algorithm>
+
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
     rec.connect("127.0.0.1:9876").throw_on_failure();
@@ -19,17 +21,12 @@ int main() {
     const int HEIGHT = 8;
     const int WIDTH = 12;
     std::vector<uint8_t> data(WIDTH * HEIGHT, 0);
-    for (auto y = 0; y < 4; ++y) { // top half
-        auto row = data.begin() + y * WIDTH;
-        std::fill(row, row + 6, 1); // left half
+    for (auto y = 0; y < 4; ++y) {                   // top half
+        std::fill_n(data.begin() + y * WIDTH, 6, 1); // left half
     }
-    for (auto y = 4; y < 8; ++y) { // bottom half
-        auto row = data.begin() + y * WIDTH;
-        std::fill(row + 6, row + 12, 2); // right half
+    for (auto y = 4; y < 8; ++y) {                       // bottom half
+        std::fill_n(data.begin() + y * WIDTH + 6, 6, 2); // right half
     }
 
-    rec.log(
-        "segmentation/image",
-        rerun::SegmentationImage(rerun::TensorData({HEIGHT, WIDTH}, std::move(data)))
-    );
+    rec.log("segmentation/image", rerun::SegmentationImage({HEIGHT, WIDTH}, std::move(data)));
 }

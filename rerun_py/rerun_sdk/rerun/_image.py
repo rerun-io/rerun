@@ -102,9 +102,9 @@ class ImageEncoded(AsComponents):
         if (path is None) == (contents is None):
             raise ValueError("Must provide exactly one of 'path' or 'contents'")
 
-        buffer: IO[bytes] | None = None
+        buffer: IO[bytes] | None
         if path is not None:
-            buffer = open(path, "rb")
+            buffer = io.BytesIO(pathlib.Path(path).read_bytes())
         elif isinstance(contents, bytes):
             buffer = io.BytesIO(contents)
         else:

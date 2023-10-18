@@ -28,6 +28,7 @@ re_renderer = { workspace = true, default-features = false, features = [
   "serde",
 ] }
 re_tracing.workspace = true
+re_types_core.workspace = true
 re_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true

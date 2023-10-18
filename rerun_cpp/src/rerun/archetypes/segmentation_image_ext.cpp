@@ -10,15 +10,25 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
+        /// New segmentation image from height/width and tensor buffer.
+        ///
+        /// Sets the dimension names to "height" and "width" if they are not specified.
+        /// Calls `Error::handle()` if the shape is not rank 2.
+        SegmentationImage(
+            std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer
+        )
+            : SegmentationImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
         /// New segmentation image from tensor data.
         ///
-        /// Sets dimensions to width/height if they are not specified.
-        /// Calls Error::handle() if the shape is not rank 2.
-        explicit SegmentationImage(rerun::components::TensorData _data);
+        /// Sets the dimension names to "height" and "width" if they are not specified.
+        /// Calls `Error::handle()` if the shape is not rank 2.
+        explicit SegmentationImage(components::TensorData _data);
+
         // [CODEGEN COPY TO HEADER END]
 #endif
 
-        SegmentationImage::SegmentationImage(rerun::components::TensorData _data)
+        SegmentationImage::SegmentationImage(components::TensorData _data)
             : data(std::move(_data)) {
             auto& shape = data.data.shape;
             if (shape.size() != 2) {

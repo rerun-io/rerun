@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Datatype**: The underlying storage for a `Tensor`.
 ///
 /// Tensor elements are stored in a contiguous buffer of a single type.
@@ -59,7 +61,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Union(
             vec![
                 Field {
@@ -223,13 +225,13 @@ impl ::re_types_core::Loggable for TensorBuffer {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -273,7 +275,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u8_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let u8_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -286,8 +288,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let u8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let u8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 u8.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -327,7 +329,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let u16_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -340,8 +342,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let u16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let u16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 u16.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -381,7 +383,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let u32_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -394,8 +396,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let u32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let u32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 u32.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -435,7 +437,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let u64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let u64_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -448,8 +450,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let u64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let u64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 u64.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -489,7 +491,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let i8_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let i8_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -502,8 +504,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let i8_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let i8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 i8.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -539,7 +541,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let i16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let i16_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -552,8 +554,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let i16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let i16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 i16.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -593,7 +595,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let i32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let i32_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -606,8 +608,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let i32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let i32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 i32.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -647,7 +649,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let i64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let i64_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -660,8 +662,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let i64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let i64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 i64.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -701,7 +703,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let f16_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let f16_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -714,8 +716,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let f16_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let f16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 f16.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -755,7 +757,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let f32_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let f32_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -768,8 +770,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let f32_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let f32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 f32.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -809,7 +811,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let f64_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let f64_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -822,8 +824,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let f64_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let f64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 f64.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -863,7 +865,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let jpeg_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let jpeg_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -876,8 +878,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let jpeg_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let jpeg_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 jpeg.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -917,7 +919,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let nv12_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let nv12_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -930,8 +932,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 .collect::<Vec<_>>()
                                 .concat()
                                 .into();
-                            let nv12_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let nv12_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 nv12.iter().map(|opt| {
                                     opt.as_ref()
                                         .map(|datum| datum.num_instances())
@@ -1057,18 +1059,18 @@ impl ::re_types_core::Loggable for TensorBuffer {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(
@@ -1262,7 +1264,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1335,7 +1337,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1408,7 +1410,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1481,7 +1483,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1554,7 +1556,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1627,7 +1629,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1700,7 +1702,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1773,7 +1775,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1846,7 +1848,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1919,7 +1921,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -1992,7 +1994,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -2065,7 +2067,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -2138,7 +2140,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {

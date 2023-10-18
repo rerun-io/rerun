@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Archetype**: A generic n-dimensional Tensor.
 ///
 /// ## Example
@@ -29,7 +31,8 @@
 ///     let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
 ///     data.map_inplace(|x| *x = rand::random());
 ///
-///     let tensor = rerun::Tensor::try_from(data)?.with_names(["batch", "channel", "height", "width"]);
+///     let tensor =
+///         rerun::Tensor::try_from(data)?.with_dim_names(["batch", "channel", "height", "width"]);
 ///     rec.log("tensor", &tensor)?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
@@ -112,9 +115,7 @@ impl ::re_types_core::Archetype for Tensor {
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
     ) -> ::re_types_core::DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};

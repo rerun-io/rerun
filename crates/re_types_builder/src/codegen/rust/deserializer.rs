@@ -168,7 +168,7 @@ pub fn quote_arrow_deserializer(
                 });
 
                 let quoted_downcast = {
-                    let cast_as = quote!(::arrow2::array::StructArray);
+                    let cast_as = quote!(arrow2::array::StructArray);
                     quote_array_downcast(obj_fqname, &data_src, cast_as, datatype)
                 };
                 quote! {{
@@ -286,7 +286,7 @@ pub fn quote_arrow_deserializer(
                 });
 
                 let quoted_downcast = {
-                    let cast_as = quote!(::arrow2::array::UnionArray);
+                    let cast_as = quote!(arrow2::array::UnionArray);
                     quote_array_downcast(obj_fqname, &data_src, &cast_as, datatype)
                 };
 
@@ -421,7 +421,7 @@ fn quote_arrow_field_deserializer(
 
         DataType::Utf8 => {
             let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::Utf8Array<i32>);
+                let cast_as = quote!(arrow2::array::Utf8Array<i32>);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
@@ -486,7 +486,7 @@ fn quote_arrow_field_deserializer(
             );
 
             let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::FixedSizeListArray);
+                let cast_as = quote!(arrow2::array::FixedSizeListArray);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
@@ -597,7 +597,7 @@ fn quote_arrow_field_deserializer(
             );
 
             let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::ListArray<i32>);
+                let cast_as = quote!(arrow2::array::ListArray<i32>);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 
@@ -954,7 +954,7 @@ fn quote_arrow_field_deserializer_buffer_slice(
             );
 
             let quoted_downcast = {
-                let cast_as = quote!(::arrow2::array::FixedSizeListArray);
+                let cast_as = quote!(arrow2::array::FixedSizeListArray);
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, datatype)
             };
 

@@ -166,9 +166,10 @@ pub const ATTR_PYTHON_ARRAY_ALIASES: &str = "attr.python.array_aliases";
 pub const ATTR_RUST_CUSTOM_CLAUSE: &str = "attr.rust.custom_clause";
 pub const ATTR_RUST_DERIVE: &str = "attr.rust.derive";
 pub const ATTR_RUST_DERIVE_ONLY: &str = "attr.rust.derive_only";
+pub const ATTR_RUST_NEW_PUB_CRATE: &str = "attr.rust.new_pub_crate";
+pub const ATTR_RUST_OVERRIDE_CRATE: &str = "attr.rust.override_crate";
 pub const ATTR_RUST_REPR: &str = "attr.rust.repr";
 pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
-pub const ATTR_RUST_NEW_PUB_CRATE: &str = "attr.rust.new_pub_crate";
 
 pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
 

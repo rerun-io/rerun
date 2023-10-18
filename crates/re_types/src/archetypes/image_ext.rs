@@ -28,7 +28,7 @@ impl Image {
                 assign_if_none(&mut data.shape[non_empty_dim_inds[1]].name, "width");
             }
             3 => match data.shape[non_empty_dim_inds[2]].size {
-                3 | 4 => {
+                1 | 3 | 4 => {
                     assign_if_none(&mut data.shape[non_empty_dim_inds[0]].name, "height");
                     assign_if_none(&mut data.shape[non_empty_dim_inds[1]].name, "width");
                     assign_if_none(&mut data.shape[non_empty_dim_inds[2]].name, "depth");

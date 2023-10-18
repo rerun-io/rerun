@@ -59,6 +59,7 @@ re_space_view_text_log.workspace = true
 re_space_view_time_series.workspace = true
 re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
+re_types_core.workspace = true
 re_types.workspace = true
 re_ui = { workspace = true, features = ["eframe"] }
 re_viewer_context.workspace = true

@@ -205,7 +205,7 @@ jobs:
 
       - name: Taplo check
         run: |
-          taplo fmt --check
+          taplo fmt --check --diff
 
   misc-rerun-lints:
     name: Rerun lints

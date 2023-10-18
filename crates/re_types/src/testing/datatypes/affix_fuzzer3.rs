@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer3 {
     Degrees(f32),
@@ -47,7 +49,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Union(
             vec![
                 Field {
@@ -102,13 +104,13 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -145,7 +147,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let degrees_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -171,7 +173,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let radians_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -196,7 +198,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let craziness_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let craziness_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -209,8 +211,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 .cloned()
                                 .map(Some)
                                 .collect();
-                            let craziness_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 craziness.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
@@ -254,7 +256,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let fixed_size_shenanigans_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let fixed_size_shenanigans_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -268,7 +270,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 .map(Some)
                                 .collect();
                             let fixed_size_shenanigans_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
+                                arrow2::bitmap::Bitmap,
                             > = fixed_size_shenanigans_bitmap.as_ref().map(|bitmap| {
                                 bitmap
                                     .iter()
@@ -345,18 +347,18 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(
@@ -452,7 +454,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::List(
                                     Box::new(Field {
@@ -529,7 +531,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
                                 DataType::FixedSizeList(
                                     Box::new(Field {

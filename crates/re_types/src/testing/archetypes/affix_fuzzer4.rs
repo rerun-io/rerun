@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer4 {
     pub fuzz2101: Option<Vec<crate::testing::components::AffixFuzzer1>>,
@@ -136,9 +138,7 @@ impl ::re_types_core::Archetype for AffixFuzzer4 {
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
     ) -> ::re_types_core::DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
