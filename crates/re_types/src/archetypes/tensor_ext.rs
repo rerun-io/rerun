@@ -24,7 +24,7 @@ impl Tensor {
     ///
     /// If too many, or too few names are provided, this function will warn and only
     /// update the subset of names that it can.
-    pub fn with_names(self, names: impl IntoIterator<Item = impl Into<ArrowString>>) -> Self {
+    pub fn with_dim_names(self, names: impl IntoIterator<Item = impl Into<ArrowString>>) -> Self {
         let names: Vec<_> = names.into_iter().map(|x| Some(x.into())).collect();
         if names.len() != self.data.0.shape.len() {
             re_log::warn_once!(

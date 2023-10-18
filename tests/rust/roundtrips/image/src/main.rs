@@ -15,7 +15,7 @@ struct Args {
 fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
     let mut img = RgbImage::new(3, 2);
 
-    // 2x3x3 image. Red channel = x. Green channel = y. Blue channel = 128.
+    // h=2 w=3 c=3 image. Red channel = x. Green channel = y. Blue channel = 128.
     for x in 0..3 {
         for y in 0..2 {
             img.put_pixel(x, y, Rgb([x as u8, y as u8, 128]));
@@ -26,7 +26,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
 
     let mut array_image = Array::<f16, _>::default((4, 5).f());
 
-    // 4x5 mono image. Pixel = x * y * 123.4
+    // h=4, w=5 mono image. Pixel = x * y * 123.4
     for y in 0..4 {
         for x in 0..5 {
             *array_image.get_mut((y, x)).unwrap() = f16::from_f32(x as f32 * y as f32 * 123.4);

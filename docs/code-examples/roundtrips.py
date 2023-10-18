@@ -23,16 +23,11 @@ opt_out_run = {
     "any_values": ["cpp", "rust"], # Not yet implemented
     "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "depth_image_3d": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "depth_image_simple": ["cpp"],  # TODO(#2919): Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
-    "image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "segmentation_image_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
-    "tensor_simple": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
 
     # This is this script, it's not an example.
