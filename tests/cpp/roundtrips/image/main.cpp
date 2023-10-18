@@ -19,11 +19,11 @@ rerun::half half_from_float(const float x) {
     const uint32_t e = (b & 0x7F800000) >> 23; // exponent
     // mantissa; in line below: 0x007FF000 = 0x00800000-0x00001000 = decimal indicator flag - initial rounding
     const uint32_t m = b & 0x007FFFFF;
-    const uint16_t f16 = (b & 0x80000000) >> 16 |
+    const uint32_t f16 = (b & 0x80000000) >> 16 |
                          (e > 112) * ((((e - 112) << 10) & 0x7C00) | m >> 13) |
                          ((e < 113) & (e > 101)) * ((((0x007FF000 + m) >> (125 - e)) + 1) >> 1) |
                          (e > 143) * 0x7FFF; // sign : normalized : denormalized : saturate
-    return rerun::half{f16};
+    return rerun::half{static_cast<uint16_t>(f16)};
 }
 
 int main(int argc, char** argv) {
