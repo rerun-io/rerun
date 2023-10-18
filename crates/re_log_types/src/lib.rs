@@ -33,9 +33,6 @@ mod time_real;
 #[cfg(not(target_arch = "wasm32"))]
 mod data_table_batcher;
 
-#[cfg(feature = "serde")]
-pub mod serde_field;
-
 use std::sync::Arc;
 
 pub use self::arrow_msg::ArrowMsg;
