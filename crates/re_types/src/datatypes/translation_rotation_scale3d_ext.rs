@@ -21,6 +21,28 @@ impl TranslationRotationScale3D {
         }
     }
 
+    /// From a rotation
+    #[inline]
+    pub fn from_rotation(rotation: impl Into<Rotation3D>) -> Self {
+        Self {
+            translation: None,
+            rotation: Some(rotation.into()),
+            scale: None,
+            from_parent: false,
+        }
+    }
+
+    /// From a rotation & scale
+    #[inline]
+    pub fn from_scale(scale: impl Into<Scale3D>) -> Self {
+        Self {
+            translation: None,
+            rotation: None,
+            scale: Some(scale.into()),
+            from_parent: false,
+        }
+    }
+
     /// From a translation applied after a rotation, known as a rigid transformation.
     #[inline]
     pub fn from_translation_rotation(
