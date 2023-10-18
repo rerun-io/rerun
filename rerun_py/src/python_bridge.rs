@@ -501,14 +501,18 @@ fn connect(
 
 #[pyfunction]
 #[pyo3(signature = (path, recording = None))]
-fn save(path: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+fn save(path: &str, recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
-    recording
-        .save(path)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    // The call to save may internally flush.
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.allow_threads(|| {
+        recording
+            .save(path)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    })
 }
 
 /// Create an in-memory rrd file
