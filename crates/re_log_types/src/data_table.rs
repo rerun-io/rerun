@@ -9,7 +9,7 @@ use re_types_core::{ComponentName, Loggable, SizeBytes};
 
 use crate::{
     data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
-    RowId, TimePoint, Timeline,
+    NumInstances, RowId, TimePoint, Timeline,
 };
 
 // ---
@@ -61,7 +61,7 @@ pub type ErasedTimeVec = SmallVec<[i64; 4]>;
 
 pub type EntityPathVec = SmallVec<[EntityPath; 4]>;
 
-pub type NumInstancesVec = SmallVec<[u32; 4]>;
+pub type NumInstancesVec = SmallVec<[NumInstances; 4]>;
 
 pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
 
@@ -481,7 +481,7 @@ impl DataTable {
                         .collect::<BTreeMap<_, _>>(),
                 ),
                 col_entity_path[i].clone(),
-                col_num_instances[i],
+                col_num_instances[i].into(),
                 cells,
             )
         })
@@ -542,14 +542,7 @@ use arrow2::{
     chunk::Chunk,
     datatypes::{DataType, Field, Schema, TimeUnit},
     offset::Offsets,
-    types::NativeType,
 };
-
-// TODO(#1696): Those names should come from the datatypes themselves.
-
-pub const COLUMN_INSERT_ID: &str = "rerun.insert_id";
-pub const COLUMN_TIMEPOINT: &str = "rerun.timepoint";
-pub const COLUMN_NUM_INSTANCES: &str = "rerun.num_instances";
 
 pub const METADATA_KIND: &str = "rerun.kind";
 pub const METADATA_KIND_DATA: &str = "data";
@@ -666,11 +659,8 @@ impl DataTable {
         schema.fields.push(entity_path_field);
         columns.push(entity_path_column);
 
-        let (num_instances_field, num_instances_column) = Self::serialize_primitive_column(
-            COLUMN_NUM_INSTANCES,
-            col_num_instances.as_slice(),
-            None,
-        );
+        let (num_instances_field, num_instances_column) =
+            Self::serialize_control_column(col_num_instances)?;
         schema.fields.push(num_instances_field);
         columns.push(num_instances_column);
 
@@ -705,7 +695,7 @@ impl DataTable {
     }
 
     /// Serializes a single control column; optimized path for primitive datatypes.
-    pub fn serialize_primitive_column<T: NativeType>(
+    pub fn serialize_primitive_column<T: arrow2::types::NativeType>(
         name: &str,
         values: &[T],
         datatype: Option<DataType>,
@@ -728,7 +718,6 @@ impl DataTable {
 
         (field, data)
     }
-
     /// Serializes all data columns into an arrow payload and schema.
     ///
     /// They are optional, potentially sparse, and never deserialized on the server-side (not by
@@ -908,10 +897,12 @@ impl DataTable {
                 .unwrap()
                 .as_ref(),
         )?;
-        // TODO(#3741): This is unnecessarily slow…
-        use arrow2_convert::deserialize::TryIntoCollection;
-        let col_num_instances =
-            (&**chunk.get(control_index(COLUMN_NUM_INSTANCES)?).unwrap()).try_into_collection()?;
+        let col_num_instances = NumInstances::from_arrow(
+            chunk
+                .get(control_index(NumInstances::name().as_str())?)
+                .unwrap()
+                .as_ref(),
+        )?;
 
         // --- Components ---
 
@@ -942,7 +933,7 @@ impl DataTable {
             col_row_id: col_row_id.into(),
             col_timelines,
             col_entity_path: col_entity_path.into(),
-            col_num_instances,
+            col_num_instances: col_num_instances.into(),
             columns,
         })
     }

@@ -4,7 +4,7 @@ use smallvec::SmallVec;
 
 use re_types_core::{AsComponents, ComponentName, SizeBytes};
 
-use crate::{DataCell, DataCellError, DataTable, EntityPath, TableId, TimePoint};
+use crate::{DataCell, DataCellError, DataTable, EntityPath, NumInstances, TableId, TimePoint};
 
 // ---
 
@@ -249,7 +249,7 @@ pub struct DataRow {
     /// - 0 instance (clear),
     /// - 1 instance (splat),
     /// - `num_instances` instances (standard).
-    pub num_instances: u32,
+    pub num_instances: NumInstances,
 
     /// The actual cells (== columns, == components).
     pub cells: DataCellRow,
@@ -344,7 +344,7 @@ impl DataRow {
             row_id,
             entity_path,
             timepoint,
-            num_instances,
+            num_instances: num_instances.into(),
             cells,
         })
     }
@@ -401,7 +401,7 @@ impl DataRow {
     }
 
     #[inline]
-    pub fn num_instances(&self) -> u32 {
+    pub fn num_instances(&self) -> NumInstances {
         self.num_instances
     }
 

@@ -24,6 +24,7 @@ mod data_table;
 pub mod example_components;
 pub mod hash;
 mod index;
+mod num_instances;
 pub mod path;
 mod time;
 pub mod time_point;
@@ -43,11 +44,11 @@ pub use self::data_row::{
 };
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
-    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, COLUMN_INSERT_ID,
-    COLUMN_NUM_INSTANCES, COLUMN_TIMEPOINT, METADATA_KIND, METADATA_KIND_CONTROL,
-    METADATA_KIND_DATA,
+    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, METADATA_KIND,
+    METADATA_KIND_CONTROL, METADATA_KIND_DATA,
 };
 pub use self::index::*;
+pub use self::num_instances::NumInstances;
 pub use self::path::*;
 pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
@@ -68,7 +69,6 @@ pub use self::load_file::{data_cells_from_file_contents, FromFileError};
 
 pub mod external {
     pub use arrow2;
-    pub use arrow2_convert;
 
     pub use re_tuid;
     pub use re_types_core;

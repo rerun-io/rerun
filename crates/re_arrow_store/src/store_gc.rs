@@ -373,7 +373,7 @@ impl DataStore {
         self.timeless_tables.retain(|_, table| {
             // If any column is non-empty, we need to keep this table
             for num in &table.col_num_instances {
-                if num != &0 {
+                if num != &0.into() {
                     return true;
                 }
             }
@@ -395,7 +395,7 @@ impl DataStore {
             for bucket in table.buckets.values() {
                 let inner = bucket.inner.read();
                 for num in &inner.col_num_instances {
-                    if num != &0 {
+                    if num != &0.into() {
                         return true;
                     }
                 }

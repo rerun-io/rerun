@@ -4301,6 +4301,7 @@ dependencies = [
  "arrow2",
  "arrow2_convert",
  "backtrace",
+ "bytemuck",
  "crossbeam",
  "document-features",
  "fixed",
