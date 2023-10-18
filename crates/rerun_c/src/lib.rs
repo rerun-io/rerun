@@ -17,7 +17,7 @@ use parking_lot::Mutex;
 use re_sdk::{
     external::re_log_types::{self},
     log::{DataCell, DataRow},
-    ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind,
+    ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
 };
 
 // ----------------------------------------------------------------------------
@@ -468,13 +468,19 @@ fn rr_log_impl(
         );
     }
 
-    let data_row = DataRow {
-        row_id: re_sdk::log::RowId::random(),
-        timepoint: Default::default(), // we use the one in the recording stream for now
+    let data_row = DataRow::from_cells(
+        re_sdk::log::RowId::random(),
+        TimePoint::default(), // we use the one in the recording stream for now
         entity_path,
         num_instances,
-        cells: re_log_types::DataCellRow(cells),
-    };
+        cells,
+    )
+    .map_err(|err| {
+        CError::new(
+            CErrorCode::ArrowDataCellError,
+            &format!("Failed to create DataRow from CDataRow: {err}"),
+        )
+    })?;
 
     stream.record_row(data_row, inject_time);
 
@@ -534,8 +540,11 @@ fn parse_arrow_ipc_encapsulated_message(
     let chunks = chunks.map_err(|err| format!("Arrow error: {err}"))?;
 
     if chunks.is_empty() {
-        return Err("No Chunk found in stream".to_owned());
+        // This might be a bug in arrow2 or the C++ SDK, but it seems that when we send an
+        // IPC with an empty array from C++ we don't get any arrays here at all.
+        return Ok(arrow2::array::NullArray::new_empty(arrow2::datatypes::DataType::Null).boxed());
     }
+
     if chunks.len() > 1 {
         return Err(format!(
             "Found {} chunks in stream - expected just one.",
