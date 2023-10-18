@@ -367,6 +367,8 @@ pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
 
 /// Generates, formats and optionally writes code.
 ///
+/// If `check` is true, this will run a comparison check instead of writing files to disk.
+///
 /// Panics on error.
 fn generate_code(
     reporter: &Reporter,
@@ -375,7 +377,10 @@ fn generate_code(
     generator: &mut dyn CodeGenerator,
     formatter: &mut dyn CodeFormatter,
     orphan_paths_opt_out: &BTreeSet<Utf8PathBuf>,
+    check: bool,
 ) {
+    use rayon::prelude::*;
+
     // 1. Generate in-memory code files.
     let mut files = generator.generate(reporter, objects, arrow_registry);
 
@@ -385,10 +390,18 @@ fn generate_code(
     // 3. Format in-memory files.
     formatter.format(reporter, &mut files);
 
+    if check {
+        files.par_iter().for_each(|(filepath, contents)| {
+            let cur_contents = std::fs::read_to_string(filepath).unwrap();
+            if *contents != cur_contents {
+                reporter.error(filepath.as_str(), "", "out of sync");
+            }
+        });
+        return;
+    }
+
     // 4. Write all files to filesytem.
     {
-        use rayon::prelude::*;
-
         re_tracing::profile_scope!("write_files");
 
         files.par_iter().for_each(|(filepath, contents)| {
@@ -428,6 +441,7 @@ pub fn generate_cpp_code(
     output_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
+    check: bool,
 ) {
     re_tracing::profile_function!();
 
@@ -446,6 +460,7 @@ pub fn generate_cpp_code(
         &mut generator,
         &mut formatter,
         &std::iter::once(orphan_path_opt_out).collect(),
+        check,
     );
 }
 
@@ -472,6 +487,7 @@ pub fn generate_rust_code(
     workspace_path: impl Into<Utf8PathBuf>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
+    check: bool,
 ) {
     re_tracing::profile_function!();
 
@@ -485,6 +501,7 @@ pub fn generate_rust_code(
         &mut generator,
         &mut formatter,
         &Default::default(),
+        check,
     );
 }
 
@@ -515,6 +532,7 @@ pub fn generate_python_code(
     testing_output_pkg_path: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
+    check: bool,
 ) {
     re_tracing::profile_function!();
 
@@ -530,6 +548,7 @@ pub fn generate_python_code(
         &mut generator,
         &mut formatter,
         &Default::default(),
+        check,
     );
 }
 
@@ -538,6 +557,7 @@ pub fn generate_docs(
     output_docs_dir: impl AsRef<Utf8Path>,
     objects: &Objects,
     arrow_registry: &ArrowRegistry,
+    check: bool,
 ) {
     re_tracing::profile_function!();
 
@@ -553,6 +573,7 @@ pub fn generate_docs(
         &mut generator,
         &mut formatter,
         &Default::default(),
+        check,
     );
 }
 
