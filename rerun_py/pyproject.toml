@@ -126,4 +126,3 @@ python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]
 filterwarnings = """
 error
 """
-
