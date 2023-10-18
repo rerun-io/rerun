@@ -30,7 +30,7 @@ pub enum SerializationError {
         backtrace: _Backtrace,
     },
 
-    #[error("{fqname} doesn't support deserialization: {reason}")]
+    #[error("{fqname} doesn't support Serialization: {reason}")]
     NotImplemented {
         fqname: String,
         reason: String,

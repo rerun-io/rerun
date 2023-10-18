@@ -129,6 +129,13 @@ mod arrow_string;
 pub use self::arrow_buffer::ArrowBuffer;
 pub use self::arrow_string::ArrowString;
 
+#[path = "macros.rs"]
+mod _macros; // just for the side-effect of exporting the macros
+
+pub mod macros {
+    pub use super::impl_into_cow;
+}
+
 pub mod external {
     pub use anyhow;
     pub use arrow2;
