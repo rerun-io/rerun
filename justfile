@@ -113,7 +113,7 @@ py-lint:
 
 # Run fast unittests
 py-test:
-    python -m pytest -vv rerun_py/tests/unit/
+    python -m pytest -vv -c rerun_py/pyproject.toml rerun_py/tests/unit/
 
 # Run tests on all supported Python versions (through nox)
 py-test-allpy:
