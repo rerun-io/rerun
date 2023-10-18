@@ -13,7 +13,7 @@ uint32_t as_uint(float f) {
 
 // Adopted from https://stackoverflow.com/a/60047308
 // IEEE-754 16-bit floating-point format (without infinity): 1-5-10, exp-15, +-131008.0, +-6.1035156E-5, +-5.9604645E-8, 3.311 digits
-rerun::half float_to_half(const float x) {
+rerun::half half_from_float(const float x) {
     // round-to-nearest-even: add last bit after truncated mantissa1
     const uint32_t b = as_uint(x) + 0x00001000;
     const uint32_t e = (b & 0x7F800000) >> 23; // exponent
@@ -44,7 +44,7 @@ int main(int argc, char** argv) {
         std::vector<rerun::half> data;
         for (auto y = 0; y < 4; ++y) {
             for (auto x = 0; x < 5; ++x) {
-                data.push_back(float_to_half(x * y * 123.4f));
+                data.push_back(half_from_float(x * y * 123.4f));
             }
         }
         auto img = rerun::datatypes::TensorData({4, 5}, std::move(data));
