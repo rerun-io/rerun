@@ -21,7 +21,6 @@ from os.path import isfile, join
 # for one or more specific SDKs.
 opt_out_run = {
     "any_values": ["cpp", "rust"], # Not yet implemented
-    "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
@@ -39,7 +38,7 @@ opt_out_run = {
 # data, but you still want to check whether the test runs properly and outputs _something_.
 opt_out_compare = {
     "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "asset3d_out_of_tree": ["py", "rust"], # # float precision issues
+    "asset3d_out_of_tree": ["cpp", "py", "rust"], # float issues since calculation is done slightly differently (also, Python uses doubles)
     "mesh3d_partial_updates": ["cpp", "py", "rust"], # float precision issues
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
