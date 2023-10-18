@@ -107,81 +107,175 @@ impl ::re_types_core::Loggable for ViewportLayout {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                    <crate::blueprint::ViewportLayout>::arrow_datatype(),
-                    vec![
-                        { let (somes, space_view_keys) : (Vec < _ >, Vec < _ >) = data
-                        .iter().map(| datum | { let datum = datum.as_ref().map(| datum |
-                        { let Self { space_view_keys, .. } = & * * datum; space_view_keys
-                        .clone() }); (datum.is_some(), datum) }).unzip(); let
-                        space_view_keys_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let buffers : Vec < Option < Vec < u8 >>
-                        > = space_view_keys.iter().map(| opt | { use
-                        ::re_types_core::SerializationError; opt.as_ref().map(| b | { let
-                        mut buf = Vec::new(); rmp_serde::encode::write_named(& mut buf,
-                        b).map_err(| err | SerializationError::serde_failure(err
-                        .to_string())) ?; Ok(buf) }).transpose() }).collect:: <
-                        ::re_types_core::SerializationResult < Vec < _ >> > () ?; let
+                <crate::blueprint::ViewportLayout>::arrow_datatype(),
+                vec![
+                    {
+                        let (somes, space_view_keys): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self {
+                                        space_view_keys, ..
+                                    } = &**datum;
+                                    space_view_keys.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let space_view_keys_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let buffers: Vec<Option<Vec<u8>>> = space_view_keys
+                                .iter()
+                                .map(|opt| {
+                                    use ::re_types_core::SerializationError;
+                                    opt.as_ref()
+                                        .map(|b| {
+                                            let mut buf = Vec::new();
+                                            rmp_serde::encode::write_named(&mut buf, b).map_err(
+                                                |err| {
+                                                    SerializationError::serde_failure(
+                                                        err.to_string(),
+                                                    )
+                                                },
+                                            )?;
+                                            Ok(buf)
+                                        })
+                                        .transpose()
+                                })
+                                .collect::<::re_types_core::SerializationResult<Vec<_>>>()?;
+                            let
                         offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
                         i32 > ::try_from_lengths(buffers.iter().map(| opt | opt.as_ref()
                         .map(| buf | buf.len()).unwrap_or_default())).unwrap().into();
-                        let space_view_keys_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        space_view_keys_inner_data : Buffer < u8 > = buffers.into_iter()
-                        .flatten().collect:: < Vec < _ >> ().concat().into();
-                        ListArray::new(DataType::List(Box::new(Field { name : "item"
-                        .to_owned(), data_type : DataType::UInt8, is_nullable : false,
-                        metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::UInt8, space_view_keys_inner_data,
-                        space_view_keys_inner_bitmap,).boxed(), space_view_keys_bitmap,)
-                        .boxed() } }, { let (somes, tree) : (Vec < _ >, Vec < _ >) = data
-                        .iter().map(| datum | { let datum = datum.as_ref().map(| datum |
-                        { let Self { tree, .. } = & * * datum; tree.clone() }); (datum
-                        .is_some(), datum) }).unzip(); let tree_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; { use
-                        ::re_types_core::external::arrow2:: { buffer::Buffer,
-                        offset::OffsetsBuffer }; let buffers : Vec < Option < Vec < u8 >>
-                        > = tree.iter().map(| opt | { use
-                        ::re_types_core::SerializationError; opt.as_ref().map(| b | { let
-                        mut buf = Vec::new(); rmp_serde::encode::write_named(& mut buf,
-                        b).map_err(| err | SerializationError::serde_failure(err
-                        .to_string())) ?; Ok(buf) }).transpose() }).collect:: <
-                        ::re_types_core::SerializationResult < Vec < _ >> > () ?; let
+                            let space_view_keys_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let space_view_keys_inner_data: Buffer<u8> = buffers
+                                .into_iter()
+                                .flatten()
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt8,
+                                    space_view_keys_inner_data,
+                                    space_view_keys_inner_bitmap,
+                                )
+                                .boxed(),
+                                space_view_keys_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, tree): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { tree, .. } = &**datum;
+                                    tree.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let tree_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let buffers: Vec<Option<Vec<u8>>> =
+                                tree.iter()
+                                    .map(|opt| {
+                                        use ::re_types_core::SerializationError;
+                                        opt.as_ref()
+                                            .map(|b| {
+                                                let mut buf = Vec::new();
+                                                rmp_serde::encode::write_named(&mut buf, b)
+                                                    .map_err(|err| {
+                                                        SerializationError::serde_failure(
+                                                            err.to_string(),
+                                                        )
+                                                    })?;
+                                                Ok(buf)
+                                            })
+                                            .transpose()
+                                    })
+                                    .collect::<::re_types_core::SerializationResult<Vec<_>>>()?;
+                            let
                         offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
                         i32 > ::try_from_lengths(buffers.iter().map(| opt | opt.as_ref()
                         .map(| buf | buf.len()).unwrap_or_default())).unwrap().into();
-                        let tree_inner_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = None; let
-                        tree_inner_data : Buffer < u8 > = buffers.into_iter().flatten()
-                        .collect:: < Vec < _ >> ().concat().into();
-                        ListArray::new(DataType::List(Box::new(Field { name : "item"
-                        .to_owned(), data_type : DataType::UInt8, is_nullable : false,
-                        metadata : [].into(), })), offsets,
-                        PrimitiveArray::new(DataType::UInt8, tree_inner_data,
-                        tree_inner_bitmap,).boxed(), tree_bitmap,).boxed() } }, { let
-                        (somes, auto_layout) : (Vec < _ >, Vec < _ >) = data.iter().map(|
-                        datum | { let datum = datum.as_ref().map(| datum | { let Self {
-                        auto_layout, .. } = & * * datum; auto_layout.clone() }); (datum
-                        .is_some(), datum) }).unzip(); let auto_layout_bitmap : Option <
-                        ::re_types_core::external::arrow2::bitmap::Bitmap > = { let
-                        any_nones = somes.iter().any(| some | ! * some); any_nones
-                        .then(|| somes.into()) }; BooleanArray::new(DataType::Boolean,
-                        auto_layout.into_iter().map(| v | v.unwrap_or_default())
-                        .collect(), auto_layout_bitmap,).boxed() },
-                    ],
-                    bitmap,
-                )
-                .boxed()
+                            let tree_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let tree_inner_data: Buffer<u8> = buffers
+                                .into_iter()
+                                .flatten()
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::UInt8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                PrimitiveArray::new(
+                                    DataType::UInt8,
+                                    tree_inner_data,
+                                    tree_inner_bitmap,
+                                )
+                                .boxed(),
+                                tree_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, auto_layout): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { auto_layout, .. } = &**datum;
+                                    auto_layout.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let auto_layout_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        BooleanArray::new(
+                            DataType::Boolean,
+                            auto_layout
+                                .into_iter()
+                                .map(|v| v.unwrap_or_default())
+                                .collect(),
+                            auto_layout_bitmap,
+                        )
+                        .boxed()
+                    },
+                ],
+                bitmap,
+            )
+            .boxed()
         })
     }
 
@@ -198,7 +292,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
@@ -257,23 +351,19 @@ impl ::re_types_core::Loggable for ViewportLayout {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
-                            .with_context(
-                                "rerun.blueprint.ViewportLayout#space_view_keys",
-                            )?;
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
+                            .with_context("rerun.blueprint.ViewportLayout#space_view_keys")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -282,57 +372,56 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt8,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
-                                    .with_context(
-                                        "rerun.blueprint.ViewportLayout#space_view_keys",
-                                    )?
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt8,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
+                                    .with_context("rerun.blueprint.ViewportLayout#space_view_keys")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = rmp_serde::from_slice::<
-                                                std::collections::BTreeSet<re_viewer_context::SpaceViewId>,
-                                            >(data.as_slice())
-                                                .map_err(|err| {
-                                                    ::re_types_core::DeserializationError::serde_failure(
-                                                        err.to_string(),
-                                                    )
-                                                })?;
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = rmp_serde::from_slice::<
+                                        std::collections::BTreeSet<re_viewer_context::SpaceViewId>,
+                                    >(
+                                        data.as_slice()
+                                    )
+                                    .map_err(|err| {
+                                        ::re_types_core::DeserializationError::serde_failure(
+                                            err.to_string(),
+                                        )
+                                    })?;
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 let tree = {
@@ -347,20 +436,18 @@ impl ::re_types_core::Loggable for ViewportLayout {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
                             .with_context("rerun.blueprint.ViewportLayout#tree")?;
                         if arrow_data.is_empty() {
                             Vec::new()
@@ -370,55 +457,55 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt8,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt8,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
                                     .with_context("rerun.blueprint.ViewportLayout#tree")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = rmp_serde::from_slice::<
-                                                egui_tiles::Tree<re_viewer_context::SpaceViewId>,
-                                            >(data.as_slice())
-                                                .map_err(|err| {
-                                                    ::re_types_core::DeserializationError::serde_failure(
-                                                        err.to_string(),
-                                                    )
-                                                })?;
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data =
+                                        rmp_serde::from_slice::<
+                                            egui_tiles::Tree<re_viewer_context::SpaceViewId>,
+                                        >(data.as_slice())
+                                        .map_err(|err| {
+                                            ::re_types_core::DeserializationError::serde_failure(
+                                                err.to_string(),
+                                            )
+                                        })?;
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
                 let auto_layout = {
@@ -442,7 +529,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                         .with_context("rerun.blueprint.ViewportLayout#auto_layout")?
                         .into_iter()
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(space_view_keys, tree, auto_layout),
                     arrow_data.validity(),
                 )

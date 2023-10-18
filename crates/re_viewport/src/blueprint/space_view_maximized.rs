@@ -95,12 +95,12 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                use ::re_types_core::external::arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let buffers: Vec<Option<Vec<u8>>> = data0
                     .iter()
                     .map(|opt| {
@@ -124,8 +124,7 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
                     )
                     .unwrap()
                     .into();
-                let data0_inner_bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> =
-                    None;
+                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 let data0_inner_data: Buffer<u8> = buffers
                     .into_iter()
                     .flatten()
@@ -157,7 +156,7 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::ListArray<i32>>()
+                .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
@@ -188,7 +187,7 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
                         .values()
                 };
                 let offsets = arrow_data.offsets();
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     offsets.iter().zip(offsets.lengths()),
                     arrow_data.validity(),
                 )

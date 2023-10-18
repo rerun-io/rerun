@@ -95,7 +95,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::re_types_core::external::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -112,16 +112,12 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                             (datum.is_some(), datum)
                         })
                         .unzip();
-                    let space_view_bitmap: Option<
-                        ::re_types_core::external::arrow2::bitmap::Bitmap,
-                    > = {
+                    let space_view_bitmap: Option<arrow2::bitmap::Bitmap> = {
                         let any_nones = somes.iter().any(|some| !*some);
                         any_nones.then(|| somes.into())
                     };
                     {
-                        use ::re_types_core::external::arrow2::{
-                            buffer::Buffer, offset::OffsetsBuffer,
-                        };
+                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                         let buffers: Vec<Option<Vec<u8>>> = space_view
                             .iter()
                             .map(|opt| {
@@ -139,13 +135,11 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                                     .transpose()
                             })
                             .collect::<::re_types_core::SerializationResult<Vec<_>>>()?;
-                        let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(buffers.iter().map(| opt | opt.as_ref()
-                        .map(| buf | buf.len()).unwrap_or_default())).unwrap().into();
-                        let space_view_inner_bitmap: Option<
-                            ::re_types_core::external::arrow2::bitmap::Bitmap,
-                        > = None;
+                        let offsets =
+                        ::re_types_core::external::arrow2::offset::Offsets:: < i32 >
+                        ::try_from_lengths(buffers.iter().map(| opt | opt.as_ref().map(|
+                        buf | buf.len()).unwrap_or_default())).unwrap().into();
+                        let space_view_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                         let space_view_inner_data: Buffer<u8> = buffers
                             .into_iter()
                             .flatten()
@@ -190,7 +184,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::re_types_core::external::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
@@ -230,23 +224,19 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<
-                                ::re_types_core::external::arrow2::array::ListArray<i32>,
-                            >()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                DataType::List(
-                                    Box::new(Field {
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
                                         is_nullable: false,
                                         metadata: [].into(),
-                                    }),
-                                ),
-                                arrow_data.data_type().clone(),
-                            ))
-                            .with_context(
-                                "rerun.blueprint.SpaceViewComponent#space_view",
-                            )?;
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
+                            .with_context("rerun.blueprint.SpaceViewComponent#space_view")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -255,60 +245,57 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
-                                        DataType::UInt8,
-                                        arrow_data_inner.data_type().clone(),
-                                    ))
-                                    .with_context(
-                                        "rerun.blueprint.SpaceViewComponent#space_view",
-                                    )?
+                                    .ok_or_else(|| {
+                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                            DataType::UInt8,
+                                            arrow_data_inner.data_type().clone(),
+                                        )
+                                    })
+                                    .with_context("rerun.blueprint.SpaceViewComponent#space_view")?
                                     .values()
                             };
                             let offsets = arrow_data.offsets();
-                            ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                    offsets.iter().zip(offsets.lengths()),
-                                    arrow_data.validity(),
-                                )
-                                .map(|elem| {
-                                    elem
-                                        .map(|(start, len)| {
-                                            let start = *start as usize;
-                                            let end = start + len;
-                                            if end as usize > arrow_data_inner.len() {
-                                                return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
-                                                        (start, end),
-                                                        arrow_data_inner.len(),
-                                                    ),
-                                                );
-                                            }
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(
+                                            ::re_types_core::DeserializationError::offset_slice_oob(
+                                                (start, end),
+                                                arrow_data_inner.len(),
+                                            ),
+                                        );
+                                    }
 
-                                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                            let data = unsafe {
-                                                arrow_data_inner
-                                                    .clone()
-                                                    .sliced_unchecked(start as usize, end - start as usize)
-                                            };
-                                            let data = rmp_serde::from_slice::<
-                                                crate::SpaceViewBlueprint,
-                                            >(data.as_slice())
-                                                .map_err(|err| {
-                                                    ::re_types_core::DeserializationError::serde_failure(
-                                                        err.to_string(),
-                                                    )
-                                                })?;
-                                            Ok(data)
-                                        })
-                                        .transpose()
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner
+                                            .clone()
+                                            .sliced_unchecked(start as usize, end - start as usize)
+                                    };
+                                    let data = rmp_serde::from_slice::<crate::SpaceViewBlueprint>(
+                                        data.as_slice(),
+                                    )
+                                    .map_err(|err| {
+                                        ::re_types_core::DeserializationError::serde_failure(
+                                            err.to_string(),
+                                        )
+                                    })?;
+                                    Ok(data)
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .transpose()
+                            })
+                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
                         }
-                            .into_iter()
+                        .into_iter()
                     }
                 };
-                ::re_types_core::external::arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(space_view),
                     arrow_data.validity(),
                 )
