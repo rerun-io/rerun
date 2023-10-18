@@ -38,7 +38,7 @@ namespace rerun {
         ///
         ///     rec.log(
         ///         "tensor",
-        ///         rerun::Tensor({8, 6, 3, 5}, data).with_names({"batch", "channel", "height", "width"})
+        ///         rerun::Tensor({8, 6, 3, 5}, data).with_dim_names({"batch", "channel", "height", "width"})
         ///     );
         /// }
         /// ```
@@ -69,7 +69,7 @@ namespace rerun {
             /// Error::handle and then proceed to only update the subset of names that it can.
             ///
             /// TODO(#3794): don't use std::vector here.
-            Tensor with_names(std::vector<std::string> names) &&;
+            Tensor with_dim_names(std::vector<std::string> names) &&;
 
           public:
             Tensor() = default;

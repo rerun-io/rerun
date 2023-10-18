@@ -25,12 +25,12 @@ namespace rerun {
         /// Error::handle and then proceed to only update the subset of names that it can.
         ///
         /// TODO(#3794): don't use std::vector here.
-        Tensor with_names(std::vector<std::string> names) &&;
+        Tensor with_dim_names(std::vector<std::string> names) &&;
 
         // [CODEGEN COPY TO HEADER END]
 #endif
 
-        Tensor Tensor::with_names(std::vector<std::string> names) && {
+        Tensor Tensor::with_dim_names(std::vector<std::string> names) && {
             auto& shape = data.data.shape;
 
             if (names.size() != shape.size()) {
