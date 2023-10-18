@@ -1,6 +1,6 @@
+use crate::blueprint::PanelView;
 use re_data_store::StoreDb;
 use re_log_types::{DataRow, EntityPath, RowId, TimePoint};
-use re_types::blueprint::PanelView;
 use re_viewer_context::{CommandSender, StoreContext, SystemCommand, SystemCommandSender};
 
 /// Blueprint for top-level application

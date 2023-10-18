@@ -693,7 +693,8 @@ fn set_panels(
     timeline_view_expanded: Option<bool>,
     blueprint: Option<&PyRecordingStream>,
 ) {
-    use rerun::external::re_types::blueprint::PanelView;
+    // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
+    use re_viewer::blueprint::PanelView;
 
     if let Some(expanded) = blueprint_view_expanded {
         set_panel(PanelView::BLUEPRINT_VIEW_PATH, expanded, blueprint);
@@ -711,7 +712,8 @@ fn set_panel(entity_path: &str, is_expanded: bool, blueprint: Option<&PyRecordin
         return;
     };
 
-    use rerun::external::re_types::blueprint::PanelView;
+    // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
+    use re_viewer::blueprint::PanelView;
 
     // TODO(jleibs): Validation this is a valid blueprint path?
     let entity_path = parse_entity_path(entity_path);
@@ -781,7 +783,8 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
         return;
     };
 
-    use rerun::external::re_types::blueprint::AutoSpaceViews;
+    // TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
+    use re_viewport::blueprint::AutoSpaceViews;
 
     let enable_auto_space = AutoSpaceViews(enabled);
 

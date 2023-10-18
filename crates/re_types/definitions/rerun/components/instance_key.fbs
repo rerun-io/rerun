@@ -13,9 +13,10 @@ namespace rerun.components;
 struct InstanceKey (
   "attr.python.aliases": "int",
   "attr.python.array_aliases": "int, npt.NDArray[np.uint64]",
-  "attr.rust.derive": "Copy, Hash, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.custom_clause":
-    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
+    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))',
+  "attr.rust.derive": "Copy, Hash, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.override_crate": "re_types_core"
 ) {
   value: uint64 (order: 100);
 }

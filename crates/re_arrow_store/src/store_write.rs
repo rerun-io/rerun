@@ -9,8 +9,9 @@ use re_log_types::{
     DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, TimeInt, TimePoint,
     TimeRange,
 };
-use re_types::components::InstanceKey;
-use re_types_core::{ComponentName, ComponentNameSet, Loggable, SizeBytes as _};
+use re_types_core::{
+    components::InstanceKey, ComponentName, ComponentNameSet, Loggable, SizeBytes as _,
+};
 
 use crate::{
     store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,

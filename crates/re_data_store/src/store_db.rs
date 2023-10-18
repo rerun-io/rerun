@@ -7,8 +7,7 @@ use re_log_types::{
     ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
     PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
-use re_types::components::InstanceKey;
-use re_types_core::Loggable;
+use re_types_core::{components::InstanceKey, Loggable};
 
 use crate::{Error, TimesPerTimeline};
 
@@ -117,7 +116,7 @@ impl EntityDb {
 
         // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
         // instead.
-        use re_types::components::ClearIsRecursive;
+        use re_types_core::components::ClearIsRecursive;
         if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
             let cell = &row.cells()[idx];
             let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();

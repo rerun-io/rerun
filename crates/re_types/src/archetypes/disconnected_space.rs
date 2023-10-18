@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Archetype**: Specifies that the entity path at which this is logged is disconnected from its parent.
 ///
 /// This is useful for specifying that a subgraph is independent of the rest of the scene.
@@ -125,9 +127,7 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
     ) -> ::re_types_core::DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};

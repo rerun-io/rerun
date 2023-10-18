@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Datatype**: 3D scaling factor, part of a transform representation.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Scale3D {
@@ -49,7 +51,7 @@ impl ::re_types_core::Loggable for Scale3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Union(
             vec![
                 Field {
@@ -79,13 +81,13 @@ impl ::re_types_core::Loggable for Scale3D {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -118,7 +120,7 @@ impl ::re_types_core::Loggable for Scale3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let three_d_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let three_d_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -137,7 +139,7 @@ impl ::re_types_core::Loggable for Scale3D {
                                 .flatten()
                                 .map(Some)
                                 .collect();
-                            let three_d_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                            let three_d_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                                 three_d_bitmap.as_ref().map(|bitmap| {
                                     bitmap
                                         .iter()
@@ -182,7 +184,7 @@ impl ::re_types_core::Loggable for Scale3D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let uniform_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let uniform_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -225,18 +227,18 @@ impl ::re_types_core::Loggable for Scale3D {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Union(
@@ -296,7 +298,7 @@ impl ::re_types_core::Loggable for Scale3D {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
+                            .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(

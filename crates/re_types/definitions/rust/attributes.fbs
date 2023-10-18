@@ -34,3 +34,10 @@ attribute "attr.rust.union_default";
 
 /// Sets the visibility of `new` to `pub(crate)` so it is only available to extension methods.
 attribute "attr.rust.new_pub_crate";
+
+/// The object will be generated in the specified crate, instead of `re_types`.
+///
+/// Everything else works the same, include how module names are derived: e.g. if you define
+/// an object of kind `Blueprint` with `attr.rust.override_crate=re_viewport`, the final
+/// object will be generated in `crates/re_viewport/src/blueprint`.
+attribute "attr.rust.override_crate";

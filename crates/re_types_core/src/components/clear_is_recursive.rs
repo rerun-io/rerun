@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use crate::external::arrow2;
+
 /// **Component**: Configures how a clear operation should behave - recursive or not?
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct ClearIsRecursive(
@@ -49,8 +51,8 @@ impl<'a> From<&'a ClearIsRecursive> for ::std::borrow::Cow<'a, ClearIsRecursive>
     }
 }
 
-impl ::re_types_core::Loggable for ClearIsRecursive {
-    type Name = ::re_types_core::ComponentName;
+impl crate::Loggable for ClearIsRecursive {
+    type Name = crate::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -60,20 +62,20 @@ impl ::re_types_core::Loggable for ClearIsRecursive {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Boolean
     }
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> crate::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -86,7 +88,7 @@ impl ::re_types_core::Loggable for ClearIsRecursive {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -101,28 +103,28 @@ impl ::re_types_core::Loggable for ClearIsRecursive {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+        arrow_data: &dyn arrow2::array::Array,
+    ) -> crate::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<BooleanArray>()
             .ok_or_else(|| {
-                ::re_types_core::DeserializationError::datatype_mismatch(
+                crate::DeserializationError::datatype_mismatch(
                     DataType::Boolean,
                     arrow_data.data_type().clone(),
                 )
             })
             .with_context("rerun.components.ClearIsRecursive#recursive")?
             .into_iter()
-            .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.ClearIsRecursive#recursive")
             .with_context("rerun.components.ClearIsRecursive")?)
     }

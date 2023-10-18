@@ -14,6 +14,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+
 /// **Datatype**: The description of a semantic Class.
 ///
 /// If an entity is annotated with a corresponding `ClassId`, rerun will use
@@ -65,7 +67,7 @@ impl ::re_types_core::Loggable for ClassDescription {
     #[allow(unused_imports, clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "info".to_owned(),
@@ -101,13 +103,13 @@ impl ::re_types_core::Loggable for ClassDescription {
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -116,7 +118,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -134,7 +136,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let info_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let info_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -157,7 +159,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let keypoint_annotations_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let keypoint_annotations_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -170,10 +172,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 .cloned()
                                 .map(Some)
                                 .collect();
-                            let keypoint_annotations_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
-                            > = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let keypoint_annotations_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 keypoint_annotations.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
@@ -213,7 +214,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let keypoint_connections_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let keypoint_connections_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -226,10 +227,9 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 .cloned()
                                 .map(Some)
                                 .collect();
-                            let keypoint_connections_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
-                            > = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let keypoint_connections_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
+                                None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 keypoint_connections.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
@@ -264,18 +264,18 @@ impl ::re_types_core::Loggable for ClassDescription {
 
     #[allow(unused_imports, clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
+        arrow_data: &dyn arrow2::array::Array,
     ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     ::re_types_core::DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
@@ -347,7 +347,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
@@ -423,7 +423,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
                                 ::re_types_core::DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {

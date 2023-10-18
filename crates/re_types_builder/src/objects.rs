@@ -668,6 +668,19 @@ impl Object {
     pub fn is_testing(&self) -> bool {
         is_testing_fqname(&self.fqname)
     }
+
+    /// Returns the crate name of an object, accounting for overrides.
+    pub fn crate_name(&self) -> String {
+        self.try_get_attr::<String>(crate::ATTR_RUST_OVERRIDE_CRATE)
+            .unwrap_or_else(|| "re_types".to_owned())
+    }
+
+    /// Returns the module name of an object.
+    //
+    // NOTE: Might want a module override at some point.
+    pub fn module_name(&self) -> String {
+        self.kind.plural_snake_case().to_owned()
+    }
 }
 
 pub fn is_testing_fqname(fqname: &str) -> bool {

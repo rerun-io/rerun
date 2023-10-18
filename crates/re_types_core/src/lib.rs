@@ -104,6 +104,18 @@ pub use self::result::{
 };
 pub use self::size_bytes::SizeBytes;
 
+/// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
+/// dependency optimization.
+///
+/// There are also re-exported by `re_types`.
+pub mod archetypes;
+
+/// Fundamental [`Component`]s that are implemented in `re_types_core` directly for convenience and
+/// dependency optimization.
+///
+/// There are also re-exported by `re_types`.
+pub mod components;
+
 // ---
 
 mod arrow_buffer;

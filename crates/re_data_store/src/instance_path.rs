@@ -1,7 +1,7 @@
 use std::{hash::Hash, str::FromStr};
 
 use re_log_types::{DataPath, EntityPath, EntityPathHash, PathParseError, RowId};
-use re_types::components::InstanceKey;
+use re_types_core::components::InstanceKey;
 
 use crate::{store_db::EntityDb, VersionedInstancePath, VersionedInstancePathHash};
 
