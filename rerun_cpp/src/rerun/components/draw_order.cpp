@@ -3,10 +3,7 @@
 
 #include "draw_order.hpp"
 
-#include "../arrow.hpp"
-
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
@@ -66,16 +63,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema =
-                arrow::schema({arrow::field(DrawOrder::NAME, DrawOrder::arrow_datatype(), false)});
-
-            rerun::DataCell cell;
-            cell.component_name = DrawOrder::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
+            return rerun::DataCell::create(
+                DrawOrder::NAME,
+                DrawOrder::arrow_datatype(),
+                std::move(array)
+            );
         }
     } // namespace components
 } // namespace rerun
