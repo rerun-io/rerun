@@ -4432,7 +4432,6 @@ version = "0.10.0-alpha.7+dev"
 dependencies = [
  "ahash 0.8.3",
  "anyhow",
- "arrow2_convert",
  "crossbeam",
  "document-features",
  "env_logger",
