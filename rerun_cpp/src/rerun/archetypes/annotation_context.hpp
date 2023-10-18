@@ -55,7 +55,7 @@ namespace rerun {
         ///         std::fill_n(data.begin() + y * WIDTH + 6, 6, 2); // right half
         ///     }
         ///
-        ///     rec.log("segmentation/image", rerun::SegmentationImage({HEIGHT, WIDTH}, std::move(data)));
+        ///     rec.log("segmentation/image", rerun::SegmentationImage(WIDTH, HEIGHT, std::move(data)));
         /// }
         /// ```
         struct AnnotationContext {

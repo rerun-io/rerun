@@ -10,22 +10,41 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
-        /// New image from dimensions and tensor buffer.
+        /// New Image from width, height and tensor buffer.
         ///
-        /// Sets dimensions to width/height/channel if they are not specified.
-        /// Calls Error::handle() if the shape is not rank 2 or 3 or
-        /// has neither 1, 3 or 4 channels.
+        /// Sets the dimension names to "width" and "height" if they are not specified.
         Image(
-            std::vector<rerun::datatypes::TensorDimension> shape,
-            rerun::datatypes::TensorBuffer buffer
+            datatypes::TensorDimension width,
+            datatypes::TensorDimension height,
+            datatypes::TensorBuffer buffer
         )
-            : Image(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+            : Image(datatypes::TensorData({std::move(height), std::move(width)}, std::move(buffer))) {}
 
-        /// New image from tensor data.
+        /// New Image from width, height, channels and tensor buffer.
         ///
-        /// Sets dimensions to width/height if they are not specified.
-        /// Calls Error::handle() if the shape is not rank 2 or 3 or
-        /// has neither 1, 3 or 4 channels.
+        /// Sets the dimension names to "width", "height" and "channel" if they are not specified.
+        Image(
+            datatypes::TensorDimension width,
+            datatypes::TensorDimension height,
+            datatypes::TensorDimension channels,
+            datatypes::TensorBuffer buffer
+        )
+            : Image(datatypes::TensorData({std::move(height), std::move(width), std::move(channels)}, std::move(buffer))) {}
+
+        /// New Image from height/width/channel and tensor buffer.
+        ///
+        /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
+        /// Calls `Error::handle()` if the shape is not rank 2 or 3.
+        Image(
+            std::vector<datatypes::TensorDimension> shape,
+            datatypes::TensorBuffer buffer
+        )
+            : Image(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
+        /// New depth image from tensor data.
+        ///
+        /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
+        /// Calls `Error::handle()` if the shape is not rank 2 or 3.
         explicit Image(rerun::components::TensorData _data);
         // [CODEGEN COPY TO HEADER END]
 #endif

@@ -10,25 +10,36 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
-        /// New DepthImage from dimensions and tensor buffer.
+        /// New depth image from width, height and tensor buffer.
         ///
-        /// Sets dimensions to width/height if they are not specified.
-        /// Calls Error::handle() if the shape is not rank 2.
+        /// Sets the dimension names to "width" and "height" if they are not specified.
         DepthImage(
-            std::vector<rerun::datatypes::TensorDimension> shape,
-            rerun::datatypes::TensorBuffer buffer
+            datatypes::TensorDimension width,
+            datatypes::TensorDimension height,
+            datatypes::TensorBuffer buffer
         )
-            : DepthImage(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+            : DepthImage(datatypes::TensorData({std::move(height), std::move(width)}, std::move(buffer))) {}
+
+        /// New depth image from height/width and tensor buffer.
+        ///
+        /// Sets the dimension names to "height" and "width" if they are not specified.
+        /// Calls `Error::handle()` if the shape is not rank 2.
+        DepthImage(
+            std::vector<datatypes::TensorDimension> shape,
+            datatypes::TensorBuffer buffer
+        )
+            : DepthImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// New depth image from tensor data.
         ///
-        /// Sets dimensions to width/height if they are not specified.
-        /// Calls Error::handle() if the shape is not rank 2.
-        explicit DepthImage(rerun::components::TensorData _data);
+        /// Sets the dimension names to "height" and "width" if they are not specified.
+        /// Calls `Error::handle()` if the shape is not rank 2.
+        explicit DepthImage(components::TensorData _data);
+
         // [CODEGEN COPY TO HEADER END]
 #endif
 
-        DepthImage::DepthImage(rerun::components::TensorData _data) : data(std::move(_data)) {
+        DepthImage::DepthImage(components::TensorData _data) : data(std::move(_data)) {
             auto& shape = data.data.shape;
             if (shape.size() != 2) {
                 Error(ErrorCode::InvalidTensorDimension, "Shape must be rank 2.").handle();

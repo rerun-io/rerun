@@ -78,23 +78,31 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'segmentation_image_ext.cpp'
 
-            /// New SegmentationImage from dimensions and tensor buffer.
+            /// New segmentation image from width, height and tensor buffer.
             ///
-            /// Sets dimensions to width/height if they are not specified.
-            /// Calls Error::handle() if the shape is not rank 2.
+            /// Sets the dimension names to "width" and "height" if they are not specified.
             SegmentationImage(
-                std::vector<rerun::datatypes::TensorDimension> shape,
-                rerun::datatypes::TensorBuffer buffer
+                datatypes::TensorDimension width, datatypes::TensorDimension height,
+                datatypes::TensorBuffer buffer
             )
-                : SegmentationImage(
-                      rerun::datatypes::TensorData(std::move(shape), std::move(buffer))
-                  ) {}
+                : SegmentationImage(datatypes::TensorData(
+                      {std::move(height), std::move(width)}, std::move(buffer)
+                  )) {}
+
+            /// New segmentation image from height/width and tensor buffer.
+            ///
+            /// Sets the dimension names to "height" and "width" if they are not specified.
+            /// Calls `Error::handle()` if the shape is not rank 2.
+            SegmentationImage(
+                std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer
+            )
+                : SegmentationImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
             /// New segmentation image from tensor data.
             ///
-            /// Sets dimensions to width/height if they are not specified.
-            /// Calls Error::handle() if the shape is not rank 2.
-            explicit SegmentationImage(rerun::components::TensorData _data);
+            /// Sets the dimension names to "height" and "width" if they are not specified.
+            /// Calls `Error::handle()` if the shape is not rank 2.
+            explicit SegmentationImage(components::TensorData _data);
 
           public:
             SegmentationImage() = default;
