@@ -10,16 +10,6 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
-        /// New segmentation image from width, height and tensor buffer.
-        ///
-        /// Sets the dimension names to "width" and "height" if they are not specified.
-        SegmentationImage(
-            datatypes::TensorDimension width,
-            datatypes::TensorDimension height,
-            datatypes::TensorBuffer buffer
-        )
-            : SegmentationImage(datatypes::TensorData({std::move(height), std::move(width)}, std::move(buffer))) {}
-
         /// New segmentation image from height/width and tensor buffer.
         ///
         /// Sets the dimension names to "height" and "width" if they are not specified.

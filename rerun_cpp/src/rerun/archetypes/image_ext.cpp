@@ -10,27 +10,6 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
-        /// New Image from width, height and tensor buffer.
-        ///
-        /// Sets the dimension names to "width" and "height" if they are not specified.
-        Image(
-            datatypes::TensorDimension width,
-            datatypes::TensorDimension height,
-            datatypes::TensorBuffer buffer
-        )
-            : Image(datatypes::TensorData({std::move(height), std::move(width)}, std::move(buffer))) {}
-
-        /// New Image from width, height, channels and tensor buffer.
-        ///
-        /// Sets the dimension names to "width", "height" and "channel" if they are not specified.
-        Image(
-            datatypes::TensorDimension width,
-            datatypes::TensorDimension height,
-            datatypes::TensorDimension channels,
-            datatypes::TensorBuffer buffer
-        )
-            : Image(datatypes::TensorData({std::move(height), std::move(width), std::move(channels)}, std::move(buffer))) {}
-
         /// New Image from height/width/channel and tensor buffer.
         ///
         /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.

@@ -58,7 +58,7 @@ namespace rerun {
         ///
         ///     rec.log(
         ///         "world/camera/depth",
-        ///         rerun::DepthImage(WIDTH, HEIGHT, std::move(data)).with_meter(10000.0)
+        ///         rerun::DepthImage({HEIGHT, WIDTH}, std::move(data)).with_meter(10000.0)
         ///     );
         /// }
         /// ```
@@ -84,17 +84,6 @@ namespace rerun {
 
           public:
             // Extensions to generated type defined in 'depth_image_ext.cpp'
-
-            /// New depth image from width, height and tensor buffer.
-            ///
-            /// Sets the dimension names to "width" and "height" if they are not specified.
-            DepthImage(
-                datatypes::TensorDimension width, datatypes::TensorDimension height,
-                datatypes::TensorBuffer buffer
-            )
-                : DepthImage(datatypes::TensorData(
-                      {std::move(height), std::move(width)}, std::move(buffer)
-                  )) {}
 
             /// New depth image from height/width and tensor buffer.
             ///
