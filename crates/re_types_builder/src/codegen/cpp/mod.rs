@@ -593,7 +593,6 @@ impl QuotedObject {
             methods.push(component_to_data_cell_method(
                 &type_ident,
                 &mut hpp_includes,
-                &mut cpp_includes,
             ));
         }
 
@@ -1250,16 +1249,10 @@ fn fill_arrow_array_builder_method(
     }
 }
 
-fn component_to_data_cell_method(
-    type_ident: &Ident,
-    hpp_includes: &mut Includes,
-    cpp_includes: &mut Includes,
-) -> Method {
+fn component_to_data_cell_method(type_ident: &Ident, hpp_includes: &mut Includes) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
-    cpp_includes.insert_rerun("arrow.hpp"); // ipc_from_table
-    cpp_includes.insert_system("arrow/table.h"); // Table::Make
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
 
@@ -1292,21 +1285,7 @@ fn component_to_data_cell_method(
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            auto schema = arrow::schema({arrow::field(
-                #type_ident::NAME, // Unused, but should be the name of the field in the archetype if any.
-                #type_ident::arrow_datatype(),
-                false
-            )});
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            rerun::DataCell cell;
-            cell.component_name = #type_ident::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            return cell;
+            return rerun::DataCell::create(#type_ident::NAME, #type_ident::arrow_datatype(), std::move(array));
         },
         inline: false,
     }
