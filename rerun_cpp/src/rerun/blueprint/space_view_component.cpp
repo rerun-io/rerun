@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace blueprint {
-        const std::shared_ptr<arrow::DataType> &SpaceViewComponent::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& SpaceViewComponent::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "space_view",
@@ -20,7 +20,7 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> SpaceViewComponent::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
             if (!memory_pool) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
@@ -39,7 +39,7 @@ namespace rerun {
         }
 
         Error SpaceViewComponent::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const SpaceViewComponent *elements, size_t num_elements
+            arrow::StructBuilder* builder, const SpaceViewComponent* elements, size_t num_elements
         ) {
             if (!builder) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -52,14 +52,14 @@ namespace rerun {
             }
 
             {
-                auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(0));
+                auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(0));
                 auto value_builder =
-                    static_cast<arrow::UInt8Builder *>(field_builder->value_builder());
+                    static_cast<arrow::UInt8Builder*>(field_builder->value_builder());
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
                         element.space_view.data(),

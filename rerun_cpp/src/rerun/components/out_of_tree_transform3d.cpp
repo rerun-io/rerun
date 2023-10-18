@@ -3,11 +3,9 @@
 
 #include "out_of_tree_transform3d.hpp"
 
-#include "../arrow.hpp"
 #include "../datatypes/transform3d.hpp"
 
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
@@ -72,19 +70,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema({arrow::field(
+            return rerun::DataCell::create(
                 OutOfTreeTransform3D::NAME,
                 OutOfTreeTransform3D::arrow_datatype(),
-                false
-            )});
-
-            rerun::DataCell cell;
-            cell.component_name = OutOfTreeTransform3D::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
+                std::move(array)
+            );
         }
     } // namespace components
 } // namespace rerun

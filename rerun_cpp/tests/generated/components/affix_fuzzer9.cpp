@@ -4,9 +4,7 @@
 #include "affix_fuzzer9.hpp"
 
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
-#include <rerun/arrow.hpp>
 
 namespace rerun {
     namespace components {
@@ -65,17 +63,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(AffixFuzzer9::NAME, AffixFuzzer9::arrow_datatype(), false)}
+            return rerun::DataCell::create(
+                AffixFuzzer9::NAME,
+                AffixFuzzer9::arrow_datatype(),
+                std::move(array)
             );
-
-            rerun::DataCell cell;
-            cell.component_name = AffixFuzzer9::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
         }
     } // namespace components
 } // namespace rerun

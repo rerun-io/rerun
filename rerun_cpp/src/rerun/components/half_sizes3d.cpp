@@ -3,11 +3,9 @@
 
 #include "half_sizes3d.hpp"
 
-#include "../arrow.hpp"
 #include "../datatypes/vec3d.hpp"
 
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
@@ -69,17 +67,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(HalfSizes3D::NAME, HalfSizes3D::arrow_datatype(), false)}
+            return rerun::DataCell::create(
+                HalfSizes3D::NAME,
+                HalfSizes3D::arrow_datatype(),
+                std::move(array)
             );
-
-            rerun::DataCell cell;
-            cell.component_name = HalfSizes3D::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
         }
     } // namespace components
 } // namespace rerun

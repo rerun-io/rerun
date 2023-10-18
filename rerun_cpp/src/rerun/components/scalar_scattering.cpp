@@ -3,10 +3,7 @@
 
 #include "scalar_scattering.hpp"
 
-#include "../arrow.hpp"
-
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
@@ -69,17 +66,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(ScalarScattering::NAME, ScalarScattering::arrow_datatype(), false)}
+            return rerun::DataCell::create(
+                ScalarScattering::NAME,
+                ScalarScattering::arrow_datatype(),
+                std::move(array)
             );
-
-            rerun::DataCell cell;
-            cell.component_name = ScalarScattering::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
         }
     } // namespace components
 } // namespace rerun
