@@ -116,6 +116,12 @@ pub mod archetypes;
 /// There are also re-exported by `re_types`.
 pub mod components;
 
+/// Fundamental [`Datatype`]s that are implemented in `re_types_core` directly for convenience and
+/// dependency optimization.
+///
+/// There are also re-exported by `re_types`.
+pub mod datatypes;
+
 // ---
 
 mod arrow_buffer;

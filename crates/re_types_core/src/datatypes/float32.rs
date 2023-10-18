@@ -15,11 +15,11 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
-use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
-use ::re_types_core::{DeserializationError, DeserializationResult};
+use crate::external::arrow2;
+use crate::ComponentName;
+use crate::SerializationResult;
+use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single-precision 32-bit IEEE 754 floating point number.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
@@ -53,8 +53,8 @@ impl<'a> From<&'a Float32> for ::std::borrow::Cow<'a, Float32> {
     }
 }
 
-impl ::re_types_core::Loggable for Float32 {
-    type Name = ::re_types_core::DatatypeName;
+impl crate::Loggable for Float32 {
+    type Name = crate::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -76,7 +76,7 @@ impl ::re_types_core::Loggable for Float32 {
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -111,7 +111,7 @@ impl ::re_types_core::Loggable for Float32 {
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(arrow_data
             .as_any()
