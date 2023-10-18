@@ -277,7 +277,7 @@ jobs:
 
       - name: Taplo check
         run: |
-          taplo fmt --check
+          taplo fmt --check --diff
 
   # ---------------------------------------------------------------------------
 
