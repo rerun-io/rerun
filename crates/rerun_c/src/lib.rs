@@ -526,6 +526,18 @@ fn parse_arrow_ipc_encapsulated_message(
         Ok(metadata) => metadata,
         Err(err) => return Err(format!("Failed to read stream metadata: {err}")),
     };
+
+    // This IPC message represents the contents of a single DataCell, thus we should have a single
+    // field.
+    if metadata.schema.fields.len() != 1 {
+        return Err(format!(
+            "Found {} fields in stream metadata - expected exactly one.",
+            metadata.schema.fields.len(),
+        ));
+    }
+    // Might need that later if it turns out we don't have any data to log.
+    let datatype = metadata.schema.fields[0].data_type().clone();
+
     let stream = StreamReader::new(cursor, metadata, None);
     let chunks: Result<Vec<_>, _> = stream
         .map(|state| match state {
@@ -539,10 +551,21 @@ fn parse_arrow_ipc_encapsulated_message(
 
     let chunks = chunks.map_err(|err| format!("Arrow error: {err}"))?;
 
+    // We're not sending a `DataCellColumn`'s (i.e. `List<DataCell>`) worth of data like we normally do
+    // here, rather we're sending a single, independent `DataCell`'s worth of data.
+    //
+    // This distinction is crucial:
+    // - The data for a `DataCellColumn` containing a single empty `DataCell` is a unit-length list-array whose
+    //   first and only entry is an empty array (`ListArray[[]]`). There's actually data there (as
+    //   in bytes).
+    // - The data for a standalone empty `DataCell`, on the other hand, is literally nothing. It's
+    //   zero bytes.
+    //
+    // Where there's no data whatsoever, the chunk gets optimized out, which is why logging an
+    // empty array in C++ ends up hitting this path.
     if chunks.is_empty() {
-        // This might be a bug in arrow2 or the C++ SDK, but it seems that when we send an
-        // IPC with an empty array from C++ we don't get any arrays here at all.
-        return Ok(arrow2::array::NullArray::new_empty(arrow2::datatypes::DataType::Null).boxed());
+        // The fix is simple: craft an empty array with the correct datatype.
+        return Ok(arrow2::array::new_empty_array(datatype));
     }
 
     if chunks.len() > 1 {
