@@ -125,5 +125,5 @@ python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]
 # https://docs.python.org/3/library/warnings.html#warning-filter
 filterwarnings = """
 error
-ignore::pytest.PytestUnraisableExceptionWarning
 """
+
