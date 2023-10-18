@@ -15,8 +15,7 @@ namespace rerun {
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
         SegmentationImage(
-            std::vector<datatypes::TensorDimension> shape,
-            datatypes::TensorBuffer buffer
+            std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer
         )
             : SegmentationImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 

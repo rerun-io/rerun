@@ -14,10 +14,7 @@ namespace rerun {
         ///
         /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2 or 3.
-        Image(
-            std::vector<datatypes::TensorDimension> shape,
-            datatypes::TensorBuffer buffer
-        )
+        Image(std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
             : Image(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// New depth image from tensor data.
