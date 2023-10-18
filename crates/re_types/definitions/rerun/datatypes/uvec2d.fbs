@@ -7,7 +7,7 @@ namespace rerun.datatypes;
 
 // ---
 
-/// A uint32 vector in 2D space.
+/// A uint32 vector in 2D space LOL.
 struct UVec2D (
   "attr.arrow.transparent",
   "attr.python.aliases": "npt.NDArray[Any], npt.ArrayLike, Sequence[int]",
