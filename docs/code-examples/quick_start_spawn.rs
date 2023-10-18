@@ -1,4 +1,4 @@
-//! Connect to the viewer and log some data.
+//! Spawn a viewer and log some data.
 
 use rerun::{demo_util::grid, external::glam};
 
