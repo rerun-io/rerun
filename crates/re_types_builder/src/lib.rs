@@ -418,6 +418,8 @@ fn generate_code(
 
 /// Generates C++ code.
 ///
+/// If `check` is true, this will run a comparison check instead of writing files to disk.
+///
 /// Panics on error.
 ///
 /// - `output_path`: path to the root of the output.
@@ -429,11 +431,13 @@ fn generate_code(
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
 /// # let reporter = re_types_builder::report::init().1;
+/// # let check = false;
 /// re_types_builder::generate_cpp_code(
 ///     &reporter,
 ///     ".",
 ///     &objects,
 ///     &arrow_registry,
+///     check,
 /// );
 /// ```
 pub fn generate_cpp_code(
@@ -466,6 +470,8 @@ pub fn generate_cpp_code(
 
 /// Generates Rust code.
 ///
+/// If `check` is true, this will run a comparison check instead of writing files to disk.
+///
 /// Panics on error.
 ///
 /// E.g.:
@@ -475,11 +481,13 @@ pub fn generate_cpp_code(
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
 /// # let reporter = re_types_builder::report::init().1;
+/// # let check = false;
 /// re_types_builder::generate_rust_code(
 ///     &reporter,
 ///     ".",
 ///     &objects,
 ///     &arrow_registry,
+///     check,
 /// );
 /// ```
 pub fn generate_rust_code(
@@ -507,6 +515,8 @@ pub fn generate_rust_code(
 
 /// Generates Python code.
 ///
+/// If `check` is true, this will run a comparison check instead of writing files to disk.
+///
 /// Panics on error.
 ///
 /// - `output_pkg_path`: path to the root of the output package.
@@ -518,12 +528,14 @@ pub fn generate_rust_code(
 ///     "./definitions/rerun/archetypes.fbs",
 /// );
 /// # let reporter = re_types_builder::report::init().1;
+/// # let check = false;
 /// re_types_builder::generate_python_code(
 ///     &reporter,
 ///     "./rerun_py/rerun_sdk",
 ///     "./rerun_py/tests",
 ///     &objects,
 ///     &arrow_registry,
+///     check,
 /// );
 /// ```
 pub fn generate_python_code(
