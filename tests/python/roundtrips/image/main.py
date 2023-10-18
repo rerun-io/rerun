@@ -18,7 +18,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_roundtrip_image")
 
-    # 2x3x3 image. Red channel = x. Green channel = y. Blue channel = 128.
+    # h=2 w=3 c=3 image. Red channel = x. Green channel = y. Blue channel = 128.
     image = np.zeros((2, 3, 3), dtype=np.uint8)
     for i in range(3):
         image[:, i, 0] = i
@@ -30,7 +30,7 @@ def main() -> None:
 
     rr.log("image", rr.Image(image))
 
-    # 5x4 mono image. Pixel = x * y * 123.4
+    # h=4, w=5 mono image. Pixel = x * y * 123.4
     image = np.zeros((4, 5), dtype=np.float16)
     for i in range(4):
         for j in range(5):

@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     auto rec = rerun::RecordingStream("rerun_example_roundtrip_image");
     rec.save(argv[1]).throw_on_failure();
 
-    // 2x3x3 image. Red channel = x. Green channel = y. Blue channel = 128.
+    // h=2 w=3 c=3 image. Red channel = x. Green channel = y. Blue channel = 128.
     {
         auto img = rerun::datatypes::TensorData(
             {2, 3, 3},
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
         rec.log("image", rerun::archetypes::Image(img));
     }
 
-    // 5x4 mono image. Pixel = x * y * 123.4
+    // h=4, w=5 mono image. Pixel = x * y * 123.4
     {
         std::vector<rerun::half> data;
         for (auto y = 0; y < 4; ++y) {
