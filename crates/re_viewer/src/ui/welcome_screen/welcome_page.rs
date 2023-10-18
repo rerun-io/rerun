@@ -22,7 +22,9 @@ pub(super) fn welcome_page_ui(
     command_sender: &re_viewer_context::CommandSender,
 ) -> WelcomeScreenResponse {
     ui.vertical(|ui| {
-        let show_example = onboarding_content_ui(ui, command_sender);
+        let accepts_connections = rx.accepts_tcp_connections();
+
+        let show_example = onboarding_content_ui(ui, command_sender, accepts_connections);
 
         for status_strings in status_strings(rx) {
             if status_strings.long_term {
@@ -52,6 +54,7 @@ struct WelcomePagePanel<'a> {
 fn onboarding_content_ui(
     ui: &mut Ui,
     command_sender: &re_viewer_context::CommandSender,
+    accepts_connections: bool,
 ) -> WelcomeScreenResponse {
     // The panel data is stored in this ad hoc structure such that it can easily be iterated over
     // in chunks, to make the layout grid code simpler.
@@ -63,19 +66,30 @@ fn onboarding_content_ui(
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
                 //TODO(#3870): enable with C++ guides are completed
-                #[allow(clippy::collapsible_if)]
+                #[allow(clippy::collapsible_if, clippy::if_same_then_else)]
                 if false {
                     if large_text_button(ui, "C++").clicked() {
+                        let (markdown, code) = if accepts_connections {
+                            (
+                                include_str!("../../../data/quick_start_guides/cpp_connect.md"),
+                                include_str!(
+                                    "../../../data/quick_start_guides/quick_start_connect.cpp"
+                                ),
+                            )
+                        } else {
+                            (
+                                include_str!("../../../data/quick_start_guides/cpp_spawn.md"),
+                                include_str!(
+                                    "../../../data/quick_start_guides/quick_start_spawn.cpp"
+                                ),
+                            )
+                        };
+
                         open_quick_start(
                             command_sender,
-                            include_str!("../../../data/quick_start_guides/cpp_native.md"),
+                            markdown,
                             [
-                                (
-                                    "EXAMPLE_CODE",
-                                    include_str!(
-                                        "../../../data/quick_start_guides/quick_start_connect.cpp"
-                                    ),
-                                ),
+                                ("EXAMPLE_CODE", code),
                                 ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK),
                                 ("SAFARI_WARNING", safari_warning()),
                             ]
@@ -86,16 +100,23 @@ fn onboarding_content_ui(
                     }
                 }
                 if large_text_button(ui, "Python").clicked() {
+                    let (markdown, code) = if accepts_connections {
+                        (
+                            include_str!("../../../data/quick_start_guides/python_connect.md"),
+                            include_str!("../../../data/quick_start_guides/quick_start_connect.py"),
+                        )
+                    } else {
+                        (
+                            include_str!("../../../data/quick_start_guides/python_spawn.md"),
+                            include_str!("../../../data/quick_start_guides/quick_start_spawn.py"),
+                        )
+                    };
+
                     open_quick_start(
                         command_sender,
-                        include_str!("../../../data/quick_start_guides/python_native.md"),
+                        markdown,
                         [
-                            (
-                                "EXAMPLE_CODE",
-                                include_str!(
-                                    "../../../data/quick_start_guides/quick_start_connect.py"
-                                ),
-                            ),
+                            ("EXAMPLE_CODE", code),
                             ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK),
                             ("SAFARI_WARNING", safari_warning()),
                         ]
@@ -105,16 +126,23 @@ fn onboarding_content_ui(
                     );
                 }
                 if large_text_button(ui, "Rust").clicked() {
+                    let (markdown, code) = if accepts_connections {
+                        (
+                            include_str!("../../../data/quick_start_guides/rust_connect.md"),
+                            include_str!("../../../data/quick_start_guides/quick_start_connect.rs"),
+                        )
+                    } else {
+                        (
+                            include_str!("../../../data/quick_start_guides/rust_spawn.md"),
+                            include_str!("../../../data/quick_start_guides/quick_start_spawn.rs"),
+                        )
+                    };
+
                     open_quick_start(
                         command_sender,
-                        include_str!("../../../data/quick_start_guides/rust_native.md"),
+                        markdown,
                         [
-                            (
-                                "EXAMPLE_CODE",
-                                include_str!(
-                                    "../../../data/quick_start_guides/quick_start_connect.rs"
-                                ),
-                            ),
+                            ("EXAMPLE_CODE", code),
                             ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK),
                             ("SAFARI_WARNING", safari_warning()),
                         ]
