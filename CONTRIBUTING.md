@@ -30,7 +30,7 @@ Pull requests from external contributors require approval for CI runs. This can 
 
 Members of the `rerun-io` organization and collaborators in the `rerun-io/rerun` repository may enable auto-approval of workflow runs for a single PR by commenting with `@rerun-bot approve`:
 
-![PR comment by jprochazk with the text `@rerun-bot approve`](https://github.com/rerun-io/rerun/assets/1665677/b5f07f3f-ea95-44a4-8eb7-f07c905f96c3)
+![PR comment with the text `@rerun-bot approve`](https://github.com/rerun-io/rerun/assets/1665677/b5f07f3f-ea95-44a4-8eb7-f07c905f96c3)
 
 ### Adding dependencies
 Be thoughtful when adding dependencies. Each new dependency is a liability which lead to increased compile times, a bigger binary, more code that can break, a larger attack surface, etc. Sometimes it is better to write a hundred lines of code than to add a new dependency.
