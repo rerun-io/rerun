@@ -4,6 +4,12 @@ pub trait CodeFormatter {
     fn format(&mut self, reporter: &crate::Reporter, files: &mut crate::GeneratedFiles);
 }
 
+pub struct NoopCodeFormatter;
+
+impl CodeFormatter for NoopCodeFormatter {
+    fn format(&mut self, _reporter: &crate::Reporter, _files: &mut crate::GeneratedFiles) {}
+}
+
 // ---
 
 mod cpp;
