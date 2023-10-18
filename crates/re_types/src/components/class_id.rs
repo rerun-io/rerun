@@ -52,20 +52,7 @@ impl std::ops::Deref for ClassId {
         &self.0
     }
 }
-
-impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
-    #[inline]
-    fn from(value: ClassId) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
-    #[inline]
-    fn from(value: &'a ClassId) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(ClassId);
 
 impl ::re_types_core::Loggable for ClassId {
     type Name = ::re_types_core::ComponentName;

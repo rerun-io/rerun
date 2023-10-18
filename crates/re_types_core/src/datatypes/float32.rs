@@ -38,20 +38,7 @@ impl From<Float32> for f32 {
         value.0
     }
 }
-
-impl<'a> From<Float32> for ::std::borrow::Cow<'a, Float32> {
-    #[inline]
-    fn from(value: Float32) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Float32> for ::std::borrow::Cow<'a, Float32> {
-    #[inline]
-    fn from(value: &'a Float32) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+crate::macros::impl_into_cow!(Float32);
 
 impl crate::Loggable for Float32 {
     type Name = crate::DatatypeName;

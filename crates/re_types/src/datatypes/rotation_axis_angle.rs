@@ -34,20 +34,7 @@ pub struct RotationAxisAngle {
     /// How much to rotate around the axis.
     pub angle: crate::datatypes::Angle,
 }
-
-impl<'a> From<RotationAxisAngle> for ::std::borrow::Cow<'a, RotationAxisAngle> {
-    #[inline]
-    fn from(value: RotationAxisAngle) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a RotationAxisAngle> for ::std::borrow::Cow<'a, RotationAxisAngle> {
-    #[inline]
-    fn from(value: &'a RotationAxisAngle) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(RotationAxisAngle);
 
 impl ::re_types_core::Loggable for RotationAxisAngle {
     type Name = ::re_types_core::DatatypeName;

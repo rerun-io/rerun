@@ -51,20 +51,7 @@ impl std::ops::Deref for OutOfTreeTransform3D {
         &self.0
     }
 }
-
-impl<'a> From<OutOfTreeTransform3D> for ::std::borrow::Cow<'a, OutOfTreeTransform3D> {
-    #[inline]
-    fn from(value: OutOfTreeTransform3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a OutOfTreeTransform3D> for ::std::borrow::Cow<'a, OutOfTreeTransform3D> {
-    #[inline]
-    fn from(value: &'a OutOfTreeTransform3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(OutOfTreeTransform3D);
 
 impl ::re_types_core::Loggable for OutOfTreeTransform3D {
     type Name = ::re_types_core::ComponentName;

@@ -40,20 +40,7 @@ pub enum TensorBuffer {
     Jpeg(::re_types_core::ArrowBuffer<u8>),
     Nv12(::re_types_core::ArrowBuffer<u8>),
 }
-
-impl<'a> From<TensorBuffer> for ::std::borrow::Cow<'a, TensorBuffer> {
-    #[inline]
-    fn from(value: TensorBuffer) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a TensorBuffer> for ::std::borrow::Cow<'a, TensorBuffer> {
-    #[inline]
-    fn from(value: &'a TensorBuffer) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(TensorBuffer);
 
 impl ::re_types_core::Loggable for TensorBuffer {
     type Name = ::re_types_core::DatatypeName;

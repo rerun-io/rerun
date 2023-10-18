@@ -55,20 +55,7 @@ impl std::ops::Deref for TextLogLevel {
         &self.0
     }
 }
-
-impl<'a> From<TextLogLevel> for ::std::borrow::Cow<'a, TextLogLevel> {
-    #[inline]
-    fn from(value: TextLogLevel) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a TextLogLevel> for ::std::borrow::Cow<'a, TextLogLevel> {
-    #[inline]
-    fn from(value: &'a TextLogLevel) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(TextLogLevel);
 
 impl ::re_types_core::Loggable for TextLogLevel {
     type Name = ::re_types_core::ComponentName;

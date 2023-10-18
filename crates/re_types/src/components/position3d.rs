@@ -47,20 +47,7 @@ impl std::ops::Deref for Position3D {
         &self.0
     }
 }
-
-impl<'a> From<Position3D> for ::std::borrow::Cow<'a, Position3D> {
-    #[inline]
-    fn from(value: Position3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Position3D> for ::std::borrow::Cow<'a, Position3D> {
-    #[inline]
-    fn from(value: &'a Position3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Position3D);
 
 impl ::re_types_core::Loggable for Position3D {
     type Name = ::re_types_core::ComponentName;

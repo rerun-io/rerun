@@ -47,20 +47,7 @@ impl std::ops::Deref for Text {
         &self.0
     }
 }
-
-impl<'a> From<Text> for ::std::borrow::Cow<'a, Text> {
-    #[inline]
-    fn from(value: Text) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Text> for ::std::borrow::Cow<'a, Text> {
-    #[inline]
-    fn from(value: &'a Text) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Text);
 
 impl ::re_types_core::Loggable for Text {
     type Name = ::re_types_core::ComponentName;

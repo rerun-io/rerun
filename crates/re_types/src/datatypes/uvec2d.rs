@@ -39,20 +39,7 @@ impl From<UVec2D> for [u32; 2usize] {
         value.0
     }
 }
-
-impl<'a> From<UVec2D> for ::std::borrow::Cow<'a, UVec2D> {
-    #[inline]
-    fn from(value: UVec2D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a UVec2D> for ::std::borrow::Cow<'a, UVec2D> {
-    #[inline]
-    fn from(value: &'a UVec2D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(UVec2D);
 
 impl ::re_types_core::Loggable for UVec2D {
     type Name = ::re_types_core::DatatypeName;

@@ -47,20 +47,7 @@ impl std::ops::Deref for Vector3D {
         &self.0
     }
 }
-
-impl<'a> From<Vector3D> for ::std::borrow::Cow<'a, Vector3D> {
-    #[inline]
-    fn from(value: Vector3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Vector3D> for ::std::borrow::Cow<'a, Vector3D> {
-    #[inline]
-    fn from(value: &'a Vector3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Vector3D);
 
 impl ::re_types_core::Loggable for Vector3D {
     type Name = ::re_types_core::ComponentName;

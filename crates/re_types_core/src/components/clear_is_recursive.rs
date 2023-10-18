@@ -41,20 +41,7 @@ impl From<ClearIsRecursive> for bool {
         value.0
     }
 }
-
-impl<'a> From<ClearIsRecursive> for ::std::borrow::Cow<'a, ClearIsRecursive> {
-    #[inline]
-    fn from(value: ClearIsRecursive) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a ClearIsRecursive> for ::std::borrow::Cow<'a, ClearIsRecursive> {
-    #[inline]
-    fn from(value: &'a ClearIsRecursive) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+crate::macros::impl_into_cow!(ClearIsRecursive);
 
 impl crate::Loggable for ClearIsRecursive {
     type Name = crate::ComponentName;

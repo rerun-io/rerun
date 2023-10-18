@@ -34,20 +34,7 @@ pub struct TensorData {
     pub shape: Vec<crate::datatypes::TensorDimension>,
     pub buffer: crate::datatypes::TensorBuffer,
 }
-
-impl<'a> From<TensorData> for ::std::borrow::Cow<'a, TensorData> {
-    #[inline]
-    fn from(value: TensorData) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a TensorData> for ::std::borrow::Cow<'a, TensorData> {
-    #[inline]
-    fn from(value: &'a TensorData) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(TensorData);
 
 impl ::re_types_core::Loggable for TensorData {
     type Name = ::re_types_core::DatatypeName;

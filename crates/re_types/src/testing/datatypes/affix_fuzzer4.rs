@@ -27,20 +27,7 @@ pub enum AffixFuzzer4 {
     ManyRequired(Vec<crate::testing::datatypes::AffixFuzzer3>),
     ManyOptional(Option<Vec<crate::testing::datatypes::AffixFuzzer3>>),
 }
-
-impl<'a> From<AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
-    #[inline]
-    fn from(value: AffixFuzzer4) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer4) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer4);
 
 impl ::re_types_core::Loggable for AffixFuzzer4 {
     type Name = ::re_types_core::DatatypeName;

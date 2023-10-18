@@ -39,22 +39,7 @@ pub struct TranslationRotationScale3D {
     /// i.e. the translation is the position in the parent space.
     pub from_parent: bool,
 }
-
-impl<'a> From<TranslationRotationScale3D> for ::std::borrow::Cow<'a, TranslationRotationScale3D> {
-    #[inline]
-    fn from(value: TranslationRotationScale3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a TranslationRotationScale3D>
-    for ::std::borrow::Cow<'a, TranslationRotationScale3D>
-{
-    #[inline]
-    fn from(value: &'a TranslationRotationScale3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(TranslationRotationScale3D);
 
 impl ::re_types_core::Loggable for TranslationRotationScale3D {
     type Name = ::re_types_core::DatatypeName;

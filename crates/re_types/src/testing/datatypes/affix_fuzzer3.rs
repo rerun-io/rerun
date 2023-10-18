@@ -28,20 +28,7 @@ pub enum AffixFuzzer3 {
     Craziness(Vec<crate::testing::datatypes::AffixFuzzer1>),
     FixedSizeShenanigans([f32; 3usize]),
 }
-
-impl<'a> From<AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
-    #[inline]
-    fn from(value: AffixFuzzer3) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer3) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer3);
 
 impl ::re_types_core::Loggable for AffixFuzzer3 {
     type Name = ::re_types_core::DatatypeName;

@@ -45,20 +45,7 @@ impl From<DisconnectedSpace> for bool {
         value.0
     }
 }
-
-impl<'a> From<DisconnectedSpace> for ::std::borrow::Cow<'a, DisconnectedSpace> {
-    #[inline]
-    fn from(value: DisconnectedSpace) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a DisconnectedSpace> for ::std::borrow::Cow<'a, DisconnectedSpace> {
-    #[inline]
-    fn from(value: &'a DisconnectedSpace) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(DisconnectedSpace);
 
 impl ::re_types_core::Loggable for DisconnectedSpace {
     type Name = ::re_types_core::ComponentName;

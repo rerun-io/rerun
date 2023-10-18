@@ -45,20 +45,7 @@ impl std::ops::Deref for AffixFuzzer19 {
         &self.0
     }
 }
-
-impl<'a> From<AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
-    #[inline]
-    fn from(value: AffixFuzzer19) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer19> for ::std::borrow::Cow<'a, AffixFuzzer19> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer19) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer19);
 
 impl ::re_types_core::Loggable for AffixFuzzer19 {
     type Name = ::re_types_core::ComponentName;

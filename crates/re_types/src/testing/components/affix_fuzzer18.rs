@@ -31,20 +31,7 @@ impl<I: Into<crate::testing::datatypes::AffixFuzzer4>, T: IntoIterator<Item = I>
         Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
     }
 }
-
-impl<'a> From<AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
-    #[inline]
-    fn from(value: AffixFuzzer18) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer18> for ::std::borrow::Cow<'a, AffixFuzzer18> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer18) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer18);
 
 impl ::re_types_core::Loggable for AffixFuzzer18 {
     type Name = ::re_types_core::ComponentName;

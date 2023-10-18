@@ -39,20 +39,7 @@ impl From<Radius> for f32 {
         value.0
     }
 }
-
-impl<'a> From<Radius> for ::std::borrow::Cow<'a, Radius> {
-    #[inline]
-    fn from(value: Radius) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Radius> for ::std::borrow::Cow<'a, Radius> {
-    #[inline]
-    fn from(value: &'a Radius) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Radius);
 
 impl ::re_types_core::Loggable for Radius {
     type Name = ::re_types_core::ComponentName;

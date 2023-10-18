@@ -51,20 +51,7 @@ impl From<Mat4x4> for [f32; 16usize] {
         value.0
     }
 }
-
-impl<'a> From<Mat4x4> for ::std::borrow::Cow<'a, Mat4x4> {
-    #[inline]
-    fn from(value: Mat4x4) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Mat4x4> for ::std::borrow::Cow<'a, Mat4x4> {
-    #[inline]
-    fn from(value: &'a Mat4x4) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Mat4x4);
 
 impl ::re_types_core::Loggable for Mat4x4 {
     type Name = ::re_types_core::DatatypeName;

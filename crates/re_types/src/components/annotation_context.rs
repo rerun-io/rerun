@@ -41,20 +41,7 @@ impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = 
         Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
-
-impl<'a> From<AnnotationContext> for ::std::borrow::Cow<'a, AnnotationContext> {
-    #[inline]
-    fn from(value: AnnotationContext) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AnnotationContext> for ::std::borrow::Cow<'a, AnnotationContext> {
-    #[inline]
-    fn from(value: &'a AnnotationContext) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AnnotationContext);
 
 impl ::re_types_core::Loggable for AnnotationContext {
     type Name = ::re_types_core::ComponentName;

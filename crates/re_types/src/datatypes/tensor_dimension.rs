@@ -30,20 +30,7 @@ pub struct TensorDimension {
     /// The name of this dimension, e.g. "width", "height", "channel", "batch', ….
     pub name: Option<::re_types_core::ArrowString>,
 }
-
-impl<'a> From<TensorDimension> for ::std::borrow::Cow<'a, TensorDimension> {
-    #[inline]
-    fn from(value: TensorDimension) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a TensorDimension> for ::std::borrow::Cow<'a, TensorDimension> {
-    #[inline]
-    fn from(value: &'a TensorDimension) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(TensorDimension);
 
 impl ::re_types_core::Loggable for TensorDimension {
     type Name = ::re_types_core::DatatypeName;

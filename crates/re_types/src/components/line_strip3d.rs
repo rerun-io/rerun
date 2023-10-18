@@ -41,20 +41,7 @@ impl<I: Into<crate::datatypes::Vec3D>, T: IntoIterator<Item = I>> From<T> for Li
         Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
-
-impl<'a> From<LineStrip3D> for ::std::borrow::Cow<'a, LineStrip3D> {
-    #[inline]
-    fn from(value: LineStrip3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a LineStrip3D> for ::std::borrow::Cow<'a, LineStrip3D> {
-    #[inline]
-    fn from(value: &'a LineStrip3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(LineStrip3D);
 
 impl ::re_types_core::Loggable for LineStrip3D {
     type Name = ::re_types_core::ComponentName;

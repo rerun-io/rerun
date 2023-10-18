@@ -49,20 +49,7 @@ impl std::ops::Deref for Rotation3D {
         &self.0
     }
 }
-
-impl<'a> From<Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
-    #[inline]
-    fn from(value: Rotation3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
-    #[inline]
-    fn from(value: &'a Rotation3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Rotation3D);
 
 impl ::re_types_core::Loggable for Rotation3D {
     type Name = ::re_types_core::ComponentName;

@@ -39,20 +39,7 @@ impl From<Utf8> for crate::ArrowString {
         value.0
     }
 }
-
-impl<'a> From<Utf8> for ::std::borrow::Cow<'a, Utf8> {
-    #[inline]
-    fn from(value: Utf8) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Utf8> for ::std::borrow::Cow<'a, Utf8> {
-    #[inline]
-    fn from(value: &'a Utf8) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+crate::macros::impl_into_cow!(Utf8);
 
 impl crate::Loggable for Utf8 {
     type Name = crate::DatatypeName;

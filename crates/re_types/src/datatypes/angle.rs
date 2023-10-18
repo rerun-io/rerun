@@ -27,20 +27,7 @@ pub enum Angle {
     Radians(f32),
     Degrees(f32),
 }
-
-impl<'a> From<Angle> for ::std::borrow::Cow<'a, Angle> {
-    #[inline]
-    fn from(value: Angle) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Angle> for ::std::borrow::Cow<'a, Angle> {
-    #[inline]
-    fn from(value: &'a Angle) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Angle);
 
 impl ::re_types_core::Loggable for Angle {
     type Name = ::re_types_core::DatatypeName;

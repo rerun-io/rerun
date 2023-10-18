@@ -41,20 +41,7 @@ impl From<Scalar> for f64 {
         value.0
     }
 }
-
-impl<'a> From<Scalar> for ::std::borrow::Cow<'a, Scalar> {
-    #[inline]
-    fn from(value: Scalar) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Scalar> for ::std::borrow::Cow<'a, Scalar> {
-    #[inline]
-    fn from(value: &'a Scalar) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Scalar);
 
 impl ::re_types_core::Loggable for Scalar {
     type Name = ::re_types_core::ComponentName;

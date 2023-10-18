@@ -8,19 +8,7 @@ use crate::Tuid;
 
 // ---
 
-impl<'a> From<Tuid> for ::std::borrow::Cow<'a, Tuid> {
-    #[inline]
-    fn from(value: Tuid) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Tuid> for ::std::borrow::Cow<'a, Tuid> {
-    #[inline]
-    fn from(value: &'a Tuid) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+re_types_core::macros::impl_into_cow!(Tuid);
 
 impl Loggable for Tuid {
     type Name = re_types_core::ComponentName;
@@ -147,19 +135,7 @@ impl Loggable for Tuid {
 #[macro_export]
 macro_rules! delegate_arrow_tuid {
     ($typ:ident as $fqname:expr) => {
-        impl<'a> From<$typ> for ::std::borrow::Cow<'a, $typ> {
-            #[inline]
-            fn from(value: $typ) -> Self {
-                ::std::borrow::Cow::Owned(value)
-            }
-        }
-
-        impl<'a> From<&'a $typ> for ::std::borrow::Cow<'a, $typ> {
-            #[inline]
-            fn from(value: &'a $typ) -> Self {
-                ::std::borrow::Cow::Borrowed(value)
-            }
-        }
+        ::re_types_core::macros::impl_into_cow!($typ);
 
         impl ::re_types_core::Loggable for $typ {
             type Name = ::re_types_core::ComponentName;

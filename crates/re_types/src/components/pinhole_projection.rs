@@ -56,20 +56,7 @@ impl std::ops::Deref for PinholeProjection {
         &self.0
     }
 }
-
-impl<'a> From<PinholeProjection> for ::std::borrow::Cow<'a, PinholeProjection> {
-    #[inline]
-    fn from(value: PinholeProjection) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a PinholeProjection> for ::std::borrow::Cow<'a, PinholeProjection> {
-    #[inline]
-    fn from(value: &'a PinholeProjection) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(PinholeProjection);
 
 impl ::re_types_core::Loggable for PinholeProjection {
     type Name = ::re_types_core::ComponentName;

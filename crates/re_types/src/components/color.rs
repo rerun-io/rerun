@@ -50,20 +50,7 @@ impl std::ops::Deref for Color {
         &self.0
     }
 }
-
-impl<'a> From<Color> for ::std::borrow::Cow<'a, Color> {
-    #[inline]
-    fn from(value: Color) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Color> for ::std::borrow::Cow<'a, Color> {
-    #[inline]
-    fn from(value: &'a Color) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Color);
 
 impl ::re_types_core::Loggable for Color {
     type Name = ::re_types_core::ComponentName;

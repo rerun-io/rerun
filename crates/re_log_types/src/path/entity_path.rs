@@ -86,16 +86,6 @@ impl std::fmt::Debug for EntityPathHash {
 ///     ])
 /// );
 /// ```
-///
-/// ```
-/// # use re_log_types::EntityPath;
-/// # use arrow2_convert::field::ArrowField;
-/// # use arrow2::datatypes::{DataType, Field};
-/// assert_eq!(
-///     EntityPath::data_type(),
-///     DataType::Extension("rerun.entity_path".into(), Box::new(DataType::Utf8), None),
-/// );
-/// ```
 #[derive(Clone, Eq)]
 pub struct EntityPath {
     /// precomputed hash
@@ -258,19 +248,7 @@ impl From<EntityPath> for String {
 
 use re_types_core::Loggable;
 
-impl<'a> From<EntityPath> for ::std::borrow::Cow<'a, EntityPath> {
-    #[inline]
-    fn from(value: EntityPath) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a EntityPath> for ::std::borrow::Cow<'a, EntityPath> {
-    #[inline]
-    fn from(value: &'a EntityPath) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+re_types_core::macros::impl_into_cow!(EntityPath);
 
 impl Loggable for EntityPath {
     type Name = re_types_core::ComponentName;

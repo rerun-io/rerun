@@ -33,20 +33,7 @@ pub struct AffixFuzzer1 {
     pub almost_flattened_scalar: crate::testing::datatypes::FlattenedScalar,
     pub from_parent: Option<bool>,
 }
-
-impl<'a> From<AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
-    #[inline]
-    fn from(value: AffixFuzzer1) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer1> for ::std::borrow::Cow<'a, AffixFuzzer1> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer1) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer1);
 
 impl ::re_types_core::Loggable for AffixFuzzer1 {
     type Name = ::re_types_core::DatatypeName;
