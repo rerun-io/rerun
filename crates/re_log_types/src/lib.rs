@@ -43,8 +43,8 @@ pub use self::data_row::{
 };
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
-    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, COLUMN_ENTITY_PATH,
-    COLUMN_INSERT_ID, COLUMN_NUM_INSTANCES, COLUMN_TIMEPOINT, METADATA_KIND, METADATA_KIND_CONTROL,
+    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, COLUMN_INSERT_ID,
+    COLUMN_NUM_INSTANCES, COLUMN_TIMEPOINT, METADATA_KIND, METADATA_KIND_CONTROL,
     METADATA_KIND_DATA,
 };
 pub use self::index::*;

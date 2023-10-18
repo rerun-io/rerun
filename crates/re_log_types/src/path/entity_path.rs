@@ -256,55 +256,68 @@ impl From<EntityPath> for String {
 
 // ----------------------------------------------------------------------------
 
-use arrow2::{
-    array::{MutableUtf8ValuesArray, TryPush, Utf8Array},
-    datatypes::DataType,
-    offset::Offsets,
-};
-use arrow2_convert::{deserialize::ArrowDeserialize, field::ArrowField, serialize::ArrowSerialize};
+use re_types_core::Loggable;
 
-arrow2_convert::arrow_enable_vec_for_type!(EntityPath);
-
-impl ArrowField for EntityPath {
-    type Type = Self;
-
+impl<'a> From<EntityPath> for ::std::borrow::Cow<'a, EntityPath> {
     #[inline]
-    fn data_type() -> DataType {
-        DataType::Extension(
-            "rerun.entity_path".to_owned(),
-            Box::new(DataType::Utf8),
-            None,
-        )
+    fn from(value: EntityPath) -> Self {
+        std::borrow::Cow::Owned(value)
     }
 }
 
-impl ArrowSerialize for EntityPath {
-    type MutableArrayType = MutableUtf8ValuesArray<i32>;
-
+impl<'a> From<&'a EntityPath> for ::std::borrow::Cow<'a, EntityPath> {
     #[inline]
-    fn new_array() -> Self::MutableArrayType {
-        MutableUtf8ValuesArray::<i32>::try_new(
-            <Self as ArrowField>::data_type(),
-            Offsets::new(),
-            Vec::<u8>::new(),
-        )
-        .unwrap() // literally cannot fail
-    }
-
-    fn arrow_serialize(
-        v: &<Self as ArrowField>::Type,
-        array: &mut Self::MutableArrayType,
-    ) -> arrow2::error::Result<()> {
-        array.try_push(v.to_string())
+    fn from(value: &'a EntityPath) -> Self {
+        std::borrow::Cow::Borrowed(value)
     }
 }
 
-impl ArrowDeserialize for EntityPath {
-    type ArrayType = Utf8Array<i32>;
+impl Loggable for EntityPath {
+    type Name = re_types_core::ComponentName;
 
     #[inline]
-    fn arrow_deserialize(v: Option<&str>) -> Option<Self> {
-        v.map(Into::into)
+    fn name() -> Self::Name {
+        "rerun.controls.EntityPath".into()
+    }
+
+    #[inline]
+    fn arrow_datatype() -> arrow2::datatypes::DataType {
+        re_types::datatypes::Utf8::arrow_datatype()
+    }
+
+    fn to_arrow_opt<'a>(
+        _data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
+    ) -> re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    where
+        Self: 'a,
+    {
+        Err(re_types_core::SerializationError::not_implemented(
+            Self::name(),
+            "EntityPaths are never nullable, use `to_arrow()` instead",
+        ))
+    }
+
+    #[inline]
+    fn to_arrow<'a>(
+        data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
+    ) -> re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    where
+        Self: 'a,
+    {
+        re_types::datatypes::Utf8::to_arrow(
+            data.into_iter()
+                .map(Into::into)
+                .map(|ent_path| re_types::datatypes::Utf8(ent_path.path.to_string().into())),
+        )
+    }
+
+    fn from_arrow(
+        array: &dyn ::arrow2::array::Array,
+    ) -> re_types_core::DeserializationResult<Vec<Self>> {
+        Ok(re_types::datatypes::Utf8::from_arrow(array)?
+            .into_iter()
+            .map(|utf8| Self::from(utf8.to_string()))
+            .collect())
     }
 }
 

@@ -544,16 +544,11 @@ use arrow2::{
     offset::Offsets,
     types::NativeType,
 };
-use arrow2_convert::{
-    deserialize::TryIntoCollection, field::ArrowField, serialize::ArrowSerialize,
-    serialize::TryIntoArrow,
-};
 
 // TODO(#1696): Those names should come from the datatypes themselves.
 
 pub const COLUMN_INSERT_ID: &str = "rerun.insert_id";
 pub const COLUMN_TIMEPOINT: &str = "rerun.timepoint";
-pub const COLUMN_ENTITY_PATH: &str = "rerun.entity_path";
 pub const COLUMN_NUM_INSTANCES: &str = "rerun.num_instances";
 
 pub const METADATA_KIND: &str = "rerun.kind";
@@ -667,7 +662,7 @@ impl DataTable {
         columns.push(row_id_column);
 
         let (entity_path_field, entity_path_column) =
-            Self::serialize_control_column_legacy(COLUMN_ENTITY_PATH, col_entity_path)?;
+            Self::serialize_control_column(col_entity_path)?;
         schema.fields.push(entity_path_field);
         columns.push(entity_path_column);
 
@@ -700,45 +695,6 @@ impl DataTable {
             .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into());
 
         // TODO(#3360): rethink our extension and metadata usage
-        if let DataType::Extension(name, _, _) = data.data_type() {
-            field
-                .metadata
-                .extend([("ARROW:extension:name".to_owned(), name.clone())]);
-        }
-
-        Ok((field, data))
-    }
-
-    /// Serializes a single control column: an iterable of dense arrow-like data.
-    // TODO(#3741): remove once arrow2_convert is fully gone
-    pub fn serialize_control_column_legacy<C: ArrowSerialize + ArrowField<Type = C> + 'static>(
-        name: &str,
-        values: &[C],
-    ) -> DataTableResult<(Field, Box<dyn Array>)> {
-        re_tracing::profile_function!();
-
-        /// Transforms an array of unit values into a list of unit arrays.
-        ///
-        /// * Before: `[C, C, C, C, C, …]`
-        /// * After: `ListArray[ [C], [C], [C], [C], [C], … ]`
-        // NOTE: keeping that one around, just in case.
-        #[allow(dead_code)]
-        fn unit_values_to_unit_lists(array: Box<dyn Array>) -> Box<dyn Array> {
-            let datatype = array.data_type().clone();
-            let datatype = ListArray::<i32>::default_datatype(datatype);
-            let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))
-                .unwrap()
-                .into();
-            let validity = None;
-            ListArray::<i32>::new(datatype, offsets, array, validity).boxed()
-        }
-
-        let data: Box<dyn Array> = values.try_into_arrow()?;
-        // let data = unit_values_to_unit_lists(data);
-
-        let mut field = Field::new(name, data.data_type().clone(), false)
-            .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into());
-
         if let DataType::Extension(name, _, _) = data.data_type() {
             field
                 .metadata
@@ -946,9 +902,14 @@ impl DataTable {
                 .unwrap()
                 .as_ref(),
         )?;
-        let col_entity_path =
-            (&**chunk.get(control_index(COLUMN_ENTITY_PATH)?).unwrap()).try_into_collection()?;
+        let col_entity_path = EntityPath::from_arrow(
+            chunk
+                .get(control_index(EntityPath::name().as_str())?)
+                .unwrap()
+                .as_ref(),
+        )?;
         // TODO(#3741): This is unnecessarily slow…
+        use arrow2_convert::deserialize::TryIntoCollection;
         let col_num_instances =
             (&**chunk.get(control_index(COLUMN_NUM_INSTANCES)?).unwrap()).try_into_collection()?;
 
@@ -980,7 +941,7 @@ impl DataTable {
             table_id,
             col_row_id: col_row_id.into(),
             col_timelines,
-            col_entity_path,
+            col_entity_path: col_entity_path.into(),
             col_num_instances,
             columns,
         })
