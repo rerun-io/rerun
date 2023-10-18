@@ -50,7 +50,6 @@ arrow2 = { workspace = true, features = [
   "io_print",
   "compute_concatenate",
 ] }
-arrow2_convert.workspace = true
 backtrace.workspace = true
 bytemuck.workspace = true
 document-features.workspace = true

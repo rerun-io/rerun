@@ -20,10 +20,6 @@ pub enum SerializationError {
         backtrace: _Backtrace,
     },
 
-    // TODO: del
-    #[error("arrow2-convert serialization failed: {0}")]
-    ArrowConvertFailure(String),
-
     #[error("serde-based serialization (`attr.rust.serde_type`) failed: {reason}")]
     SerdeFailure {
         reason: String,
@@ -88,7 +84,7 @@ impl SerializationError {
             Self::MissingExtensionMetadata { backtrace, .. }
             | Self::SerdeFailure { backtrace, .. }
             | Self::NotImplemented { backtrace, .. } => Some(backtrace.clone()),
-            SerializationError::Context { .. } | SerializationError::ArrowConvertFailure(_) => None,
+            SerializationError::Context { .. } => None,
         }
     }
 }
@@ -170,10 +166,6 @@ pub enum DeserializationError {
         len: usize,
         backtrace: _Backtrace,
     },
-
-    // TODO: del
-    #[error("arrow2-convert deserialization Failed: {0}")]
-    ArrowConvertFailure(String),
 
     #[error("serde-based deserialization (`attr.rust.serde_type`) failed: {reason}")]
     SerdeFailure {
@@ -313,9 +305,9 @@ impl DeserializationError {
             | DeserializationError::OffsetOutOfBounds { backtrace, .. }
             | DeserializationError::OffsetSliceOutOfBounds { backtrace, .. }
             | DeserializationError::SerdeFailure { backtrace, .. } => Some(backtrace.clone()),
-            DeserializationError::ArrowConvertFailure(_)
-            | DeserializationError::DataCellError(_)
-            | DeserializationError::ValidationError(_) => None,
+            DeserializationError::DataCellError(_) | DeserializationError::ValidationError(_) => {
+                None
+            }
         }
     }
 }

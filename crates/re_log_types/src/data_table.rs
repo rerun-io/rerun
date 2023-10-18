@@ -718,6 +718,7 @@ impl DataTable {
 
         (field, data)
     }
+
     /// Serializes all data columns into an arrow payload and schema.
     ///
     /// They are optional, potentially sparse, and never deserialized on the server-side (not by
