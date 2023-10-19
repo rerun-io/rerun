@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/tensor_buffer.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The underlying storage for a `Tensor`.
 ///
@@ -58,7 +63,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
         "rerun.datatypes.TensorBuffer".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -222,10 +227,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
         )
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -1057,10 +1062,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -1072,7 +1077,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Union(
                             vec![
                                 Field {
@@ -1243,14 +1248,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        ::re_types_core::DeserializationError::datatype_mismatch(
+                        DeserializationError::datatype_mismatch(
                             Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.datatypes.TensorBuffer")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
-                    return Err(::re_types_core::DeserializationError::offset_slice_oob(
+                    return Err(DeserializationError::offset_slice_oob(
                         (0, arrow_data_types.len()),
                         arrow_data_offsets.len(),
                     ))
@@ -1266,7 +1271,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
@@ -1286,7 +1291,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::UInt8,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1304,12 +1309,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1323,7 +1326,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1339,7 +1342,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt16,
@@ -1359,7 +1362,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt16Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::UInt16,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1377,12 +1380,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1396,7 +1397,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1412,7 +1413,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt32,
@@ -1432,7 +1433,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt32Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::UInt32,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1450,12 +1451,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1469,7 +1468,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1485,7 +1484,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt64,
@@ -1505,7 +1504,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt64Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::UInt64,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1523,12 +1522,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1542,7 +1539,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1558,7 +1555,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int8,
@@ -1578,7 +1575,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Int8Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Int8,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1596,12 +1593,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1615,7 +1610,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1631,7 +1626,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int16,
@@ -1651,7 +1646,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Int16Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Int16,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1669,12 +1664,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1688,7 +1681,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1704,7 +1697,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int32,
@@ -1724,7 +1717,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Int32Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Int32,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1742,12 +1735,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1761,7 +1752,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1777,7 +1768,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Int64,
@@ -1797,7 +1788,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Int64Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Int64,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1815,12 +1806,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1834,7 +1823,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1850,7 +1839,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float16,
@@ -1870,7 +1859,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Float16Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Float16,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1888,12 +1877,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1907,7 +1894,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1923,7 +1910,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float32,
@@ -1943,7 +1930,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Float32,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -1961,12 +1948,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -1980,7 +1965,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -1996,7 +1981,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::Float64,
@@ -2016,7 +2001,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<Float64Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Float64,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -2034,12 +2019,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2053,7 +2036,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -2069,7 +2052,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
@@ -2089,7 +2072,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::UInt8,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -2107,12 +2090,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2126,7 +2107,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -2142,7 +2123,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
@@ -2162,7 +2143,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::UInt8,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -2180,12 +2161,10 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -2199,7 +2178,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -2216,265 +2195,211 @@ impl ::re_types_core::Loggable for TensorBuffer {
                             Ok(Some(match typ {
                                 1i8 => TensorBuffer::U8({
                                     if offset as usize >= u8.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                u8.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            u8.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#U8");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { u8.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U8")?
                                 }),
                                 2i8 => TensorBuffer::U16({
                                     if offset as usize >= u16.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                u16.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            u16.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#U16");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { u16.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U16")?
                                 }),
                                 3i8 => TensorBuffer::U32({
                                     if offset as usize >= u32.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                u32.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            u32.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#U32");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { u32.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U32")?
                                 }),
                                 4i8 => TensorBuffer::U64({
                                     if offset as usize >= u64.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                u64.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            u64.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#U64");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { u64.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#U64")?
                                 }),
                                 5i8 => TensorBuffer::I8({
                                     if offset as usize >= i8.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                i8.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            i8.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#I8");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { i8.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I8")?
                                 }),
                                 6i8 => TensorBuffer::I16({
                                     if offset as usize >= i16.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                i16.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            i16.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#I16");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { i16.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I16")?
                                 }),
                                 7i8 => TensorBuffer::I32({
                                     if offset as usize >= i32.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                i32.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            i32.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#I32");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { i32.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I32")?
                                 }),
                                 8i8 => TensorBuffer::I64({
                                     if offset as usize >= i64.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                i64.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            i64.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#I64");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { i64.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#I64")?
                                 }),
                                 9i8 => TensorBuffer::F16({
                                     if offset as usize >= f16.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                f16.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            f16.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#F16");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { f16.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F16")?
                                 }),
                                 10i8 => TensorBuffer::F32({
                                     if offset as usize >= f32.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                f32.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            f32.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#F32");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { f32.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F32")?
                                 }),
                                 11i8 => TensorBuffer::F64({
                                     if offset as usize >= f64.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                f64.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            f64.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#F64");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { f64.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#F64")?
                                 }),
                                 12i8 => TensorBuffer::Jpeg({
                                     if offset as usize >= jpeg.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                jpeg.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            jpeg.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#JPEG");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { jpeg.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#JPEG")?
                                 }),
                                 13i8 => TensorBuffer::Nv12({
                                     if offset as usize >= nv12.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                nv12.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            nv12.len(),
+                                        ))
                                         .with_context("rerun.datatypes.TensorBuffer#NV12");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { nv12.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.TensorBuffer#NV12")?
                                 }),
                                 _ => {
-                                    return Err(
-                                        ::re_types_core::DeserializationError::missing_union_arm(
-                                            Self::arrow_datatype(),
-                                            "<invalid>",
-                                            *typ as _,
-                                        ),
-                                    )
+                                    return Err(DeserializationError::missing_union_arm(
+                                        Self::arrow_datatype(),
+                                        "<invalid>",
+                                        *typ as _,
+                                    ))
                                     .with_context("rerun.datatypes.TensorBuffer");
                                 }
                             }))
                         }
                     })
-                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.datatypes.TensorBuffer")?
             }
         })

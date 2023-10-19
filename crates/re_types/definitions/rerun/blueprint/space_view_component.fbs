@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint;
+
+// ---
+
+/// A view of a space.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+table SpaceViewComponent (
+  "attr.rust.derive_only": "Clone",
+  "attr.rust.override_crate": "re_viewport"
+) {
+  space_view: [ubyte] (order: 100, "attr.rust.serde_type": "crate::SpaceViewBlueprint");
+}

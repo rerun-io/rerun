@@ -4888,7 +4888,6 @@ version = "0.10.0-alpha.7+dev"
 dependencies = [
  "ahash 0.8.3",
  "arrow2",
- "arrow2_convert",
  "egui",
  "egui_tiles",
  "glam",
@@ -4907,6 +4906,7 @@ dependencies = [
  "re_types_core",
  "re_ui",
  "re_viewer_context",
+ "rmp-serde",
  "serde",
  "tinyvec",
 ]

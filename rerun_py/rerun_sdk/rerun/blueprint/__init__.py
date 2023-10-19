@@ -10,6 +10,27 @@ from .auto_space_views import (
     AutoSpaceViewsType,
 )
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
+from .space_view_component import (
+    SpaceViewComponent,
+    SpaceViewComponentArrayLike,
+    SpaceViewComponentBatch,
+    SpaceViewComponentLike,
+    SpaceViewComponentType,
+)
+from .space_view_maximized import (
+    SpaceViewMaximized,
+    SpaceViewMaximizedArrayLike,
+    SpaceViewMaximizedBatch,
+    SpaceViewMaximizedLike,
+    SpaceViewMaximizedType,
+)
+from .viewport_layout import (
+    ViewportLayout,
+    ViewportLayoutArrayLike,
+    ViewportLayoutBatch,
+    ViewportLayoutLike,
+    ViewportLayoutType,
+)
 
 __all__ = [
     "AutoSpaceViews",
@@ -22,4 +43,19 @@ __all__ = [
     "PanelViewBatch",
     "PanelViewLike",
     "PanelViewType",
+    "SpaceViewComponent",
+    "SpaceViewComponentArrayLike",
+    "SpaceViewComponentBatch",
+    "SpaceViewComponentLike",
+    "SpaceViewComponentType",
+    "SpaceViewMaximized",
+    "SpaceViewMaximizedArrayLike",
+    "SpaceViewMaximizedBatch",
+    "SpaceViewMaximizedLike",
+    "SpaceViewMaximizedType",
+    "ViewportLayout",
+    "ViewportLayoutArrayLike",
+    "ViewportLayoutBatch",
+    "ViewportLayoutLike",
+    "ViewportLayoutType",
 ]

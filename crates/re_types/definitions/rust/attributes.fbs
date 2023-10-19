@@ -41,3 +41,11 @@ attribute "attr.rust.new_pub_crate";
 /// an object of kind `Blueprint` with `attr.rust.override_crate=re_viewport`, the final
 /// object will be generated in `crates/re_viewport/src/blueprint`.
 attribute "attr.rust.override_crate";
+
+/// Specify on an object field of type `[ubyte]` in order to (de)serialize using a pre-existing
+/// `serde` implementation.
+///
+/// Everything else works the same, include how module names are derived: e.g. if you define
+/// an object of kind `Blueprint` with `attr.rust.override_crate=re_viewport`, the final
+/// object will be generated in `crates/re_viewport/src/blueprint`.
+attribute "attr.rust.serde_type";

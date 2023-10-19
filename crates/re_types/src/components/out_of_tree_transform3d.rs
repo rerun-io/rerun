@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/components/out_of_tree_transform3d.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An out-of-tree affine transform between two 3D spaces, represented in a given direction.
 ///
@@ -69,7 +74,7 @@ impl ::re_types_core::Loggable for OutOfTreeTransform3D {
         "rerun.components.OutOfTreeTransform3D".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -99,10 +104,10 @@ impl ::re_types_core::Loggable for OutOfTreeTransform3D {
         )
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -132,10 +137,10 @@ impl ::re_types_core::Loggable for OutOfTreeTransform3D {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -145,9 +150,9 @@ impl ::re_types_core::Loggable for OutOfTreeTransform3D {
         Ok(crate::datatypes::Transform3D::from_arrow_opt(arrow_data)
             .with_context("rerun.components.OutOfTreeTransform3D#repr")?
             .into_iter()
-            .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+            .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.OutOfTreeTransform3D#repr")
             .with_context("rerun.components.OutOfTreeTransform3D")?)
     }

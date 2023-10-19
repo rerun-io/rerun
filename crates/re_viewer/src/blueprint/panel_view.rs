@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/blueprint/panel_view.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Blueprint**: The state of the panels.
 ///
@@ -60,7 +65,7 @@ impl ::re_types_core::Loggable for PanelView {
         "rerun.blueprint.PanelView".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -72,10 +77,10 @@ impl ::re_types_core::Loggable for PanelView {
         }])
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -127,10 +132,10 @@ impl ::re_types_core::Loggable for PanelView {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -142,7 +147,7 @@ impl ::re_types_core::Loggable for PanelView {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
                             name: "is_expanded".to_owned(),
                             data_type: DataType::Boolean,
@@ -165,7 +170,7 @@ impl ::re_types_core::Loggable for PanelView {
                     .collect();
                 let is_expanded = {
                     if !arrays_by_name.contains_key("is_expanded") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "is_expanded",
                         ))
@@ -176,7 +181,7 @@ impl ::re_types_core::Loggable for PanelView {
                         .as_any()
                         .downcast_ref::<BooleanArray>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::Boolean,
                                 arrow_data.data_type().clone(),
                             )
@@ -192,13 +197,13 @@ impl ::re_types_core::Loggable for PanelView {
                     opt.map(|(is_expanded)| {
                         Ok(Self {
                             is_expanded: is_expanded
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.blueprint.PanelView#is_expanded")?,
                         })
                     })
                     .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.blueprint.PanelView")?
             }
         })
