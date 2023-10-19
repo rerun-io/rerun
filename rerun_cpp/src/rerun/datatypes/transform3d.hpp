@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <utility>
 
 namespace arrow {
@@ -105,6 +106,30 @@ namespace rerun {
             Transform3D(rerun::datatypes::TranslationRotationScale3D translation_rotation_scale) {
                 *this =
                     Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
+            }
+
+            /// Return a reference to translation_and_mat3x3 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<rerun::datatypes::TranslationAndMat3x3> get_translation_and_mat3x3(
+            ) const {
+                if (_tag == detail::Transform3DTag::TranslationAndMat3x3) {
+                    return std::optional<rerun::datatypes::TranslationAndMat3x3>(
+                        _data.translation_and_mat3x3
+                    );
+                } else {
+                    return std::optional<rerun::datatypes::TranslationAndMat3x3>();
+                }
+            }
+
+            /// Return a reference to translation_rotation_scale if the union is in that state, otherwise `std::nullopt`.
+            std::optional<rerun::datatypes::TranslationRotationScale3D>
+                get_translation_rotation_scale() const {
+                if (_tag == detail::Transform3DTag::TranslationRotationScale) {
+                    return std::optional<rerun::datatypes::TranslationRotationScale3D>(
+                        _data.translation_rotation_scale
+                    );
+                } else {
+                    return std::optional<rerun::datatypes::TranslationRotationScale3D>();
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

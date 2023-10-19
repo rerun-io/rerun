@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <utility>
 
 namespace arrow {
@@ -90,6 +91,24 @@ namespace rerun {
                 self._tag = detail::AngleTag::Degrees;
                 self._data.degrees = std::move(degrees);
                 return self;
+            }
+
+            /// Return a reference to radians if the union is in that state, otherwise `std::nullopt`.
+            std::optional<float> get_radians() const {
+                if (_tag == detail::AngleTag::Radians) {
+                    return std::optional<float>(_data.radians);
+                } else {
+                    return std::optional<float>();
+                }
+            }
+
+            /// Return a reference to degrees if the union is in that state, otherwise `std::nullopt`.
+            std::optional<float> get_degrees() const {
+                if (_tag == detail::AngleTag::Degrees) {
+                    return std::optional<float>(_data.degrees);
+                } else {
+                    return std::optional<float>();
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

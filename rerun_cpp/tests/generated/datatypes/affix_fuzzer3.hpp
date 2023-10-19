@@ -5,6 +5,7 @@
 
 #include "affix_fuzzer1.hpp"
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -39,7 +40,7 @@ namespace rerun {
 
                 std::vector<rerun::datatypes::AffixFuzzer1> craziness;
 
-                float fixed_size_shenanigans[3];
+                std::array<float, 3> fixed_size_shenanigans;
 
                 AffixFuzzer3Data() {}
 
@@ -106,7 +107,7 @@ namespace rerun {
                         // has a trivial destructor
                     } break;
                     case detail::AffixFuzzer3Tag::craziness: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
                         _data.craziness.~TypeAlias();
                     } break;
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
@@ -142,13 +143,53 @@ namespace rerun {
                 return self;
             }
 
-            static AffixFuzzer3 fixed_size_shenanigans(float fixed_size_shenanigans[3]) {
+            static AffixFuzzer3 fixed_size_shenanigans(std::array<float, 3> fixed_size_shenanigans
+            ) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::fixed_size_shenanigans;
                 for (size_t i = 0; i < 3; i += 1) {
                     self._data.fixed_size_shenanigans[i] = std::move(fixed_size_shenanigans[i]);
                 }
                 return self;
+            }
+
+            /// Return a reference to degrees if the union is in that state, otherwise `std::nullopt`.
+            std::optional<float> get_degrees() const {
+                if (_tag == detail::AffixFuzzer3Tag::degrees) {
+                    return std::optional<float>(_data.degrees);
+                } else {
+                    return std::optional<float>();
+                }
+            }
+
+            /// Return a reference to radians if the union is in that state, otherwise `std::nullopt`.
+            std::optional<std::optional<float>> get_radians() const {
+                if (_tag == detail::AffixFuzzer3Tag::radians) {
+                    return std::optional<std::optional<float>>(_data.radians);
+                } else {
+                    return std::optional<std::optional<float>>();
+                }
+            }
+
+            /// Return a reference to craziness if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<rerun::datatypes::AffixFuzzer1>&> get_craziness(
+            ) const {
+                if (_tag == detail::AffixFuzzer3Tag::craziness) {
+                    return std::optional<const std::vector<rerun::datatypes::AffixFuzzer1>&>(
+                        _data.craziness
+                    );
+                } else {
+                    return std::optional<const std::vector<rerun::datatypes::AffixFuzzer1>&>();
+                }
+            }
+
+            /// Return a reference to fixed_size_shenanigans if the union is in that state, otherwise `std::nullopt`.
+            std::optional<std::array<float, 3>> get_fixed_size_shenanigans() const {
+                if (_tag == detail::AffixFuzzer3Tag::fixed_size_shenanigans) {
+                    return std::optional<std::array<float, 3>>(_data.fixed_size_shenanigans);
+                } else {
+                    return std::optional<std::array<float, 3>>();
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

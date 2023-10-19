@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <utility>
 
 namespace arrow {
@@ -111,6 +112,24 @@ namespace rerun {
             /// Rotation defined with an axis and an angle.
             Rotation3D(rerun::datatypes::RotationAxisAngle axis_angle) {
                 *this = Rotation3D::axis_angle(std::move(axis_angle));
+            }
+
+            /// Return a reference to quaternion if the union is in that state, otherwise `std::nullopt`.
+            std::optional<rerun::datatypes::Quaternion> get_quaternion() const {
+                if (_tag == detail::Rotation3DTag::Quaternion) {
+                    return std::optional<rerun::datatypes::Quaternion>(_data.quaternion);
+                } else {
+                    return std::optional<rerun::datatypes::Quaternion>();
+                }
+            }
+
+            /// Return a reference to axis_angle if the union is in that state, otherwise `std::nullopt`.
+            std::optional<rerun::datatypes::RotationAxisAngle> get_axis_angle() const {
+                if (_tag == detail::Rotation3DTag::AxisAngle) {
+                    return std::optional<rerun::datatypes::RotationAxisAngle>(_data.axis_angle);
+                } else {
+                    return std::optional<rerun::datatypes::RotationAxisAngle>();
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

@@ -36,6 +36,14 @@ namespace rerun {
         ///     auto arrow =
         ///         rerun::Arrows3D::from_vectors({{0.0f, 1.0f, 0.0f}}).with_origins({{0.0f, 0.0f, 0.0f}});
         ///
+        ///     auto archetype = rerun::Transform3D(
+        ///         rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(TAU / 8.0f)),
+        ///         2.0f
+        ///     );
+        ///
+        ///     printf("Transform3D archetype:\n");
+        ///     printf("Transform3D archetype:\n", archetype.transform.repr.);
+        ///
         ///     rec.log("base", arrow);
         ///
         ///     rec.log("base/translated", rerun::Transform3D({1.0f, 0.0f, 0.0f}));

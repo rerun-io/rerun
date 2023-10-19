@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -21,7 +22,7 @@ namespace rerun {
         /// Note: although the x,y,z,w components of the quaternion will be passed through to the
         /// datastore as provided, when used in the viewer Quaternions will always be normalized.
         struct Quaternion {
-            float xyzw[4];
+            std::array<float, 4> xyzw;
 
           public:
             // Extensions to generated type defined in 'quaternion_ext.cpp'

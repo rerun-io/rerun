@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -18,7 +19,7 @@ namespace rerun {
     namespace datatypes {
         /// **Datatype**: A vector in 2D space.
         struct Vec2D {
-            float xy[2];
+            std::array<float, 2> xy;
 
           public:
             // Extensions to generated type defined in 'vec2d_ext.cpp'

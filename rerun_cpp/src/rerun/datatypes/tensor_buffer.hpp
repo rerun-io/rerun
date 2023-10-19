@@ -11,6 +11,7 @@
 #include <cstring>
 #include <memory>
 #include <new>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -171,55 +172,55 @@ namespace rerun {
                         // Nothing to destroy
                     } break;
                     case detail::TensorBufferTag::U8: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         _data.u8.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::U16: {
-                        typedef std::vector<uint16_t> TypeAlias;
+                        using TypeAlias = std::vector<uint16_t>;
                         _data.u16.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::U32: {
-                        typedef std::vector<uint32_t> TypeAlias;
+                        using TypeAlias = std::vector<uint32_t>;
                         _data.u32.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::U64: {
-                        typedef std::vector<uint64_t> TypeAlias;
+                        using TypeAlias = std::vector<uint64_t>;
                         _data.u64.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::I8: {
-                        typedef std::vector<int8_t> TypeAlias;
+                        using TypeAlias = std::vector<int8_t>;
                         _data.i8.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::I16: {
-                        typedef std::vector<int16_t> TypeAlias;
+                        using TypeAlias = std::vector<int16_t>;
                         _data.i16.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::I32: {
-                        typedef std::vector<int32_t> TypeAlias;
+                        using TypeAlias = std::vector<int32_t>;
                         _data.i32.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::I64: {
-                        typedef std::vector<int64_t> TypeAlias;
+                        using TypeAlias = std::vector<int64_t>;
                         _data.i64.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::F16: {
-                        typedef std::vector<rerun::half> TypeAlias;
+                        using TypeAlias = std::vector<rerun::half>;
                         _data.f16.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::F32: {
-                        typedef std::vector<float> TypeAlias;
+                        using TypeAlias = std::vector<float>;
                         _data.f32.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::F64: {
-                        typedef std::vector<double> TypeAlias;
+                        using TypeAlias = std::vector<double>;
                         _data.f64.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::JPEG: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         _data.jpeg.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::NV12: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         _data.nv12.~TypeAlias();
                     } break;
                 }
@@ -384,6 +385,123 @@ namespace rerun {
                 self._tag = detail::TensorBufferTag::NV12;
                 new (&self._data.nv12) TypeAlias(std::move(nv12));
                 return self;
+            }
+
+            /// Return a reference to u8 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<uint8_t>&> get_u8() const {
+                if (_tag == detail::TensorBufferTag::U8) {
+                    return std::optional<const std::vector<uint8_t>&>(_data.u8);
+                } else {
+                    return std::optional<const std::vector<uint8_t>&>();
+                }
+            }
+
+            /// Return a reference to u16 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<uint16_t>&> get_u16() const {
+                if (_tag == detail::TensorBufferTag::U16) {
+                    return std::optional<const std::vector<uint16_t>&>(_data.u16);
+                } else {
+                    return std::optional<const std::vector<uint16_t>&>();
+                }
+            }
+
+            /// Return a reference to u32 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<uint32_t>&> get_u32() const {
+                if (_tag == detail::TensorBufferTag::U32) {
+                    return std::optional<const std::vector<uint32_t>&>(_data.u32);
+                } else {
+                    return std::optional<const std::vector<uint32_t>&>();
+                }
+            }
+
+            /// Return a reference to u64 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<uint64_t>&> get_u64() const {
+                if (_tag == detail::TensorBufferTag::U64) {
+                    return std::optional<const std::vector<uint64_t>&>(_data.u64);
+                } else {
+                    return std::optional<const std::vector<uint64_t>&>();
+                }
+            }
+
+            /// Return a reference to i8 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<int8_t>&> get_i8() const {
+                if (_tag == detail::TensorBufferTag::I8) {
+                    return std::optional<const std::vector<int8_t>&>(_data.i8);
+                } else {
+                    return std::optional<const std::vector<int8_t>&>();
+                }
+            }
+
+            /// Return a reference to i16 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<int16_t>&> get_i16() const {
+                if (_tag == detail::TensorBufferTag::I16) {
+                    return std::optional<const std::vector<int16_t>&>(_data.i16);
+                } else {
+                    return std::optional<const std::vector<int16_t>&>();
+                }
+            }
+
+            /// Return a reference to i32 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<int32_t>&> get_i32() const {
+                if (_tag == detail::TensorBufferTag::I32) {
+                    return std::optional<const std::vector<int32_t>&>(_data.i32);
+                } else {
+                    return std::optional<const std::vector<int32_t>&>();
+                }
+            }
+
+            /// Return a reference to i64 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<int64_t>&> get_i64() const {
+                if (_tag == detail::TensorBufferTag::I64) {
+                    return std::optional<const std::vector<int64_t>&>(_data.i64);
+                } else {
+                    return std::optional<const std::vector<int64_t>&>();
+                }
+            }
+
+            /// Return a reference to f16 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<rerun::half>&> get_f16() const {
+                if (_tag == detail::TensorBufferTag::F16) {
+                    return std::optional<const std::vector<rerun::half>&>(_data.f16);
+                } else {
+                    return std::optional<const std::vector<rerun::half>&>();
+                }
+            }
+
+            /// Return a reference to f32 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<float>&> get_f32() const {
+                if (_tag == detail::TensorBufferTag::F32) {
+                    return std::optional<const std::vector<float>&>(_data.f32);
+                } else {
+                    return std::optional<const std::vector<float>&>();
+                }
+            }
+
+            /// Return a reference to f64 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<double>&> get_f64() const {
+                if (_tag == detail::TensorBufferTag::F64) {
+                    return std::optional<const std::vector<double>&>(_data.f64);
+                } else {
+                    return std::optional<const std::vector<double>&>();
+                }
+            }
+
+            /// Return a reference to jpeg if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<uint8_t>&> get_jpeg() const {
+                if (_tag == detail::TensorBufferTag::JPEG) {
+                    return std::optional<const std::vector<uint8_t>&>(_data.jpeg);
+                } else {
+                    return std::optional<const std::vector<uint8_t>&>();
+                }
+            }
+
+            /// Return a reference to nv12 if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<uint8_t>&> get_nv12() const {
+                if (_tag == detail::TensorBufferTag::NV12) {
+                    return std::optional<const std::vector<uint8_t>&>(_data.nv12);
+                } else {
+                    return std::optional<const std::vector<uint8_t>&>();
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

@@ -99,16 +99,16 @@ namespace rerun {
                         // Nothing to destroy
                     } break;
                     case detail::AffixFuzzer4Tag::single_required: {
-                        typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
+                        using TypeAlias = rerun::datatypes::AffixFuzzer3;
                         _data.single_required.~TypeAlias();
                     } break;
                     case detail::AffixFuzzer4Tag::many_required: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
                         _data.many_required.~TypeAlias();
                     } break;
                     case detail::AffixFuzzer4Tag::many_optional: {
-                        typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>
-                            TypeAlias;
+                        using TypeAlias =
+                            std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                         _data.many_optional.~TypeAlias();
                     } break;
                 }
@@ -145,6 +145,43 @@ namespace rerun {
                 self._tag = detail::AffixFuzzer4Tag::many_optional;
                 new (&self._data.many_optional) TypeAlias(std::move(many_optional));
                 return self;
+            }
+
+            /// Return a reference to single_required if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const rerun::datatypes::AffixFuzzer3&> get_single_required() const {
+                if (_tag == detail::AffixFuzzer4Tag::single_required) {
+                    return std::optional<const rerun::datatypes::AffixFuzzer3&>(
+                        _data.single_required
+                    );
+                } else {
+                    return std::optional<const rerun::datatypes::AffixFuzzer3&>();
+                }
+            }
+
+            /// Return a reference to many_required if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::vector<rerun::datatypes::AffixFuzzer3>&> get_many_required(
+            ) const {
+                if (_tag == detail::AffixFuzzer4Tag::many_required) {
+                    return std::optional<const std::vector<rerun::datatypes::AffixFuzzer3>&>(
+                        _data.many_required
+                    );
+                } else {
+                    return std::optional<const std::vector<rerun::datatypes::AffixFuzzer3>&>();
+                }
+            }
+
+            /// Return a reference to many_optional if the union is in that state, otherwise `std::nullopt`.
+            std::optional<const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&>
+                get_many_optional() const {
+                if (_tag == detail::AffixFuzzer4Tag::many_optional) {
+                    return std::optional<
+                        const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&>(
+                        _data.many_optional
+                    );
+                } else {
+                    return std::optional<
+                        const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&>();
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

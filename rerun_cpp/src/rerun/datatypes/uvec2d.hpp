@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -18,7 +19,7 @@ namespace rerun {
     namespace datatypes {
         /// **Datatype**: A uint32 vector in 2D space.
         struct UVec2D {
-            uint32_t xy[2];
+            std::array<uint32_t, 2> xy;
 
           public:
             UVec2D() = default;
