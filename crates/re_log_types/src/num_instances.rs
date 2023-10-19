@@ -17,12 +17,14 @@ impl NumInstances {
 }
 
 impl From<NumInstances> for u32 {
+    #[inline]
     fn from(val: NumInstances) -> Self {
         val.0
     }
 }
 
 impl From<u32> for NumInstances {
+    #[inline]
     fn from(value: u32) -> Self {
         Self(value)
     }

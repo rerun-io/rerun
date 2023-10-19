@@ -2,7 +2,7 @@
 title: "UInt32"
 ---
 
-A 32bit integer.
+A 32bit unsigned integer.
 
 
 ## Links

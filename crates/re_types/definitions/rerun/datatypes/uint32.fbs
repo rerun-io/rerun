@@ -5,7 +5,7 @@ include "rust/attributes.fbs";
 
 namespace rerun.datatypes;
 
-/// A 32bit integer.
+/// A 32bit unsigned integer.
 struct UInt32 (
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",

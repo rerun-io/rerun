@@ -19,7 +19,7 @@ __all__ = ["UInt32", "UInt32ArrayLike", "UInt32Batch", "UInt32Like", "UInt32Type
 
 @define(init=False)
 class UInt32:
-    """**Datatype**: A 32bit integer."""
+    """**Datatype**: A 32bit unsigned integer."""
 
     def __init__(self: Any, value: UInt32Like):
         """Create a new instance of the UInt32 datatype."""

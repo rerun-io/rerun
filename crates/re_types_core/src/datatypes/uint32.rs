@@ -21,7 +21,7 @@ use crate::SerializationResult;
 use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: A 32bit integer.
+/// **Datatype**: A 32bit unsigned integer.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UInt32(pub u32);
 

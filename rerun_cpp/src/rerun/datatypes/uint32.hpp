@@ -21,7 +21,7 @@ namespace arrow {
 
 namespace rerun {
     namespace datatypes {
-        /// **Datatype**: A 32bit integer.
+        /// **Datatype**: A 32bit unsigned integer.
         struct UInt32 {
             uint32_t value;
 
