@@ -28,14 +28,48 @@ impl std::fmt::Display for RecordingScope {
 
 // ---
 
+/// Required to work-around <https://github.com/rerun-io/rerun/issues/2889>
+#[derive(Default)]
+struct ThradLocalRecording {
+    stream: Option<RecordingStream>,
+}
+
+impl ThradLocalRecording {
+    fn replace(&mut self, stream: Option<RecordingStream>) -> Option<RecordingStream> {
+        std::mem::replace(&mut self.stream, stream)
+    }
+
+    fn get(&self) -> Option<RecordingStream> {
+        self.stream.clone()
+    }
+}
+
+#[cfg(target_os = "macos")]
+impl Drop for ThradLocalRecording {
+    fn drop(&mut self) {
+        if let Some(stream) = self.stream.take() {
+            // Work-around for https://github.com/rerun-io/rerun/issues/2889
+            // Calling drop on `self.stream` will panic the calling thread.
+            // But we want to make sure we don't loose the data in the stream.
+            // So how?
+            re_log::warn!("Using thread-local RecordingStream on macOS can result in data loss because of https://github.com/rerun-io/rerun/issues/2889");
+
+            // Give the batchet and sink threads a chance to process the data.
+            std::thread::sleep(std::time::Duration::from_millis(500));
+
+            std::mem::forget(stream);
+        }
+    }
+}
+
 static GLOBAL_DATA_RECORDING: OnceCell<RwLock<Option<RecordingStream>>> = OnceCell::new();
 thread_local! {
-    static LOCAL_DATA_RECORDING: RefCell<Option<RecordingStream>> = RefCell::new(None);
+    static LOCAL_DATA_RECORDING: RefCell<ThradLocalRecording> = Default::default();
 }
 
 static GLOBAL_BLUEPRINT_RECORDING: OnceCell<RwLock<Option<RecordingStream>>> = OnceCell::new();
 thread_local! {
-    static LOCAL_BLUEPRINT_RECORDING: RefCell<Option<RecordingStream>> = RefCell::new(None);
+    static LOCAL_BLUEPRINT_RECORDING: RefCell<ThradLocalRecording> = Default::default();
 }
 
 /// Check whether we are the child of a fork.
@@ -187,9 +221,7 @@ impl RecordingStream {
                     .get_or_init(Default::default)
                     .read()
                     .clone(),
-                RecordingScope::ThreadLocal => {
-                    LOCAL_DATA_RECORDING.with(|rec| rec.borrow().clone())
-                }
+                RecordingScope::ThreadLocal => LOCAL_DATA_RECORDING.with(|rec| rec.borrow().get()),
             },
             StoreKind::Blueprint => match scope {
                 RecordingScope::Global => GLOBAL_BLUEPRINT_RECORDING
@@ -197,7 +229,7 @@ impl RecordingStream {
                     .read()
                     .clone(),
                 RecordingScope::ThreadLocal => {
-                    LOCAL_BLUEPRINT_RECORDING.with(|rec| rec.borrow().clone())
+                    LOCAL_BLUEPRINT_RECORDING.with(|rec| rec.borrow().get())
                 }
             },
         }
@@ -214,10 +246,9 @@ impl RecordingStream {
                     &mut *GLOBAL_DATA_RECORDING.get_or_init(Default::default).write(),
                     rec,
                 ),
-                RecordingScope::ThreadLocal => LOCAL_DATA_RECORDING.with(|cell| {
-                    let mut cell = cell.borrow_mut();
-                    std::mem::replace(&mut *cell, rec)
-                }),
+                RecordingScope::ThreadLocal => {
+                    LOCAL_DATA_RECORDING.with(|cell| cell.borrow_mut().replace(rec))
+                }
             },
             StoreKind::Blueprint => match scope {
                 RecordingScope::Global => std::mem::replace(
@@ -226,10 +257,9 @@ impl RecordingStream {
                         .write(),
                     rec,
                 ),
-                RecordingScope::ThreadLocal => LOCAL_BLUEPRINT_RECORDING.with(|cell| {
-                    let mut cell = cell.borrow_mut();
-                    std::mem::replace(&mut *cell, rec)
-                }),
+                RecordingScope::ThreadLocal => {
+                    LOCAL_BLUEPRINT_RECORDING.with(|cell| cell.borrow_mut().replace(rec))
+                }
             },
         }
     }
@@ -244,9 +274,7 @@ impl RecordingStream {
                     }
                 }
                 RecordingScope::ThreadLocal => LOCAL_DATA_RECORDING.with(|cell| {
-                    if let Some(cell) = cell.take() {
-                        std::mem::forget(cell);
-                    }
+                    std::mem::forget(cell.take());
                 }),
             },
             StoreKind::Blueprint => match scope {
@@ -256,9 +284,7 @@ impl RecordingStream {
                     }
                 }
                 RecordingScope::ThreadLocal => LOCAL_BLUEPRINT_RECORDING.with(|cell| {
-                    if let Some(cell) = cell.take() {
-                        std::mem::forget(cell);
-                    }
+                    std::mem::forget(cell.take());
                 }),
             },
         }
