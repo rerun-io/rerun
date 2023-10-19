@@ -92,11 +92,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: codegen
-          args: --force
-
-      - name: No Diffs From Running Codegen
-        run: |
-          git diff --exit-code
+          args: --force --check
 
   rs-lints:
     name: Rust lints (fmt, check, cranky, tests, doc)
