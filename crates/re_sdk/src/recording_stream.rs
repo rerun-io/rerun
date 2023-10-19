@@ -1622,10 +1622,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(target_os = "macos"))] // TODO(#2889): https://github.com/rerun-io/rerun/issues/2889
     fn test_set_thread_local() {
+        // Regression-test for https://github.com/rerun-io/rerun/issues/2889
         std::thread::spawn(|| {
-            // Regression-test for https://github.com/rerun-io/rerun/issues/2889
             let stream = RecordingStreamBuilder::new("rerun_example_test")
                 .buffered()
                 .unwrap();
