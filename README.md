@@ -101,6 +101,3 @@ The commercial product targets the needs specific to teams that build and run co
 1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
 2. Run `pip install rerun_sdk<…>.whl` (replace `<…>` with the actual filename)
 3. Test it: `rerun --version`
-
-
-[Test link](https://abcdefg-this-is-not-a-valid-link.net/#new)
