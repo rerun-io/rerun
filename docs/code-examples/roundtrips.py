@@ -48,6 +48,7 @@ opt_out_compare = {
     "quick_start_spawn":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
     "scalar_multiple_plots": ["cpp"], # trigonometric functions have slightly different outcomes
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }
 
 extra_args = {

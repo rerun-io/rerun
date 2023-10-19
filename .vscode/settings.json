@@ -69,9 +69,8 @@
         "rerun_py/rerun_sdk"
     ],
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools", // Use cmake-tools to grab configs.
-    "C_Cpp.autoAddFileAssociations": false,
     "cmake.buildDirectory": "${workspaceRoot}/build/",
-    "cmake.generator": "Ninja", // Use Ninja, just like we do in our just/pixi command.
+    "C_Cpp.autoAddFileAssociations": false,
     "rust-analyzer.showUnlinkedFileNotification": false,
     "black-formatter.args": [
         "--config=rerun_py/pyproject.toml"
