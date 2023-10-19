@@ -40,10 +40,10 @@ namespace rerun {
           public:
             Text() = default;
 
-            Text(rerun::datatypes::Utf8 _value) : value(std::move(_value)) {}
+            Text(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
 
-            Text& operator=(rerun::datatypes::Utf8 _value) {
-                value = std::move(_value);
+            Text& operator=(rerun::datatypes::Utf8 value_) {
+                value = std::move(value_);
                 return *this;
             }
 

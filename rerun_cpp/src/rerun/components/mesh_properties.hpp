@@ -38,10 +38,10 @@ namespace rerun {
           public:
             MeshProperties() = default;
 
-            MeshProperties(rerun::datatypes::MeshProperties _props) : props(std::move(_props)) {}
+            MeshProperties(rerun::datatypes::MeshProperties props_) : props(std::move(props_)) {}
 
-            MeshProperties& operator=(rerun::datatypes::MeshProperties _props) {
-                props = std::move(_props);
+            MeshProperties& operator=(rerun::datatypes::MeshProperties props_) {
+                props = std::move(props_);
                 return *this;
             }
 

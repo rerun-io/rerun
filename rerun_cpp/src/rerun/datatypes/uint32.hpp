@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -28,10 +27,10 @@ namespace rerun {
           public:
             UInt32() = default;
 
-            UInt32(uint32_t _value) : value(std::move(_value)) {}
+            UInt32(uint32_t value_) : value(value_) {}
 
-            UInt32& operator=(uint32_t _value) {
-                value = std::move(_value);
+            UInt32& operator=(uint32_t value_) {
+                value = value_;
                 return *this;
             }
 

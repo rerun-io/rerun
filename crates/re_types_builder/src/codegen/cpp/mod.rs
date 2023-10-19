@@ -839,18 +839,6 @@ impl QuotedObject {
                             #comment
                         } break;
                     }
-                } else if let Type::Array { elem_type, length } = &obj_field.typ {
-                    // We need special casing for destroying arrays in C++:
-                    let elem_type = quote_element_type(&mut hpp_includes, elem_type);
-                    let length = proc_macro2::Literal::usize_unsuffixed(*length);
-                    quote! {
-                        case detail::#tag_typename::#tag_ident: {
-                            using TypeAlias = #elem_type;
-                            for (size_t i = #length; i > 0; i -= 1) {
-                                _data.#field_ident[i-1].~TypeAlias();
-                            }
-                        } break;
-                    }
                 } else {
                     let typ = quote_field_type(&mut hpp_includes, obj_field);
                     hpp_includes.insert_system("utility"); // std::move
@@ -1073,8 +1061,9 @@ fn single_field_constructor_methods(
     let obj_field = &obj.fields[0];
 
     let field_ident = format_ident!("{}", obj_field.name);
-    let param_ident = format_ident!("_{}", obj_field.name);
+    let param_ident = format_ident!("{}_", obj_field.name);
 
+    // Additional constructor from C array.
     if let Type::Array { elem_type, length } = &obj_field.typ {
         // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
         // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
@@ -1090,69 +1079,90 @@ fn single_field_constructor_methods(
             }),
             ..Method::default()
         });
+    }
 
-        // No assignment operator for arrays since c arrays aren't typically assignable anyways.
-        // Note that creating an std::array overload would make initializer_list based construction ambiguous.
-        // Assignment operator for std::array could make sense though?
-    } else {
-        // Pass by value:
-        // If it was a temporary it gets moved into the value and then moved again into the field.
-        // If it was a lvalue it gets copied into the value and then moved into the field.
-        let parameter_declaration = quote_variable(hpp_includes, obj_field, &param_ident);
-        hpp_includes.insert_system("utility"); // std::move
-        methods.push(Method {
-            declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
-            }),
-            ..Method::default()
-        });
-        methods.push(Method {
-            declaration: MethodDeclaration {
-                is_static: false,
-                return_type: quote!(#type_ident&),
-                name_and_parameters: quote! {
-                    operator=(#parameter_declaration)
-                },
-            },
-            definition_body: quote! {
-                #field_ident = std::move(#param_ident);
-                return *this;
-            },
-            ..Method::default()
-        });
+    fn copy_or_move_access(
+        hpp_includes: &mut Includes,
+        obj_field: &ObjectField,
+        objects: &Objects,
+        param_ident: &Ident,
+    ) -> TokenStream {
+        if obj_field.typ.has_default_destructor(objects) {
+            quote! { #param_ident }
+        } else {
+            hpp_includes.insert_system("utility"); // std::move
+            quote! { std::move(#param_ident) }
+        }
+    }
 
-        // If the field is a custom type as well which in turn has only a single field,
-        // provide a constructor for that single field as well.
-        //
-        // Note that we previously we tried to do a general forwarding constructor via variadic templates,
-        // but ran into some issues when init archetypes with initializer lists.
-        if let Type::Object(field_type_fqname) = &obj_field.typ {
-            let field_type_obj = &objects[field_type_fqname];
-            if field_type_obj.fields.len() == 1 {
-                let inner_field = &field_type_obj.fields[0];
-                let arg_name = format_ident!("arg");
-
-                if let Type::Array { elem_type, length } = &inner_field.typ {
-                    // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
-                    // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
-                    let length_quoted = quote_integer(length);
-                    let element_type = quote_element_type(hpp_includes, elem_type);
-                    methods.push(Method {
-                        declaration: MethodDeclaration::constructor(quote! {
-                            #type_ident(const #element_type (&#arg_name)[#length_quoted]) : #field_ident(#arg_name)
-                        }),
-                        ..Method::default()
-                    });
-                } else {
-                    let argument = quote_variable(hpp_includes, inner_field, &arg_name);
-                    methods.push(Method {
-                        declaration: MethodDeclaration::constructor(quote! {
-                            #type_ident(#argument) : #field_ident(std::move(#arg_name))
-                        }),
-                        ..Method::default()
-                    });
-                }
+    fn parameter_decl(
+        hpp_includes: &mut Includes,
+        obj_field: &ObjectField,
+        objects: &Objects,
+        param_ident: &Ident,
+    ) -> TokenStream {
+        let typ = quote_field_type(hpp_includes, obj_field);
+        if obj_field.typ.has_default_destructor(objects) {
+            // Could always do `const&` passing since in this path we'll do a copy, but it's usually frowned upon for super simple types like `int`
+            if obj_field.typ.is_plural() || obj_field.typ.fqname().is_some() {
+                quote! { const #typ& #param_ident }
+            } else {
+                quote! { #typ #param_ident }
             }
+        } else {
+            // For anything that's worth moving we pass by value. Rationale:
+            // - If it was a temporary it gets moved into the value and then moved again into the field.
+            // - If it was a lvalue it gets copied into the value and then moved into the field.
+            //
+            // If the type is "primitive" however, we essentially copy anyways, so we pass by const-ref.
+            quote! { #typ #param_ident }
+        }
+    }
+
+    let parameter = parameter_decl(hpp_includes, obj_field, objects, &param_ident);
+    let copy_or_move = copy_or_move_access(hpp_includes, obj_field, objects, &param_ident);
+
+    methods.push(Method {
+        declaration: MethodDeclaration::constructor(quote! {
+            #type_ident(#parameter) : #field_ident(#copy_or_move)
+        }),
+        ..Method::default()
+    });
+    methods.push(Method {
+        declaration: MethodDeclaration {
+            is_static: false,
+            return_type: quote!(#type_ident&),
+            name_and_parameters: quote! {
+                operator=(#parameter)
+            },
+        },
+        definition_body: quote! {
+            #field_ident = #copy_or_move;
+            return *this;
+        },
+        ..Method::default()
+    });
+
+    // If the field is a custom type as well which in turn has only a single field,
+    // provide a constructor for that single field as well.
+    //
+    // Note that we previously we tried to do a general forwarding constructor via variadic templates,
+    // but ran into some issues when init archetypes with initializer lists.
+    if let Type::Object(field_type_fqname) = &obj_field.typ {
+        let field_type_obj = &objects[field_type_fqname];
+        if field_type_obj.fields.len() == 1 {
+            let inner_field = &field_type_obj.fields[0];
+            let param_ident = format_ident!("arg");
+            let parameter = parameter_decl(hpp_includes, inner_field, objects, &param_ident);
+            let copy_or_move =
+                copy_or_move_access(hpp_includes, inner_field, objects, &param_ident);
+
+            methods.push(Method {
+                declaration: MethodDeclaration::constructor(quote! {
+                    #type_ident(#parameter) : #field_ident(#copy_or_move)
+                }),
+                ..Method::default()
+            });
         }
     }
 
@@ -1574,16 +1584,14 @@ fn quote_append_field_to_builder(
             // Optimize common case: Trivial batch of transparent fixed size elements.
             let field_accessor = quote!(elements[0].#field_name);
             let num_items_per_value = quote_num_items_per_value(&field.typ, &field_accessor);
-            let field_ptr_accessor = quote_field_ptr_access(&field.typ, field_accessor);
             quote! {
                 auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
                 ARROW_RETURN_NOT_OK(#builder->AppendValues(static_cast<int64_t>(num_elements)));
                 static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
                 ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
-                    #field_ptr_accessor.data(),
-                    static_cast<int64_t>(num_elements * #num_items_per_value),
-                    nullptr)
+                    #field_accessor.data(),
+                    static_cast<int64_t>(num_elements * #num_items_per_value), nullptr)
                 );
             }
         } else {
@@ -1795,8 +1803,9 @@ fn quote_num_items_per_value(typ: &Type, value_accessor: &TokenStream) -> TokenS
 
 fn quote_field_ptr_access(typ: &Type, field_accessor: TokenStream) -> TokenStream {
     let (ptr_access, typ) = match typ {
-        Type::Array { elem_type, .. } => (field_accessor, elem_type.clone().into()),
-        Type::Vector { elem_type } => (quote!(#field_accessor.data()), elem_type.clone().into()),
+        Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+            (quote!(#field_accessor.data()), elem_type.clone().into())
+        }
         _ => (quote!(&#field_accessor), typ.clone()),
     };
 

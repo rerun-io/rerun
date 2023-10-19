@@ -70,16 +70,14 @@ TEST_CASE("Construct VecND in different ways", TEST_TAG) {
         ctor_checks(v2, v3, v4, q);
     }
 
-    // Dropped this since providing an std::array version makes the initializer list version
-    // ambiguous.
-    // SECTION("Via std::array") {
-    //     Vec2D v2(std::array<float, 2>{1.0f, 2.0f});
-    //     Vec3D v3(std::array<float, 3>{1.0f, 2.0f, 3.0f});
-    //     Vec4D v4(std::array<float, 4>{1.0f, 2.0f, 3.0f, 4.0f});
-    //     Quaternion q(std::array<float, 4>{1.0f, 2.0f, 3.0f, 4.0f});
+    SECTION("Via std::array") {
+        Vec2D v2(std::array<float, 2>{1.0f, 2.0f});
+        Vec3D v3(std::array<float, 3>{1.0f, 2.0f, 3.0f});
+        Vec4D v4(std::array<float, 4>{1.0f, 2.0f, 3.0f, 4.0f});
+        Quaternion q(std::array<float, 4>{1.0f, 2.0f, 3.0f, 4.0f});
 
-    //     ctor_checks(v2, v3, v4, q);
-    // }
+        ctor_checks(v2, v3, v4, q);
+    }
 
     SECTION("Via c-array") {
         float c_v2[2] = {1.0f, 2.0f};

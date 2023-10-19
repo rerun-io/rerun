@@ -20,10 +20,11 @@ SCENARIO(
         );
 
         ViewCoordinates from_manual;
-        from_manual.xyz = {
+        from_manual.xyz.coordinates = {
             rerun::components::ViewCoordinates::Right,
             rerun::components::ViewCoordinates::Down,
-            rerun::components::ViewCoordinates::Forward};
+            rerun::components::ViewCoordinates::Forward,
+        };
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }

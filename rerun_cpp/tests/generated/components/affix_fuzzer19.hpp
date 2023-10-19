@@ -30,11 +30,11 @@ namespace rerun {
           public:
             AffixFuzzer19() = default;
 
-            AffixFuzzer19(rerun::datatypes::AffixFuzzer5 _just_a_table_nothing_shady)
-                : just_a_table_nothing_shady(std::move(_just_a_table_nothing_shady)) {}
+            AffixFuzzer19(rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady_)
+                : just_a_table_nothing_shady(std::move(just_a_table_nothing_shady_)) {}
 
-            AffixFuzzer19& operator=(rerun::datatypes::AffixFuzzer5 _just_a_table_nothing_shady) {
-                just_a_table_nothing_shady = std::move(_just_a_table_nothing_shady);
+            AffixFuzzer19& operator=(rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady_) {
+                just_a_table_nothing_shady = std::move(just_a_table_nothing_shady_);
                 return *this;
             }
 

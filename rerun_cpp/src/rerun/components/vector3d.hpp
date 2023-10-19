@@ -7,9 +7,9 @@
 #include "../datatypes/vec3d.hpp"
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -47,14 +47,14 @@ namespace rerun {
           public:
             Vector3D() = default;
 
-            Vector3D(rerun::datatypes::Vec3D _vector) : vector(std::move(_vector)) {}
+            Vector3D(const rerun::datatypes::Vec3D& vector_) : vector(vector_) {}
 
-            Vector3D& operator=(rerun::datatypes::Vec3D _vector) {
-                vector = std::move(_vector);
+            Vector3D& operator=(const rerun::datatypes::Vec3D& vector_) {
+                vector = vector_;
                 return *this;
             }
 
-            Vector3D(const float (&arg)[3]) : vector(arg) {}
+            Vector3D(const std::array<float, 3>& arg) : vector(arg) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

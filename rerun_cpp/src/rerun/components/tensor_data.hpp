@@ -39,10 +39,10 @@ namespace rerun {
           public:
             TensorData() = default;
 
-            TensorData(rerun::datatypes::TensorData _data) : data(std::move(_data)) {}
+            TensorData(rerun::datatypes::TensorData data_) : data(std::move(data_)) {}
 
-            TensorData& operator=(rerun::datatypes::TensorData _data) {
-                data = std::move(_data);
+            TensorData& operator=(rerun::datatypes::TensorData data_) {
+                data = std::move(data_);
                 return *this;
             }
 

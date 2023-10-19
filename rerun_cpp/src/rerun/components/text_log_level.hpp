@@ -66,10 +66,10 @@ namespace rerun {
           public:
             TextLogLevel() = default;
 
-            TextLogLevel(rerun::datatypes::Utf8 _value) : value(std::move(_value)) {}
+            TextLogLevel(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
 
-            TextLogLevel& operator=(rerun::datatypes::Utf8 _value) {
-                value = std::move(_value);
+            TextLogLevel& operator=(rerun::datatypes::Utf8 value_) {
+                value = std::move(value_);
                 return *this;
             }
 

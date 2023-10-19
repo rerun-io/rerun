@@ -74,10 +74,10 @@ namespace rerun {
           public:
             MediaType() = default;
 
-            MediaType(rerun::datatypes::Utf8 _value) : value(std::move(_value)) {}
+            MediaType(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
 
-            MediaType& operator=(rerun::datatypes::Utf8 _value) {
-                value = std::move(_value);
+            MediaType& operator=(rerun::datatypes::Utf8 value_) {
+                value = std::move(value_);
                 return *this;
             }
 

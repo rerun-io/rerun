@@ -42,7 +42,14 @@ namespace rerun {
           public:
             Vec3D() = default;
 
-            Vec3D(const float (&_xyz)[3]) : xyz{_xyz[0], _xyz[1], _xyz[2]} {}
+            Vec3D(const float (&xyz_)[3]) : xyz{xyz_[0], xyz_[1], xyz_[2]} {}
+
+            Vec3D(const std::array<float, 3>& xyz_) : xyz(xyz_) {}
+
+            Vec3D& operator=(const std::array<float, 3>& xyz_) {
+                xyz = xyz_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

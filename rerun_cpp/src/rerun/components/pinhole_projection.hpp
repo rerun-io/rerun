@@ -7,9 +7,9 @@
 #include "../datatypes/mat3x3.hpp"
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -39,15 +39,15 @@ namespace rerun {
           public:
             PinholeProjection() = default;
 
-            PinholeProjection(rerun::datatypes::Mat3x3 _image_from_camera)
-                : image_from_camera(std::move(_image_from_camera)) {}
+            PinholeProjection(const rerun::datatypes::Mat3x3& image_from_camera_)
+                : image_from_camera(image_from_camera_) {}
 
-            PinholeProjection& operator=(rerun::datatypes::Mat3x3 _image_from_camera) {
-                image_from_camera = std::move(_image_from_camera);
+            PinholeProjection& operator=(const rerun::datatypes::Mat3x3& image_from_camera_) {
+                image_from_camera = image_from_camera_;
                 return *this;
             }
 
-            PinholeProjection(const float (&arg)[9]) : image_from_camera(arg) {}
+            PinholeProjection(const std::array<float, 9>& arg) : image_from_camera(arg) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
