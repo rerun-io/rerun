@@ -97,7 +97,11 @@ class PinholeExt:
                     height = None
 
                 if focal_length is None:
-                    raise ValueError("Either image_from_camera or focal_length must be set")
+                    if resolution is None:
+                        raise ValueError("Either image_from_camera or focal_length must be set")
+                    else:
+                        _send_warning_or_raise("Either image_from_camera or focal_length must be set", 1)
+                        focal_length = (width * height) ** 0.5  # a reasonable best-effort default
 
                 if principal_point is None:
                     if height is not None and width is not None:
