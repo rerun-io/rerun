@@ -54,7 +54,10 @@ fn main() {
             }
             "--force" => always_run = true,
             "--profile" => profiler.start(),
-            "--check" => check = true,
+            "--check" => {
+                always_run = true;
+                check = true;
+            }
             _ => {
                 eprintln!("Unknown argument: {arg:?}");
                 return;
