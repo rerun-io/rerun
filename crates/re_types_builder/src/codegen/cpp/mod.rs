@@ -1583,7 +1583,7 @@ fn quote_append_field_to_builder(
                 ARROW_RETURN_NOT_OK(#builder->AppendValues(static_cast<int64_t>(num_elements)));
                 static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
                 ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
-                    #field_ptr_accessor,
+                    #field_ptr_accessor.data(),
                     static_cast<int64_t>(num_elements * #num_items_per_value),
                     nullptr)
                 );
