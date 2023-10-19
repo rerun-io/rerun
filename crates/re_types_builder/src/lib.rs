@@ -185,6 +185,8 @@ pub const ATTR_RUST_TUPLE_STRUCT: &str = "attr.rust.tuple_struct";
 
 pub const ATTR_CPP_NO_FIELD_CTORS: &str = "attr.cpp.no_field_ctors";
 
+pub const ATTR_DOCS_UNRELEASED: &str = "attr.docs.unreleased";
+
 // --- Entrypoints ---
 
 use camino::{Utf8Path, Utf8PathBuf};

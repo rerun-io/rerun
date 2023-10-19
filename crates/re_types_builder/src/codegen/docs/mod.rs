@@ -121,6 +121,8 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 }
 
 fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
+    let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+
     let top_level_docs = get_documentation(&object.docs, &[]);
 
     if top_level_docs.is_empty() {
@@ -154,24 +156,31 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
     }
 
     {
+        let speculative_marker = if is_unreleased {
+            "?speculative-link"
+        } else {
+            ""
+        };
         putln!(page);
         putln!(page, "## Links");
         // TODO(#2919): link to C++ docs
         putln!(
             page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}#rerun.{}.{})",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
             object.name,
             object.kind.plural_snake_case(),
+            speculative_marker,
             object.kind.plural_snake_case(),
             object.name
         );
         putln!(
             page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html)",
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{})",
             object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },
-            object.name
+            object.name,
+            speculative_marker
         );
     }
 
