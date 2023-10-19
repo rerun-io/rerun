@@ -1801,7 +1801,7 @@ fn quote_num_items_per_value(typ: &Type, value_accessor: &TokenStream) -> TokenS
     }
 }
 
-fn quote_field_ptr_access(typ: &Type, field_accessor: TokenStream) -> TokenStream {
+fn quote_field_ptr_access(typ: &Type, field_accessor: &TokenStream) -> TokenStream {
     let (ptr_access, typ) = match typ {
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
             (quote!(#field_accessor.data()), elem_type.clone().into())
