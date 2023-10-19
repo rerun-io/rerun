@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/transform3d.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A 3D transform.
 ///
@@ -68,16 +73,16 @@ pub struct Transform3D {
     pub transform: crate::components::Transform3D,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Transform3D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Transform3DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Transform3D".into(),
@@ -102,35 +107,35 @@ impl ::re_types_core::Archetype for Transform3D {
     }
 
     #[inline]
-    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Transform3DIndicator = Transform3DIndicator::DEFAULT;
-        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
         arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
-    ) -> ::re_types_core::DeserializationResult<Self> {
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
@@ -140,14 +145,14 @@ impl ::re_types_core::Archetype for Transform3D {
         let transform = {
             let array = arrays_by_name
                 .get("rerun.components.Transform3D")
-                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Transform3D#transform")?;
             <crate::components::Transform3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Transform3D#transform")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Transform3D#transform")?
         };
         Ok(Self { transform })
@@ -155,12 +160,12 @@ impl ::re_types_core::Archetype for Transform3D {
 }
 
 impl ::re_types_core::AsComponents for Transform3D {
-    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.transform as &dyn ::re_types_core::ComponentBatch).into()),
+            Some((&self.transform as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

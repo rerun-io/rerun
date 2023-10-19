@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/components/clear_is_recursive.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use crate::external::arrow2;
+use crate::ComponentName;
+use crate::SerializationResult;
+use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{DeserializationError, DeserializationResult};
 
 /// **Component**: Configures how a clear operation should behave - recursive or not?
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
@@ -59,17 +64,17 @@ impl crate::Loggable for ClearIsRecursive {
         "rerun.components.ClearIsRecursive".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::Boolean
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -101,10 +106,10 @@ impl crate::Loggable for ClearIsRecursive {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -115,16 +120,16 @@ impl crate::Loggable for ClearIsRecursive {
             .as_any()
             .downcast_ref::<BooleanArray>()
             .ok_or_else(|| {
-                crate::DeserializationError::datatype_mismatch(
+                DeserializationError::datatype_mismatch(
                     DataType::Boolean,
                     arrow_data.data_type().clone(),
                 )
             })
             .with_context("rerun.components.ClearIsRecursive#recursive")?
             .into_iter()
-            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+            .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.ClearIsRecursive#recursive")
             .with_context("rerun.components.ClearIsRecursive")?)
     }

@@ -574,7 +574,7 @@ fn quote_arrow_field_serializer(
                                     })
                                     .transpose()
                                 })
-                                .collect::<::re_types_core::SerializationResult<Vec<_>>>()?
+                                .collect::<SerializationResult<Vec<_>>>()?
                             }
                         } else {
                             quote! {
@@ -668,7 +668,7 @@ fn quote_arrow_field_serializer(
                                 .iter()
                                 #quoted_transparent_mapping;
 
-                            let offsets = ::re_types_core::external::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 buffers.iter().map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default())
                             ).unwrap().into();
 
@@ -685,7 +685,7 @@ fn quote_arrow_field_serializer(
                         }}
                     } else {
                         quote! {{
-                            use ::re_types_core::external::arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                             let #quoted_inner_data: Buffer<_> = #data_src
                                 .iter()

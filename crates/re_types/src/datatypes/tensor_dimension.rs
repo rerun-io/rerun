@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/tensor_dimension.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A single dimension within a multi-dimensional tensor.
 #[derive(Clone, Default, Eq, PartialEq)]
@@ -48,7 +53,7 @@ impl ::re_types_core::Loggable for TensorDimension {
         "rerun.datatypes.TensorDimension".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -68,10 +73,10 @@ impl ::re_types_core::Loggable for TensorDimension {
         ])
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -162,10 +167,10 @@ impl ::re_types_core::Loggable for TensorDimension {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -177,7 +182,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field {
                                 name: "size".to_owned(),
@@ -208,7 +213,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                     .collect();
                 let size = {
                     if !arrays_by_name.contains_key("size") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "size",
                         ))
@@ -219,7 +224,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                         .as_any()
                         .downcast_ref::<UInt64Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::UInt64,
                                 arrow_data.data_type().clone(),
                             )
@@ -230,7 +235,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                 };
                 let name = {
                     if !arrays_by_name.contains_key("name") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "name",
                         ))
@@ -242,7 +247,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                             .as_any()
                             .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::Utf8,
                                     arrow_data.data_type().clone(),
                                 )
@@ -259,12 +264,10 @@ impl ::re_types_core::Loggable for TensorDimension {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > arrow_data_buf.len() {
-                                    return Err(
-                                        ::re_types_core::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ),
-                                    );
+                                    return Err(DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        arrow_data_buf.len(),
+                                    ));
                                 }
 
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -279,7 +282,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                                 res_or_opt.map(|v| ::re_types_core::ArrowString(v))
                             })
                         })
-                        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()
                         .with_context("rerun.datatypes.TensorDimension#name")?
                         .into_iter()
                     }
@@ -292,14 +295,14 @@ impl ::re_types_core::Loggable for TensorDimension {
                     opt.map(|(size, name)| {
                         Ok(Self {
                             size: size
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.TensorDimension#size")?,
                             name,
                         })
                     })
                     .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.TensorDimension")?
             }
         })

@@ -143,6 +143,7 @@ fn generate_object_file(
     }
 
     code.push_str("#![allow(trivial_numeric_casts)]\n");
+    code.push_str("#![allow(unused_imports)]\n");
     code.push_str("#![allow(unused_parens)]\n");
     code.push_str("#![allow(clippy::clone_on_copy)]\n");
     code.push_str("#![allow(clippy::iter_on_single_items)]\n");
@@ -154,7 +155,14 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::too_many_arguments)]\n");
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     code.push_str("#![allow(clippy::unnecessary_cast)]\n");
-    code.push_str("\nuse ::re_types_core::external::arrow2;\n");
+
+    code.push_str("\n\n");
+
+    code.push_str("use ::re_types_core::external::arrow2;\n");
+    code.push_str("use ::re_types_core::SerializationResult;\n");
+    code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
+    code.push_str("use ::re_types_core::ComponentName;\n");
+    code.push_str("use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};\n");
 
     let mut acc = TokenStream::new();
 
@@ -716,11 +724,11 @@ fn quote_trait_impls_from_obj(
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
 
                 quote! {
-                    #[allow(unused_imports, clippy::wildcard_imports)]
+                    #[allow(clippy::wildcard_imports)]
                     #[inline]
                     fn from_arrow(
                         arrow_data: &dyn arrow2::array::Array,
-                    ) -> ::re_types_core::DeserializationResult<Vec<Self>>
+                    ) -> DeserializationResult<Vec<Self>>
                     where
                         Self: Sized {
                         re_tracing::profile_function!();
@@ -732,7 +740,7 @@ fn quote_trait_impls_from_obj(
                         // all bits must indicate valid data.
                         if let Some(validity) = arrow_data.validity() {
                             if validity.unset_bits() != 0 {
-                                return Err(::re_types_core::DeserializationError::missing_data());
+                                return Err(DeserializationError::missing_data());
                             }
                         }
 
@@ -754,7 +762,7 @@ fn quote_trait_impls_from_obj(
                         #fqname.into()
                     }
 
-                    #[allow(unused_imports, clippy::wildcard_imports)]
+                    #[allow(clippy::wildcard_imports)]
                     #[inline]
                     fn arrow_datatype() -> arrow2::datatypes::DataType {
                         use arrow2::datatypes::*;
@@ -762,10 +770,10 @@ fn quote_trait_impls_from_obj(
                     }
 
                     // NOTE: Don't inline this, this gets _huge_.
-                    #[allow(unused_imports, clippy::wildcard_imports)]
+                    #[allow(clippy::wildcard_imports)]
                     fn to_arrow_opt<'a>(
                         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-                    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+                    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
                     where
                         Self: Clone + 'a
                     {
@@ -778,10 +786,10 @@ fn quote_trait_impls_from_obj(
                     }
 
                     // NOTE: Don't inline this, this gets _huge_.
-                    #[allow(unused_imports, clippy::wildcard_imports)]
+                    #[allow(clippy::wildcard_imports)]
                     fn from_arrow_opt(
                         arrow_data: &dyn arrow2::array::Array,
-                    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+                    ) -> DeserializationResult<Vec<Option<Self>>>
                     where
                         Self: Sized
                     {
@@ -873,13 +881,13 @@ fn quote_trait_impls_from_obj(
                     // the nullability of individual elements (i.e. instances)!
                     match (is_plural, is_nullable) {
                         (true, true) => quote! {
-                            self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ::re_types_core::ComponentBatch).into())
+                            self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch).into())
                         },
                         (false, true) => quote! {
-                            self.#field_name.as_ref().map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into())
+                            self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch).into())
                         },
                         (_, false) => quote! {
-                            Some((&self.#field_name as &dyn ::re_types_core::ComponentBatch).into())
+                            Some((&self.#field_name as &dyn ComponentBatch).into())
                         }
                     }
                 }))
@@ -900,8 +908,8 @@ fn quote_trait_impls_from_obj(
                     let quoted_collection = if is_plural {
                         quote! {
                             .into_iter()
-                            .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
-                            .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                            .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                            .collect::<DeserializationResult<Vec<_>>>()
                             .with_context(#obj_field_fqname)?
                         }
                     } else {
@@ -909,7 +917,7 @@ fn quote_trait_impls_from_obj(
                             .into_iter()
                             .next()
                             .flatten()
-                            .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                            .ok_or_else(DeserializationError::missing_data)
                             .with_context(#obj_field_fqname)?
                         }
                     };
@@ -932,7 +940,7 @@ fn quote_trait_impls_from_obj(
                         quote! {{
                             let array = arrays_by_name
                                 .get(#field_typ_fqname_str)
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)?;
 
                             <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
@@ -944,16 +952,16 @@ fn quote_trait_impls_from_obj(
             };
 
             quote! {
-                static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; #num_required]> =
+                static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_required]> =
                     once_cell::sync::Lazy::new(|| {[#required]});
 
-                static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; #num_recommended]> =
+                static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_recommended]> =
                     once_cell::sync::Lazy::new(|| {[#recommended]});
 
-                static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; #num_optional]> =
+                static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_optional]> =
                     once_cell::sync::Lazy::new(|| {[#optional]});
 
-                static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; #num_all]> =
+                static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; #num_all]> =
                     once_cell::sync::Lazy::new(|| {[#required #recommended #optional]});
 
                 impl #name {
@@ -972,29 +980,29 @@ fn quote_trait_impls_from_obj(
                     }
 
                     #[inline]
-                    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
+                    fn indicator() -> MaybeOwnedComponentBatch<'static> {
                         static INDICATOR: #quoted_indicator_name = #quoted_indicator_name::DEFAULT;
-                        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+                        MaybeOwnedComponentBatch::Ref(&INDICATOR)
                     }
 
                     #[inline]
-                    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+                    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
                         REQUIRED_COMPONENTS.as_slice().into()
                     }
 
                     #[inline]
-                    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]>  {
+                    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
                         RECOMMENDED_COMPONENTS.as_slice().into()
                     }
 
                     #[inline]
-                    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]>  {
+                    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
                         OPTIONAL_COMPONENTS.as_slice().into()
                     }
 
                     // NOTE: Don't rely on default implementation so that we can keep everything static.
                     #[inline]
-                    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]>  {
+                    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
                         ALL_COMPONENTS.as_slice().into()
                     }
 
@@ -1004,7 +1012,7 @@ fn quote_trait_impls_from_obj(
                             arrow2::datatypes::Field,
                             Box<dyn arrow2::array::Array>,
                         )>,
-                    ) -> ::re_types_core::DeserializationResult<Self> {
+                    ) -> DeserializationResult<Self> {
                         re_tracing::profile_function!();
 
                         use ::re_types_core::{Loggable as _, ResultExt as _};
@@ -1022,7 +1030,7 @@ fn quote_trait_impls_from_obj(
                 }
 
                 impl ::re_types_core::AsComponents for #name {
-                    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
+                    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
                         re_tracing::profile_function!();
 
                         use ::re_types_core::Archetype as _;

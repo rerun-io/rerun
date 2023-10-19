@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/blueprint/viewport_layout.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Blueprint**: A view of a space.
 ///
@@ -53,7 +58,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
         "rerun.blueprint.ViewportLayout".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -89,10 +94,10 @@ impl ::re_types_core::Loggable for ViewportLayout {
         ])
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -151,11 +156,14 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                         })
                                         .transpose()
                                 })
-                                .collect::<::re_types_core::SerializationResult<Vec<_>>>()?;
-                            let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(buffers.iter().map(| opt | opt.as_ref()
-                        .map(| buf | buf.len()).unwrap_or_default())).unwrap().into();
+                                .collect::<SerializationResult<Vec<_>>>()?;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                buffers.iter().map(|opt| {
+                                    opt.as_ref().map(|buf| buf.len()).unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
                             let space_view_keys_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             let space_view_keys_inner_data: Buffer<u8> = buffers
                                 .into_iter()
@@ -216,11 +224,14 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                             })
                                             .transpose()
                                     })
-                                    .collect::<::re_types_core::SerializationResult<Vec<_>>>()?;
-                            let
-                        offsets = ::re_types_core::external::arrow2::offset::Offsets:: <
-                        i32 > ::try_from_lengths(buffers.iter().map(| opt | opt.as_ref()
-                        .map(| buf | buf.len()).unwrap_or_default())).unwrap().into();
+                                    .collect::<SerializationResult<Vec<_>>>()?;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                buffers.iter().map(|opt| {
+                                    opt.as_ref().map(|buf| buf.len()).unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
                             let tree_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                             let tree_inner_data: Buffer<u8> = buffers
                                 .into_iter()
@@ -279,10 +290,10 @@ impl ::re_types_core::Loggable for ViewportLayout {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -294,7 +305,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field {
                                 name: "space_view_keys".to_owned(),
@@ -341,7 +352,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                     .collect();
                 let space_view_keys = {
                     if !arrays_by_name.contains_key("space_view_keys") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "space_view_keys",
                         ))
@@ -353,7 +364,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
@@ -373,7 +384,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::UInt8,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -391,12 +402,10 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -411,22 +420,20 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                         data.as_slice()
                                     )
                                     .map_err(|err| {
-                                        ::re_types_core::DeserializationError::serde_failure(
-                                            err.to_string(),
-                                        )
+                                        DeserializationError::serde_failure(err.to_string())
                                     })?;
                                     Ok(data)
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
                 };
                 let tree = {
                     if !arrays_by_name.contains_key("tree") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "tree",
                         ))
@@ -438,7 +445,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type: DataType::UInt8,
@@ -458,7 +465,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                     .as_any()
                                     .downcast_ref::<UInt8Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::UInt8,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -476,12 +483,10 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -495,22 +500,20 @@ impl ::re_types_core::Loggable for ViewportLayout {
                                             egui_tiles::Tree<re_viewer_context::SpaceViewId>,
                                         >(data.as_slice())
                                         .map_err(|err| {
-                                            ::re_types_core::DeserializationError::serde_failure(
-                                                err.to_string(),
-                                            )
+                                            DeserializationError::serde_failure(err.to_string())
                                         })?;
                                     Ok(data)
                                 })
                                 .transpose()
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
                 };
                 let auto_layout = {
                     if !arrays_by_name.contains_key("auto_layout") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "auto_layout",
                         ))
@@ -521,7 +524,7 @@ impl ::re_types_core::Loggable for ViewportLayout {
                         .as_any()
                         .downcast_ref::<BooleanArray>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::Boolean,
                                 arrow_data.data_type().clone(),
                             )
@@ -537,19 +540,19 @@ impl ::re_types_core::Loggable for ViewportLayout {
                     opt.map(|(space_view_keys, tree, auto_layout)| {
                         Ok(Self {
                             space_view_keys: space_view_keys
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.blueprint.ViewportLayout#space_view_keys")?,
                             tree: tree
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.blueprint.ViewportLayout#tree")?,
                             auto_layout: auto_layout
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.blueprint.ViewportLayout#auto_layout")?,
                         })
                     })
                     .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.blueprint.ViewportLayout")?
             }
         })
