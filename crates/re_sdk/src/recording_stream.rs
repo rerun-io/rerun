@@ -1624,13 +1624,16 @@ mod tests {
     #[test]
     fn test_set_thread_local() {
         // Regression-test for https://github.com/rerun-io/rerun/issues/2889
-        std::thread::spawn(|| {
-            let stream = RecordingStreamBuilder::new("rerun_example_test")
-                .buffered()
-                .unwrap();
-            RecordingStream::set_thread_local(StoreKind::Recording, Some(stream));
-        })
-        .join()
-        .unwrap();
+        std::thread::Builder::new()
+            .name("test_thead".to_owned())
+            .spawn(|| {
+                let stream = RecordingStreamBuilder::new("rerun_example_test")
+                    .buffered()
+                    .unwrap();
+                RecordingStream::set_thread_local(StoreKind::Recording, Some(stream));
+            })
+            .unwrap()
+            .join()
+            .unwrap();
     }
 }

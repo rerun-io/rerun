@@ -57,6 +57,7 @@ impl Drop for ThreadLocalRecording {
             // Give the batchet and sink threads a chance to process the data.
             std::thread::sleep(std::time::Duration::from_millis(500));
 
+            #[allow(clippy::mem_forget)] // Intentionally not calling `drop`
             std::mem::forget(stream);
         }
     }
