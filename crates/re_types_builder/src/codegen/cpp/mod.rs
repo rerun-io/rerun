@@ -767,7 +767,7 @@ impl QuotedObject {
         }
 
         // Code that allows to access the data of the union in a safe way.
-        for obj_field in obj.fields.iter() {
+        for obj_field in &obj.fields {
             let typ = quote_field_type(&mut hpp_includes, obj_field);
 
             let snake_case_name = obj_field.snake_case_name();
