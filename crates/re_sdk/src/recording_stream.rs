@@ -1620,4 +1620,18 @@ mod tests {
         // That's all.
         assert!(msgs.pop().is_none());
     }
+
+    #[test]
+    #[cfg(not(target_os = "macos"))] // TODO(#2889): https://github.com/rerun-io/rerun/issues/2889
+    fn test_set_thread_local() {
+        std::thread::spawn(|| {
+            // Regression-test for https://github.com/rerun-io/rerun/issues/2889
+            let stream = RecordingStreamBuilder::new("rerun_example_test")
+                .buffered()
+                .unwrap();
+            RecordingStream::set_thread_local(StoreKind::Recording, Some(stream));
+        })
+        .join()
+        .unwrap();
+    }
 }
