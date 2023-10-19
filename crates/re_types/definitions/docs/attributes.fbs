@@ -1,0 +1,6 @@
+namespace docs.attributes;
+
+/// Apply to a struct or table object to mark it as unreleased.
+///
+/// Any external links referencing this datatype will be given a speculative link marker.
+attribute "attr.docs.unreleased";
