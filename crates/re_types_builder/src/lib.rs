@@ -408,7 +408,7 @@ pub fn generate_cpp_code(
     // Make sure to filter out that directory, or else we will end up removing those handwritten
     // files.
     let root_src = output_path.as_ref().join("src/rerun");
-    files.retain(|filepath, _| !filepath.starts_with(&root_src));
+    files.retain(|filepath, _| filepath.parent() != Some(root_src.as_path()));
     crate::codegen::common::remove_orphaned_files(reporter, &files);
 
     fn format_code(code: &str) -> String {
