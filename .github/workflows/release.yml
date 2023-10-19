@@ -61,7 +61,6 @@ jobs:
         run: |
           python3 -m pip install -r ./scripts/ci/requirements-crates.txt
 
-      # for `taplo fmt` done in `crates.py version --bump`
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
         with:
@@ -108,6 +107,9 @@ jobs:
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
+
+      - name: "Taplo fmt"
+        run: taplo fmt
 
       - name: Commit new version
         id: commit
@@ -235,7 +237,6 @@ jobs:
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
-      # for `taplo fmt` done in `crates.py version --bump`
       - name: Install taplo-cli
         uses: taiki-e/install-action@v2
         with:
@@ -256,6 +257,9 @@ jobs:
             python3 scripts/ci/crates.py version --bump prerelease --dev --pre-id=alpha
             echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: "Taplo fmt"
+        run: taplo fmt
 
       - name: Commit new version
         run: |
