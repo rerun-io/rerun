@@ -18,7 +18,7 @@ The Rerun SDK comes with a demo that can be used to try the viewer. You can send
 to this viewer using the following command:
 
 ```sh
-python -m rerun_sdk.demo --connect
+python -m rerun_sdk --connect
 ```
 
 This will open a new recording that looks like this:
