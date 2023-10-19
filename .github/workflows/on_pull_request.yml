@@ -22,6 +22,25 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
+  # Run some basics tests on Mac and Windows
+  mac-windows-checks:
+    name: test on macOS and Windows
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest-8-cores]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.72.1
+
+      - name: Set up cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: cargo test --all-targets --all-features
+        run: cargo test --all-targets --all-features
+
   cpp-paths-filter:
     runs-on: ubuntu-latest
     outputs:
