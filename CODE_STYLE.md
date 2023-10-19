@@ -140,6 +140,8 @@ const auto bar = SomeClass::new_xyzw(…);
 
 We prefer `{}` for constructors (`Foo{…}` instead of `Foo(…)`), though there are exceptions (`std::vector{2, 3}` is different from `std::vector(2, 3)`).
 
+Prefer `using Type = …;` over `typedef … Type;`.
+
 ### Misc
 We don't add `inline` before class/struct member functions if they are inlined in the class/struct definition.
 
