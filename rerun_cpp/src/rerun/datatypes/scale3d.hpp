@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <optional>
 #include <utility>
 
 namespace arrow {
@@ -108,21 +107,21 @@ namespace rerun {
                 *this = Scale3D::uniform(std::move(uniform));
             }
 
-            /// Return a reference to three_d if the union is in that state, otherwise `std::nullopt`.
-            std::optional<rerun::datatypes::Vec3D> get_three_d() const {
+            /// Return a pointer to three_d if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::Vec3D* get_three_d() const {
                 if (_tag == detail::Scale3DTag::ThreeD) {
-                    return std::optional<rerun::datatypes::Vec3D>(_data.three_d);
+                    return &_data.three_d;
                 } else {
-                    return std::optional<rerun::datatypes::Vec3D>();
+                    return nullptr;
                 }
             }
 
-            /// Return a reference to uniform if the union is in that state, otherwise `std::nullopt`.
-            std::optional<float> get_uniform() const {
+            /// Return a pointer to uniform if the union is in that state, otherwise `nullptr`.
+            const float* get_uniform() const {
                 if (_tag == detail::Scale3DTag::Uniform) {
-                    return std::optional<float>(_data.uniform);
+                    return &_data.uniform;
                 } else {
-                    return std::optional<float>();
+                    return nullptr;
                 }
             }
 

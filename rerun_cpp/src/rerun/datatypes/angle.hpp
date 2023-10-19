@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <optional>
 #include <utility>
 
 namespace arrow {
@@ -93,21 +92,21 @@ namespace rerun {
                 return self;
             }
 
-            /// Return a reference to radians if the union is in that state, otherwise `std::nullopt`.
-            std::optional<float> get_radians() const {
+            /// Return a pointer to radians if the union is in that state, otherwise `nullptr`.
+            const float* get_radians() const {
                 if (_tag == detail::AngleTag::Radians) {
-                    return std::optional<float>(_data.radians);
+                    return &_data.radians;
                 } else {
-                    return std::optional<float>();
+                    return nullptr;
                 }
             }
 
-            /// Return a reference to degrees if the union is in that state, otherwise `std::nullopt`.
-            std::optional<float> get_degrees() const {
+            /// Return a pointer to degrees if the union is in that state, otherwise `nullptr`.
+            const float* get_degrees() const {
                 if (_tag == detail::AngleTag::Degrees) {
-                    return std::optional<float>(_data.degrees);
+                    return &_data.degrees;
                 } else {
-                    return std::optional<float>();
+                    return nullptr;
                 }
             }
 

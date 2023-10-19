@@ -768,7 +768,6 @@ impl QuotedObject {
 
         // Code that allows to access the data of the union in a safe way.
         for obj_field in obj.fields.iter() {
-            hpp_includes.insert_system("optional"); // std::optional
             let typ = quote_field_type(&mut hpp_includes, obj_field);
 
             let snake_case_name = obj_field.snake_case_name();
@@ -776,33 +775,22 @@ impl QuotedObject {
             let method_name = format_ident!("get_{}", snake_case_name);
             let tag_name = format_ident!("{}", obj_field.name);
 
-            // Copy if the type is trivial enough.
-            let return_type = if obj_field.typ.has_default_destructor(objects) {
-                quote! { std::optional<#typ> }
-            } else {
-                quote! { std::optional<const #typ&> }
-            };
-
             methods.push(Method {
-                        docs: format!("Return a reference to {snake_case_name} if the union is in that state, otherwise `std::nullopt`.").into(),
-                        declaration: MethodDeclaration {
-                            name_and_parameters: quote! { #method_name() const },
-                            return_type: return_type.clone(),
-                            is_static: false,
-                        },
-                        definition_body: quote! {
-                            if (_tag == detail::#tag_typename::#tag_name) {
-                                // Implicit conversion doesn't work for the std::optional<const&> case.
-                                // Easier to always be explicit.
-                                return #return_type(_data.#field_name);
-                            } else {
-                                // std::nullopt doesn't work for the std::optional<const&> case.
-                                // Easier to always be explicit.
-                                return #return_type();
-                            }
-                        },
-                        inline: true,
-                    });
+                docs: format!("Return a pointer to {snake_case_name} if the union is in that state, otherwise `nullptr`.").into(),
+                declaration: MethodDeclaration {
+                    name_and_parameters: quote! { #method_name() const },
+                    return_type: quote! { const #typ* },
+                    is_static: false,
+                },
+                definition_body: quote! {
+                    if (_tag == detail::#tag_typename::#tag_name) {
+                        return &_data.#field_name;
+                    } else {
+                        return nullptr;
+                    }
+                },
+                inline: true,
+            });
         }
 
         methods.push(arrow_data_type_method(

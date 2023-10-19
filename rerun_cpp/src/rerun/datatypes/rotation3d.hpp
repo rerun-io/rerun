@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
-#include <optional>
 #include <utility>
 
 namespace arrow {
@@ -114,21 +113,21 @@ namespace rerun {
                 *this = Rotation3D::axis_angle(std::move(axis_angle));
             }
 
-            /// Return a reference to quaternion if the union is in that state, otherwise `std::nullopt`.
-            std::optional<rerun::datatypes::Quaternion> get_quaternion() const {
+            /// Return a pointer to quaternion if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::Quaternion* get_quaternion() const {
                 if (_tag == detail::Rotation3DTag::Quaternion) {
-                    return std::optional<rerun::datatypes::Quaternion>(_data.quaternion);
+                    return &_data.quaternion;
                 } else {
-                    return std::optional<rerun::datatypes::Quaternion>();
+                    return nullptr;
                 }
             }
 
-            /// Return a reference to axis_angle if the union is in that state, otherwise `std::nullopt`.
-            std::optional<rerun::datatypes::RotationAxisAngle> get_axis_angle() const {
+            /// Return a pointer to axis_angle if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::RotationAxisAngle* get_axis_angle() const {
                 if (_tag == detail::Rotation3DTag::AxisAngle) {
-                    return std::optional<rerun::datatypes::RotationAxisAngle>(_data.axis_angle);
+                    return &_data.axis_angle;
                 } else {
-                    return std::optional<rerun::datatypes::RotationAxisAngle>();
+                    return nullptr;
                 }
             }
 

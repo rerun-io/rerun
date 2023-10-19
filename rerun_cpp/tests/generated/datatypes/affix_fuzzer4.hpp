@@ -147,40 +147,31 @@ namespace rerun {
                 return self;
             }
 
-            /// Return a reference to single_required if the union is in that state, otherwise `std::nullopt`.
-            std::optional<const rerun::datatypes::AffixFuzzer3&> get_single_required() const {
+            /// Return a pointer to single_required if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::AffixFuzzer3* get_single_required() const {
                 if (_tag == detail::AffixFuzzer4Tag::single_required) {
-                    return std::optional<const rerun::datatypes::AffixFuzzer3&>(
-                        _data.single_required
-                    );
+                    return &_data.single_required;
                 } else {
-                    return std::optional<const rerun::datatypes::AffixFuzzer3&>();
+                    return nullptr;
                 }
             }
 
-            /// Return a reference to many_required if the union is in that state, otherwise `std::nullopt`.
-            std::optional<const std::vector<rerun::datatypes::AffixFuzzer3>&> get_many_required(
-            ) const {
+            /// Return a pointer to many_required if the union is in that state, otherwise `nullptr`.
+            const std::vector<rerun::datatypes::AffixFuzzer3>* get_many_required() const {
                 if (_tag == detail::AffixFuzzer4Tag::many_required) {
-                    return std::optional<const std::vector<rerun::datatypes::AffixFuzzer3>&>(
-                        _data.many_required
-                    );
+                    return &_data.many_required;
                 } else {
-                    return std::optional<const std::vector<rerun::datatypes::AffixFuzzer3>&>();
+                    return nullptr;
                 }
             }
 
-            /// Return a reference to many_optional if the union is in that state, otherwise `std::nullopt`.
-            std::optional<const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&>
-                get_many_optional() const {
+            /// Return a pointer to many_optional if the union is in that state, otherwise `nullptr`.
+            const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>* get_many_optional(
+            ) const {
                 if (_tag == detail::AffixFuzzer4Tag::many_optional) {
-                    return std::optional<
-                        const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&>(
-                        _data.many_optional
-                    );
+                    return &_data.many_optional;
                 } else {
-                    return std::optional<
-                        const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&>();
+                    return nullptr;
                 }
             }
 

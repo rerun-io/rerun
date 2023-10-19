@@ -153,42 +153,39 @@ namespace rerun {
                 return self;
             }
 
-            /// Return a reference to degrees if the union is in that state, otherwise `std::nullopt`.
-            std::optional<float> get_degrees() const {
+            /// Return a pointer to degrees if the union is in that state, otherwise `nullptr`.
+            const float* get_degrees() const {
                 if (_tag == detail::AffixFuzzer3Tag::degrees) {
-                    return std::optional<float>(_data.degrees);
+                    return &_data.degrees;
                 } else {
-                    return std::optional<float>();
+                    return nullptr;
                 }
             }
 
-            /// Return a reference to radians if the union is in that state, otherwise `std::nullopt`.
-            std::optional<std::optional<float>> get_radians() const {
+            /// Return a pointer to radians if the union is in that state, otherwise `nullptr`.
+            const std::optional<float>* get_radians() const {
                 if (_tag == detail::AffixFuzzer3Tag::radians) {
-                    return std::optional<std::optional<float>>(_data.radians);
+                    return &_data.radians;
                 } else {
-                    return std::optional<std::optional<float>>();
+                    return nullptr;
                 }
             }
 
-            /// Return a reference to craziness if the union is in that state, otherwise `std::nullopt`.
-            std::optional<const std::vector<rerun::datatypes::AffixFuzzer1>&> get_craziness(
-            ) const {
+            /// Return a pointer to craziness if the union is in that state, otherwise `nullptr`.
+            const std::vector<rerun::datatypes::AffixFuzzer1>* get_craziness() const {
                 if (_tag == detail::AffixFuzzer3Tag::craziness) {
-                    return std::optional<const std::vector<rerun::datatypes::AffixFuzzer1>&>(
-                        _data.craziness
-                    );
+                    return &_data.craziness;
                 } else {
-                    return std::optional<const std::vector<rerun::datatypes::AffixFuzzer1>&>();
+                    return nullptr;
                 }
             }
 
-            /// Return a reference to fixed_size_shenanigans if the union is in that state, otherwise `std::nullopt`.
-            std::optional<std::array<float, 3>> get_fixed_size_shenanigans() const {
+            /// Return a pointer to fixed_size_shenanigans if the union is in that state, otherwise `nullptr`.
+            const std::array<float, 3>* get_fixed_size_shenanigans() const {
                 if (_tag == detail::AffixFuzzer3Tag::fixed_size_shenanigans) {
-                    return std::optional<std::array<float, 3>>(_data.fixed_size_shenanigans);
+                    return &_data.fixed_size_shenanigans;
                 } else {
-                    return std::optional<std::array<float, 3>>();
+                    return nullptr;
                 }
             }
 
