@@ -65,7 +65,7 @@ namespace rerun {
             AffixFuzzer3(const AffixFuzzer3& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer3Tag::craziness: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
                         new (&_data.craziness) TypeAlias(other._data.craziness);
                     } break;
                     case detail::AffixFuzzer3Tag::degrees:
@@ -136,7 +136,7 @@ namespace rerun {
             }
 
             static AffixFuzzer3 craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness) {
-                typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
+                using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::craziness;
                 new (&self._data.craziness) TypeAlias(std::move(craziness));

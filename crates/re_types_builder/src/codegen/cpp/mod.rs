@@ -846,7 +846,7 @@ impl QuotedObject {
                     let length = proc_macro2::Literal::usize_unsuffixed(*length);
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
-                            typedef #elem_type TypeAlias;
+                            using TypeAlias = #elem_type;
                             for (size_t i = #length; i > 0; i -= 1) {
                                 _data.#field_ident[i-1].~TypeAlias();
                             }
@@ -889,14 +889,13 @@ impl QuotedObject {
                     trivial_memcpy_cases.push(case);
                 } else {
                     // the `this->_data` union is not yet initialized, so we must use placement new:
-                    let typedef_declaration =
-                        quote_variable(&mut hpp_includes, obj_field, &format_ident!("TypeAlias"));
+                    let typ = quote_field_type(&mut hpp_includes, obj_field);
                     hpp_includes.insert_system("new"); // placement-new
 
                     let field_ident = format_ident!("{}", obj_field.snake_case_name());
                     placement_new_arms.push(quote! {
                         #case {
-                            typedef #typedef_declaration;
+                            using TypeAlias = #typ;
                             new (&_data.#field_ident) TypeAlias(other._data.#field_ident);
                         } break;
                     });
@@ -1833,7 +1832,7 @@ fn static_constructor_for_enum_type(
         // We need special casing for constructing arrays:
         let length = proc_macro2::Literal::usize_unsuffixed(*length);
 
-        let (element_assignment, typedef) = if elem_type.has_default_destructor(objects) {
+        let (element_assignment, type_alias) = if elem_type.has_default_destructor(objects) {
             // Generate simpoler code for simple types:
             (
                 quote! {
@@ -1849,7 +1848,7 @@ fn static_constructor_for_enum_type(
                 quote! {
                     new (&self._data.#snake_case_ident[i]) #elem_type(std::move(#snake_case_ident[i]));
                 },
-                quote!(typedef #elem_type TypeAlias;),
+                quote!(using TypeAlias = #elem_type;),
             )
         };
 
@@ -1857,7 +1856,7 @@ fn static_constructor_for_enum_type(
             docs,
             declaration,
             definition_body: quote! {
-                #typedef
+                #type_alias
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 for (size_t i = 0; i < #length; i += 1) {
@@ -1883,13 +1882,12 @@ fn static_constructor_for_enum_type(
     } else {
         // We need to use placement-new since the union is in an uninitialized state here:
         hpp_includes.insert_system("new"); // placement-new
-        let typedef_declaration =
-            quote_variable(hpp_includes, obj_field, &format_ident!("TypeAlias"));
+        let typ = quote_field_type(hpp_includes, obj_field);
         Method {
             docs,
             declaration,
             definition_body: quote! {
-                typedef #typedef_declaration;
+                using TypeAlias = #typ;
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));

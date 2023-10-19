@@ -61,16 +61,16 @@ namespace rerun {
             AffixFuzzer4(const AffixFuzzer4& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer4Tag::single_required: {
-                        typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
+                        using TypeAlias = rerun::datatypes::AffixFuzzer3;
                         new (&_data.single_required) TypeAlias(other._data.single_required);
                     } break;
                     case detail::AffixFuzzer4Tag::many_required: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
                         new (&_data.many_required) TypeAlias(other._data.many_required);
                     } break;
                     case detail::AffixFuzzer4Tag::many_optional: {
-                        typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>
-                            TypeAlias;
+                        using TypeAlias =
+                            std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                         new (&_data.many_optional) TypeAlias(other._data.many_optional);
                     } break;
                     case detail::AffixFuzzer4Tag::NONE: {
@@ -120,7 +120,7 @@ namespace rerun {
             }
 
             static AffixFuzzer4 single_required(rerun::datatypes::AffixFuzzer3 single_required) {
-                typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
+                using TypeAlias = rerun::datatypes::AffixFuzzer3;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::single_required;
                 new (&self._data.single_required) TypeAlias(std::move(single_required));
@@ -130,7 +130,7 @@ namespace rerun {
             static AffixFuzzer4 many_required(
                 std::vector<rerun::datatypes::AffixFuzzer3> many_required
             ) {
-                typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
+                using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_required;
                 new (&self._data.many_required) TypeAlias(std::move(many_required));
@@ -140,7 +140,7 @@ namespace rerun {
             static AffixFuzzer4 many_optional(
                 std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> many_optional
             ) {
-                typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> TypeAlias;
+                using TypeAlias = std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_optional;
                 new (&self._data.many_optional) TypeAlias(std::move(many_optional));
