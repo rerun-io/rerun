@@ -218,7 +218,7 @@ debug = true # enable debug symbols for build scripts when building in dev (code
 opt-level = 2
 
 [profile.release]
-# debug = true # good for profilers
+debug = true # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
 [profile.bench]

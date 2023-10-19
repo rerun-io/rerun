@@ -1,3 +1,4 @@
+use egui::Color32;
 use itertools::Itertools;
 use re_arrow_store::TimeRange;
 use re_query::{range_archetype, QueryError};
@@ -133,6 +134,7 @@ impl TimeSeriesSystem {
 
             let arch_views = {
                 let scope = "query and collect arch views";
+                re_tracing::profile_scope!(scope);
                 let now = std::time::Instant::now();
 
                 let arch_views = range_archetype::<
@@ -148,6 +150,7 @@ impl TimeSeriesSystem {
 
             let components = {
                 let scope = "deserialize and collect components";
+                re_tracing::profile_scope!(scope);
                 let now = std::time::Instant::now();
 
                 let components = arch_views
@@ -160,22 +163,22 @@ impl TimeSeriesSystem {
                                 .iter_required_component::<Scalar>()
                                 .unwrap()
                                 .collect_vec(),
-                            arch_view
-                                .iter_optional_component::<ScalarScattering>()
-                                .unwrap()
-                                .collect_vec(),
-                            arch_view
-                                .iter_optional_component::<Color>()
-                                .unwrap()
-                                .collect_vec(),
-                            arch_view
-                                .iter_optional_component::<Radius>()
-                                .unwrap()
-                                .collect_vec(),
-                            arch_view
-                                .iter_optional_component::<Text>()
-                                .unwrap()
-                                .collect_vec(),
+                            // arch_view
+                            //     .iter_optional_component::<ScalarScattering>()
+                            //     .unwrap()
+                            //     .collect_vec(),
+                            // arch_view
+                            //     .iter_optional_component::<Color>()
+                            //     .unwrap()
+                            //     .collect_vec(),
+                            // arch_view
+                            //     .iter_optional_component::<Radius>()
+                            //     .unwrap()
+                            //     .collect_vec(),
+                            // arch_view
+                            //     .iter_optional_component::<Text>()
+                            //     .unwrap()
+                            //     .collect_vec(),
                         )
                     })
                     .collect_vec();
@@ -187,30 +190,48 @@ impl TimeSeriesSystem {
 
             {
                 let scope = "build plot";
+                re_tracing::profile_scope!(scope);
                 let now = std::time::Instant::now();
 
-                for (time, scalars, scattereds, colors, radii, labels) in components {
-                    for (scalar, scattered, color, radius, label) in
-                        itertools::izip!(scalars, scattereds, colors, radii, labels)
-                    {
-                        let color =
-                            annotation_info.color(color.map(|c| c.to_array()), default_color);
-                        let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
-
+                for (time, scalars) in components {
+                    for scalar in scalars {
                         const DEFAULT_RADIUS: f32 = 0.75;
 
                         points.push(PlotPoint {
                             time: time.as_i64(),
                             value: scalar.0,
                             attrs: PlotPointAttrs {
-                                label,
-                                color,
-                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                                scattered: scattered.map_or(false, |s| s.0),
+                                label: None,
+                                color: Color32::from_rgb(255, 0, 0),
+                                radius: DEFAULT_RADIUS,
+                                scattered: false,
                             },
                         });
                     }
                 }
+
+                // for (time, scalars, scattereds, colors, radii, labels) in components {
+                //     for (scalar, scattered, color, radius, label) in
+                //         itertools::izip!(scalars, scattereds, colors, radii, labels)
+                //     {
+                //         let color =
+                //             annotation_info.color(color.map(|c| c.to_array()), default_color);
+                //         let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                //
+                //         const DEFAULT_RADIUS: f32 = 0.75;
+                //
+                //         points.push(PlotPoint {
+                //             time: time.as_i64(),
+                //             value: scalar.0,
+                //             attrs: PlotPointAttrs {
+                //                 label,
+                //                 color,
+                //                 radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                //                 scattered: scattered.map_or(false, |s| s.0),
+                //             },
+                //         });
+                //     }
+                // }
 
                 eprintln!("{scope} took {:?}", now.elapsed());
             }

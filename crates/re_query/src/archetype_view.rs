@@ -291,7 +291,7 @@ impl<A: Archetype> ArchetypeView<A> {
     pub fn iter_required_component<'a, C: Component + Send + Sync + 'static>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
-        re_tracing::profile_function!();
+        // re_tracing::profile_function!();
 
         debug_assert!(A::required_components()
             .iter()

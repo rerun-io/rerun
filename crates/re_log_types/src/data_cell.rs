@@ -154,7 +154,7 @@ pub struct DataCellInner {
     /// Internally, this is most likely a slice of another, larger array (batching!).
     pub(crate) values: Box<dyn arrow2::array::Array>,
 
-    pub(crate) values_deserialized: Mutex<Option<Box<dyn std::any::Any + Send + Sync>>>,
+    pub(crate) values_deserialized: Mutex<Option<Arc<dyn std::any::Any + Send + Sync>>>,
 }
 
 impl std::fmt::Debug for DataCellInner {
@@ -408,7 +408,7 @@ impl DataCell {
     pub fn try_to_native<'a, C: Component + Send + Sync + 'static>(
         &'a self,
     ) -> DataCellResult<Vec<C>> {
-        re_tracing::profile_function!(C::name().as_str());
+        // re_tracing::profile_function!(C::name().as_str());
         // return C::from_arrow(self.inner.values.as_ref()).map_err(Into::into);
 
         if let Some(values) = self.inner.values_deserialized.lock().unwrap().as_ref() {
@@ -416,9 +416,33 @@ impl DataCell {
         }
 
         let v = C::from_arrow(self.inner.values.as_ref())?;
-        *self.inner.values_deserialized.lock().unwrap() = Some(Box::new(v.clone()));
+        *self.inner.values_deserialized.lock().unwrap() = Some(Arc::new(v.clone()));
 
         Ok(v)
+    }
+
+    /// Returns the contents of the cell as an iterator of native components.
+    ///
+    /// Fails if the underlying arrow data cannot be deserialized into `C`.
+    #[inline]
+    pub fn try_to_native_ref<'a, C: Component + Send + Sync + 'static>(
+        &'a self,
+    ) -> DataCellResult<Arc<dyn std::any::Any + Send + Sync>> {
+        re_tracing::profile_function!(C::name().as_str());
+        // return C::from_arrow(self.inner.values.as_ref()).map_err(Into::into);
+
+        if let Some(values) = self.inner.values_deserialized.lock().unwrap().as_ref() {
+            return Ok(Arc::clone(values));
+        }
+
+        let v = C::from_arrow(self.inner.values.as_ref())?;
+        *self.inner.values_deserialized.lock().unwrap() = Some(Arc::new(v.clone()));
+
+        if let Some(values) = self.inner.values_deserialized.lock().unwrap().as_ref() {
+            return Ok(Arc::clone(values));
+        }
+
+        unreachable!()
     }
 
     /// Returns the contents of an expected mono-component as an `Option<C>`.
@@ -468,14 +492,14 @@ impl DataCell {
         &'a self,
     ) -> DataCellResult<Vec<Option<C>>> {
         re_tracing::profile_function!(C::name().as_str());
-        // return C::from_arrow_opt(self.inner.values.as_ref()).map_err(Into::into);
+        return C::from_arrow_opt(self.inner.values.as_ref()).map_err(Into::into);
 
         if let Some(values) = self.inner.values_deserialized.lock().unwrap().as_ref() {
             return Ok(values.downcast_ref::<Vec<Option<C>>>().unwrap().clone());
         }
 
         let v = C::from_arrow_opt(self.inner.values.as_ref())?;
-        *self.inner.values_deserialized.lock().unwrap() = Some(Box::new(v.clone()));
+        *self.inner.values_deserialized.lock().unwrap() = Some(Arc::new(v.clone()));
 
         Ok(v)
     }
