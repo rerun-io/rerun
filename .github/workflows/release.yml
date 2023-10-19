@@ -33,10 +33,28 @@ jobs:
   #   any wheels already uploaded.
   # - `build-and-publish-web` is re-entrant for the same reason as `build-and-publish-wheels`,
   #   except that uploads are done to GCS instead of PyPI.
+
+  checks:
+    name: "Checks"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.x
+
+      - name: Check links
+        run: |
+          python3 scripts/ci/check_links.py
+
   version:
     name: "Versioning"
     runs-on: ubuntu-latest
-
+    needs: [checks]
     outputs:
       previous: ${{ steps.versioning.outputs.previous }}
       current: ${{ steps.versioning.outputs.current }}
