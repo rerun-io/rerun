@@ -30,11 +30,11 @@ impl std::fmt::Display for RecordingScope {
 
 /// Required to work-around <https://github.com/rerun-io/rerun/issues/2889>
 #[derive(Default)]
-struct ThradLocalRecording {
+struct ThreadLocalRecording {
     stream: Option<RecordingStream>,
 }
 
-impl ThradLocalRecording {
+impl ThreadLocalRecording {
     fn replace(&mut self, stream: Option<RecordingStream>) -> Option<RecordingStream> {
         std::mem::replace(&mut self.stream, stream)
     }
@@ -45,7 +45,7 @@ impl ThradLocalRecording {
 }
 
 #[cfg(target_os = "macos")]
-impl Drop for ThradLocalRecording {
+impl Drop for ThreadLocalRecording {
     fn drop(&mut self) {
         if let Some(stream) = self.stream.take() {
             // Work-around for https://github.com/rerun-io/rerun/issues/2889
@@ -64,12 +64,12 @@ impl Drop for ThradLocalRecording {
 
 static GLOBAL_DATA_RECORDING: OnceCell<RwLock<Option<RecordingStream>>> = OnceCell::new();
 thread_local! {
-    static LOCAL_DATA_RECORDING: RefCell<ThradLocalRecording> = Default::default();
+    static LOCAL_DATA_RECORDING: RefCell<ThreadLocalRecording> = Default::default();
 }
 
 static GLOBAL_BLUEPRINT_RECORDING: OnceCell<RwLock<Option<RecordingStream>>> = OnceCell::new();
 thread_local! {
-    static LOCAL_BLUEPRINT_RECORDING: RefCell<ThradLocalRecording> = Default::default();
+    static LOCAL_BLUEPRINT_RECORDING: RefCell<ThreadLocalRecording> = Default::default();
 }
 
 /// Check whether we are the child of a fork.
