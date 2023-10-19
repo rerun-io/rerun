@@ -471,6 +471,7 @@ fn connect(
     addr: Option<String>,
     flush_timeout_sec: Option<f32>,
     recording: Option<&PyRecordingStream>,
+    py: Python<'_>,
 ) -> PyResult<()> {
     let addr = if let Some(addr) = addr {
         addr.parse()?
@@ -480,40 +481,53 @@ fn connect(
 
     let flush_timeout = flush_timeout_sec.map(std::time::Duration::from_secs_f32);
 
-    if let Some(recording) = recording {
-        // If the user passed in a recording, use it
-        recording.connect(addr, flush_timeout);
-    } else {
-        // Otherwise, connect both global defaults
-        if let Some(recording) = get_data_recording(None) {
+    // The call to connect may internally flush.
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.allow_threads(|| {
+        if let Some(recording) = recording {
+            // If the user passed in a recording, use it
             recording.connect(addr, flush_timeout);
-        };
-        if let Some(blueprint) = get_blueprint_recording(None) {
-            blueprint.connect(addr, flush_timeout);
-        };
-    }
+        } else {
+            // Otherwise, connect both global defaults
+            if let Some(recording) = get_data_recording(None) {
+                recording.connect(addr, flush_timeout);
+            };
+            if let Some(blueprint) = get_blueprint_recording(None) {
+                blueprint.connect(addr, flush_timeout);
+            };
+        }
+    });
 
     Ok(())
 }
 
 #[pyfunction]
 #[pyo3(signature = (path, recording = None))]
-fn save(path: &str, recording: Option<&PyRecordingStream>) -> PyResult<()> {
+fn save(path: &str, recording: Option<&PyRecordingStream>, py: Python<'_>) -> PyResult<()> {
     let Some(recording) = get_data_recording(recording) else {
         return Ok(());
     };
 
-    recording
-        .save(path)
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    // The call to save may internally flush.
+    // Release the GIL in case any flushing behavior needs to cleanup a python object.
+    py.allow_threads(|| {
+        recording
+            .save(path)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+    })
 }
 
 /// Create an in-memory rrd file
 #[pyfunction]
 #[pyo3(signature = (recording = None))]
-fn memory_recording(recording: Option<&PyRecordingStream>) -> Option<PyMemorySinkStorage> {
+fn memory_recording(
+    recording: Option<&PyRecordingStream>,
+    py: Python<'_>,
+) -> Option<PyMemorySinkStorage> {
     get_data_recording(recording).map(|rec| {
-        let inner = rec.memory();
+        // The call to memory may internally flush.
+        // Release the GIL in case any flushing behavior needs to cleanup a python object.
+        let inner = py.allow_threads(|| rec.memory());
         PyMemorySinkStorage { rec: rec.0, inner }
     })
 }
