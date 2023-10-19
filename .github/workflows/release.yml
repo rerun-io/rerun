@@ -244,13 +244,15 @@ jobs:
       - name: Update version
         id: update-version
         run: |
-          if [ ${{ inputs.release-type }} = "final" ]; then
-            # After a final release, we bump the minor version and append `+dev`.
+          latest=$(python3 scripts/ci/crates.py get-version --from=cio)
+          latest_finalized=$(python3 scripts/ci/crates.py get-version --from=cio --finalize)
+          if [ $latest_published = $latest_finalized ]; then
+            # Latest published is a non-prerelease (e.g. 0.9.1), bump minor and add alpha+dev
+            python3 scripts/ci/crates.py version --bump minor
             python3 scripts/ci/crates.py version --bump prerelease --dev --pre-id=alpha
             echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
           else
-            # After an alpha release, we bump the prerelease version and append `+dev`.
-            python3 scripts/ci/crates.py version --bump minor
+            # Latest published is a pre-release (e.g. 0.10.0-alpha.5), bump prerelease
             python3 scripts/ci/crates.py version --bump prerelease --dev --pre-id=alpha
             echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
           fi

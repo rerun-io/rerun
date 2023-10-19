@@ -459,8 +459,33 @@ def publish(dry_run: bool, token: str) -> None:
         publish_unpublished_crates_in_parallel(crates, version, token)
 
 
-def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
-    if from_git:
+def get_latest_published_version(crate_name: str) -> str | None:
+    resp = requests.get(
+        f"https://crates.io/api/v1/crates/{crate_name}",
+        headers={"user-agent": "rerun-publishing-script (rerun.io)"},
+    )
+    body = resp.json()
+
+    if not resp.ok:
+        raise Exception(f"failed to get crate {crate_name}: {body['errors'][0]['detail']}")
+
+    if "versions" not in body:
+        return None
+
+    # response orders versions by semver
+    return body["versions"][0]["num"]
+
+
+class Target(Enum):
+    Git = "git"
+    CratesIo = "cio"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+def get_version(finalize: bool, target: Target | None, pre_id: bool) -> None:
+    if target is Target.Git:
         branch_name = git.Repo().active_branch.name.lstrip("release-")
         try:
             current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
@@ -468,6 +493,11 @@ def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
             print(f"the current branch `{branch_name}` does not specify a valid version.")
             print("this script expects the format `release-x.y.z-meta.N`")
             exit(1)
+    elif target is Target.CratesIo:
+        latest_published_version = get_latest_published_version("rerun")
+        if not latest_published_version:
+            raise Exception("Failed to get latest published version for `rerun` crate")
+        current_version = VersionInfo.parse(latest_published_version)
     else:
         root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
         current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
@@ -491,8 +521,11 @@ def main() -> None:
 
     version_parser = cmds_parser.add_parser("version", help="Bump the crate versions")
     target_version_parser = version_parser.add_mutually_exclusive_group()
-    target_version_parser.add_argument("--bump", type=Bump, choices=list(Bump), help="Bump version according to semver")
-    target_version_parser.add_argument("--exact", type=str, help="Update version to an exact value")
+    target_version_update_group = target_version_parser.add_mutually_exclusive_group()
+    target_version_update_group.add_argument(
+        "--bump", type=Bump, choices=list(Bump), help="Bump version according to semver"
+    )
+    target_version_update_group.add_argument("--exact", type=str, help="Update version to an exact value")
     dev_parser = version_parser.add_mutually_exclusive_group()
     dev_parser.add_argument("--dev", default=None, action="store_true", help="Set build metadata to `+dev`")
     dev_parser.add_argument(
@@ -516,12 +549,15 @@ def main() -> None:
     get_version_parser.add_argument(
         "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
     )
-    get_version_parser.add_argument("--from-git", action="store_true", help="Get version from branch name")
     get_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
+    get_version_parser.add_argument(
+        "--from", type=Target, choices=list(Target), help="Get version from git or crates.io", dest="target"
+    )
+
     args = parser.parse_args()
 
     if args.cmd == "get-version":
-        get_version(args.finalize, args.from_git, args.pre_id)
+        get_version(args.finalize, args.target, args.pre_id)
     if args.cmd == "version":
         if args.dev and args.pre_id != "alpha":
             parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")
