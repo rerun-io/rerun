@@ -8,7 +8,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from glob import glob
 
-NEW_LINK_HASH = "#new"
+NEW_LINK_HASH = "?speculative-link"
 
 
 def check_file(file_path: str) -> list[str] | None:
