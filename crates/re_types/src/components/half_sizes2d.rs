@@ -50,19 +50,7 @@ impl std::ops::Deref for HalfSizes2D {
     }
 }
 
-impl<'a> From<HalfSizes2D> for ::std::borrow::Cow<'a, HalfSizes2D> {
-    #[inline]
-    fn from(value: HalfSizes2D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a HalfSizes2D> for ::std::borrow::Cow<'a, HalfSizes2D> {
-    #[inline]
-    fn from(value: &'a HalfSizes2D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(HalfSizes2D);
 
 impl ::re_types_core::Loggable for HalfSizes2D {
     type Name = ::re_types_core::ComponentName;

@@ -265,8 +265,8 @@ impl DataStore {
     /// dataframes.
     ///
     /// See [`DataStoreConfig::store_insert_ids`].
-    pub fn insert_id_key() -> ComponentName {
-        "rerun.insert_id".into()
+    pub fn insert_id_component_name() -> ComponentName {
+        "rerun.controls.InsertId".into()
     }
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the

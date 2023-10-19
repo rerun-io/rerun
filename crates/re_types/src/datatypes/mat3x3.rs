@@ -51,19 +51,7 @@ impl From<Mat3x3> for [f32; 9usize] {
     }
 }
 
-impl<'a> From<Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {
-    #[inline]
-    fn from(value: Mat3x3) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Mat3x3> for ::std::borrow::Cow<'a, Mat3x3> {
-    #[inline]
-    fn from(value: &'a Mat3x3) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Mat3x3);
 
 impl ::re_types_core::Loggable for Mat3x3 {
     type Name = ::re_types_core::DatatypeName;

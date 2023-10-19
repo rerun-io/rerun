@@ -40,19 +40,7 @@ impl From<Vec3D> for [f32; 3usize] {
     }
 }
 
-impl<'a> From<Vec3D> for ::std::borrow::Cow<'a, Vec3D> {
-    #[inline]
-    fn from(value: Vec3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Vec3D> for ::std::borrow::Cow<'a, Vec3D> {
-    #[inline]
-    fn from(value: &'a Vec3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Vec3D);
 
 impl ::re_types_core::Loggable for Vec3D {
     type Name = ::re_types_core::DatatypeName;

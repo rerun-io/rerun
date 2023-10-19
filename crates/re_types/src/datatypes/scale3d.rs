@@ -31,19 +31,7 @@ pub enum Scale3D {
     Uniform(f32),
 }
 
-impl<'a> From<Scale3D> for ::std::borrow::Cow<'a, Scale3D> {
-    #[inline]
-    fn from(value: Scale3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Scale3D> for ::std::borrow::Cow<'a, Scale3D> {
-    #[inline]
-    fn from(value: &'a Scale3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Scale3D);
 
 impl ::re_types_core::Loggable for Scale3D {
     type Name = ::re_types_core::DatatypeName;

@@ -43,19 +43,7 @@ impl From<SpaceViewComponent> for crate::SpaceViewBlueprint {
     }
 }
 
-impl<'a> From<SpaceViewComponent> for ::std::borrow::Cow<'a, SpaceViewComponent> {
-    #[inline]
-    fn from(value: SpaceViewComponent) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a SpaceViewComponent> for ::std::borrow::Cow<'a, SpaceViewComponent> {
-    #[inline]
-    fn from(value: &'a SpaceViewComponent) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(SpaceViewComponent);
 
 impl ::re_types_core::Loggable for SpaceViewComponent {
     type Name = ::re_types_core::ComponentName;

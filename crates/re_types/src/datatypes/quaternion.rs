@@ -42,19 +42,7 @@ impl From<Quaternion> for [f32; 4usize] {
     }
 }
 
-impl<'a> From<Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
-    #[inline]
-    fn from(value: Quaternion) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Quaternion> for ::std::borrow::Cow<'a, Quaternion> {
-    #[inline]
-    fn from(value: &'a Quaternion) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Quaternion);
 
 impl ::re_types_core::Loggable for Quaternion {
     type Name = ::re_types_core::DatatypeName;

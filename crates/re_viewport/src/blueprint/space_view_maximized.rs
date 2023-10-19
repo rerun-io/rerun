@@ -42,19 +42,7 @@ impl From<SpaceViewMaximized> for Option<re_viewer_context::SpaceViewId> {
     }
 }
 
-impl<'a> From<SpaceViewMaximized> for ::std::borrow::Cow<'a, SpaceViewMaximized> {
-    #[inline]
-    fn from(value: SpaceViewMaximized) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a SpaceViewMaximized> for ::std::borrow::Cow<'a, SpaceViewMaximized> {
-    #[inline]
-    fn from(value: &'a SpaceViewMaximized) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(SpaceViewMaximized);
 
 impl ::re_types_core::Loggable for SpaceViewMaximized {
     type Name = ::re_types_core::ComponentName;

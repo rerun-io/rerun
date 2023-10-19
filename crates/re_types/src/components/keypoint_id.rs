@@ -55,19 +55,7 @@ impl std::ops::Deref for KeypointId {
     }
 }
 
-impl<'a> From<KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
-    #[inline]
-    fn from(value: KeypointId) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a KeypointId> for ::std::borrow::Cow<'a, KeypointId> {
-    #[inline]
-    fn from(value: &'a KeypointId) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(KeypointId);
 
 impl ::re_types_core::Loggable for KeypointId {
     type Name = ::re_types_core::ComponentName;

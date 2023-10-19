@@ -15,47 +15,35 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
-use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
-use ::re_types_core::{DeserializationError, DeserializationResult};
+use crate::external::arrow2;
+use crate::ComponentName;
+use crate::SerializationResult;
+use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A string of text, encoded as UTF-8.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-pub struct Utf8(pub ::re_types_core::ArrowString);
+pub struct Utf8(pub crate::ArrowString);
 
-impl From<::re_types_core::ArrowString> for Utf8 {
+impl From<crate::ArrowString> for Utf8 {
     #[inline]
-    fn from(value: ::re_types_core::ArrowString) -> Self {
+    fn from(value: crate::ArrowString) -> Self {
         Self(value)
     }
 }
 
-impl From<Utf8> for ::re_types_core::ArrowString {
+impl From<Utf8> for crate::ArrowString {
     #[inline]
     fn from(value: Utf8) -> Self {
         value.0
     }
 }
 
-impl<'a> From<Utf8> for ::std::borrow::Cow<'a, Utf8> {
-    #[inline]
-    fn from(value: Utf8) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
+crate::macros::impl_into_cow!(Utf8);
 
-impl<'a> From<&'a Utf8> for ::std::borrow::Cow<'a, Utf8> {
-    #[inline]
-    fn from(value: &'a Utf8) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
-
-impl ::re_types_core::Loggable for Utf8 {
-    type Name = ::re_types_core::DatatypeName;
+impl crate::Loggable for Utf8 {
+    type Name = crate::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -77,7 +65,7 @@ impl ::re_types_core::Loggable for Utf8 {
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -128,7 +116,7 @@ impl ::re_types_core::Loggable for Utf8 {
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
@@ -165,7 +153,7 @@ impl ::re_types_core::Loggable for Utf8 {
                 .transpose()
             })
             .map(|res_or_opt| {
-                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| ::re_types_core::ArrowString(v)))
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.Utf8#value")?

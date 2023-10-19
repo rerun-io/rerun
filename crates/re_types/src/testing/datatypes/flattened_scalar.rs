@@ -40,19 +40,7 @@ impl From<FlattenedScalar> for f32 {
     }
 }
 
-impl<'a> From<FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
-    #[inline]
-    fn from(value: FlattenedScalar) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a FlattenedScalar> for ::std::borrow::Cow<'a, FlattenedScalar> {
-    #[inline]
-    fn from(value: &'a FlattenedScalar) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(FlattenedScalar);
 
 impl ::re_types_core::Loggable for FlattenedScalar {
     type Name = ::re_types_core::DatatypeName;

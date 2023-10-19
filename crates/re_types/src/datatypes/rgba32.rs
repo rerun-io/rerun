@@ -45,19 +45,7 @@ impl From<Rgba32> for u32 {
     }
 }
 
-impl<'a> From<Rgba32> for ::std::borrow::Cow<'a, Rgba32> {
-    #[inline]
-    fn from(value: Rgba32) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Rgba32> for ::std::borrow::Cow<'a, Rgba32> {
-    #[inline]
-    fn from(value: &'a Rgba32) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Rgba32);
 
 impl ::re_types_core::Loggable for Rgba32 {
     type Name = ::re_types_core::DatatypeName;

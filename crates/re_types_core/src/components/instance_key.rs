@@ -40,19 +40,7 @@ impl From<InstanceKey> for u64 {
     }
 }
 
-impl<'a> From<InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
-    #[inline]
-    fn from(value: InstanceKey) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a InstanceKey> for ::std::borrow::Cow<'a, InstanceKey> {
-    #[inline]
-    fn from(value: &'a InstanceKey) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+crate::macros::impl_into_cow!(InstanceKey);
 
 impl crate::Loggable for InstanceKey {
     type Name = crate::ComponentName;

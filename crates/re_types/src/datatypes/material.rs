@@ -52,19 +52,7 @@ impl std::ops::Deref for Material {
     }
 }
 
-impl<'a> From<Material> for ::std::borrow::Cow<'a, Material> {
-    #[inline]
-    fn from(value: Material) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Material> for ::std::borrow::Cow<'a, Material> {
-    #[inline]
-    fn from(value: &'a Material) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Material);
 
 impl ::re_types_core::Loggable for Material {
     type Name = ::re_types_core::DatatypeName;

@@ -39,19 +39,7 @@ impl From<StringComponent> for ::re_types_core::ArrowString {
     }
 }
 
-impl<'a> From<StringComponent> for ::std::borrow::Cow<'a, StringComponent> {
-    #[inline]
-    fn from(value: StringComponent) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a StringComponent> for ::std::borrow::Cow<'a, StringComponent> {
-    #[inline]
-    fn from(value: &'a StringComponent) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(StringComponent);
 
 impl ::re_types_core::Loggable for StringComponent {
     type Name = ::re_types_core::DatatypeName;

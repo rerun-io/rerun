@@ -51,19 +51,7 @@ impl std::ops::Deref for MediaType {
     }
 }
 
-impl<'a> From<MediaType> for ::std::borrow::Cow<'a, MediaType> {
-    #[inline]
-    fn from(value: MediaType) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a MediaType> for ::std::borrow::Cow<'a, MediaType> {
-    #[inline]
-    fn from(value: &'a MediaType) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(MediaType);
 
 impl ::re_types_core::Loggable for MediaType {
     type Name = ::re_types_core::ComponentName;

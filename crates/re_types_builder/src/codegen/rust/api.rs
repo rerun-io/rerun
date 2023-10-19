@@ -699,26 +699,6 @@ fn quote_trait_impls_from_obj(
                 quote_arrow_serializer(arrow_registry, objects, obj, &format_ident!("data"));
             let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
 
-            let into_cow = quote! {
-                // NOTE: We need these so end-user code can effortlessly serialize both iterators
-                // of owned data and iterators of referenced data without ever having to stop and
-                // think about it.
-
-                impl<'a> From<#name> for ::std::borrow::Cow<'a, #name> {
-                    #[inline]
-                    fn from(value: #name) -> Self {
-                        std::borrow::Cow::Owned(value)
-                    }
-                }
-
-                impl<'a> From<&'a #name> for ::std::borrow::Cow<'a, #name> {
-                    #[inline]
-                    fn from(value: &'a #name) -> Self {
-                        std::borrow::Cow::Borrowed(value)
-                    }
-                }
-            };
-
             let quoted_from_arrow = if optimize_for_buffer_slice {
                 let quoted_deserializer =
                     quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
@@ -752,7 +732,7 @@ fn quote_trait_impls_from_obj(
             };
 
             quote! {
-                #into_cow
+                ::re_types_core::macros::impl_into_cow!(#name);
 
                 impl ::re_types_core::Loggable for #name {
                     type Name = ::re_types_core::#kind_name;

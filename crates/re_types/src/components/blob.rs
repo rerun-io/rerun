@@ -40,19 +40,7 @@ impl From<Blob> for ::re_types_core::ArrowBuffer<u8> {
     }
 }
 
-impl<'a> From<Blob> for ::std::borrow::Cow<'a, Blob> {
-    #[inline]
-    fn from(value: Blob) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Blob> for ::std::borrow::Cow<'a, Blob> {
-    #[inline]
-    fn from(value: &'a Blob) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Blob);
 
 impl ::re_types_core::Loggable for Blob {
     type Name = ::re_types_core::ComponentName;

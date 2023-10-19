@@ -9,6 +9,7 @@ namespace rerun.datatypes;
 struct Float32 (
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
+  "attr.rust.override_crate": "re_types_core",
   "attr.rust.tuple_struct"
 ) {
   value: float (order: 100);

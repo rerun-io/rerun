@@ -44,19 +44,7 @@ impl From<MeshProperties> for Option<::re_types_core::ArrowBuffer<u32>> {
     }
 }
 
-impl<'a> From<MeshProperties> for ::std::borrow::Cow<'a, MeshProperties> {
-    #[inline]
-    fn from(value: MeshProperties) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a MeshProperties> for ::std::borrow::Cow<'a, MeshProperties> {
-    #[inline]
-    fn from(value: &'a MeshProperties) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(MeshProperties);
 
 impl ::re_types_core::Loggable for MeshProperties {
     type Name = ::re_types_core::DatatypeName;

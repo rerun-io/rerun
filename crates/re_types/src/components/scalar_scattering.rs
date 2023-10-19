@@ -39,19 +39,7 @@ impl From<ScalarScattering> for bool {
     }
 }
 
-impl<'a> From<ScalarScattering> for ::std::borrow::Cow<'a, ScalarScattering> {
-    #[inline]
-    fn from(value: ScalarScattering) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a ScalarScattering> for ::std::borrow::Cow<'a, ScalarScattering> {
-    #[inline]
-    fn from(value: &'a ScalarScattering) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(ScalarScattering);
 
 impl ::re_types_core::Loggable for ScalarScattering {
     type Name = ::re_types_core::ComponentName;

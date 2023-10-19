@@ -38,19 +38,7 @@ impl From<AffixFuzzer12> for Vec<::re_types_core::ArrowString> {
     }
 }
 
-impl<'a> From<AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
-    #[inline]
-    fn from(value: AffixFuzzer12) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer12> for ::std::borrow::Cow<'a, AffixFuzzer12> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer12) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer12);
 
 impl ::re_types_core::Loggable for AffixFuzzer12 {
     type Name = ::re_types_core::ComponentName;

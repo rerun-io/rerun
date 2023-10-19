@@ -46,19 +46,7 @@ impl From<DrawOrder> for f32 {
     }
 }
 
-impl<'a> From<DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
-    #[inline]
-    fn from(value: DrawOrder) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a DrawOrder> for ::std::borrow::Cow<'a, DrawOrder> {
-    #[inline]
-    fn from(value: &'a DrawOrder) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(DrawOrder);
 
 impl ::re_types_core::Loggable for DrawOrder {
     type Name = ::re_types_core::ComponentName;

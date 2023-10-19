@@ -408,7 +408,7 @@ pub fn generate_cpp_code(
     // Make sure to filter out that directory, or else we will end up removing those handwritten
     // files.
     let root_src = output_path.as_ref().join("src/rerun");
-    files.retain(|filepath, _| !filepath.starts_with(&root_src));
+    files.retain(|filepath, _| filepath.parent() != Some(root_src.as_path()));
     crate::codegen::common::remove_orphaned_files(reporter, &files);
 
     fn format_code(code: &str) -> String {
@@ -736,7 +736,7 @@ pub(crate) fn to_snake_case(s: &str) -> String {
 
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {
-        *last = last.replace("UVec", "uvec");
+        *last = last.replace("UVec", "uvec").replace("UInt", "uint");
         *last = rerun_snake.convert(&last);
     }
     parts.join(".")
@@ -769,6 +769,15 @@ fn test_to_snake_case() {
     assert_eq!(
         to_snake_case("rerun.datatypes.uvec2d"),
         "rerun.datatypes.uvec2d"
+    );
+
+    assert_eq!(
+        to_snake_case("rerun.datatypes.UInt32"),
+        "rerun.datatypes.uint32"
+    );
+    assert_eq!(
+        to_snake_case("rerun.datatypes.uint32"),
+        "rerun.datatypes.uint32"
     );
 
     assert_eq!(
@@ -816,6 +825,7 @@ pub(crate) fn to_pascal_case(s: &str) -> String {
     if let Some(last) = parts.last_mut() {
         *last = last
             .replace("uvec", "UVec")
+            .replace("uint", "UInt")
             .replace("2d", "2D")
             .replace("3d", "3D")
             .replace("4d", "4D");
@@ -847,6 +857,15 @@ fn test_to_pascal_case() {
     assert_eq!(
         to_pascal_case("rerun.datatypes.UVec2D"),
         "rerun.datatypes.UVec2D"
+    );
+
+    assert_eq!(
+        to_pascal_case("rerun.datatypes.uint32"),
+        "rerun.datatypes.UInt32"
+    );
+    assert_eq!(
+        to_pascal_case("rerun.datatypes.UInt32"),
+        "rerun.datatypes.UInt32"
     );
 
     assert_eq!(

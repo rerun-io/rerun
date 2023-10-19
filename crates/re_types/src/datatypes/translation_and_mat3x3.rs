@@ -39,19 +39,7 @@ pub struct TranslationAndMat3x3 {
     pub from_parent: bool,
 }
 
-impl<'a> From<TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAndMat3x3> {
-    #[inline]
-    fn from(value: TranslationAndMat3x3) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAndMat3x3> {
-    #[inline]
-    fn from(value: &'a TranslationAndMat3x3) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(TranslationAndMat3x3);
 
 impl ::re_types_core::Loggable for TranslationAndMat3x3 {
     type Name = ::re_types_core::DatatypeName;

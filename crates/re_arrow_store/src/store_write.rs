@@ -163,7 +163,7 @@ impl DataStore {
             // one… unless we've already generated one of this exact length in the past,
             // in which case we can simply re-use that cell.
 
-            Some(self.generate_cluster_cell(num_instances))
+            Some(self.generate_cluster_cell(num_instances.into()))
         };
 
         let insert_id = self.config.store_insert_ids.then_some(self.insert_id);

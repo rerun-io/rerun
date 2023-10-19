@@ -37,19 +37,7 @@ pub struct AnnotationInfo {
     pub color: Option<crate::datatypes::Rgba32>,
 }
 
-impl<'a> From<AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
-    #[inline]
-    fn from(value: AnnotationInfo) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
-    #[inline]
-    fn from(value: &'a AnnotationInfo) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AnnotationInfo);
 
 impl ::re_types_core::Loggable for AnnotationInfo {
     type Name = ::re_types_core::DatatypeName;

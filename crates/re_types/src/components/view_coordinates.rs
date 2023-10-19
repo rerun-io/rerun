@@ -58,19 +58,7 @@ impl From<ViewCoordinates> for [u8; 3usize] {
     }
 }
 
-impl<'a> From<ViewCoordinates> for ::std::borrow::Cow<'a, ViewCoordinates> {
-    #[inline]
-    fn from(value: ViewCoordinates) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a ViewCoordinates> for ::std::borrow::Cow<'a, ViewCoordinates> {
-    #[inline]
-    fn from(value: &'a ViewCoordinates) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(ViewCoordinates);
 
 impl ::re_types_core::Loggable for ViewCoordinates {
     type Name = ::re_types_core::ComponentName;

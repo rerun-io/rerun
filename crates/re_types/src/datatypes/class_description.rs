@@ -47,19 +47,7 @@ pub struct ClassDescription {
     pub keypoint_connections: Vec<crate::datatypes::KeypointPair>,
 }
 
-impl<'a> From<ClassDescription> for ::std::borrow::Cow<'a, ClassDescription> {
-    #[inline]
-    fn from(value: ClassDescription) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a ClassDescription> for ::std::borrow::Cow<'a, ClassDescription> {
-    #[inline]
-    fn from(value: &'a ClassDescription) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(ClassDescription);
 
 impl ::re_types_core::Loggable for ClassDescription {
     type Name = ::re_types_core::DatatypeName;

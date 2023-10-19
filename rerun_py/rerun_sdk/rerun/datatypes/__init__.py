@@ -73,6 +73,7 @@ from .translation_rotation_scale3d import (
     TranslationRotationScale3DLike,
     TranslationRotationScale3DType,
 )
+from .uint32 import UInt32, UInt32ArrayLike, UInt32Batch, UInt32Like, UInt32Type
 from .utf8 import Utf8, Utf8ArrayLike, Utf8Batch, Utf8Like, Utf8Type
 from .uvec2d import UVec2D, UVec2DArrayLike, UVec2DBatch, UVec2DLike, UVec2DType
 from .uvec3d import UVec3D, UVec3DArrayLike, UVec3DBatch, UVec3DLike, UVec3DType
@@ -197,6 +198,11 @@ __all__ = [
     "TranslationRotationScale3DBatch",
     "TranslationRotationScale3DLike",
     "TranslationRotationScale3DType",
+    "UInt32",
+    "UInt32ArrayLike",
+    "UInt32Batch",
+    "UInt32Like",
+    "UInt32Type",
     "UVec2D",
     "UVec2DArrayLike",
     "UVec2DBatch",

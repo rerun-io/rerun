@@ -31,19 +31,7 @@ pub enum Transform3D {
     TranslationRotationScale(crate::datatypes::TranslationRotationScale3D),
 }
 
-impl<'a> From<Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
-    #[inline]
-    fn from(value: Transform3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Transform3D> for ::std::borrow::Cow<'a, Transform3D> {
-    #[inline]
-    fn from(value: &'a Transform3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Transform3D);
 
 impl ::re_types_core::Loggable for Transform3D {
     type Name = ::re_types_core::DatatypeName;

@@ -38,19 +38,7 @@ impl From<AffixFuzzer8> for Option<f32> {
     }
 }
 
-impl<'a> From<AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
-    #[inline]
-    fn from(value: AffixFuzzer8) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer8> for ::std::borrow::Cow<'a, AffixFuzzer8> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer8) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer8);
 
 impl ::re_types_core::Loggable for AffixFuzzer8 {
     type Name = ::re_types_core::ComponentName;

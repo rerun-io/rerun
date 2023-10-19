@@ -43,19 +43,7 @@ impl From<PanelView> for bool {
     }
 }
 
-impl<'a> From<PanelView> for ::std::borrow::Cow<'a, PanelView> {
-    #[inline]
-    fn from(value: PanelView) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a PanelView> for ::std::borrow::Cow<'a, PanelView> {
-    #[inline]
-    fn from(value: &'a PanelView) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(PanelView);
 
 impl ::re_types_core::Loggable for PanelView {
     type Name = ::re_types_core::ComponentName;

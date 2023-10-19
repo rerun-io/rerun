@@ -33,19 +33,7 @@ pub struct ClassDescriptionMapElem {
     pub class_description: crate::datatypes::ClassDescription,
 }
 
-impl<'a> From<ClassDescriptionMapElem> for ::std::borrow::Cow<'a, ClassDescriptionMapElem> {
-    #[inline]
-    fn from(value: ClassDescriptionMapElem) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a ClassDescriptionMapElem> for ::std::borrow::Cow<'a, ClassDescriptionMapElem> {
-    #[inline]
-    fn from(value: &'a ClassDescriptionMapElem) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(ClassDescriptionMapElem);
 
 impl ::re_types_core::Loggable for ClassDescriptionMapElem {
     type Name = ::re_types_core::DatatypeName;
