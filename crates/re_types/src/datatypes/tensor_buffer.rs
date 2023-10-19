@@ -40,6 +40,7 @@ pub enum TensorBuffer {
     Jpeg(::re_types_core::ArrowBuffer<u8>),
     Nv12(::re_types_core::ArrowBuffer<u8>),
 }
+
 ::re_types_core::macros::impl_into_cow!(TensorBuffer);
 
 impl ::re_types_core::Loggable for TensorBuffer {

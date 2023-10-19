@@ -41,6 +41,7 @@ impl From<Scalar> for f64 {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Scalar);
 
 impl ::re_types_core::Loggable for Scalar {

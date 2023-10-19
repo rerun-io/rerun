@@ -38,6 +38,7 @@ impl From<Float32> for f32 {
         value.0
     }
 }
+
 crate::macros::impl_into_cow!(Float32);
 
 impl crate::Loggable for Float32 {

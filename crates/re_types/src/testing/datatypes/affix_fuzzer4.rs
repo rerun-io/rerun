@@ -27,6 +27,7 @@ pub enum AffixFuzzer4 {
     ManyRequired(Vec<crate::testing::datatypes::AffixFuzzer3>),
     ManyOptional(Option<Vec<crate::testing::datatypes::AffixFuzzer3>>),
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer4);
 
 impl ::re_types_core::Loggable for AffixFuzzer4 {

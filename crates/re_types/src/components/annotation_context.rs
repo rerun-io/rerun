@@ -41,6 +41,7 @@ impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = 
         Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(AnnotationContext);
 
 impl ::re_types_core::Loggable for AnnotationContext {

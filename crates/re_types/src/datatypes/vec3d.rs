@@ -39,6 +39,7 @@ impl From<Vec3D> for [f32; 3usize] {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Vec3D);
 
 impl ::re_types_core::Loggable for Vec3D {

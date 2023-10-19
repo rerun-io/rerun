@@ -31,6 +31,7 @@ impl<I: Into<crate::testing::datatypes::AffixFuzzer4>, T: IntoIterator<Item = I>
         Self(v.map(|v| v.into_iter().map(|v| v.into()).collect()))
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer18);
 
 impl ::re_types_core::Loggable for AffixFuzzer18 {

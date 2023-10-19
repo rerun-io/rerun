@@ -51,6 +51,7 @@ impl std::ops::Deref for OutOfTreeTransform3D {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(OutOfTreeTransform3D);
 
 impl ::re_types_core::Loggable for OutOfTreeTransform3D {

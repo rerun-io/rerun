@@ -56,6 +56,7 @@ impl From<KeypointId> for u16 {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(KeypointId);
 
 impl ::re_types_core::Loggable for KeypointId {

@@ -47,6 +47,7 @@ impl std::ops::Deref for Position3D {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Position3D);
 
 impl ::re_types_core::Loggable for Position3D {

@@ -38,6 +38,7 @@ impl From<UInt32> for u32 {
         value.0
     }
 }
+
 crate::macros::impl_into_cow!(UInt32);
 
 impl crate::Loggable for UInt32 {

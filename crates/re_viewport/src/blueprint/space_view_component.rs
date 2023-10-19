@@ -42,6 +42,7 @@ impl From<SpaceViewComponent> for crate::SpaceViewBlueprint {
         value.space_view
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(SpaceViewComponent);
 
 impl ::re_types_core::Loggable for SpaceViewComponent {

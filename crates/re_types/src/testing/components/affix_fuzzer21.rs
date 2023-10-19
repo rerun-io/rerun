@@ -45,6 +45,7 @@ impl std::ops::Deref for AffixFuzzer21 {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer21);
 
 impl ::re_types_core::Loggable for AffixFuzzer21 {

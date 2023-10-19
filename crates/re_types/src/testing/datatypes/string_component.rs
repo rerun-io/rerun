@@ -38,6 +38,7 @@ impl From<StringComponent> for ::re_types_core::ArrowString {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(StringComponent);
 
 impl ::re_types_core::Loggable for StringComponent {

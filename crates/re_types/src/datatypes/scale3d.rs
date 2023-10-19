@@ -30,6 +30,7 @@ pub enum Scale3D {
     /// Uniform scaling factor along all axis.
     Uniform(f32),
 }
+
 ::re_types_core::macros::impl_into_cow!(Scale3D);
 
 impl ::re_types_core::Loggable for Scale3D {

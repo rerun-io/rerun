@@ -39,6 +39,7 @@ impl From<Utf8> for crate::ArrowString {
         value.0
     }
 }
+
 crate::macros::impl_into_cow!(Utf8);
 
 impl crate::Loggable for Utf8 {

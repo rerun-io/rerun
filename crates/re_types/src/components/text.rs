@@ -47,6 +47,7 @@ impl std::ops::Deref for Text {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Text);
 
 impl ::re_types_core::Loggable for Text {

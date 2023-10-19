@@ -56,6 +56,7 @@ impl std::ops::Deref for PinholeProjection {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(PinholeProjection);
 
 impl ::re_types_core::Loggable for PinholeProjection {

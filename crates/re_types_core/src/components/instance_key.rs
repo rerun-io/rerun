@@ -39,6 +39,7 @@ impl From<InstanceKey> for u64 {
         value.0
     }
 }
+
 crate::macros::impl_into_cow!(InstanceKey);
 
 impl crate::Loggable for InstanceKey {

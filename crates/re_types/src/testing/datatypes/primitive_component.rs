@@ -38,6 +38,7 @@ impl From<PrimitiveComponent> for u32 {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(PrimitiveComponent);
 
 impl ::re_types_core::Loggable for PrimitiveComponent {

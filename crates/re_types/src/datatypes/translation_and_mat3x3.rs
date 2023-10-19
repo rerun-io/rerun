@@ -38,6 +38,7 @@ pub struct TranslationAndMat3x3 {
     /// i.e. the translation is the position in the parent space.
     pub from_parent: bool,
 }
+
 ::re_types_core::macros::impl_into_cow!(TranslationAndMat3x3);
 
 impl ::re_types_core::Loggable for TranslationAndMat3x3 {

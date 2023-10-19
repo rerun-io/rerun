@@ -34,6 +34,7 @@ pub struct RotationAxisAngle {
     /// How much to rotate around the axis.
     pub angle: crate::datatypes::Angle,
 }
+
 ::re_types_core::macros::impl_into_cow!(RotationAxisAngle);
 
 impl ::re_types_core::Loggable for RotationAxisAngle {

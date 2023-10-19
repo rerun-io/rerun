@@ -43,6 +43,7 @@ impl From<MeshProperties> for Option<::re_types_core::ArrowBuffer<u32>> {
         value.indices
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(MeshProperties);
 
 impl ::re_types_core::Loggable for MeshProperties {

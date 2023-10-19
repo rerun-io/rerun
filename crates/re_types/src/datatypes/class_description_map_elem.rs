@@ -32,6 +32,7 @@ pub struct ClassDescriptionMapElem {
     /// The value: class name, color, etc.
     pub class_description: crate::datatypes::ClassDescription,
 }
+
 ::re_types_core::macros::impl_into_cow!(ClassDescriptionMapElem);
 
 impl ::re_types_core::Loggable for ClassDescriptionMapElem {

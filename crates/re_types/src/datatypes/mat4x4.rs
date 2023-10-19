@@ -51,6 +51,7 @@ impl From<Mat4x4> for [f32; 16usize] {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Mat4x4);
 
 impl ::re_types_core::Loggable for Mat4x4 {

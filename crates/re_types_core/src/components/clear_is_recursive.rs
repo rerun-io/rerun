@@ -41,6 +41,7 @@ impl From<ClearIsRecursive> for bool {
         value.0
     }
 }
+
 crate::macros::impl_into_cow!(ClearIsRecursive);
 
 impl crate::Loggable for ClearIsRecursive {

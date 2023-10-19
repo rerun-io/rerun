@@ -50,6 +50,7 @@ impl std::ops::Deref for MediaType {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(MediaType);
 
 impl ::re_types_core::Loggable for MediaType {

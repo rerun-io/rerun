@@ -41,6 +41,7 @@ impl From<SpaceViewMaximized> for Option<re_viewer_context::SpaceViewId> {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(SpaceViewMaximized);
 
 impl ::re_types_core::Loggable for SpaceViewMaximized {

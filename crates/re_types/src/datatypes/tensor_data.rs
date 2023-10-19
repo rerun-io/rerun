@@ -34,6 +34,7 @@ pub struct TensorData {
     pub shape: Vec<crate::datatypes::TensorDimension>,
     pub buffer: crate::datatypes::TensorBuffer,
 }
+
 ::re_types_core::macros::impl_into_cow!(TensorData);
 
 impl ::re_types_core::Loggable for TensorData {

@@ -30,6 +30,7 @@ pub enum Transform3D {
     TranslationAndMat3x3(crate::datatypes::TranslationAndMat3x3),
     TranslationRotationScale(crate::datatypes::TranslationRotationScale3D),
 }
+
 ::re_types_core::macros::impl_into_cow!(Transform3D);
 
 impl ::re_types_core::Loggable for Transform3D {

@@ -39,6 +39,7 @@ impl From<UVec3D> for [u32; 3usize] {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(UVec3D);
 
 impl ::re_types_core::Loggable for UVec3D {

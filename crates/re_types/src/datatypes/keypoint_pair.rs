@@ -30,6 +30,7 @@ pub struct KeypointPair {
     /// The second point of the pair.
     pub keypoint1: crate::datatypes::KeypointId,
 }
+
 ::re_types_core::macros::impl_into_cow!(KeypointPair);
 
 impl ::re_types_core::Loggable for KeypointPair {

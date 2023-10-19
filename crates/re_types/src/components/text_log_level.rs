@@ -55,6 +55,7 @@ impl std::ops::Deref for TextLogLevel {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(TextLogLevel);
 
 impl ::re_types_core::Loggable for TextLogLevel {

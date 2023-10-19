@@ -33,6 +33,7 @@ pub struct AffixFuzzer1 {
     pub almost_flattened_scalar: crate::testing::datatypes::FlattenedScalar,
     pub from_parent: Option<bool>,
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer1);
 
 impl ::re_types_core::Loggable for AffixFuzzer1 {

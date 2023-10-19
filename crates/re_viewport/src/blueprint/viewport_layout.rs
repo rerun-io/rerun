@@ -35,6 +35,7 @@ pub struct ViewportLayout {
     /// auto_layout
     pub auto_layout: bool,
 }
+
 ::re_types_core::macros::impl_into_cow!(ViewportLayout);
 
 impl ::re_types_core::Loggable for ViewportLayout {

@@ -26,6 +26,7 @@ pub struct AffixFuzzer21 {
     pub single_half: arrow2::types::f16,
     pub many_halves: ::re_types_core::ArrowBuffer<arrow2::types::f16>,
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer21);
 
 impl ::re_types_core::Loggable for AffixFuzzer21 {

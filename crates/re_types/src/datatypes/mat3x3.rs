@@ -50,6 +50,7 @@ impl From<Mat3x3> for [f32; 9usize] {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Mat3x3);
 
 impl ::re_types_core::Loggable for Mat3x3 {

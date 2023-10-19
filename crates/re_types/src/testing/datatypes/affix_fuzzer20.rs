@@ -26,6 +26,7 @@ pub struct AffixFuzzer20 {
     pub p: crate::testing::datatypes::PrimitiveComponent,
     pub s: crate::testing::datatypes::StringComponent,
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer20);
 
 impl ::re_types_core::Loggable for AffixFuzzer20 {

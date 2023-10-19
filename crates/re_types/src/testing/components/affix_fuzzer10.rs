@@ -37,6 +37,7 @@ impl From<AffixFuzzer10> for Option<::re_types_core::ArrowString> {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer10);
 
 impl ::re_types_core::Loggable for AffixFuzzer10 {

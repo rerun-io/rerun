@@ -47,6 +47,7 @@ impl std::ops::Deref for Position2D {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Position2D);
 
 impl ::re_types_core::Loggable for Position2D {

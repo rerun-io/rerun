@@ -39,6 +39,7 @@ impl From<Vec2D> for [f32; 2usize] {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Vec2D);
 
 impl ::re_types_core::Loggable for Vec2D {

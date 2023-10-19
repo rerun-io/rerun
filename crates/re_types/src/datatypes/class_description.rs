@@ -46,6 +46,7 @@ pub struct ClassDescription {
     /// The connections between keypoints.
     pub keypoint_connections: Vec<crate::datatypes::KeypointPair>,
 }
+
 ::re_types_core::macros::impl_into_cow!(ClassDescription);
 
 impl ::re_types_core::Loggable for ClassDescription {

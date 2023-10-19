@@ -30,6 +30,7 @@ pub enum Rotation3D {
     /// Rotation defined with an axis and an angle.
     AxisAngle(crate::datatypes::RotationAxisAngle),
 }
+
 ::re_types_core::macros::impl_into_cow!(Rotation3D);
 
 impl ::re_types_core::Loggable for Rotation3D {

@@ -42,6 +42,7 @@ impl From<PanelView> for bool {
         value.is_expanded
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(PanelView);
 
 impl ::re_types_core::Loggable for PanelView {

@@ -47,6 +47,7 @@ impl std::ops::Deref for TensorData {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(TensorData);
 
 impl ::re_types_core::Loggable for TensorData {

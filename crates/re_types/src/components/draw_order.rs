@@ -45,6 +45,7 @@ impl From<DrawOrder> for f32 {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(DrawOrder);
 
 impl ::re_types_core::Loggable for DrawOrder {

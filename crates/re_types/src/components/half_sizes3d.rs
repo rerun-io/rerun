@@ -49,6 +49,7 @@ impl std::ops::Deref for HalfSizes3D {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(HalfSizes3D);
 
 impl ::re_types_core::Loggable for HalfSizes3D {

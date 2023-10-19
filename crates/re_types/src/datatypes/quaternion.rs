@@ -41,6 +41,7 @@ impl From<Quaternion> for [f32; 4usize] {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Quaternion);
 
 impl ::re_types_core::Loggable for Quaternion {

@@ -28,6 +28,7 @@ pub enum AffixFuzzer3 {
     Craziness(Vec<crate::testing::datatypes::AffixFuzzer1>),
     FixedSizeShenanigans([f32; 3usize]),
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer3);
 
 impl ::re_types_core::Loggable for AffixFuzzer3 {

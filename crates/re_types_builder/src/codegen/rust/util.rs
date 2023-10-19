@@ -110,7 +110,8 @@ pub fn string_from_quoted(acc: &TokenStream) -> String {
                 || trimmed.starts_with("impl ")
                 || trimmed.starts_with("impl<")
                 || trimmed.starts_with("pub fn ")
-                || trimmed.starts_with("static "))
+                || trimmed.starts_with("static ")
+                || trimmed.starts_with("::re_types_core::macros"))
         {
             output.push('\n');
         }

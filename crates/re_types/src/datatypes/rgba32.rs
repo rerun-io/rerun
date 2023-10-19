@@ -44,6 +44,7 @@ impl From<Rgba32> for u32 {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Rgba32);
 
 impl ::re_types_core::Loggable for Rgba32 {

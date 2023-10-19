@@ -41,6 +41,7 @@ impl<I: Into<crate::datatypes::Vec3D>, T: IntoIterator<Item = I>> From<T> for Li
         Self(v.into_iter().map(|v| v.into()).collect())
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(LineStrip3D);
 
 impl ::re_types_core::Loggable for LineStrip3D {

@@ -39,6 +39,7 @@ impl From<FlattenedScalar> for f32 {
         value.value
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(FlattenedScalar);
 
 impl ::re_types_core::Loggable for FlattenedScalar {

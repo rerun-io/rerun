@@ -46,6 +46,7 @@ impl std::ops::Deref for MeshProperties {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(MeshProperties);
 
 impl ::re_types_core::Loggable for MeshProperties {

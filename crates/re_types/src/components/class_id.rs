@@ -52,6 +52,7 @@ impl std::ops::Deref for ClassId {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(ClassId);
 
 impl ::re_types_core::Loggable for ClassId {

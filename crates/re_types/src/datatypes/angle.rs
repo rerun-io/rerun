@@ -27,6 +27,7 @@ pub enum Angle {
     Radians(f32),
     Degrees(f32),
 }
+
 ::re_types_core::macros::impl_into_cow!(Angle);
 
 impl ::re_types_core::Loggable for Angle {

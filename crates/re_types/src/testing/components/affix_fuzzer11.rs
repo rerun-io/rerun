@@ -37,6 +37,7 @@ impl From<AffixFuzzer11> for Option<::re_types_core::ArrowBuffer<f32>> {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer11);
 
 impl ::re_types_core::Loggable for AffixFuzzer11 {

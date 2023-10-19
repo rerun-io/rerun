@@ -48,6 +48,7 @@ impl std::ops::Deref for Resolution {
         &self.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(Resolution);
 
 impl ::re_types_core::Loggable for Resolution {

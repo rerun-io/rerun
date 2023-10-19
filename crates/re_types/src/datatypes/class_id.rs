@@ -54,6 +54,7 @@ impl From<ClassId> for u16 {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(ClassId);
 
 impl ::re_types_core::Loggable for ClassId {

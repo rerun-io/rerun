@@ -30,6 +30,7 @@ pub struct TensorDimension {
     /// The name of this dimension, e.g. "width", "height", "channel", "batch', ….
     pub name: Option<::re_types_core::ArrowString>,
 }
+
 ::re_types_core::macros::impl_into_cow!(TensorDimension);
 
 impl ::re_types_core::Loggable for TensorDimension {

@@ -45,6 +45,7 @@ impl From<DisconnectedSpace> for bool {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(DisconnectedSpace);
 
 impl ::re_types_core::Loggable for DisconnectedSpace {

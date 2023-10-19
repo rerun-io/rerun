@@ -38,6 +38,7 @@ impl From<ScalarScattering> for bool {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(ScalarScattering);
 
 impl ::re_types_core::Loggable for ScalarScattering {

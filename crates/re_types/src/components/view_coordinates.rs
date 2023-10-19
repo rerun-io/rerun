@@ -57,6 +57,7 @@ impl From<ViewCoordinates> for [u8; 3usize] {
         value.0
     }
 }
+
 ::re_types_core::macros::impl_into_cow!(ViewCoordinates);
 
 impl ::re_types_core::Loggable for ViewCoordinates {

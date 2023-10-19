@@ -36,6 +36,7 @@ pub struct AnnotationInfo {
     /// The color that will be applied to the annotated entity.
     pub color: Option<crate::datatypes::Rgba32>,
 }
+
 ::re_types_core::macros::impl_into_cow!(AnnotationInfo);
 
 impl ::re_types_core::Loggable for AnnotationInfo {
