@@ -96,6 +96,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
             store
                 .range(query, ent_path, components)
                 .map(move |(time, row_id, mut cells)| {
+                    re_tracing::profile_scope!("range mapping");
                     // NOTE: The unwrap cannot fail, the cluster key's presence is guaranteed
                     // by the store.
                     let instance_keys = cells[cluster_col].take().unwrap();
@@ -118,6 +119,7 @@ pub fn range_archetype<'a, A: Archetype + 'a, const N: usize>(
                 }),
         )
         .filter_map(move |(time, is_primary, cwis)| {
+            re_tracing::profile_scope!("range filter");
             for (i, cwi) in cwis
                 .into_iter()
                 .enumerate()

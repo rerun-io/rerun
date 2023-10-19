@@ -409,7 +409,7 @@ impl DataCell {
         &'a self,
     ) -> DataCellResult<Vec<C>> {
         // re_tracing::profile_function!(C::name().as_str());
-        // return C::from_arrow(self.inner.values.as_ref()).map_err(Into::into);
+        return C::from_arrow(self.inner.values.as_ref()).map_err(Into::into);
 
         if let Some(values) = self.inner.values_deserialized.lock().unwrap().as_ref() {
             return Ok(values.downcast_ref::<Vec<C>>().unwrap().clone());
