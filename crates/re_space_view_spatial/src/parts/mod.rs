@@ -193,7 +193,7 @@ fn process_annotations<Primary, A: Archetype>(
     annotations: &Annotations,
 ) -> Result<ResolvedAnnotationInfos, re_query::QueryError>
 where
-    Primary: re_types::Component + Clone,
+    Primary: re_types::Component + Clone + Send + Sync + 'static,
 {
     process_annotations_and_keypoints(query.latest_at, arch_view, annotations, |_: &Primary| {
         glam::Vec3::ZERO
@@ -209,7 +209,7 @@ fn process_annotations_and_keypoints<Primary, A: Archetype>(
     mut primary_into_position: impl FnMut(&Primary) -> glam::Vec3,
 ) -> Result<(ResolvedAnnotationInfos, Keypoints), re_query::QueryError>
 where
-    Primary: re_types::Component + Clone,
+    Primary: re_types::Component + Clone + Send + Sync + 'static,
 {
     re_tracing::profile_function!();
 

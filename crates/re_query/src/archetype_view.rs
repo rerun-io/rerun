@@ -47,7 +47,9 @@ impl ComponentWithInstances {
 
     /// Returns the array of values as native [`Component`]s.
     #[inline]
-    pub fn values<'a, C: Component + 'a>(&'a self) -> crate::Result<Vec<Option<C>>> {
+    pub fn values<'a, C: Component + Send + Sync + 'static>(
+        &'a self,
+    ) -> crate::Result<Vec<Option<C>>> {
         if C::name() != self.name() {
             return Err(QueryError::TypeMismatch {
                 actual: self.name(),
@@ -55,7 +57,7 @@ impl ComponentWithInstances {
             });
         }
 
-        Ok(self.values.try_to_native_opt::<'a, C>()?)
+        Ok(self.values.try_to_native_opt::<'static, C>()?)
     }
 
     /// Look up the value that corresponds to a given [`InstanceKey`] and convert to [`Component`]
@@ -286,7 +288,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Iterate over the values of a required multi-component.
     #[inline]
-    pub fn iter_required_component<'a, C: Component + 'a>(
+    pub fn iter_required_component<'a, C: Component + Send + Sync + 'static>(
         &'a self,
     ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
         re_tracing::profile_function!();
@@ -314,7 +316,9 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Get a single required mono-component.
     #[inline]
-    pub fn required_mono_component<C: Component>(&self) -> DeserializationResult<C> {
+    pub fn required_mono_component<C: Component + Send + Sync + 'static>(
+        &self,
+    ) -> DeserializationResult<C> {
         re_tracing::profile_function!();
 
         let mut iter = self.iter_required_component::<C>()?;

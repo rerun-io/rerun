@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use re_arrow_store::TimeRange;
 use re_query::{range_archetype, QueryError};
 use re_types::{
@@ -130,39 +131,88 @@ impl TimeSeriesSystem {
                 TimeRange::new(i64::MIN.into(), i64::MAX.into()),
             );
 
-            let arch_views = range_archetype::<
-                TimeSeriesScalar,
-                { TimeSeriesScalar::NUM_COMPONENTS },
-            >(store, &query, ent_path);
+            let arch_views = {
+                let scope = "query and collect arch views";
+                let now = std::time::Instant::now();
 
-            for (time, arch_view) in arch_views {
-                let Some(time) = time else {
-                    continue;
-                }; // scalars cannot be timeless
+                let arch_views = range_archetype::<
+                    TimeSeriesScalar,
+                    { TimeSeriesScalar::NUM_COMPONENTS },
+                >(store, &query, ent_path)
+                .collect_vec();
 
-                for (scalar, scattered, color, radius, label) in itertools::izip!(
-                    arch_view.iter_required_component::<Scalar>()?,
-                    arch_view.iter_optional_component::<ScalarScattering>()?,
-                    arch_view.iter_optional_component::<Color>()?,
-                    arch_view.iter_optional_component::<Radius>()?,
-                    arch_view.iter_optional_component::<Text>()?,
-                ) {
-                    let color = annotation_info.color(color.map(|c| c.to_array()), default_color);
-                    let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                eprintln!("{scope} took {:?}", now.elapsed());
 
-                    const DEFAULT_RADIUS: f32 = 0.75;
+                arch_views
+            };
 
-                    points.push(PlotPoint {
-                        time: time.as_i64(),
-                        value: scalar.0,
-                        attrs: PlotPointAttrs {
-                            label,
-                            color,
-                            radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                            scattered: scattered.map_or(false, |s| s.0),
-                        },
-                    });
+            let components = {
+                let scope = "deserialize and collect components";
+                let now = std::time::Instant::now();
+
+                let components = arch_views
+                    .into_iter()
+                    .filter(|(time, arch_view)| time.is_some())
+                    .map(|(time, arch_view)| {
+                        (
+                            time.unwrap(),
+                            arch_view
+                                .iter_required_component::<Scalar>()
+                                .unwrap()
+                                .collect_vec(),
+                            arch_view
+                                .iter_optional_component::<ScalarScattering>()
+                                .unwrap()
+                                .collect_vec(),
+                            arch_view
+                                .iter_optional_component::<Color>()
+                                .unwrap()
+                                .collect_vec(),
+                            arch_view
+                                .iter_optional_component::<Radius>()
+                                .unwrap()
+                                .collect_vec(),
+                            arch_view
+                                .iter_optional_component::<Text>()
+                                .unwrap()
+                                .collect_vec(),
+                        )
+                    })
+                    .collect_vec();
+
+                eprintln!("{scope} took {:?}", now.elapsed());
+
+                components
+            };
+
+            {
+                let scope = "build plot";
+                let now = std::time::Instant::now();
+
+                for (time, scalars, scattereds, colors, radii, labels) in components {
+                    for (scalar, scattered, color, radius, label) in
+                        itertools::izip!(scalars, scattereds, colors, radii, labels)
+                    {
+                        let color =
+                            annotation_info.color(color.map(|c| c.to_array()), default_color);
+                        let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+
+                        const DEFAULT_RADIUS: f32 = 0.75;
+
+                        points.push(PlotPoint {
+                            time: time.as_i64(),
+                            value: scalar.0,
+                            attrs: PlotPointAttrs {
+                                label,
+                                color,
+                                radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                                scattered: scattered.map_or(false, |s| s.0),
+                            },
+                        });
+                    }
                 }
+
+                eprintln!("{scope} took {:?}", now.elapsed());
             }
 
             points.sort_by_key(|s| s.time);

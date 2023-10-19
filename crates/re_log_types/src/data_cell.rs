@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use arrow2::datatypes::DataType;
 
@@ -131,7 +131,6 @@ impl PartialEq for DataCell {
 /// virtual calls.
 ///
 /// See #1746 for details.
-#[derive(Debug, Clone, PartialEq)]
 pub struct DataCellInner {
     /// Name of the component type used in this cell.
     //
@@ -154,6 +153,38 @@ pub struct DataCellInner {
     /// frequent boxing/unboxing down the line.
     /// Internally, this is most likely a slice of another, larger array (batching!).
     pub(crate) values: Box<dyn arrow2::array::Array>,
+
+    pub(crate) values_deserialized: Mutex<Option<Box<dyn std::any::Any + Send + Sync>>>,
+}
+
+impl std::fmt::Debug for DataCellInner {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DataCellInner")
+            .field("name", &self.name)
+            .field("size_bytes", &self.size_bytes)
+            .field("values", &self.values)
+            .finish()
+    }
+}
+
+impl Clone for DataCellInner {
+    fn clone(&self) -> Self {
+        panic!("who even calls this??");
+        Self {
+            name: self.name.clone(),
+            size_bytes: self.size_bytes.clone(),
+            values: self.values.clone(),
+            values_deserialized: Mutex::new(None),
+        }
+    }
+}
+
+impl PartialEq for DataCellInner {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.size_bytes == other.size_bytes
+            && self.values == other.values
+    }
 }
 
 // TODO(#1696): We shouldn't have to specify the component name separately, this should be
@@ -265,6 +296,7 @@ impl DataCell {
                 name,
                 size_bytes: 0,
                 values,
+                values_deserialized: Mutex::new(None),
             }),
         })
     }
@@ -299,6 +331,7 @@ impl DataCell {
             name,
             size_bytes: 0,
             values: arrow2::array::new_empty_array(datatype),
+            values_deserialized: Mutex::new(None),
         };
         inner.compute_size_bytes();
 
@@ -372,9 +405,20 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<C>> {
+    pub fn try_to_native<'a, C: Component + Send + Sync + 'static>(
+        &'a self,
+    ) -> DataCellResult<Vec<C>> {
         re_tracing::profile_function!(C::name().as_str());
-        Ok(C::from_arrow(self.inner.values.as_ref())?)
+        // return C::from_arrow(self.inner.values.as_ref()).map_err(Into::into);
+
+        if let Some(values) = self.inner.values_deserialized.lock().unwrap().as_ref() {
+            return Ok(values.downcast_ref::<Vec<C>>().unwrap().clone());
+        }
+
+        let v = C::from_arrow(self.inner.values.as_ref())?;
+        *self.inner.values_deserialized.lock().unwrap() = Some(Box::new(v.clone()));
+
+        Ok(v)
     }
 
     /// Returns the contents of an expected mono-component as an `Option<C>`.
@@ -412,7 +456,7 @@ impl DataCell {
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native`] for a fallible alternative.
     #[inline]
-    pub fn to_native<'a, C: Component + 'a>(&'a self) -> Vec<C> {
+    pub fn to_native<'a, C: Component + Send + Sync + 'static>(&'a self) -> Vec<C> {
         self.try_to_native().unwrap()
     }
 
@@ -420,9 +464,20 @@ impl DataCell {
     ///
     /// Fails if the underlying arrow data cannot be deserialized into `C`.
     #[inline]
-    pub fn try_to_native_opt<'a, C: Component + 'a>(&'a self) -> DataCellResult<Vec<Option<C>>> {
+    pub fn try_to_native_opt<'a, C: Component + Send + Sync + 'static>(
+        &'a self,
+    ) -> DataCellResult<Vec<Option<C>>> {
         re_tracing::profile_function!(C::name().as_str());
-        Ok(C::from_arrow_opt(self.inner.values.as_ref())?)
+        // return C::from_arrow_opt(self.inner.values.as_ref()).map_err(Into::into);
+
+        if let Some(values) = self.inner.values_deserialized.lock().unwrap().as_ref() {
+            return Ok(values.downcast_ref::<Vec<Option<C>>>().unwrap().clone());
+        }
+
+        let v = C::from_arrow_opt(self.inner.values.as_ref())?;
+        *self.inner.values_deserialized.lock().unwrap() = Some(Box::new(v.clone()));
+
+        Ok(v)
     }
 
     /// Returns the contents of the cell as an iterator of native optional components.
@@ -430,7 +485,7 @@ impl DataCell {
     /// Panics if the underlying arrow data cannot be deserialized into `C`.
     /// See [`Self::try_to_native_opt`] for a fallible alternative.
     #[inline]
-    pub fn to_native_opt<'a, C: Component + 'a>(&'a self) -> Vec<Option<C>> {
+    pub fn to_native_opt<'a, C: Component + Send + Sync + 'static>(&'a self) -> Vec<Option<C>> {
         self.try_to_native_opt().unwrap()
     }
 }
@@ -625,6 +680,7 @@ impl DataCellInner {
             name,
             size_bytes,
             values,
+            values_deserialized: _,
         } = self;
 
         // NOTE: The computed size cannot ever be zero.
