@@ -124,22 +124,22 @@ namespace rerun {
             static AffixFuzzer3 degrees(float degrees) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::degrees;
-                self._data.degrees = std::move(degrees);
+                new (&self._data.degrees) float(std::move(degrees));
                 return self;
             }
 
             static AffixFuzzer3 radians(std::optional<float> radians) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::radians;
-                self._data.radians = std::move(radians);
+                new (&self._data.radians) std::optional<float>(std::move(radians));
                 return self;
             }
 
             static AffixFuzzer3 craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness) {
-                using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::craziness;
-                new (&self._data.craziness) TypeAlias(std::move(craziness));
+                new (&self._data.craziness)
+                    std::vector<rerun::datatypes::AffixFuzzer1>(std::move(craziness));
                 return self;
             }
 
@@ -147,9 +147,8 @@ namespace rerun {
             ) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::fixed_size_shenanigans;
-                for (size_t i = 0; i < 3; i += 1) {
-                    self._data.fixed_size_shenanigans[i] = std::move(fixed_size_shenanigans[i]);
-                }
+                new (&self._data.fixed_size_shenanigans)
+                    std::array<float, 3>(std::move(fixed_size_shenanigans));
                 return self;
             }
 

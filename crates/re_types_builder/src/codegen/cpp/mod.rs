@@ -734,7 +734,6 @@ impl QuotedObject {
         // Add one static constructor for every field.
         for obj_field in &obj.fields {
             methods.push(static_constructor_for_enum_type(
-                objects,
                 &mut hpp_includes,
                 obj_field,
                 &pascal_case_ident,
@@ -1811,7 +1810,6 @@ fn quote_field_ptr_access(typ: &Type, field_accessor: TokenStream) -> TokenStrea
 
 /// e.g. `static Angle radians(float radians);` -> `auto angle = Angle::radians(radians);`
 fn static_constructor_for_enum_type(
-    objects: &Objects,
     hpp_includes: &mut Includes,
     obj_field: &ObjectField,
     pascal_case_ident: &Ident,
@@ -1828,73 +1826,25 @@ fn static_constructor_for_enum_type(
         name_and_parameters: quote!(#snake_case_ident(#param_declaration)),
     };
 
-    if let Type::Array { elem_type, length } = &obj_field.typ {
-        // We need special casing for constructing arrays:
-        let length = proc_macro2::Literal::usize_unsuffixed(*length);
-
-        let (element_assignment, type_alias) = if elem_type.has_default_destructor(objects) {
-            // Generate simpoler code for simple types:
-            (
-                quote! {
-                    self._data.#snake_case_ident[i] = std::move(#snake_case_ident[i]);
-                },
-                quote!(),
-            )
-        } else {
-            // We need to use placement-new since the union is in an uninitialized state here:
-            hpp_includes.insert_system("new"); // placement-new
-            let elem_type = quote_element_type(hpp_includes, elem_type);
-            (
-                quote! {
-                    new (&self._data.#snake_case_ident[i]) #elem_type(std::move(#snake_case_ident[i]));
-                },
-                quote!(using TypeAlias = #elem_type;),
-            )
-        };
-
-        Method {
-            docs,
-            declaration,
-            definition_body: quote! {
-                #type_alias
-                #pascal_case_ident self;
-                self._tag = detail::#tag_typename::#tag_ident;
-                for (size_t i = 0; i < #length; i += 1) {
-                    #element_assignment
-                }
-                return self;
-            },
-            inline: true,
-        }
-    } else if obj_field.typ.has_default_destructor(objects) {
-        // Generate simpler code for simple types:
-        Method {
-            docs,
-            declaration,
-            definition_body: quote! {
-                #pascal_case_ident self;
-                self._tag = detail::#tag_typename::#tag_ident;
-                self._data.#snake_case_ident = std::move(#snake_case_ident);
-                return self;
-            },
-            inline: true,
-        }
-    } else {
-        // We need to use placement-new since the union is in an uninitialized state here:
-        hpp_includes.insert_system("new"); // placement-new
-        let typ = quote_field_type(hpp_includes, obj_field);
-        Method {
-            docs,
-            declaration,
-            definition_body: quote! {
-                using TypeAlias = #typ;
-                #pascal_case_ident self;
-                self._tag = detail::#tag_typename::#tag_ident;
-                new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
-                return self;
-            },
-            inline: true,
-        }
+    // We need to use placement-new since the union is in an uninitialized state here:
+    //
+    // Do *not* assign (move _or_ copy).
+    // At this point self._data is uninitialized, so only placement new is safe since we have to regard the target as "raw memory".
+    // Otherwise we may call a function (move assignment or copy assignment)
+    // on an uninitialized object which means that the compiler may optimize away the assignment.
+    // (This was identified as the cause of #3865.)
+    hpp_includes.insert_system("new"); // placement-new
+    let typ = quote_field_type(hpp_includes, obj_field);
+    Method {
+        docs,
+        declaration,
+        definition_body: quote! {
+            #pascal_case_ident self;
+            self._tag = detail::#tag_typename::#tag_ident;
+            new (&self._data.#snake_case_ident) #typ(std::move(#snake_case_ident));
+            return self;
+        },
+        inline: true,
     }
 }
 

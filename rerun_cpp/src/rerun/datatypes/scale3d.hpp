@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <utility>
 
 namespace arrow {
@@ -85,7 +86,7 @@ namespace rerun {
             static Scale3D three_d(rerun::datatypes::Vec3D three_d) {
                 Scale3D self;
                 self._tag = detail::Scale3DTag::ThreeD;
-                self._data.three_d = std::move(three_d);
+                new (&self._data.three_d) rerun::datatypes::Vec3D(std::move(three_d));
                 return self;
             }
 
@@ -93,7 +94,7 @@ namespace rerun {
             static Scale3D uniform(float uniform) {
                 Scale3D self;
                 self._tag = detail::Scale3DTag::Uniform;
-                self._data.uniform = std::move(uniform);
+                new (&self._data.uniform) float(std::move(uniform));
                 return self;
             }
 

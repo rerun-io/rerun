@@ -120,30 +120,31 @@ namespace rerun {
             }
 
             static AffixFuzzer4 single_required(rerun::datatypes::AffixFuzzer3 single_required) {
-                using TypeAlias = rerun::datatypes::AffixFuzzer3;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::single_required;
-                new (&self._data.single_required) TypeAlias(std::move(single_required));
+                new (&self._data.single_required)
+                    rerun::datatypes::AffixFuzzer3(std::move(single_required));
                 return self;
             }
 
             static AffixFuzzer4 many_required(
                 std::vector<rerun::datatypes::AffixFuzzer3> many_required
             ) {
-                using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_required;
-                new (&self._data.many_required) TypeAlias(std::move(many_required));
+                new (&self._data.many_required)
+                    std::vector<rerun::datatypes::AffixFuzzer3>(std::move(many_required));
                 return self;
             }
 
             static AffixFuzzer4 many_optional(
                 std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> many_optional
             ) {
-                using TypeAlias = std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_optional;
-                new (&self._data.many_optional) TypeAlias(std::move(many_optional));
+                new (&self._data.many_optional
+                ) std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>(std::move(many_optional
+                ));
                 return self;
             }
 
