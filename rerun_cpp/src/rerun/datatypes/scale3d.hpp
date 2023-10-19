@@ -107,6 +107,24 @@ namespace rerun {
                 *this = Scale3D::uniform(std::move(uniform));
             }
 
+            /// Return a pointer to three_d if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::Vec3D* get_three_d() const {
+                if (_tag == detail::Scale3DTag::ThreeD) {
+                    return &_data.three_d;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to uniform if the union is in that state, otherwise `nullptr`.
+            const float* get_uniform() const {
+                if (_tag == detail::Scale3DTag::Uniform) {
+                    return &_data.uniform;
+                } else {
+                    return nullptr;
+                }
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

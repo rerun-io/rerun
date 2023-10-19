@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -18,7 +19,7 @@ namespace rerun {
     namespace datatypes {
         /// **Datatype**: A uint vector in 4D space.
         struct UVec4D {
-            uint32_t xyzw[4];
+            std::array<uint32_t, 4> xyzw;
 
           public:
             UVec4D() = default;

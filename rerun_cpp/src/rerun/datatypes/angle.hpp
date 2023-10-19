@@ -92,6 +92,24 @@ namespace rerun {
                 return self;
             }
 
+            /// Return a pointer to radians if the union is in that state, otherwise `nullptr`.
+            const float* get_radians() const {
+                if (_tag == detail::AngleTag::Radians) {
+                    return &_data.radians;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to degrees if the union is in that state, otherwise `nullptr`.
+            const float* get_degrees() const {
+                if (_tag == detail::AngleTag::Degrees) {
+                    return &_data.degrees;
+                } else {
+                    return nullptr;
+                }
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

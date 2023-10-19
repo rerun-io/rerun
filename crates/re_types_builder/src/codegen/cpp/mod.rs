@@ -766,6 +766,33 @@ impl QuotedObject {
             }
         }
 
+        // Code that allows to access the data of the union in a safe way.
+        for obj_field in &obj.fields {
+            let typ = quote_field_type(&mut hpp_includes, obj_field);
+
+            let snake_case_name = obj_field.snake_case_name();
+            let field_name = format_ident!("{}", snake_case_name);
+            let method_name = format_ident!("get_{}", snake_case_name);
+            let tag_name = format_ident!("{}", obj_field.name);
+
+            methods.push(Method {
+                docs: format!("Return a pointer to {snake_case_name} if the union is in that state, otherwise `nullptr`.").into(),
+                declaration: MethodDeclaration {
+                    name_and_parameters: quote! { #method_name() const },
+                    return_type: quote! { const #typ* },
+                    is_static: false,
+                },
+                definition_body: quote! {
+                    if (_tag == detail::#tag_typename::#tag_name) {
+                        return &_data.#field_name;
+                    } else {
+                        return nullptr;
+                    }
+                },
+                inline: true,
+            });
+        }
+
         methods.push(arrow_data_type_method(
             obj,
             objects,
@@ -819,19 +846,18 @@ impl QuotedObject {
                     let length = proc_macro2::Literal::usize_unsuffixed(*length);
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
-                            typedef #elem_type TypeAlias;
+                            using TypeAlias = #elem_type;
                             for (size_t i = #length; i > 0; i -= 1) {
                                 _data.#field_ident[i-1].~TypeAlias();
                             }
                         } break;
                     }
                 } else {
-                    let typedef_declaration =
-                        quote_variable(&mut hpp_includes, obj_field, &format_ident!("TypeAlias"));
+                    let typ = quote_field_type(&mut hpp_includes, obj_field);
                     hpp_includes.insert_system("utility"); // std::move
                     quote! {
                         case detail::#tag_typename::#tag_ident: {
-                            typedef #typedef_declaration;
+                            using TypeAlias = #typ;
                             _data.#field_ident.~TypeAlias();
                         } break;
                     }
@@ -863,14 +889,13 @@ impl QuotedObject {
                     trivial_memcpy_cases.push(case);
                 } else {
                     // the `this->_data` union is not yet initialized, so we must use placement new:
-                    let typedef_declaration =
-                        quote_variable(&mut hpp_includes, obj_field, &format_ident!("TypeAlias"));
+                    let typ = quote_field_type(&mut hpp_includes, obj_field);
                     hpp_includes.insert_system("new"); // placement-new
 
                     let field_ident = format_ident!("{}", obj_field.snake_case_name());
                     placement_new_arms.push(quote! {
                         #case {
-                            typedef #typedef_declaration;
+                            using TypeAlias = #typ;
                             new (&_data.#field_ident) TypeAlias(other._data.#field_ident);
                         } break;
                     });
@@ -1557,7 +1582,7 @@ fn quote_append_field_to_builder(
                 ARROW_RETURN_NOT_OK(#builder->AppendValues(static_cast<int64_t>(num_elements)));
                 static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
                 ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
-                    #field_ptr_accessor,
+                    #field_ptr_accessor.data(),
                     static_cast<int64_t>(num_elements * #num_items_per_value),
                     nullptr)
                 );
@@ -1807,7 +1832,7 @@ fn static_constructor_for_enum_type(
         // We need special casing for constructing arrays:
         let length = proc_macro2::Literal::usize_unsuffixed(*length);
 
-        let (element_assignment, typedef) = if elem_type.has_default_destructor(objects) {
+        let (element_assignment, type_alias) = if elem_type.has_default_destructor(objects) {
             // Generate simpoler code for simple types:
             (
                 quote! {
@@ -1823,7 +1848,7 @@ fn static_constructor_for_enum_type(
                 quote! {
                     new (&self._data.#snake_case_ident[i]) #elem_type(std::move(#snake_case_ident[i]));
                 },
-                quote!(typedef #elem_type TypeAlias;),
+                quote!(using TypeAlias = #elem_type;),
             )
         };
 
@@ -1831,7 +1856,7 @@ fn static_constructor_for_enum_type(
             docs,
             declaration,
             definition_body: quote! {
-                #typedef
+                #type_alias
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 for (size_t i = 0; i < #length; i += 1) {
@@ -1857,13 +1882,12 @@ fn static_constructor_for_enum_type(
     } else {
         // We need to use placement-new since the union is in an uninitialized state here:
         hpp_includes.insert_system("new"); // placement-new
-        let typedef_declaration =
-            quote_variable(hpp_includes, obj_field, &format_ident!("TypeAlias"));
+        let typ = quote_field_type(hpp_includes, obj_field);
         Method {
             docs,
             declaration,
             definition_body: quote! {
-                typedef #typedef_declaration;
+                using TypeAlias = #typ;
                 #pascal_case_ident self;
                 self._tag = detail::#tag_typename::#tag_ident;
                 new (&self._data.#snake_case_ident) TypeAlias(std::move(#snake_case_ident));
@@ -1950,89 +1974,60 @@ fn quote_variable_with_docstring(
     quoted
 }
 
+fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
+    #[allow(clippy::match_same_arms)]
+    let typ = match &obj_field.typ {
+        Type::UInt8 => quote! { uint8_t  },
+        Type::UInt16 => quote! { uint16_t  },
+        Type::UInt32 => quote! { uint32_t  },
+        Type::UInt64 => quote! { uint64_t  },
+        Type::Int8 => quote! { int8_t  },
+        Type::Int16 => quote! { int16_t  },
+        Type::Int32 => quote! { int32_t  },
+        Type::Int64 => quote! { int64_t  },
+        Type::Bool => quote! { bool  },
+        Type::Float16 => {
+            includes.insert_rerun("half.hpp");
+            quote! { rerun::half  }
+        }
+        Type::Float32 => quote! { float  },
+        Type::Float64 => quote! { double  },
+        Type::String => {
+            includes.insert_system("string");
+            quote! { std::string  }
+        }
+        Type::Array { elem_type, length } => {
+            includes.insert_system("array");
+            let elem_type = quote_element_type(includes, elem_type);
+            let length = proc_macro2::Literal::usize_unsuffixed(*length);
+            quote! { std::array<#elem_type, #length> }
+        }
+        Type::Vector { elem_type } => {
+            let elem_type = quote_element_type(includes, elem_type);
+            includes.insert_system("vector");
+            quote! { std::vector<#elem_type>  }
+        }
+        Type::Object(fqname) => {
+            let type_name = quote_fqname_as_type_path(includes, fqname);
+            quote! { #type_name  }
+        }
+    };
+
+    if obj_field.is_nullable {
+        includes.insert_system("optional");
+        quote! { std::optional<#typ> }
+    } else {
+        typ
+    }
+}
+
 fn quote_variable(
     includes: &mut Includes,
     obj_field: &ObjectField,
     name: &syn::Ident,
 ) -> TokenStream {
-    if obj_field.is_nullable {
-        includes.insert_system("optional");
-        #[allow(clippy::match_same_arms)]
-        match &obj_field.typ {
-            Type::UInt8 => quote! { std::optional<uint8_t> #name },
-            Type::UInt16 => quote! { std::optional<uint16_t> #name },
-            Type::UInt32 => quote! { std::optional<uint32_t> #name },
-            Type::UInt64 => quote! { std::optional<uint64_t> #name },
-            Type::Int8 => quote! { std::optional<int8_t> #name },
-            Type::Int16 => quote! { std::optional<int16_t> #name },
-            Type::Int32 => quote! { std::optional<int32_t> #name },
-            Type::Int64 => quote! { std::optional<int64_t> #name },
-            Type::Bool => quote! { std::optional<bool> #name },
-            Type::Float16 => {
-                includes.insert_rerun("half.hpp");
-                quote! { std::optional<rerun::half> #name }
-            }
-            Type::Float32 => quote! { std::optional<float> #name },
-            Type::Float64 => quote! { std::optional<double> #name },
-            Type::String => {
-                includes.insert_system("string");
-                quote! { std::optional<std::string> #name }
-            }
-            Type::Array { .. } => {
-                unimplemented!(
-                    "Optional fixed-size array not yet implemented in C++. {:#?}",
-                    obj_field.typ
-                )
-            }
-            Type::Vector { elem_type } => {
-                let elem_type = quote_element_type(includes, elem_type);
-                includes.insert_system("vector");
-                quote! { std::optional<std::vector<#elem_type>> #name }
-            }
-            Type::Object(fqname) => {
-                let type_name = quote_fqname_as_type_path(includes, fqname);
-                quote! { std::optional<#type_name> #name }
-            }
-        }
-    } else {
-        #[allow(clippy::match_same_arms)]
-        match &obj_field.typ {
-            Type::UInt8 => quote! { uint8_t #name },
-            Type::UInt16 => quote! { uint16_t #name },
-            Type::UInt32 => quote! { uint32_t #name },
-            Type::UInt64 => quote! { uint64_t #name },
-            Type::Int8 => quote! { int8_t #name },
-            Type::Int16 => quote! { int16_t #name },
-            Type::Int32 => quote! { int32_t #name },
-            Type::Int64 => quote! { int64_t #name },
-            Type::Bool => quote! { bool #name },
-            Type::Float16 => {
-                includes.insert_rerun("half.hpp");
-                quote! { rerun::half #name }
-            }
-            Type::Float32 => quote! { float #name },
-            Type::Float64 => quote! { double #name },
-            Type::String => {
-                includes.insert_system("string");
-                quote! { std::string #name }
-            }
-            Type::Array { elem_type, length } => {
-                let elem_type = quote_element_type(includes, elem_type);
-                let length = proc_macro2::Literal::usize_unsuffixed(*length);
-
-                quote! { #elem_type #name[#length] }
-            }
-            Type::Vector { elem_type } => {
-                let elem_type = quote_element_type(includes, elem_type);
-                includes.insert_system("vector");
-                quote! { std::vector<#elem_type> #name }
-            }
-            Type::Object(fqname) => {
-                let type_name = quote_fqname_as_type_path(includes, fqname);
-                quote! { #type_name #name }
-            }
-        }
-    }
+    let typ = quote_field_type(includes, obj_field);
+    quote! { #typ #name }
 }
 
 fn quote_element_type(includes: &mut Includes, typ: &ElementType) -> TokenStream {

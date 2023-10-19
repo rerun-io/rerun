@@ -61,16 +61,16 @@ namespace rerun {
             AffixFuzzer4(const AffixFuzzer4& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer4Tag::single_required: {
-                        typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
+                        using TypeAlias = rerun::datatypes::AffixFuzzer3;
                         new (&_data.single_required) TypeAlias(other._data.single_required);
                     } break;
                     case detail::AffixFuzzer4Tag::many_required: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
                         new (&_data.many_required) TypeAlias(other._data.many_required);
                     } break;
                     case detail::AffixFuzzer4Tag::many_optional: {
-                        typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>
-                            TypeAlias;
+                        using TypeAlias =
+                            std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                         new (&_data.many_optional) TypeAlias(other._data.many_optional);
                     } break;
                     case detail::AffixFuzzer4Tag::NONE: {
@@ -99,16 +99,16 @@ namespace rerun {
                         // Nothing to destroy
                     } break;
                     case detail::AffixFuzzer4Tag::single_required: {
-                        typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
+                        using TypeAlias = rerun::datatypes::AffixFuzzer3;
                         _data.single_required.~TypeAlias();
                     } break;
                     case detail::AffixFuzzer4Tag::many_required: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
                         _data.many_required.~TypeAlias();
                     } break;
                     case detail::AffixFuzzer4Tag::many_optional: {
-                        typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>
-                            TypeAlias;
+                        using TypeAlias =
+                            std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                         _data.many_optional.~TypeAlias();
                     } break;
                 }
@@ -120,7 +120,7 @@ namespace rerun {
             }
 
             static AffixFuzzer4 single_required(rerun::datatypes::AffixFuzzer3 single_required) {
-                typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
+                using TypeAlias = rerun::datatypes::AffixFuzzer3;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::single_required;
                 new (&self._data.single_required) TypeAlias(std::move(single_required));
@@ -130,7 +130,7 @@ namespace rerun {
             static AffixFuzzer4 many_required(
                 std::vector<rerun::datatypes::AffixFuzzer3> many_required
             ) {
-                typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
+                using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_required;
                 new (&self._data.many_required) TypeAlias(std::move(many_required));
@@ -140,11 +140,39 @@ namespace rerun {
             static AffixFuzzer4 many_optional(
                 std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> many_optional
             ) {
-                typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> TypeAlias;
+                using TypeAlias = std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_optional;
                 new (&self._data.many_optional) TypeAlias(std::move(many_optional));
                 return self;
+            }
+
+            /// Return a pointer to single_required if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::AffixFuzzer3* get_single_required() const {
+                if (_tag == detail::AffixFuzzer4Tag::single_required) {
+                    return &_data.single_required;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to many_required if the union is in that state, otherwise `nullptr`.
+            const std::vector<rerun::datatypes::AffixFuzzer3>* get_many_required() const {
+                if (_tag == detail::AffixFuzzer4Tag::many_required) {
+                    return &_data.many_required;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to many_optional if the union is in that state, otherwise `nullptr`.
+            const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>* get_many_optional(
+            ) const {
+                if (_tag == detail::AffixFuzzer4Tag::many_optional) {
+                    return &_data.many_optional;
+                } else {
+                    return nullptr;
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

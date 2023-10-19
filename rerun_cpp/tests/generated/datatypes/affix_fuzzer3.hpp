@@ -5,6 +5,7 @@
 
 #include "affix_fuzzer1.hpp"
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -39,7 +40,7 @@ namespace rerun {
 
                 std::vector<rerun::datatypes::AffixFuzzer1> craziness;
 
-                float fixed_size_shenanigans[3];
+                std::array<float, 3> fixed_size_shenanigans;
 
                 AffixFuzzer3Data() {}
 
@@ -64,7 +65,7 @@ namespace rerun {
             AffixFuzzer3(const AffixFuzzer3& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer3Tag::craziness: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
                         new (&_data.craziness) TypeAlias(other._data.craziness);
                     } break;
                     case detail::AffixFuzzer3Tag::degrees:
@@ -106,7 +107,7 @@ namespace rerun {
                         // has a trivial destructor
                     } break;
                     case detail::AffixFuzzer3Tag::craziness: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
                         _data.craziness.~TypeAlias();
                     } break;
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
@@ -135,20 +136,57 @@ namespace rerun {
             }
 
             static AffixFuzzer3 craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness) {
-                typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
+                using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::craziness;
                 new (&self._data.craziness) TypeAlias(std::move(craziness));
                 return self;
             }
 
-            static AffixFuzzer3 fixed_size_shenanigans(float fixed_size_shenanigans[3]) {
+            static AffixFuzzer3 fixed_size_shenanigans(std::array<float, 3> fixed_size_shenanigans
+            ) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::fixed_size_shenanigans;
                 for (size_t i = 0; i < 3; i += 1) {
                     self._data.fixed_size_shenanigans[i] = std::move(fixed_size_shenanigans[i]);
                 }
                 return self;
+            }
+
+            /// Return a pointer to degrees if the union is in that state, otherwise `nullptr`.
+            const float* get_degrees() const {
+                if (_tag == detail::AffixFuzzer3Tag::degrees) {
+                    return &_data.degrees;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to radians if the union is in that state, otherwise `nullptr`.
+            const std::optional<float>* get_radians() const {
+                if (_tag == detail::AffixFuzzer3Tag::radians) {
+                    return &_data.radians;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to craziness if the union is in that state, otherwise `nullptr`.
+            const std::vector<rerun::datatypes::AffixFuzzer1>* get_craziness() const {
+                if (_tag == detail::AffixFuzzer3Tag::craziness) {
+                    return &_data.craziness;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to fixed_size_shenanigans if the union is in that state, otherwise `nullptr`.
+            const std::array<float, 3>* get_fixed_size_shenanigans() const {
+                if (_tag == detail::AffixFuzzer3Tag::fixed_size_shenanigans) {
+                    return &_data.fixed_size_shenanigans;
+                } else {
+                    return nullptr;
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

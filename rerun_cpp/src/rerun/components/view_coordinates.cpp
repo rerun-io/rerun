@@ -48,7 +48,7 @@ namespace rerun {
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
             static_assert(sizeof(elements[0].coordinates) == sizeof(elements[0]));
             ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                elements[0].coordinates,
+                elements[0].coordinates.data(),
                 static_cast<int64_t>(num_elements * 3),
                 nullptr
             ));

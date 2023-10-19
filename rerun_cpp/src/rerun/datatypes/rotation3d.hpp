@@ -113,6 +113,24 @@ namespace rerun {
                 *this = Rotation3D::axis_angle(std::move(axis_angle));
             }
 
+            /// Return a pointer to quaternion if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::Quaternion* get_quaternion() const {
+                if (_tag == detail::Rotation3DTag::Quaternion) {
+                    return &_data.quaternion;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to axis_angle if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::RotationAxisAngle* get_axis_angle() const {
+                if (_tag == detail::Rotation3DTag::AxisAngle) {
+                    return &_data.axis_angle;
+                } else {
+                    return nullptr;
+                }
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
