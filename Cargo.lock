@@ -5828,13 +5828,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "test_set_thread_local"
-version = "0.10.0-alpha.7+dev"
-dependencies = [
- "rerun",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
