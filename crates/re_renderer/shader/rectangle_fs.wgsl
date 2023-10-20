@@ -3,6 +3,10 @@
 #import <./utils/srgb.wgsl>
 #import <./decodings.wgsl>
 
+// WARNING! Adding anything else to this shader is very likely to push us over a size threshold that
+// causes the failure reported in: https://github.com/rerun-io/rerun/issues/3931
+// Make sure any changes are tested in Chrome on Linux.
+
 fn is_magnifying(pixel_coord: Vec2) -> bool {
     return fwidth(pixel_coord.x) < 1.0;
 }
