@@ -47,9 +47,13 @@ fn clamp_to_edge_nearest_neighbor(coord: Vec2, texture_dimension: Vec2) -> IVec2
     return IVec2(clamp(floor(coord), Vec2(0.0), texture_dimension - Vec2(1.0)));
 }
 
-fn filter_bilinear(coord: Vec2, v00: Vec4, v01: Vec4, v10: Vec4, v11: Vec4) -> Vec4 {
-    let top = mix(v00, v10, fract(coord.x - 0.5));
-    let bottom = mix(v01, v11, fract(coord.x - 0.5));
+fn decode_color_and_filter_bilinear(coord: Vec2, v00: Vec4, v01: Vec4, v10: Vec4, v11: Vec4) -> Vec4 {
+    let c00 = decode_color(v00);
+    let c01 = decode_color(v01);
+    let c10 = decode_color(v10);
+    let c11 = decode_color(v11);
+    let top = mix(c00, c10, fract(coord.x - 0.5));
+    let bottom = mix(c01, c11, fract(coord.x - 0.5));
     return mix(top, bottom, fract(coord.y - 0.5));
 }
 
@@ -57,68 +61,77 @@ fn filter_bilinear(coord: Vec2, v00: Vec4, v01: Vec4, v10: Vec4, v11: Vec4) -> V
 fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     // Sample the main texture:
     var normalized_value: Vec4;
+
+    var texture_dimensions: Vec2;
     if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
-        let texture_dimensions = Vec2(textureDimensions(texture_float).xy);
-        let coord = in.texcoord * texture_dimensions;
+        texture_dimensions = Vec2(textureDimensions(texture_float).xy);
+    } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
+        texture_dimensions = Vec2(textureDimensions(texture_sint).xy);
+    } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
+        texture_dimensions = Vec2(textureDimensions(texture_uint).xy);
+    } else if rect_info.sample_type == SAMPLE_TYPE_NV12 {
+        texture_dimensions = Vec2(textureDimensions(texture_uint).xy);
+    }
+
+    let coord = in.texcoord * texture_dimensions;
+    let clamped_coord = clamp_to_edge_nearest_neighbor(coord, texture_dimensions);
+    let v00_coord = clamp_to_edge_nearest_neighbor(coord + vec2(-0.5, -0.5), texture_dimensions);
+    let v01_coord = clamp_to_edge_nearest_neighbor(coord + vec2(-0.5,  0.5), texture_dimensions);
+    let v10_coord = clamp_to_edge_nearest_neighbor(coord + vec2( 0.5, -0.5), texture_dimensions);
+    let v11_coord = clamp_to_edge_nearest_neighbor(coord + vec2( 0.5,  0.5), texture_dimensions);
+
+    if rect_info.sample_type == SAMPLE_TYPE_FLOAT {
         if tex_filter(coord) == FILTER_NEAREST {
             // nearest
             normalized_value = decode_color(textureLoad(texture_float,
                 clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0));
         } else {
             // bilinear
-            let v00 = decode_color(textureLoad(texture_float, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5, -0.5), texture_dimensions), 0));
-            let v01 = decode_color(textureLoad(texture_float, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5,  0.5), texture_dimensions), 0));
-            let v10 = decode_color(textureLoad(texture_float, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5, -0.5), texture_dimensions), 0));
-            let v11 = decode_color(textureLoad(texture_float, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5,  0.5), texture_dimensions), 0));
-            normalized_value = filter_bilinear(coord, v00, v01, v10, v11);
-        }
-    } else if rect_info.sample_type == SAMPLE_TYPE_SINT {
-        let texture_dimensions = Vec2(textureDimensions(texture_sint).xy);
-        let coord = in.texcoord * texture_dimensions;
-        if tex_filter(coord) == FILTER_NEAREST {
-            // nearest
-            normalized_value = decode_color(Vec4(textureLoad(texture_sint,
-                clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0)));
-        } else {
-            // bilinear
-            let v00 = decode_color(Vec4(textureLoad(texture_sint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5, -0.5), texture_dimensions), 0)));
-            let v01 = decode_color(Vec4(textureLoad(texture_sint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5,  0.5), texture_dimensions), 0)));
-            let v10 = decode_color(Vec4(textureLoad(texture_sint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5, -0.5), texture_dimensions), 0)));
-            let v11 = decode_color(Vec4(textureLoad(texture_sint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5,  0.5), texture_dimensions), 0)));
-            normalized_value = filter_bilinear(coord, v00, v01, v10, v11);
-        }
-    } else if rect_info.sample_type == SAMPLE_TYPE_UINT {
-        let texture_dimensions = Vec2(textureDimensions(texture_uint).xy);
-        let coord = in.texcoord * texture_dimensions;
-        if tex_filter(coord) == FILTER_NEAREST {
-            // nearest
-            normalized_value = decode_color(Vec4(textureLoad(texture_uint,
-                clamp_to_edge_nearest_neighbor(coord, texture_dimensions), 0)));
-        } else {
-            // bilinear
-            let v00 = decode_color(Vec4(textureLoad(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5, -0.5), texture_dimensions), 0)));
-            let v01 = decode_color(Vec4(textureLoad(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5,  0.5), texture_dimensions), 0)));
-            let v10 = decode_color(Vec4(textureLoad(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5, -0.5), texture_dimensions), 0)));
-            let v11 = decode_color(Vec4(textureLoad(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5,  0.5), texture_dimensions), 0)));
-            normalized_value = filter_bilinear(coord, v00, v01, v10, v11);
-        }
-    } else if rect_info.sample_type == SAMPLE_TYPE_NV12 {
-        let texture_dimensions = Vec2(textureDimensions(texture_uint).xy);
-        let coord = in.texcoord * texture_dimensions;
-        if tex_filter(coord) == FILTER_NEAREST {
-            // nearest
-            normalized_value = decode_color(Vec4(decode_nv12(texture_uint,
-                clamp_to_edge_nearest_neighbor(coord, texture_dimensions))));
-        } else {
-            // bilinear
-            let v00 = decode_color(Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5, -0.5), texture_dimensions))));
-            let v01 = decode_color(Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2(-0.5,  0.5), texture_dimensions))));
-            let v10 = decode_color(Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5, -0.5), texture_dimensions))));
-            let v11 = decode_color(Vec4(decode_nv12(texture_uint, clamp_to_edge_nearest_neighbor(coord + vec2( 0.5,  0.5), texture_dimensions))));
-            normalized_value = filter_bilinear(coord, v00, v01, v10, v11);
+            let v00 = textureLoad(texture_float, v00_coord, 0);
+            let v01 = textureLoad(texture_float, v01_coord, 0);
+            let v10 = textureLoad(texture_float, v10_coord, 0);
+            let v11 = textureLoad(texture_float, v11_coord, 0);
+            normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
         }
     }
-
+    else if rect_info.sample_type == SAMPLE_TYPE_SINT {
+        if tex_filter(coord) == FILTER_NEAREST {
+            // nearest
+            normalized_value = decode_color(Vec4(textureLoad(texture_sint, clamped_coord, 0)));
+        } else {
+            // bilinear
+            let v00 = Vec4(textureLoad(texture_sint, v00_coord, 0));
+            let v01 = Vec4(textureLoad(texture_sint, v01_coord, 0));
+            let v10 = Vec4(textureLoad(texture_sint, v10_coord, 0));
+            let v11 = Vec4(textureLoad(texture_sint, v11_coord, 0));
+            normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
+        }
+    }
+    else if rect_info.sample_type == SAMPLE_TYPE_UINT {
+        if tex_filter(coord) == FILTER_NEAREST {
+            // nearest
+            normalized_value = decode_color(Vec4(textureLoad(texture_uint, clamped_coord, 0)));
+        } else {
+            // bilinear
+            let v00 = Vec4(textureLoad(texture_uint, v00_coord, 0));
+            let v01 = Vec4(textureLoad(texture_uint, v01_coord, 0));
+            let v10 = Vec4(textureLoad(texture_uint, v10_coord, 0));
+            let v11 = Vec4(textureLoad(texture_uint, v11_coord, 0));
+            normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
+        }
+    } else if rect_info.sample_type == SAMPLE_TYPE_NV12 {
+        if tex_filter(coord) == FILTER_NEAREST {
+            // nearest
+            normalized_value = decode_color(Vec4(decode_nv12(texture_uint, clamped_coord)));
+        } else {
+            // bilinear
+            let v00 = Vec4(decode_nv12(texture_uint, v00_coord));
+            let v01 = Vec4(decode_nv12(texture_uint, v01_coord));
+            let v10 = Vec4(decode_nv12(texture_uint, v10_coord));
+            let v11 = Vec4(decode_nv12(texture_uint, v11_coord));
+            normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
+        }
+    }
     else {
         return ERROR_RGBA; // unknown sample type
     }
