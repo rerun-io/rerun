@@ -1108,11 +1108,11 @@ fn add_copy_assignment_and_constructor(
 
     let typ = quote_field_type(hpp_includes, obj_field);
     {
-        let copy_or_move = if !obj_field.typ.has_default_destructor(objects) {
+        let copy_or_move = if obj_field.typ.has_default_destructor(objects) {
+            quote!(#param_ident)
+        } else {
             hpp_includes.insert_system("utility"); // std::move
             quote!(std::move(#param_ident))
-        } else {
-            quote!(#param_ident)
         };
         methods.push(Method {
             declaration: MethodDeclaration::constructor(quote! {
@@ -1147,10 +1147,10 @@ fn add_copy_assignment_and_constructor(
             quote!(#param_ident[#i])
         });
 
-        let array_construction = if obj_field.fqname != target_field.fqname {
-            quote!(std::array)
-        } else {
+        let array_construction = if obj_field.fqname == target_field.fqname {
             quote!()
+        } else {
+            quote!(std::array)
         };
 
         methods.push(Method {
