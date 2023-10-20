@@ -10,7 +10,7 @@ them side-by-side. It pulls from the following sources:
   and the corresponding code examples in the docs (docs/code-examples/*.rs)
 - The `demo.rerun.io` examples, as built by the `build_demo_app.py` script.
 
-The comparison is generated in the `compare_screenshot` directory. Use the `--serve`
+The comparisons are generated in the `compare_screenshot` directory. Use the `--serve`
 option to show them in a browser.
 """
 
