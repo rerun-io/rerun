@@ -83,19 +83,19 @@ class LineStrips3D(Archetype):
         Parameters
         ----------
         strips:
-             All the actual 3D line strips that make up the batch.
+            All the actual 3D line strips that make up the batch.
         radii:
-             Optional radii for the line strips.
+            Optional radii for the line strips.
         colors:
-             Optional colors for the line strips.
+            Optional colors for the line strips.
         labels:
-             Optional text labels for the line strips.
+            Optional text labels for the line strips.
         class_ids:
-             Optional `ClassId`s for the lines.
+            Optional `ClassId`s for the lines.
 
-             The class ID provides colors and labels if not specified explicitly.
+            The class ID provides colors and labels if not specified explicitly.
         instance_keys:
-             Unique identifiers for each individual line strip in the batch.
+            Unique identifiers for each individual line strip in the batch.
         """
 
         # You can define your own __init__ function as a member of LineStrips3DExt in line_strips3d_ext.py

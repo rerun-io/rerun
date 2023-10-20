@@ -6,6 +6,7 @@
 #include "../result.hpp"
 #include "vec3d.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -29,7 +30,7 @@ namespace rerun {
         /// ```
         struct Mat3x3 {
             /// Flat list of matrix coefficients in column-major order.
-            float flat_columns[9];
+            std::array<float, 9> flat_columns;
 
           public:
             // Extensions to generated type defined in 'mat3x3_ext.cpp'

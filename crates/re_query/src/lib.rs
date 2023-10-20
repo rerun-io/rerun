@@ -29,28 +29,28 @@ pub enum QueryError {
     BadAccess,
 
     #[error("Could not find primary component: {0}")]
-    PrimaryNotFound(re_types::ComponentName),
+    PrimaryNotFound(re_types_core::ComponentName),
 
     #[error("Could not find required component: {0}")]
-    RequiredComponentNotFound(re_log_types::ComponentName),
+    RequiredComponentNotFound(re_types_core::ComponentName),
 
     #[error("Could not find component")]
     ComponentNotFound,
 
     #[error("Tried to access component of type '{actual:?}' using component '{requested:?}'")]
     TypeMismatch {
-        actual: re_types::ComponentName,
-        requested: re_types::ComponentName,
+        actual: re_types_core::ComponentName,
+        requested: re_types_core::ComponentName,
     },
 
     #[error("Error with one or more the underlying data cells: {0}")]
     DataCell(#[from] re_log_types::DataCellError),
 
     #[error("Error deserializing: {0}")]
-    DeserializationError(#[from] re_types::DeserializationError),
+    DeserializationError(#[from] re_types_core::DeserializationError),
 
     #[error("Error serializing: {0}")]
-    SerializationError(#[from] re_types::SerializationError),
+    SerializationError(#[from] re_types_core::SerializationError),
 
     #[error("Error converting arrow data: {0}")]
     ArrowError(#[from] arrow2::error::Error),

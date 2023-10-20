@@ -34,7 +34,6 @@ class Image(ImageExt, Archetype):
     -------
     ### `image_simple`:
     ```python
-
     import numpy as np
     import rerun as rr
 
@@ -65,11 +64,11 @@ class Image(ImageExt, Archetype):
         Parameters
         ----------
         data:
-             The image data. Should always be a rank-2 or rank-3 tensor.
+            The image data. Should always be a rank-2 or rank-3 tensor.
         draw_order:
-             An optional floating point value that specifies the 2D drawing order.
+            An optional floating point value that specifies the 2D drawing order.
 
-             Objects with higher values are drawn on top of those with lower values.
+            Objects with higher values are drawn on top of those with lower values.
         """
 
         # You can define your own __init__ function as a member of ImageExt in image_ext.py

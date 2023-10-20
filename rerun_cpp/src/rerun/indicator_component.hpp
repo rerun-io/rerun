@@ -17,7 +17,7 @@ namespace rerun {
             static Result<rerun::DataCell> to_data_cell(
                 const IndicatorComponent<Name>*, size_t _num_instances
             ) {
-                return rerun::create_indicator_component(Name);
+                return rerun::DataCell::create_indicator_component(Name);
             }
         };
     } // namespace components

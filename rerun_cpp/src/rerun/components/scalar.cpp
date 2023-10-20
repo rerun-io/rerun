@@ -3,10 +3,7 @@
 
 #include "scalar.hpp"
 
-#include "../arrow.hpp"
-
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
@@ -21,7 +18,7 @@ namespace rerun {
         Result<std::shared_ptr<arrow::DoubleBuilder>> Scalar::new_arrow_array_builder(
             arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -31,10 +28,10 @@ namespace rerun {
         Error Scalar::fill_arrow_array_builder(
             arrow::DoubleBuilder* builder, const Scalar* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -66,16 +63,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema =
-                arrow::schema({arrow::field(Scalar::NAME, Scalar::arrow_datatype(), false)});
-
-            rerun::DataCell cell;
-            cell.component_name = Scalar::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
+            return rerun::DataCell::create(
+                Scalar::NAME,
+                Scalar::arrow_datatype(),
+                std::move(array)
+            );
         }
     } // namespace components
 } // namespace rerun

@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &TensorDimension::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& TensorDimension::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("size", arrow::uint64(), false),
                 arrow::field("name", arrow::utf8(), true),
@@ -17,9 +17,9 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> TensorDimension::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -34,12 +34,12 @@ namespace rerun {
         }
 
         Error TensorDimension::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const TensorDimension *elements, size_t num_elements
+            arrow::StructBuilder* builder, const TensorDimension* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -47,17 +47,17 @@ namespace rerun {
             }
 
             {
-                auto field_builder = static_cast<arrow::UInt64Builder *>(builder->field_builder(0));
+                auto field_builder = static_cast<arrow::UInt64Builder*>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].size));
                 }
             }
             {
-                auto field_builder = static_cast<arrow::StringBuilder *>(builder->field_builder(1));
+                auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(1));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     if (element.name.has_value()) {
                         ARROW_RETURN_NOT_OK(field_builder->Append(element.name.value()));
                     } else {

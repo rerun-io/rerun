@@ -4,9 +4,7 @@
 #include "affix_fuzzer8.hpp"
 
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
-#include <rerun/arrow.hpp>
 
 namespace rerun {
     namespace components {
@@ -20,7 +18,7 @@ namespace rerun {
         Result<std::shared_ptr<arrow::FloatBuilder>> AffixFuzzer8::new_arrow_array_builder(
             arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -30,10 +28,10 @@ namespace rerun {
         Error AffixFuzzer8::fill_arrow_array_builder(
             arrow::FloatBuilder* builder, const AffixFuzzer8* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -70,17 +68,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(AffixFuzzer8::NAME, AffixFuzzer8::arrow_datatype(), false)}
+            return rerun::DataCell::create(
+                AffixFuzzer8::NAME,
+                AffixFuzzer8::arrow_datatype(),
+                std::move(array)
             );
-
-            rerun::DataCell cell;
-            cell.component_name = AffixFuzzer8::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
         }
     } // namespace components
 } // namespace rerun

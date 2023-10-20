@@ -4,11 +4,11 @@ use arrow2::{
 };
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
-use re_types::{components::InstanceKey, Archetype, Component, Loggable};
+use re_types_core::{components::InstanceKey, Archetype, Component, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 
-/// Make it so that our arrays can be deserialized again by arrow2-convert
+/// Make it so that our arrays can be deserialized again by `polars`.
 fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
     // TODO(jleibs): This is an ugly work-around but gets our serializers
     // working again
@@ -58,7 +58,7 @@ pub fn iter_column<'a, C: Component + 'a>(
 
 pub fn df_builder1<'a, C0>(c0: &'a [Option<C0>]) -> crate::Result<DataFrame>
 where
-    C0: re_types::Component + Clone + 'a,
+    C0: re_types_core::Component + Clone + 'a,
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
 {
     let array0 = C0::to_arrow_opt(c0.iter().map(|c| c.as_ref()))?;
@@ -73,8 +73,8 @@ pub fn df_builder2<'a, C0, C1>(
     c1: &'a [Option<C1>],
 ) -> crate::Result<DataFrame>
 where
-    C0: re_types::Component + Clone + 'a,
-    C1: re_types::Component + Clone + 'a,
+    C0: re_types_core::Component + Clone + 'a,
+    C1: re_types_core::Component + Clone + 'a,
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
     &'a C1: Into<::std::borrow::Cow<'a, C1>>,
 {
@@ -93,9 +93,9 @@ pub fn df_builder3<'a, C0, C1, C2>(
     c2: &'a [Option<C2>],
 ) -> crate::Result<DataFrame>
 where
-    C0: re_types::Component + Clone + 'a,
-    C1: re_types::Component + Clone + 'a,
-    C2: re_types::Component + Clone + 'a,
+    C0: re_types_core::Component + Clone + 'a,
+    C1: re_types_core::Component + Clone + 'a,
+    C2: re_types_core::Component + Clone + 'a,
     &'a C0: Into<::std::borrow::Cow<'a, C0>>,
     &'a C1: Into<::std::borrow::Cow<'a, C1>>,
     &'a C2: Into<::std::borrow::Cow<'a, C2>>,
@@ -124,7 +124,7 @@ impl ComponentWithInstances {
         let array1 = self.values.as_arrow_ref();
 
         let series0 = Series::try_from((
-            re_types::components::InstanceKey::name().as_ref(),
+            InstanceKey::name().as_ref(),
             array0.as_ref().clean_for_polars(),
         ))?;
         let series1 = Series::try_from((C0::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -134,14 +134,17 @@ impl ComponentWithInstances {
 }
 
 impl<A: Archetype> ArchetypeView<A> {
-    pub fn as_df1<'a, C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a>(
+    pub fn as_df1<
+        'a,
+        C1: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+    >(
         &self,
     ) -> crate::Result<DataFrame> {
         let array0 = InstanceKey::to_arrow(self.iter_instance_keys())?;
         let array1 = C1::to_arrow_opt(self.iter_optional_component::<C1>()?)?;
 
         let series0 = Series::try_from((
-            re_types::components::InstanceKey::name().as_ref(),
+            InstanceKey::name().as_ref(),
             array0.as_ref().clean_for_polars(),
         ))?;
         let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -151,8 +154,8 @@ impl<A: Archetype> ArchetypeView<A> {
 
     pub fn as_df2<
         'a,
-        C1: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
-        C2: re_types::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
+        C1: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C1>> + 'a,
+        C2: re_types_core::Component + Clone + Into<::std::borrow::Cow<'a, C2>> + 'a,
     >(
         &self,
     ) -> crate::Result<DataFrame> {
@@ -161,7 +164,7 @@ impl<A: Archetype> ArchetypeView<A> {
         let array2 = C2::to_arrow_opt(self.iter_optional_component::<C2>()?)?;
 
         let series0 = Series::try_from((
-            re_types::components::InstanceKey::name().as_ref(),
+            InstanceKey::name().as_ref(),
             array0.as_ref().clean_for_polars(),
         ))?;
         let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -193,7 +196,7 @@ fn test_df_builder() {
     eprintln!("{df:?}");
     //
     // ┌──────────────┬─────────────────┐
-    // │ rerun.components.Radius ┆ rerun.components.Color │
+    // │ Radius       ┆ Color           │
     // │ ---          ┆ ---             │
     // │ f32          ┆ u32             │
     // ╞══════════════╪═════════════════╡

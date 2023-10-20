@@ -3,26 +3,24 @@
 
 #include "text_log_level.hpp"
 
-#include "../arrow.hpp"
 #include "../datatypes/utf8.hpp"
 
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace components {
         const char TextLogLevel::NAME[] = "rerun.components.TextLogLevel";
 
-        const std::shared_ptr<arrow::DataType> &TextLogLevel::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& TextLogLevel::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Utf8::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::StringBuilder>> TextLogLevel::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -30,12 +28,12 @@ namespace rerun {
         }
 
         Error TextLogLevel::fill_arrow_array_builder(
-            arrow::StringBuilder *builder, const TextLogLevel *elements, size_t num_elements
+            arrow::StringBuilder* builder, const TextLogLevel* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -45,7 +43,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(TextLogLevel));
             RR_RETURN_NOT_OK(rerun::datatypes::Utf8::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Utf8 *>(elements),
+                reinterpret_cast<const rerun::datatypes::Utf8*>(elements),
                 num_elements
             ));
 
@@ -53,10 +51,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> TextLogLevel::to_data_cell(
-            const TextLogLevel *instances, size_t num_instances
+            const TextLogLevel* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = TextLogLevel::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);
@@ -69,17 +67,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(TextLogLevel::NAME, TextLogLevel::arrow_datatype(), false)}
+            return rerun::DataCell::create(
+                TextLogLevel::NAME,
+                TextLogLevel::arrow_datatype(),
+                std::move(array)
             );
-
-            rerun::DataCell cell;
-            cell.component_name = TextLogLevel::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
         }
     } // namespace components
 } // namespace rerun

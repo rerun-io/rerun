@@ -8,16 +8,16 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Vec2D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Vec2D::arrow_datatype() {
             static const auto datatype =
                 arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 2);
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Vec2D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -29,24 +29,24 @@ namespace rerun {
         }
 
         Error Vec2D::fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder *builder, const Vec2D *elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const Vec2D* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
                 );
             }
 
-            auto value_builder = static_cast<arrow::FloatBuilder *>(builder->value_builder());
+            auto value_builder = static_cast<arrow::FloatBuilder*>(builder->value_builder());
 
             ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
             static_assert(sizeof(elements[0].xy) == sizeof(elements[0]));
             ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                elements[0].xy,
+                elements[0].xy.data(),
                 static_cast<int64_t>(num_elements * 2),
                 nullptr
             ));

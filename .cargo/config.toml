@@ -1,4 +1,6 @@
 [alias]
+# TODO(emilk): remove all these and start using `just` and `pixi` instead.
+
 # `cargo rerun` is short a convenient shorthand, skipping the web viewer.
 rerun = "run --package rerun-cli --no-default-features --features native_viewer --"
 
@@ -8,7 +10,8 @@ rerun-release = "run --package rerun-cli --no-default-features --features native
 # `cargo rerun-web` is short a convenient shorthand for building & starting the web viewer.
 rerun-web = "run --package rerun-cli --no-default-features --features web_viewer -- --web-viewer"
 
-# Run the codegen. Pass --profile
+# Run the codegen. Optionally pass `--profile` to it.
+# NOTE: there are several CI jobs with `command: codegen` with the cargo action
 codegen = "run --package re_types_builder --"
 
 # To easily run examples on the web, see https://github.com/rukai/cargo-run-wasm.

@@ -1,4 +1,4 @@
-//! Log some very simple points.
+//! Log annotation context with connections between keypoints.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =
@@ -13,10 +13,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::AnnotationContext::new([rerun::ClassDescription {
             info: 0.into(),
             keypoint_annotations: vec![
-                (0, "zero", rerun::Rgba32::from(0xFF0000FF)).into(),
-                (1, "one", rerun::Rgba32::from(0x00FF00FF)).into(),
-                (2, "two", rerun::Rgba32::from(0x0000FFFF)).into(),
-                (3, "three", rerun::Rgba32::from(0xFFFF00FF)).into(),
+                (0, "zero", rerun::Rgba32::from_rgb(255, 0, 0)).into(),
+                (1, "one", rerun::Rgba32::from_rgb(0, 255, 0)).into(),
+                (2, "two", rerun::Rgba32::from_rgb(0, 0, 255)).into(),
+                (3, "three", rerun::Rgba32::from_rgb(255, 255, 0)).into(),
             ],
             keypoint_connections: rerun::KeypointPair::vec_from([(0, 2), (1, 2), (2, 3)]),
         }]),

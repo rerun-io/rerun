@@ -7,7 +7,6 @@ mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
-pub mod blueprint_components;
 pub mod env_vars;
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;
@@ -16,6 +15,13 @@ mod screenshotter;
 mod store_hub;
 mod ui;
 mod viewer_analytics;
+
+/// Auto-generated blueprint-related types.
+///
+/// They all implement the [`re_types_core::Component`] trait.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+pub mod blueprint;
 
 pub(crate) use {
     app_state::AppState,
@@ -103,7 +109,10 @@ impl AppEnvironment {
                 llvm_version: llvm_version.clone(),
             },
 
-            StoreSource::File { .. } | StoreSource::Unknown | StoreSource::Other(_) => {
+            StoreSource::File { .. }
+            | StoreSource::Unknown
+            | StoreSource::Viewer
+            | StoreSource::Other(_) => {
                 // We should not really get here
 
                 #[cfg(debug_assertions)]

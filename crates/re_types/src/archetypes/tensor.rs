@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/tensor.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -14,14 +15,18 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
+
 /// **Archetype**: A generic n-dimensional Tensor.
 ///
 /// ## Example
 ///
 /// ### Simple Tensor
 /// ```ignore
-/// //! Create and log a tensor.
-///
 /// use ndarray::{Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,7 +36,8 @@
 ///     let mut data = Array::<u8, _>::default((8, 6, 3, 5).f());
 ///     data.map_inplace(|x| *x = rand::random());
 ///
-///     let tensor = rerun::Tensor::try_from(data)?.with_names(["batch", "channel", "height", "width"]);
+///     let tensor =
+///         rerun::Tensor::try_from(data)?.with_dim_names(["batch", "channel", "height", "width"]);
 ///     rec.log("tensor", &tensor)?;
 ///
 ///     rerun::native_viewer::show(storage.take())?;
@@ -53,16 +59,16 @@ pub struct Tensor {
     pub data: crate::components::TensorData,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.TensorIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
@@ -75,51 +81,49 @@ impl Tensor {
     pub const NUM_COMPONENTS: usize = 3usize;
 }
 
-/// Indicator component for the [`Tensor`] [`crate::Archetype`]
-pub type TensorIndicator = crate::GenericIndicatorComponent<Tensor>;
+/// Indicator component for the [`Tensor`] [`::re_types_core::Archetype`]
+pub type TensorIndicator = ::re_types_core::GenericIndicatorComponent<Tensor>;
 
-impl crate::Archetype for Tensor {
+impl ::re_types_core::Archetype for Tensor {
     type Indicator = TensorIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Tensor".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: TensorIndicator = TensorIndicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -127,27 +131,27 @@ impl crate::Archetype for Tensor {
         let data = {
             let array = arrays_by_name
                 .get("rerun.components.TensorData")
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Tensor#data")?;
             <crate::components::TensorData>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Tensor#data")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Tensor#data")?
         };
         Ok(Self { data })
     }
 }
 
-impl crate::AsComponents for Tensor {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for Tensor {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.data as &dyn crate::ComponentBatch).into()),
+            Some((&self.data as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

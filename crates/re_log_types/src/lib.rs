@@ -24,6 +24,7 @@ mod data_table;
 pub mod example_components;
 pub mod hash;
 mod index;
+mod num_instances;
 pub mod path;
 mod time;
 pub mod time_point;
@@ -32,9 +33,6 @@ mod time_real;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod data_table_batcher;
-
-#[cfg(feature = "serde")]
-pub mod serde_field;
 
 use std::sync::Arc;
 
@@ -46,20 +44,16 @@ pub use self::data_row::{
 };
 pub use self::data_table::{
     DataCellColumn, DataCellOptVec, DataTable, DataTableError, DataTableResult, EntityPathVec,
-    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, COLUMN_ENTITY_PATH,
-    COLUMN_INSERT_ID, COLUMN_NUM_INSTANCES, COLUMN_ROW_ID, COLUMN_TIMEPOINT, METADATA_KIND,
+    ErasedTimeVec, NumInstancesVec, RowIdVec, TableId, TimePointVec, METADATA_KIND,
     METADATA_KIND_CONTROL, METADATA_KIND_DATA,
 };
 pub use self::index::*;
+pub use self::num_instances::NumInstances;
 pub use self::path::*;
 pub use self::time::{Duration, Time, TimeZone};
 pub use self::time_point::{TimeInt, TimePoint, TimeType, Timeline, TimelineName};
 pub use self::time_range::{TimeRange, TimeRangeF};
 pub use self::time_real::TimeReal;
-
-// Re-export `ComponentName` for convenience
-pub use re_types::ComponentName;
-pub use re_types::SizeBytes;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::data_table_batcher::{
@@ -75,8 +69,9 @@ pub use self::load_file::{data_cells_from_file_contents, FromFileError};
 
 pub mod external {
     pub use arrow2;
-    pub use arrow2_convert;
+
     pub use re_tuid;
+    pub use re_types_core;
 }
 
 #[macro_export]
@@ -346,6 +341,9 @@ pub enum StoreSource {
         file_source: FileSource,
     },
 
+    /// Generated from the viewer itself.
+    Viewer,
+
     /// Perhaps from some manual data ingestion?
     Other(String),
 }
@@ -362,6 +360,7 @@ impl std::fmt::Display for StoreSource {
                 FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
                 FileSource::FileDialog => write!(f, "File via file dialog"),
             },
+            Self::Viewer => write!(f, "Viewer-generated"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
         }
     }
@@ -394,82 +393,6 @@ impl PathOp {
             PathOp::ClearComponents(path) | PathOp::ClearRecursive(path) => path,
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-
-/// Implements [`re_types::Component`] for `T: arrow2_convert::{Serialize, Deserialize}`.
-#[doc(hidden)]
-#[macro_export]
-macro_rules! arrow2convert_component_shim {
-    ($entity:ident as $fqname:expr) => {
-
-        impl re_types::Loggable for $entity {
-            type Name = re_types::ComponentName;
-
-            #[inline]
-            fn name() -> Self::Name {
-                $fqname.into()
-            }
-
-            #[inline]
-            fn arrow_datatype() -> arrow2::datatypes::DataType {
-                <Self as ::arrow2_convert::field::ArrowField>::data_type()
-            }
-
-            #[inline]
-            fn to_arrow_opt<'a>(
-                data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-            ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
-            where
-                Self: Clone + 'a,
-            {
-                let input = data.into_iter().map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    datum.map(|d| d.into_owned())
-                });
-
-                let vec: Vec<_> = input.collect();
-
-                let arrow = arrow2_convert::serialize::TryIntoArrow::try_into_arrow(vec.iter())
-                    .map_err(|err| {
-                        re_types::SerializationError::ArrowConvertFailure(err.to_string())
-                    })?;
-
-                Ok(arrow)
-            }
-
-            #[inline]
-            fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> re_types::DeserializationResult<Vec<Option<Self>>>
-            where
-                Self: Sized
-            {
-                let native = <
-                    <Self as arrow2_convert::deserialize::ArrowDeserialize>::ArrayType as arrow2_convert::deserialize::ArrowArray
-                >::iter_from_array_ref(data);
-                Ok(
-                    native
-                        .into_iter()
-                        .map(|item| <Self as arrow2_convert::deserialize::ArrowDeserialize>::arrow_deserialize(item))
-                        .collect()
-                )
-            }
-        }
-
-        impl<'a> From<$entity> for ::std::borrow::Cow<'a, $entity> {
-            #[inline]
-            fn from(value: $entity) -> Self {
-                std::borrow::Cow::Owned(value)
-            }
-        }
-
-        impl<'a> From<&'a $entity> for ::std::borrow::Cow<'a, $entity> {
-            #[inline]
-            fn from(value: &'a $entity) -> Self {
-                std::borrow::Cow::Borrowed(value)
-            }
-        }
-    };
 }
 
 // ---

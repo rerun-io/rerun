@@ -11,7 +11,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &RotationAxisAngle::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& RotationAxisAngle::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("axis", rerun::datatypes::Vec3D::arrow_datatype(), false),
                 arrow::field("angle", rerun::datatypes::Angle::arrow_datatype(), false),
@@ -20,9 +20,9 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> RotationAxisAngle::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -37,12 +37,12 @@ namespace rerun {
         }
 
         Error RotationAxisAngle::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const RotationAxisAngle *elements, size_t num_elements
+            arrow::StructBuilder* builder, const RotationAxisAngle* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -51,7 +51,7 @@ namespace rerun {
 
             {
                 auto field_builder =
-                    static_cast<arrow::FixedSizeListBuilder *>(builder->field_builder(0));
+                    static_cast<arrow::FixedSizeListBuilder*>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
@@ -63,7 +63,7 @@ namespace rerun {
             }
             {
                 auto field_builder =
-                    static_cast<arrow::DenseUnionBuilder *>(builder->field_builder(1));
+                    static_cast<arrow::DenseUnionBuilder*>(builder->field_builder(1));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     RR_RETURN_NOT_OK(rerun::datatypes::Angle::fill_arrow_array_builder(

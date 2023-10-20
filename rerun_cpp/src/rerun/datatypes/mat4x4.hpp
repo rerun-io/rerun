@@ -6,6 +6,7 @@
 #include "../result.hpp"
 #include "vec4d.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -30,7 +31,7 @@ namespace rerun {
         /// ```
         struct Mat4x4 {
             /// Flat list of matrix coefficients in column-major order.
-            float flat_columns[16];
+            std::array<float, 16> flat_columns;
 
           public:
             // Extensions to generated type defined in 'mat4x4_ext.cpp'

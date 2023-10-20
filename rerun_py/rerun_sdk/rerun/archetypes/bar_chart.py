@@ -28,7 +28,6 @@ class BarChart(BarChartExt, Archetype):
     -------
     ### Simple bar chart:
     ```python
-
     import rerun as rr
 
     rr.init("rerun_example_bar_chart", spawn=True)
@@ -52,7 +51,7 @@ class BarChart(BarChartExt, Archetype):
         Parameters
         ----------
         values:
-             The values. Should always be a rank-1 tensor.
+            The values. Should always be a rank-1 tensor.
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py

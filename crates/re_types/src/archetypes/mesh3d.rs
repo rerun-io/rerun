@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/mesh3d.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -14,6 +15,12 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
+
 /// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
 ///
 /// See also [`Asset3D`][crate::archetypes::Asset3D].
@@ -22,8 +29,6 @@
 ///
 /// ### Simple indexed 3D mesh
 /// ```ignore
-/// //! Log a simple colored triangle with indexed drawing.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) =
 ///         rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").memory()?;
@@ -80,10 +85,10 @@ pub struct Mesh3D {
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Position3D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Mesh3DIndicator".into(),
@@ -92,7 +97,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usi
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
@@ -102,7 +107,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 4usize]
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position3D".into(),
@@ -120,51 +125,49 @@ impl Mesh3D {
     pub const NUM_COMPONENTS: usize = 8usize;
 }
 
-/// Indicator component for the [`Mesh3D`] [`crate::Archetype`]
-pub type Mesh3DIndicator = crate::GenericIndicatorComponent<Mesh3D>;
+/// Indicator component for the [`Mesh3D`] [`::re_types_core::Archetype`]
+pub type Mesh3DIndicator = ::re_types_core::GenericIndicatorComponent<Mesh3D>;
 
-impl crate::Archetype for Mesh3D {
+impl ::re_types_core::Archetype for Mesh3D {
     type Indicator = Mesh3DIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Mesh3D".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Mesh3DIndicator = Mesh3DIndicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -172,13 +175,13 @@ impl crate::Archetype for Mesh3D {
         let vertex_positions = {
             let array = arrays_by_name
                 .get("rerun.components.Position3D")
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?;
             <crate::components::Position3D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
                 .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
         };
         let mesh_properties =
@@ -189,7 +192,7 @@ impl crate::Archetype for Mesh3D {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(crate::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.archetypes.Mesh3D#mesh_properties")?
                 })
             } else {
@@ -200,8 +203,8 @@ impl crate::Archetype for Mesh3D {
                 <crate::components::Vector3D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#vertex_normals")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Mesh3D#vertex_normals")?
             })
         } else {
@@ -212,8 +215,8 @@ impl crate::Archetype for Mesh3D {
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#vertex_colors")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Mesh3D#vertex_colors")?
             })
         } else {
@@ -226,7 +229,7 @@ impl crate::Archetype for Mesh3D {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.Mesh3D#mesh_material")?
             })
         } else {
@@ -237,8 +240,8 @@ impl crate::Archetype for Mesh3D {
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#class_ids")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Mesh3D#class_ids")?
             })
         } else {
@@ -250,8 +253,8 @@ impl crate::Archetype for Mesh3D {
                 <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#instance_keys")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Mesh3D#instance_keys")?
             })
         } else {
@@ -269,31 +272,31 @@ impl crate::Archetype for Mesh3D {
     }
 }
 
-impl crate::AsComponents for Mesh3D {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for Mesh3D {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.vertex_positions as &dyn crate::ComponentBatch).into()),
+            Some((&self.vertex_positions as &dyn ComponentBatch).into()),
             self.mesh_properties
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.vertex_normals
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.vertex_colors
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.mesh_material
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.class_ids
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.instance_keys
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

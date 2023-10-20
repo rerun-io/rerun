@@ -58,6 +58,7 @@ re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.10.0-alpha.7", de
 re_time_panel = { path = "crates/re_time_panel", version = "=0.10.0-alpha.7", default-features = false }
 re_tracing = { path = "crates/re_tracing", version = "=0.10.0-alpha.7", default-features = false }
 re_tuid = { path = "crates/re_tuid", version = "=0.10.0-alpha.7", default-features = false }
+re_types_core = { path = "crates/re_types_core", version = "=0.10.0-alpha.7", default-features = false }
 re_types = { path = "crates/re_types", version = "=0.10.0-alpha.7", default-features = false }
 re_types_builder = { path = "crates/re_types_builder", version = "=0.10.0-alpha.7", default-features = false }
 re_ui = { path = "crates/re_ui", version = "=0.10.0-alpha.7", default-features = false }
@@ -105,7 +106,7 @@ egui = { version = "0.23.0", features = [
   "log",
   "puffin",
 ] }
-egui_commonmark = { version = "0.8", default-features = false }
+egui_commonmark = { version = "0.9", default-features = false }
 egui_extras = { version = "0.23.0", features = ["http", "image", "puffin"] }
 egui_plot = "0.23.0"
 egui_tiles = "0.3.1"
@@ -158,9 +159,12 @@ puffin_http = "0.13"
 rand = { version = "0.8", default-features = false }
 rayon = "1.7"
 rfd = { version = "0.12", default_features = false, features = ["xdg-portal"] }
+rmp-serde = "1"
 ron = "0.8.0"
 serde = "1"
+serde_bytes = "0.11"
 serde_json = { version = "1", default-features = false, features = ["std"] }
+serde_test = "1"
 serde_yaml = { version = "0.9.21", default-features = false }
 sha2 = "0.10"
 similar-asserts = "1.4.2"

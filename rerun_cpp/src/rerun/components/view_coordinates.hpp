@@ -6,6 +6,7 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -19,24 +20,23 @@ namespace rerun {
     namespace components {
         /// **Component**: How we interpret the coordinate system of an entity/space.
         ///
-        /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or
-        /// left-handed?
+        /// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
         ///
         /// The three coordinates are always ordered as [x, y, z].
         ///
-        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis
-        /// points down, and the Z axis points forward.
+        /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
+        /// down, and the Z axis points forward.
         ///
-        /// The following constants are used to represent the different directions.
-        ///  Up = 1
-        ///  Down = 2
-        ///  Right = 3
-        ///  Left = 4
-        ///  Forward = 5
-        ///  Back = 6
+        /// The following constants are used to represent the different directions:
+        ///  * Up = 1
+        ///  * Down = 2
+        ///  * Right = 3
+        ///  * Left = 4
+        ///  * Forward = 5
+        ///  * Back = 6
         struct ViewCoordinates {
             /// The directions of the [x, y, z] axes.
-            uint8_t coordinates[3];
+            std::array<uint8_t, 3> coordinates;
 
             /// Name of the component, used for serialization.
             static const char NAME[];

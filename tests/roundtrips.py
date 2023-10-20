@@ -25,11 +25,7 @@ opt_out = {
     "asset3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "bar_chart": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "depth_image": ["cpp"],  # TODO(#3380)
-    "image": ["cpp"],  # TODO(#3380)
     "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "segmentation_image": ["cpp"],  # TODO(#3380)
-    "tensor": ["cpp"],  # TODO(#3380)
     "time_series_scalar": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "transform3d": [
         "cpp"
@@ -155,10 +151,18 @@ def main() -> None:
 
 
 def roundtrip_env() -> dict[str, str]:
+    env = os.environ.copy()
+
     # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
     # the batcher will happily insert uninitialized padding bytes as needed!
-    env = os.environ.copy()
     env["RERUN_FLUSH_NUM_ROWS"] = "0"
+
+    # Turn on strict mode to catch errors early
+    env["RERUN_STRICT"] = "1"
+
+    # Treat any warning as panics
+    env["RERUN_PANIC_ON_WARN"] = "1"
+
     return env
 
 

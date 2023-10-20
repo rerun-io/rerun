@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/boxes2d.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -14,14 +15,18 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
+
 /// **Archetype**: 2D boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// ## Example
 ///
 /// ### Simple 2D boxes
 /// ```ignore
-/// //! Log some very simple 2D boxes.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
 ///
@@ -79,10 +84,10 @@ pub struct Boxes2D {
     pub instance_keys: Option<Vec<crate::components::InstanceKey>>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.HalfSizes2D".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Boxes2DIndicator".into(),
@@ -91,7 +96,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usi
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.ClassId".into(),
@@ -102,7 +107,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSizes2D".into(),
@@ -121,51 +126,49 @@ impl Boxes2D {
     pub const NUM_COMPONENTS: usize = 9usize;
 }
 
-/// Indicator component for the [`Boxes2D`] [`crate::Archetype`]
-pub type Boxes2DIndicator = crate::GenericIndicatorComponent<Boxes2D>;
+/// Indicator component for the [`Boxes2D`] [`::re_types_core::Archetype`]
+pub type Boxes2DIndicator = ::re_types_core::GenericIndicatorComponent<Boxes2D>;
 
-impl crate::Archetype for Boxes2D {
+impl ::re_types_core::Archetype for Boxes2D {
     type Indicator = Boxes2DIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Boxes2D".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Boxes2DIndicator = Boxes2DIndicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -173,13 +176,13 @@ impl crate::Archetype for Boxes2D {
         let half_sizes = {
             let array = arrays_by_name
                 .get("rerun.components.HalfSizes2D")
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Boxes2D#half_sizes")?;
             <crate::components::HalfSizes2D>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Boxes2D#half_sizes")?
                 .into_iter()
-                .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.Boxes2D#half_sizes")?
         };
         let centers = if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
@@ -187,8 +190,8 @@ impl crate::Archetype for Boxes2D {
                 <crate::components::Position2D>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Boxes2D#centers")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes2D#centers")?
             })
         } else {
@@ -199,8 +202,8 @@ impl crate::Archetype for Boxes2D {
                 <crate::components::Color>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Boxes2D#colors")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes2D#colors")?
             })
         } else {
@@ -211,8 +214,8 @@ impl crate::Archetype for Boxes2D {
                 <crate::components::Radius>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Boxes2D#radii")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes2D#radii")?
             })
         } else {
@@ -223,8 +226,8 @@ impl crate::Archetype for Boxes2D {
                 <crate::components::Text>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Boxes2D#labels")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes2D#labels")?
             })
         } else {
@@ -237,7 +240,7 @@ impl crate::Archetype for Boxes2D {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.Boxes2D#draw_order")?
             })
         } else {
@@ -248,8 +251,8 @@ impl crate::Archetype for Boxes2D {
                 <crate::components::ClassId>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Boxes2D#class_ids")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes2D#class_ids")?
             })
         } else {
@@ -261,8 +264,8 @@ impl crate::Archetype for Boxes2D {
                 <crate::components::InstanceKey>::from_arrow_opt(&**array)
                     .with_context("rerun.archetypes.Boxes2D#instance_keys")?
                     .into_iter()
-                    .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.archetypes.Boxes2D#instance_keys")?
             })
         } else {
@@ -281,34 +284,34 @@ impl crate::Archetype for Boxes2D {
     }
 }
 
-impl crate::AsComponents for Boxes2D {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for Boxes2D {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.half_sizes as &dyn crate::ComponentBatch).into()),
+            Some((&self.half_sizes as &dyn ComponentBatch).into()),
             self.centers
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.colors
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.radii
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.labels
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.draw_order
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.class_ids
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.instance_keys
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn crate::ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

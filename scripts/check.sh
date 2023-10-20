@@ -17,7 +17,7 @@ typos
 cargo fmt --all -- --check
 ./scripts/lint.py
 ./scripts/ci/cargo_deny.sh
-./examples/cpp/minimal/build_and_run.sh --werror
+./rerun_cpp/build_and_run_tests.sh --werror
 just py-lint
 
 cargo check --all-targets --all-features

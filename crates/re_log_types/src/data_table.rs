@@ -1,15 +1,15 @@
 use std::collections::BTreeMap;
 
-use re_types::ComponentName;
-
 use ahash::HashMap;
 use itertools::{izip, Itertools as _};
 use nohash_hasher::IntSet;
 use smallvec::SmallVec;
 
+use re_types_core::{ComponentName, Loggable, SizeBytes};
+
 use crate::{
     data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
-    RowId, SizeBytes, TimePoint, Timeline,
+    NumInstances, RowId, TimePoint, Timeline,
 };
 
 // ---
@@ -36,6 +36,12 @@ pub enum DataTableError {
     #[error("Could not serialize/deserialize component instances to/from Arrow: {0}")]
     Arrow(#[from] arrow2::error::Error),
 
+    #[error("Could not serialize component instances to/from Arrow: {0}")]
+    Serialization(#[from] re_types_core::SerializationError),
+
+    #[error("Could not deserialize component instances to/from Arrow: {0}")]
+    Deserialization(#[from] re_types_core::DeserializationError),
+
     // Needed to handle TryFrom<T> -> T
     #[error("Infallible")]
     Unreachable(#[from] std::convert::Infallible),
@@ -55,7 +61,7 @@ pub type ErasedTimeVec = SmallVec<[i64; 4]>;
 
 pub type EntityPathVec = SmallVec<[EntityPath; 4]>;
 
-pub type NumInstancesVec = SmallVec<[u32; 4]>;
+pub type NumInstancesVec = SmallVec<[NumInstances; 4]>;
 
 pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
 
@@ -128,21 +134,8 @@ impl SizeBytes for DataCellColumn {
 // ---
 
 /// A unique ID for a [`DataTable`].
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    arrow2_convert::ArrowField,
-    arrow2_convert::ArrowSerialize,
-    arrow2_convert::ArrowDeserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(transparent)]
 pub struct TableId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for TableId {
@@ -182,6 +175,8 @@ impl std::ops::DerefMut for TableId {
         &mut self.0
     }
 }
+
+re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 
 /// A sparse table's worth of data, i.e. a batch of events: a collection of [`DataRow`]s.
 /// This is the top-level layer in our data model.
@@ -486,7 +481,7 @@ impl DataTable {
                         .collect::<BTreeMap<_, _>>(),
                 ),
                 col_entity_path[i].clone(),
-                col_num_instances[i],
+                col_num_instances[i].into(),
                 cells,
             )
         })
@@ -547,26 +542,12 @@ use arrow2::{
     chunk::Chunk,
     datatypes::{DataType, Field, Schema, TimeUnit},
     offset::Offsets,
-    types::NativeType,
 };
-use arrow2_convert::{
-    deserialize::TryIntoCollection, field::ArrowField, serialize::ArrowSerialize,
-    serialize::TryIntoArrow,
-};
-
-// TODO(#1696): Those names should come from the datatypes themselves.
-
-pub const COLUMN_INSERT_ID: &str = "rerun.insert_id";
-pub const COLUMN_ROW_ID: &str = "rerun.row_id";
-pub const COLUMN_TIMEPOINT: &str = "rerun.timepoint";
-pub const COLUMN_ENTITY_PATH: &str = "rerun.entity_path";
-pub const COLUMN_NUM_INSTANCES: &str = "rerun.num_instances";
 
 pub const METADATA_KIND: &str = "rerun.kind";
 pub const METADATA_KIND_DATA: &str = "data";
 pub const METADATA_KIND_CONTROL: &str = "control";
 pub const METADATA_KIND_TIME: &str = "time";
-pub const METADATA_TABLE_ID: &str = "rerun.table_id";
 
 impl DataTable {
     /// Serializes the entire table into an arrow payload and schema.
@@ -669,58 +650,41 @@ impl DataTable {
         let mut schema = Schema::default();
         let mut columns = Vec::new();
 
-        let (row_id_field, row_id_column) =
-            Self::serialize_control_column(COLUMN_ROW_ID, col_row_id)?;
+        let (row_id_field, row_id_column) = Self::serialize_control_column(col_row_id)?;
         schema.fields.push(row_id_field);
         columns.push(row_id_column);
 
         let (entity_path_field, entity_path_column) =
-            Self::serialize_control_column(COLUMN_ENTITY_PATH, col_entity_path)?;
+            Self::serialize_control_column(col_entity_path)?;
         schema.fields.push(entity_path_field);
         columns.push(entity_path_column);
 
-        let (num_instances_field, num_instances_column) = Self::serialize_primitive_column(
-            COLUMN_NUM_INSTANCES,
-            col_num_instances.as_slice(),
-            None,
-        );
+        let (num_instances_field, num_instances_column) =
+            Self::serialize_control_column(col_num_instances)?;
         schema.fields.push(num_instances_field);
         columns.push(num_instances_column);
 
-        schema.metadata = [(METADATA_TABLE_ID.into(), table_id.to_string())].into();
+        schema.metadata = [(TableId::name().to_string(), table_id.to_string())].into();
 
         Ok((schema, columns))
     }
 
     /// Serializes a single control column: an iterable of dense arrow-like data.
-    pub fn serialize_control_column<C: ArrowSerialize + ArrowField<Type = C> + 'static>(
-        name: &str,
-        values: &[C],
-    ) -> DataTableResult<(Field, Box<dyn Array>)> {
+    pub fn serialize_control_column<'a, C: re_types_core::Component + 'a>(
+        values: &'a [C],
+    ) -> DataTableResult<(Field, Box<dyn Array>)>
+    where
+        std::borrow::Cow<'a, C>: std::convert::From<&'a C>,
+    {
         re_tracing::profile_function!();
 
-        /// Transforms an array of unit values into a list of unit arrays.
-        ///
-        /// * Before: `[C, C, C, C, C, …]`
-        /// * After: `ListArray[ [C], [C], [C], [C], [C], … ]`
-        // NOTE: keeping that one around, just in case.
-        #[allow(dead_code)]
-        fn unit_values_to_unit_lists(array: Box<dyn Array>) -> Box<dyn Array> {
-            let datatype = array.data_type().clone();
-            let datatype = ListArray::<i32>::default_datatype(datatype);
-            let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))
-                .unwrap()
-                .into();
-            let validity = None;
-            ListArray::<i32>::new(datatype, offsets, array, validity).boxed()
-        }
+        let data: Box<dyn Array> = C::to_arrow(values)?;
 
-        let data: Box<dyn Array> = values.try_into_arrow()?;
-        // let data = unit_values_to_unit_lists(data);
-
-        let mut field = Field::new(name, data.data_type().clone(), false)
+        // TODO(#3360): rethink our extension and metadata usage
+        let mut field = C::arrow_field()
             .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into());
 
+        // TODO(#3360): rethink our extension and metadata usage
         if let DataType::Extension(name, _, _) = data.data_type() {
             field
                 .metadata
@@ -731,7 +695,7 @@ impl DataTable {
     }
 
     /// Serializes a single control column; optimized path for primitive datatypes.
-    pub fn serialize_primitive_column<T: NativeType>(
+    pub fn serialize_primitive_column<T: arrow2::types::NativeType>(
         name: &str,
         values: &[T],
         datatype: Option<DataType>,
@@ -922,13 +886,24 @@ impl DataTable {
         };
 
         // NOTE: the unwrappings cannot fail since control_index() makes sure the index is valid
-        let col_row_id =
-            (&**chunk.get(control_index(COLUMN_ROW_ID)?).unwrap()).try_into_collection()?;
-        let col_entity_path =
-            (&**chunk.get(control_index(COLUMN_ENTITY_PATH)?).unwrap()).try_into_collection()?;
-        // TODO(#3741): This is unnecessarily slow…
-        let col_num_instances =
-            (&**chunk.get(control_index(COLUMN_NUM_INSTANCES)?).unwrap()).try_into_collection()?;
+        let col_row_id = RowId::from_arrow(
+            chunk
+                .get(control_index(RowId::name().as_str())?)
+                .unwrap()
+                .as_ref(),
+        )?;
+        let col_entity_path = EntityPath::from_arrow(
+            chunk
+                .get(control_index(EntityPath::name().as_str())?)
+                .unwrap()
+                .as_ref(),
+        )?;
+        let col_num_instances = NumInstances::from_arrow(
+            chunk
+                .get(control_index(NumInstances::name().as_str())?)
+                .unwrap()
+                .as_ref(),
+        )?;
 
         // --- Components ---
 
@@ -956,10 +931,10 @@ impl DataTable {
 
         Ok(Self {
             table_id,
-            col_row_id,
+            col_row_id: col_row_id.into(),
             col_timelines,
-            col_entity_path,
-            col_num_instances,
+            col_entity_path: col_entity_path.into(),
+            col_num_instances: col_num_instances.into(),
             columns,
         })
     }

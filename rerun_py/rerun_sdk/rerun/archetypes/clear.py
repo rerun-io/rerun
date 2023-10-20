@@ -23,7 +23,6 @@ class Clear(ClearExt, Archetype):
     -------
     ### Flat:
     ```python
-
     import rerun as rr
 
     rr.init("rerun_example_clear_simple", spawn=True)

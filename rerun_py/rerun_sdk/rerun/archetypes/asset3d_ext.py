@@ -74,7 +74,7 @@ class Asset3DExt:
             if path is None:
                 blob = contents
             else:
-                blob = open(path, "rb").read()
+                blob = pathlib.Path(path).read_bytes()
                 if media_type is None:
                     media_type = guess_media_type(str(path))
 

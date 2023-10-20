@@ -15,8 +15,7 @@
 
 namespace rerun {
     namespace archetypes {
-        /// **Archetype**: Specifies that the entity path at which this is logged is disconnected
-        /// from its parent.
+        /// **Archetype**: Specifies that the entity path at which this is logged is disconnected from its parent.
         ///
         /// This is useful for specifying that a subgraph is independent of the rest of the scene.
         ///
@@ -27,13 +26,11 @@ namespace rerun {
         ///
         /// ### Disconnected Space
         /// ```cpp,ignore
-        /// // Disconnect two spaces.
-        ///
         /// #include <rerun.hpp>
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     rec.connect().throw_on_failure();
         ///
         ///     // These two points can be projected into the same space..
         ///     rec.log("world/room1/point", rerun::Points3D({{0.0f, 0.0f, 0.0f}}));
@@ -47,11 +44,9 @@ namespace rerun {
         struct DisconnectedSpace {
             rerun::components::DisconnectedSpace disconnected_space;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:

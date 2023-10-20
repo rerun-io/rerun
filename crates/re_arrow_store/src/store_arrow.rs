@@ -2,11 +2,8 @@ use std::collections::BTreeMap;
 
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 use nohash_hasher::IntMap;
-use re_log_types::{
-    DataCellColumn, DataTable, DataTableResult, RowId, Timeline, COLUMN_INSERT_ID,
-    COLUMN_NUM_INSTANCES, COLUMN_ROW_ID,
-};
-use re_types::ComponentName;
+use re_log_types::{DataCellColumn, DataTable, DataTableResult, NumInstances, RowId, Timeline};
+use re_types_core::ComponentName;
 
 use crate::store::{IndexedBucket, IndexedBucketInner, PersistentIndexedTable};
 
@@ -93,7 +90,7 @@ fn serialize(
     col_time: Option<(Timeline, &[i64])>,
     col_insert_id: &[u64],
     col_row_id: &[RowId],
-    col_num_instances: &[u32],
+    col_num_instances: &[NumInstances],
     table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
     re_tracing::profile_function!();
@@ -128,7 +125,7 @@ fn serialize_control_columns(
     col_time: Option<(Timeline, &[i64])>,
     col_insert_id: &[u64],
     col_row_id: &[RowId],
-    col_num_instances: &[u32],
+    col_num_instances: &[NumInstances],
 ) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
     re_tracing::profile_function!();
 
@@ -143,14 +140,16 @@ fn serialize_control_columns(
 
     // NOTE: Optional column, so make sure it's actually there:
     if !col_insert_id.is_empty() {
-        let (insert_id_field, insert_id_column) =
-            DataTable::serialize_primitive_column(COLUMN_INSERT_ID, col_insert_id, None);
+        let (insert_id_field, insert_id_column) = DataTable::serialize_primitive_column(
+            &crate::DataStore::insert_id_component_name(),
+            col_insert_id,
+            None,
+        );
         schema.fields.push(insert_id_field);
         columns.push(insert_id_column);
     }
 
-    let (row_id_field, row_id_column) =
-        DataTable::serialize_control_column(COLUMN_ROW_ID, col_row_id)?;
+    let (row_id_field, row_id_column) = DataTable::serialize_control_column(col_row_id)?;
     schema.fields.push(row_id_field);
     columns.push(row_id_column);
 
@@ -165,7 +164,7 @@ fn serialize_control_columns(
     }
 
     let (num_instances_field, num_instances_column) =
-        DataTable::serialize_primitive_column(COLUMN_NUM_INSTANCES, col_num_instances, None);
+        DataTable::serialize_control_column(col_num_instances)?;
     schema.fields.push(num_instances_field);
     columns.push(num_instances_column);
 

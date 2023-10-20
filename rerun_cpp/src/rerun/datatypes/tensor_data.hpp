@@ -22,8 +22,8 @@ namespace rerun {
         /// **Datatype**: A multi-dimensional `Tensor` of data.
         ///
         /// The number of dimensions and their respective lengths is specified by the `shape` field.
-        /// The dimensions are ordered from outermost to innermost. For example, in the common case
-        /// of a 2D RGB Image, the shape would be `[height, width, channel]`.
+        /// The dimensions are ordered from outermost to innermost. For example, in the common case of
+        /// a 2D RGB Image, the shape would be `[height, width, channel]`.
         ///
         /// These dimensions are combined with an index to look up values from the `buffer` field,
         /// which stores a contiguous array of typed values.
@@ -31,6 +31,24 @@ namespace rerun {
             std::vector<rerun::datatypes::TensorDimension> shape;
 
             rerun::datatypes::TensorBuffer buffer;
+
+          public:
+            // Extensions to generated type defined in 'tensor_data_ext.cpp'
+
+            /// Construct a 1D tensor with the given buffer.
+            static TensorData one_dim(rerun::datatypes::TensorBuffer buffer) {
+                auto data = TensorData{};
+                data.shape.emplace_back(rerun::datatypes::TensorDimension(buffer.num_elems()));
+                data.buffer = std::move(buffer);
+                return data;
+            }
+
+            // TODO(#3794): There should be the option to not have TensorData take ownership of the buffer.
+            TensorData(
+                std::vector<rerun::datatypes::TensorDimension> shape_,
+                rerun::datatypes::TensorBuffer buffer_
+            )
+                : shape(std::move(shape_)), buffer(std::move(buffer_)) {}
 
           public:
             TensorData() = default;

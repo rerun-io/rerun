@@ -3,26 +3,24 @@
 
 #include "color.hpp"
 
-#include "../arrow.hpp"
 #include "../datatypes/rgba32.hpp"
 
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace components {
         const char Color::NAME[] = "rerun.components.Color";
 
-        const std::shared_ptr<arrow::DataType> &Color::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Color::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Rgba32::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::UInt32Builder>> Color::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -30,12 +28,12 @@ namespace rerun {
         }
 
         Error Color::fill_arrow_array_builder(
-            arrow::UInt32Builder *builder, const Color *elements, size_t num_elements
+            arrow::UInt32Builder* builder, const Color* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -45,16 +43,16 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::Rgba32) == sizeof(Color));
             RR_RETURN_NOT_OK(rerun::datatypes::Rgba32::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Rgba32 *>(elements),
+                reinterpret_cast<const rerun::datatypes::Rgba32*>(elements),
                 num_elements
             ));
 
             return Error::ok();
         }
 
-        Result<rerun::DataCell> Color::to_data_cell(const Color *instances, size_t num_instances) {
+        Result<rerun::DataCell> Color::to_data_cell(const Color* instances, size_t num_instances) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = Color::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);
@@ -67,16 +65,7 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema =
-                arrow::schema({arrow::field(Color::NAME, Color::arrow_datatype(), false)});
-
-            rerun::DataCell cell;
-            cell.component_name = Color::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
+            return rerun::DataCell::create(Color::NAME, Color::arrow_datatype(), std::move(array));
         }
     } // namespace components
 } // namespace rerun

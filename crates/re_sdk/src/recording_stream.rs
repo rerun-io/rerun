@@ -9,7 +9,8 @@ use re_log_types::{
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
     StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
+use re_types::components::InstanceKey;
+use re_types_core::{AsComponents, ComponentBatch, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -1335,9 +1336,9 @@ impl RecordingStream {
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the time setting methods.
     ///
-    /// For example: `rec.set_time_seconds("sim_time", sim_time_nanos)`.
+    /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
     ///
-    /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    /// You can remove a timeline again using `rec.set_time_nanos("sim_time", None)`.
     ///
     /// See also:
     /// - [`Self::set_timepoint`]
@@ -1618,5 +1619,21 @@ mod tests {
 
         // That's all.
         assert!(msgs.pop().is_none());
+    }
+
+    #[test]
+    fn test_set_thread_local() {
+        // Regression-test for https://github.com/rerun-io/rerun/issues/2889
+        std::thread::Builder::new()
+            .name("test_thead".to_owned())
+            .spawn(|| {
+                let stream = RecordingStreamBuilder::new("rerun_example_test")
+                    .buffered()
+                    .unwrap();
+                RecordingStream::set_thread_local(StoreKind::Recording, Some(stream));
+            })
+            .unwrap()
+            .join()
+            .unwrap();
     }
 }

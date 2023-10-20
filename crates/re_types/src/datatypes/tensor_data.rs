@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/tensor_data.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -13,6 +14,12 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
+
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A multi-dimensional `Tensor` of data.
 ///
@@ -28,32 +35,20 @@ pub struct TensorData {
     pub buffer: crate::datatypes::TensorBuffer,
 }
 
-impl<'a> From<TensorData> for ::std::borrow::Cow<'a, TensorData> {
-    #[inline]
-    fn from(value: TensorData) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(TensorData);
 
-impl<'a> From<&'a TensorData> for ::std::borrow::Cow<'a, TensorData> {
-    #[inline]
-    fn from(value: &'a TensorData) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
-
-impl crate::Loggable for TensorData {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for TensorData {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.TensorData".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "shape".to_owned(),
@@ -75,16 +70,16 @@ impl crate::Loggable for TensorData {
         ])
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -93,7 +88,7 @@ impl crate::Loggable for TensorData {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -111,7 +106,7 @@ impl crate::Loggable for TensorData {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let shape_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let shape_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -124,14 +119,13 @@ impl crate::Loggable for TensorData {
                                 .cloned()
                                 .map(Some)
                                 .collect();
-                            let shape_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                shape.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            )
-                            .unwrap()
-                            .into();
+                            let shape_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets =
+                                arrow2::offset::Offsets::<i32>::try_from_lengths(shape.iter().map(
+                                    |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
+                                ))
+                                .unwrap()
+                                .into();
                             ListArray::new(
                                 DataType::List(Box::new(Field {
                                     name: "item".to_owned(),
@@ -163,7 +157,7 @@ impl crate::Loggable for TensorData {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let buffer_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let buffer_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -179,22 +173,22 @@ impl crate::Loggable for TensorData {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+        arrow_data: &dyn arrow2::array::Array,
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field {
                                 name: "shape".to_owned(),
@@ -231,7 +225,7 @@ impl crate::Loggable for TensorData {
                     .collect();
                 let shape = {
                     if !arrays_by_name.contains_key("shape") {
-                        return Err(crate::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "shape",
                         ))
@@ -241,9 +235,9 @@ impl crate::Loggable for TensorData {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
                             .ok_or_else(|| {
-                                crate::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::List(Box::new(Field {
                                         name: "item".to_owned(),
                                         data_type:
@@ -275,7 +269,7 @@ impl crate::Loggable for TensorData {
                                     let start = *start as usize;
                                     let end = start + len;
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(crate::DeserializationError::offset_slice_oob(
+                                        return Err(DeserializationError::offset_slice_oob(
                                             (start, end),
                                             arrow_data_inner.len(),
                                         ));
@@ -294,14 +288,14 @@ impl crate::Loggable for TensorData {
                                 })
                                 .transpose()
                             })
-                            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
                 };
                 let buffer = {
                     if !arrays_by_name.contains_key("buffer") {
-                        return Err(crate::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "buffer",
                         ))
@@ -320,16 +314,16 @@ impl crate::Loggable for TensorData {
                     opt.map(|(shape, buffer)| {
                         Ok(Self {
                             shape: shape
-                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.TensorData#shape")?,
                             buffer: buffer
-                                .ok_or_else(crate::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.TensorData#buffer")?,
                         })
                     })
                     .transpose()
                 })
-                .collect::<crate::DeserializationResult<Vec<_>>>()
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.TensorData")?
             }
         })

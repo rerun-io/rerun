@@ -12,8 +12,10 @@ AllowShortIfStatementsOnASingleLine: Never
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 BinPackArguments: false
+BreakStringLiterals: false
 ColumnLimit: 100
 ContinuationIndentWidth: 4
+DerivePointerAlignment: false
 EmptyLineBeforeAccessModifier: LogicalBlock
 IndentWidth: 4
 IndentWrappedFunctionNames: true
@@ -21,7 +23,7 @@ InsertTrailingCommas: Wrapped
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All
 PointerAlignment: Left
-ReflowComments: true
+ReflowComments: false # This can break example code in docstrings
 SeparateDefinitionBlocks: Always
 SpacesBeforeTrailingComments: 1
 

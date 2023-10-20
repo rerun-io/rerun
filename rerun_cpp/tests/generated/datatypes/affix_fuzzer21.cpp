@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &AffixFuzzer21::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& AffixFuzzer21::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("single_half", arrow::float16(), false),
                 arrow::field(
@@ -21,9 +21,9 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> AffixFuzzer21::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -41,12 +41,12 @@ namespace rerun {
         }
 
         Error AffixFuzzer21::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const AffixFuzzer21 *elements, size_t num_elements
+            arrow::StructBuilder* builder, const AffixFuzzer21* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -55,24 +55,26 @@ namespace rerun {
 
             {
                 auto field_builder =
-                    static_cast<arrow::HalfFloatBuilder *>(builder->field_builder(0));
+                    static_cast<arrow::HalfFloatBuilder*>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].single_half));
+                    ARROW_RETURN_NOT_OK(field_builder->Append(
+                        *reinterpret_cast<const uint16_t*>(&(elements[elem_idx].single_half))
+                    ));
                 }
             }
             {
-                auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(1));
+                auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(1));
                 auto value_builder =
-                    static_cast<arrow::HalfFloatBuilder *>(field_builder->value_builder());
+                    static_cast<arrow::HalfFloatBuilder*>(field_builder->value_builder());
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                        element.many_halves.data(),
+                        reinterpret_cast<const uint16_t*>(element.many_halves.data()),
                         static_cast<int64_t>(element.many_halves.size()),
                         nullptr
                     ));

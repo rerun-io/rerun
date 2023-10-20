@@ -23,7 +23,6 @@ class Tensor(TensorExt, Archetype):
     -------
     ### Simple Tensor:
     ```python
-
     import rerun as rr
     from numpy.random import default_rng
 

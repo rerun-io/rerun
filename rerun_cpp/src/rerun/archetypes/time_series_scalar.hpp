@@ -20,11 +20,29 @@
 
 namespace rerun {
     namespace archetypes {
-        /// **Archetype**: Log a double-precision scalar that will be visualized as a time-series
-        /// plot.
+        /// **Archetype**: Log a double-precision scalar that will be visualized as a time-series plot.
         ///
         /// The current simulation time will be used for the time/X-axis, hence scalars
         /// cannot be timeless!
+        ///
+        /// ## Example
+        ///
+        /// ### Simple line plot
+        /// ```cpp,ignore
+        /// #include <rerun.hpp>
+        ///
+        /// #include <cmath>
+        ///
+        /// int main() {
+        ///     auto rec = rerun::RecordingStream("rerun_example_scalar");
+        ///     rec.connect().throw_on_failure();
+        ///
+        ///     for (int step = 0; step <64; ++step) {
+        ///         rec.set_time_sequence("step", step);
+        ///         rec.log("scalar", rerun::TimeSeriesScalar(std::sin(static_cast<double>(step) / 10.0)));
+        ///     }
+        /// }
+        /// ```
         struct TimeSeriesScalar {
             /// The scalar value to log.
             rerun::components::Scalar scalar;
@@ -71,11 +89,9 @@ namespace rerun {
             /// required.
             std::optional<rerun::components::ScalarScattering> scattered;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:

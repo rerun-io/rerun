@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use arrow2_convert::field::ArrowField;
 
 use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataCell, DataRow, RowId, TimePoint};
@@ -12,12 +11,11 @@ use re_viewer_context::{
 };
 
 use crate::{
-    blueprint_components::{
-        AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, ViewportLayout, VIEWPORT_PATH,
-    },
+    blueprint::{AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, ViewportLayout},
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
     space_view_heuristics::{default_created_space_views, identify_entities_per_system_per_class},
+    VIEWPORT_PATH,
 };
 
 // ----------------------------------------------------------------------------
@@ -470,8 +468,10 @@ pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) 
     // TODO(jleibs): Seq instead of timeless?
     let timepoint = TimePoint::timeless();
 
-    let cell =
-        DataCell::from_arrow_empty(SpaceViewComponent::name(), SpaceViewComponent::data_type());
+    let cell = DataCell::from_arrow_empty(
+        SpaceViewComponent::name(),
+        SpaceViewComponent::arrow_datatype(),
+    );
 
     let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell).unwrap();
 

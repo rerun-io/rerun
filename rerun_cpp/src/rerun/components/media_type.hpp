@@ -20,12 +20,10 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// **Component**: A standardized media type (RFC2046, formerly known as MIME types),
-        /// encoded as a utf8 string.
+        /// **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
         ///
-        /// The complete reference of officially registered media types is maintained by the IANA
-        /// and can be consulted at
-        /// <https://www.iana.org/assignments/media-types/media-types.xhtml>.
+        /// The complete reference of officially registered media types is maintained by the IANA and can be
+        /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
         struct MediaType {
             rerun::datatypes::Utf8 value;
 
@@ -35,7 +33,7 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'media_type_ext.cpp'
 
-            MediaType(const char *media_type) : value(media_type) {}
+            MediaType(const char* media_type) : value(media_type) {}
 
             // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can
             // declare these constants directly in there.
@@ -78,7 +76,7 @@ namespace rerun {
 
             MediaType(rerun::datatypes::Utf8 _value) : value(std::move(_value)) {}
 
-            MediaType &operator=(rerun::datatypes::Utf8 _value) {
+            MediaType& operator=(rerun::datatypes::Utf8 _value) {
                 value = std::move(_value);
                 return *this;
             }
@@ -86,21 +84,21 @@ namespace rerun {
             MediaType(std::string arg) : value(std::move(arg)) {}
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType> &arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool *memory_pool
+                arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static Error fill_arrow_array_builder(
-                arrow::StringBuilder *builder, const MediaType *elements, size_t num_elements
+                arrow::StringBuilder* builder, const MediaType* elements, size_t num_elements
             );
 
             /// Creates a Rerun DataCell from an array of MediaType components.
             static Result<rerun::DataCell> to_data_cell(
-                const MediaType *instances, size_t num_instances
+                const MediaType* instances, size_t num_instances
             );
         };
     } // namespace components

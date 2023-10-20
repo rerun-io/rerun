@@ -3,3 +3,4 @@ CHANGELOG.md
 crates/re_types_builder/src/reflection.rs
 crates/re_types/src/datatypes/tensor_buffer.rs
 crates/re_ui/data/Inter-Medium.otf
+pixi.lock

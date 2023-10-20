@@ -1,12 +1,12 @@
 use crate::codegen::common::ExampleInfo;
 use crate::objects::FieldKind;
 use crate::CodeGenerator;
+use crate::GeneratedFiles;
 use crate::Object;
 use crate::ObjectKind;
 use crate::Objects;
 use crate::Reporter;
 use camino::Utf8PathBuf;
-use std::collections::BTreeSet;
 use std::fmt::Write;
 
 type ObjectMap = std::collections::BTreeMap<String, Object>;
@@ -36,10 +36,10 @@ impl CodeGenerator for DocsCodeGenerator {
         reporter: &Reporter,
         objects: &Objects,
         _arrow_registry: &crate::ArrowRegistry,
-    ) -> BTreeSet<camino::Utf8PathBuf> {
+    ) -> GeneratedFiles {
         re_tracing::profile_function!();
 
-        let mut filepaths = BTreeSet::new();
+        let mut files_to_write = GeneratedFiles::default();
 
         let (mut archetypes, mut components, mut datatypes) = (Vec::new(), Vec::new(), Vec::new());
         let object_map = &objects.objects;
@@ -53,6 +53,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Datatype => datatypes.push(object),
                 ObjectKind::Component => components.push(object),
                 ObjectKind::Archetype => archetypes.push(object),
+                ObjectKind::Blueprint => continue, // skip blueprint stuff, too early
             }
 
             let page = object_page(reporter, object, object_map);
@@ -61,8 +62,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 object.kind.plural_snake_case(),
                 object.snake_case_name()
             ));
-            super::common::write_file(&path, &page);
-            filepaths.insert(path);
+            files_to_write.insert(path, page);
         }
 
         for (kind, order, prelude, objects) in [
@@ -89,11 +89,10 @@ impl CodeGenerator for DocsCodeGenerator {
             let path = self
                 .docs_dir
                 .join(format!("{}.md", kind.plural_snake_case()));
-            super::common::write_file(&path, &page);
-            filepaths.insert(path);
+            files_to_write.insert(path, page);
         }
 
-        filepaths
+        files_to_write
     }
 }
 
@@ -122,6 +121,8 @@ fn index_page(kind: ObjectKind, order: u64, prelude: &str, objects: &[&Object]) 
 }
 
 fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> String {
+    let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+
     let top_level_docs = get_documentation(&object.docs, &[]);
 
     if top_level_docs.is_empty() {
@@ -141,10 +142,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
 
     write_frontmatter(&mut page, &object.name, None);
     putln!(page);
-    for mut line in top_level_docs {
-        if line.starts_with(char::is_whitespace) {
-            line.remove(0);
-        }
+    for line in top_level_docs {
         putln!(page, "{line}");
     }
     putln!(page);
@@ -154,27 +152,35 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             write_fields(&mut page, object, object_map);
         }
         ObjectKind::Archetype => write_archetype_fields(&mut page, object, object_map),
+        ObjectKind::Blueprint => {}
     }
 
     {
+        let speculative_marker = if is_unreleased {
+            "?speculative-link"
+        } else {
+            ""
+        };
         putln!(page);
         putln!(page, "## Links");
         // TODO(#2919): link to C++ docs
         putln!(
             page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}#rerun.{}.{})",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
             object.name,
             object.kind.plural_snake_case(),
+            speculative_marker,
             object.kind.plural_snake_case(),
             object.name
         );
         putln!(
             page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html)",
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{})",
             object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },
-            object.name
+            object.name,
+            speculative_marker
         );
     }
 
@@ -186,7 +192,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             putln!(page);
             write_used_by(&mut page, reporter, object, object_map);
         }
-        ObjectKind::Archetype => {}
+        ObjectKind::Blueprint | ObjectKind::Archetype => {}
     }
 
     page

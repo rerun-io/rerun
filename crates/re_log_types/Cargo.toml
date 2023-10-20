@@ -26,6 +26,7 @@ serde = [
   "dep:serde_bytes",
   "re_string_interner/serde",
   "re_tuid/serde",
+  "re_types_core/serde",
   "re_types/serde",
 ]
 
@@ -37,7 +38,8 @@ re_format.workspace = true
 re_log.workspace = true
 re_string_interner.workspace = true
 re_tracing.workspace = true
-re_tuid = { workspace = true, features = ["arrow2_convert"] }
+re_tuid = { workspace = true, features = ["arrow"] }
+re_types_core.workspace = true
 re_types = { workspace = true, features = ["image"] }
 
 # External
@@ -48,8 +50,8 @@ arrow2 = { workspace = true, features = [
   "io_print",
   "compute_concatenate",
 ] }
-arrow2_convert.workspace = true
 backtrace.workspace = true
+bytemuck.workspace = true
 document-features.workspace = true
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
 # `fixed` depends on `half`, so even though `half` is not directly used in this crate,
@@ -70,9 +72,9 @@ web-time.workspace = true
 
 
 # Optional dependencies:
-rmp-serde = { version = "1.1", optional = true }
+rmp-serde = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
-serde_bytes = { version = "0.11", optional = true }
+serde_bytes = { workspace = true, optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

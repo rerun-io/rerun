@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/angle.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -14,6 +15,12 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
+
 /// **Datatype**: Angle in either radians or degrees.
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub enum Angle {
@@ -21,32 +28,20 @@ pub enum Angle {
     Degrees(f32),
 }
 
-impl<'a> From<Angle> for ::std::borrow::Cow<'a, Angle> {
-    #[inline]
-    fn from(value: Angle) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Angle);
 
-impl<'a> From<&'a Angle> for ::std::borrow::Cow<'a, Angle> {
-    #[inline]
-    fn from(value: &'a Angle) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
-
-impl crate::Loggable for Angle {
-    type Name = crate::DatatypeName;
+impl ::re_types_core::Loggable for Angle {
+    type Name = ::re_types_core::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
         "rerun.datatypes.Angle".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Union(
             vec![
                 Field {
@@ -73,16 +68,16 @@ impl crate::Loggable for Angle {
         )
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -115,7 +110,7 @@ impl crate::Loggable for Angle {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let radians_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -138,7 +133,7 @@ impl crate::Loggable for Angle {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let degrees_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -179,22 +174,22 @@ impl crate::Loggable for Angle {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+        arrow_data: &dyn arrow2::array::Array,
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    crate::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Union(
                             vec![
                                 Field {
@@ -231,14 +226,14 @@ impl crate::Loggable for Angle {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        crate::DeserializationError::datatype_mismatch(
+                        DeserializationError::datatype_mismatch(
                             Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.datatypes.Angle")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
-                    return Err(crate::DeserializationError::offset_slice_oob(
+                    return Err(DeserializationError::offset_slice_oob(
                         (0, arrow_data_types.len()),
                         arrow_data_offsets.len(),
                     ))
@@ -253,7 +248,7 @@ impl crate::Loggable for Angle {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            crate::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::Float32,
                                 arrow_data.data_type().clone(),
                             )
@@ -272,7 +267,7 @@ impl crate::Loggable for Angle {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            crate::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::Float32,
                                 arrow_data.data_type().clone(),
                             )
@@ -293,7 +288,7 @@ impl crate::Loggable for Angle {
                             Ok(Some(match typ {
                                 1i8 => Angle::Radians({
                                     if offset as usize >= radians.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
+                                        return Err(DeserializationError::offset_oob(
                                             offset as _,
                                             radians.len(),
                                         ))
@@ -303,12 +298,12 @@ impl crate::Loggable for Angle {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { radians.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Angle#Radians")?
                                 }),
                                 2i8 => Angle::Degrees({
                                     if offset as usize >= degrees.len() {
-                                        return Err(crate::DeserializationError::offset_oob(
+                                        return Err(DeserializationError::offset_oob(
                                             offset as _,
                                             degrees.len(),
                                         ))
@@ -318,11 +313,11 @@ impl crate::Loggable for Angle {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { degrees.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(crate::DeserializationError::missing_data)
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Angle#Degrees")?
                                 }),
                                 _ => {
-                                    return Err(crate::DeserializationError::missing_union_arm(
+                                    return Err(DeserializationError::missing_union_arm(
                                         Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
@@ -332,7 +327,7 @@ impl crate::Loggable for Angle {
                             }))
                         }
                     })
-                    .collect::<crate::DeserializationResult<Vec<_>>>()
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.datatypes.Angle")?
             }
         })

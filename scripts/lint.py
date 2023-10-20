@@ -659,6 +659,7 @@ def main() -> None:
             "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
             "./CODE_STYLE.md",
             "./crates/re_types_builder/src/reflection.rs",  # auto-generated
+            "./examples/python/detect_and_track_objects/cache/version.txt",
             "./examples/rust/objectron/src/objectron.rs",  # auto-generated
             "./scripts/lint.py",  # we contain all the patterns we are linting against
             "./scripts/zombie_todos.py",

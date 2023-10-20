@@ -3,13 +3,12 @@
 use std::fmt::Formatter;
 
 use arrow2::{
-    array::{get_display, Array, ListArray, StructArray},
+    array::{get_display, Array, ListArray},
     datatypes::{DataType, IntervalUnit, TimeUnit},
 };
-use arrow2_convert::deserialize::TryIntoCollection;
 use comfy_table::{presets, Cell, Table};
 
-use re_tuid::Tuid;
+use re_tuid::{external::re_types_core::Loggable as _, Tuid};
 
 // ---
 
@@ -39,8 +38,7 @@ pub fn get_custom_display<'a, F: std::fmt::Write + 'a>(
 
     if let Some(DataType::Extension(name, _, _)) = datatype {
         // TODO(#1775): This should be registered dynamically.
-        // NOTE: Can't call `Tuid::name()`, `Component` lives in `re_log_types`.
-        if name.as_str() == "rerun.tuid" {
+        if name.as_str() == Tuid::name() {
             return Box::new(|w, index| {
                 if let Some(tuid) = parse_tuid(array, index) {
                     w.write_fmt(format_args!("{tuid}"))
@@ -68,9 +66,8 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
         // New control columns: it's not a list to begin with!
         _ => (array.to_boxed(), index),
     };
-    let array = array.as_any().downcast_ref::<StructArray>()?;
 
-    let tuids: Vec<Tuid> = TryIntoCollection::try_into_collection(array.to_boxed()).ok()?;
+    let tuids = Tuid::from_arrow(array.as_ref()).ok()?;
     tuids.get(index).copied()
 }
 
@@ -228,7 +225,11 @@ where
         .map(|(name, data_type)| {
             Cell::new(format!(
                 "{}\n---\n{}",
-                name.replace("rerun.components.", "").replace("rerun.", ""),
+                name.trim_start_matches("rerun.archetypes.")
+                    .trim_start_matches("rerun.components.")
+                    .trim_start_matches("rerun.datatypes.")
+                    .trim_start_matches("rerun.controls.")
+                    .trim_start_matches("rerun."),
                 DisplayDataType(data_type.clone())
             ))
         });

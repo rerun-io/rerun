@@ -28,31 +28,25 @@ namespace rerun {
         ///
         /// ### `line_strip2d_batch`:
         /// ```cpp,ignore
-        /// // Log a batch of 2d line strips.
-        ///
         /// #include <rerun.hpp>
         ///
-        /// namespace rr = rerun;
-        ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_line_strip2d");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rerun::RecordingStream("rerun_example_line_strip2d");
+        ///     rec.connect().throw_on_failure();
         ///
-        ///     std::vector<rr::datatypes::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f},
-        ///     {6.f, 0.f}}; std::vector<rr::datatypes::Vec2D> strip2 =
-        ///         {{0.f, 3.f}, {1.f, 4.f}, {2.f, 2.f}, {3.f, 4.f}, {4.f, 2.f}, {5.f, 4.f},
-        ///         {6.f, 3.f}};
+        ///     std::vector<rerun::datatypes::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f}, {6.f, 0.f}};
+        ///     std::vector<rerun::datatypes::Vec2D> strip2 =
+        ///         {{0.f, 3.f}, {1.f, 4.f}, {2.f, 2.f}, {3.f, 4.f}, {4.f, 2.f}, {5.f, 4.f}, {6.f, 3.f}};
         ///     rec.log(
         ///         "strips",
-        ///         rr::LineStrips2D({strip1, strip2})
+        ///         rerun::LineStrips2D({strip1, strip2})
         ///             .with_colors({0xFF0000FF, 0x00FF00FF})
         ///             .with_radii({0.025f, 0.005f})
         ///             .with_labels({"one strip here", "and one strip there"})
         ///     );
         ///
         ///     // Log an extra rect to set the view bounds
-        ///     rec.log("bounds", rr::Boxes2D::from_centers_and_sizes({{3.0f, 1.5f}},
-        ///     {{8.0f, 9.0f}}));
+        ///     rec.log("bounds", rerun::Boxes2D::from_centers_and_sizes({{3.0f, 1.5f}}, {{8.0f, 9.0f}}));
         /// }
         /// ```
         struct LineStrips2D {
@@ -68,8 +62,7 @@ namespace rerun {
             /// Optional text labels for the line strips.
             std::optional<ComponentBatch<rerun::components::Text>> labels;
 
-            /// An optional floating point value that specifies the 2D drawing order of each line
-            /// strip.
+            /// An optional floating point value that specifies the 2D drawing order of each line strip.
             ///
             /// Objects with higher values are drawn on top of those with lower values.
             std::optional<rerun::components::DrawOrder> draw_order;
@@ -82,11 +75,9 @@ namespace rerun {
             /// Unique identifiers for each individual line strip in the batch.
             std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:
@@ -114,8 +105,7 @@ namespace rerun {
                 return std::move(*this);
             }
 
-            /// An optional floating point value that specifies the 2D drawing order of each line
-            /// strip.
+            /// An optional floating point value that specifies the 2D drawing order of each line strip.
             ///
             /// Objects with higher values are drawn on top of those with lower values.
             LineStrips2D with_draw_order(rerun::components::DrawOrder _draw_order) && {

@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &MeshProperties::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& MeshProperties::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field(
                     "indices",
@@ -20,9 +20,9 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> MeshProperties::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -39,12 +39,12 @@ namespace rerun {
         }
 
         Error MeshProperties::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const MeshProperties *elements, size_t num_elements
+            arrow::StructBuilder* builder, const MeshProperties* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -52,14 +52,14 @@ namespace rerun {
             }
 
             {
-                auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(0));
+                auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(0));
                 auto value_builder =
-                    static_cast<arrow::UInt32Builder *>(field_builder->value_builder());
+                    static_cast<arrow::UInt32Builder*>(field_builder->value_builder());
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 1)));
 
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     if (element.indices.has_value()) {
                         ARROW_RETURN_NOT_OK(field_builder->Append());
                         ARROW_RETURN_NOT_OK(value_builder->AppendValues(

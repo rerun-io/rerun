@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/asset3d.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -14,6 +15,12 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
+
 /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, etc.).
 ///
 /// See also [`Mesh3D`][crate::archetypes::Mesh3D].
@@ -22,8 +29,6 @@
 ///
 /// ### Simple 3D asset
 /// ```ignore
-/// //! Log a simple 3D asset.
-///
 /// use rerun::external::anyhow;
 ///
 /// fn main() -> anyhow::Result<()> {
@@ -72,10 +77,10 @@ pub struct Asset3D {
     pub transform: Option<crate::components::OutOfTreeTransform3D>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Blob".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Asset3DIndicator".into(),
@@ -83,7 +88,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usi
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.InstanceKey".into(),
@@ -91,7 +96,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 2usize]
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Blob".into(),
@@ -106,51 +111,49 @@ impl Asset3D {
     pub const NUM_COMPONENTS: usize = 5usize;
 }
 
-/// Indicator component for the [`Asset3D`] [`crate::Archetype`]
-pub type Asset3DIndicator = crate::GenericIndicatorComponent<Asset3D>;
+/// Indicator component for the [`Asset3D`] [`::re_types_core::Archetype`]
+pub type Asset3DIndicator = ::re_types_core::GenericIndicatorComponent<Asset3D>;
 
-impl crate::Archetype for Asset3D {
+impl ::re_types_core::Archetype for Asset3D {
     type Indicator = Asset3DIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.Asset3D".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Asset3DIndicator = Asset3DIndicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -158,14 +161,14 @@ impl crate::Archetype for Asset3D {
         let blob = {
             let array = arrays_by_name
                 .get("rerun.components.Blob")
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Asset3D#blob")?;
             <crate::components::Blob>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Asset3D#blob")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Asset3D#blob")?
         };
         let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
@@ -175,7 +178,7 @@ impl crate::Archetype for Asset3D {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.Asset3D#media_type")?
             })
         } else {
@@ -189,7 +192,7 @@ impl crate::Archetype for Asset3D {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(crate::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.archetypes.Asset3D#transform")?
                 })
             } else {
@@ -203,19 +206,19 @@ impl crate::Archetype for Asset3D {
     }
 }
 
-impl crate::AsComponents for Asset3D {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for Asset3D {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.blob as &dyn crate::ComponentBatch).into()),
+            Some((&self.blob as &dyn ComponentBatch).into()),
             self.media_type
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.transform
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

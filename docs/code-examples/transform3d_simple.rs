@@ -6,20 +6,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (rec, storage) =
         rerun::RecordingStreamBuilder::new("rerun_example_transform3d").memory()?;
 
-    rec.log(
-        "base",
-        &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
-    )?;
+    let arrow = rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]);
+
+    rec.log("base", &arrow)?;
 
     rec.log(
         "base/translated",
         &rerun::Transform3D::from_translation([1.0, 0.0, 0.0]),
     )?;
 
-    rec.log(
-        "base/translated",
-        &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
-    )?;
+    rec.log("base/translated", &arrow)?;
 
     rec.log(
         "base/rotated_scaled",
@@ -29,10 +25,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ),
     )?;
 
-    rec.log(
-        "base/rotated_scaled",
-        &rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]),
-    )?;
+    rec.log("base/rotated_scaled", &arrow)?;
 
     rerun::native_viewer::show(storage.take())?;
     Ok(())

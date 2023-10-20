@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/time_series_scalar.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -14,6 +15,12 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
+
 /// **Archetype**: Log a double-precision scalar that will be visualized as a time-series plot.
 ///
 /// The current simulation time will be used for the time/X-axis, hence scalars
@@ -23,8 +30,6 @@
 ///
 /// ### Simple line plot
 /// ```ignore
-/// //! Log a scalar over time.
-///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_scalar").memory()?;
 ///
@@ -97,10 +102,10 @@ pub struct TimeSeriesScalar {
     pub scattered: Option<crate::components::ScalarScattering>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.Scalar".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Color".into(),
@@ -109,7 +114,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usi
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.InstanceKey".into(),
@@ -118,7 +123,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 3usize]
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[crate::ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Scalar".into(),
@@ -135,51 +140,49 @@ impl TimeSeriesScalar {
     pub const NUM_COMPONENTS: usize = 7usize;
 }
 
-/// Indicator component for the [`TimeSeriesScalar`] [`crate::Archetype`]
-pub type TimeSeriesScalarIndicator = crate::GenericIndicatorComponent<TimeSeriesScalar>;
+/// Indicator component for the [`TimeSeriesScalar`] [`::re_types_core::Archetype`]
+pub type TimeSeriesScalarIndicator = ::re_types_core::GenericIndicatorComponent<TimeSeriesScalar>;
 
-impl crate::Archetype for TimeSeriesScalar {
+impl ::re_types_core::Archetype for TimeSeriesScalar {
     type Indicator = TimeSeriesScalarIndicator;
 
     #[inline]
-    fn name() -> crate::ArchetypeName {
+    fn name() -> ::re_types_core::ArchetypeName {
         "rerun.archetypes.TimeSeriesScalar".into()
     }
 
     #[inline]
-    fn indicator() -> crate::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: TimeSeriesScalarIndicator = TimeSeriesScalarIndicator::DEFAULT;
-        crate::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [crate::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> crate::DeserializationResult<Self> {
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
             .into_iter()
             .map(|(field, array)| (field.name, array))
@@ -187,14 +190,14 @@ impl crate::Archetype for TimeSeriesScalar {
         let scalar = {
             let array = arrays_by_name
                 .get("rerun.components.Scalar")
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?;
             <crate::components::Scalar>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(crate::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TimeSeriesScalar#scalar")?
         };
         let radius = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
@@ -204,7 +207,7 @@ impl crate::Archetype for TimeSeriesScalar {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.TimeSeriesScalar#radius")?
             })
         } else {
@@ -217,7 +220,7 @@ impl crate::Archetype for TimeSeriesScalar {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.TimeSeriesScalar#color")?
             })
         } else {
@@ -230,7 +233,7 @@ impl crate::Archetype for TimeSeriesScalar {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.TimeSeriesScalar#label")?
             })
         } else {
@@ -244,7 +247,7 @@ impl crate::Archetype for TimeSeriesScalar {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(crate::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.TimeSeriesScalar#scattered")?
             })
         } else {
@@ -260,25 +263,25 @@ impl crate::Archetype for TimeSeriesScalar {
     }
 }
 
-impl crate::AsComponents for TimeSeriesScalar {
-    fn as_component_batches(&self) -> Vec<crate::MaybeOwnedComponentBatch<'_>> {
+impl ::re_types_core::AsComponents for TimeSeriesScalar {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
-        use crate::Archetype as _;
+        use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.scalar as &dyn crate::ComponentBatch).into()),
+            Some((&self.scalar as &dyn ComponentBatch).into()),
             self.radius
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.color
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.label
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.scattered
                 .as_ref()
-                .map(|comp| (comp as &dyn crate::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

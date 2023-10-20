@@ -1,9 +1,10 @@
 use ahash::HashSetExt;
 use nohash_hasher::IntSet;
-use re_types::{AsComponents, ComponentName};
 use smallvec::SmallVec;
 
-use crate::{DataCell, DataCellError, DataTable, EntityPath, SizeBytes, TableId, TimePoint};
+use re_types_core::{AsComponents, ComponentName, SizeBytes};
+
+use crate::{DataCell, DataCellError, DataTable, EntityPath, NumInstances, TableId, TimePoint};
 
 // ---
 
@@ -106,21 +107,8 @@ impl SizeBytes for DataCellRow {
 // ---
 
 /// A unique ID for a [`DataRow`].
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    arrow2_convert::ArrowField,
-    arrow2_convert::ArrowSerialize,
-    arrow2_convert::ArrowDeserialize,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-#[arrow_field(transparent)]
 pub struct RowId(pub(crate) re_tuid::Tuid);
 
 impl std::fmt::Display for RowId {
@@ -169,6 +157,8 @@ impl std::ops::DerefMut for RowId {
         &mut self.0
     }
 }
+
+re_tuid::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 
 /// A row's worth of data, i.e. an event: a list of [`DataCell`]s associated with an auto-generated
 /// `RowId`, a user-specified [`TimePoint`] and [`EntityPath`], and an expected number of
@@ -259,7 +249,7 @@ pub struct DataRow {
     /// - 0 instance (clear),
     /// - 1 instance (splat),
     /// - `num_instances` instances (standard).
-    pub num_instances: u32,
+    pub num_instances: NumInstances,
 
     /// The actual cells (== columns, == components).
     pub cells: DataCellRow,
@@ -289,7 +279,7 @@ impl DataRow {
         row_id: RowId,
         timepoint: TimePoint,
         entity_path: EntityPath,
-        comp_batches: impl IntoIterator<Item = &'a dyn re_types::ComponentBatch>,
+        comp_batches: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
@@ -354,7 +344,7 @@ impl DataRow {
             row_id,
             entity_path,
             timepoint,
-            num_instances,
+            num_instances: num_instances.into(),
             cells,
         })
     }
@@ -411,7 +401,7 @@ impl DataRow {
     }
 
     #[inline]
-    pub fn num_instances(&self) -> u32 {
+    pub fn num_instances(&self) -> NumInstances {
         self.num_instances
     }
 

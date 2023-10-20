@@ -21,33 +21,30 @@ namespace rerun {
         ///
         /// ### Variety of 3D transforms
         /// ```cpp,ignore
-        /// // Log some transforms.
-        ///
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>
         ///
-        /// namespace rr = rerun;
-        /// namespace rrd = rr::datatypes;
+        /// namespace rrd = rerun::datatypes;
         ///
-        /// const float pi = static_cast<float>(M_PI);
+        /// const float TAU = static_cast<float>(2.0 * M_PI);
         ///
         /// int main() {
-        ///     auto rec = rr::RecordingStream("rerun_example_transform3d");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     auto rec = rerun::RecordingStream("rerun_example_transform3d");
+        ///     rec.connect().throw_on_failure();
         ///
-        ///     auto arrow = rr::Arrows3D::from_vectors({0.0f, 1.0f, 0.0f}).with_origins({{0.0f,
-        ///     0.0f, 0.0f}});
+        ///     auto arrow =
+        ///         rerun::Arrows3D::from_vectors({{0.0f, 1.0f, 0.0f}}).with_origins({{0.0f, 0.0f, 0.0f}});
         ///
         ///     rec.log("base", arrow);
         ///
-        ///     rec.log("base/translated", rr::Transform3D({1.0f, 0.0f, 0.0f}));
+        ///     rec.log("base/translated", rerun::Transform3D({1.0f, 0.0f, 0.0f}));
         ///     rec.log("base/translated", arrow);
         ///
         ///     rec.log(
         ///         "base/rotated_scaled",
-        ///         rr::Transform3D(
-        ///             rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(pi / 4.0f)),
+        ///         rerun::Transform3D(
+        ///             rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(TAU / 8.0f)),
         ///             2.0f
         ///         )
         ///     );
@@ -58,11 +55,9 @@ namespace rerun {
             /// The transform
             rerun::components::Transform3D transform;
 
-            /// Name of the indicator component, used to identify the archetype when converting to a
-            /// list of components.
+            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
             static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of
-            /// components.
+            /// Indicator component, used to identify the archetype when converting to a list of components.
             using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
 
           public:

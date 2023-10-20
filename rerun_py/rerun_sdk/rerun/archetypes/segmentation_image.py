@@ -34,7 +34,6 @@ class SegmentationImage(SegmentationImageExt, Archetype):
     -------
     ### Simple segmentation image:
     ```python
-
     import numpy as np
     import rerun as rr
 
@@ -68,11 +67,11 @@ class SegmentationImage(SegmentationImageExt, Archetype):
         Parameters
         ----------
         data:
-             The image data. Should always be a rank-2 tensor.
+            The image data. Should always be a rank-2 tensor.
         draw_order:
-             An optional floating point value that specifies the 2D drawing order.
+            An optional floating point value that specifies the 2D drawing order.
 
-             Objects with higher values are drawn on top of those with lower values.
+            Objects with higher values are drawn on top of those with lower values.
         """
 
         # You can define your own __init__ function as a member of SegmentationImageExt in segmentation_image_ext.py

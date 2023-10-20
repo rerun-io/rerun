@@ -4,16 +4,15 @@
 
 #include <cmath>
 
-namespace rr = rerun;
-namespace rrd = rr::datatypes;
+namespace rrd = rerun::datatypes;
 
 int main() {
-    auto rec = rr::RecordingStream("rerun_example_text_log");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    auto rec = rerun::RecordingStream("rerun_example_text_log");
+    rec.connect().throw_on_failure();
 
     rec.log(
         "log",
-        rr::archetypes::TextLog("Application started.")
-            .with_level(rr::components::TextLogLevel::INFO)
+        rerun::archetypes::TextLog("Application started.")
+            .with_level(rerun::components::TextLogLevel::INFO)
     );
 }

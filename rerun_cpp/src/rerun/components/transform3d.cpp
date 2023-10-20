@@ -3,26 +3,24 @@
 
 #include "transform3d.hpp"
 
-#include "../arrow.hpp"
 #include "../datatypes/transform3d.hpp"
 
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace components {
         const char Transform3D::NAME[] = "rerun.components.Transform3D";
 
-        const std::shared_ptr<arrow::DataType> &Transform3D::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Transform3D::arrow_datatype() {
             static const auto datatype = rerun::datatypes::Transform3D::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::DenseUnionBuilder>> Transform3D::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -31,12 +29,12 @@ namespace rerun {
         }
 
         Error Transform3D::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder *builder, const Transform3D *elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -46,7 +44,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::Transform3D) == sizeof(Transform3D));
             RR_RETURN_NOT_OK(rerun::datatypes::Transform3D::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::Transform3D *>(elements),
+                reinterpret_cast<const rerun::datatypes::Transform3D*>(elements),
                 num_elements
             ));
 
@@ -54,10 +52,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> Transform3D::to_data_cell(
-            const Transform3D *instances, size_t num_instances
+            const Transform3D* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = Transform3D::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);
@@ -70,17 +68,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema = arrow::schema(
-                {arrow::field(Transform3D::NAME, Transform3D::arrow_datatype(), false)}
+            return rerun::DataCell::create(
+                Transform3D::NAME,
+                Transform3D::arrow_datatype(),
+                std::move(array)
             );
-
-            rerun::DataCell cell;
-            cell.component_name = Transform3D::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
         }
     } // namespace components
 } // namespace rerun

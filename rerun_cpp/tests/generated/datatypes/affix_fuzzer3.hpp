@@ -5,6 +5,7 @@
 
 #include "affix_fuzzer1.hpp"
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -24,9 +25,7 @@ namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class AffixFuzzer3Tag : uint8_t {
-                /// Having a special empty state makes it possible to implement move-semantics. We
-                /// need to be able to leave the object in a state which we can run the destructor
-                /// on.
+                /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 NONE = 0,
                 degrees,
                 radians,
@@ -41,18 +40,17 @@ namespace rerun {
 
                 std::vector<rerun::datatypes::AffixFuzzer1> craziness;
 
-                float fixed_size_shenanigans[3];
+                std::array<float, 3> fixed_size_shenanigans;
 
                 AffixFuzzer3Data() {}
 
                 ~AffixFuzzer3Data() {}
 
-                void swap(AffixFuzzer3Data &other) noexcept {
-                    // This bitwise swap would fail for self-referential types, but we don't have
-                    // any of those.
+                void swap(AffixFuzzer3Data& other) noexcept {
+                    // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(AffixFuzzer3Data)];
-                    void *otherbytes = reinterpret_cast<void *>(&other);
-                    void *thisbytes = reinterpret_cast<void *>(this);
+                    void* otherbytes = reinterpret_cast<void*>(&other);
+                    void* thisbytes = reinterpret_cast<void*>(this);
                     std::memcpy(temp, thisbytes, sizeof(AffixFuzzer3Data));
                     std::memcpy(thisbytes, otherbytes, sizeof(AffixFuzzer3Data));
                     std::memcpy(otherbytes, temp, sizeof(AffixFuzzer3Data));
@@ -63,34 +61,36 @@ namespace rerun {
         struct AffixFuzzer3 {
             AffixFuzzer3() : _tag(detail::AffixFuzzer3Tag::NONE) {}
 
-            AffixFuzzer3(const AffixFuzzer3 &other) : _tag(other._tag) {
+            /// Copy constructor
+            AffixFuzzer3(const AffixFuzzer3& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer3Tag::craziness: {
-                        _data.craziness = other._data.craziness;
-                        break;
-                    }
-                    case detail::AffixFuzzer3Tag::NONE:
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
+                        new (&_data.craziness) TypeAlias(other._data.craziness);
+                    } break;
                     case detail::AffixFuzzer3Tag::degrees:
                     case detail::AffixFuzzer3Tag::radians:
-                    case detail::AffixFuzzer3Tag::fixed_size_shenanigans:
-                        const void *otherbytes = reinterpret_cast<const void *>(&other._data);
-                        void *thisbytes = reinterpret_cast<void *>(&this->_data);
+                    case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
+                        const void* otherbytes = reinterpret_cast<const void*>(&other._data);
+                        void* thisbytes = reinterpret_cast<void*>(&this->_data);
                         std::memcpy(thisbytes, otherbytes, sizeof(detail::AffixFuzzer3Data));
-                        break;
+                    } break;
+                    case detail::AffixFuzzer3Tag::NONE: {
+                    } break;
                 }
             }
 
-            AffixFuzzer3 &operator=(const AffixFuzzer3 &other) noexcept {
+            AffixFuzzer3& operator=(const AffixFuzzer3& other) noexcept {
                 AffixFuzzer3 tmp(other);
                 this->swap(tmp);
                 return *this;
             }
 
-            AffixFuzzer3(AffixFuzzer3 &&other) noexcept : _tag(detail::AffixFuzzer3Tag::NONE) {
+            AffixFuzzer3(AffixFuzzer3&& other) noexcept : AffixFuzzer3() {
                 this->swap(other);
             }
 
-            AffixFuzzer3 &operator=(AffixFuzzer3 &&other) noexcept {
+            AffixFuzzer3& operator=(AffixFuzzer3&& other) noexcept {
                 this->swap(other);
                 return *this;
             }
@@ -98,74 +98,107 @@ namespace rerun {
             ~AffixFuzzer3() {
                 switch (this->_tag) {
                     case detail::AffixFuzzer3Tag::NONE: {
-                        break; // Nothing to destroy
-                    }
+                        // Nothing to destroy
+                    } break;
                     case detail::AffixFuzzer3Tag::degrees: {
-                        break; // has a trivial destructor
-                    }
+                        // has a trivial destructor
+                    } break;
                     case detail::AffixFuzzer3Tag::radians: {
-                        break; // has a trivial destructor
-                    }
+                        // has a trivial destructor
+                    } break;
                     case detail::AffixFuzzer3Tag::craziness: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
                         _data.craziness.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
-                        break; // has a trivial destructor
-                    }
+                        // has a trivial destructor
+                    } break;
                 }
             }
 
-            void swap(AffixFuzzer3 &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+            void swap(AffixFuzzer3& other) noexcept {
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 
             static AffixFuzzer3 degrees(float degrees) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::degrees;
-                self._data.degrees = std::move(degrees);
+                new (&self._data.degrees) float(std::move(degrees));
                 return self;
             }
 
             static AffixFuzzer3 radians(std::optional<float> radians) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::radians;
-                self._data.radians = std::move(radians);
+                new (&self._data.radians) std::optional<float>(std::move(radians));
                 return self;
             }
 
             static AffixFuzzer3 craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness) {
-                typedef std::vector<rerun::datatypes::AffixFuzzer1> TypeAlias;
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::craziness;
-                new (&self._data.craziness) TypeAlias(std::move(craziness));
+                new (&self._data.craziness)
+                    std::vector<rerun::datatypes::AffixFuzzer1>(std::move(craziness));
                 return self;
             }
 
-            static AffixFuzzer3 fixed_size_shenanigans(float fixed_size_shenanigans[3]) {
+            static AffixFuzzer3 fixed_size_shenanigans(std::array<float, 3> fixed_size_shenanigans
+            ) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::fixed_size_shenanigans;
-                for (size_t i = 0; i < 3; i += 1) {
-                    self._data.fixed_size_shenanigans[i] = std::move(fixed_size_shenanigans[i]);
-                }
+                new (&self._data.fixed_size_shenanigans)
+                    std::array<float, 3>(std::move(fixed_size_shenanigans));
                 return self;
+            }
+
+            /// Return a pointer to degrees if the union is in that state, otherwise `nullptr`.
+            const float* get_degrees() const {
+                if (_tag == detail::AffixFuzzer3Tag::degrees) {
+                    return &_data.degrees;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to radians if the union is in that state, otherwise `nullptr`.
+            const std::optional<float>* get_radians() const {
+                if (_tag == detail::AffixFuzzer3Tag::radians) {
+                    return &_data.radians;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to craziness if the union is in that state, otherwise `nullptr`.
+            const std::vector<rerun::datatypes::AffixFuzzer1>* get_craziness() const {
+                if (_tag == detail::AffixFuzzer3Tag::craziness) {
+                    return &_data.craziness;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to fixed_size_shenanigans if the union is in that state, otherwise `nullptr`.
+            const std::array<float, 3>* get_fixed_size_shenanigans() const {
+                if (_tag == detail::AffixFuzzer3Tag::fixed_size_shenanigans) {
+                    return &_data.fixed_size_shenanigans;
+                } else {
+                    return nullptr;
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType> &arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool *memory_pool
+                arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder *builder, const AffixFuzzer3 *elements, size_t num_elements
+                arrow::DenseUnionBuilder* builder, const AffixFuzzer3* elements, size_t num_elements
             );
 
           private:

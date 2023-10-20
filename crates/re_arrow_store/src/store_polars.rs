@@ -10,7 +10,7 @@ use arrow2::{
 };
 use polars_core::{functions::diag_concat_df, prelude::*};
 use re_log_types::{DataCell, DataTable};
-use re_types::ComponentName;
+use re_types_core::ComponentName;
 
 use crate::{
     store::InsertIdVec, ArrayExt, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
@@ -119,7 +119,7 @@ impl DataStore {
         let df = sort_df_columns(&df, self.config.store_insert_ids, &timelines);
 
         let has_timeless = df.column(TIMELESS_COL).is_ok();
-        let insert_id_col = DataStore::insert_id_key();
+        let insert_id_col = DataStore::insert_id_component_name();
 
         const ASCENDING: bool = false;
         const DESCENDING: bool = true;
@@ -264,7 +264,7 @@ fn insert_ids_as_series(col_insert_id: &InsertIdVec) -> Series {
 
     let insert_ids = arrow2::array::UInt64Array::from_slice(col_insert_id.as_slice());
     new_infallible_series(
-        DataStore::insert_id_key().as_ref(),
+        DataStore::insert_id_component_name().as_ref(),
         &insert_ids,
         insert_ids.len(),
     )

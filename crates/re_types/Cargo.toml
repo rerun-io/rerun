@@ -39,26 +39,18 @@ glam = ["dep:glam"]
 image = ["dep:ecolor", "dep:image", "dep:zune-core", "dep:zune-jpeg"]
 
 ## Enable (de)serialization using serde.
-serde = ["dep:serde", "re_string_interner/serde"]
+serde = ["dep:serde"]
 
 ## Include testing archetypes/components/datatypes into the crate.
 ## Only useful for testing purposes.
 testing = []
 
-## Special hack!
-##
-## If you configure rust-analyzer to set `--all-features,
-## then this feature will be set and that will ensure that
-## `rust-analyzer` won't run the (expensive) `build.rs`!
-__opt_out_of_auto_rebuild = []
-
 
 [dependencies]
 # Rerun
-re_error.workspace = true
 re_log.workspace = true
-re_string_interner.workspace = true
 re_tracing.workspace = true
+re_types_core.workspace = true
 
 # External
 anyhow.workspace = true
@@ -68,8 +60,6 @@ arrow2 = { workspace = true, features = [
   "io_print",
   "compute_concatenate",
 ] }
-arrow2_convert.workspace = true
-backtrace.workspace = true
 bytemuck = { workspace = true, features = ["derive", "extern_crate_alloc"] }
 document-features.workspace = true
 infer.workspace = true
@@ -108,6 +98,10 @@ re_types_builder.workspace = true
 
 # External
 rayon.workspace = true
+
+# `machete` is not a fan of `build-dependencies`.
+[package.metadata.cargo-machete]
+ignored = ["rayon", "re_build_tools", "re_types_builder"]
 
 
 [[test]]

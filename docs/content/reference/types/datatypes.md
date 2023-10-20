@@ -30,6 +30,7 @@ Data types are the lowest layer of the data model hierarchy
 * [`Transform3D`](datatypes/transform3d.md)
 * [`TranslationAndMat3x3`](datatypes/translation_and_mat3x3.md)
 * [`TranslationRotationScale3D`](datatypes/translation_rotation_scale3d.md)
+* [`UInt32`](datatypes/uint32.md)
 * [`UVec2D`](datatypes/uvec2d.md)
 * [`UVec3D`](datatypes/uvec3d.md)
 * [`UVec4D`](datatypes/uvec4d.md)

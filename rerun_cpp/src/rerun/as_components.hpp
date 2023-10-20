@@ -47,6 +47,16 @@ namespace rerun {
         }
     };
 
+    /// AsComponents for std::initializer_list
+    template <typename TComponent>
+    struct AsComponents<std::initializer_list<TComponent>> {
+        static Result<std::vector<SerializedComponentBatch>> serialize(
+            std::initializer_list<TComponent> components
+        ) {
+            return AsComponents<ComponentBatch<TComponent>>::serialize(components);
+        }
+    };
+
     /// AsComponents for an std::array of components.
     template <typename TComponent, size_t NumInstances>
     struct AsComponents<std::array<TComponent, NumInstances>> {

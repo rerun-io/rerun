@@ -1,8 +1,8 @@
 use ahash::{HashMap, HashSet};
 
 use nohash_hasher::IntMap;
-use re_log_types::{EntityPathHash, RowId, SizeBytes as _, TimeInt, TimeRange, Timeline};
-use re_types::ComponentName;
+use re_log_types::{EntityPathHash, RowId, TimeInt, TimeRange, Timeline};
+use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{
     store::{IndexedBucketInner, IndexedTable, PersistentIndexedTable},
@@ -373,7 +373,7 @@ impl DataStore {
         self.timeless_tables.retain(|_, table| {
             // If any column is non-empty, we need to keep this table
             for num in &table.col_num_instances {
-                if num != &0 {
+                if num.get() != 0 {
                     return true;
                 }
             }
@@ -395,7 +395,7 @@ impl DataStore {
             for bucket in table.buckets.values() {
                 let inner = bucket.inner.read();
                 for num in &inner.col_num_instances {
-                    if num != &0 {
+                    if num.get() != 0 {
                         return true;
                     }
                 }

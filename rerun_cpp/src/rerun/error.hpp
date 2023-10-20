@@ -14,12 +14,12 @@ namespace arrow {
 struct rr_error;
 
 /// Return error if a given rerun::Error producing expression is not rerun::ErrorCode::Ok.
-#define RR_RETURN_NOT_OK(status_expr)      \
-    do {                                   \
-        const auto _status_ = status_expr; \
-        if (_status_.is_err()) {           \
-            return _status_;               \
-        }                                  \
+#define RR_RETURN_NOT_OK(status_expr)              \
+    do {                                           \
+        const rerun::Error _status_ = status_expr; \
+        if (_status_.is_err()) {                   \
+            return _status_;                       \
+        }                                          \
     } while (false)
 
 namespace rerun {
@@ -37,6 +37,7 @@ namespace rerun {
         InvalidStringArgument,
         InvalidRecordingStreamHandle,
         InvalidSocketAddress,
+        InvalidTensorDimension,
 
         // Recording stream errors
         _CategoryRecordingStream = 0x0000'0100,
@@ -47,6 +48,10 @@ namespace rerun {
         _CategoryArrow = 0x0000'1000,
         ArrowIpcMessageParsingFailure,
         ArrowDataCellError,
+
+        // Errors relating to file IO.
+        _CategoryFileIO = 0x0001'0000,
+        FileOpenFailure,
 
         // Errors directly translated from arrow::StatusCode.
         _CategoryArrowCppStatus = 0x1000'0000,
@@ -115,9 +120,9 @@ namespace rerun {
             return code != ErrorCode::Ok;
         }
 
-        /// Sets global log handler called for `log` and `log_on_failure`.
+        /// Sets global log handler called for `handle`.
         ///
-        /// The default will log to stderr.
+        /// The default will log to stderr, unless `RERUN_STRICT` is set to something truthy.
         ///
         /// @param handler The handler to call, or `nullptr` to reset to the default.
         /// @param userdata Userdata pointer that will be passed to each invocation of the handler.
@@ -125,19 +130,18 @@ namespace rerun {
         /// @see log, log_on_failure
         static void set_log_handler(StatusLogHandler handler, void* userdata = nullptr);
 
-        /// Logs this status via the global log handler.
+        /// Handle this error based on the set log handler.
         ///
-        /// @see set_log_handler
-        void log() const;
-
-        /// Logs this status if failed via the global log handler.
+        /// If there is no error, nothing happens.
         ///
-        /// @see set_log_handler
-        void log_on_failure() const {
-            if (is_err()) {
-                log();
-            }
-        }
+        /// If you have set a log handler with `set_log_handler`, it will be called.
+        /// Else if the `RERUN_STRICT` env-var is set to something truthy,
+        /// an exception will be thrown (if `__cpp_exceptions` are enabled),
+        /// or the program will abort.
+        ///
+        /// If no log handler is installed, and we are not in strict mode,
+        /// the error will be logged to stderr.
+        void handle() const;
 
 #ifdef __cpp_exceptions
         /// Throws a `std::runtime_error` if the status is not `Ok`.

@@ -6,10 +6,12 @@ from rerun.datatypes import Angle, RotationAxisAngle
 
 rr.init("rerun_example_transform3d", spawn=True)
 
-rr.log("base", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
+arrow = rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0])
+
+rr.log("base", arrow)
 
 rr.log("base/translated", rr.Transform3D(translation=[1, 0, 0]))
-rr.log("base/translated", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
+rr.log("base/translated", arrow)
 
 rr.log(
     "base/rotated_scaled",
@@ -18,4 +20,4 @@ rr.log(
         scale=2,
     ),
 )
-rr.log("base/rotated_scaled", rr.Arrows3D(origins=[0, 0, 0], vectors=[0, 1, 0]))
+rr.log("base/rotated_scaled", arrow)

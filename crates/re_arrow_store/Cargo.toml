@@ -40,12 +40,11 @@ re_format.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true
-re_types.workspace = true
+re_types_core.workspace = true
 
 # External dependencies:
 ahash.workspace = true
 arrow2 = { workspace = true, features = ["compute_concatenate"] }
-arrow2_convert.workspace = true
 document-features.workspace = true
 indent.workspace = true
 itertools = { workspace = true }
@@ -121,11 +120,6 @@ required-features = ["testing"]
 
 [[bench]]
 name = "arrow2"
-harness = false
-required-features = ["testing"]
-
-[[bench]]
-name = "arrow2_convert"
 harness = false
 required-features = ["testing"]
 

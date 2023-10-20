@@ -24,8 +24,8 @@ use re_types::datagen::{
 use re_types::{
     components::{Color, InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
-    ComponentName, Loggable as _,
 };
+use re_types_core::{ComponentName, Loggable as _};
 
 // --- LatestComponentsAt ---
 
@@ -810,7 +810,7 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
                 let num_instances = row.num_instances();
                 Series::try_from((
                     cluster_key.as_ref(),
-                    DataCell::from_component::<InstanceKey>(0..num_instances as u64)
+                    DataCell::from_component::<InstanceKey>(0..num_instances.get() as u64)
                         .to_arrow_monolist(),
                 ))
                 .unwrap()

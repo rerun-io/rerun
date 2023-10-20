@@ -2,6 +2,8 @@
 //!
 //! This crate provides the central panel that contains all space views.
 
+pub const VIEWPORT_PATH: &str = "viewport";
+
 mod auto_layout;
 mod space_info;
 mod space_view;
@@ -12,7 +14,12 @@ mod viewport;
 mod viewport_blueprint;
 mod viewport_blueprint_ui;
 
-pub mod blueprint_components;
+/// Auto-generated blueprint-related types.
+///
+/// They all implement the [`re_types_core::Component`] trait.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+pub mod blueprint;
 
 pub use space_info::SpaceInfoCollection;
 pub use space_view::SpaceViewBlueprint;

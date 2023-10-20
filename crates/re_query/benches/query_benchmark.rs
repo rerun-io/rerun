@@ -10,8 +10,8 @@ use re_query::query_archetype;
 use re_types::{
     archetypes::Points2D,
     components::{Color, InstanceKey, Position2D, Text},
-    Loggable as _,
 };
+use re_types_core::Loggable as _;
 
 // ---
 

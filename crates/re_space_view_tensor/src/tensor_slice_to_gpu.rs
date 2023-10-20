@@ -1,9 +1,12 @@
 use re_log_types::RowId;
 use re_renderer::{
-    renderer::ColormappedTexture,
+    renderer::{ColormappedTexture, ShaderDecoding},
     resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
 };
-use re_types::tensor_data::{DecodedTensor, TensorCastError, TensorDataType};
+use re_types::{
+    datatypes::TensorBuffer,
+    tensor_data::{DecodedTensor, TensorCastError, TensorDataType},
+};
 use re_viewer_context::{
     gpu_bridge::{self, tensor_data_range_heuristic, RangeError},
     TensorStats,
@@ -48,6 +51,10 @@ pub fn colormapped_texture(
         color_mapper: Some(re_renderer::renderer::ColorMapper::Function(
             color_mapping.map,
         )),
+        shader_decoding: match &tensor.buffer {
+            &TensorBuffer::Nv12(_) => Some(ShaderDecoding::Nv12),
+            _ => None,
+        },
     })
 }
 

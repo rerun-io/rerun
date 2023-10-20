@@ -24,9 +24,7 @@ namespace rerun {
     namespace datatypes {
         namespace detail {
             enum class AffixFuzzer4Tag : uint8_t {
-                /// Having a special empty state makes it possible to implement move-semantics. We
-                /// need to be able to leave the object in a state which we can run the destructor
-                /// on.
+                /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 NONE = 0,
                 single_required,
                 many_required,
@@ -44,12 +42,11 @@ namespace rerun {
 
                 ~AffixFuzzer4Data() {}
 
-                void swap(AffixFuzzer4Data &other) noexcept {
-                    // This bitwise swap would fail for self-referential types, but we don't have
-                    // any of those.
+                void swap(AffixFuzzer4Data& other) noexcept {
+                    // This bitwise swap would fail for self-referential types, but we don't have any of those.
                     char temp[sizeof(AffixFuzzer4Data)];
-                    void *otherbytes = reinterpret_cast<void *>(&other);
-                    void *thisbytes = reinterpret_cast<void *>(this);
+                    void* otherbytes = reinterpret_cast<void*>(&other);
+                    void* thisbytes = reinterpret_cast<void*>(this);
                     std::memcpy(temp, thisbytes, sizeof(AffixFuzzer4Data));
                     std::memcpy(thisbytes, otherbytes, sizeof(AffixFuzzer4Data));
                     std::memcpy(otherbytes, temp, sizeof(AffixFuzzer4Data));
@@ -60,39 +57,38 @@ namespace rerun {
         struct AffixFuzzer4 {
             AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::NONE) {}
 
-            AffixFuzzer4(const AffixFuzzer4 &other) : _tag(other._tag) {
+            /// Copy constructor
+            AffixFuzzer4(const AffixFuzzer4& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::AffixFuzzer4Tag::single_required: {
-                        _data.single_required = other._data.single_required;
-                        break;
-                    }
+                        using TypeAlias = rerun::datatypes::AffixFuzzer3;
+                        new (&_data.single_required) TypeAlias(other._data.single_required);
+                    } break;
                     case detail::AffixFuzzer4Tag::many_required: {
-                        _data.many_required = other._data.many_required;
-                        break;
-                    }
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
+                        new (&_data.many_required) TypeAlias(other._data.many_required);
+                    } break;
                     case detail::AffixFuzzer4Tag::many_optional: {
-                        _data.many_optional = other._data.many_optional;
-                        break;
-                    }
-                    case detail::AffixFuzzer4Tag::NONE:
-                        const void *otherbytes = reinterpret_cast<const void *>(&other._data);
-                        void *thisbytes = reinterpret_cast<void *>(&this->_data);
-                        std::memcpy(thisbytes, otherbytes, sizeof(detail::AffixFuzzer4Data));
-                        break;
+                        using TypeAlias =
+                            std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
+                        new (&_data.many_optional) TypeAlias(other._data.many_optional);
+                    } break;
+                    case detail::AffixFuzzer4Tag::NONE: {
+                    } break;
                 }
             }
 
-            AffixFuzzer4 &operator=(const AffixFuzzer4 &other) noexcept {
+            AffixFuzzer4& operator=(const AffixFuzzer4& other) noexcept {
                 AffixFuzzer4 tmp(other);
                 this->swap(tmp);
                 return *this;
             }
 
-            AffixFuzzer4(AffixFuzzer4 &&other) noexcept : _tag(detail::AffixFuzzer4Tag::NONE) {
+            AffixFuzzer4(AffixFuzzer4&& other) noexcept : AffixFuzzer4() {
                 this->swap(other);
             }
 
-            AffixFuzzer4 &operator=(AffixFuzzer4 &&other) noexcept {
+            AffixFuzzer4& operator=(AffixFuzzer4&& other) noexcept {
                 this->swap(other);
                 return *this;
             }
@@ -100,73 +96,97 @@ namespace rerun {
             ~AffixFuzzer4() {
                 switch (this->_tag) {
                     case detail::AffixFuzzer4Tag::NONE: {
-                        break; // Nothing to destroy
-                    }
+                        // Nothing to destroy
+                    } break;
                     case detail::AffixFuzzer4Tag::single_required: {
-                        typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
+                        using TypeAlias = rerun::datatypes::AffixFuzzer3;
                         _data.single_required.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer4Tag::many_required: {
-                        typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
+                        using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer3>;
                         _data.many_required.~TypeAlias();
-                        break;
-                    }
+                    } break;
                     case detail::AffixFuzzer4Tag::many_optional: {
-                        typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>
-                            TypeAlias;
+                        using TypeAlias =
+                            std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                         _data.many_optional.~TypeAlias();
-                        break;
-                    }
+                    } break;
                 }
             }
 
-            void swap(AffixFuzzer4 &other) noexcept {
-                auto tag_temp = this->_tag;
-                this->_tag = other._tag;
-                other._tag = tag_temp;
+            void swap(AffixFuzzer4& other) noexcept {
+                std::swap(this->_tag, other._tag);
                 this->_data.swap(other._data);
             }
 
             static AffixFuzzer4 single_required(rerun::datatypes::AffixFuzzer3 single_required) {
-                typedef rerun::datatypes::AffixFuzzer3 TypeAlias;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::single_required;
-                new (&self._data.single_required) TypeAlias(std::move(single_required));
+                new (&self._data.single_required)
+                    rerun::datatypes::AffixFuzzer3(std::move(single_required));
                 return self;
             }
 
             static AffixFuzzer4 many_required(
                 std::vector<rerun::datatypes::AffixFuzzer3> many_required
             ) {
-                typedef std::vector<rerun::datatypes::AffixFuzzer3> TypeAlias;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_required;
-                new (&self._data.many_required) TypeAlias(std::move(many_required));
+                new (&self._data.many_required)
+                    std::vector<rerun::datatypes::AffixFuzzer3>(std::move(many_required));
                 return self;
             }
 
             static AffixFuzzer4 many_optional(
                 std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> many_optional
             ) {
-                typedef std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> TypeAlias;
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::many_optional;
-                new (&self._data.many_optional) TypeAlias(std::move(many_optional));
+                new (&self._data.many_optional
+                ) std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>(std::move(many_optional
+                ));
                 return self;
             }
 
+            /// Return a pointer to single_required if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::AffixFuzzer3* get_single_required() const {
+                if (_tag == detail::AffixFuzzer4Tag::single_required) {
+                    return &_data.single_required;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to many_required if the union is in that state, otherwise `nullptr`.
+            const std::vector<rerun::datatypes::AffixFuzzer3>* get_many_required() const {
+                if (_tag == detail::AffixFuzzer4Tag::many_required) {
+                    return &_data.many_required;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to many_optional if the union is in that state, otherwise `nullptr`.
+            const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>* get_many_optional(
+            ) const {
+                if (_tag == detail::AffixFuzzer4Tag::many_optional) {
+                    return &_data.many_optional;
+                } else {
+                    return nullptr;
+                }
+            }
+
             /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType> &arrow_datatype();
+            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
             /// Creates a new array builder with an array of this type.
             static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool *memory_pool
+                arrow::MemoryPool* memory_pool
             );
 
             /// Fills an arrow array builder with an array of this type.
             static Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder *builder, const AffixFuzzer4 *elements, size_t num_elements
+                arrow::DenseUnionBuilder* builder, const AffixFuzzer4* elements, size_t num_elements
             );
 
           private:

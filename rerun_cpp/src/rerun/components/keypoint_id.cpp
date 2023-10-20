@@ -3,26 +3,24 @@
 
 #include "keypoint_id.hpp"
 
-#include "../arrow.hpp"
 #include "../datatypes/keypoint_id.hpp"
 
 #include <arrow/builder.h>
-#include <arrow/table.h>
 #include <arrow/type_fwd.h>
 
 namespace rerun {
     namespace components {
         const char KeypointId::NAME[] = "rerun.components.KeypointId";
 
-        const std::shared_ptr<arrow::DataType> &KeypointId::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& KeypointId::arrow_datatype() {
             static const auto datatype = rerun::datatypes::KeypointId::arrow_datatype();
             return datatype;
         }
 
         Result<std::shared_ptr<arrow::UInt16Builder>> KeypointId::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -30,12 +28,12 @@ namespace rerun {
         }
 
         Error KeypointId::fill_arrow_array_builder(
-            arrow::UInt16Builder *builder, const KeypointId *elements, size_t num_elements
+            arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -45,7 +43,7 @@ namespace rerun {
             static_assert(sizeof(rerun::datatypes::KeypointId) == sizeof(KeypointId));
             RR_RETURN_NOT_OK(rerun::datatypes::KeypointId::fill_arrow_array_builder(
                 builder,
-                reinterpret_cast<const rerun::datatypes::KeypointId *>(elements),
+                reinterpret_cast<const rerun::datatypes::KeypointId*>(elements),
                 num_elements
             ));
 
@@ -53,10 +51,10 @@ namespace rerun {
         }
 
         Result<rerun::DataCell> KeypointId::to_data_cell(
-            const KeypointId *instances, size_t num_instances
+            const KeypointId* instances, size_t num_instances
         ) {
             // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool *pool = arrow::default_memory_pool();
+            arrow::MemoryPool* pool = arrow::default_memory_pool();
 
             auto builder_result = KeypointId::new_arrow_array_builder(pool);
             RR_RETURN_NOT_OK(builder_result.error);
@@ -69,17 +67,11 @@ namespace rerun {
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-            auto schema =
-                arrow::schema({arrow::field(KeypointId::NAME, KeypointId::arrow_datatype(), false)}
-                );
-
-            rerun::DataCell cell;
-            cell.component_name = KeypointId::NAME;
-            const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-            RR_RETURN_NOT_OK(ipc_result.error);
-            cell.buffer = std::move(ipc_result.value);
-
-            return cell;
+            return rerun::DataCell::create(
+                KeypointId::NAME,
+                KeypointId::arrow_datatype(),
+                std::move(array)
+            );
         }
     } // namespace components
 } // namespace rerun

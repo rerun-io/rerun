@@ -19,29 +19,15 @@ from os.path import isfile, join
 #
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
-opt_out_entirely = {
-    "annotation_context_connections": ["cpp"],
-    "annotation_context_segmentation": ["cpp"],
-    "annotation_context_rects": ["cpp"], # TODO(#2919): Needs support for log_timeless
-    "any_values": ["cpp", "rust"], # Only implemented for Python
-    "asset3d_out_of_tree": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
-    "asset3d_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
-    "bar_chart": ["cpp"],
-    "custom_data": ["cpp"],
-    "depth_image_3d": ["cpp"],
-    "depth_image_simple": ["cpp"],
-    "extra_values": ["cpp", "rust"], # Only implemented for Python
-    "image_advanced": ["cpp", "rust"], # Missing example for Rust
-    "image_simple": ["cpp"],
+opt_out_run = {
+    "any_values": ["cpp", "rust"], # Not yet implemented
+    "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "extra_values": ["cpp", "rust"], # Missing examples
+    "image_advanced": ["cpp", "rust"], # Missing examples
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
-    "mesh3d_partial_updates": ["cpp"], # TODO(cmc): cannot set recording clock in cpp at the moment
-    "pinhole_simple": ["cpp"],
-    "scalar_multiple_plots": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
-    "scalar_simple": ["cpp"], # TODO(#3394): Need to implement time in C++ first.
-    "segmentation_image_simple": ["cpp"],
-    "tensor_simple": ["cpp"],
-    "text_log_integration": ["cpp"],
-    "view_coordinates_simple": ["cpp"], # TODO(#2919): Need log_timeless for C++
+    "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
+    "quick_start_spawn": ["cpp"], # TODO(#3870): Not yet implemented in C++
+    "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
@@ -52,13 +38,16 @@ opt_out_entirely = {
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 opt_out_compare = {
-    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "asset3d_out_of_tree": ["py", "rust"], # # float precision issues
-    "mesh3d_partial_updates": ["py", "rust"], # float precision issues
-    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
-    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): need to align everything to use PCG64 in the same order etc... don't have time for that.
+    "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "asset3d_out_of_tree": ["cpp", "py", "rust"], # float issues since calculation is done slightly differently (also, Python uses doubles)
+    "mesh3d_partial_updates": ["cpp", "py", "rust"], # float precision issues
+    "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
+    "quick_start_connect":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
+    "quick_start_spawn":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
+    "scalar_multiple_plots": ["cpp"], # trigonometric functions have slightly different outcomes
+    "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
 }
 
 extra_args = {
@@ -81,6 +70,9 @@ def run(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
+    parser.add_argument("--no-py", action="store_true", help="Skip Python tests")
+    parser.add_argument("--no-cpp", action="store_true", help="Skip C++ tests")
+    # We don't allow skipping Rust - it is what we compate to at the moment
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
     parser.add_argument(
         "--no-cpp-build",
@@ -103,7 +95,9 @@ def main() -> None:
     if "RUST_LOG" in build_env:
         del build_env["RUST_LOG"]  # The user likely only meant it for the actual tests; not the setup
 
-    if args.no_py_build:
+    if args.no_py:
+        pass  # No need to build the Python SDK
+    elif args.no_py_build:
         print("Skipping building python rerun-sdk - assuming it is already built and up-to-date!")
     else:
         print("----------------------------------------------------------")
@@ -114,7 +108,9 @@ def main() -> None:
         print(f"rerun-sdk for Python built in {elapsed:.1f} seconds")
         print("")
 
-    if args.no_cpp_build:
+    if args.no_cpp:
+        pass  # No need to build the C++ SDK
+    elif args.no_cpp_build:
         print("Skipping cmake configure & build for rerun_c & rerun_cpp - assuming it is already built and up-to-date!")
     else:
         print("----------------------------------------------------------")
@@ -143,25 +139,31 @@ def main() -> None:
         examples = [
             filename
             for filename, extension in [os.path.splitext(file) for file in files]
-            if extension in (".cpp", ".py", ".rs")
+            if extension == ".cpp" and not args.no_cpp or extension == ".py" and not args.no_py or extension == ".rs"
         ]
 
     examples = list(set(examples))
     examples.sort()
 
     print("----------------------------------------------------------")
-    print(f"Building {len(examples)} examples…")
+    print(f"Running {len(examples)} examples…")
+
+    active_languages = ["rust"]
+    if not args.no_cpp:
+        active_languages.append("cpp")
+    if not args.no_py:
+        active_languages.append("py")
 
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
-            example_opt_out_entirely = opt_out_entirely.get(example, [])
-            for language in ["cpp", "py", "rust"]:
+            example_opt_out_entirely = opt_out_run.get(example, [])
+            for language in active_languages:
                 if language in example_opt_out_entirely:
                     continue
-                job = pool.apply_async(build_example, (example, language, args))
+                job = pool.apply_async(run_example, (example, language, args))
                 jobs.append(job)
-        print(f"Waiting for {len(jobs)} build jobs to finish…")
+        print(f"Waiting for {len(jobs)} runs to finish…")
         for job in jobs:
             job.get()
 
@@ -173,7 +175,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print(f"Comparing example '{example}'…")
 
-        example_opt_out_entirely = opt_out_entirely.get(example, [])
+        example_opt_out_entirely = opt_out_run.get(example, [])
         example_opt_out_compare = opt_out_compare.get(example, [])
 
         if "rust" in example_opt_out_entirely:
@@ -183,18 +185,18 @@ def main() -> None:
         python_output_path = f"docs/code-examples/{example}_py.rrd"
         rust_output_path = f"docs/code-examples/{example}_rust.rrd"
 
-        if "py" not in example_opt_out_entirely and "py" not in example_opt_out_compare:
-            run_comparison(python_output_path, rust_output_path, args.full_dump)
-
-        if "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
+        if "cpp" in active_languages and "cpp" not in example_opt_out_entirely and "cpp" not in example_opt_out_compare:
             run_comparison(cpp_output_path, rust_output_path, args.full_dump)
+
+        if "py" in active_languages and "py" not in example_opt_out_entirely and "py" not in example_opt_out_compare:
+            run_comparison(python_output_path, rust_output_path, args.full_dump)
 
     print()
     print("----------------------------------------------------------")
     print("All tests passed!")
 
 
-def build_example(example: str, language: str, args: argparse.Namespace) -> None:
+def run_example(example: str, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
         cpp_output_path = run_roundtrip_cpp(example, args.release)
         check_non_empty_rrd(cpp_output_path)
@@ -209,10 +211,17 @@ def build_example(example: str, language: str, args: argparse.Namespace) -> None
 
 
 def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
+    env = os.environ.copy()
+
     # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
     # the batcher will happily insert uninitialized padding bytes as needed!
-    env = os.environ.copy()
     env["RERUN_FLUSH_NUM_ROWS"] = "0"
+
+    # Turn on strict mode to catch errors early
+    env["RERUN_STRICT"] = "1"
+
+    # Treat any warning as panics
+    env["RERUN_PANIC_ON_WARN"] = "1"
 
     if save_path:
         # NOTE: Force the recording stream to write to disk!

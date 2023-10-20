@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/components/rotation3d.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -13,6 +14,12 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
+
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 3D rotation, represented either by a quaternion or a rotation around axis.
 #[derive(Clone, Debug, PartialEq)]
@@ -43,32 +50,20 @@ impl std::ops::Deref for Rotation3D {
     }
 }
 
-impl<'a> From<Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
-    #[inline]
-    fn from(value: Rotation3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Rotation3D);
 
-impl<'a> From<&'a Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
-    #[inline]
-    fn from(value: &'a Rotation3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
-
-impl crate::Loggable for Rotation3D {
-    type Name = crate::ComponentName;
+impl ::re_types_core::Loggable for Rotation3D {
+    type Name = ::re_types_core::ComponentName;
 
     #[inline]
     fn name() -> Self::Name {
         "rerun.components.Rotation3D".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Union(
             vec![
                 Field {
@@ -95,16 +90,16 @@ impl crate::Loggable for Rotation3D {
         )
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -117,7 +112,7 @@ impl crate::Loggable for Rotation3D {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -128,22 +123,22 @@ impl crate::Loggable for Rotation3D {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
-    ) -> crate::DeserializationResult<Vec<Option<Self>>>
+        arrow_data: &dyn arrow2::array::Array,
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(crate::datatypes::Rotation3D::from_arrow_opt(arrow_data)
             .with_context("rerun.components.Rotation3D#repr")?
             .into_iter()
-            .map(|v| v.ok_or_else(crate::DeserializationError::missing_data))
+            .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<crate::DeserializationResult<Vec<Option<_>>>>()
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.Rotation3D#repr")
             .with_context("rerun.components.Rotation3D")?)
     }

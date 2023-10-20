@@ -6,7 +6,7 @@ use nohash_hasher::IntMap;
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
 };
-use re_types::{ComponentName, Loggable};
+use re_types_core::{ComponentName, Loggable};
 
 // ----------------------------------------------------------------------------
 
@@ -220,7 +220,7 @@ impl EntityTree {
         time_point: &TimePoint,
         path_op: &PathOp,
     ) -> Vec<ComponentPath> {
-        use re_types::{archetypes::Clear, components::ClearIsRecursive, Archetype as _};
+        use re_types_core::{archetypes::Clear, components::ClearIsRecursive, Archetype as _};
 
         re_tracing::profile_function!();
 

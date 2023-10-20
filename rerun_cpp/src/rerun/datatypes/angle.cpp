@@ -8,7 +8,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &Angle::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& Angle::arrow_datatype() {
             static const auto datatype = arrow::dense_union({
                 arrow::field("_null_markers", arrow::null(), true, nullptr),
                 arrow::field("Radians", arrow::float32(), false),
@@ -18,14 +18,15 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::DenseUnionBuilder>> Angle::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(std::make_shared<arrow::DenseUnionBuilder>(
                 memory_pool,
+                // Children:
                 std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
                     std::make_shared<arrow::NullBuilder>(memory_pool),
                     std::make_shared<arrow::FloatBuilder>(memory_pool),
@@ -36,12 +37,12 @@ namespace rerun {
         }
 
         Error Angle::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder *builder, const Angle *elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const Angle* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -50,7 +51,7 @@ namespace rerun {
 
             ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto &union_instance = elements[elem_idx];
+                const auto& union_instance = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
 
                 auto variant_index = static_cast<int>(union_instance._tag);
@@ -59,20 +60,17 @@ namespace rerun {
                 switch (union_instance._tag) {
                     case detail::AngleTag::NONE: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                        break;
-                    }
+                    } break;
                     case detail::AngleTag::Radians: {
                         auto variant_builder =
-                            static_cast<arrow::FloatBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
                         ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.radians));
-                        break;
-                    }
+                    } break;
                     case detail::AngleTag::Degrees: {
                         auto variant_builder =
-                            static_cast<arrow::FloatBuilder *>(variant_builder_untyped);
+                            static_cast<arrow::FloatBuilder*>(variant_builder_untyped);
                         ARROW_RETURN_NOT_OK(variant_builder->Append(union_instance._data.degrees));
-                        break;
-                    }
+                    } break;
                 }
             }
 

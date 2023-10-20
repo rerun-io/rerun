@@ -11,7 +11,7 @@
 
 namespace rerun {
     namespace datatypes {
-        const std::shared_ptr<arrow::DataType> &ClassDescription::arrow_datatype() {
+        const std::shared_ptr<arrow::DataType>& ClassDescription::arrow_datatype() {
             static const auto datatype = arrow::struct_({
                 arrow::field("info", rerun::datatypes::AnnotationInfo::arrow_datatype(), false),
                 arrow::field(
@@ -37,9 +37,9 @@ namespace rerun {
         }
 
         Result<std::shared_ptr<arrow::StructBuilder>> ClassDescription::new_arrow_array_builder(
-            arrow::MemoryPool *memory_pool
+            arrow::MemoryPool* memory_pool
         ) {
-            if (!memory_pool) {
+            if (memory_pool == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
@@ -61,12 +61,12 @@ namespace rerun {
         }
 
         Error ClassDescription::fill_arrow_array_builder(
-            arrow::StructBuilder *builder, const ClassDescription *elements, size_t num_elements
+            arrow::StructBuilder* builder, const ClassDescription* elements, size_t num_elements
         ) {
-            if (!builder) {
+            if (builder == nullptr) {
                 return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
-            if (!elements) {
+            if (elements == nullptr) {
                 return Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
@@ -74,7 +74,7 @@ namespace rerun {
             }
 
             {
-                auto field_builder = static_cast<arrow::StructBuilder *>(builder->field_builder(0));
+                auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(0));
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                     RR_RETURN_NOT_OK(rerun::datatypes::AnnotationInfo::fill_arrow_array_builder(
@@ -85,14 +85,14 @@ namespace rerun {
                 }
             }
             {
-                auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(1));
+                auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(1));
                 auto value_builder =
-                    static_cast<arrow::StructBuilder *>(field_builder->value_builder());
+                    static_cast<arrow::StructBuilder*>(field_builder->value_builder());
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     if (element.keypoint_annotations.data()) {
                         RR_RETURN_NOT_OK(rerun::datatypes::AnnotationInfo::fill_arrow_array_builder(
@@ -104,14 +104,14 @@ namespace rerun {
                 }
             }
             {
-                auto field_builder = static_cast<arrow::ListBuilder *>(builder->field_builder(2));
+                auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(2));
                 auto value_builder =
-                    static_cast<arrow::StructBuilder *>(field_builder->value_builder());
+                    static_cast<arrow::StructBuilder*>(field_builder->value_builder());
                 ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
                 ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
                 for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto &element = elements[elem_idx];
+                    const auto& element = elements[elem_idx];
                     ARROW_RETURN_NOT_OK(field_builder->Append());
                     if (element.keypoint_connections.data()) {
                         RR_RETURN_NOT_OK(rerun::datatypes::KeypointPair::fill_arrow_array_builder(

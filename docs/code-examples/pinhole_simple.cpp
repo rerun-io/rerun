@@ -6,11 +6,9 @@
 #include <cstdlib>
 #include <ctime>
 
-namespace rr = rerun;
-
 int main() {
-    auto rec = rr::RecordingStream("rerun_example_line_strip3d");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
+    rec.connect().throw_on_failure();
 
     rec.log("world/image", rerun::Pinhole::focal_length_and_resolution(3.0f, {3.0f, 3.0f}));
 
