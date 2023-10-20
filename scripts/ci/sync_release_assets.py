@@ -122,7 +122,7 @@ def update_release_assets(release: GitRelease, assets: Assets):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate a minimal pip index")
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--github-token", required=True, help="GitHub token")
     parser.add_argument("--github-repository", default="rerun-io/rerun", help="GitHub repository")
     parser.add_argument(
