@@ -4,7 +4,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_manual_indicator");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     std::vector<rerun::components::Position3D> positions = {
         {0.0, 0.0, 0.0},

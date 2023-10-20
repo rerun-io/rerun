@@ -36,7 +36,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_points2d_simple");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     rec.connect().throw_on_failure();
         ///
         ///     std::default_random_engine gen;
         ///     std::uniform_real_distribution<float> dist_pos(-5.0f, 5.0f);
