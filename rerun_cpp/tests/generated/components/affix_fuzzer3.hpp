@@ -9,7 +9,6 @@
 #include <memory>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -28,19 +27,11 @@ namespace rerun {
           public:
             AffixFuzzer3() = default;
 
-            AffixFuzzer3(const rerun::datatypes::AffixFuzzer1& single_required_)
+            AffixFuzzer3(rerun::datatypes::AffixFuzzer1 single_required_)
                 : single_required(single_required_) {}
 
-            AffixFuzzer3& operator=(const rerun::datatypes::AffixFuzzer1& single_required_) {
+            AffixFuzzer3& operator=(rerun::datatypes::AffixFuzzer1 single_required_) {
                 single_required = single_required_;
-                return *this;
-            }
-
-            AffixFuzzer3(rerun::datatypes::AffixFuzzer1&& single_required_)
-                : single_required(std::move(single_required_)) {}
-
-            AffixFuzzer3& operator=(rerun::datatypes::AffixFuzzer1&& single_required_) {
-                single_required = std::move(single_required_);
                 return *this;
             }
 

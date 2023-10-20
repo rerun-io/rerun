@@ -8,6 +8,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -38,10 +39,10 @@ namespace rerun {
           public:
             Vec2D() = default;
 
-            Vec2D(const std::array<float, 2>& xy_) : xy(xy_) {}
+            Vec2D(std::array<float, 2> xy_) : xy(std::move(xy_)) {}
 
-            Vec2D& operator=(const std::array<float, 2>& xy_) {
-                xy = xy_;
+            Vec2D& operator=(std::array<float, 2> xy_) {
+                xy = std::move(xy_);
                 return *this;
             }
 

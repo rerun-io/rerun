@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -66,31 +65,17 @@ namespace rerun {
           public:
             TextLogLevel() = default;
 
-            TextLogLevel(const rerun::datatypes::Utf8& value_) : value(value_) {}
+            TextLogLevel(rerun::datatypes::Utf8 value_) : value(value_) {}
 
-            TextLogLevel& operator=(const rerun::datatypes::Utf8& value_) {
+            TextLogLevel& operator=(rerun::datatypes::Utf8 value_) {
                 value = value_;
                 return *this;
             }
 
-            TextLogLevel(rerun::datatypes::Utf8&& value_) : value(std::move(value_)) {}
+            TextLogLevel(std::string value_) : value(value_) {}
 
-            TextLogLevel& operator=(rerun::datatypes::Utf8&& value_) {
-                value = std::move(value_);
-                return *this;
-            }
-
-            TextLogLevel(const std::string& value_) : value(value_) {}
-
-            TextLogLevel& operator=(const std::string& value_) {
+            TextLogLevel& operator=(std::string value_) {
                 value = value_;
-                return *this;
-            }
-
-            TextLogLevel(std::string&& value_) : value(std::move(value_)) {}
-
-            TextLogLevel& operator=(std::string&& value_) {
-                value = std::move(value_);
                 return *this;
             }
 

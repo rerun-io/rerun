@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -59,10 +60,10 @@ namespace rerun {
           public:
             Rgba32() = default;
 
-            Rgba32(uint32_t rgba_) : rgba(rgba_) {}
+            Rgba32(uint32_t rgba_) : rgba(std::move(rgba_)) {}
 
             Rgba32& operator=(uint32_t rgba_) {
-                rgba = rgba_;
+                rgba = std::move(rgba_);
                 return *this;
             }
 

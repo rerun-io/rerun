@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class BooleanBuilder;
@@ -32,10 +33,11 @@ namespace rerun {
           public:
             DisconnectedSpace() = default;
 
-            DisconnectedSpace(bool is_disconnected_) : is_disconnected(is_disconnected_) {}
+            DisconnectedSpace(bool is_disconnected_)
+                : is_disconnected(std::move(is_disconnected_)) {}
 
             DisconnectedSpace& operator=(bool is_disconnected_) {
-                is_disconnected = is_disconnected_;
+                is_disconnected = std::move(is_disconnected_);
                 return *this;
             }
 

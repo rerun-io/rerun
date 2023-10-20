@@ -10,6 +10,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -43,17 +44,17 @@ namespace rerun {
           public:
             Position2D() = default;
 
-            Position2D(const rerun::datatypes::Vec2D& xy_) : xy(xy_) {}
+            Position2D(rerun::datatypes::Vec2D xy_) : xy(std::move(xy_)) {}
 
-            Position2D& operator=(const rerun::datatypes::Vec2D& xy_) {
-                xy = xy_;
+            Position2D& operator=(rerun::datatypes::Vec2D xy_) {
+                xy = std::move(xy_);
                 return *this;
             }
 
-            Position2D(const std::array<float, 2>& xy_) : xy(xy_) {}
+            Position2D(std::array<float, 2> xy_) : xy(std::move(xy_)) {}
 
-            Position2D& operator=(const std::array<float, 2>& xy_) {
-                xy = xy_;
+            Position2D& operator=(std::array<float, 2> xy_) {
+                xy = std::move(xy_);
                 return *this;
             }
 

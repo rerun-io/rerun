@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 #include <vector>
 
 namespace arrow {
@@ -29,17 +28,10 @@ namespace rerun {
           public:
             Blob() = default;
 
-            Blob(const std::vector<uint8_t>& data_) : data(data_) {}
+            Blob(std::vector<uint8_t> data_) : data(data_) {}
 
-            Blob& operator=(const std::vector<uint8_t>& data_) {
+            Blob& operator=(std::vector<uint8_t> data_) {
                 data = data_;
-                return *this;
-            }
-
-            Blob(std::vector<uint8_t>&& data_) : data(std::move(data_)) {}
-
-            Blob& operator=(std::vector<uint8_t>&& data_) {
-                data = std::move(data_);
                 return *this;
             }
 

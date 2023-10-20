@@ -1091,43 +1091,32 @@ fn add_copy_assignment_and_constructor(
     let field_ident = format_ident!("{}", target_field.name);
     let param_ident = format_ident!("{}_", obj_field.name);
 
-    // For parameter passing we're sticking to the C++ core guidelines.
-    // https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#fcall-parameter-passing
-    // For "In & retain copy" the rules are
-    // * by value if it's trivial and small
-    // * by const& for anything else
-    // * additional rvalue reference overload if it's movable
+    // We keep parameter passing for assignment & ctors simple by _always_ passing by value.
+    // The basic assumption is that anything that has an expensive copy has a move constructor
+    // and move constructors are cheap.
     //
-    // The third case is a bit contentious as many argue in this it would be best to pass by value only
-    // Rationale:
-    // - If it was a temporary it gets moved into the value and then moved again into the field.
-    // - If it was a lvalue it gets copied into the value and then moved into the field.
-    // However, since we're generating code this doesn't cost us much effort here to do the
-    // (quote:) “unusual and clever techniques that cause surprises".
+    // Note that in this setup there's either
+    // - 1 move, 1 copy: If an lvalue is passed gets copied into the value and then moved into the field.
+    // - 2 move: If a temporary is passed it gets moved into the value and then moved again into the field.
+    //
+    // Also good to know:
+    // In x64 and aarch64 (and others) structs are usually passed by pointer to stack _anyways_!
+    // - everything above 8 bytes in x64:
+    //   https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170#parameter-passing
+    // - everything above 16 bytes (plus extra rules for float structs) in aarch64
+    //   https://devblogs.microsoft.com/oldnewthing/20220823-00/?p=107041
 
     let typ = quote_field_type(hpp_includes, obj_field);
     {
-        let parameter = match obj_field.typ {
-            Type::UInt8
-            | Type::UInt16
-            | Type::UInt32
-            | Type::UInt64
-            | Type::Int8
-            | Type::Int16
-            | Type::Int32
-            | Type::Int64
-            | Type::Bool
-            | Type::Float16
-            | Type::Float32
-            | Type::Float64 => quote! { #typ #param_ident },
-            Type::String | Type::Array { .. } | Type::Vector { .. } | Type::Object(_) => {
-                quote! { const #typ& #param_ident }
-            }
+        let copy_or_move = if obj_field.typ.has_default_destructor(objects) {
+            hpp_includes.insert_system("utility"); // std::move
+            quote!(std::move(#param_ident))
+        } else {
+            quote!(#param_ident)
         };
-
         methods.push(Method {
             declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(#parameter) : #field_ident(#param_ident)
+                #type_ident(#typ #param_ident) : #field_ident(#copy_or_move)
             }),
             ..Method::default()
         });
@@ -1136,38 +1125,11 @@ fn add_copy_assignment_and_constructor(
                 is_static: false,
                 return_type: quote!(#type_ident&),
                 name_and_parameters: quote! {
-                    operator=(#parameter)
+                    operator=(#typ #param_ident)
                 },
             },
             definition_body: quote! {
-                #field_ident = #param_ident;
-                return *this;
-            },
-            ..Method::default()
-        });
-    }
-
-    // Add move constructor and assignment if the type is likely to be movable.
-    // Non-trivially destructible objects are typically movable.
-    // (if they have work to do on destruction it can usually be skipped by doing a move)
-    if !obj_field.typ.has_default_destructor(objects) {
-        hpp_includes.insert_system("utility"); // std::move
-        methods.push(Method {
-            declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(#typ&& #param_ident) : #field_ident(std::move(#param_ident))
-            }),
-            ..Method::default()
-        });
-        methods.push(Method {
-            declaration: MethodDeclaration {
-                is_static: false,
-                return_type: quote!(#type_ident&),
-                name_and_parameters: quote! {
-                    operator=(#typ&& #param_ident)
-                },
-            },
-            definition_body: quote! {
-                #field_ident = std::move(#param_ident);
+                #field_ident = #copy_or_move;
                 return *this;
             },
             ..Method::default()

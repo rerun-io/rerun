@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <rerun/result.hpp>
+#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -27,10 +28,10 @@ namespace rerun {
             AffixFuzzer2() = default;
 
             AffixFuzzer2(std::optional<float> single_float_optional_)
-                : single_float_optional(single_float_optional_) {}
+                : single_float_optional(std::move(single_float_optional_)) {}
 
             AffixFuzzer2& operator=(std::optional<float> single_float_optional_) {
-                single_float_optional = single_float_optional_;
+                single_float_optional = std::move(single_float_optional_);
                 return *this;
             }
 

@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 #include <rerun/result.hpp>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -21,10 +22,10 @@ namespace rerun {
           public:
             FlattenedScalar() = default;
 
-            FlattenedScalar(float value_) : value(value_) {}
+            FlattenedScalar(float value_) : value(std::move(value_)) {}
 
             FlattenedScalar& operator=(float value_) {
-                value = value_;
+                value = std::move(value_);
                 return *this;
             }
 

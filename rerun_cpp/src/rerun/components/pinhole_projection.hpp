@@ -10,6 +10,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -39,19 +40,19 @@ namespace rerun {
           public:
             PinholeProjection() = default;
 
-            PinholeProjection(const rerun::datatypes::Mat3x3& image_from_camera_)
-                : image_from_camera(image_from_camera_) {}
+            PinholeProjection(rerun::datatypes::Mat3x3 image_from_camera_)
+                : image_from_camera(std::move(image_from_camera_)) {}
 
-            PinholeProjection& operator=(const rerun::datatypes::Mat3x3& image_from_camera_) {
-                image_from_camera = image_from_camera_;
+            PinholeProjection& operator=(rerun::datatypes::Mat3x3 image_from_camera_) {
+                image_from_camera = std::move(image_from_camera_);
                 return *this;
             }
 
-            PinholeProjection(const std::array<float, 9>& flat_columns_)
-                : image_from_camera(flat_columns_) {}
+            PinholeProjection(std::array<float, 9> flat_columns_)
+                : image_from_camera(std::move(flat_columns_)) {}
 
-            PinholeProjection& operator=(const std::array<float, 9>& flat_columns_) {
-                image_from_camera = flat_columns_;
+            PinholeProjection& operator=(std::array<float, 9> flat_columns_) {
+                image_from_camera = std::move(flat_columns_);
                 return *this;
             }
 

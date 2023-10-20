@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -31,10 +32,10 @@ namespace rerun {
           public:
             OutOfTreeTransform3D() = default;
 
-            OutOfTreeTransform3D(const rerun::datatypes::Transform3D& repr_) : repr(repr_) {}
+            OutOfTreeTransform3D(rerun::datatypes::Transform3D repr_) : repr(std::move(repr_)) {}
 
-            OutOfTreeTransform3D& operator=(const rerun::datatypes::Transform3D& repr_) {
-                repr = repr_;
+            OutOfTreeTransform3D& operator=(rerun::datatypes::Transform3D repr_) {
+                repr = std::move(repr_);
                 return *this;
             }
 

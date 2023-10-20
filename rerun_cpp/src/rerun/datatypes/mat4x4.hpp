@@ -9,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -62,10 +63,10 @@ namespace rerun {
           public:
             Mat4x4() = default;
 
-            Mat4x4(const std::array<float, 16>& flat_columns_) : flat_columns(flat_columns_) {}
+            Mat4x4(std::array<float, 16> flat_columns_) : flat_columns(std::move(flat_columns_)) {}
 
-            Mat4x4& operator=(const std::array<float, 16>& flat_columns_) {
-                flat_columns = flat_columns_;
+            Mat4x4& operator=(std::array<float, 16> flat_columns_) {
+                flat_columns = std::move(flat_columns_);
                 return *this;
             }
 

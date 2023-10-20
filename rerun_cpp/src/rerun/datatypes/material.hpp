@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -26,18 +27,18 @@ namespace rerun {
           public:
             Material() = default;
 
-            Material(const std::optional<rerun::datatypes::Rgba32>& albedo_factor_)
-                : albedo_factor(albedo_factor_) {}
+            Material(std::optional<rerun::datatypes::Rgba32> albedo_factor_)
+                : albedo_factor(std::move(albedo_factor_)) {}
 
-            Material& operator=(const std::optional<rerun::datatypes::Rgba32>& albedo_factor_) {
-                albedo_factor = albedo_factor_;
+            Material& operator=(std::optional<rerun::datatypes::Rgba32> albedo_factor_) {
+                albedo_factor = std::move(albedo_factor_);
                 return *this;
             }
 
-            Material(uint32_t rgba_) : albedo_factor(rgba_) {}
+            Material(uint32_t rgba_) : albedo_factor(std::move(rgba_)) {}
 
             Material& operator=(uint32_t rgba_) {
-                albedo_factor = rgba_;
+                albedo_factor = std::move(rgba_);
                 return *this;
             }
 

@@ -10,7 +10,6 @@
 #include <optional>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
-#include <utility>
 #include <vector>
 
 namespace arrow {
@@ -30,27 +29,15 @@ namespace rerun {
           public:
             AffixFuzzer17() = default;
 
-            AffixFuzzer17(const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&
-                              many_optional_unions_)
+            AffixFuzzer17(
+                std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> many_optional_unions_
+            )
                 : many_optional_unions(many_optional_unions_) {}
 
             AffixFuzzer17& operator=(
-                const std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&
-                    many_optional_unions_
+                std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> many_optional_unions_
             ) {
                 many_optional_unions = many_optional_unions_;
-                return *this;
-            }
-
-            AffixFuzzer17(
-                std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&& many_optional_unions_
-            )
-                : many_optional_unions(std::move(many_optional_unions_)) {}
-
-            AffixFuzzer17& operator=(
-                std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>&& many_optional_unions_
-            ) {
-                many_optional_unions = std::move(many_optional_unions_);
                 return *this;
             }
 

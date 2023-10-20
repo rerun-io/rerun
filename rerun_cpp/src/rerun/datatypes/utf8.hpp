@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -35,17 +34,10 @@ namespace rerun {
           public:
             Utf8() = default;
 
-            Utf8(const std::string& value_) : value(value_) {}
+            Utf8(std::string value_) : value(value_) {}
 
-            Utf8& operator=(const std::string& value_) {
+            Utf8& operator=(std::string value_) {
                 value = value_;
-                return *this;
-            }
-
-            Utf8(std::string&& value_) : value(std::move(value_)) {}
-
-            Utf8& operator=(std::string&& value_) {
-                value = std::move(value_);
                 return *this;
             }
 

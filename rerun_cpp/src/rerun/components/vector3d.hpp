@@ -10,6 +10,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -47,17 +48,17 @@ namespace rerun {
           public:
             Vector3D() = default;
 
-            Vector3D(const rerun::datatypes::Vec3D& vector_) : vector(vector_) {}
+            Vector3D(rerun::datatypes::Vec3D vector_) : vector(std::move(vector_)) {}
 
-            Vector3D& operator=(const rerun::datatypes::Vec3D& vector_) {
-                vector = vector_;
+            Vector3D& operator=(rerun::datatypes::Vec3D vector_) {
+                vector = std::move(vector_);
                 return *this;
             }
 
-            Vector3D(const std::array<float, 3>& xyz_) : vector(xyz_) {}
+            Vector3D(std::array<float, 3> xyz_) : vector(std::move(xyz_)) {}
 
-            Vector3D& operator=(const std::array<float, 3>& xyz_) {
-                vector = xyz_;
+            Vector3D& operator=(std::array<float, 3> xyz_) {
+                vector = std::move(xyz_);
                 return *this;
             }
 

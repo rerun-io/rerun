@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -40,10 +41,10 @@ namespace rerun {
           public:
             Rotation3D() = default;
 
-            Rotation3D(const rerun::datatypes::Rotation3D& repr_) : repr(repr_) {}
+            Rotation3D(rerun::datatypes::Rotation3D repr_) : repr(std::move(repr_)) {}
 
-            Rotation3D& operator=(const rerun::datatypes::Rotation3D& repr_) {
-                repr = repr_;
+            Rotation3D& operator=(rerun::datatypes::Rotation3D repr_) {
+                repr = std::move(repr_);
                 return *this;
             }
 
