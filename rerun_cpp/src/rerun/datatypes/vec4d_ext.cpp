@@ -17,8 +17,6 @@ namespace rerun {
             Vec4D(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
 
             /// Construct Vec4D from x/y/z/w float pointer.
-            ///
-            /// Attention: The pointer must point to at least least 4 floats long.
             Vec4D(const float* ptr) : xyzw{ptr[0], ptr[1], ptr[2], ptr[3]} {}
 
             float x() const {

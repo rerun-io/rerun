@@ -31,8 +31,6 @@ namespace rerun {
                 return *this;
             }
 
-            UVec2D(const uint32_t (&xy_)[2]) : xy({xy_[0], xy_[1]}) {}
-
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

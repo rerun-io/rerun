@@ -1107,60 +1107,33 @@ fn add_copy_assignment_and_constructor(
     //   https://devblogs.microsoft.com/oldnewthing/20220823-00/?p=107041
 
     let typ = quote_field_type(hpp_includes, obj_field);
-    {
-        let copy_or_move = if obj_field.typ.has_default_destructor(objects) {
-            quote!(#param_ident)
-        } else {
-            hpp_includes.insert_system("utility"); // std::move
-            quote!(std::move(#param_ident))
-        };
-        methods.push(Method {
-            declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(#typ #param_ident) : #field_ident(#copy_or_move)
-            }),
-            ..Method::default()
-        });
-        methods.push(Method {
-            declaration: MethodDeclaration {
-                is_static: false,
-                return_type: quote!(#type_ident&),
-                name_and_parameters: quote! {
-                    operator=(#typ #param_ident)
-                },
+
+    let copy_or_move = if obj_field.typ.has_default_destructor(objects) {
+        quote!(#param_ident)
+    } else {
+        hpp_includes.insert_system("utility"); // std::move
+        quote!(std::move(#param_ident))
+    };
+    methods.push(Method {
+        declaration: MethodDeclaration::constructor(quote! {
+            #type_ident(#typ #param_ident) : #field_ident(#copy_or_move)
+        }),
+        ..Method::default()
+    });
+    methods.push(Method {
+        declaration: MethodDeclaration {
+            is_static: false,
+            return_type: quote!(#type_ident&),
+            name_and_parameters: quote! {
+                operator=(#typ #param_ident)
             },
-            definition_body: quote! {
-                #field_ident = #copy_or_move;
-                return *this;
-            },
-            ..Method::default()
-        });
-    }
-
-    // Additional constructor from C array.
-    if let Type::Array { elem_type, length } = &obj_field.typ {
-        // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
-        // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
-        let length_quoted = quote_integer(length);
-        let element_type = quote_element_type(hpp_includes, elem_type);
-        let element_assignments = (0..*length).map(|i| {
-            let i = quote_integer(i);
-            quote!(#param_ident[#i])
-        });
-
-        let array_construction = if obj_field.fqname == target_field.fqname {
-            quote!()
-        } else {
-            quote!(std::array)
-        };
-
-        methods.push(Method {
-            declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(const #element_type (&#param_ident)[#length_quoted]) :
-                    #field_ident(#array_construction{#(#element_assignments),*})
-            }),
-            ..Method::default()
-        });
-    }
+        },
+        definition_body: quote! {
+            #field_ident = #copy_or_move;
+            return *this;
+        },
+        ..Method::default()
+    });
 
     methods
 }

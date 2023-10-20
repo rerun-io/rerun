@@ -39,6 +39,16 @@ namespace rerun {
                 return Quaternion{x, y, z, w};
             }
 
+            /// Construct Quaternion from x/y/z/w array.
+            static Quaternion from_xyzw(std::array<float, 4> xyzw_) {
+                return Quaternion{xyzw_};
+            }
+
+            /// Construct Quaternion from w/x/y/z array.
+            static Quaternion from_wxyz(std::array<float, 4> wxyz_) {
+                return Quaternion{wxyz_[1], wxyz_[2], wxyz_[3], wxyz_[0]};
+            }
+
             /// Construct Quaternion from x/y/z/w float pointer.
             static Quaternion from_xyzw(const float* xyzw_) {
                 return Quaternion{xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]};
