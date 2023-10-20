@@ -283,106 +283,93 @@ namespace rerun {
             }
 
             static TensorBuffer u8(std::vector<uint8_t> u8) {
-                using TypeAlias = std::vector<uint8_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U8;
-                new (&self._data.u8) TypeAlias(std::move(u8));
+                new (&self._data.u8) std::vector<uint8_t>(std::move(u8));
                 return self;
             }
 
             static TensorBuffer u16(std::vector<uint16_t> u16) {
-                using TypeAlias = std::vector<uint16_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U16;
-                new (&self._data.u16) TypeAlias(std::move(u16));
+                new (&self._data.u16) std::vector<uint16_t>(std::move(u16));
                 return self;
             }
 
             static TensorBuffer u32(std::vector<uint32_t> u32) {
-                using TypeAlias = std::vector<uint32_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U32;
-                new (&self._data.u32) TypeAlias(std::move(u32));
+                new (&self._data.u32) std::vector<uint32_t>(std::move(u32));
                 return self;
             }
 
             static TensorBuffer u64(std::vector<uint64_t> u64) {
-                using TypeAlias = std::vector<uint64_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U64;
-                new (&self._data.u64) TypeAlias(std::move(u64));
+                new (&self._data.u64) std::vector<uint64_t>(std::move(u64));
                 return self;
             }
 
             static TensorBuffer i8(std::vector<int8_t> i8) {
-                using TypeAlias = std::vector<int8_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I8;
-                new (&self._data.i8) TypeAlias(std::move(i8));
+                new (&self._data.i8) std::vector<int8_t>(std::move(i8));
                 return self;
             }
 
             static TensorBuffer i16(std::vector<int16_t> i16) {
-                using TypeAlias = std::vector<int16_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I16;
-                new (&self._data.i16) TypeAlias(std::move(i16));
+                new (&self._data.i16) std::vector<int16_t>(std::move(i16));
                 return self;
             }
 
             static TensorBuffer i32(std::vector<int32_t> i32) {
-                using TypeAlias = std::vector<int32_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I32;
-                new (&self._data.i32) TypeAlias(std::move(i32));
+                new (&self._data.i32) std::vector<int32_t>(std::move(i32));
                 return self;
             }
 
             static TensorBuffer i64(std::vector<int64_t> i64) {
-                using TypeAlias = std::vector<int64_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I64;
-                new (&self._data.i64) TypeAlias(std::move(i64));
+                new (&self._data.i64) std::vector<int64_t>(std::move(i64));
                 return self;
             }
 
             static TensorBuffer f16(std::vector<rerun::half> f16) {
-                using TypeAlias = std::vector<rerun::half>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F16;
-                new (&self._data.f16) TypeAlias(std::move(f16));
+                new (&self._data.f16) std::vector<rerun::half>(std::move(f16));
                 return self;
             }
 
             static TensorBuffer f32(std::vector<float> f32) {
-                using TypeAlias = std::vector<float>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F32;
-                new (&self._data.f32) TypeAlias(std::move(f32));
+                new (&self._data.f32) std::vector<float>(std::move(f32));
                 return self;
             }
 
             static TensorBuffer f64(std::vector<double> f64) {
-                using TypeAlias = std::vector<double>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F64;
-                new (&self._data.f64) TypeAlias(std::move(f64));
+                new (&self._data.f64) std::vector<double>(std::move(f64));
                 return self;
             }
 
             static TensorBuffer jpeg(std::vector<uint8_t> jpeg) {
-                using TypeAlias = std::vector<uint8_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::JPEG;
-                new (&self._data.jpeg) TypeAlias(std::move(jpeg));
+                new (&self._data.jpeg) std::vector<uint8_t>(std::move(jpeg));
                 return self;
             }
 
             static TensorBuffer nv12(std::vector<uint8_t> nv12) {
-                using TypeAlias = std::vector<uint8_t>;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::NV12;
-                new (&self._data.nv12) TypeAlias(std::move(nv12));
+                new (&self._data.nv12) std::vector<uint8_t>(std::move(nv12));
                 return self;
             }
 

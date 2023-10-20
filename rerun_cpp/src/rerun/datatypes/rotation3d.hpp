@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <utility>
 
 namespace arrow {
@@ -91,7 +92,7 @@ namespace rerun {
             static Rotation3D quaternion(rerun::datatypes::Quaternion quaternion) {
                 Rotation3D self;
                 self._tag = detail::Rotation3DTag::Quaternion;
-                self._data.quaternion = std::move(quaternion);
+                new (&self._data.quaternion) rerun::datatypes::Quaternion(std::move(quaternion));
                 return self;
             }
 
@@ -99,7 +100,8 @@ namespace rerun {
             static Rotation3D axis_angle(rerun::datatypes::RotationAxisAngle axis_angle) {
                 Rotation3D self;
                 self._tag = detail::Rotation3DTag::AxisAngle;
-                self._data.axis_angle = std::move(axis_angle);
+                new (&self._data.axis_angle)
+                    rerun::datatypes::RotationAxisAngle(std::move(axis_angle));
                 return self;
             }
 

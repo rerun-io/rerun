@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <utility>
 
 namespace arrow {
@@ -81,14 +82,14 @@ namespace rerun {
             static Angle radians(float radians) {
                 Angle self;
                 self._tag = detail::AngleTag::Radians;
-                self._data.radians = std::move(radians);
+                new (&self._data.radians) float(std::move(radians));
                 return self;
             }
 
             static Angle degrees(float degrees) {
                 Angle self;
                 self._tag = detail::AngleTag::Degrees;
-                self._data.degrees = std::move(degrees);
+                new (&self._data.degrees) float(std::move(degrees));
                 return self;
             }
 
