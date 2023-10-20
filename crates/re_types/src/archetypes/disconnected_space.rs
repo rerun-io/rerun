@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/disconnected_space.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -13,6 +14,12 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
+
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Specifies that the entity path at which this is logged is disconnected from its parent.
 ///
@@ -64,16 +71,16 @@ pub struct DisconnectedSpace {
     pub disconnected_space: crate::components::DisconnectedSpace,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.DisconnectedSpace".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.DisconnectedSpaceIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.DisconnectedSpace".into(),
@@ -98,37 +105,35 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
     }
 
     #[inline]
-    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: DisconnectedSpaceIndicator = DisconnectedSpaceIndicator::DEFAULT;
-        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> ::re_types_core::DeserializationResult<Self> {
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
@@ -138,14 +143,14 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
         let disconnected_space = {
             let array = arrays_by_name
                 .get("rerun.components.DisconnectedSpace")
-                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?;
             <crate::components::DisconnectedSpace>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
         };
         Ok(Self { disconnected_space })
@@ -153,12 +158,12 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
 }
 
 impl ::re_types_core::AsComponents for DisconnectedSpace {
-    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.disconnected_space as &dyn ::re_types_core::ComponentBatch).into()),
+            Some((&self.disconnected_space as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

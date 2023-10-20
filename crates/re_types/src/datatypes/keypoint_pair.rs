@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/keypoint_pair.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -14,6 +15,12 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
+
 /// **Datatype**: A connection between two `Keypoints`.
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct KeypointPair {
@@ -24,19 +31,7 @@ pub struct KeypointPair {
     pub keypoint1: crate::datatypes::KeypointId,
 }
 
-impl<'a> From<KeypointPair> for ::std::borrow::Cow<'a, KeypointPair> {
-    #[inline]
-    fn from(value: KeypointPair) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a KeypointPair> for ::std::borrow::Cow<'a, KeypointPair> {
-    #[inline]
-    fn from(value: &'a KeypointPair) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(KeypointPair);
 
 impl ::re_types_core::Loggable for KeypointPair {
     type Name = ::re_types_core::DatatypeName;
@@ -46,10 +41,10 @@ impl ::re_types_core::Loggable for KeypointPair {
         "rerun.datatypes.KeypointPair".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Struct(vec![
             Field {
                 name: "keypoint0".to_owned(),
@@ -66,16 +61,16 @@ impl ::re_types_core::Loggable for KeypointPair {
         ])
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -84,7 +79,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<::arrow2::bitmap::Bitmap> = {
+            let bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
@@ -102,7 +97,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let keypoint0_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let keypoint0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -134,7 +129,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let keypoint1_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let keypoint1_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -162,22 +157,22 @@ impl ::re_types_core::Loggable for KeypointPair {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+        arrow_data: &dyn arrow2::array::Array,
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::StructArray>()
+                .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field {
                                 name: "keypoint0".to_owned(),
@@ -208,7 +203,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                     .collect();
                 let keypoint0 = {
                     if !arrays_by_name.contains_key("keypoint0") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "keypoint0",
                         ))
@@ -219,7 +214,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                         .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::UInt16,
                                 arrow_data.data_type().clone(),
                             )
@@ -231,7 +226,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                 };
                 let keypoint1 = {
                     if !arrays_by_name.contains_key("keypoint1") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "keypoint1",
                         ))
@@ -242,7 +237,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                         .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::UInt16,
                                 arrow_data.data_type().clone(),
                             )
@@ -260,16 +255,16 @@ impl ::re_types_core::Loggable for KeypointPair {
                     opt.map(|(keypoint0, keypoint1)| {
                         Ok(Self {
                             keypoint0: keypoint0
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.KeypointPair#keypoint0")?,
                             keypoint1: keypoint1
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.KeypointPair#keypoint1")?,
                         })
                     })
                     .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.KeypointPair")?
             }
         })

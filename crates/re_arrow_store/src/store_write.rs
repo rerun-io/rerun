@@ -9,8 +9,9 @@ use re_log_types::{
     DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, TimeInt, TimePoint,
     TimeRange,
 };
-use re_types::components::InstanceKey;
-use re_types_core::{ComponentName, ComponentNameSet, Loggable, SizeBytes as _};
+use re_types_core::{
+    components::InstanceKey, ComponentName, ComponentNameSet, Loggable, SizeBytes as _,
+};
 
 use crate::{
     store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
@@ -162,7 +163,7 @@ impl DataStore {
             // one… unless we've already generated one of this exact length in the past,
             // in which case we can simply re-use that cell.
 
-            Some(self.generate_cluster_cell(num_instances))
+            Some(self.generate_cluster_cell(num_instances.into()))
         };
 
         let insert_id = self.config.store_insert_ids.then_some(self.insert_id);

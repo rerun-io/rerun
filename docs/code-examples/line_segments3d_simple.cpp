@@ -4,7 +4,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_line_segments3d");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     // TODO(#3202): I want to do this!
     // std::vector<std::vector<rerun::datatypes::Vec3D>> points = {

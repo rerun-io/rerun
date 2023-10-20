@@ -9,14 +9,14 @@ use re_types_core::{ComponentName, Loggable, SizeBytes};
 
 use crate::{
     data_row::DataReadResult, ArrowMsg, DataCell, DataCellError, DataRow, DataRowError, EntityPath,
-    RowId, TimePoint, Timeline,
+    NumInstances, RowId, TimePoint, Timeline,
 };
 
 // ---
 
 #[derive(thiserror::Error, Debug)]
 pub enum DataTableError {
-    #[error("Trying to deserialize data that is missing a column present in the schema: {0:?}")]
+    #[error("The schema has a column {0:?} that is missing in the data")]
     MissingColumn(String),
 
     #[error(
@@ -61,7 +61,7 @@ pub type ErasedTimeVec = SmallVec<[i64; 4]>;
 
 pub type EntityPathVec = SmallVec<[EntityPath; 4]>;
 
-pub type NumInstancesVec = SmallVec<[u32; 4]>;
+pub type NumInstancesVec = SmallVec<[NumInstances; 4]>;
 
 pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
 
@@ -481,7 +481,7 @@ impl DataTable {
                         .collect::<BTreeMap<_, _>>(),
                 ),
                 col_entity_path[i].clone(),
-                col_num_instances[i],
+                col_num_instances[i].into(),
                 cells,
             )
         })
@@ -542,19 +542,7 @@ use arrow2::{
     chunk::Chunk,
     datatypes::{DataType, Field, Schema, TimeUnit},
     offset::Offsets,
-    types::NativeType,
 };
-use arrow2_convert::{
-    deserialize::TryIntoCollection, field::ArrowField, serialize::ArrowSerialize,
-    serialize::TryIntoArrow,
-};
-
-// TODO(#1696): Those names should come from the datatypes themselves.
-
-pub const COLUMN_INSERT_ID: &str = "rerun.insert_id";
-pub const COLUMN_TIMEPOINT: &str = "rerun.timepoint";
-pub const COLUMN_ENTITY_PATH: &str = "rerun.entity_path";
-pub const COLUMN_NUM_INSTANCES: &str = "rerun.num_instances";
 
 pub const METADATA_KIND: &str = "rerun.kind";
 pub const METADATA_KIND_DATA: &str = "data";
@@ -667,15 +655,12 @@ impl DataTable {
         columns.push(row_id_column);
 
         let (entity_path_field, entity_path_column) =
-            Self::serialize_control_column_legacy(COLUMN_ENTITY_PATH, col_entity_path)?;
+            Self::serialize_control_column(col_entity_path)?;
         schema.fields.push(entity_path_field);
         columns.push(entity_path_column);
 
-        let (num_instances_field, num_instances_column) = Self::serialize_primitive_column(
-            COLUMN_NUM_INSTANCES,
-            col_num_instances.as_slice(),
-            None,
-        );
+        let (num_instances_field, num_instances_column) =
+            Self::serialize_control_column(col_num_instances)?;
         schema.fields.push(num_instances_field);
         columns.push(num_instances_column);
 
@@ -709,47 +694,8 @@ impl DataTable {
         Ok((field, data))
     }
 
-    /// Serializes a single control column: an iterable of dense arrow-like data.
-    // TODO(#3741): remove once arrow2_convert is fully gone
-    pub fn serialize_control_column_legacy<C: ArrowSerialize + ArrowField<Type = C> + 'static>(
-        name: &str,
-        values: &[C],
-    ) -> DataTableResult<(Field, Box<dyn Array>)> {
-        re_tracing::profile_function!();
-
-        /// Transforms an array of unit values into a list of unit arrays.
-        ///
-        /// * Before: `[C, C, C, C, C, …]`
-        /// * After: `ListArray[ [C], [C], [C], [C], [C], … ]`
-        // NOTE: keeping that one around, just in case.
-        #[allow(dead_code)]
-        fn unit_values_to_unit_lists(array: Box<dyn Array>) -> Box<dyn Array> {
-            let datatype = array.data_type().clone();
-            let datatype = ListArray::<i32>::default_datatype(datatype);
-            let offsets = Offsets::try_from_lengths(std::iter::repeat(1).take(array.len()))
-                .unwrap()
-                .into();
-            let validity = None;
-            ListArray::<i32>::new(datatype, offsets, array, validity).boxed()
-        }
-
-        let data: Box<dyn Array> = values.try_into_arrow()?;
-        // let data = unit_values_to_unit_lists(data);
-
-        let mut field = Field::new(name, data.data_type().clone(), false)
-            .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_CONTROL.to_owned())].into());
-
-        if let DataType::Extension(name, _, _) = data.data_type() {
-            field
-                .metadata
-                .extend([("ARROW:extension:name".to_owned(), name.clone())]);
-        }
-
-        Ok((field, data))
-    }
-
     /// Serializes a single control column; optimized path for primitive datatypes.
-    pub fn serialize_primitive_column<T: NativeType>(
+    pub fn serialize_primitive_column<T: arrow2::types::NativeType>(
         name: &str,
         values: &[T],
         datatype: Option<DataType>,
@@ -946,11 +892,18 @@ impl DataTable {
                 .unwrap()
                 .as_ref(),
         )?;
-        let col_entity_path =
-            (&**chunk.get(control_index(COLUMN_ENTITY_PATH)?).unwrap()).try_into_collection()?;
-        // TODO(#3741): This is unnecessarily slow…
-        let col_num_instances =
-            (&**chunk.get(control_index(COLUMN_NUM_INSTANCES)?).unwrap()).try_into_collection()?;
+        let col_entity_path = EntityPath::from_arrow(
+            chunk
+                .get(control_index(EntityPath::name().as_str())?)
+                .unwrap()
+                .as_ref(),
+        )?;
+        let col_num_instances = NumInstances::from_arrow(
+            chunk
+                .get(control_index(NumInstances::name().as_str())?)
+                .unwrap()
+                .as_ref(),
+        )?;
 
         // --- Components ---
 
@@ -980,8 +933,8 @@ impl DataTable {
             table_id,
             col_row_id: col_row_id.into(),
             col_timelines,
-            col_entity_path,
-            col_num_instances,
+            col_entity_path: col_entity_path.into(),
+            col_num_instances: col_num_instances.into(),
             columns,
         })
     }

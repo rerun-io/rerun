@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/testing/archetypes/fuzzy.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -13,6 +14,12 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
+
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AffixFuzzer3 {
@@ -36,13 +43,13 @@ pub struct AffixFuzzer3 {
     pub fuzz2018: Option<crate::testing::components::AffixFuzzer18>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.testing.components.AffixFuzzer3Indicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 19usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 19usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.InstanceKey".into(),
@@ -67,7 +74,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentNam
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 20usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 20usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.testing.components.AffixFuzzer3Indicator".into(),
@@ -109,37 +116,35 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
     }
 
     #[inline]
-    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: AffixFuzzer3Indicator = AffixFuzzer3Indicator::DEFAULT;
-        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> ::re_types_core::DeserializationResult<Self> {
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
@@ -154,7 +159,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2001")?
                 })
             } else {
@@ -168,7 +173,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2002")?
                 })
             } else {
@@ -182,7 +187,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2003")?
                 })
             } else {
@@ -196,7 +201,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2004")?
                 })
             } else {
@@ -210,7 +215,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2005")?
                 })
             } else {
@@ -224,7 +229,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2006")?
                 })
             } else {
@@ -238,7 +243,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2007")?
                 })
             } else {
@@ -252,7 +257,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2008")?
                 })
             } else {
@@ -266,7 +271,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2009")?
                 })
             } else {
@@ -280,7 +285,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2010")?
                 })
             } else {
@@ -294,7 +299,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2011")?
                 })
             } else {
@@ -308,7 +313,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2012")?
                 })
             } else {
@@ -322,7 +327,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2013")?
                 })
             } else {
@@ -336,7 +341,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2014")?
                 })
             } else {
@@ -350,7 +355,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2015")?
                 })
             } else {
@@ -364,7 +369,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2016")?
                 })
             } else {
@@ -378,7 +383,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2017")?
                 })
             } else {
@@ -392,7 +397,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
                         .into_iter()
                         .next()
                         .flatten()
-                        .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                        .ok_or_else(DeserializationError::missing_data)
                         .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2018")?
                 })
             } else {
@@ -422,65 +427,65 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
 }
 
 impl ::re_types_core::AsComponents for AffixFuzzer3 {
-    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
             self.fuzz2001
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2002
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2003
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2004
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2005
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2006
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2007
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2008
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2009
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2010
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2011
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2012
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2013
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2014
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2015
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2016
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2017
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.fuzz2018
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/archetypes/pinhole.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -13,6 +14,12 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
+
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 ///
@@ -92,10 +99,10 @@ pub struct Pinhole {
     pub camera_xyz: Option<crate::components::ViewCoordinates>,
 }
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 1usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.PinholeProjection".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 2usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.PinholeIndicator".into(),
@@ -103,7 +110,7 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::Component
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 2usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.InstanceKey".into(),
@@ -111,7 +118,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentNam
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[::re_types_core::ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.PinholeProjection".into(),
@@ -138,37 +145,35 @@ impl ::re_types_core::Archetype for Pinhole {
     }
 
     #[inline]
-    fn indicator() -> ::re_types_core::MaybeOwnedComponentBatch<'static> {
+    fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: PinholeIndicator = PinholeIndicator::DEFAULT;
-        ::re_types_core::MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::Ref(&INDICATOR)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [::re_types_core::ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
     fn from_arrow(
-        arrow_data: impl IntoIterator<
-            Item = (::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>),
-        >,
-    ) -> ::re_types_core::DeserializationResult<Self> {
+        arrow_data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn arrow2::array::Array>)>,
+    ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
         use ::re_types_core::{Loggable as _, ResultExt as _};
         let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
@@ -178,14 +183,14 @@ impl ::re_types_core::Archetype for Pinhole {
         let image_from_camera = {
             let array = arrays_by_name
                 .get("rerun.components.PinholeProjection")
-                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?;
             <crate::components::PinholeProjection>::from_arrow_opt(&**array)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Pinhole#image_from_camera")?
         };
         let resolution = if let Some(array) = arrays_by_name.get("rerun.components.Resolution") {
@@ -195,7 +200,7 @@ impl ::re_types_core::Archetype for Pinhole {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.Pinhole#resolution")?
             })
         } else {
@@ -209,7 +214,7 @@ impl ::re_types_core::Archetype for Pinhole {
                     .into_iter()
                     .next()
                     .flatten()
-                    .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                    .ok_or_else(DeserializationError::missing_data)
                     .with_context("rerun.archetypes.Pinhole#camera_xyz")?
             })
         } else {
@@ -224,18 +229,18 @@ impl ::re_types_core::Archetype for Pinhole {
 }
 
 impl ::re_types_core::AsComponents for Pinhole {
-    fn as_component_batches(&self) -> Vec<::re_types_core::MaybeOwnedComponentBatch<'_>> {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         re_tracing::profile_function!();
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.image_from_camera as &dyn ::re_types_core::ComponentBatch).into()),
+            Some((&self.image_from_camera as &dyn ComponentBatch).into()),
             self.resolution
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.camera_xyz
                 .as_ref()
-                .map(|comp| (comp as &dyn ::re_types_core::ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()

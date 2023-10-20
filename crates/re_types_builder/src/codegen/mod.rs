@@ -1,5 +1,3 @@
-pub type GeneratedFiles = std::collections::BTreeMap<camino::Utf8PathBuf, String>;
-
 /// Implements the codegen pass.
 pub trait CodeGenerator {
     /// Generates user-facing code from [`crate::Objects`].
@@ -12,7 +10,7 @@ pub trait CodeGenerator {
         reporter: &crate::Reporter,
         objects: &crate::Objects,
         arrow_registry: &crate::ArrowRegistry,
-    ) -> GeneratedFiles;
+    ) -> crate::GeneratedFiles;
 }
 
 // ---

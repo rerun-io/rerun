@@ -104,12 +104,37 @@ pub use self::result::{
 };
 pub use self::size_bytes::SizeBytes;
 
+/// Fundamental [`Archetype`]s that are implemented in `re_types_core` directly for convenience and
+/// dependency optimization.
+///
+/// There are also re-exported by `re_types`.
+pub mod archetypes;
+
+/// Fundamental [`Component`]s that are implemented in `re_types_core` directly for convenience and
+/// dependency optimization.
+///
+/// There are also re-exported by `re_types`.
+pub mod components;
+
+/// Fundamental [`Datatype`]s that are implemented in `re_types_core` directly for convenience and
+/// dependency optimization.
+///
+/// There are also re-exported by `re_types`.
+pub mod datatypes;
+
 // ---
 
 mod arrow_buffer;
 mod arrow_string;
 pub use self::arrow_buffer::ArrowBuffer;
 pub use self::arrow_string::ArrowString;
+
+#[path = "macros.rs"]
+mod _macros; // just for the side-effect of exporting the macros
+
+pub mod macros {
+    pub use super::impl_into_cow;
+}
 
 pub mod external {
     pub use anyhow;

@@ -44,6 +44,7 @@ fn main() {
 
     let mut profiler = re_tracing::Profiler::default();
     let mut always_run = false;
+    let mut check = false;
 
     for arg in std::env::args().skip(1) {
         match arg.as_str() {
@@ -51,10 +52,12 @@ fn main() {
                 println!("Usage: [--help] [--force] [--profile]");
                 return;
             }
-            "--force" => {
-                always_run = true;
-            }
+            "--force" => always_run = true,
             "--profile" => profiler.start(),
+            "--check" => {
+                always_run = true;
+                check = true;
+            }
             _ => {
                 eprintln!("Unknown argument: {arg:?}");
                 return;
@@ -114,13 +117,15 @@ fn main() {
             &reporter,
             cpp_output_dir_path,
             &objects,
-            &arrow_registry
+            &arrow_registry,
+            check,
         ),
         || re_types_builder::generate_rust_code(
             &reporter,
             workspace_dir,
             &objects,
-            &arrow_registry
+            &arrow_registry,
+            check,
         ),
         || re_types_builder::generate_python_code(
             &reporter,
@@ -128,12 +133,14 @@ fn main() {
             python_testing_output_dir_path,
             &objects,
             &arrow_registry,
+            check,
         ),
         || re_types_builder::generate_docs(
             &reporter,
             docs_content_dir_path,
             &objects,
-            &arrow_registry
+            &arrow_registry,
+            check,
         ),
     );
 

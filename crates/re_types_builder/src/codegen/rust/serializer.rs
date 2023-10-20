@@ -2,7 +2,7 @@ use arrow2::datatypes::DataType;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use crate::{ArrowRegistry, Object, Objects};
+use crate::{ArrowRegistry, Object, ObjectField, Objects};
 
 use super::{
     arrow::{is_backed_by_arrow_buffer, quote_fqname_as_type_path},
@@ -40,7 +40,7 @@ pub fn quote_arrow_serializer(
 
     let quoted_bitmap = |var| {
         quote! {
-            let #var: Option<::arrow2::bitmap::Bitmap> = {
+            let #var: Option<arrow2::bitmap::Bitmap> = {
                 // NOTE: Don't compute a bitmap if there isn't at least one null element.
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
@@ -78,6 +78,7 @@ pub fn quote_arrow_serializer(
             datatype,
             &quoted_datatype,
             obj_field.is_nullable,
+            Some(obj_field),
             &bitmap_dst,
             &quoted_data_dst,
             InnerRepr::NativeIterable,
@@ -128,6 +129,7 @@ pub fn quote_arrow_serializer(
                         inner_datatype,
                         &quoted_inner_datatype,
                         obj_field.is_nullable,
+                        Some(obj_field),
                         &bitmap_dst,
                         &data_dst,
                         InnerRepr::NativeIterable,
@@ -194,6 +196,7 @@ pub fn quote_arrow_serializer(
                         inner_datatype,
                         &quoted_inner_datatype,
                         obj_field.is_nullable,
+                        Some(obj_field),
                         &bitmap_dst,
                         &data_dst,
                         InnerRepr::NativeIterable
@@ -332,6 +335,7 @@ fn quote_arrow_field_serializer(
     datatype: &DataType,
     quoted_datatype: &dyn quote::ToTokens,
     is_nullable: bool,
+    obj_field: Option<&ObjectField>,
     bitmap_src: &proc_macro2::Ident,
     data_src: &proc_macro2::Ident,
     inner_repr: InnerRepr,
@@ -475,9 +479,10 @@ fn quote_arrow_field_serializer(
             quote! {{
                 // NOTE: Flattening to remove the guaranteed layer of nullability: we don't care
                 // about it while building the backing buffer since it's all offsets driven.
-                let inner_data: ::arrow2::buffer::Buffer<u8> = #data_src.iter().flatten() #quoted_transparent_mapping.collect();
+                let inner_data: arrow2::buffer::Buffer<u8> =
+                    #data_src.iter().flatten() #quoted_transparent_mapping.collect();
 
-                let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                     #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length )
                 ).unwrap().into();
 
@@ -514,10 +519,15 @@ fn quote_arrow_field_serializer(
                 inner_datatype,
                 &quoted_inner_datatype,
                 inner.is_nullable,
+                None,
                 &quoted_inner_bitmap,
                 &quoted_inner_data,
                 inner_repr,
             );
+
+            let serde_type = obj_field.and_then(|obj_field| {
+                obj_field.try_get_attr::<String>(crate::ATTR_RUST_SERDE_TYPE)
+            });
 
             let quoted_transparent_mapping = if inner_is_arrow_transparent {
                 let inner_obj = inner_obj.as_ref().unwrap();
@@ -551,13 +561,31 @@ fn quote_arrow_field_serializer(
                 }
             } else {
                 match inner_repr {
-                    InnerRepr::ArrowBuffer => quote! {
-                        .flatten()
-                        .map(|b| b.as_slice())
-                        .collect::<Vec<_>>()
-                        .concat()
-                        .into();
-                    },
+                    InnerRepr::ArrowBuffer => {
+                        if serde_type.is_some() {
+                            quote! {
+                                .map(|opt| {
+                                    use ::re_types_core::SerializationError; // otherwise rustfmt breaks
+                                    opt.as_ref().map(|b| {
+                                        let mut buf = Vec::new();
+                                        rmp_serde::encode::write_named(&mut buf, b)
+                                            .map_err(|err| SerializationError::serde_failure(err.to_string()))?;
+                                        Ok(buf)
+                                    })
+                                    .transpose()
+                                })
+                                .collect::<SerializationResult<Vec<_>>>()?
+                            }
+                        } else {
+                            quote! {
+                                .flatten()
+                                .map(|b| b.as_slice())
+                                .collect::<Vec<_>>()
+                                .concat()
+                                .into();
+                            }
+                        }
+                    }
                     InnerRepr::NativeIterable => quote! {
                         .flatten()
                         // NOTE: Flattening yet again since we have to deconstruct the inner list.
@@ -573,17 +601,21 @@ fn quote_arrow_field_serializer(
             };
 
             let quoted_create = if let DataType::List(_) = datatype {
-                quote! {
-                    let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
-                        #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum. #quoted_num_instances).unwrap_or_default())
-                    ).unwrap().into();
+                if serde_type.is_some() {
+                    quote! {}
+                } else {
+                    quote! {
+                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            #data_src.iter().map(|opt| opt.as_ref().map(|datum| datum. #quoted_num_instances).unwrap_or_default())
+                        ).unwrap().into();
 
-                    ListArray::new(
-                        #quoted_datatype,
-                        offsets,
-                        #quoted_inner,
-                        #bitmap_src,
-                    ).boxed()
+                        ListArray::new(
+                            #quoted_datatype,
+                            offsets,
+                            #quoted_inner,
+                            #bitmap_src,
+                        ).boxed()
+                    }
                 }
             } else {
                 quote! {
@@ -606,7 +638,7 @@ fn quote_arrow_field_serializer(
             let quoted_inner_bitmap =
                 if let DataType::FixedSizeList(_, count) = datatype.to_logical_type() {
                     quote! {
-                        let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> =
+                        let #quoted_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
                             #bitmap_src.as_ref().map(|bitmap| {
                                 bitmap
                                     .iter()
@@ -619,7 +651,7 @@ fn quote_arrow_field_serializer(
                 } else {
                     // TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
                     quote! {
-                        let #quoted_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
+                        let #quoted_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     }
                 };
 
@@ -627,17 +659,44 @@ fn quote_arrow_field_serializer(
             // support intra-list nullability.
             _ = is_nullable;
             match inner_repr {
-                InnerRepr::ArrowBuffer => quote! {{
-                    use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                InnerRepr::ArrowBuffer => {
+                    if serde_type.is_some() {
+                        quote! {{
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
-                    let #quoted_inner_data: Buffer<_> = #data_src
-                        .iter()
-                        #quoted_transparent_mapping
+                            let buffers: Vec<Option<Vec<u8>>> = #data_src
+                                .iter()
+                                #quoted_transparent_mapping;
 
-                    #quoted_inner_bitmap
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                buffers.iter().map(|opt| opt.as_ref().map(|buf| buf.len()).unwrap_or_default())
+                            ).unwrap().into();
 
-                    #quoted_create
-                }},
+                            #quoted_inner_bitmap
+
+                            let #quoted_inner_data: Buffer<u8> = buffers.into_iter().flatten().collect::<Vec<_>>().concat().into();
+
+                            ListArray::new(
+                                #quoted_datatype,
+                                offsets,
+                                #quoted_inner,
+                                #bitmap_src,
+                            ).boxed()
+                        }}
+                    } else {
+                        quote! {{
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+
+                            let #quoted_inner_data: Buffer<_> = #data_src
+                                .iter()
+                                #quoted_transparent_mapping
+
+                            #quoted_inner_bitmap
+
+                            #quoted_create
+                        }}
+                    }
+                }
                 InnerRepr::NativeIterable => quote! {{
                     use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 

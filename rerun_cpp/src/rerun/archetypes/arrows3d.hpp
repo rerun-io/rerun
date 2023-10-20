@@ -37,7 +37,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_arrow3d");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     rec.connect().throw_on_failure();
         ///
         ///     std::vector<rerun::components::Position3D> origins;
         ///     std::vector<rerun::components::Vector3D> vectors;

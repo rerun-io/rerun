@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/testing/datatypes/fuzzy.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -14,6 +15,12 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
+use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer3 {
     Degrees(f32),
@@ -22,19 +29,7 @@ pub enum AffixFuzzer3 {
     FixedSizeShenanigans([f32; 3usize]),
 }
 
-impl<'a> From<AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
-    #[inline]
-    fn from(value: AffixFuzzer3) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer3> for ::std::borrow::Cow<'a, AffixFuzzer3> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer3) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer3);
 
 impl ::re_types_core::Loggable for AffixFuzzer3 {
     type Name = ::re_types_core::DatatypeName;
@@ -44,10 +39,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
         "rerun.testing.datatypes.AffixFuzzer3".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        use ::arrow2::datatypes::*;
+        use arrow2::datatypes::*;
         DataType::Union(
             vec![
                 Field {
@@ -99,16 +94,16 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
         )
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
         Ok({
             let data: Vec<_> = data
                 .into_iter()
@@ -145,7 +140,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let degrees_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -171,7 +166,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let radians_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let radians_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -196,7 +191,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let craziness_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let craziness_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -209,8 +204,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 .cloned()
                                 .map(Some)
                                 .collect();
-                            let craziness_inner_bitmap: Option<::arrow2::bitmap::Bitmap> = None;
-                            let offsets = ::arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
                                 craziness.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
                                 }),
@@ -254,7 +249,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let fixed_size_shenanigans_bitmap: Option<::arrow2::bitmap::Bitmap> = {
+                        let fixed_size_shenanigans_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
@@ -268,7 +263,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 .map(Some)
                                 .collect();
                             let fixed_size_shenanigans_inner_bitmap: Option<
-                                ::arrow2::bitmap::Bitmap,
+                                arrow2::bitmap::Bitmap,
                             > = fixed_size_shenanigans_bitmap.as_ref().map(|bitmap| {
                                 bitmap
                                     .iter()
@@ -343,22 +338,22 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
-        arrow_data: &dyn ::arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+        arrow_data: &dyn arrow2::array::Array,
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::arrow2::{array::*, buffer::*, datatypes::*};
         use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
-                .downcast_ref::<::arrow2::array::UnionArray>()
+                .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Union(
                             vec![
                             Field { name : "_null_markers".to_owned(), data_type :
@@ -393,14 +388,14 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        ::re_types_core::DeserializationError::datatype_mismatch(
+                        DeserializationError::datatype_mismatch(
                             Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.testing.datatypes.AffixFuzzer3")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
-                    return Err(::re_types_core::DeserializationError::offset_slice_oob(
+                    return Err(DeserializationError::offset_slice_oob(
                         (0, arrow_data_types.len()),
                         arrow_data_offsets.len(),
                     ))
@@ -415,7 +410,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::Float32,
                                 arrow_data.data_type().clone(),
                             )
@@ -434,7 +429,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .as_any()
                         .downcast_ref::<Float32Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::Float32,
                                 arrow_data.data_type().clone(),
                             )
@@ -452,8 +447,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| DeserializationError::datatype_mismatch(
                                 DataType::List(
                                     Box::new(Field {
                                         name: "item".to_owned(),
@@ -493,7 +488,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             let end = start + len;
                                             if end as usize > arrow_data_inner.len() {
                                                 return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
+                                                    DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         arrow_data_inner.len(),
                                                     ),
@@ -513,9 +508,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                         })
                                         .transpose()
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                             .into_iter()
                     }
@@ -529,8 +522,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     {
                         let arrow_data = arrow_data
                             .as_any()
-                            .downcast_ref::<::arrow2::array::FixedSizeListArray>()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                            .downcast_ref::<arrow2::array::FixedSizeListArray>()
+                            .ok_or_else(|| DeserializationError::datatype_mismatch(
                                 DataType::FixedSizeList(
                                     Box::new(Field {
                                         name: "item".to_owned(),
@@ -556,7 +549,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                 arrow_data_inner
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
-                                    .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                                    .ok_or_else(|| DeserializationError::datatype_mismatch(
                                         DataType::Float32,
                                         arrow_data_inner.data_type().clone(),
                                     ))
@@ -577,7 +570,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             debug_assert!(end - start == 3usize);
                                             if end as usize > arrow_data_inner.len() {
                                                 return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
+                                                    DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         arrow_data_inner.len(),
                                                     ),
@@ -597,9 +590,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                         })
                                         .transpose()
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                             .into_iter()
                     }
@@ -620,10 +611,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             AffixFuzzer3::Degrees({
                                                 if offset as usize >= degrees.len() {
                                                     return Err(
-                                                            ::re_types_core::DeserializationError::offset_oob(
-                                                                offset as _,
-                                                                degrees.len(),
-                                                            ),
+                                                            DeserializationError::offset_oob(offset as _, degrees.len()),
                                                         )
                                                         .with_context(
                                                             "rerun.testing.datatypes.AffixFuzzer3#degrees",
@@ -633,9 +621,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                 unsafe { degrees.get_unchecked(offset as usize) }
                                                     .clone()
-                                                    .ok_or_else(
-                                                        ::re_types_core::DeserializationError::missing_data,
-                                                    )
+                                                    .ok_or_else(DeserializationError::missing_data)
                                                     .with_context(
                                                         "rerun.testing.datatypes.AffixFuzzer3#degrees",
                                                     )?
@@ -645,10 +631,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             AffixFuzzer3::Radians({
                                                 if offset as usize >= radians.len() {
                                                     return Err(
-                                                            ::re_types_core::DeserializationError::offset_oob(
-                                                                offset as _,
-                                                                radians.len(),
-                                                            ),
+                                                            DeserializationError::offset_oob(offset as _, radians.len()),
                                                         )
                                                         .with_context(
                                                             "rerun.testing.datatypes.AffixFuzzer3#radians",
@@ -663,7 +646,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             AffixFuzzer3::Craziness({
                                                 if offset as usize >= craziness.len() {
                                                     return Err(
-                                                            ::re_types_core::DeserializationError::offset_oob(
+                                                            DeserializationError::offset_oob(
                                                                 offset as _,
                                                                 craziness.len(),
                                                             ),
@@ -676,9 +659,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                                 unsafe { craziness.get_unchecked(offset as usize) }
                                                     .clone()
-                                                    .ok_or_else(
-                                                        ::re_types_core::DeserializationError::missing_data,
-                                                    )
+                                                    .ok_or_else(DeserializationError::missing_data)
                                                     .with_context(
                                                         "rerun.testing.datatypes.AffixFuzzer3#craziness",
                                                     )?
@@ -688,7 +669,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                             AffixFuzzer3::FixedSizeShenanigans({
                                                 if offset as usize >= fixed_size_shenanigans.len() {
                                                     return Err(
-                                                            ::re_types_core::DeserializationError::offset_oob(
+                                                            DeserializationError::offset_oob(
                                                                 offset as _,
                                                                 fixed_size_shenanigans.len(),
                                                             ),
@@ -703,9 +684,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                                     fixed_size_shenanigans.get_unchecked(offset as usize)
                                                 }
                                                     .clone()
-                                                    .ok_or_else(
-                                                        ::re_types_core::DeserializationError::missing_data,
-                                                    )
+                                                    .ok_or_else(DeserializationError::missing_data)
                                                     .with_context(
                                                         "rerun.testing.datatypes.AffixFuzzer3#fixed_size_shenanigans",
                                                     )?
@@ -713,7 +692,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                         }
                                         _ => {
                                             return Err(
-                                                    ::re_types_core::DeserializationError::missing_union_arm(
+                                                    DeserializationError::missing_union_arm(
                                                         Self::arrow_datatype(),
                                                         "<invalid>",
                                                         *typ as _,
@@ -726,7 +705,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             )
                         }
                     })
-                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.testing.datatypes.AffixFuzzer3")?
             }
         })

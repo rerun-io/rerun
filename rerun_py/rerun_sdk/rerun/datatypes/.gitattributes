@@ -25,6 +25,7 @@ tensor_dimension.py linguist-generated=true
 transform3d.py linguist-generated=true
 translation_and_mat3x3.py linguist-generated=true
 translation_rotation_scale3d.py linguist-generated=true
+uint32.py linguist-generated=true
 utf8.py linguist-generated=true
 uvec2d.py linguist-generated=true
 uvec3d.py linguist-generated=true

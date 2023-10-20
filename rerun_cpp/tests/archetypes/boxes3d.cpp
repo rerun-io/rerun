@@ -16,7 +16,7 @@ SCENARIO(
         auto from_builder = Boxes3D::from_half_sizes({{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}})
                                 .with_centers({{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}})
                                 .with_rotations({
-                                    Quaternion(0.f, 1.f, 2.f, 3.f),
+                                    Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f),
                                     RotationAxisAngle({0.f, 1.f, 2.f}, Angle::radians(45.f)),
                                 })
                                 .with_colors({0xAA0000CC, 0x00BB00DD})
@@ -29,7 +29,7 @@ SCENARIO(
         from_manual.half_sizes = {{10.f, 9.f, 8.f}, {5.f, -5.f, 5.f}};
         from_manual.centers = {{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}};
         from_manual.rotations = {
-            Quaternion(0.f, 1.f, 2.f, 3.f),
+            Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f),
             RotationAxisAngle({0.f, 1.f, 2.f}, Angle::radians(45.f)),
         };
         from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};

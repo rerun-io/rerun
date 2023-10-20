@@ -16,6 +16,34 @@ namespace rerun {
             const datatypes::Vec2D& focal_length, const datatypes::Vec2D& resolution
         );
 
+        /// Creates a symmetric pinhole from the camera focal length and resolution, both specified
+        /// in pixels.
+        ///
+        /// The focal length is the diagonal of the projection matrix.
+        ///
+        /// Assumes the principal point to be in the middle of the sensor.
+        static Pinhole focal_length_and_resolution(
+            float focal_length, const datatypes::Vec2D& resolution
+        ) {
+            return focal_length_and_resolution({focal_length, focal_length}, resolution);
+        }
+
+        /// Pixel resolution (usually integers) of child image space. Width and height.
+        ///
+        /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+        Pinhole with_resolution(float width, float height) && {
+            resolution = rerun::components::Resolution(width, height);
+            return std::move(*this);
+        }
+
+        /// Pixel resolution (usually integers) of child image space. Width and height.
+        ///
+        /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
+        Pinhole with_resolution(int width, int height) && {
+            resolution = rerun::components::Resolution(width, height);
+            return std::move(*this);
+        }
+
         // [CODEGEN COPY TO HEADER END]
 #endif
 

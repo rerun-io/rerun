@@ -17,7 +17,7 @@ use parking_lot::Mutex;
 use re_sdk::{
     external::re_log_types::{self},
     log::{DataCell, DataRow},
-    ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind,
+    ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
 };
 
 // ----------------------------------------------------------------------------
@@ -468,13 +468,19 @@ fn rr_log_impl(
         );
     }
 
-    let data_row = DataRow {
-        row_id: re_sdk::log::RowId::random(),
-        timepoint: Default::default(), // we use the one in the recording stream for now
+    let data_row = DataRow::from_cells(
+        re_sdk::log::RowId::random(),
+        TimePoint::default(), // we use the one in the recording stream for now
         entity_path,
         num_instances,
-        cells: re_log_types::DataCellRow(cells),
-    };
+        cells,
+    )
+    .map_err(|err| {
+        CError::new(
+            CErrorCode::ArrowDataCellError,
+            &format!("Failed to create DataRow from CDataRow: {err}"),
+        )
+    })?;
 
     stream.record_row(data_row, inject_time);
 
@@ -520,6 +526,18 @@ fn parse_arrow_ipc_encapsulated_message(
         Ok(metadata) => metadata,
         Err(err) => return Err(format!("Failed to read stream metadata: {err}")),
     };
+
+    // This IPC message represents the contents of a single DataCell, thus we should have a single
+    // field.
+    if metadata.schema.fields.len() != 1 {
+        return Err(format!(
+            "Found {} fields in stream metadata - expected exactly one.",
+            metadata.schema.fields.len(),
+        ));
+    }
+    // Might need that later if it turns out we don't have any data to log.
+    let datatype = metadata.schema.fields[0].data_type().clone();
+
     let stream = StreamReader::new(cursor, metadata, None);
     let chunks: Result<Vec<_>, _> = stream
         .map(|state| match state {
@@ -533,9 +551,23 @@ fn parse_arrow_ipc_encapsulated_message(
 
     let chunks = chunks.map_err(|err| format!("Arrow error: {err}"))?;
 
+    // We're not sending a `DataCellColumn`'s (i.e. `List<DataCell>`) worth of data like we normally do
+    // here, rather we're sending a single, independent `DataCell`'s worth of data.
+    //
+    // This distinction is crucial:
+    // - The data for a `DataCellColumn` containing a single empty `DataCell` is a unit-length list-array whose
+    //   first and only entry is an empty array (`ListArray[[]]`). There's actually data there (as
+    //   in bytes).
+    // - The data for a standalone empty `DataCell`, on the other hand, is literally nothing. It's
+    //   zero bytes.
+    //
+    // Where there's no data whatsoever, the chunk gets optimized out, which is why logging an
+    // empty array in C++ ends up hitting this path.
     if chunks.is_empty() {
-        return Err("No Chunk found in stream".to_owned());
+        // The fix is simple: craft an empty array with the correct datatype.
+        return Ok(arrow2::array::new_empty_array(datatype));
     }
+
     if chunks.len() > 1 {
         return Err(format!(
             "Found {} chunks in stream - expected just one.",

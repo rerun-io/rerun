@@ -4,7 +4,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_annotation_context_rects");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     // Log an annotation context to assign a label and color to each class
     rec.log_timeless(

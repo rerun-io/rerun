@@ -4,12 +4,11 @@ use arrow2::{
 };
 use polars_core::prelude::*;
 use re_arrow_store::ArrayExt;
-use re_types::components::InstanceKey;
-use re_types_core::{Archetype, Component, Loggable};
+use re_types_core::{components::InstanceKey, Archetype, Component, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 
-/// Make it so that our arrays can be deserialized again by arrow2-convert
+/// Make it so that our arrays can be deserialized again by `polars`.
 fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
     // TODO(jleibs): This is an ugly work-around but gets our serializers
     // working again
@@ -125,7 +124,7 @@ impl ComponentWithInstances {
         let array1 = self.values.as_arrow_ref();
 
         let series0 = Series::try_from((
-            re_types::components::InstanceKey::name().as_ref(),
+            InstanceKey::name().as_ref(),
             array0.as_ref().clean_for_polars(),
         ))?;
         let series1 = Series::try_from((C0::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -145,7 +144,7 @@ impl<A: Archetype> ArchetypeView<A> {
         let array1 = C1::to_arrow_opt(self.iter_optional_component::<C1>()?)?;
 
         let series0 = Series::try_from((
-            re_types::components::InstanceKey::name().as_ref(),
+            InstanceKey::name().as_ref(),
             array0.as_ref().clean_for_polars(),
         ))?;
         let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -165,7 +164,7 @@ impl<A: Archetype> ArchetypeView<A> {
         let array2 = C2::to_arrow_opt(self.iter_optional_component::<C2>()?)?;
 
         let series0 = Series::try_from((
-            re_types::components::InstanceKey::name().as_ref(),
+            InstanceKey::name().as_ref(),
             array0.as_ref().clean_for_polars(),
         ))?;
         let series1 = Series::try_from((C1::name().as_ref(), array1.as_ref().clean_for_polars()))?;
@@ -197,7 +196,7 @@ fn test_df_builder() {
     eprintln!("{df:?}");
     //
     // ┌──────────────┬─────────────────┐
-    // │ rerun.components.Radius ┆ rerun.components.Color │
+    // │ Radius       ┆ Color           │
     // │ ---          ┆ ---             │
     // │ f32          ┆ u32             │
     // ╞══════════════╪═════════════════╡

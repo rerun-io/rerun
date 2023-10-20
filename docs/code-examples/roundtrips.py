@@ -21,13 +21,12 @@ from os.path import isfile, join
 # for one or more specific SDKs.
 opt_out_run = {
     "any_values": ["cpp", "rust"], # Not yet implemented
-    "asset3d_out_of_tree": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
-    "scalar_multiple_plots": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "quick_start_spawn": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
 
     # This is this script, it's not an example.
@@ -40,14 +39,15 @@ opt_out_run = {
 # data, but you still want to check whether the test runs properly and outputs _something_.
 opt_out_compare = {
     "arrow3d_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "asset3d_out_of_tree": ["py", "rust"], # # float precision issues
+    "asset3d_out_of_tree": ["cpp", "py", "rust"], # float issues since calculation is done slightly differently (also, Python uses doubles)
     "mesh3d_partial_updates": ["cpp", "py", "rust"], # float precision issues
     "pinhole_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "quick_start_connect":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
+    "quick_start_spawn":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
+    "scalar_multiple_plots": ["cpp"], # trigonometric functions have slightly different outcomes
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }
 
 extra_args = {

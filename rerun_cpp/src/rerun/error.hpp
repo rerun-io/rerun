@@ -49,6 +49,10 @@ namespace rerun {
         ArrowIpcMessageParsingFailure,
         ArrowDataCellError,
 
+        // Errors relating to file IO.
+        _CategoryFileIO = 0x0001'0000,
+        FileOpenFailure,
+
         // Errors directly translated from arrow::StatusCode.
         _CategoryArrowCppStatus = 0x1000'0000,
         ArrowStatusCode_KeyError,
