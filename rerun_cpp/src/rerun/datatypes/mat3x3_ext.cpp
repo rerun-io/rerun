@@ -31,8 +31,6 @@ namespace rerun {
                   } {}
 
             /// Construct a new 3x3 matrix from a pointer to 9 floats (in row major order).
-            ///
-            /// Attention: The pointer must point to at least least 16 floats long.
             Mat3x3(const float* elements)
                 : flat_columns{
                       elements[0],
