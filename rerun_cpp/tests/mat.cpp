@@ -8,7 +8,7 @@ using namespace rerun::datatypes;
 #define TEST_TAG "[matrix_types]"
 
 void ctor_checks(const Mat3x3& mat3x3) {
-    for (int i = 0; i < 9; ++i) {
+    for (size_t i = 0; i < 9; ++i) {
         CHECK(mat3x3.flat_columns[i] == static_cast<float>(i));
     }
 }
@@ -42,7 +42,7 @@ TEST_CASE("Construct Mat3x3 in different ways", TEST_TAG) {
 }
 
 void ctor_checks(const Mat4x4& mat4x4) {
-    for (int i = 0; i < 16; ++i) {
+    for (size_t i = 0; i < 16; ++i) {
         CHECK(mat4x4.flat_columns[i] == static_cast<float>(i));
     }
 }

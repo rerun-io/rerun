@@ -13,13 +13,13 @@ impl Quaternion {
     pub const IDENTITY: Self = Self([0.0, 0.0, 0.0, 1.0]);
 
     #[inline]
-    pub const fn new(x: f32, y: f32, z: f32, w: f32) -> Self {
-        Self([x, y, z, w])
+    pub const fn from_xyzw(xyzw: [f32; 4]) -> Self {
+        Self(xyzw)
     }
 
     #[inline]
-    pub const fn from_xyzw(xyzw: [f32; 4]) -> Self {
-        Self(xyzw)
+    pub const fn from_wxyz([w, x, y, z]: [f32; 4]) -> Self {
+        Self([x, y, z, w])
     }
 }
 
@@ -37,6 +37,6 @@ impl From<glam::Quat> for Quaternion {
     #[inline]
     fn from(q: glam::Quat) -> Self {
         let (x, y, z, w) = q.into();
-        Self::new(x, y, z, w)
+        Self::from_xyzw([x, y, z, w])
     }
 }
