@@ -52,7 +52,7 @@ impl Drop for ThreadLocalRecording {
             // Calling drop on `self.stream` will panic the calling thread.
             // But we want to make sure we don't loose the data in the stream.
             // So how?
-            re_log::warn!("Using thread-local RecordingStream on macOS can result in data loss because of https://github.com/rerun-io/rerun/issues/2889");
+            re_log::warn!("Using thread-local RecordingStream on macOS can result in data loss because of https://github.com/rerun-io/rerun/issues/3937");
 
             // Give the batcher and sink threads a chance to process the data.
             std::thread::sleep(std::time::Duration::from_millis(500));
