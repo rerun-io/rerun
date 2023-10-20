@@ -36,7 +36,6 @@ impl From<Quaternion> for glam::Quat {
 impl From<glam::Quat> for Quaternion {
     #[inline]
     fn from(q: glam::Quat) -> Self {
-        let (x, y, z, w) = q.into();
-        Self::from_xyzw([x, y, z, w])
+        Self::from_xyzw(q.to_array())
     }
 }
