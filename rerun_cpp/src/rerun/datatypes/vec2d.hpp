@@ -27,6 +27,11 @@ namespace rerun {
             /// Construct Vec2D from x/y values.
             Vec2D(float x, float y) : xy{x, y} {}
 
+            /// Construct Vec2D from x/y float pointer.
+            ///
+            /// Attention: The pointer must point to at least least 2 floats long.
+            Vec2D(const float* ptr) : xy{ptr[0], ptr[1]} {}
+
             float x() const {
                 return xy[0];
             }
@@ -37,15 +42,6 @@ namespace rerun {
 
           public:
             Vec2D() = default;
-
-            Vec2D(std::array<float, 2> xy_) : xy(xy_) {}
-
-            Vec2D& operator=(std::array<float, 2> xy_) {
-                xy = xy_;
-                return *this;
-            }
-
-            Vec2D(const float (&xy_)[2]) : xy({xy_[0], xy_[1]}) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

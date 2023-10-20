@@ -51,28 +51,22 @@ namespace rerun {
                       columns[2].z(),
                   } {}
 
+            /// Construct a new 3x3 matrix from a pointer to 9 floats (in row major order).
+            Mat3x3(const float* elements)
+                : flat_columns{
+                      elements[0],
+                      elements[1],
+                      elements[2],
+                      elements[3],
+                      elements[4],
+                      elements[5],
+                      elements[6],
+                      elements[7],
+                      elements[8],
+                  } {}
+
           public:
             Mat3x3() = default;
-
-            Mat3x3(std::array<float, 9> flat_columns_) : flat_columns(flat_columns_) {}
-
-            Mat3x3& operator=(std::array<float, 9> flat_columns_) {
-                flat_columns = flat_columns_;
-                return *this;
-            }
-
-            Mat3x3(const float (&flat_columns_)[9])
-                : flat_columns(
-                      {flat_columns_[0],
-                       flat_columns_[1],
-                       flat_columns_[2],
-                       flat_columns_[3],
-                       flat_columns_[4],
-                       flat_columns_[5],
-                       flat_columns_[6],
-                       flat_columns_[7],
-                       flat_columns_[8]}
-                  ) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

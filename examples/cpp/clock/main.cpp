@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     const int num_steps = 10000;
 
     auto rec = rerun::RecordingStream("rerun_example_clock");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Y_UP);
     rec.log_timeless("world/frame", rerun::Boxes3D::from_half_sizes({{LENGTH_S, LENGTH_S, 1.0f}}));

@@ -30,7 +30,24 @@ namespace rerun {
             static const Quaternion IDENTITY;
 
             /// Construct Quaternion from x/y/z/w values.
-            Quaternion(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
+            static Quaternion from_xyzw(float x, float y, float z, float w) {
+                return Quaternion{x, y, z, w};
+            }
+
+            /// Construct Quaternion from w/x/y/z values.
+            static Quaternion from_wxyz(float w, float x, float y, float z) {
+                return Quaternion{x, y, z, w};
+            }
+
+            /// Construct Quaternion from x/y/z/w float pointer.
+            static Quaternion from_xyzw(const float* xyzw_) {
+                return Quaternion{xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]};
+            }
+
+            /// Construct Quaternion from w/x/y/z float pointer.
+            static Quaternion from_wxyz(const float* wxyz_) {
+                return Quaternion{wxyz_[1], wxyz_[2], wxyz_[3], wxyz_[0]};
+            }
 
             float x() const {
                 return xyzw[0];
@@ -50,15 +67,6 @@ namespace rerun {
 
           public:
             Quaternion() = default;
-
-            Quaternion(std::array<float, 4> xyzw_) : xyzw(xyzw_) {}
-
-            Quaternion& operator=(std::array<float, 4> xyzw_) {
-                xyzw = xyzw_;
-                return *this;
-            }
-
-            Quaternion(const float (&xyzw_)[4]) : xyzw({xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]}) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

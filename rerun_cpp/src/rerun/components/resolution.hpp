@@ -29,6 +29,18 @@ namespace rerun {
             static const char NAME[];
 
           public:
+            // Extensions to generated type defined in 'resolution_ext.cpp'
+
+            static const Resolution IDENTITY;
+
+            /// Construct resolution from width and height floats.
+            Resolution(float width, float height) : resolution{width, height} {}
+
+            /// Construct resolution from width and height integers.
+            Resolution(int width, int height)
+                : resolution{static_cast<float>(width), static_cast<float>(width)} {}
+
+          public:
             Resolution() = default;
 
             Resolution(rerun::datatypes::Vec2D resolution_) : resolution(resolution_) {}

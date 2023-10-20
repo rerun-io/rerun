@@ -14,7 +14,7 @@ fn roundtrip() {
             components::Position3D::new(4.0, 5.0, 6.0),
         ]),
         rotations: Some(vec![
-            components::Rotation3D::from(datatypes::Quaternion::new(1.0, 2.0, 3.0, 4.0)),
+            components::Rotation3D::from(datatypes::Quaternion::from_xyzw([1.0, 2.0, 3.0, 4.0])),
             components::Rotation3D::from(datatypes::RotationAxisAngle::new(
                 [1.0, 2.0, 3.0],
                 datatypes::Angle::Radians(4.0),

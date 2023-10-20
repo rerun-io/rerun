@@ -35,7 +35,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_view_coordinates");
-        ///     rec.connect("127.0.0.1:9876").throw_on_failure();
+        ///     rec.connect().throw_on_failure();
         ///
         ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
         ///     rec.log(
