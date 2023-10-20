@@ -8,7 +8,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -52,10 +51,10 @@ namespace rerun {
           public:
             Quaternion() = default;
 
-            Quaternion(std::array<float, 4> xyzw_) : xyzw(std::move(xyzw_)) {}
+            Quaternion(std::array<float, 4> xyzw_) : xyzw(xyzw_) {}
 
             Quaternion& operator=(std::array<float, 4> xyzw_) {
-                xyzw = std::move(xyzw_);
+                xyzw = xyzw_;
                 return *this;
             }
 

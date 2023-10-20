@@ -9,6 +9,7 @@
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace arrow {
@@ -29,11 +30,11 @@ namespace rerun {
             AffixFuzzer13() = default;
 
             AffixFuzzer13(std::optional<std::vector<std::string>> many_strings_optional_)
-                : many_strings_optional(many_strings_optional_) {}
+                : many_strings_optional(std::move(many_strings_optional_)) {}
 
             AffixFuzzer13& operator=(std::optional<std::vector<std::string>> many_strings_optional_
             ) {
-                many_strings_optional = many_strings_optional_;
+                many_strings_optional = std::move(many_strings_optional_);
                 return *this;
             }
 

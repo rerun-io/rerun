@@ -9,6 +9,7 @@
 #include <memory>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -28,10 +29,10 @@ namespace rerun {
             AffixFuzzer21() = default;
 
             AffixFuzzer21(rerun::datatypes::AffixFuzzer21 nested_halves_)
-                : nested_halves(nested_halves_) {}
+                : nested_halves(std::move(nested_halves_)) {}
 
             AffixFuzzer21& operator=(rerun::datatypes::AffixFuzzer21 nested_halves_) {
-                nested_halves = nested_halves_;
+                nested_halves = std::move(nested_halves_);
                 return *this;
             }
 

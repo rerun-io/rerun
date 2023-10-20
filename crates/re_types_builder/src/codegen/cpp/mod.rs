@@ -1108,7 +1108,7 @@ fn add_copy_assignment_and_constructor(
 
     let typ = quote_field_type(hpp_includes, obj_field);
     {
-        let copy_or_move = if obj_field.typ.has_default_destructor(objects) {
+        let copy_or_move = if !obj_field.typ.has_default_destructor(objects) {
             hpp_includes.insert_system("utility"); // std::move
             quote!(std::move(#param_ident))
         } else {

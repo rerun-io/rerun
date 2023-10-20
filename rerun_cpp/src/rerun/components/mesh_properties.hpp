@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace arrow {
@@ -37,17 +38,18 @@ namespace rerun {
           public:
             MeshProperties() = default;
 
-            MeshProperties(rerun::datatypes::MeshProperties props_) : props(props_) {}
+            MeshProperties(rerun::datatypes::MeshProperties props_) : props(std::move(props_)) {}
 
             MeshProperties& operator=(rerun::datatypes::MeshProperties props_) {
-                props = props_;
+                props = std::move(props_);
                 return *this;
             }
 
-            MeshProperties(std::optional<std::vector<uint32_t>> indices_) : props(indices_) {}
+            MeshProperties(std::optional<std::vector<uint32_t>> indices_)
+                : props(std::move(indices_)) {}
 
             MeshProperties& operator=(std::optional<std::vector<uint32_t>> indices_) {
-                props = indices_;
+                props = std::move(indices_);
                 return *this;
             }
 

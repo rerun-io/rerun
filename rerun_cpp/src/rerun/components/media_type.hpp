@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -73,17 +74,17 @@ namespace rerun {
           public:
             MediaType() = default;
 
-            MediaType(rerun::datatypes::Utf8 value_) : value(value_) {}
+            MediaType(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
 
             MediaType& operator=(rerun::datatypes::Utf8 value_) {
-                value = value_;
+                value = std::move(value_);
                 return *this;
             }
 
-            MediaType(std::string value_) : value(value_) {}
+            MediaType(std::string value_) : value(std::move(value_)) {}
 
             MediaType& operator=(std::string value_) {
-                value = value_;
+                value = std::move(value_);
                 return *this;
             }
 

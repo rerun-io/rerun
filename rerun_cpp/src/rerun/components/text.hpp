@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -39,17 +40,17 @@ namespace rerun {
           public:
             Text() = default;
 
-            Text(rerun::datatypes::Utf8 value_) : value(value_) {}
+            Text(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
 
             Text& operator=(rerun::datatypes::Utf8 value_) {
-                value = value_;
+                value = std::move(value_);
                 return *this;
             }
 
-            Text(std::string value_) : value(value_) {}
+            Text(std::string value_) : value(std::move(value_)) {}
 
             Text& operator=(std::string value_) {
-                value = value_;
+                value = std::move(value_);
                 return *this;
             }
 

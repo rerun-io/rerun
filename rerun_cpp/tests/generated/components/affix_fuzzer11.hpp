@@ -8,6 +8,7 @@
 #include <optional>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
+#include <utility>
 #include <vector>
 
 namespace arrow {
@@ -28,10 +29,10 @@ namespace rerun {
             AffixFuzzer11() = default;
 
             AffixFuzzer11(std::optional<std::vector<float>> many_floats_optional_)
-                : many_floats_optional(many_floats_optional_) {}
+                : many_floats_optional(std::move(many_floats_optional_)) {}
 
             AffixFuzzer11& operator=(std::optional<std::vector<float>> many_floats_optional_) {
-                many_floats_optional = many_floats_optional_;
+                many_floats_optional = std::move(many_floats_optional_);
                 return *this;
             }
 

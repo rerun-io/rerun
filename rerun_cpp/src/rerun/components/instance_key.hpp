@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -32,10 +31,10 @@ namespace rerun {
           public:
             InstanceKey() = default;
 
-            InstanceKey(uint64_t value_) : value(std::move(value_)) {}
+            InstanceKey(uint64_t value_) : value(value_) {}
 
             InstanceKey& operator=(uint64_t value_) {
-                value = std::move(value_);
+                value = value_;
                 return *this;
             }
 

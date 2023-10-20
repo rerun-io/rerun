@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace arrow {
@@ -40,10 +41,11 @@ namespace rerun {
           public:
             LineStrip3D() = default;
 
-            LineStrip3D(std::vector<rerun::datatypes::Vec3D> points_) : points(points_) {}
+            LineStrip3D(std::vector<rerun::datatypes::Vec3D> points_)
+                : points(std::move(points_)) {}
 
             LineStrip3D& operator=(std::vector<rerun::datatypes::Vec3D> points_) {
-                points = points_;
+                points = std::move(points_);
                 return *this;
             }
 

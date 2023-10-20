@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace arrow {
@@ -28,10 +29,11 @@ namespace rerun {
           public:
             MeshProperties() = default;
 
-            MeshProperties(std::optional<std::vector<uint32_t>> indices_) : indices(indices_) {}
+            MeshProperties(std::optional<std::vector<uint32_t>> indices_)
+                : indices(std::move(indices_)) {}
 
             MeshProperties& operator=(std::optional<std::vector<uint32_t>> indices_) {
-                indices = indices_;
+                indices = std::move(indices_);
                 return *this;
             }
 

@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class BooleanBuilder;
@@ -28,10 +27,10 @@ namespace rerun {
           public:
             ScalarScattering() = default;
 
-            ScalarScattering(bool scattered_) : scattered(std::move(scattered_)) {}
+            ScalarScattering(bool scattered_) : scattered(scattered_) {}
 
             ScalarScattering& operator=(bool scattered_) {
-                scattered = std::move(scattered_);
+                scattered = scattered_;
                 return *this;
             }
 

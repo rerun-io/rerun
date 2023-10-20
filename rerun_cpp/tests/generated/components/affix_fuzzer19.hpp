@@ -11,6 +11,7 @@
 #include <optional>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -30,20 +31,20 @@ namespace rerun {
             AffixFuzzer19() = default;
 
             AffixFuzzer19(rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady_)
-                : just_a_table_nothing_shady(just_a_table_nothing_shady_) {}
+                : just_a_table_nothing_shady(std::move(just_a_table_nothing_shady_)) {}
 
             AffixFuzzer19& operator=(rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady_) {
-                just_a_table_nothing_shady = just_a_table_nothing_shady_;
+                just_a_table_nothing_shady = std::move(just_a_table_nothing_shady_);
                 return *this;
             }
 
             AffixFuzzer19(std::optional<rerun::datatypes::AffixFuzzer4> single_optional_union_)
-                : just_a_table_nothing_shady(single_optional_union_) {}
+                : just_a_table_nothing_shady(std::move(single_optional_union_)) {}
 
             AffixFuzzer19& operator=(
                 std::optional<rerun::datatypes::AffixFuzzer4> single_optional_union_
             ) {
-                just_a_table_nothing_shady = single_optional_union_;
+                just_a_table_nothing_shady = std::move(single_optional_union_);
                 return *this;
             }
 

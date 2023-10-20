@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace arrow {
@@ -27,10 +28,10 @@ namespace rerun {
           public:
             SpaceViewMaximized() = default;
 
-            SpaceViewMaximized(std::optional<std::vector<uint8_t>> id_) : id(id_) {}
+            SpaceViewMaximized(std::optional<std::vector<uint8_t>> id_) : id(std::move(id_)) {}
 
             SpaceViewMaximized& operator=(std::optional<std::vector<uint8_t>> id_) {
-                id = id_;
+                id = std::move(id_);
                 return *this;
             }
 

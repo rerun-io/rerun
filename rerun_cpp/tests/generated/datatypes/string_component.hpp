@@ -7,6 +7,7 @@
 #include <memory>
 #include <rerun/result.hpp>
 #include <string>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -22,10 +23,10 @@ namespace rerun {
           public:
             StringComponent() = default;
 
-            StringComponent(std::string value_) : value(value_) {}
+            StringComponent(std::string value_) : value(std::move(value_)) {}
 
             StringComponent& operator=(std::string value_) {
-                value = value_;
+                value = std::move(value_);
                 return *this;
             }
 

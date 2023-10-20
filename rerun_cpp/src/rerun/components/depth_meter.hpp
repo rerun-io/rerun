@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -32,10 +31,10 @@ namespace rerun {
           public:
             DepthMeter() = default;
 
-            DepthMeter(float value_) : value(std::move(value_)) {}
+            DepthMeter(float value_) : value(value_) {}
 
             DepthMeter& operator=(float value_) {
-                value = std::move(value_);
+                value = value_;
                 return *this;
             }
 

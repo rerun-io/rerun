@@ -10,7 +10,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -32,17 +31,17 @@ namespace rerun {
           public:
             Resolution() = default;
 
-            Resolution(rerun::datatypes::Vec2D resolution_) : resolution(std::move(resolution_)) {}
+            Resolution(rerun::datatypes::Vec2D resolution_) : resolution(resolution_) {}
 
             Resolution& operator=(rerun::datatypes::Vec2D resolution_) {
-                resolution = std::move(resolution_);
+                resolution = resolution_;
                 return *this;
             }
 
-            Resolution(std::array<float, 2> xy_) : resolution(std::move(xy_)) {}
+            Resolution(std::array<float, 2> xy_) : resolution(xy_) {}
 
             Resolution& operator=(std::array<float, 2> xy_) {
-                resolution = std::move(xy_);
+                resolution = xy_;
                 return *this;
             }
 

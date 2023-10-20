@@ -9,7 +9,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -129,11 +128,10 @@ namespace rerun {
           public:
             ViewCoordinates() = default;
 
-            ViewCoordinates(std::array<uint8_t, 3> coordinates_)
-                : coordinates(std::move(coordinates_)) {}
+            ViewCoordinates(std::array<uint8_t, 3> coordinates_) : coordinates(coordinates_) {}
 
             ViewCoordinates& operator=(std::array<uint8_t, 3> coordinates_) {
-                coordinates = std::move(coordinates_);
+                coordinates = coordinates_;
                 return *this;
             }
 

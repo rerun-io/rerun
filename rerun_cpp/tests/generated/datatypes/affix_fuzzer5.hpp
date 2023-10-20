@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <rerun/result.hpp>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -25,12 +26,12 @@ namespace rerun {
             AffixFuzzer5() = default;
 
             AffixFuzzer5(std::optional<rerun::datatypes::AffixFuzzer4> single_optional_union_)
-                : single_optional_union(single_optional_union_) {}
+                : single_optional_union(std::move(single_optional_union_)) {}
 
             AffixFuzzer5& operator=(
                 std::optional<rerun::datatypes::AffixFuzzer4> single_optional_union_
             ) {
-                single_optional_union = single_optional_union_;
+                single_optional_union = std::move(single_optional_union_);
                 return *this;
             }
 

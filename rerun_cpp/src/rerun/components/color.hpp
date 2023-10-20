@@ -9,7 +9,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -58,17 +57,17 @@ namespace rerun {
           public:
             Color() = default;
 
-            Color(rerun::datatypes::Rgba32 rgba_) : rgba(std::move(rgba_)) {}
+            Color(rerun::datatypes::Rgba32 rgba_) : rgba(rgba_) {}
 
             Color& operator=(rerun::datatypes::Rgba32 rgba_) {
-                rgba = std::move(rgba_);
+                rgba = rgba_;
                 return *this;
             }
 
-            Color(uint32_t rgba_) : rgba(std::move(rgba_)) {}
+            Color(uint32_t rgba_) : rgba(rgba_) {}
 
             Color& operator=(uint32_t rgba_) {
-                rgba = std::move(rgba_);
+                rgba = rgba_;
                 return *this;
             }
 

@@ -9,6 +9,7 @@
 #include <memory>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -28,10 +29,10 @@ namespace rerun {
             AffixFuzzer20() = default;
 
             AffixFuzzer20(rerun::datatypes::AffixFuzzer20 nested_transparent_)
-                : nested_transparent(nested_transparent_) {}
+                : nested_transparent(std::move(nested_transparent_)) {}
 
             AffixFuzzer20& operator=(rerun::datatypes::AffixFuzzer20 nested_transparent_) {
-                nested_transparent = nested_transparent_;
+                nested_transparent = std::move(nested_transparent_);
                 return *this;
             }
 

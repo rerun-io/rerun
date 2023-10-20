@@ -10,7 +10,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -47,17 +46,17 @@ namespace rerun {
           public:
             HalfSizes2D() = default;
 
-            HalfSizes2D(rerun::datatypes::Vec2D xy_) : xy(std::move(xy_)) {}
+            HalfSizes2D(rerun::datatypes::Vec2D xy_) : xy(xy_) {}
 
             HalfSizes2D& operator=(rerun::datatypes::Vec2D xy_) {
-                xy = std::move(xy_);
+                xy = xy_;
                 return *this;
             }
 
-            HalfSizes2D(std::array<float, 2> xy_) : xy(std::move(xy_)) {}
+            HalfSizes2D(std::array<float, 2> xy_) : xy(xy_) {}
 
             HalfSizes2D& operator=(std::array<float, 2> xy_) {
-                xy = std::move(xy_);
+                xy = xy_;
                 return *this;
             }
 

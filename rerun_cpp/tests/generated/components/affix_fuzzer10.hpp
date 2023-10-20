@@ -9,6 +9,7 @@
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <string>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -28,10 +29,10 @@ namespace rerun {
             AffixFuzzer10() = default;
 
             AffixFuzzer10(std::optional<std::string> single_string_optional_)
-                : single_string_optional(single_string_optional_) {}
+                : single_string_optional(std::move(single_string_optional_)) {}
 
             AffixFuzzer10& operator=(std::optional<std::string> single_string_optional_) {
-                single_string_optional = single_string_optional_;
+                single_string_optional = std::move(single_string_optional_);
                 return *this;
             }
 

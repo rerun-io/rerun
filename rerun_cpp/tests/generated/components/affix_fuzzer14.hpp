@@ -9,6 +9,7 @@
 #include <memory>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
+#include <utility>
 
 namespace arrow {
     class DataType;
@@ -28,10 +29,10 @@ namespace rerun {
             AffixFuzzer14() = default;
 
             AffixFuzzer14(rerun::datatypes::AffixFuzzer3 single_required_union_)
-                : single_required_union(single_required_union_) {}
+                : single_required_union(std::move(single_required_union_)) {}
 
             AffixFuzzer14& operator=(rerun::datatypes::AffixFuzzer3 single_required_union_) {
-                single_required_union = single_required_union_;
+                single_required_union = std::move(single_required_union_);
                 return *this;
             }
 

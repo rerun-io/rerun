@@ -8,7 +8,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -25,10 +24,10 @@ namespace rerun {
           public:
             UVec3D() = default;
 
-            UVec3D(std::array<uint32_t, 3> xyz_) : xyz(std::move(xyz_)) {}
+            UVec3D(std::array<uint32_t, 3> xyz_) : xyz(xyz_) {}
 
             UVec3D& operator=(std::array<uint32_t, 3> xyz_) {
-                xyz = std::move(xyz_);
+                xyz = xyz_;
                 return *this;
             }
 

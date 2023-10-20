@@ -8,7 +8,6 @@
 #include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -47,10 +46,10 @@ namespace rerun {
           public:
             Vec4D() = default;
 
-            Vec4D(std::array<float, 4> xyzw_) : xyzw(std::move(xyzw_)) {}
+            Vec4D(std::array<float, 4> xyzw_) : xyzw(xyzw_) {}
 
             Vec4D& operator=(std::array<float, 4> xyzw_) {
-                xyzw = std::move(xyzw_);
+                xyzw = xyzw_;
                 return *this;
             }
 

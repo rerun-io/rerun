@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -26,10 +25,10 @@ namespace rerun {
           public:
             PanelView() = default;
 
-            PanelView(bool is_expanded_) : is_expanded(std::move(is_expanded_)) {}
+            PanelView(bool is_expanded_) : is_expanded(is_expanded_) {}
 
             PanelView& operator=(bool is_expanded_) {
-                is_expanded = std::move(is_expanded_);
+                is_expanded = is_expanded_;
                 return *this;
             }
 

@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -38,10 +37,10 @@ namespace rerun {
           public:
             DrawOrder() = default;
 
-            DrawOrder(float value_) : value(std::move(value_)) {}
+            DrawOrder(float value_) : value(value_) {}
 
             DrawOrder& operator=(float value_) {
-                value = std::move(value_);
+                value = value_;
                 return *this;
             }
 

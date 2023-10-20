@@ -50,12 +50,12 @@ namespace rerun {
             AnnotationContext() = default;
 
             AnnotationContext(std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map_)
-                : class_map(class_map_) {}
+                : class_map(std::move(class_map_)) {}
 
             AnnotationContext& operator=(
                 std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map_
             ) {
-                class_map = class_map_;
+                class_map = std::move(class_map_);
                 return *this;
             }
 
