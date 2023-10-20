@@ -83,6 +83,14 @@ def fetch_binary_assets(
                 print(f"    Found Rerun cross-platform bundle: {name}")
                 assets[name] = blob
 
+    # rerun_cpp_sdk
+    rerun_cpp_sdk_blob = bucket.get_blob(f"commit/{commit_short}/rerun_cpp_sdk.zip")
+    for blob in [rerun_cpp_sdk_blob]:
+        if blob is not None and blob.name is not None:
+            name = blob.name.split("/")[-1]
+            print(f"    Found Rerun cross-platform bundle: {name} ({blob.size} bytes)")
+            assets[name] = blob
+
     return assets
 
 
