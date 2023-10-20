@@ -34,7 +34,12 @@ namespace rerun {
                 return *this;
             }
 
-            Material(uint32_t arg) : albedo_factor(arg) {}
+            Material(uint32_t rgba_) : albedo_factor(rgba_) {}
+
+            Material& operator=(uint32_t rgba_) {
+                albedo_factor = rgba_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

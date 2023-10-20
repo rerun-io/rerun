@@ -64,7 +64,12 @@ namespace rerun {
                 return *this;
             }
 
-            Color(uint32_t arg) : rgba(arg) {}
+            Color(uint32_t rgba_) : rgba(rgba_) {}
+
+            Color& operator=(uint32_t rgba_) {
+                rgba = rgba_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

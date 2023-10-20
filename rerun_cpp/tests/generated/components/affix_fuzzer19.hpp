@@ -30,16 +30,45 @@ namespace rerun {
           public:
             AffixFuzzer19() = default;
 
-            AffixFuzzer19(rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady_)
+            AffixFuzzer19(const rerun::datatypes::AffixFuzzer5& just_a_table_nothing_shady_)
+                : just_a_table_nothing_shady(just_a_table_nothing_shady_) {}
+
+            AffixFuzzer19& operator=(
+                const rerun::datatypes::AffixFuzzer5& just_a_table_nothing_shady_
+            ) {
+                just_a_table_nothing_shady = just_a_table_nothing_shady_;
+                return *this;
+            }
+
+            AffixFuzzer19(rerun::datatypes::AffixFuzzer5&& just_a_table_nothing_shady_)
                 : just_a_table_nothing_shady(std::move(just_a_table_nothing_shady_)) {}
 
-            AffixFuzzer19& operator=(rerun::datatypes::AffixFuzzer5 just_a_table_nothing_shady_) {
+            AffixFuzzer19& operator=(rerun::datatypes::AffixFuzzer5&& just_a_table_nothing_shady_) {
                 just_a_table_nothing_shady = std::move(just_a_table_nothing_shady_);
                 return *this;
             }
 
-            AffixFuzzer19(std::optional<rerun::datatypes::AffixFuzzer4> arg)
-                : just_a_table_nothing_shady(std::move(arg)) {}
+            AffixFuzzer19(
+                const std::optional<rerun::datatypes::AffixFuzzer4>& single_optional_union_
+            )
+                : just_a_table_nothing_shady(single_optional_union_) {}
+
+            AffixFuzzer19& operator=(
+                const std::optional<rerun::datatypes::AffixFuzzer4>& single_optional_union_
+            ) {
+                just_a_table_nothing_shady = single_optional_union_;
+                return *this;
+            }
+
+            AffixFuzzer19(std::optional<rerun::datatypes::AffixFuzzer4>&& single_optional_union_)
+                : just_a_table_nothing_shady(std::move(single_optional_union_)) {}
+
+            AffixFuzzer19& operator=(
+                std::optional<rerun::datatypes::AffixFuzzer4>&& single_optional_union_
+            ) {
+                just_a_table_nothing_shady = std::move(single_optional_union_);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

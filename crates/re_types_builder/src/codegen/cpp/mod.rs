@@ -1054,14 +1054,125 @@ fn single_field_constructor_methods(
     type_ident: &Ident,
     objects: &Objects,
 ) -> Vec<Method> {
+    let field = &obj.fields[0];
+
+    let mut methods =
+        add_copy_assignment_and_constructor(hpp_includes, field, field, type_ident, objects);
+
+    // If the field is a custom type as well which in turn has only a single field,
+    // provide a constructor for that single field as well.
+    //
+    // Note that we previously we tried to do a general forwarding constructor via variadic templates,
+    // but ran into some issues when init archetypes with initializer lists.
+    if let Type::Object(field_type_fqname) = &field.typ {
+        let field_type_obj = &objects[field_type_fqname];
+        if field_type_obj.fields.len() == 1 {
+            methods.extend(add_copy_assignment_and_constructor(
+                hpp_includes,
+                &field_type_obj.fields[0],
+                field,
+                type_ident,
+                objects,
+            ));
+        }
+    }
+
+    methods
+}
+
+fn add_copy_assignment_and_constructor(
+    hpp_includes: &mut Includes,
+    obj_field: &ObjectField,
+    target_field: &ObjectField,
+    type_ident: &Ident,
+    objects: &Objects,
+) -> Vec<Method> {
     let mut methods = Vec::new();
-
-    // Single-field struct - it is a newtype wrapper.
-    // Create a implicit constructor and assignment from its own field-type.
-    let obj_field = &obj.fields[0];
-
-    let field_ident = format_ident!("{}", obj_field.name);
+    let field_ident = format_ident!("{}", target_field.name);
     let param_ident = format_ident!("{}_", obj_field.name);
+
+    // For parameter passing we're sticking to the C++ core guidelines.
+    // https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#fcall-parameter-passing
+    // For "In & retain copy" the rules are
+    // * by value if it's trivial and small
+    // * by const& for anything else
+    // * additional rvalue reference overload if it's movable
+    //
+    // The third case is a bit contentious as many argue in this it would be best to pass by value only
+    // Rationale:
+    // - If it was a temporary it gets moved into the value and then moved again into the field.
+    // - If it was a lvalue it gets copied into the value and then moved into the field.
+    // However, since we're generating code this doesn't cost us much effort here to do the
+    // (quote:) “unusual and clever techniques that cause surprises".
+
+    let typ = quote_field_type(hpp_includes, obj_field);
+    {
+        let parameter = match obj_field.typ {
+            Type::UInt8
+            | Type::UInt16
+            | Type::UInt32
+            | Type::UInt64
+            | Type::Int8
+            | Type::Int16
+            | Type::Int32
+            | Type::Int64
+            | Type::Bool
+            | Type::Float16
+            | Type::Float32
+            | Type::Float64 => quote! { #typ #param_ident },
+            Type::String | Type::Array { .. } | Type::Vector { .. } | Type::Object(_) => {
+                quote! { const #typ& #param_ident }
+            }
+        };
+
+        methods.push(Method {
+            declaration: MethodDeclaration::constructor(quote! {
+                #type_ident(#parameter) : #field_ident(#param_ident)
+            }),
+            ..Method::default()
+        });
+        methods.push(Method {
+            declaration: MethodDeclaration {
+                is_static: false,
+                return_type: quote!(#type_ident&),
+                name_and_parameters: quote! {
+                    operator=(#parameter)
+                },
+            },
+            definition_body: quote! {
+                #field_ident = #param_ident;
+                return *this;
+            },
+            ..Method::default()
+        });
+    }
+
+    // Add move constructor and assignment if the type is likely to be movable.
+    // Non-trivially destructible objects are typically movable.
+    // (if they have work to do on destruction it can usually be skipped by doing a move)
+    if !obj_field.typ.has_default_destructor(objects) {
+        hpp_includes.insert_system("utility"); // std::move
+        methods.push(Method {
+            declaration: MethodDeclaration::constructor(quote! {
+                #type_ident(#typ&& #param_ident) : #field_ident(std::move(#param_ident))
+            }),
+            ..Method::default()
+        });
+        methods.push(Method {
+            declaration: MethodDeclaration {
+                is_static: false,
+                return_type: quote!(#type_ident&),
+                name_and_parameters: quote! {
+                    operator=(#typ&& #param_ident)
+                },
+            },
+            definition_body: quote! {
+                #field_ident = std::move(#param_ident);
+                return *this;
+            },
+            ..Method::default()
+        });
+    }
 
     // Additional constructor from C array.
     if let Type::Array { elem_type, length } = &obj_field.typ {
@@ -1073,97 +1184,20 @@ fn single_field_constructor_methods(
             let i = quote_integer(i);
             quote!(#param_ident[#i])
         });
+
+        let array_construction = if obj_field.fqname != target_field.fqname {
+            quote!(std::array)
+        } else {
+            quote!()
+        };
+
         methods.push(Method {
             declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(const #element_type (&#param_ident)[#length_quoted]) : #field_ident{#(#element_assignments),*}
+                #type_ident(const #element_type (&#param_ident)[#length_quoted]) :
+                    #field_ident(#array_construction{#(#element_assignments),*})
             }),
             ..Method::default()
         });
-    }
-
-    fn copy_or_move_access(
-        hpp_includes: &mut Includes,
-        obj_field: &ObjectField,
-        objects: &Objects,
-        param_ident: &Ident,
-    ) -> TokenStream {
-        if obj_field.typ.has_default_destructor(objects) {
-            quote! { #param_ident }
-        } else {
-            hpp_includes.insert_system("utility"); // std::move
-            quote! { std::move(#param_ident) }
-        }
-    }
-
-    fn parameter_decl(
-        hpp_includes: &mut Includes,
-        obj_field: &ObjectField,
-        objects: &Objects,
-        param_ident: &Ident,
-    ) -> TokenStream {
-        let typ = quote_field_type(hpp_includes, obj_field);
-        if obj_field.typ.has_default_destructor(objects) {
-            // Could always do `const&` passing since in this path we'll do a copy, but it's usually frowned upon for super simple types like `int`
-            if obj_field.typ.is_plural() || obj_field.typ.fqname().is_some() {
-                quote! { const #typ& #param_ident }
-            } else {
-                quote! { #typ #param_ident }
-            }
-        } else {
-            // For anything that's worth moving we pass by value. Rationale:
-            // - If it was a temporary it gets moved into the value and then moved again into the field.
-            // - If it was a lvalue it gets copied into the value and then moved into the field.
-            //
-            // If the type is "primitive" however, we essentially copy anyways, so we pass by const-ref.
-            quote! { #typ #param_ident }
-        }
-    }
-
-    let parameter = parameter_decl(hpp_includes, obj_field, objects, &param_ident);
-    let copy_or_move = copy_or_move_access(hpp_includes, obj_field, objects, &param_ident);
-
-    methods.push(Method {
-        declaration: MethodDeclaration::constructor(quote! {
-            #type_ident(#parameter) : #field_ident(#copy_or_move)
-        }),
-        ..Method::default()
-    });
-    methods.push(Method {
-        declaration: MethodDeclaration {
-            is_static: false,
-            return_type: quote!(#type_ident&),
-            name_and_parameters: quote! {
-                operator=(#parameter)
-            },
-        },
-        definition_body: quote! {
-            #field_ident = #copy_or_move;
-            return *this;
-        },
-        ..Method::default()
-    });
-
-    // If the field is a custom type as well which in turn has only a single field,
-    // provide a constructor for that single field as well.
-    //
-    // Note that we previously we tried to do a general forwarding constructor via variadic templates,
-    // but ran into some issues when init archetypes with initializer lists.
-    if let Type::Object(field_type_fqname) = &obj_field.typ {
-        let field_type_obj = &objects[field_type_fqname];
-        if field_type_obj.fields.len() == 1 {
-            let inner_field = &field_type_obj.fields[0];
-            let param_ident = format_ident!("arg");
-            let parameter = parameter_decl(hpp_includes, inner_field, objects, &param_ident);
-            let copy_or_move =
-                copy_or_move_access(hpp_includes, inner_field, objects, &param_ident);
-
-            methods.push(Method {
-                declaration: MethodDeclaration::constructor(quote! {
-                    #type_ident(#parameter) : #field_ident(#copy_or_move)
-                }),
-                ..Method::default()
-            });
-        }
     }
 
     methods
@@ -1624,7 +1658,7 @@ fn quote_append_field_to_builder(
             let append_value = quote_append_single_value_to_builder(
                 &field.typ,
                 &value_builder,
-                value_accessor,
+                &value_accessor,
                 includes,
             );
 
@@ -1655,7 +1689,7 @@ fn quote_append_field_to_builder(
     } else if !field.is_nullable && is_transparent && field.typ.has_default_destructor(objects) {
         // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
         // we can just pass the whole array as-is!
-        let field_ptr_accessor = quote_field_ptr_access(&field.typ, quote!(elements->#field_name));
+        let field_ptr_accessor = quote_field_ptr_access(&field.typ, &quote!(elements->#field_name));
         quote! {
             static_assert(sizeof(*elements) == sizeof(elements->#field_name));
             ARROW_RETURN_NOT_OK(#builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(num_elements)));
@@ -1687,7 +1721,7 @@ fn quote_append_single_field_to_builder(
     };
 
     let append_value =
-        quote_append_single_value_to_builder(&field.typ, builder, value_access, includes);
+        quote_append_single_value_to_builder(&field.typ, builder, &value_access, includes);
 
     if field.is_nullable {
         quote! {
@@ -1712,7 +1746,7 @@ fn quote_append_single_field_to_builder(
 fn quote_append_single_value_to_builder(
     typ: &Type,
     value_builder: &Ident,
-    value_access: TokenStream,
+    value_access: &TokenStream,
     includes: &mut Includes,
 ) -> TokenStream {
     match &typ {
@@ -1739,7 +1773,7 @@ fn quote_append_single_value_to_builder(
             }
         }
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
-            let num_items_per_element = quote_num_items_per_value(typ, &value_access);
+            let num_items_per_element = quote_num_items_per_value(typ, value_access);
 
             match elem_type {
                 ElementType::UInt8

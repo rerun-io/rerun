@@ -74,14 +74,33 @@ namespace rerun {
           public:
             MediaType() = default;
 
-            MediaType(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
+            MediaType(const rerun::datatypes::Utf8& value_) : value(value_) {}
 
-            MediaType& operator=(rerun::datatypes::Utf8 value_) {
+            MediaType& operator=(const rerun::datatypes::Utf8& value_) {
+                value = value_;
+                return *this;
+            }
+
+            MediaType(rerun::datatypes::Utf8&& value_) : value(std::move(value_)) {}
+
+            MediaType& operator=(rerun::datatypes::Utf8&& value_) {
                 value = std::move(value_);
                 return *this;
             }
 
-            MediaType(std::string arg) : value(std::move(arg)) {}
+            MediaType(const std::string& value_) : value(value_) {}
+
+            MediaType& operator=(const std::string& value_) {
+                value = value_;
+                return *this;
+            }
+
+            MediaType(std::string&& value_) : value(std::move(value_)) {}
+
+            MediaType& operator=(std::string&& value_) {
+                value = std::move(value_);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

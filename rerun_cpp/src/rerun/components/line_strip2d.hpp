@@ -41,10 +41,17 @@ namespace rerun {
           public:
             LineStrip2D() = default;
 
-            LineStrip2D(std::vector<rerun::datatypes::Vec2D> points_)
+            LineStrip2D(const std::vector<rerun::datatypes::Vec2D>& points_) : points(points_) {}
+
+            LineStrip2D& operator=(const std::vector<rerun::datatypes::Vec2D>& points_) {
+                points = points_;
+                return *this;
+            }
+
+            LineStrip2D(std::vector<rerun::datatypes::Vec2D>&& points_)
                 : points(std::move(points_)) {}
 
-            LineStrip2D& operator=(std::vector<rerun::datatypes::Vec2D> points_) {
+            LineStrip2D& operator=(std::vector<rerun::datatypes::Vec2D>&& points_) {
                 points = std::move(points_);
                 return *this;
             }

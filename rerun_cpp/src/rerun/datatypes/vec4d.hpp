@@ -46,14 +46,14 @@ namespace rerun {
           public:
             Vec4D() = default;
 
-            Vec4D(const float (&xyzw_)[4]) : xyzw{xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]} {}
-
             Vec4D(const std::array<float, 4>& xyzw_) : xyzw(xyzw_) {}
 
             Vec4D& operator=(const std::array<float, 4>& xyzw_) {
                 xyzw = xyzw_;
                 return *this;
             }
+
+            Vec4D(const float (&xyzw_)[4]) : xyzw({xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]}) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

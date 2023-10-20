@@ -38,14 +38,35 @@ namespace rerun {
           public:
             MeshProperties() = default;
 
-            MeshProperties(rerun::datatypes::MeshProperties props_) : props(std::move(props_)) {}
+            MeshProperties(const rerun::datatypes::MeshProperties& props_) : props(props_) {}
 
-            MeshProperties& operator=(rerun::datatypes::MeshProperties props_) {
+            MeshProperties& operator=(const rerun::datatypes::MeshProperties& props_) {
+                props = props_;
+                return *this;
+            }
+
+            MeshProperties(rerun::datatypes::MeshProperties&& props_) : props(std::move(props_)) {}
+
+            MeshProperties& operator=(rerun::datatypes::MeshProperties&& props_) {
                 props = std::move(props_);
                 return *this;
             }
 
-            MeshProperties(std::optional<std::vector<uint32_t>> arg) : props(std::move(arg)) {}
+            MeshProperties(const std::optional<std::vector<uint32_t>>& indices_)
+                : props(indices_) {}
+
+            MeshProperties& operator=(const std::optional<std::vector<uint32_t>>& indices_) {
+                props = indices_;
+                return *this;
+            }
+
+            MeshProperties(std::optional<std::vector<uint32_t>>&& indices_)
+                : props(std::move(indices_)) {}
+
+            MeshProperties& operator=(std::optional<std::vector<uint32_t>>&& indices_) {
+                props = std::move(indices_);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

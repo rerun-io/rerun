@@ -28,10 +28,19 @@ namespace rerun {
           public:
             AffixFuzzer11() = default;
 
-            AffixFuzzer11(std::optional<std::vector<float>> many_floats_optional_)
+            AffixFuzzer11(const std::optional<std::vector<float>>& many_floats_optional_)
+                : many_floats_optional(many_floats_optional_) {}
+
+            AffixFuzzer11& operator=(const std::optional<std::vector<float>>& many_floats_optional_
+            ) {
+                many_floats_optional = many_floats_optional_;
+                return *this;
+            }
+
+            AffixFuzzer11(std::optional<std::vector<float>>&& many_floats_optional_)
                 : many_floats_optional(std::move(many_floats_optional_)) {}
 
-            AffixFuzzer11& operator=(std::optional<std::vector<float>> many_floats_optional_) {
+            AffixFuzzer11& operator=(std::optional<std::vector<float>>&& many_floats_optional_) {
                 many_floats_optional = std::move(many_floats_optional_);
                 return *this;
             }

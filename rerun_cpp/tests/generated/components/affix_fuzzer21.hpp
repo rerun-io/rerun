@@ -28,10 +28,18 @@ namespace rerun {
           public:
             AffixFuzzer21() = default;
 
-            AffixFuzzer21(rerun::datatypes::AffixFuzzer21 nested_halves_)
+            AffixFuzzer21(const rerun::datatypes::AffixFuzzer21& nested_halves_)
+                : nested_halves(nested_halves_) {}
+
+            AffixFuzzer21& operator=(const rerun::datatypes::AffixFuzzer21& nested_halves_) {
+                nested_halves = nested_halves_;
+                return *this;
+            }
+
+            AffixFuzzer21(rerun::datatypes::AffixFuzzer21&& nested_halves_)
                 : nested_halves(std::move(nested_halves_)) {}
 
-            AffixFuzzer21& operator=(rerun::datatypes::AffixFuzzer21 nested_halves_) {
+            AffixFuzzer21& operator=(rerun::datatypes::AffixFuzzer21&& nested_halves_) {
                 nested_halves = std::move(nested_halves_);
                 return *this;
             }

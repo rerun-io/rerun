@@ -24,14 +24,14 @@ namespace rerun {
           public:
             UVec4D() = default;
 
-            UVec4D(const uint32_t (&xyzw_)[4]) : xyzw{xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]} {}
-
             UVec4D(const std::array<uint32_t, 4>& xyzw_) : xyzw(xyzw_) {}
 
             UVec4D& operator=(const std::array<uint32_t, 4>& xyzw_) {
                 xyzw = xyzw_;
                 return *this;
             }
+
+            UVec4D(const uint32_t (&xyzw_)[4]) : xyzw({xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]}) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

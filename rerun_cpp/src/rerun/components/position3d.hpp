@@ -54,7 +54,14 @@ namespace rerun {
                 return *this;
             }
 
-            Position3D(const std::array<float, 3>& arg) : xyz(arg) {}
+            Position3D(const std::array<float, 3>& xyz_) : xyz(xyz_) {}
+
+            Position3D& operator=(const std::array<float, 3>& xyz_) {
+                xyz = xyz_;
+                return *this;
+            }
+
+            Position3D(const float (&xyz_)[3]) : xyz(std::array{xyz_[0], xyz_[1], xyz_[2]}) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

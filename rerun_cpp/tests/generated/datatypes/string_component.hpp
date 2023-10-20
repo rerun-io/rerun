@@ -23,9 +23,16 @@ namespace rerun {
           public:
             StringComponent() = default;
 
-            StringComponent(std::string value_) : value(std::move(value_)) {}
+            StringComponent(const std::string& value_) : value(value_) {}
 
-            StringComponent& operator=(std::string value_) {
+            StringComponent& operator=(const std::string& value_) {
+                value = value_;
+                return *this;
+            }
+
+            StringComponent(std::string&& value_) : value(std::move(value_)) {}
+
+            StringComponent& operator=(std::string&& value_) {
                 value = std::move(value_);
                 return *this;
             }

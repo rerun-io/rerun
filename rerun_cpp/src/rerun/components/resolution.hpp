@@ -38,7 +38,14 @@ namespace rerun {
                 return *this;
             }
 
-            Resolution(const std::array<float, 2>& arg) : resolution(arg) {}
+            Resolution(const std::array<float, 2>& xy_) : resolution(xy_) {}
+
+            Resolution& operator=(const std::array<float, 2>& xy_) {
+                resolution = xy_;
+                return *this;
+            }
+
+            Resolution(const float (&xy_)[2]) : resolution(std::array{xy_[0], xy_[1]}) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

@@ -54,24 +54,25 @@ namespace rerun {
           public:
             Mat3x3() = default;
 
-            Mat3x3(const float (&flat_columns_)[9])
-                : flat_columns{
-                      flat_columns_[0],
-                      flat_columns_[1],
-                      flat_columns_[2],
-                      flat_columns_[3],
-                      flat_columns_[4],
-                      flat_columns_[5],
-                      flat_columns_[6],
-                      flat_columns_[7],
-                      flat_columns_[8]} {}
-
             Mat3x3(const std::array<float, 9>& flat_columns_) : flat_columns(flat_columns_) {}
 
             Mat3x3& operator=(const std::array<float, 9>& flat_columns_) {
                 flat_columns = flat_columns_;
                 return *this;
             }
+
+            Mat3x3(const float (&flat_columns_)[9])
+                : flat_columns(
+                      {flat_columns_[0],
+                       flat_columns_[1],
+                       flat_columns_[2],
+                       flat_columns_[3],
+                       flat_columns_[4],
+                       flat_columns_[5],
+                       flat_columns_[6],
+                       flat_columns_[7],
+                       flat_columns_[8]}
+                  ) {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

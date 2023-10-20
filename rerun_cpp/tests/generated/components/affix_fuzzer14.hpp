@@ -28,10 +28,18 @@ namespace rerun {
           public:
             AffixFuzzer14() = default;
 
-            AffixFuzzer14(rerun::datatypes::AffixFuzzer3 single_required_union_)
+            AffixFuzzer14(const rerun::datatypes::AffixFuzzer3& single_required_union_)
+                : single_required_union(single_required_union_) {}
+
+            AffixFuzzer14& operator=(const rerun::datatypes::AffixFuzzer3& single_required_union_) {
+                single_required_union = single_required_union_;
+                return *this;
+            }
+
+            AffixFuzzer14(rerun::datatypes::AffixFuzzer3&& single_required_union_)
                 : single_required_union(std::move(single_required_union_)) {}
 
-            AffixFuzzer14& operator=(rerun::datatypes::AffixFuzzer3 single_required_union_) {
+            AffixFuzzer14& operator=(rerun::datatypes::AffixFuzzer3&& single_required_union_) {
                 single_required_union = std::move(single_required_union_);
                 return *this;
             }

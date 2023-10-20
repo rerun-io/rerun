@@ -44,7 +44,13 @@ namespace rerun {
                 return *this;
             }
 
-            Material(const std::optional<rerun::datatypes::Rgba32>& arg) : material(arg) {}
+            Material(const std::optional<rerun::datatypes::Rgba32>& albedo_factor_)
+                : material(albedo_factor_) {}
+
+            Material& operator=(const std::optional<rerun::datatypes::Rgba32>& albedo_factor_) {
+                material = albedo_factor_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

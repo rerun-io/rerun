@@ -28,10 +28,18 @@ namespace rerun {
           public:
             AffixFuzzer10() = default;
 
-            AffixFuzzer10(std::optional<std::string> single_string_optional_)
+            AffixFuzzer10(const std::optional<std::string>& single_string_optional_)
+                : single_string_optional(single_string_optional_) {}
+
+            AffixFuzzer10& operator=(const std::optional<std::string>& single_string_optional_) {
+                single_string_optional = single_string_optional_;
+                return *this;
+            }
+
+            AffixFuzzer10(std::optional<std::string>&& single_string_optional_)
                 : single_string_optional(std::move(single_string_optional_)) {}
 
-            AffixFuzzer10& operator=(std::optional<std::string> single_string_optional_) {
+            AffixFuzzer10& operator=(std::optional<std::string>&& single_string_optional_) {
                 single_string_optional = std::move(single_string_optional_);
                 return *this;
             }

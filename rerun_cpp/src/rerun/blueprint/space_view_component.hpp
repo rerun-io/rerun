@@ -27,10 +27,17 @@ namespace rerun {
           public:
             SpaceViewComponent() = default;
 
-            SpaceViewComponent(std::vector<uint8_t> space_view_)
+            SpaceViewComponent(const std::vector<uint8_t>& space_view_) : space_view(space_view_) {}
+
+            SpaceViewComponent& operator=(const std::vector<uint8_t>& space_view_) {
+                space_view = space_view_;
+                return *this;
+            }
+
+            SpaceViewComponent(std::vector<uint8_t>&& space_view_)
                 : space_view(std::move(space_view_)) {}
 
-            SpaceViewComponent& operator=(std::vector<uint8_t> space_view_) {
+            SpaceViewComponent& operator=(std::vector<uint8_t>&& space_view_) {
                 space_view = std::move(space_view_);
                 return *this;
             }

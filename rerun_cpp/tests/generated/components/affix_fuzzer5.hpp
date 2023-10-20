@@ -29,10 +29,20 @@ namespace rerun {
           public:
             AffixFuzzer5() = default;
 
-            AffixFuzzer5(std::optional<rerun::datatypes::AffixFuzzer1> single_optional_)
+            AffixFuzzer5(const std::optional<rerun::datatypes::AffixFuzzer1>& single_optional_)
+                : single_optional(single_optional_) {}
+
+            AffixFuzzer5& operator=(
+                const std::optional<rerun::datatypes::AffixFuzzer1>& single_optional_
+            ) {
+                single_optional = single_optional_;
+                return *this;
+            }
+
+            AffixFuzzer5(std::optional<rerun::datatypes::AffixFuzzer1>&& single_optional_)
                 : single_optional(std::move(single_optional_)) {}
 
-            AffixFuzzer5& operator=(std::optional<rerun::datatypes::AffixFuzzer1> single_optional_
+            AffixFuzzer5& operator=(std::optional<rerun::datatypes::AffixFuzzer1>&& single_optional_
             ) {
                 single_optional = std::move(single_optional_);
                 return *this;
