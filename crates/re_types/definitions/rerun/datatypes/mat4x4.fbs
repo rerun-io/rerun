@@ -1,4 +1,5 @@
 include "arrow/attributes.fbs";
+include "cpp/attributes.fbs";
 include "fbs/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
@@ -45,7 +46,8 @@ struct Mat4x4 (
   "attr.arrow.transparent",
   "attr.python.aliases": "npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  "attr.rust.tuple_struct"
+  "attr.rust.tuple_struct",
+  "attr.cpp.no_field_ctors" // conflicts with float* constructor
 ) {
   /// Flat list of matrix coefficients in column-major order.
   flat_columns: [float32: 16] (order: 100);

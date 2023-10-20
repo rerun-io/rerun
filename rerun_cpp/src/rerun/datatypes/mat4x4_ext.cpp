@@ -37,6 +37,27 @@ namespace rerun {
                       columns[3].w(),
                   } {}
 
+            /// Construct a new 4x4 matrix from a pointer to 16 floats (in row major order).
+            Mat4x4(const float* elements)
+                : flat_columns{
+                      elements[0],
+                      elements[1],
+                      elements[2],
+                      elements[3],
+                      elements[4],
+                      elements[5],
+                      elements[6],
+                      elements[7],
+                      elements[8],
+                      elements[9],
+                      elements[10],
+                      elements[11],
+                      elements[12],
+                      elements[13],
+                      elements[14],
+                      elements[15],
+                  } {}
+
             // [CODEGEN COPY TO HEADER END]
         };
 
