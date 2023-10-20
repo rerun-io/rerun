@@ -59,6 +59,12 @@ on:
         required: false
         default: false
 
+      SYNC_RELEASE_ASSETS:
+        description: "Sync release assets and build.rerun.io"
+        type: boolean
+        required: false
+        default: false
+
 jobs:
   checks:
     name: Run All Checks
@@ -275,3 +281,11 @@ jobs:
       PR_NUMBER: ${{ needs.check-for-pr.outputs.PR_NUMBER }}
     secrets: inherit
 
+  sync-release-assets:
+    name: Sync release assets and build.rerun.io
+    if: ${{ github.event.inputs.SYNC_RELEASE_ASSETS == 'true' }}
+    uses: ./.github/workflows/reusable_sync_release_assets.yml
+    with:
+      CONCURRENCY: manual-dispatch-${{ github.run_id}}
+      RELEASE_VERSION: ${{ github.event.inputs.RELEASE_VERSION }}
+    secrets: inherit
