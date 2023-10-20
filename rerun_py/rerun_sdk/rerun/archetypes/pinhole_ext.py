@@ -97,7 +97,7 @@ class PinholeExt:
                     height = None
 
                 if focal_length is None:
-                    if resolution is None:
+                    if height is None or width is None:
                         raise ValueError("Either image_from_camera or focal_length must be set")
                     else:
                         _send_warning_or_raise("Either image_from_camera or focal_length must be set", 1)
