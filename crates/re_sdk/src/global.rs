@@ -54,7 +54,7 @@ impl Drop for ThreadLocalRecording {
             // So how?
             re_log::warn!("Using thread-local RecordingStream on macOS can result in data loss because of https://github.com/rerun-io/rerun/issues/2889");
 
-            // Give the batchet and sink threads a chance to process the data.
+            // Give the batcher and sink threads a chance to process the data.
             std::thread::sleep(std::time::Duration::from_millis(500));
 
             #[allow(clippy::mem_forget)] // Intentionally not calling `drop`
