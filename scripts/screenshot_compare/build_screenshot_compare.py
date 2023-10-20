@@ -9,6 +9,9 @@ them side-by-side. It pulls from the following sources:
 - The screenshots listed in .fbs files (crates/re_types/definitions/rerun/**/*.fbs),
   and the corresponding code examples in the docs (docs/code-examples/*.rs)
 - The `demo.rerun.io` examples, as built by the `build_demo_app.py` script.
+
+The comparison is generated in the `compare_screenshot` directory. Use the `--serve`
+option to show them in a browser.
 """
 
 from __future__ import annotations
