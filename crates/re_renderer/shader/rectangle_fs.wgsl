@@ -5,7 +5,7 @@
 
 // WARNING! Adding anything else to this shader is very likely to push us over a size threshold that
 // causes the failure reported in: https://github.com/rerun-io/rerun/issues/3931
-// Make sure any changes are tested in Chrome on Linux.
+// Make sure any changes are tested in Chrome on Linux using the Intel Mesa driver.
 
 fn is_magnifying(pixel_coord: Vec2) -> bool {
     return fwidth(pixel_coord.x) < 1.0;
@@ -129,10 +129,10 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
             normalized_value = decode_color(Vec4(decode_nv12(texture_uint, clamped_coord)));
         } else {
             // bilinear
-            let v00 = Vec4(decode_nv12(texture_uint, v00_coord));
-            let v01 = Vec4(decode_nv12(texture_uint, v01_coord));
-            let v10 = Vec4(decode_nv12(texture_uint, v10_coord));
-            let v11 = Vec4(decode_nv12(texture_uint, v11_coord));
+            let v00 = decode_nv12(texture_uint, v00_coord);
+            let v01 = decode_nv12(texture_uint, v01_coord);
+            let v10 = decode_nv12(texture_uint, v10_coord);
+            let v11 = decode_nv12(texture_uint, v11_coord);
             normalized_value = decode_color_and_filter_bilinear(coord, v00, v01, v10, v11);
         }
     }
