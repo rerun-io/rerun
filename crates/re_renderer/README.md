@@ -47,11 +47,11 @@ cargo install naga-cli --all-features
 
 Example for translating a wgsl fragment shader to GL as used on WebGL:
 ```sh
-naga ./wgsl_dump/rectangle_fs.wgsl ./wgsl_dump/rectangle_fs.frag --entry-point fs_main --profile es
+naga ./wgsl_dump/rectangle_fs.wgsl ./wgsl_dump/rectangle_fs.frag --entry-point fs_main --profile es300
 ```
 Example for translating a wgsl vertex shader to GL as used on WebGL:
 ```sh
-naga ./wgsl_dump/rectangle_vs.wgsl ./wgsl_dump/rectangle_vs.vert --entry-point vs_main --profile es
+naga ./wgsl_dump/rectangle_vs.wgsl ./wgsl_dump/rectangle_vs.vert --entry-point vs_main --profile es300
 ```
 Note that a single shader entry point from wgsl maps to a single frag/vert file!
 
