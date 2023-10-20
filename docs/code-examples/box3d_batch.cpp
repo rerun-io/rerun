@@ -15,7 +15,7 @@ int main() {
             .with_rotations({
                 rerun::datatypes::Quaternion::IDENTITY,
                 // 45 degrees around Z
-                rerun::datatypes::Quaternion(0.0f, 0.0f, 0.382683f, 0.923880f),
+                rerun::datatypes::Quaternion::from_xyzw(0.0f, 0.0f, 0.382683f, 0.923880f),
                 rerun::datatypes::RotationAxisAngle(
                     {0.0f, 1.0f, 0.0f},
                     rerun::datatypes::Angle::degrees(30.0f)
