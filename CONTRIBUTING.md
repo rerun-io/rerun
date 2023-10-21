@@ -75,6 +75,16 @@ Configure your editor to run `cargo fmt` on save. Also configure it to strip tra
 
 To check everything in one go, run `./scripts/check.sh`. `check.sh` should ideally check approximately the same things as our CI.
 
+### Linting
+Prior to pushing changes to a PR, at a minimum, you should always run `just fast-lint`. This is designed to run
+in a few seconds and should catch the more trivial issues to avoid wasting CI time.
+
+We strongly recommend adding fast-lint to a pre-push hook. For example, copy the following to: `.git/hooks/pre-push`:
+```
+#!/bin/sh
+just fast-lint
+```
+
 ### Optional
 You can use [bacon](https://github.com/Canop/bacon) to automatically check your code on each save. For instance, running just `bacon` will re-run `cargo cranky` each time you change a rust file. See [`bacon.toml`](bacon.toml) for more.
 
