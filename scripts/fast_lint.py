@@ -101,6 +101,8 @@ def main() -> None:
 
     args = parser.parse_args()
     logging.basicConfig(level=args.log_level)
+    root_logger = logging.getLogger()
+    root_logger.name = "fast-lint"
 
     script_dirpath = os.path.dirname(os.path.realpath(__file__))
     root_dirpath = os.path.abspath(f"{script_dirpath}/..")
