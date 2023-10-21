@@ -33,7 +33,7 @@ class LintJob:
     no_filter_cmd: str | None = None
     allow_no_filter: bool = True
 
-    def run_cmd(self, files: list[str], skip_list: list[str], force_run: bool) -> bool:
+    def run_cmd(self, files: list[str], skip_list: list[str], no_change_filter: bool) -> bool:
         start = time.time()
 
         cmd = self.command
@@ -41,7 +41,7 @@ class LintJob:
         if self.extensions is not None:
             files = [f for f in files if any(f.endswith(e) for e in self.extensions)]
 
-        if self.command in skip_list or (self.accepts_files and not force_run and not files):
+        if self.command in skip_list or (self.accepts_files and not no_change_filter and not files):
             logging.info(f"SKIP: {self.command}")
             return True
 
@@ -50,7 +50,7 @@ class LintJob:
 
         if len(files) == 0:
             if not self.allow_no_filter:
-                logging.info(f"SKIP: {self.command} (no filter not supported)")
+                logging.info(f"SKIP: {self.command} (no-change-filter not supported)")
                 return True
             files = self.no_filter_args
             if self.no_filter_cmd is not None:
@@ -87,7 +87,7 @@ def main() -> None:
     )
     parser.add_argument("--num-threads", type=int, default=8, help="Number of threads to use (default: 4)")
     parser.add_argument("--skip", type=str, default="", help="Comma-separated list of tasks to skip")
-    parser.add_argument("--no-file-filter", action="store_true", help="Run lints without file filters")
+    parser.add_argument("--no-change-filter", action="store_true", help="Run lints without filtering based on changes.")
     parser.add_argument(
         "files",
         metavar="file",
@@ -105,7 +105,7 @@ def main() -> None:
 
     if args.files:
         files = args.files
-    elif args.no_file_filter:
+    elif args.no_change_filter:
         files = []
     else:
         files = changed_files()
@@ -138,7 +138,7 @@ def main() -> None:
     ]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_threads) as executor:
-        results = [executor.submit(job.run_cmd, files, skip, args.no_file_filter) for job in jobs]
+        results = [executor.submit(job.run_cmd, files, skip, args.no_change_filter) for job in jobs]
 
     success = all(result.result() for result in results)
 
