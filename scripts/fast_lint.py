@@ -41,8 +41,11 @@ class LintJob:
         if self.extensions is not None:
             files = [f for f in files if any(f.endswith(e) for e in self.extensions)]
 
-        if self.command in skip_list or (self.accepts_files and not no_change_filter and not files):
-            logging.info(f"SKIP: {self.command}")
+        if self.command in skip_list:
+            logging.info(f"SKIP: {self.command} (skipped manually)")
+            return True
+        if self.accepts_files and not no_change_filter and not files:
+            logging.info(f"SKIP: {self.command} (no modified files)")
             return True
 
         if not self.accepts_files:
