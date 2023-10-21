@@ -5,8 +5,8 @@
 
 # Check if pixi is installed
 if ! command -v "pixi" > /dev/null 2>&1; then
-  echo "The rerun hooks require 'pixi', which is not installed or not in your PATH. Please run: 'cargo install pixi'."
-  exit 1
+    echo "The rerun hooks require 'pixi', which is not installed or not in your PATH. Please run: 'cargo install pixi'."
+    exit 1
 fi
 
 while read local_ref local_sha remote_ref remote_sha; do
