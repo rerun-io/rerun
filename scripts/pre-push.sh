@@ -9,4 +9,17 @@ if ! command -v "pixi" > /dev/null 2>&1; then
   exit 1
 fi
 
-pixi run fast-lint
+while read local_ref local_sha remote_ref remote_sha; do
+    # Extract the branch name from the local reference
+    branch_name=$(echo "$local_ref" | sed 's/^refs\/heads\///')
+
+    # Get the name of the currently active branch
+    active_branch=$(git symbolic-ref --short HEAD)
+
+    # Check if the pushed branch matches the active branch
+    if [ "$branch_name" = "$active_branch" ]; then
+        exec pixi run fast-lint
+    else
+        echo "Skipping fast-lint because the pushed branch ($branch_name) does not match the active branch ($active_branch)."
+    fi
+done
