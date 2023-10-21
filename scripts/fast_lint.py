@@ -23,23 +23,28 @@ def changed_files() -> list[str]:
     return [item.b_path for item in repo.index.diff(common_ancestor)]
 
 
-def run_cmd(cmd: list[str], files: list[str] | bool) -> bool:
+def run_cmd(cmd: str, files: list[str] | None = None) -> bool:
     start = time.time()
-    if not files:
-        logging.info(f"SKIP: `{' '.join(cmd)}`")
+
+    if files is not None and len(files) == 0:
+        logging.info(f"SKIP: {cmd}")
         return True
 
-    if isinstance(files, bool):
+    if files is None:
         files = []
-    proc = subprocess.run(cmd + files, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    cmd_arr = ["pixi", "run", cmd]
+
+    cmd_preview = " ".join(cmd_arr) + " <FILES>" if files else ""
+
+    proc = subprocess.run(cmd_arr + files, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if proc.returncode == 0:
-        logging.info(f"PASS: `{' '.join(cmd)} {'<FILES>' if files else ''}` in {time.time() - start:.2f}s")
-        if proc.stdout:
-            logging.debug(f"stdout: {proc.stdout}")
+        logging.info(f"PASS: {cmd} in {time.time() - start:.2f}s")
+        logging.debug(f"----------\n{cmd_preview}\n{proc.stdout}\n----------")
     else:
-        logging.info(f"FAIL: `{' '.join(cmd)} {'<FILES>' if files else ''}` in {time.time() - start:.2f}s")
-        if proc.stdout:
-            logging.info(f"stdout: {proc.stdout}")
+        logging.info(
+            f"FAIL: {cmd} in {time.time() - start:.2f}s \n----------\n{cmd_preview}\n{proc.stdout}\n----------"
+        )
 
     return proc.returncode == 0
 
@@ -63,6 +68,7 @@ def main() -> None:
         help="Set the logging level (default: INFO)",
     )
     parser.add_argument("--num-threads", type=int, default=8, help="Number of threads to use (default: 4)")
+    parser.add_argument("--skip", type=str, default="", help="Comma-separated list of tasks to skip")
     parser.add_argument(
         "files",
         metavar="file",
@@ -83,25 +89,27 @@ def main() -> None:
     else:
         files = changed_files()
 
+    skip = args.skip.split(",")
+
     logging.debug("Checking:")
     for f in files:
         logging.debug(f"  {f}")
 
     jobs = [
-        (["pixi", "run", "codegen", "--check"], True),
-        (["rustfmt", "--check"], filter_ext(files, [".rs"])),
-        (["python", "scripts/lint.py"], files),
-        (["typos"], files),
-        (["taplo", "fmt", "--check"], filter_ext(files, [".toml"])),
-        (["pixi", "run", "clang-format", "--dry-run"], filter_ext(files, [".cpp", ".c", ".h", ".hpp"])),
-        (["ruff", "check", "--config", "rerun_py/pyproject.toml"], filter_ext(files, [".py"])),
-        (["black", "--check", "--config", "rerun_py/pyproject.toml"], filter_ext(files, [".py"])),
-        (["blackdoc", "--check"], filter_ext(files, [".py"])),
-        (["mypy", "--no-warn-unused-ignore"], filter_ext(files, [".py"])),
+        ("lint-codegen", None),
+        ("lint-cpp", filter_ext(files, [".cpp", ".c", ".h", ".hpp"])),
+        ("lint-rerun", files),
+        ("lint-rs", filter_ext(files, [".rs"])),
+        ("lint-py-black", filter_ext(files, [".py"])),
+        ("lint-py-blackdoc", filter_ext(files, [".py"])),
+        ("lint-py-mypy", filter_ext(files, [".py"])),
+        ("lint-py-ruff", filter_ext(files, [".py"])),
+        ("lint-taplo", filter_ext(files, [".toml"])),
+        ("lint-typos", files),
     ]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_threads) as executor:
-        results = [executor.submit(run_cmd, command, files) for command, files in jobs]
+        results = [executor.submit(run_cmd, command, files) for command, files in jobs if command not in skip]
 
     success = all(result.result() for result in results)
 

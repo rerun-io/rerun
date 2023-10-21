@@ -18,8 +18,8 @@ format: cpp-format toml-format py-format
 lint: toml-lint py-lint rs-lint
 
 # Run the fast versions of our linters
-fast-lint:
-    python scripts/fast_lint.py
+fast-lint *ARGS:
+    pixi run python scripts/fast_lint.py {{ARGS}}
 
 ### C and C++
 
