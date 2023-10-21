@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Lints as quickly as possible."""
+"""Runs the common linters on any files that have changed relative to the main branch."""
 from __future__ import annotations
 
 import argparse
@@ -26,7 +26,7 @@ def changed_files() -> list[str]:
 def run_cmd(cmd: list[str], files: list[str] | bool) -> bool:
     start = time.time()
     if not files:
-        logging.info(f"Skipping: `{' '.join(cmd)} {'<FILES>' if files else ''}`")
+        logging.info(f"SKIP: `{' '.join(cmd)} {'<FILES>' if files else ''}`")
         return True
 
     if isinstance(files, bool):
@@ -62,6 +62,7 @@ def main() -> None:
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: INFO)",
     )
+    parser.add_argument("--num-threads", type=int, default=8, help="Number of threads to use (default: 4)")
     parser.add_argument(
         "files",
         metavar="file",
@@ -69,7 +70,6 @@ def main() -> None:
         nargs="*",
         help="File paths. Empty = all files, recursively.",
     )
-    parser.add_argument("--num-threads", type=int, default=8, help="Number of threads to use (default: 4)")
 
     args = parser.parse_args()
     logging.basicConfig(level=args.log_level)
@@ -101,7 +101,6 @@ def main() -> None:
     ]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_threads) as executor:
-        # Run each command in parallel
         results = [executor.submit(run_cmd, command, files) for command, files in jobs]
 
     success = all(result.result() for result in results)
