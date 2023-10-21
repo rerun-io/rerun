@@ -8306,20 +8306,21 @@ package:
   size: 3227
   timestamp: 1608166968312
 - name: mypy
-  version: 1.6.1
+  version: 1.4.1
   manager: conda
   platform: linux-64
   dependencies:
     libgcc-ng: '>=12'
-    mypy_extensions: '>=1.0.0'
+    mypy_extensions: '>=0.4.3'
     psutil: '>=4.0'
     python: '>=3.11,<3.12.0a0'
     python_abi: 3.11.* *_cp311
-    typing_extensions: '>=4.1.0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.6.1-py311h459d7ec_0.conda
+    tomli: '>=1.1.0'
+    typing_extensions: '>=3.10'
+  url: https://conda.anaconda.org/conda-forge/linux-64/mypy-1.4.1-py311h459d7ec_0.conda
   hash:
-    md5: d3e5072b7ff746e9f9b44f0f52de6727
-    sha256: e0f9d41e5da59ef4453d244c39666b0b7604981104d9f15881158e351c9f4344
+    md5: 70099a5eee9a60f4bd52e388b77b3378
+    sha256: 235514c25d96fe726403893509c573aa1071fba49a57dcfa88ae37d87ba317c8
   optional: false
   category: main
   build: py311h459d7ec_0
@@ -8328,73 +8329,76 @@ package:
   build_number: 0
   license: MIT
   license_family: MIT
-  size: 17216525
-  timestamp: 1697636349646
+  size: 15268473
+  timestamp: 1687821217638
 - name: mypy
-  version: 1.6.1
+  version: 1.4.1
   manager: conda
   platform: osx-64
   dependencies:
-    mypy_extensions: '>=1.0.0'
+    mypy_extensions: '>=0.4.3'
     psutil: '>=4.0'
     python: '>=3.11,<3.12.0a0'
     python_abi: 3.11.* *_cp311
-    typing_extensions: '>=4.1.0'
-  url: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.6.1-py311he705e18_0.conda
+    tomli: '>=1.1.0'
+    typing_extensions: '>=3.10'
+  url: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.4.1-py311h2725bcf_0.conda
   hash:
-    md5: 1501f32c24540130d65120df292d854b
-    sha256: 90e8cb0523bc92d54c05445b86d4afc78be2d1e5862ab63f7b99774b8c84d613
+    md5: a29b75d2d8ddd4a6208ba8e6548e661f
+    sha256: cd4c55fa0ad4ae2cd2ace3f9f4c3b5680c640cef4eb837ab81967a9dc052dba6
   optional: false
   category: main
-  build: py311he705e18_0
+  build: py311h2725bcf_0
   arch: x86_64
   subdir: osx-64
   build_number: 0
   license: MIT
   license_family: MIT
-  size: 11620522
-  timestamp: 1697636285286
+  size: 9803193
+  timestamp: 1687821896289
 - name: mypy
-  version: 1.6.1
+  version: 1.4.1
   manager: conda
   platform: osx-arm64
   dependencies:
-    mypy_extensions: '>=1.0.0'
+    mypy_extensions: '>=0.4.3'
     psutil: '>=4.0'
     python: '>=3.11,<3.12.0a0 *_cpython'
     python_abi: 3.11.* *_cp311
-    typing_extensions: '>=4.1.0'
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.6.1-py311h05b510d_0.conda
+    tomli: '>=1.1.0'
+    typing_extensions: '>=3.10'
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.4.1-py311heffc1b2_0.conda
   hash:
-    md5: 3fe52bcd6e4b64239f2b8b8fdff66107
-    sha256: fc0a32dd0128225d19caf5a3e705d7a71c7b753a7e75b8044ec52d084b4d808f
+    md5: 388c8df4d57c047bec3f17bd274843e2
+    sha256: 534eb1914c32392372c236740868bf72f769563315c3df54deef145a2924ebfa
   optional: false
   category: main
-  build: py311h05b510d_0
+  build: py311heffc1b2_0
   arch: aarch64
   subdir: osx-arm64
   build_number: 0
   license: MIT
   license_family: MIT
-  size: 9410384
-  timestamp: 1697636483558
+  size: 9520844
+  timestamp: 1687822156007
 - name: mypy
-  version: 1.6.1
+  version: 1.4.1
   manager: conda
   platform: win-64
   dependencies:
-    mypy_extensions: '>=1.0.0'
+    mypy_extensions: '>=0.4.3'
     psutil: '>=4.0'
     python: '>=3.11,<3.12.0a0'
     python_abi: 3.11.* *_cp311
-    typing_extensions: '>=4.1.0'
+    tomli: '>=1.1.0'
+    typing_extensions: '>=3.10'
     ucrt: '>=10.0.20348.0'
     vc: '>=14.2,<15'
     vc14_runtime: '>=14.29.30139'
-  url: https://conda.anaconda.org/conda-forge/win-64/mypy-1.6.1-py311ha68e1ae_0.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/mypy-1.4.1-py311ha68e1ae_0.conda
   hash:
-    md5: a1b4604e64ea28f76b9b6d90d761e7ab
-    sha256: 87db39170690db2aec4bcabb73ad36031d77cb07dfc46b6f50496a137891ffe7
+    md5: 6d8c5eed03be56e4ceedee017d5edb83
+    sha256: 821f051883edbee804c3f1be27fa3e0fe652d0e686dca5c98bc3d031f5a919ad
   optional: false
   category: main
   build: py311ha68e1ae_0
@@ -8403,8 +8407,8 @@ package:
   build_number: 0
   license: MIT
   license_family: MIT
-  size: 9664676
-  timestamp: 1697636157508
+  size: 7927695
+  timestamp: 1687821196175
 - name: mypy_extensions
   version: 1.0.0
   manager: conda

@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import time
+from dataclasses import dataclass, field
 
 from git import Repo
 
@@ -23,38 +24,55 @@ def changed_files() -> list[str]:
     return [item.b_path for item in repo.index.diff(common_ancestor)]
 
 
-def run_cmd(cmd: str, files: list[str] | None = None) -> bool:
-    start = time.time()
+@dataclass
+class LintJob:
+    command: str
+    extensions: list[str] | None = None
+    accepts_files: bool = True
+    no_filter_args: list[str] = field(default_factory=list)
+    no_filter_cmd: str | None = None
+    allow_no_filter: bool = True
 
-    if files is not None and len(files) == 0:
-        logging.info(f"SKIP: {cmd}")
-        return True
+    def run_cmd(self, files: list[str], skip_list: list[str], force_run: bool) -> bool:
+        start = time.time()
 
-    if files is None:
-        files = []
+        cmd = self.command
 
-    cmd_arr = ["pixi", "run", cmd]
+        if self.extensions is not None:
+            files = [f for f in files if any(f.endswith(e) for e in self.extensions)]
 
-    cmd_preview = " ".join(cmd_arr) + " <FILES>" if files else ""
+        if self.command in skip_list or (self.accepts_files and not force_run and not files):
+            logging.info(f"SKIP: {self.command}")
+            return True
 
-    proc = subprocess.run(cmd_arr + files, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    if proc.returncode == 0:
-        logging.info(f"PASS: {cmd} in {time.time() - start:.2f}s")
-        logging.debug(f"----------\n{cmd_preview}\n{proc.stdout}\n----------")
-    else:
-        logging.info(
-            f"FAIL: {cmd} in {time.time() - start:.2f}s \n----------\n{cmd_preview}\n{proc.stdout}\n----------"
-        )
+        if not self.accepts_files:
+            files = []
 
-    return proc.returncode == 0
+        if len(files) == 0:
+            if not self.allow_no_filter:
+                logging.info(f"SKIP: {self.command} (no filter not supported)")
+                return True
+            files = self.no_filter_args
+            if self.no_filter_cmd is not None:
+                cmd = self.no_filter_cmd
+
+        cmd_arr = ["pixi", "run", cmd]
+
+        cmd_preview = " ".join(cmd_arr) + " <FILES>" if files else ""
+
+        proc = subprocess.run(cmd_arr + files, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        if proc.returncode == 0:
+            logging.info(f"PASS: {cmd} in {time.time() - start:.2f}s")
+            logging.debug(f"----------\n{cmd_preview}\n{proc.stdout}\n----------")
+        else:
+            logging.info(
+                f"FAIL: {cmd} in {time.time() - start:.2f}s \n----------\n{cmd_preview}\n{proc.stdout}\n----------"
+            )
+
+        return proc.returncode == 0
 
 
-def filter_ext(files: list[str], ext: list[str]) -> list[str]:
-    return [f for f in files if any(f.endswith(e) for e in ext)]
-
-
-def filter_cpp(files: list[str]) -> list[str]:
-    return [f for f in files if f.endswith(".h") or f.endswith(".hpp") or f.endswith(".c") or f.endswith(".cpp")]
+PY_FOLDERS = ["docs/code-examples", "examples", "rerun_py", "scripts", "tests"]
 
 
 def main() -> None:
@@ -69,6 +87,7 @@ def main() -> None:
     )
     parser.add_argument("--num-threads", type=int, default=8, help="Number of threads to use (default: 4)")
     parser.add_argument("--skip", type=str, default="", help="Comma-separated list of tasks to skip")
+    parser.add_argument("--no-file-filter", action="store_true", help="Run lints without file filters")
     parser.add_argument(
         "files",
         metavar="file",
@@ -86,6 +105,8 @@ def main() -> None:
 
     if args.files:
         files = args.files
+    elif args.no_file_filter:
+        files = []
     else:
         files = changed_files()
 
@@ -96,20 +117,28 @@ def main() -> None:
         logging.debug(f"  {f}")
 
     jobs = [
-        ("lint-codegen", None),
-        ("lint-cpp", filter_ext(files, [".cpp", ".c", ".h", ".hpp"])),
-        ("lint-rerun", files),
-        ("lint-rs", filter_ext(files, [".rs"])),
-        ("lint-py-black", filter_ext(files, [".py"])),
-        ("lint-py-blackdoc", filter_ext(files, [".py"])),
-        ("lint-py-mypy", filter_ext(files, [".py"])),
-        ("lint-py-ruff", filter_ext(files, [".py"])),
-        ("lint-taplo", filter_ext(files, [".toml"])),
-        ("lint-typos", files),
+        LintJob("lint-codegen", accepts_files=False),
+        LintJob(
+            "lint-cpp-files",
+            extensions=[".cpp", ".c", ".h", ".hpp"],
+            allow_no_filter=False,
+        ),
+        LintJob("lint-rerun"),
+        LintJob(
+            "lint-rs-files",
+            extensions=[".rs"],
+            no_filter_cmd="lint-rs-all",
+        ),
+        LintJob("lint-py-black", extensions=[".py"], no_filter_args=PY_FOLDERS),
+        LintJob("lint-py-blackdoc", extensions=[".py"], no_filter_args=PY_FOLDERS),
+        LintJob("lint-py-mypy", extensions=[".py"]),
+        LintJob("lint-py-ruff", extensions=[".py"], no_filter_args=PY_FOLDERS),
+        LintJob("lint-taplo", extensions=[".toml"]),
+        LintJob("lint-typos"),
     ]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_threads) as executor:
-        results = [executor.submit(run_cmd, command, files) for command, files in jobs if command not in skip]
+        results = [executor.submit(job.run_cmd, files, skip, args.no_file_filter) for job in jobs]
 
     success = all(result.result() for result in results)
 
