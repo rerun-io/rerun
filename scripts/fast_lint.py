@@ -26,7 +26,7 @@ def changed_files() -> list[str]:
 def run_cmd(cmd: list[str], files: list[str] | bool) -> bool:
     start = time.time()
     if not files:
-        logging.info(f"SKIP: `{' '.join(cmd)} {'<FILES>' if files else ''}`")
+        logging.info(f"SKIP: `{' '.join(cmd)}`")
         return True
 
     if isinstance(files, bool):
