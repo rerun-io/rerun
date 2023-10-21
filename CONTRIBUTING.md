@@ -79,10 +79,18 @@ To check everything in one go, run `./scripts/check.sh`. `check.sh` should ideal
 Prior to pushing changes to a PR, at a minimum, you should always run `just fast-lint`. This is designed to run
 in a few seconds and should catch the more trivial issues to avoid wasting CI time.
 
-We strongly recommend adding fast-lint to a pre-push hook. For example, copy the following to: `.git/hooks/pre-push`:
+### Hooks
+We recommend adding the rerun pre-push hook to your local checkout, which among other-things will run
+`just fast-lint` for you.
+
+To install the hooks, simply copy them into the `.git/hooks` directory of your local checkout.
 ```
-#!/bin/sh
-just fast-lint
+cp hooks/pre-push .git/hooks/pre-push
+chmod +x .git/hooks/pre-push
+```
+or if you prefer you can configure git to use this directory as the hooks directory:
+```
+git config core.hooksPath hooks
 ```
 
 ### Optional
