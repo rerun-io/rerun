@@ -3,4 +3,4 @@
 # This is a shim to call through to the managed pre-push hook.
 # See: hooks/README.md for more details.
 repo_root=$(git rev-parse --show-toplevel)
-sh $repo_root/scripts/pre-push.sh "$@"
+exec $repo_root/scripts/pre-push.sh "$@"
