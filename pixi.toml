@@ -29,6 +29,7 @@ version = "0.1.0"                                                              #
 codegen = "cargo run --package re_types_builder -- "
 
 # Assorted linting tasks
+fast-lint = "python scripts/fast_lint.py"
 lint-codegen = "cargo run --package re_types_builder -- --check"
 # TODO(jleibs): implement lint-cpp-all
 lint-cpp-files = "clang-format --dry-run"
