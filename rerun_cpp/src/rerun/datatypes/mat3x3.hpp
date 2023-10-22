@@ -52,7 +52,7 @@ namespace rerun {
                   } {}
 
             /// Construct a new 3x3 matrix from a pointer to 9 floats (in row major order).
-            Mat3x3(const float* elements)
+            explicit Mat3x3(const float* elements)
                 : flat_columns{
                       elements[0],
                       elements[1],

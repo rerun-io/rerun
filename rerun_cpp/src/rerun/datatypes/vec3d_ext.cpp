@@ -19,7 +19,7 @@ namespace rerun {
             /// Construct Vec3D from x/y/z float pointer.
             ///
             /// Attention: The pointer must point to at least least 3 floats long.
-            Vec3D(const float* ptr) : xyz{ptr[0], ptr[1], ptr[2]} {}
+            explicit Vec3D(const float* xyz) : xyz{xyz[0], xyz[1], xyz[2]} {}
 
             float x() const {
                 return xyz[0];
