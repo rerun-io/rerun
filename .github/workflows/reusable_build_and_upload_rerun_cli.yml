@@ -1,0 +1,194 @@
+name: Reusable Rerun CLI build & upload
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      PLATFORM:
+        required: true
+        type: string
+      RELEASE_VERSION:
+        required: false
+        type: string
+        default: "prerelease"
+      UPLOAD_COMMIT_OVERRIDE:
+        required: false
+        type: string
+        default: ""
+      UPLOAD_COMMIT:
+        required: false
+        type: boolean
+        default: true
+      ADHOC_NAME:
+        required: false
+        type: string
+        default: ""
+
+  workflow_dispatch:
+    inputs:
+      ADHOC_NAME:
+        required: true
+        type: string
+        description: "Name of the adhoc build, used for upload directory"
+      PLATFORM:
+        type: choice
+        options:
+          - linux
+          - windows
+          - macos-arm
+          - macos-intel
+        description: "Platform to build for"
+        required: true
+      CONCURRENCY:
+        required: false
+        type: string
+        default: "adhoc"
+      RELEASE_VERSION:
+        required: false
+        type: string
+        default: "prerelease"
+      UPLOAD_COMMIT_OVERRIDE:
+        required: false
+        type: string
+        default: ""
+      UPLOAD_COMMIT:
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-build-rerun-cli
+  cancel-in-progress: true
+
+env:
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+
+permissions:
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  set-config:
+    name: Set Config (${{ inputs.PLATFORM }})
+    runs-on: ubuntu-latest-16-cores
+    outputs:
+      RUNNER: ${{ steps.set-config.outputs.runner }}
+      TARGET: ${{ steps.set-config.outputs.target }}
+      CONTAINER: ${{ steps.set-config.outputs.container }}
+      BIN_NAME: ${{ steps.set-config.outputs.bin_name }}
+    steps:
+      - name: Set runner and target based on platform
+        id: set-config
+        run: |
+          case "${{ inputs.PLATFORM }}" in
+            linux)
+              runner="ubuntu-latest-16-cores"
+              target="x86_64-unknown-linux-gnu"
+              container="{'image': 'rerunio/ci_docker:0.10.0'}"
+              bin_name="rerun"
+              ;;
+            windows)
+              runner="windows-latest-8-cores"
+              target="x86_64-pc-windows-msvc"
+              container="null"
+              bin_name="rerun.exe"
+              ;;
+            macos-arm)
+              runner="macos-latest"
+              target="aarch64-apple-darwin"
+              container="null"
+              bin_name="rerun"
+              ;;
+            macos-intel)
+              runner="macos-latest"
+              target="x86_64-apple-darwin"
+              container="null"
+              bin_name="rerun"
+              ;;
+            *) echo "Invalid platform" && exit 1 ;;
+          esac
+          echo "runner=$runner" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "container=$container" >> "$GITHUB_OUTPUT"
+          echo "bin_name=$bin_name" >> "$GITHUB_OUTPUT"
+
+  build-rerun-cli:
+    name: Build rerun-cli (${{ needs.set-config.outputs.RUNNER }})
+
+    needs: [set-config]
+
+    runs-on: ${{ needs.set-config.outputs.RUNNER }}
+    container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+
+    steps:
+      - name: Show context
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-${{ inputs.PLATFORM }}"
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          targets: ${{ needs.set-config.outputs.TARGET }}
+
+      - name: Build rerun-cli (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked -p rerun-cli --no-default-features --features native_viewer,web_viewer --release --target ${{ needs.set-config.outputs.TARGET }}
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
+        id: "short-sha"
+        run: |
+          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
+          fi
+          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: "Upload rerun-cli (commit)"
+        if: ${{ inputs.UPLOAD_COMMIT }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          destination: "rerun-builds/commit/${{ steps.short-sha.outputs.SHORT_SHA }}/rerun-cli/${{ inputs.PLATFORM }}"
+          parent: false
+
+      - name: "Upload rerun-cli (adhoc)"
+        if: ${{ inputs.ADHOC_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
+          parent: false
