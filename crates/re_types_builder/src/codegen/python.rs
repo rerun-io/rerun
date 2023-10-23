@@ -789,9 +789,9 @@ fn code_for_union(
     };
 
     let inner_type = if field_types.len() > 1 {
-        format!("Union[{}]", field_types.iter().join(", "))
+        field_types.iter().join(" | ")
     } else {
-        field_types.iter().next().unwrap().to_string()
+        field_types.first().unwrap().to_string()
     };
 
     // components and datatypes have converters only if manually provided
@@ -1060,46 +1060,44 @@ fn quote_native_types_method_from_obj(objects: &Objects, obj: &Object) -> String
 fn quote_aliases_from_object(obj: &Object) -> String {
     assert_ne!(obj.kind, ObjectKind::Archetype);
 
-    let aliases = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES);
-    let array_aliases = obj
-        .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
-        .unwrap_or_default();
+    let aliases = obj.get_attr_list(ATTR_PYTHON_ALIASES);
+    let array_aliases = obj.get_attr_list(ATTR_PYTHON_ARRAY_ALIASES);
 
     let name = &obj.name;
 
     let mut code = String::new();
 
-    code.push_unindented_text(
-        &if let Some(aliases) = aliases {
-            format!(
+    if aliases.is_empty() {
+        code.push_unindented_text(&format!("{name}Like = {name}"), 1);
+    } else {
+        code.push_unindented_text(
+            &format!(
                 r#"
                 if TYPE_CHECKING:
-                    {name}Like = Union[
-                        {name},
-                        {aliases}
-                    ]
+                    {name}Like = {name} | {}
                 else:
                     {name}Like = Any
                 "#,
-            )
-        } else {
-            format!("{name}Like = {name}")
-        },
-        1,
-    );
+                aliases.iter().join(" | ")
+            ),
+            1,
+        );
+    }
 
-    code.push_unindented_text(
-        format!(
-            r#"
-            {name}ArrayLike = Union[
-                {name},
-                Sequence[{name}Like],
-                {array_aliases}
-            ]
-            "#,
-        ),
-        0,
-    );
+    if array_aliases.is_empty() {
+        code.push_unindented_text(
+            format!("{name}ArrayLike = {name} | Sequence[{name}Like]"),
+            0,
+        );
+    } else {
+        code.push_unindented_text(
+            format!(
+                "{name}ArrayLike = {name} | Sequence[{name}Like] | {}",
+                array_aliases.iter().join(" | ")
+            ),
+            0,
+        );
+    }
 
     code
 }
@@ -1108,34 +1106,33 @@ fn quote_aliases_from_object(obj: &Object) -> String {
 /// included.
 fn quote_union_aliases_from_object<'a>(
     obj: &Object,
-    mut field_types: impl Iterator<Item = &'a String>,
+    field_types: impl Iterator<Item = &'a String>,
 ) -> String {
     assert_ne!(obj.kind, ObjectKind::Archetype);
 
-    let aliases = obj.try_get_attr::<String>(ATTR_PYTHON_ALIASES);
-    let array_aliases = obj
-        .try_get_attr::<String>(ATTR_PYTHON_ARRAY_ALIASES)
-        .unwrap_or_default();
+    let field_types = field_types.collect_vec();
+
+    let aliases = obj.get_attr_list(ATTR_PYTHON_ALIASES);
+    let array_aliases = obj.get_attr_list(ATTR_PYTHON_ARRAY_ALIASES);
 
     let name = &obj.name;
 
-    let union_fields = field_types.join(",");
-    let aliases = if let Some(aliases) = aliases {
-        aliases
-    } else {
-        String::new()
-    };
+    let like = std::iter::once(name)
+        .chain(field_types.iter().copied())
+        .chain(aliases.iter())
+        .join(" | ");
+
+    let array_like = std::iter::once(name)
+        .chain(field_types)
+        .chain(std::iter::once(&format!("Sequence[{name}Like]")))
+        .chain(array_aliases.iter())
+        .join(" | ");
 
     unindent::unindent(&format!(
         r#"
             if TYPE_CHECKING:
-                {name}Like = Union[
-                    {name},{union_fields},{aliases}
-                ]
-                {name}ArrayLike = Union[
-                    {name},{union_fields},
-                    Sequence[{name}Like],{array_aliases}
-                ]
+                {name}Like = {like}
+                {name}ArrayLike = {array_like}
             else:
                 {name}Like = Any
                 {name}ArrayLike = Any

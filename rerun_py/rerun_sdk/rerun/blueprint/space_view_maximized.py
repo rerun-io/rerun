@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -47,10 +47,7 @@ class SpaceViewMaximized:
 
 
 SpaceViewMaximizedLike = SpaceViewMaximized
-SpaceViewMaximizedArrayLike = Union[
-    SpaceViewMaximized,
-    Sequence[SpaceViewMaximizedLike],
-]
+SpaceViewMaximizedArrayLike = SpaceViewMaximized | Sequence[SpaceViewMaximizedLike]
 
 
 class SpaceViewMaximizedType(BaseExtensionType):

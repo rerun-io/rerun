@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -17,7 +17,7 @@ __all__ = ["AffixFuzzer5", "AffixFuzzer5ArrayLike", "AffixFuzzer5Batch", "AffixF
 
 
 def _affix_fuzzer5__single_optional_union__special_field_converter_override(
-    x: datatypes.AffixFuzzer4Like | None,
+    x: datatypes.AffixFuzzer4Like | None
 ) -> datatypes.AffixFuzzer4 | None:
     if x is None:
         return None
@@ -41,10 +41,7 @@ class AffixFuzzer5:
 
 
 AffixFuzzer5Like = AffixFuzzer5
-AffixFuzzer5ArrayLike = Union[
-    AffixFuzzer5,
-    Sequence[AffixFuzzer5Like],
-]
+AffixFuzzer5ArrayLike = AffixFuzzer5 | Sequence[AffixFuzzer5Like]
 
 
 class AffixFuzzer5Type(BaseExtensionType):

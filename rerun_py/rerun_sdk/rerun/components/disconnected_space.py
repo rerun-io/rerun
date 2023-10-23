@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -43,11 +43,11 @@ class DisconnectedSpace(DisconnectedSpaceExt):
 
 
 if TYPE_CHECKING:
-    DisconnectedSpaceLike = Union[DisconnectedSpace, bool]
+    DisconnectedSpaceLike = DisconnectedSpace | bool
 else:
     DisconnectedSpaceLike = Any
 
-DisconnectedSpaceArrayLike = Union[DisconnectedSpace, Sequence[DisconnectedSpaceLike], bool, npt.NDArray[np.bool_]]
+DisconnectedSpaceArrayLike = DisconnectedSpace | Sequence[DisconnectedSpaceLike] | bool | npt.NDArray[np.bool_]
 
 
 class DisconnectedSpaceType(BaseExtensionType):

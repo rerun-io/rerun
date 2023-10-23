@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -55,10 +55,7 @@ class TensorDimension:
 
 
 TensorDimensionLike = TensorDimension
-TensorDimensionArrayLike = Union[
-    TensorDimension,
-    Sequence[TensorDimensionLike],
-]
+TensorDimensionArrayLike = TensorDimension | Sequence[TensorDimensionLike]
 
 
 class TensorDimensionType(BaseExtensionType):

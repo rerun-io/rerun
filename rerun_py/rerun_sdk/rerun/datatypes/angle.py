@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -35,15 +35,8 @@ class Angle(AngleExt):
 
 
 if TYPE_CHECKING:
-    AngleLike = Union[
-        Angle,
-        float,
-    ]
-    AngleArrayLike = Union[
-        Angle,
-        float,
-        Sequence[AngleLike],
-    ]
+    AngleLike = Angle | float
+    AngleArrayLike = Angle | float | Sequence[AngleLike]
 else:
     AngleLike = Any
     AngleArrayLike = Any

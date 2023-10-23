@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy.typing as npt
 import pyarrow as pa
@@ -45,11 +45,11 @@ class TensorData(TensorDataExt):
 
 
 if TYPE_CHECKING:
-    TensorDataLike = Union[TensorData, npt.ArrayLike]
+    TensorDataLike = TensorData | npt.ArrayLike
 else:
     TensorDataLike = Any
 
-TensorDataArrayLike = Union[TensorData, Sequence[TensorDataLike], npt.ArrayLike]
+TensorDataArrayLike = TensorData | Sequence[TensorDataLike] | npt.ArrayLike
 
 
 class TensorDataType(BaseExtensionType):

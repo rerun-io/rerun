@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -39,13 +39,13 @@ class Vec3D(Vec3DExt):
 
 
 if TYPE_CHECKING:
-    Vec3DLike = Union[Vec3D, npt.NDArray[Any], npt.ArrayLike, Sequence[float]]
+    Vec3DLike = Vec3D | npt.NDArray[Any] | npt.ArrayLike | Sequence[float]
 else:
     Vec3DLike = Any
 
-Vec3DArrayLike = Union[
-    Vec3D, Sequence[Vec3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[float]], Sequence[float]
-]
+Vec3DArrayLike = (
+    Vec3D | Sequence[Vec3DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[float]] | Sequence[float]
+)
 
 
 class Vec3DType(BaseExtensionType):

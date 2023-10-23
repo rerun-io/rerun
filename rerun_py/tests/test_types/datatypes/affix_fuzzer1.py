@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -25,7 +25,7 @@ __all__ = ["AffixFuzzer1", "AffixFuzzer1ArrayLike", "AffixFuzzer1Batch", "AffixF
 
 
 def _affix_fuzzer1__almost_flattened_scalar__special_field_converter_override(
-    x: datatypes.FlattenedScalarLike,
+    x: datatypes.FlattenedScalarLike
 ) -> datatypes.FlattenedScalar:
     if isinstance(x, datatypes.FlattenedScalar):
         return x
@@ -76,10 +76,7 @@ class AffixFuzzer1:
 
 
 AffixFuzzer1Like = AffixFuzzer1
-AffixFuzzer1ArrayLike = Union[
-    AffixFuzzer1,
-    Sequence[AffixFuzzer1Like],
-]
+AffixFuzzer1ArrayLike = AffixFuzzer1 | Sequence[AffixFuzzer1Like]
 
 
 class AffixFuzzer1Type(BaseExtensionType):

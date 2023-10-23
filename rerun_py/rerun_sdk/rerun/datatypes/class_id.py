@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -39,11 +39,11 @@ class ClassId(ClassIdExt):
 
 
 if TYPE_CHECKING:
-    ClassIdLike = Union[ClassId, int]
+    ClassIdLike = ClassId | int
 else:
     ClassIdLike = Any
 
-ClassIdArrayLike = Union[ClassId, Sequence[ClassIdLike], int, npt.ArrayLike]
+ClassIdArrayLike = ClassId | Sequence[ClassIdLike] | int | npt.ArrayLike
 
 
 class ClassIdType(BaseExtensionType):

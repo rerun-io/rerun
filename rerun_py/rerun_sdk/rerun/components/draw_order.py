@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -47,11 +47,11 @@ class DrawOrder(DrawOrderExt):
 
 
 if TYPE_CHECKING:
-    DrawOrderLike = Union[DrawOrder, float]
+    DrawOrderLike = DrawOrder | float
 else:
     DrawOrderLike = Any
 
-DrawOrderArrayLike = Union[DrawOrder, Sequence[DrawOrderLike], float, npt.NDArray[np.float32]]
+DrawOrderArrayLike = DrawOrder | Sequence[DrawOrderLike] | float | npt.NDArray[np.float32]
 
 
 class DrawOrderType(BaseExtensionType):

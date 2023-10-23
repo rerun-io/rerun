@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -39,11 +39,11 @@ class DepthMeter(DepthMeterExt):
 
 
 if TYPE_CHECKING:
-    DepthMeterLike = Union[DepthMeter, float]
+    DepthMeterLike = DepthMeter | float
 else:
     DepthMeterLike = Any
 
-DepthMeterArrayLike = Union[DepthMeter, Sequence[DepthMeterLike], float, npt.NDArray[np.float32]]
+DepthMeterArrayLike = DepthMeter | Sequence[DepthMeterLike] | float | npt.NDArray[np.float32]
 
 
 class DepthMeterType(BaseExtensionType):

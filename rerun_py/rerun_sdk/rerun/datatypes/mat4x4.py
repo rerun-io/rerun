@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -73,14 +73,11 @@ class Mat4x4(Mat4x4Ext):
 
 
 if TYPE_CHECKING:
-    Mat4x4Like = Union[Mat4x4, npt.ArrayLike]
+    Mat4x4Like = Mat4x4 | npt.ArrayLike
 else:
     Mat4x4Like = Any
 
-Mat4x4ArrayLike = Union[
-    Mat4x4,
-    Sequence[Mat4x4Like],
-]
+Mat4x4ArrayLike = Mat4x4 | Sequence[Mat4x4Like]
 
 
 class Mat4x4Type(BaseExtensionType):

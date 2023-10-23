@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -33,11 +33,11 @@ class Utf8(Utf8Ext):
 
 
 if TYPE_CHECKING:
-    Utf8Like = Union[Utf8, str]
+    Utf8Like = Utf8 | str
 else:
     Utf8Like = Any
 
-Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str]]
+Utf8ArrayLike = Utf8 | Sequence[Utf8Like] | str | Sequence[str]
 
 
 class Utf8Type(BaseExtensionType):

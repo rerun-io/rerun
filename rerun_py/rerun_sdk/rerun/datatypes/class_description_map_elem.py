@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -24,7 +24,7 @@ __all__ = [
 
 
 def _class_description_map_elem__class_id__special_field_converter_override(
-    x: datatypes.ClassIdLike,
+    x: datatypes.ClassIdLike
 ) -> datatypes.ClassId:
     if isinstance(x, datatypes.ClassId):
         return x
@@ -69,14 +69,11 @@ class ClassDescriptionMapElem(ClassDescriptionMapElemExt):
 
 
 if TYPE_CHECKING:
-    ClassDescriptionMapElemLike = Union[ClassDescriptionMapElem, datatypes.ClassDescriptionLike]
+    ClassDescriptionMapElemLike = ClassDescriptionMapElem | datatypes.ClassDescriptionLike
 else:
     ClassDescriptionMapElemLike = Any
 
-ClassDescriptionMapElemArrayLike = Union[
-    ClassDescriptionMapElem,
-    Sequence[ClassDescriptionMapElemLike],
-]
+ClassDescriptionMapElemArrayLike = ClassDescriptionMapElem | Sequence[ClassDescriptionMapElemLike]
 
 
 class ClassDescriptionMapElemType(BaseExtensionType):

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -59,10 +59,7 @@ class MeshProperties(MeshPropertiesExt):
 
 
 MeshPropertiesLike = MeshProperties
-MeshPropertiesArrayLike = Union[
-    MeshProperties,
-    Sequence[MeshPropertiesLike],
-]
+MeshPropertiesArrayLike = MeshProperties | Sequence[MeshPropertiesLike]
 
 
 class MeshPropertiesType(BaseExtensionType):

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -38,11 +38,11 @@ class ScalarScattering(ScalarScatteringExt):
 
 
 if TYPE_CHECKING:
-    ScalarScatteringLike = Union[ScalarScattering, bool]
+    ScalarScatteringLike = ScalarScattering | bool
 else:
     ScalarScatteringLike = Any
 
-ScalarScatteringArrayLike = Union[ScalarScattering, Sequence[ScalarScatteringLike], bool, npt.NDArray[np.bool_]]
+ScalarScatteringArrayLike = ScalarScattering | Sequence[ScalarScatteringLike] | bool | npt.NDArray[np.bool_]
 
 
 class ScalarScatteringType(BaseExtensionType):

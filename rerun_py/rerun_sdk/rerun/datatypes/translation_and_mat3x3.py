@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -24,7 +24,7 @@ __all__ = [
 
 
 def _translation_and_mat3x3__translation__special_field_converter_override(
-    x: datatypes.Vec3DLike | None,
+    x: datatypes.Vec3DLike | None
 ) -> datatypes.Vec3D | None:
     if x is None:
         return None
@@ -35,7 +35,7 @@ def _translation_and_mat3x3__translation__special_field_converter_override(
 
 
 def _translation_and_mat3x3__mat3x3__special_field_converter_override(
-    x: datatypes.Mat3x3Like | None,
+    x: datatypes.Mat3x3Like | None
 ) -> datatypes.Mat3x3 | None:
     if x is None:
         return None
@@ -79,10 +79,7 @@ class TranslationAndMat3x3(TranslationAndMat3x3Ext):
 
 
 TranslationAndMat3x3Like = TranslationAndMat3x3
-TranslationAndMat3x3ArrayLike = Union[
-    TranslationAndMat3x3,
-    Sequence[TranslationAndMat3x3Like],
-]
+TranslationAndMat3x3ArrayLike = TranslationAndMat3x3 | Sequence[TranslationAndMat3x3Like]
 
 
 class TranslationAndMat3x3Type(BaseExtensionType):

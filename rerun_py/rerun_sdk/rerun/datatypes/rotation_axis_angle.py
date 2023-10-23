@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -54,10 +54,7 @@ class RotationAxisAngle(RotationAxisAngleExt):
 
 
 RotationAxisAngleLike = RotationAxisAngle
-RotationAxisAngleArrayLike = Union[
-    RotationAxisAngle,
-    Sequence[RotationAxisAngleLike],
-]
+RotationAxisAngleArrayLike = RotationAxisAngle | Sequence[RotationAxisAngleLike]
 
 
 class RotationAxisAngleType(BaseExtensionType):

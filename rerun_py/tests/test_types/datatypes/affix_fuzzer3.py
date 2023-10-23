@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -37,19 +37,10 @@ class AffixFuzzer3:
 
 
 if TYPE_CHECKING:
-    AffixFuzzer3Like = Union[
-        AffixFuzzer3,
-        float,
-        list[datatypes.AffixFuzzer1],
-        npt.NDArray[np.float32],
-    ]
-    AffixFuzzer3ArrayLike = Union[
-        AffixFuzzer3,
-        float,
-        list[datatypes.AffixFuzzer1],
-        npt.NDArray[np.float32],
-        Sequence[AffixFuzzer3Like],
-    ]
+    AffixFuzzer3Like = AffixFuzzer3 | float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32]
+    AffixFuzzer3ArrayLike = (
+        AffixFuzzer3 | float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32] | Sequence[AffixFuzzer3Like]
+    )
 else:
     AffixFuzzer3Like = Any
     AffixFuzzer3ArrayLike = Any

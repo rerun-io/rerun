@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -38,13 +38,13 @@ class UVec3D:
 
 
 if TYPE_CHECKING:
-    UVec3DLike = Union[UVec3D, npt.NDArray[Any], npt.ArrayLike, Sequence[int]]
+    UVec3DLike = UVec3D | npt.NDArray[Any] | npt.ArrayLike | Sequence[int]
 else:
     UVec3DLike = Any
 
-UVec3DArrayLike = Union[
-    UVec3D, Sequence[UVec3DLike], npt.NDArray[Any], npt.ArrayLike, Sequence[Sequence[int]], Sequence[int]
-]
+UVec3DArrayLike = (
+    UVec3D | Sequence[UVec3DLike] | npt.NDArray[Any] | npt.ArrayLike | Sequence[Sequence[int]] | Sequence[int]
+)
 
 
 class UVec3DType(BaseExtensionType):

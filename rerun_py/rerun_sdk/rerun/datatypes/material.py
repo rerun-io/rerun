@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -18,7 +18,7 @@ __all__ = ["Material", "MaterialArrayLike", "MaterialBatch", "MaterialLike", "Ma
 
 
 def _material__albedo_factor__special_field_converter_override(
-    x: datatypes.Rgba32Like | None,
+    x: datatypes.Rgba32Like | None
 ) -> datatypes.Rgba32 | None:
     if x is None:
         return None
@@ -54,10 +54,7 @@ class Material(MaterialExt):
 
 
 MaterialLike = Material
-MaterialArrayLike = Union[
-    Material,
-    Sequence[MaterialLike],
-]
+MaterialArrayLike = Material | Sequence[MaterialLike]
 
 
 class MaterialType(BaseExtensionType):

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -38,10 +38,7 @@ class UInt32:
 
 
 UInt32Like = UInt32
-UInt32ArrayLike = Union[
-    UInt32,
-    Sequence[UInt32Like],
-]
+UInt32ArrayLike = UInt32 | Sequence[UInt32Like]
 
 
 class UInt32Type(BaseExtensionType):

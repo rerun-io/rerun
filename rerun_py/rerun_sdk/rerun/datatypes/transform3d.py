@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -32,17 +32,10 @@ class Transform3D(Transform3DExt):
 
 
 if TYPE_CHECKING:
-    Transform3DLike = Union[
-        Transform3D,
-        datatypes.TranslationAndMat3x3,
-        datatypes.TranslationRotationScale3D,
-    ]
-    Transform3DArrayLike = Union[
-        Transform3D,
-        datatypes.TranslationAndMat3x3,
-        datatypes.TranslationRotationScale3D,
-        Sequence[Transform3DLike],
-    ]
+    Transform3DLike = Transform3D | datatypes.TranslationAndMat3x3 | datatypes.TranslationRotationScale3D
+    Transform3DArrayLike = (
+        Transform3D | datatypes.TranslationAndMat3x3 | datatypes.TranslationRotationScale3D | Sequence[Transform3DLike]
+    )
 else:
     Transform3DLike = Any
     Transform3DArrayLike = Any

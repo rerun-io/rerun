@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -43,11 +43,11 @@ class Scalar(ScalarExt):
 
 
 if TYPE_CHECKING:
-    ScalarLike = Union[Scalar, float]
+    ScalarLike = Scalar | float
 else:
     ScalarLike = Any
 
-ScalarArrayLike = Union[Scalar, Sequence[ScalarLike], float, npt.NDArray[np.float64]]
+ScalarArrayLike = Scalar | Sequence[ScalarLike] | float | npt.NDArray[np.float64]
 
 
 class ScalarType(BaseExtensionType):

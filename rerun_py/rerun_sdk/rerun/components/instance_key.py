@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -39,11 +39,11 @@ class InstanceKey(InstanceKeyExt):
 
 
 if TYPE_CHECKING:
-    InstanceKeyLike = Union[InstanceKey, int]
+    InstanceKeyLike = InstanceKey | int
 else:
     InstanceKeyLike = Any
 
-InstanceKeyArrayLike = Union[InstanceKey, Sequence[InstanceKeyLike], int, npt.NDArray[np.uint64]]
+InstanceKeyArrayLike = InstanceKey | Sequence[InstanceKeyLike] | int | npt.NDArray[np.uint64]
 
 
 class InstanceKeyType(BaseExtensionType):

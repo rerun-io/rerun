@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -41,10 +41,7 @@ class FlattenedScalar:
 
 
 FlattenedScalarLike = FlattenedScalar
-FlattenedScalarArrayLike = Union[
-    FlattenedScalar,
-    Sequence[FlattenedScalarLike],
-]
+FlattenedScalarArrayLike = FlattenedScalar | Sequence[FlattenedScalarLike]
 
 
 class FlattenedScalarType(BaseExtensionType):

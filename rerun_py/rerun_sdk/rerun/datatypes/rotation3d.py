@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, SupportsFloat, Union
+from typing import TYPE_CHECKING, Any, Sequence, SupportsFloat
 
 import pyarrow as pa
 from attrs import define, field
@@ -23,7 +23,9 @@ class Rotation3D(Rotation3DExt):
 
     # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
 
-    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=Rotation3DExt.inner__field_converter_override)  # type: ignore[misc]
+    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(
+        converter=Rotation3DExt.inner__field_converter_override
+    )  # type: ignore[misc]
     """
     Quaternion (datatypes.Quaternion):
         Rotation defined by a quaternion.
@@ -34,13 +36,8 @@ class Rotation3D(Rotation3DExt):
 
 
 if TYPE_CHECKING:
-    Rotation3DLike = Union[Rotation3D, datatypes.Quaternion, datatypes.RotationAxisAngle, Sequence[SupportsFloat]]
-    Rotation3DArrayLike = Union[
-        Rotation3D,
-        datatypes.Quaternion,
-        datatypes.RotationAxisAngle,
-        Sequence[Rotation3DLike],
-    ]
+    Rotation3DLike = Rotation3D | datatypes.Quaternion | datatypes.RotationAxisAngle | Sequence[SupportsFloat]
+    Rotation3DArrayLike = Rotation3D | datatypes.Quaternion | datatypes.RotationAxisAngle | Sequence[Rotation3DLike]
 else:
     Rotation3DLike = Any
     Rotation3DArrayLike = Any

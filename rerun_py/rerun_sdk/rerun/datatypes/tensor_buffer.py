@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal, Sequence, Union
+from typing import TYPE_CHECKING, Any, Literal, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -28,7 +28,19 @@ class TensorBuffer(TensorBufferExt):
 
     # You can define your own __init__ function as a member of TensorBufferExt in tensor_buffer_ext.py
 
-    inner: npt.NDArray[np.float16] | npt.NDArray[np.float32] | npt.NDArray[np.float64] | npt.NDArray[np.int16] | npt.NDArray[np.int32] | npt.NDArray[np.int64] | npt.NDArray[np.int8] | npt.NDArray[np.uint16] | npt.NDArray[np.uint32] | npt.NDArray[np.uint64] | npt.NDArray[np.uint8] = field(converter=TensorBufferExt.inner__field_converter_override)  # type: ignore[misc]
+    inner: (
+        npt.NDArray[np.float16]
+        | npt.NDArray[np.float32]
+        | npt.NDArray[np.float64]
+        | npt.NDArray[np.int16]
+        | npt.NDArray[np.int32]
+        | npt.NDArray[np.int64]
+        | npt.NDArray[np.int8]
+        | npt.NDArray[np.uint16]
+        | npt.NDArray[np.uint32]
+        | npt.NDArray[np.uint64]
+        | npt.NDArray[np.uint8]
+    ) = field(converter=TensorBufferExt.inner__field_converter_override)  # type: ignore[misc]
     """
     U8 (npt.NDArray[np.uint8]):
 
@@ -63,35 +75,35 @@ class TensorBuffer(TensorBufferExt):
 
 
 if TYPE_CHECKING:
-    TensorBufferLike = Union[
-        TensorBuffer,
-        npt.NDArray[np.float16],
-        npt.NDArray[np.float32],
-        npt.NDArray[np.float64],
-        npt.NDArray[np.int16],
-        npt.NDArray[np.int32],
-        npt.NDArray[np.int64],
-        npt.NDArray[np.int8],
-        npt.NDArray[np.uint16],
-        npt.NDArray[np.uint32],
-        npt.NDArray[np.uint64],
-        npt.NDArray[np.uint8],
-    ]
-    TensorBufferArrayLike = Union[
-        TensorBuffer,
-        npt.NDArray[np.float16],
-        npt.NDArray[np.float32],
-        npt.NDArray[np.float64],
-        npt.NDArray[np.int16],
-        npt.NDArray[np.int32],
-        npt.NDArray[np.int64],
-        npt.NDArray[np.int8],
-        npt.NDArray[np.uint16],
-        npt.NDArray[np.uint32],
-        npt.NDArray[np.uint64],
-        npt.NDArray[np.uint8],
-        Sequence[TensorBufferLike],
-    ]
+    TensorBufferLike = (
+        TensorBuffer
+        | npt.NDArray[np.float16]
+        | npt.NDArray[np.float32]
+        | npt.NDArray[np.float64]
+        | npt.NDArray[np.int16]
+        | npt.NDArray[np.int32]
+        | npt.NDArray[np.int64]
+        | npt.NDArray[np.int8]
+        | npt.NDArray[np.uint16]
+        | npt.NDArray[np.uint32]
+        | npt.NDArray[np.uint64]
+        | npt.NDArray[np.uint8]
+    )
+    TensorBufferArrayLike = (
+        TensorBuffer
+        | npt.NDArray[np.float16]
+        | npt.NDArray[np.float32]
+        | npt.NDArray[np.float64]
+        | npt.NDArray[np.int16]
+        | npt.NDArray[np.int32]
+        | npt.NDArray[np.int64]
+        | npt.NDArray[np.int8]
+        | npt.NDArray[np.uint16]
+        | npt.NDArray[np.uint32]
+        | npt.NDArray[np.uint64]
+        | npt.NDArray[np.uint8]
+        | Sequence[TensorBufferLike]
+    )
 else:
     TensorBufferLike = Any
     TensorBufferArrayLike = Any

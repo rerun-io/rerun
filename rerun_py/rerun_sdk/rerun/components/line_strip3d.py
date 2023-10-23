@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -46,11 +46,11 @@ class LineStrip3D(LineStrip3DExt):
 
 
 if TYPE_CHECKING:
-    LineStrip3DLike = Union[LineStrip3D, datatypes.Vec3DArrayLike, npt.NDArray[np.float32]]
+    LineStrip3DLike = LineStrip3D | datatypes.Vec3DArrayLike | npt.NDArray[np.float32]
 else:
     LineStrip3DLike = Any
 
-LineStrip3DArrayLike = Union[LineStrip3D, Sequence[LineStrip3DLike], npt.NDArray[np.float32]]
+LineStrip3DArrayLike = LineStrip3D | Sequence[LineStrip3DLike] | npt.NDArray[np.float32]
 
 
 class LineStrip3DType(BaseExtensionType):

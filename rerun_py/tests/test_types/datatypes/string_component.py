@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -35,10 +35,7 @@ class StringComponent:
 
 
 StringComponentLike = StringComponent
-StringComponentArrayLike = Union[
-    StringComponent,
-    Sequence[StringComponentLike],
-]
+StringComponentArrayLike = StringComponent | Sequence[StringComponentLike]
 
 
 class StringComponentType(BaseExtensionType):

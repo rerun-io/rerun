@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 from attrs import define, field
 
@@ -38,10 +38,7 @@ class AutoSpaceViews:
 
 
 AutoSpaceViewsLike = AutoSpaceViews
-AutoSpaceViewsArrayLike = Union[
-    AutoSpaceViews,
-    Sequence[AutoSpaceViewsLike],
-]
+AutoSpaceViewsArrayLike = AutoSpaceViews | Sequence[AutoSpaceViewsLike]
 
 
 class AutoSpaceViewsType(BaseExtensionType):

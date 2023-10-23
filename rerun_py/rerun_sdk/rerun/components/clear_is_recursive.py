@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -48,11 +48,11 @@ class ClearIsRecursive(ClearIsRecursiveExt):
 
 
 if TYPE_CHECKING:
-    ClearIsRecursiveLike = Union[ClearIsRecursive, bool]
+    ClearIsRecursiveLike = ClearIsRecursive | bool
 else:
     ClearIsRecursiveLike = Any
 
-ClearIsRecursiveArrayLike = Union[ClearIsRecursive, Sequence[ClearIsRecursiveLike], bool, npt.NDArray[np.bool_]]
+ClearIsRecursiveArrayLike = ClearIsRecursive | Sequence[ClearIsRecursiveLike] | bool | npt.NDArray[np.bool_]
 
 
 class ClearIsRecursiveType(BaseExtensionType):

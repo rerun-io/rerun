@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -24,7 +24,7 @@ __all__ = [
 
 
 def _translation_rotation_scale3d__rotation__special_field_converter_override(
-    x: datatypes.Rotation3DLike | None,
+    x: datatypes.Rotation3DLike | None
 ) -> datatypes.Rotation3D | None:
     if x is None:
         return None
@@ -35,7 +35,7 @@ def _translation_rotation_scale3d__rotation__special_field_converter_override(
 
 
 def _translation_rotation_scale3d__scale__special_field_converter_override(
-    x: datatypes.Scale3DLike | None,
+    x: datatypes.Scale3DLike | None
 ) -> datatypes.Scale3D | None:
     if x is None:
         return None
@@ -83,10 +83,7 @@ class TranslationRotationScale3D(TranslationRotationScale3DExt):
 
 
 TranslationRotationScale3DLike = TranslationRotationScale3D
-TranslationRotationScale3DArrayLike = Union[
-    TranslationRotationScale3D,
-    Sequence[TranslationRotationScale3DLike],
-]
+TranslationRotationScale3DArrayLike = TranslationRotationScale3D | Sequence[TranslationRotationScale3DLike]
 
 
 class TranslationRotationScale3DType(BaseExtensionType):

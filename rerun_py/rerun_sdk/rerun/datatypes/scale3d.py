@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -47,13 +47,8 @@ class Scale3D(Scale3DExt):
 
 
 if TYPE_CHECKING:
-    Scale3DLike = Union[Scale3D, datatypes.Vec3D, float, datatypes.Vec3DLike]
-    Scale3DArrayLike = Union[
-        Scale3D,
-        datatypes.Vec3D,
-        float,
-        Sequence[Scale3DLike],
-    ]
+    Scale3DLike = Scale3D | datatypes.Vec3D | float | datatypes.Vec3DLike
+    Scale3DArrayLike = Scale3D | datatypes.Vec3D | float | Sequence[Scale3DLike]
 else:
     Scale3DLike = Any
     Scale3DArrayLike = Any

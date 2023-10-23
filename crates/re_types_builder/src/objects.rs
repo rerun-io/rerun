@@ -612,6 +612,16 @@ impl Object {
         self.attrs.try_get(self.fqname.as_str(), name)
     }
 
+    pub fn get_attr_list(&self, name: &str) -> Vec<String> {
+        self.attrs
+            .try_get::<String>(self.fqname.as_str(), name)
+            .unwrap_or_default()
+            .split(", ")
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_owned())
+            .collect()
+    }
+
     pub fn is_attr_set(&self, name: impl AsRef<str>) -> bool {
         self.attrs.has(name)
     }

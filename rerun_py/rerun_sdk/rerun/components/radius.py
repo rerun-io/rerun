@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -39,11 +39,11 @@ class Radius(RadiusExt):
 
 
 if TYPE_CHECKING:
-    RadiusLike = Union[Radius, float]
+    RadiusLike = Radius | float
 else:
     RadiusLike = Any
 
-RadiusArrayLike = Union[Radius, Sequence[RadiusLike], float, npt.ArrayLike]
+RadiusArrayLike = Radius | Sequence[RadiusLike] | float | npt.ArrayLike
 
 
 class RadiusType(BaseExtensionType):

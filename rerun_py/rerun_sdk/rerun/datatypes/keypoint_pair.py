@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -62,14 +62,11 @@ class KeypointPair(KeypointPairExt):
 
 
 if TYPE_CHECKING:
-    KeypointPairLike = Union[KeypointPair, Sequence[datatypes.KeypointIdLike]]
+    KeypointPairLike = KeypointPair | Sequence[datatypes.KeypointIdLike]
 else:
     KeypointPairLike = Any
 
-KeypointPairArrayLike = Union[
-    KeypointPair,
-    Sequence[KeypointPairLike],
-]
+KeypointPairArrayLike = KeypointPair | Sequence[KeypointPairLike]
 
 
 class KeypointPairType(BaseExtensionType):

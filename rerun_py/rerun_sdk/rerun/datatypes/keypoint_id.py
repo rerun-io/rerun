@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -46,11 +46,11 @@ class KeypointId(KeypointIdExt):
 
 
 if TYPE_CHECKING:
-    KeypointIdLike = Union[KeypointId, int]
+    KeypointIdLike = KeypointId | int
 else:
     KeypointIdLike = Any
 
-KeypointIdArrayLike = Union[KeypointId, Sequence[KeypointIdLike], int, npt.ArrayLike]
+KeypointIdArrayLike = KeypointId | Sequence[KeypointIdLike] | int | npt.ArrayLike
 
 
 class KeypointIdType(BaseExtensionType):

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -71,14 +71,11 @@ class Mat3x3(Mat3x3Ext):
 
 
 if TYPE_CHECKING:
-    Mat3x3Like = Union[Mat3x3, npt.ArrayLike]
+    Mat3x3Like = Mat3x3 | npt.ArrayLike
 else:
     Mat3x3Like = Any
 
-Mat3x3ArrayLike = Union[
-    Mat3x3,
-    Sequence[Mat3x3Like],
-]
+Mat3x3ArrayLike = Mat3x3 | Sequence[Mat3x3Like]
 
 
 class Mat3x3Type(BaseExtensionType):

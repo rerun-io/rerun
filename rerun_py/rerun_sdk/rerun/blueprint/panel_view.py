@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 from attrs import define, field
 
@@ -32,10 +32,7 @@ class PanelView:
 
 
 PanelViewLike = PanelView
-PanelViewArrayLike = Union[
-    PanelView,
-    Sequence[PanelViewLike],
-]
+PanelViewArrayLike = PanelView | Sequence[PanelViewLike]
 
 
 class PanelViewType(BaseExtensionType):

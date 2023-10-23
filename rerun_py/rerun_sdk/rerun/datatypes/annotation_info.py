@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Sequence, Tuple
 
 import pyarrow as pa
 from attrs import define, field
@@ -33,7 +33,7 @@ def _annotation_info__label__special_field_converter_override(x: datatypes.Utf8L
 
 
 def _annotation_info__color__special_field_converter_override(
-    x: datatypes.Rgba32Like | None,
+    x: datatypes.Rgba32Like | None
 ) -> datatypes.Rgba32 | None:
     if x is None:
         return None
@@ -92,14 +92,11 @@ class AnnotationInfo(AnnotationInfoExt):
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = Union[AnnotationInfo, int, Tuple[int, str], Tuple[int, str, datatypes.Rgba32Like]]
+    AnnotationInfoLike = AnnotationInfo | int | Tuple[int | str] | Tuple[int | str | datatypes.Rgba32Like]
 else:
     AnnotationInfoLike = Any
 
-AnnotationInfoArrayLike = Union[
-    AnnotationInfo,
-    Sequence[AnnotationInfoLike],
-]
+AnnotationInfoArrayLike = AnnotationInfo | Sequence[AnnotationInfoLike]
 
 
 class AnnotationInfoType(BaseExtensionType):

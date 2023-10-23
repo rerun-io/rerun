@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence
 
 import pyarrow as pa
 from attrs import define, field
@@ -71,14 +71,11 @@ class ClassDescription(ClassDescriptionExt):
 
 
 if TYPE_CHECKING:
-    ClassDescriptionLike = Union[ClassDescription, datatypes.AnnotationInfoLike]
+    ClassDescriptionLike = ClassDescription | datatypes.AnnotationInfoLike
 else:
     ClassDescriptionLike = Any
 
-ClassDescriptionArrayLike = Union[
-    ClassDescription,
-    Sequence[ClassDescriptionLike],
-]
+ClassDescriptionArrayLike = ClassDescription | Sequence[ClassDescriptionLike]
 
 
 class ClassDescriptionType(BaseExtensionType):

@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -38,10 +38,7 @@ class Float32:
 
 
 Float32Like = Float32
-Float32ArrayLike = Union[
-    Float32,
-    Sequence[Float32Like],
-]
+Float32ArrayLike = Float32 | Sequence[Float32Like]
 
 
 class Float32Type(BaseExtensionType):
