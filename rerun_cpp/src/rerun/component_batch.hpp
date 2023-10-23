@@ -100,19 +100,6 @@ namespace rerun {
         template <typename T>
         ComponentBatch(T&& input) : ComponentBatch(TAdapter<T>()(std::forward<T>(input))) {}
 
-        // Construct using a vector
-        template <typename T>
-        ComponentBatch(std::vector<T>& input) : ownership(BatchOwnership::VectorOwned) {
-            new (&storage.vector_owned) std::vector<TComponent>(input.size());
-
-            std::transform(
-                input.begin(),
-                input.end(),
-                storage.vector_owned.begin(),
-                [](auto datum) { return TComponentType(datum); }
-            );
-        }
-
         /// Construct from a temporary list of components.
         ///
         /// Persists the list into an internal std::vector.
@@ -305,6 +292,30 @@ namespace rerun {
 
         ComponentBatch<TComponent> operator()(std::vector<TComponent>&& input) {
             return ComponentBatch<TComponent>::take_ownership(std::move(input));
+        }
+    };
+
+    /// Adapter from std::vector<T> where T can be converted to TComponent
+    template <typename TComponent, typename T>
+    struct ComponentBatchAdapter<TComponent, std::vector<T>> {
+        ComponentBatch<TComponent> operator()(const std::vector<T>& input) {
+            std::vector<TComponent> transformed(input.size());
+
+            std::transform(input.begin(), input.end(), transformed.begin(), [](auto datum) {
+                return TComponent(datum);
+            });
+
+            return ComponentBatch<TComponent>::take_ownership(std::move(transformed));
+        }
+
+        ComponentBatch<TComponent> operator()(std::vector<T>&& input) {
+            std::vector<TComponent> transformed(input.size());
+
+            std::transform(input.begin(), input.end(), transformed.begin(), [](auto datum) {
+                return TComponent(datum);
+            });
+
+            return ComponentBatch<TComponent>::take_ownership(std::move(transformed));
         }
     };
 
