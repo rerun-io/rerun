@@ -108,19 +108,19 @@ def fetch_binary_assets(
     if do_rerun_cli:
         rerun_cli_blobs = [
             (
-                f"rerun-{tag}-x86_64-pc-windows-msvc.exe",
+                f"rerun-cli-{tag}-x86_64-pc-windows-msvc.exe",
                 bucket.get_blob(f"commit/{commit_short}/rerun/windows/rerun.exe"),
             ),
             (
-                f"rerun-{tag}-x86_64-unknown-linux-gnu",
+                f"rerun-cli-{tag}-x86_64-unknown-linux-gnu",
                 bucket.get_blob(f"commit/{commit_short}/rerun/linux/rerun"),
             ),
             (
-                f"rerun-{tag}-aarch64-apple-darwin",
+                f"rerun-cli-{tag}-aarch64-apple-darwin",
                 bucket.get_blob(f"commit/{commit_short}/rerun/macos-arm/rerun"),
             ),
             (
-                f"rerun-{tag}-x86_64-apple-darwin",
+                f"rerun-cli-{tag}-x86_64-apple-darwin",
                 bucket.get_blob(f"commit/{commit_short}/rerun/macos-intel/rerun"),
             ),
         ]
