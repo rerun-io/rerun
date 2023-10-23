@@ -227,7 +227,7 @@ def serve_files() -> None:
         )
         server.serve_forever()
 
-    def serve_wasm() -> None:
+    def serve_rerun() -> None:
         import rerun as rr
 
         rr.init("Screenshot compare")
