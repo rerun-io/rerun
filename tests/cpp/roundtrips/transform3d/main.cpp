@@ -16,7 +16,9 @@ int main(int argc, char** argv) {
 
     rec.log(
         "translation_and_mat3x3/translation",
-        rerun::archetypes::Transform3D({1.0f, 2.0f, 3.0f}, true)
+        rerun::archetypes::Transform3D(
+            rerun::datatypes::TranslationAndMat3x3({1.0f, 2.0f, 3.0f}, true)
+        )
     );
 
     rec.log(
