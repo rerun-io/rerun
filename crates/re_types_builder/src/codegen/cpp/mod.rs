@@ -565,6 +565,31 @@ impl QuotedObject {
             ));
         };
 
+        // If we're a component with a single datatype field, add an implicit casting operator for convenience.
+        if obj.kind == ObjectKind::Component
+            && obj.fields.len() == 1
+            && matches!(obj.fields[0].typ, Type::Object { .. })
+        {
+            if let Type::Object(datatype_fqname) = &obj.fields[0].typ {
+                let data_type = quote_field_type(&mut hpp_includes, &obj.fields[0]);
+                let type_name = datatype_fqname.split('.').last().unwrap();
+                let field_name = format_ident!("{}", obj.fields[0].name);
+
+                methods.push(Method {
+                    docs: format!("Cast to the underlying {type_name} datatype").into(),
+                    declaration: MethodDeclaration {
+                        name_and_parameters: quote! { operator #data_type() const },
+                        is_static: false,
+                        return_type: quote! {},
+                    },
+                    definition_body: quote! {
+                        return #field_name;
+                    },
+                    inline: true,
+                });
+            }
+        }
+
         // Arrow serialization methods.
         // TODO(andreas): These are just utilities for to_data_cell. How do we hide them best from the public header?
         methods.push(arrow_data_type_method(

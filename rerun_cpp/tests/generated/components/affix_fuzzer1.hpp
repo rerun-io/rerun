@@ -36,6 +36,11 @@ namespace rerun {
                 return *this;
             }
 
+            /// Cast to the underlying AffixFuzzer1 datatype
+            operator rerun::datatypes::AffixFuzzer1() const {
+                return single_required;
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
