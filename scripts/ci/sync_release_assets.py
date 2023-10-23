@@ -53,7 +53,7 @@ def fetch_binary_assets(
     if do_rerun_c:
         rerun_c_blobs = [
             (
-                "librerun_c.x86_64-pc-windows-msvc.lib",
+                "rerun_c.x86_64-pc-windows-msvc.lib",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/windows/rerun_c.lib"),
             ),
             (
