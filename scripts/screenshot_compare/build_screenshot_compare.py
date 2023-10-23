@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import http.server
 import json
+import multiprocessing
 import os
 import shutil
 import subprocess
@@ -230,11 +231,16 @@ def serve_files() -> None:
     def serve_rerun() -> None:
         import rerun as rr
 
+        os.environ["RUST_LOG"] = "rerun=warn"
+
         rr.init("Screenshot compare")
         rr.serve(open_browser=False)
 
     threading.Thread(target=serve, daemon=True).start()
-    threading.Thread(target=serve_wasm, daemon=True).start()
+
+    # use a sub-process so the target can change env variables without affecting the parent
+    process = multiprocessing.Process(target=serve_rerun, daemon=True)
+    process.run()
 
 
 def main() -> None:
