@@ -26,6 +26,9 @@ nb_prefix = re.compile(r"nb_")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
 explicit_quotes = re.compile(r'[^(]\\"\{\w*\}\\"')  # looks for: \"{foo}\"
 ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
+ellipsis_expression = re.compile(r"[\[(<].*\.\.\..*[\])>]")
+ellipsis_reference = re.compile(r"&\.\.\.")
+ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
 
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 
@@ -64,9 +67,14 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if double_the.search(line.lower()):
         return "Found 'the the'"
 
-    if file_extension not in ("py", "txt"):
+    if file_extension not in ("txt"):
         if ellipsis.search(line):
-            return "Use … instead of ..."
+            if (
+                not ellipsis_expression.search(line)
+                and not ellipsis_bare.search(line)
+                and not ellipsis_reference.search(line)
+            ):
+                return "Use … instead of ..."
 
     if "FIXME" in line:
         return "we prefer TODO over FIXME"
@@ -161,6 +169,7 @@ def test_lint_line() -> None:
         "rec",
         "anyhow::Result<()>",
         "The theme is great",
+        "template <typename... Args>",
     ]
 
     should_error = [
@@ -653,7 +662,7 @@ def main() -> None:
         root_dirpath = os.path.abspath(f"{script_dirpath}/..")
         os.chdir(root_dirpath)
 
-        extensions = ["c", "cpp", "fbs", "h", "hpp" "html", "js", "md", "py", "rs", "sh", "toml", "txt", "wgsl", "yml"]
+        extensions = ["c", "cpp", "fbs", "h", "hpp", "html", "js", "md", "py", "rs", "sh", "toml", "txt", "wgsl", "yml"]
 
         exclude_paths = {
             "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
