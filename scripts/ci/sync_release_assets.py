@@ -26,6 +26,7 @@ Assets = Dict[str, storage.Blob]
 
 
 def fetch_binary_assets(
+    tag: str,
     commit: str,
     *,
     do_wheels: bool = True,
@@ -52,6 +53,20 @@ def fetch_binary_assets(
         for blob in [bucket.get_blob(blob.name) for blob in wheel_blobs if blob.name.endswith(".whl")]:
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
+
+                if "macosx" in name:
+                    if "x86_64" in name:
+                        name = f"rerun_sdk-{tag}-aarch64-apple-darwin.whl"
+                    if "arm64" in name:
+                        name = f"rerun_sdk-{tag}-x86_64-apple-darwin.whl"
+
+                if "manylinux_2_31_x86_64" in name:
+                    if "x86_64" in name:
+                        name = f"rerun_sdk-{tag}-x86_64-unknown-linux-gnu.whl"
+
+                if "win_amd64" in name:
+                    name = f"rerun_sdk-{tag}-x86_64-pc-windows-msvc.whl"
+
                 print(f"    Found Python wheel: {name} ")
                 assets[name] = blob
 
@@ -59,19 +74,19 @@ def fetch_binary_assets(
     if do_rerun_c:
         rerun_c_blobs = [
             (
-                "rerun_c.x86_64-pc-windows-msvc.lib",
+                f"rerun_c-{tag}-x86_64-pc-windows-msvc.lib",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/windows/rerun_c.lib"),
             ),
             (
-                "librerun_c.x86_64-unknown-linux-gnu.a",
+                f"librerun_c-{tag}-x86_64-unknown-linux-gnu.a",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/linux/librerun_c.a"),
             ),
             (
-                "librerun_c.aarch64-apple-darwin.a",
+                f"librerun_c-{tag}-aarch64-apple-darwin.a",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a"),
             ),
             (
-                "librerun_c.x86_64-apple-darwin.a",
+                f"librerun_c-{tag}-x86_64-apple-darwin.a",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a"),
             ),
         ]
@@ -85,7 +100,7 @@ def fetch_binary_assets(
         rerun_cpp_sdk_blob = bucket.get_blob(f"commit/{commit_short}/rerun_cpp_sdk.zip")
         for blob in [rerun_cpp_sdk_blob]:
             if blob is not None and blob.name is not None:
-                name = blob.name.split("/")[-1]
+                name = f"rerun_cpp_sdk-{tag}-multiplatform.zip"
                 print(f"    Found Rerun cross-platform bundle: {name}")
                 assets[name] = blob
 
@@ -93,19 +108,19 @@ def fetch_binary_assets(
     if do_rerun_cli:
         rerun_cli_blobs = [
             (
-                "rerun.x86_64-pc-windows-msvc.exe",
+                f"rerun-{tag}-x86_64-pc-windows-msvc.exe",
                 bucket.get_blob(f"commit/{commit_short}/rerun/windows/rerun.exe"),
             ),
             (
-                "rerun.x86_64-unknown-linux-gnu",
+                f"rerun-{tag}-x86_64-unknown-linux-gnu",
                 bucket.get_blob(f"commit/{commit_short}/rerun/linux/rerun"),
             ),
             (
-                "rerun.aarch64-apple-darwin.a",
+                f"rerun-{tag}-aarch64-apple-darwin",
                 bucket.get_blob(f"commit/{commit_short}/rerun/macos-arm/rerun"),
             ),
             (
-                "rerun.x86_64-apple-darwin.a",
+                f"rerun-{tag}-x86_64-apple-darwin",
                 bucket.get_blob(f"commit/{commit_short}/rerun/macos-intel/rerun"),
             ),
         ]
@@ -170,6 +185,7 @@ def main() -> None:
     )
 
     assets = fetch_binary_assets(
+        release.tag_name,
         commit.sha,
         do_wheels=not args.no_wheels,
         do_rerun_c=not args.no_rerun_c,
