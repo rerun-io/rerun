@@ -44,8 +44,7 @@ struct Mat3x3 (
   "attr.arrow.transparent",
   "attr.python.aliases": "npt.ArrayLike",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
-  "attr.rust.tuple_struct",
-  "attr.cpp.no_field_ctors" // conflicts with float* constructor
+  "attr.rust.tuple_struct"
 ) {
   /// Flat list of matrix coefficients in column-major order.
   flat_columns: [float32: 9] (order: 100);

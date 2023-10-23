@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class BooleanBuilder;
@@ -26,10 +25,10 @@ namespace rerun {
           public:
             AutoSpaceViews() = default;
 
-            AutoSpaceViews(bool _enabled) : enabled(std::move(_enabled)) {}
+            AutoSpaceViews(bool enabled_) : enabled(enabled_) {}
 
-            AutoSpaceViews& operator=(bool _enabled) {
-                enabled = std::move(_enabled);
+            AutoSpaceViews& operator=(bool enabled_) {
+                enabled = enabled_;
                 return *this;
             }
 

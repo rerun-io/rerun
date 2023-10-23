@@ -9,7 +9,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -33,14 +32,19 @@ namespace rerun {
           public:
             KeypointId() = default;
 
-            KeypointId(rerun::datatypes::KeypointId _id) : id(std::move(_id)) {}
+            KeypointId(rerun::datatypes::KeypointId id_) : id(id_) {}
 
-            KeypointId& operator=(rerun::datatypes::KeypointId _id) {
-                id = std::move(_id);
+            KeypointId& operator=(rerun::datatypes::KeypointId id_) {
+                id = id_;
                 return *this;
             }
 
-            KeypointId(uint16_t arg) : id(std::move(arg)) {}
+            KeypointId(uint16_t id_) : id(id_) {}
+
+            KeypointId& operator=(uint16_t id_) {
+                id = id_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

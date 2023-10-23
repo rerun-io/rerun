@@ -29,10 +29,10 @@ namespace rerun {
           public:
             Blob() = default;
 
-            Blob(std::vector<uint8_t> _data) : data(std::move(_data)) {}
+            Blob(std::vector<uint8_t> data_) : data(std::move(data_)) {}
 
-            Blob& operator=(std::vector<uint8_t> _data) {
-                data = std::move(_data);
+            Blob& operator=(std::vector<uint8_t> data_) {
+                data = std::move(data_);
                 return *this;
             }
 

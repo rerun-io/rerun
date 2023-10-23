@@ -83,6 +83,13 @@ namespace rerun {
           public:
             Mat4x4() = default;
 
+            Mat4x4(std::array<float, 16> flat_columns_) : flat_columns(flat_columns_) {}
+
+            Mat4x4& operator=(std::array<float, 16> flat_columns_) {
+                flat_columns = flat_columns_;
+                return *this;
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

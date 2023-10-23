@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -28,10 +27,10 @@ namespace rerun {
           public:
             ClassId() = default;
 
-            ClassId(uint16_t _id) : id(std::move(_id)) {}
+            ClassId(uint16_t id_) : id(id_) {}
 
-            ClassId& operator=(uint16_t _id) {
-                id = std::move(_id);
+            ClassId& operator=(uint16_t id_) {
+                id = id_;
                 return *this;
             }
 

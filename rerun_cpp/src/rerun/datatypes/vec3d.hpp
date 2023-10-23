@@ -28,8 +28,6 @@ namespace rerun {
             Vec3D(float x, float y, float z) : xyz{x, y, z} {}
 
             /// Construct Vec3D from x/y/z float pointer.
-            ///
-            /// Attention: The pointer must point to at least least 3 floats long.
             explicit Vec3D(const float* xyz_) : xyz{xyz_[0], xyz_[1], xyz_[2]} {}
 
             float x() const {
@@ -46,6 +44,13 @@ namespace rerun {
 
           public:
             Vec3D() = default;
+
+            Vec3D(std::array<float, 3> xyz_) : xyz(xyz_) {}
+
+            Vec3D& operator=(std::array<float, 3> xyz_) {
+                xyz = xyz_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

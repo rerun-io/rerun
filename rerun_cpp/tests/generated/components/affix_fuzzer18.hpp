@@ -31,14 +31,14 @@ namespace rerun {
             AffixFuzzer18() = default;
 
             AffixFuzzer18(
-                std::optional<std::vector<rerun::datatypes::AffixFuzzer4>> _many_optional_unions
+                std::optional<std::vector<rerun::datatypes::AffixFuzzer4>> many_optional_unions_
             )
-                : many_optional_unions(std::move(_many_optional_unions)) {}
+                : many_optional_unions(std::move(many_optional_unions_)) {}
 
             AffixFuzzer18& operator=(
-                std::optional<std::vector<rerun::datatypes::AffixFuzzer4>> _many_optional_unions
+                std::optional<std::vector<rerun::datatypes::AffixFuzzer4>> many_optional_unions_
             ) {
-                many_optional_unions = std::move(_many_optional_unions);
+                many_optional_unions = std::move(many_optional_unions_);
                 return *this;
             }
 

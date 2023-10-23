@@ -128,8 +128,12 @@ namespace rerun {
           public:
             ViewCoordinates() = default;
 
-            ViewCoordinates(const uint8_t (&_coordinates)[3])
-                : coordinates{_coordinates[0], _coordinates[1], _coordinates[2]} {}
+            ViewCoordinates(std::array<uint8_t, 3> coordinates_) : coordinates(coordinates_) {}
+
+            ViewCoordinates& operator=(std::array<uint8_t, 3> coordinates_) {
+                coordinates = coordinates_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

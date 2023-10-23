@@ -28,8 +28,6 @@ namespace rerun {
             Vec4D(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
 
             /// Construct Vec4D from x/y/z/w float pointer.
-            ///
-            /// Attention: The pointer must point to at least least 4 floats long.
             explicit Vec4D(const float* xyzw_) : xyzw{xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]} {}
 
             float x() const {
@@ -50,6 +48,13 @@ namespace rerun {
 
           public:
             Vec4D() = default;
+
+            Vec4D(std::array<float, 4> xyzw_) : xyzw(xyzw_) {}
+
+            Vec4D& operator=(std::array<float, 4> xyzw_) {
+                xyzw = xyzw_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

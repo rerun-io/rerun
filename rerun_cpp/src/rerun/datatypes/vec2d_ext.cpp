@@ -17,8 +17,6 @@ namespace rerun {
             Vec2D(float x, float y) : xy{x, y} {}
 
             /// Construct Vec2D from x/y float pointer.
-            ///
-            /// Attention: The pointer must point to at least least 2 floats long.
             explicit Vec2D(const float* xy_) : xy{xy_[0], xy_[1]} {}
 
             float x() const {

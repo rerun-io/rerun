@@ -28,11 +28,11 @@ namespace rerun {
           public:
             AffixFuzzer12() = default;
 
-            AffixFuzzer12(std::vector<std::string> _many_strings_required)
-                : many_strings_required(std::move(_many_strings_required)) {}
+            AffixFuzzer12(std::vector<std::string> many_strings_required_)
+                : many_strings_required(std::move(many_strings_required_)) {}
 
-            AffixFuzzer12& operator=(std::vector<std::string> _many_strings_required) {
-                many_strings_required = std::move(_many_strings_required);
+            AffixFuzzer12& operator=(std::vector<std::string> many_strings_required_) {
+                many_strings_required = std::move(many_strings_required_);
                 return *this;
             }
 

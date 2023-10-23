@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -32,10 +31,10 @@ namespace rerun {
           public:
             Radius() = default;
 
-            Radius(float _value) : value(std::move(_value)) {}
+            Radius(float value_) : value(value_) {}
 
-            Radius& operator=(float _value) {
-                value = std::move(_value);
+            Radius& operator=(float value_) {
+                value = value_;
                 return *this;
             }
 

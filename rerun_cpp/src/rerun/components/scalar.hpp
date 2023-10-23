@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -34,10 +33,10 @@ namespace rerun {
           public:
             Scalar() = default;
 
-            Scalar(double _value) : value(std::move(_value)) {}
+            Scalar(double value_) : value(value_) {}
 
-            Scalar& operator=(double _value) {
-                value = std::move(_value);
+            Scalar& operator=(double value_) {
+                value = value_;
                 return *this;
             }
 

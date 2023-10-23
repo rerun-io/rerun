@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <memory>
 #include <rerun/result.hpp>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -26,10 +25,10 @@ namespace rerun {
           public:
             PrimitiveComponent() = default;
 
-            PrimitiveComponent(uint32_t _value) : value(std::move(_value)) {}
+            PrimitiveComponent(uint32_t value_) : value(value_) {}
 
-            PrimitiveComponent& operator=(uint32_t _value) {
-                value = std::move(_value);
+            PrimitiveComponent& operator=(uint32_t value_) {
+                value = value_;
                 return *this;
             }
 
