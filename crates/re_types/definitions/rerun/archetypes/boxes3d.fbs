@@ -12,7 +12,7 @@ namespace rerun.archetypes;
 /// 3D boxes with half-extents and optional center, rotations, rotations, colors etc.
 ///
 /// \example box3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
-/// \example box3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/28368d2872b2c98186a49fbd063b433e324a88ba/1200w.png"
+/// \example box3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/1200w.png"
 table Boxes3D (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
