@@ -33,8 +33,8 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
 
-cpp-prepare = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Debug -DCMAKE_COMPILE_WARNING_AS_ERROR=ON"
-cpp-build = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
+cpp-prepare = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-build-tests = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",
 ] }
 cpp-build-examples = { cmd = "cmake --build build --config Debug --target examples", depends_on = [
@@ -44,9 +44,8 @@ cpp-build-doc-examples = { cmd = "cmake --build build --config Debug --target do
   "cpp-prepare",
 ] }
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
-  "cpp-build",
+  "cpp-build-tests",
 ] }
-
 
 [dependencies]
 arrow-cpp = "10.0.1"

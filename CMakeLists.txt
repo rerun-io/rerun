@@ -48,6 +48,11 @@ function(set_default_warning_settings target)
     endif()
 endfunction()
 
+if(DEFINED ENV{WARNINGS_AS_ERRORS})
+    message(STATUS "Compiling with warnings as errors since WARNINGS_AS_ERRORS is set.")
+    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+endif()
+
 # Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.
 if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
     set(CMAKE_GENERATOR "Unix Makefiles")
@@ -66,7 +71,7 @@ set(RERUN_REPOSITORY YES)
 file(READ "Cargo.toml" CARGO_TOML)
 string(REGEX MATCH "\nversion = \"([a-z0-9\.\+-]+)\"\n" _ ${CARGO_TOML})
 set(RERUN_VERSION ${CMAKE_MATCH_1})
-message(INFO "Rerun version ${RERUN_VERSION}")
+message(STATUS "Rerun version ${RERUN_VERSION}")
 
 # ------------------------------------------------------------------------------
 # Loguru logging library (https://github.com/emilk/loguru):
