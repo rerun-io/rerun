@@ -142,6 +142,11 @@ def main() -> None:
         LintJob("lint-typos"),
     ]
 
+    for command in skip:
+        if command not in [j.command for j in jobs]:
+            logging.error(f"Unknown command '{command}' in 'skip', expected one of {[j.command for j in jobs]}")
+            sys.exit(1)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_threads) as executor:
         results = [executor.submit(job.run_cmd, files, skip, args.no_change_filter) for job in jobs]
 
