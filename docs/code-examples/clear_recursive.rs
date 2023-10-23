@@ -1,4 +1,4 @@
-//! Log a batch of 3D arrows.
+//! Log and then clear data recursively.
 
 use rerun::external::glam;
 

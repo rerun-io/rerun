@@ -1,3 +1,5 @@
+//! Log a scalar over time.
+
 #include <rerun.hpp>
 
 #include <cmath>
