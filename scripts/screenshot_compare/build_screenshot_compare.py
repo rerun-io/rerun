@@ -134,9 +134,6 @@ def extract_code_example_urls_from_fbs() -> dict[str, str]:
     for fbs in fbs_path.glob("**/*.fbs"):
         for line in fbs.read_text().splitlines():
             if line.startswith(r"/// \example"):
-                if "!api" in line:
-                    continue
-
                 name = line.split()[2]
 
                 idx = line.find('image="')
