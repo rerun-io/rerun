@@ -20,16 +20,12 @@ from os.path import isfile, join
 
 ARCHETYPES_PATH = "crates/re_types/definitions/rerun/archetypes"
 
-# TODO(#3207): implement missing cpp roundtrips
 opt_out = {
     "asset3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "bar_chart": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "clear": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "mesh3d": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
     "time_series_scalar": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
-    "transform3d": [
-        "cpp"
-    ],  # TODO(#3380) - `tests/roundtrips.py --release transform3d` fails on mac (but works without --release)
 }
 
 

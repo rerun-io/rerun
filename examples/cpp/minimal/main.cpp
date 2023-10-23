@@ -4,7 +4,7 @@
 
 namespace rrc = rerun::components;
 
-int main(int argc, char** argv) {
+int main() {
     auto rec = rerun::RecordingStream("rerun_example_cpp_app");
     rec.connect().throw_on_failure();
 

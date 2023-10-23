@@ -97,7 +97,7 @@ def _patch(funcs):  # type: ignore[no-untyped-def]
     if os.environ.get("RERUN_APP_ONLY"):
         return
 
-    # NOTE: Python's closures capture by reference... make sure to copy `fn` early.
+    # NOTE: Python's closures capture by reference… make sure to copy `fn` early.
     def eager_wrap(fn):  # type: ignore[no-untyped-def]
         @functools.wraps(fn)
         def wrapper(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[no-untyped-def]

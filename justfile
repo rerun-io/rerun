@@ -38,6 +38,14 @@ cpp-format:
 cpp-build:
     pixi run cpp-build
 
+# Build all our C++ examples.
+cpp-build-examples:
+    pixi run cpp-build-examples
+
+# Build all our C++ api doc examples.
+cpp-build-doc-examples:
+    pixi run cpp-build-doc-examples
+
 # Run our C++ tests
 cpp-test:
     pixi run cpp-test

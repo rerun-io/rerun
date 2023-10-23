@@ -46,7 +46,7 @@ namespace rerun {
         );
     };
 
-    /// Type of ownership of the the batch's data.
+    /// Type of ownership of the batch's data.
     ///
     /// User access to this is typically only needed for debugging and testing.
     enum class BatchOwnership {

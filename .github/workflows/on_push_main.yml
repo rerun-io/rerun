@@ -129,6 +129,42 @@ jobs:
       PLATFORM: windows
     secrets: inherit
 
+  build-rerun-cli-and-upload-linux:
+    needs: [checks]
+    name: "Linux-x64: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: push-linux-${{ github.ref_name }}
+      PLATFORM: linux
+    secrets: inherit
+
+  build-rerun-cli-and-upload-macos-intel:
+    needs: [checks]
+    name: "Mac-Intel: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
+      PLATFORM: macos-intel
+    secrets: inherit
+
+  build-rerun-cli-and-upload-macos-arm:
+    needs: [checks]
+    name: "Mac-Arm: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
+      PLATFORM: macos-arm
+    secrets: inherit
+
+  build-rerun-cli-and-upload-windows:
+    needs: [checks]
+    name: "Windows-x64: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: push-windows-${{ github.ref_name }}
+      PLATFORM: windows
+    secrets: inherit
+
   build-linux:
     needs: [checks]
     name: "Linux: Build/Test Wheels"

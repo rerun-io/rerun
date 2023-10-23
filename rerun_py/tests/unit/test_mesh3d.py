@@ -118,7 +118,7 @@ def test_mesh3d() -> None:
 
 
 def test_nullable_albedo_factor() -> None:
-    # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
+    # NOTE: We're just making sure that this doesn't crash… trust me, it used to.
     assert (
         len(
             MaterialBatch(
@@ -133,7 +133,7 @@ def test_nullable_albedo_factor() -> None:
 
 
 def test_nullable_indices() -> None:
-    # NOTE: We're just making sure that this doesn't crash... trust me, it used to.
+    # NOTE: We're just making sure that this doesn't crash… trust me, it used to.
     assert (
         len(
             MeshPropertiesBatch(
