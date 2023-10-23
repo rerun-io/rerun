@@ -29,8 +29,8 @@ namespace rerun {
             for (size_t i = 0; i < num_points; ++i) {
                 float angle = static_cast<float>(i) * angular_step * TAU + angular_offset;
                 out_points.push_back({
-                    sinf(angle) * radius,
                     cosf(angle) * radius,
+                    sinf(angle) * radius,
                     static_cast<float>(i) * z_step,
                 });
 
@@ -40,11 +40,11 @@ namespace rerun {
 
         template <size_t N>
         static float dot(const float (&a)[N], const float (&b)[N]) {
-            float sum = 0.0f;
+            double sum = 0.0;
             for (size_t i = 0; i < N; ++i) {
                 sum += a[i] * b[i];
             }
-            return sum;
+            return static_cast<float>(sum);
         }
 
         rerun::components::Color colormap_turbo_srgb(float t) {

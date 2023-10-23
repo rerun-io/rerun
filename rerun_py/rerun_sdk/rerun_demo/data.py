@@ -115,8 +115,8 @@ def build_color_spiral(num_points=100, radius=2, angular_step=0.02, angular_offs
     positions = np.array(
         [
             [
-                sin(i * tau * angular_step + angular_offset) * radius,
                 cos(i * tau * angular_step + angular_offset) * radius,
+                sin(i * tau * angular_step + angular_offset) * radius,
                 i * z_step,
             ]
             for i in range(num_points)
