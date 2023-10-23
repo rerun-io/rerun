@@ -4,7 +4,7 @@
 #include <rerun/datatypes/tensor_data.hpp>
 #include <rerun/recording_stream.hpp>
 
-int main(int argc, char** argv) {
+int main(int, char** argv) {
     auto rec = rerun::RecordingStream("rerun_example_roundtrip_tensor");
     rec.save(argv[1]).throw_on_failure();
 

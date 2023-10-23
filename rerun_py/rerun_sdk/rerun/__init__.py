@@ -453,7 +453,7 @@ def new_recording(
     application_path = None
 
     # NOTE: It'd be even nicer to do such thing on the Rust-side so that this little trick would
-    # only need to be written once and just work for all languages out of the box... unfortunately
+    # only need to be written once and just work for all languages out of the box… unfortunately
     # we lose most of the details of the python part of the backtrace once we go over the bridge.
     #
     # Still, better than nothing!
