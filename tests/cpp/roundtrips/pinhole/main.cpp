@@ -9,6 +9,6 @@ int main(int argc, char** argv) {
         "pinhole",
         rerun::archetypes::Pinhole(
             rerun::datatypes::Mat3x3({{3.0f, 0.0f, 1.5f}, {0.0f, 3.0f, 1.5f}, {0.0f, 0.0f, 1.0f}})
-        ).with_resolution(rerun::datatypes::Vec2D({3840.0f, 2160.0f}))
+        ).with_resolution(rerun::datatypes::Vec2D(3840.0f, 2160.0f))
     );
 }

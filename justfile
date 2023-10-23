@@ -17,6 +17,10 @@ format: cpp-format toml-format py-format
 # Lint all of our code
 lint: toml-lint py-lint rs-lint
 
+# Run the fast versions of our linters
+fast-lint *ARGS:
+    pixi run fast-lint {{ARGS}}
+
 ### C and C++
 
 # Clear the C++ build directories

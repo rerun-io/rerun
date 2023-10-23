@@ -52,7 +52,7 @@ namespace rerun {
                   } {}
 
             /// Construct a new 3x3 matrix from a pointer to 9 floats (in row major order).
-            Mat3x3(const float* elements)
+            explicit Mat3x3(const float* elements)
                 : flat_columns{
                       elements[0],
                       elements[1],
@@ -67,6 +67,13 @@ namespace rerun {
 
           public:
             Mat3x3() = default;
+
+            Mat3x3(std::array<float, 9> flat_columns_) : flat_columns(flat_columns_) {}
+
+            Mat3x3& operator=(std::array<float, 9> flat_columns_) {
+                flat_columns = flat_columns_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

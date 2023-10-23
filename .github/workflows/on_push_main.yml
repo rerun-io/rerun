@@ -288,11 +288,21 @@ jobs:
             ```
             pip install --pre -f https://build.rerun.io/commit/${{ env.SHORT_SHA }}/wheels --upgrade rerun-sdk
             ```
+            or
+            ```
+            pip install --pre -f https://github.com/rerun-io/rerun/releases/download/prerelease --upgrade rerun-sdk
+            ```
 
             ## CMake fetch-content for C++ SDK
             ```
             include(FetchContent)
             FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp_sdk.zip)
+            FetchContent_MakeAvailable(rerun_sdk)
+            ```
+            or
+            ```
+            include(FetchContent)
+            FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip)
             FetchContent_MakeAvailable(rerun_sdk)
             ```
 
@@ -310,3 +320,12 @@ jobs:
           allowUpdates: true
           removeArtifacts: true
           replacesArtifacts: true
+
+  sync-release-assets:
+    needs: [pre-release]
+    name: "Sync pre-release assets & build.rerun.io"
+    uses: ./.github/workflows/reusable_sync_release_assets.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      RELEASE_VERSION: prerelease
+    secrets: inherit

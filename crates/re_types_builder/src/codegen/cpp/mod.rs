@@ -839,18 +839,6 @@ impl QuotedObject {
                             #comment
                         } break;
                     }
-                } else if let Type::Array { elem_type, length } = &obj_field.typ {
-                    // We need special casing for destroying arrays in C++:
-                    let elem_type = quote_element_type(&mut hpp_includes, elem_type);
-                    let length = proc_macro2::Literal::usize_unsuffixed(*length);
-                    quote! {
-                        case detail::#tag_typename::#tag_ident: {
-                            using TypeAlias = #elem_type;
-                            for (size_t i = #length; i > 0; i -= 1) {
-                                _data.#field_ident[i-1].~TypeAlias();
-                            }
-                        } break;
-                    }
                 } else {
                     let typ = quote_field_type(&mut hpp_includes, obj_field);
                     hpp_includes.insert_system("utility"); // std::move
@@ -1066,95 +1054,86 @@ fn single_field_constructor_methods(
     type_ident: &Ident,
     objects: &Objects,
 ) -> Vec<Method> {
-    let mut methods = Vec::new();
+    let field = &obj.fields[0];
 
-    // Single-field struct - it is a newtype wrapper.
-    // Create a implicit constructor and assignment from its own field-type.
-    let obj_field = &obj.fields[0];
+    let mut methods =
+        add_copy_assignment_and_constructor(hpp_includes, field, field, type_ident, objects);
 
-    let field_ident = format_ident!("{}", obj_field.name);
-    let param_ident = format_ident!("_{}", obj_field.name);
-
-    if let Type::Array { elem_type, length } = &obj_field.typ {
-        // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
-        // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
-        let length_quoted = quote_integer(length);
-        let element_type = quote_element_type(hpp_includes, elem_type);
-        let element_assignments = (0..*length).map(|i| {
-            let i = quote_integer(i);
-            quote!(#param_ident[#i])
-        });
-        methods.push(Method {
-            declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(const #element_type (&#param_ident)[#length_quoted]) : #field_ident{#(#element_assignments),*}
-            }),
-            ..Method::default()
-        });
-
-        // No assignment operator for arrays since c arrays aren't typically assignable anyways.
-        // Note that creating an std::array overload would make initializer_list based construction ambiguous.
-        // Assignment operator for std::array could make sense though?
-    } else {
-        // Pass by value:
-        // If it was a temporary it gets moved into the value and then moved again into the field.
-        // If it was a lvalue it gets copied into the value and then moved into the field.
-        let parameter_declaration = quote_variable(hpp_includes, obj_field, &param_ident);
-        hpp_includes.insert_system("utility"); // std::move
-        methods.push(Method {
-            declaration: MethodDeclaration::constructor(quote! {
-                #type_ident(#parameter_declaration) : #field_ident(std::move(#param_ident))
-            }),
-            ..Method::default()
-        });
-        methods.push(Method {
-            declaration: MethodDeclaration {
-                is_static: false,
-                return_type: quote!(#type_ident&),
-                name_and_parameters: quote! {
-                    operator=(#parameter_declaration)
-                },
-            },
-            definition_body: quote! {
-                #field_ident = std::move(#param_ident);
-                return *this;
-            },
-            ..Method::default()
-        });
-
-        // If the field is a custom type as well which in turn has only a single field,
-        // provide a constructor for that single field as well.
-        //
-        // Note that we previously we tried to do a general forwarding constructor via variadic templates,
-        // but ran into some issues when init archetypes with initializer lists.
-        if let Type::Object(field_type_fqname) = &obj_field.typ {
-            let field_type_obj = &objects[field_type_fqname];
-            if field_type_obj.fields.len() == 1 {
-                let inner_field = &field_type_obj.fields[0];
-                let arg_name = format_ident!("arg");
-
-                if let Type::Array { elem_type, length } = &inner_field.typ {
-                    // Reminder: Arrays can't be passed by value, they decay to pointers. So we pass by reference!
-                    // (we could pass by pointer, but if an extension wants to add smaller array constructor these would be ambiguous then!)
-                    let length_quoted = quote_integer(length);
-                    let element_type = quote_element_type(hpp_includes, elem_type);
-                    methods.push(Method {
-                        declaration: MethodDeclaration::constructor(quote! {
-                            #type_ident(const #element_type (&#arg_name)[#length_quoted]) : #field_ident(#arg_name)
-                        }),
-                        ..Method::default()
-                    });
-                } else {
-                    let argument = quote_variable(hpp_includes, inner_field, &arg_name);
-                    methods.push(Method {
-                        declaration: MethodDeclaration::constructor(quote! {
-                            #type_ident(#argument) : #field_ident(std::move(#arg_name))
-                        }),
-                        ..Method::default()
-                    });
-                }
-            }
+    // If the field is a custom type as well which in turn has only a single field,
+    // provide a constructor for that single field as well.
+    //
+    // Note that we previously we tried to do a general forwarding constructor via variadic templates,
+    // but ran into some issues when init archetypes with initializer lists.
+    if let Type::Object(field_type_fqname) = &field.typ {
+        let field_type_obj = &objects[field_type_fqname];
+        if field_type_obj.fields.len() == 1 {
+            methods.extend(add_copy_assignment_and_constructor(
+                hpp_includes,
+                &field_type_obj.fields[0],
+                field,
+                type_ident,
+                objects,
+            ));
         }
     }
+
+    methods
+}
+
+fn add_copy_assignment_and_constructor(
+    hpp_includes: &mut Includes,
+    obj_field: &ObjectField,
+    target_field: &ObjectField,
+    type_ident: &Ident,
+    objects: &Objects,
+) -> Vec<Method> {
+    let mut methods = Vec::new();
+    let field_ident = format_ident!("{}", target_field.name);
+    let param_ident = format_ident!("{}_", obj_field.name);
+
+    // We keep parameter passing for assignment & ctors simple by _always_ passing by value.
+    // The basic assumption is that anything that has an expensive copy has a move constructor
+    // and move constructors are cheap.
+    //
+    // Note that in this setup there's either
+    // - 1 move, 1 copy: If an lvalue is passed gets copied into the value and then moved into the field.
+    // - 2 move: If a temporary is passed it gets moved into the value and then moved again into the field.
+    //
+    // Also good to know:
+    // In x64 and aarch64 (and others) structs are usually passed by pointer to stack _anyways_!
+    // - everything above 8 bytes in x64:
+    //   https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170#parameter-passing
+    // - everything above 16 bytes (plus extra rules for float structs) in aarch64
+    //   https://devblogs.microsoft.com/oldnewthing/20220823-00/?p=107041
+
+    let typ = quote_field_type(hpp_includes, obj_field);
+
+    let copy_or_move = if obj_field.typ.has_default_destructor(objects) {
+        quote!(#param_ident)
+    } else {
+        hpp_includes.insert_system("utility"); // std::move
+        quote!(std::move(#param_ident))
+    };
+    methods.push(Method {
+        declaration: MethodDeclaration::constructor(quote! {
+            #type_ident(#typ #param_ident) : #field_ident(#copy_or_move)
+        }),
+        ..Method::default()
+    });
+    methods.push(Method {
+        declaration: MethodDeclaration {
+            is_static: false,
+            return_type: quote!(#type_ident&),
+            name_and_parameters: quote! {
+                operator=(#typ #param_ident)
+            },
+        },
+        definition_body: quote! {
+            #field_ident = #copy_or_move;
+            return *this;
+        },
+        ..Method::default()
+    });
 
     methods
 }
@@ -1574,16 +1553,14 @@ fn quote_append_field_to_builder(
             // Optimize common case: Trivial batch of transparent fixed size elements.
             let field_accessor = quote!(elements[0].#field_name);
             let num_items_per_value = quote_num_items_per_value(&field.typ, &field_accessor);
-            let field_ptr_accessor = quote_field_ptr_access(&field.typ, field_accessor);
             quote! {
                 auto #value_builder = static_cast<arrow::#value_builder_type*>(#builder->value_builder());
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
                 ARROW_RETURN_NOT_OK(#builder->AppendValues(static_cast<int64_t>(num_elements)));
                 static_assert(sizeof(elements[0].#field_name) == sizeof(elements[0]));
                 ARROW_RETURN_NOT_OK(#value_builder->AppendValues(
-                    #field_ptr_accessor.data(),
-                    static_cast<int64_t>(num_elements * #num_items_per_value),
-                    nullptr)
+                    #field_accessor.data(),
+                    static_cast<int64_t>(num_elements * #num_items_per_value), nullptr)
                 );
             }
         } else {
@@ -1616,7 +1593,7 @@ fn quote_append_field_to_builder(
             let append_value = quote_append_single_value_to_builder(
                 &field.typ,
                 &value_builder,
-                value_accessor,
+                &value_accessor,
                 includes,
             );
 
@@ -1647,7 +1624,7 @@ fn quote_append_field_to_builder(
     } else if !field.is_nullable && is_transparent && field.typ.has_default_destructor(objects) {
         // Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
         // we can just pass the whole array as-is!
-        let field_ptr_accessor = quote_field_ptr_access(&field.typ, quote!(elements->#field_name));
+        let field_ptr_accessor = quote_field_ptr_access(&field.typ, &quote!(elements->#field_name));
         quote! {
             static_assert(sizeof(*elements) == sizeof(elements->#field_name));
             ARROW_RETURN_NOT_OK(#builder->AppendValues(#field_ptr_accessor, static_cast<int64_t>(num_elements)));
@@ -1679,7 +1656,7 @@ fn quote_append_single_field_to_builder(
     };
 
     let append_value =
-        quote_append_single_value_to_builder(&field.typ, builder, value_access, includes);
+        quote_append_single_value_to_builder(&field.typ, builder, &value_access, includes);
 
     if field.is_nullable {
         quote! {
@@ -1704,7 +1681,7 @@ fn quote_append_single_field_to_builder(
 fn quote_append_single_value_to_builder(
     typ: &Type,
     value_builder: &Ident,
-    value_access: TokenStream,
+    value_access: &TokenStream,
     includes: &mut Includes,
 ) -> TokenStream {
     match &typ {
@@ -1731,7 +1708,7 @@ fn quote_append_single_value_to_builder(
             }
         }
         Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
-            let num_items_per_element = quote_num_items_per_value(typ, &value_access);
+            let num_items_per_element = quote_num_items_per_value(typ, value_access);
 
             match elem_type {
                 ElementType::UInt8
@@ -1793,10 +1770,11 @@ fn quote_num_items_per_value(typ: &Type, value_accessor: &TokenStream) -> TokenS
     }
 }
 
-fn quote_field_ptr_access(typ: &Type, field_accessor: TokenStream) -> TokenStream {
+fn quote_field_ptr_access(typ: &Type, field_accessor: &TokenStream) -> TokenStream {
     let (ptr_access, typ) = match typ {
-        Type::Array { elem_type, .. } => (field_accessor, elem_type.clone().into()),
-        Type::Vector { elem_type } => (quote!(#field_accessor.data()), elem_type.clone().into()),
+        Type::Array { elem_type, .. } | Type::Vector { elem_type } => {
+            (quote!(#field_accessor.data()), elem_type.clone().into())
+        }
         _ => (quote!(&#field_accessor), typ.clone()),
     };
 

@@ -29,11 +29,11 @@ namespace rerun {
           public:
             MeshProperties() = default;
 
-            MeshProperties(std::optional<std::vector<uint32_t>> _indices)
-                : indices(std::move(_indices)) {}
+            MeshProperties(std::optional<std::vector<uint32_t>> indices_)
+                : indices(std::move(indices_)) {}
 
-            MeshProperties& operator=(std::optional<std::vector<uint32_t>> _indices) {
-                indices = std::move(_indices);
+            MeshProperties& operator=(std::optional<std::vector<uint32_t>> indices_) {
+                indices = std::move(indices_);
                 return *this;
             }
 

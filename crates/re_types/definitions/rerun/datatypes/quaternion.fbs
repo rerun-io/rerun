@@ -16,7 +16,7 @@ struct Quaternion (
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, PartialEq, PartialOrd",
   "attr.rust.tuple_struct",
-  "attr.cpp.no_field_ctors" // conflicts with float* constructor
+  "attr.cpp.no_field_ctors" // Always be explicit about the values of the fields.
 ) {
   xyzw: [float: 4] (order: 100);
 }

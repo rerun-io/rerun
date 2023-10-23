@@ -7,9 +7,9 @@
 #include "../datatypes/vec3d.hpp"
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -33,9 +33,7 @@ namespace rerun {
             Vector3D(float x, float y, float z) : vector{x, y, z} {}
 
             /// Construct Vec3D from x/y/z float pointer.
-            ///
-            /// Attention: The pointer must point to at least least 3 floats long.
-            Vector3D(const float* ptr) : vector{ptr[0], ptr[1], ptr[2]} {}
+            explicit Vector3D(const float* xyz) : vector{xyz[0], xyz[1], xyz[2]} {}
 
             float x() const {
                 return vector.x();
@@ -52,14 +50,19 @@ namespace rerun {
           public:
             Vector3D() = default;
 
-            Vector3D(rerun::datatypes::Vec3D _vector) : vector(std::move(_vector)) {}
+            Vector3D(rerun::datatypes::Vec3D vector_) : vector(vector_) {}
 
-            Vector3D& operator=(rerun::datatypes::Vec3D _vector) {
-                vector = std::move(_vector);
+            Vector3D& operator=(rerun::datatypes::Vec3D vector_) {
+                vector = vector_;
                 return *this;
             }
 
-            Vector3D(const float (&arg)[3]) : vector(arg) {}
+            Vector3D(std::array<float, 3> xyz_) : vector(xyz_) {}
+
+            Vector3D& operator=(std::array<float, 3> xyz_) {
+                vector = xyz_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

@@ -23,10 +23,10 @@ namespace rerun {
           public:
             StringComponent() = default;
 
-            StringComponent(std::string _value) : value(std::move(_value)) {}
+            StringComponent(std::string value_) : value(std::move(value_)) {}
 
-            StringComponent& operator=(std::string _value) {
-                value = std::move(_value);
+            StringComponent& operator=(std::string value_) {
+                value = std::move(value_);
                 return *this;
             }
 

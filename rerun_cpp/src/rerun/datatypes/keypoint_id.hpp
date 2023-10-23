@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -28,10 +27,10 @@ namespace rerun {
           public:
             KeypointId() = default;
 
-            KeypointId(uint16_t _id) : id(std::move(_id)) {}
+            KeypointId(uint16_t id_) : id(id_) {}
 
-            KeypointId& operator=(uint16_t _id) {
-                id = std::move(_id);
+            KeypointId& operator=(uint16_t id_) {
+                id = id_;
                 return *this;
             }
 

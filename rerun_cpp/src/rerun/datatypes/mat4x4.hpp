@@ -60,7 +60,7 @@ namespace rerun {
                   } {}
 
             /// Construct a new 4x4 matrix from a pointer to 16 floats (in row major order).
-            Mat4x4(const float* elements)
+            explicit Mat4x4(const float* elements)
                 : flat_columns{
                       elements[0],
                       elements[1],
@@ -82,6 +82,13 @@ namespace rerun {
 
           public:
             Mat4x4() = default;
+
+            Mat4x4(std::array<float, 16> flat_columns_) : flat_columns(flat_columns_) {}
+
+            Mat4x4& operator=(std::array<float, 16> flat_columns_) {
+                flat_columns = flat_columns_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

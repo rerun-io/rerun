@@ -9,7 +9,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -58,14 +57,19 @@ namespace rerun {
           public:
             Color() = default;
 
-            Color(rerun::datatypes::Rgba32 _rgba) : rgba(std::move(_rgba)) {}
+            Color(rerun::datatypes::Rgba32 rgba_) : rgba(rgba_) {}
 
-            Color& operator=(rerun::datatypes::Rgba32 _rgba) {
-                rgba = std::move(_rgba);
+            Color& operator=(rerun::datatypes::Rgba32 rgba_) {
+                rgba = rgba_;
                 return *this;
             }
 
-            Color(uint32_t arg) : rgba(std::move(arg)) {}
+            Color(uint32_t rgba_) : rgba(rgba_) {}
+
+            Color& operator=(uint32_t rgba_) {
+                rgba = rgba_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

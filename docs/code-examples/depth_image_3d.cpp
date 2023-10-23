@@ -1,4 +1,4 @@
-// Create and log a depth image.
+// Create and log a depth image and pinhole camera.
 
 #include <rerun.hpp>
 

@@ -11,7 +11,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -38,14 +37,20 @@ namespace rerun {
           public:
             Material() = default;
 
-            Material(rerun::datatypes::Material _material) : material(std::move(_material)) {}
+            Material(rerun::datatypes::Material material_) : material(material_) {}
 
-            Material& operator=(rerun::datatypes::Material _material) {
-                material = std::move(_material);
+            Material& operator=(rerun::datatypes::Material material_) {
+                material = material_;
                 return *this;
             }
 
-            Material(std::optional<rerun::datatypes::Rgba32> arg) : material(std::move(arg)) {}
+            Material(std::optional<rerun::datatypes::Rgba32> albedo_factor_)
+                : material(albedo_factor_) {}
+
+            Material& operator=(std::optional<rerun::datatypes::Rgba32> albedo_factor_) {
+                material = albedo_factor_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

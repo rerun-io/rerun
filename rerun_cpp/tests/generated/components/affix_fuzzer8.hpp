@@ -8,7 +8,6 @@
 #include <optional>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
-#include <utility>
 
 namespace arrow {
     template <typename T>
@@ -31,11 +30,11 @@ namespace rerun {
           public:
             AffixFuzzer8() = default;
 
-            AffixFuzzer8(std::optional<float> _single_float_optional)
-                : single_float_optional(std::move(_single_float_optional)) {}
+            AffixFuzzer8(std::optional<float> single_float_optional_)
+                : single_float_optional(single_float_optional_) {}
 
-            AffixFuzzer8& operator=(std::optional<float> _single_float_optional) {
-                single_float_optional = std::move(_single_float_optional);
+            AffixFuzzer8& operator=(std::optional<float> single_float_optional_) {
+                single_float_optional = single_float_optional_;
                 return *this;
             }
 

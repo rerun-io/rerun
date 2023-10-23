@@ -1,4 +1,4 @@
-// Log a batch of 3D arrows.
+// Create and log a bar chart.
 
 #include <rerun.hpp>
 
