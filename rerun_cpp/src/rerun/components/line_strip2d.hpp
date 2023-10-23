@@ -39,6 +39,14 @@ namespace rerun {
             static const char NAME[];
 
           public:
+            // Extensions to generated type defined in 'line_strip2d_ext.cpp'
+
+            /// Create line strip from a list of positions, each connected to the next.
+            template <typename... Args>
+            LineStrip2D(rerun::datatypes::Vec2D a, rerun::datatypes::Vec2D b, Args... more)
+                : points({a, b, more...}) {}
+
+          public:
             LineStrip2D() = default;
 
             LineStrip2D(std::vector<rerun::datatypes::Vec2D> points_)

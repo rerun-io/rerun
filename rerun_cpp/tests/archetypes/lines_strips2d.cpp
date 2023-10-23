@@ -14,8 +14,8 @@ SCENARIO(
     GIVEN("Constructed from builder and manually") {
         auto from_builder =
             LineStrips2D({
-                             rerun::components::LineStrip2D({{0.f, 0.f}, {1.f, -1.f}}),
-                             rerun::components::LineStrip2D({{-1.f, 3.f}, {0.f, 1.5f}}),
+                             rerun::components::LineStrip2D({0.f, 0.f}, {1.f, -1.f}),
+                             rerun::components::LineStrip2D({-1.f, 3.f}, {0.f, 1.5f}),
                          })
                 .with_radii({1.0, 10.0})
                 .with_colors({{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}})
@@ -26,8 +26,8 @@ SCENARIO(
 
         LineStrips2D from_manual;
         from_manual.strips = {
-            rerun::components::LineStrip2D({{0.f, 0.f}, {1.f, -1.f}}),
-            rerun::components::LineStrip2D({{-1.f, 3.f}, {0.f, 1.5f}}),
+            rerun::components::LineStrip2D({0.f, 0.f}, {1.f, -1.f}),
+            rerun::components::LineStrip2D({-1.f, 3.f}, {0.f, 1.5f}),
         };
         from_manual.radii = {1.0, 10.0};
         from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};

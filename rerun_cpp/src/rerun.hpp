@@ -22,6 +22,8 @@ namespace rerun {
     using components::HalfSizes2D;
     using components::HalfSizes3D;
     using components::InstanceKey;
+    using components::LineStrip2D;
+    using components::LineStrip3D;
     using components::Material;
     using components::MediaType;
     using components::MeshProperties;
