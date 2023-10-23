@@ -23,9 +23,7 @@ class Rotation3D(Rotation3DExt):
 
     # You can define your own __init__ function as a member of Rotation3DExt in rotation3d_ext.py
 
-    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(
-        converter=Rotation3DExt.inner__field_converter_override
-    )  # type: ignore[misc]
+    inner: datatypes.Quaternion | datatypes.RotationAxisAngle = field(converter=Rotation3DExt.inner__field_converter_override)  # type: ignore[misc]
     """
     Quaternion (datatypes.Quaternion):
         Rotation defined by a quaternion.

@@ -24,7 +24,7 @@ __all__ = [
 
 
 def _translation_and_mat3x3__translation__special_field_converter_override(
-    x: datatypes.Vec3DLike | None
+    x: datatypes.Vec3DLike | None,
 ) -> datatypes.Vec3D | None:
     if x is None:
         return None
@@ -35,7 +35,7 @@ def _translation_and_mat3x3__translation__special_field_converter_override(
 
 
 def _translation_and_mat3x3__mat3x3__special_field_converter_override(
-    x: datatypes.Mat3x3Like | None
+    x: datatypes.Mat3x3Like | None,
 ) -> datatypes.Mat3x3 | None:
     if x is None:
         return None

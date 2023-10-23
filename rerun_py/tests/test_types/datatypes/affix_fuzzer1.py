@@ -25,7 +25,7 @@ __all__ = ["AffixFuzzer1", "AffixFuzzer1ArrayLike", "AffixFuzzer1Batch", "AffixF
 
 
 def _affix_fuzzer1__almost_flattened_scalar__special_field_converter_override(
-    x: datatypes.FlattenedScalarLike
+    x: datatypes.FlattenedScalarLike,
 ) -> datatypes.FlattenedScalar:
     if isinstance(x, datatypes.FlattenedScalar):
         return x
