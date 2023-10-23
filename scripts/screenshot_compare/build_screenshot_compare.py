@@ -109,14 +109,15 @@ def build_wasm() -> None:
     run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
 
 
-def copy_wasm(examples: list[Example]) -> None:
+def copy_wasm() -> None:
+    """Copies the wasm/js files at the root of the `examples` subdirectory."""
     files = ["re_viewer_bg.wasm", "re_viewer.js"]
-    for example in examples:
-        for file in files:
-            shutil.copyfile(
-                os.path.join("web_viewer", file),
-                os.path.join(BASE_PATH, f"examples/{example.name}", file),
-            )
+
+    for file in files:
+        shutil.copyfile(
+            os.path.join("web_viewer", file),
+            os.path.join(BASE_PATH, "examples", file),
+        )
 
 
 # ====================================================================================================
@@ -218,6 +219,8 @@ def collect_examples() -> Iterable[Example]:
 
 
 def render_index(examples: list[Example]) -> None:
+    BASE_PATH.mkdir(exist_ok=True)
+
     index_path = BASE_PATH / "index.html"
     print(f"Rendering index.html -> {index_path}")
     index_path.write_text(INDEX_TEMPLATE.render(examples=examples))
@@ -277,7 +280,7 @@ def main() -> None:
     render_index(examples)
     render_examples(examples)
     copy_static_assets(examples)
-    copy_wasm(examples)
+    copy_wasm()
 
     if args.serve:
         serve_files()

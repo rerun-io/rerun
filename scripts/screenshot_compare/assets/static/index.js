@@ -71,7 +71,7 @@ function load_wasm() {
   }, 1500);
 
   async function wasm_with_progress() {
-    const response = await fetch("./re_viewer_bg.wasm");
+    const response = await fetch("../re_viewer_bg.wasm");
     // Use the uncompressed size
     var content_length;
     var content_multiplier = 1;
