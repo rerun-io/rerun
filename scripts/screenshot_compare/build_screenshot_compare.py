@@ -69,8 +69,6 @@ class Example:
     title: str
     rrd: Path
     screenshot_url: str
-    description_html: str = ""
-    source_url: str = ""
 
 
 def copy_static_assets(examples: list[Example]) -> None:
@@ -92,32 +90,7 @@ def copy_static_assets(examples: list[Example]) -> None:
 
 def build_python_sdk() -> None:
     print("Building Python SDK…")
-    run(
-        [
-            "maturin",
-            "develop",
-            "--manifest-path",
-            "rerun_py/Cargo.toml",
-            '--extras="tests"',
-            "--quiet",
-        ]
-    )
-
-
-def build_wasm() -> None:
-    print("")
-    run(["cargo", "r", "-p", "re_build_web_viewer", "--", "--release"])
-
-
-def copy_wasm() -> None:
-    """Copies the wasm/js files at the root of the `examples` subdirectory."""
-    files = ["re_viewer_bg.wasm", "re_viewer.js"]
-
-    for file in files:
-        shutil.copyfile(
-            os.path.join("web_viewer", file),
-            os.path.join(BASE_PATH, "examples", file),
-        )
+    run(["just", "py-build", "--features", "web_viewer"])
 
 
 # ====================================================================================================
@@ -236,19 +209,32 @@ def render_examples(examples: list[Example]) -> None:
         shutil.copy(example.rrd, target_path / "data.rrd")
 
 
+class CORSRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        super().end_headers()
+
+
 def serve_files() -> None:
     def serve() -> None:
         print("\nServing examples at http://127.0.0.1:8080/\n")
         server = http.server.HTTPServer(
             server_address=("127.0.0.1", 8080),
             RequestHandlerClass=partial(
-                http.server.SimpleHTTPRequestHandler,
+                CORSRequestHandler,
                 directory=BASE_PATH,
             ),
         )
         server.serve_forever()
 
+    def serve_wasm() -> None:
+        import rerun as rr
+
+        rr.init("Screenshot compare")
+        rr.serve(open_browser=False)
+
     threading.Thread(target=serve, daemon=True).start()
+    threading.Thread(target=serve_wasm, daemon=True).start()
 
 
 def main() -> None:
@@ -258,14 +244,13 @@ def main() -> None:
         action="store_true",
         help="Serve the app on this port after building [default: 8080]",
     )
-    parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK and web viewer Wasm.")
+    parser.add_argument("--skip-build", action="store_true", help="Skip building the Python SDK.")
     parser.add_argument("--skip-example-build", action="store_true", help="Skip building the RRDs.")
 
     args = parser.parse_args()
 
     if not args.skip_build:
         build_python_sdk()
-        build_wasm()
 
     if not args.skip_example_build:
         build_code_examples()
@@ -277,7 +262,6 @@ def main() -> None:
     render_index(examples)
     render_examples(examples)
     copy_static_assets(examples)
-    copy_wasm()
 
     if args.serve:
         serve_files()
@@ -288,7 +272,6 @@ def main() -> None:
                 input()
                 render_examples(examples)
                 copy_static_assets(examples)
-                copy_wasm()
             except KeyboardInterrupt:
                 break
 

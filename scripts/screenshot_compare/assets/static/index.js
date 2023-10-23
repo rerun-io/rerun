@@ -38,10 +38,10 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(naviga
   </p>`);
   document.querySelector("#try_anyways").addEventListener("click", function (event) {
     event.preventDefault();
-    load_wasm();
+    //load_wasm();
   });
 } else {
-  load_wasm();
+  //load_wasm();
 }
 
 function load_wasm() {
