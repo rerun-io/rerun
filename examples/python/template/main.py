@@ -22,7 +22,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_my_example_name")
 
-    # ... example code
+    # … example code
 
     rr.script_teardown(args)
 
