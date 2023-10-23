@@ -14,6 +14,10 @@ use super::{
 
 slotmap::new_key_type! { pub struct GpuShaderModuleHandle; }
 
+/// If set, all readily stitched (import resolve) and patched
+/// wgsl shaders will be written to the specified directory.
+const RERUN_WGSL_SHADER_DUMP_PATH: &str = "RERUN_WGSL_SHADER_DUMP_PATH";
+
 /// Create a shader module using the `include_file!` macro and set the path name as debug string.
 #[macro_export]
 macro_rules! include_shader_module {
@@ -72,6 +76,19 @@ impl ShaderModuleDesc {
             .chain(self.extra_workaround_replacements.iter())
         {
             source_interpolated.contents = source_interpolated.contents.replace(from, to);
+        }
+
+        if let Ok(wgsl_dump_dir) = std::env::var(RERUN_WGSL_SHADER_DUMP_PATH) {
+            let mut path = PathBuf::from(wgsl_dump_dir);
+            std::fs::create_dir_all(&path).unwrap();
+
+            let mut wgsl_filename = self.source.to_str().unwrap().replace(['/', '\\'], "_");
+            if let Some(position) = wgsl_filename.find("re_renderer_shader_") {
+                wgsl_filename = wgsl_filename[position + "re_renderer_shader_".len()..].to_owned();
+            }
+
+            path.push(&wgsl_filename);
+            std::fs::write(&path, &source_interpolated.contents).unwrap();
         }
 
         // All wgpu errors come asynchronously: this call will succeed whether the given

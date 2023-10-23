@@ -24,3 +24,40 @@ Goals & philosophy:
 * Lazy loading whenever possible for best startup performance
 * Run great both on the desktop and web
 * No dependencies on `re_viewer` or rerun data store libraries
+
+
+## Debugging
+
+### Shader
+
+#### Iterating
+
+In debug mode shaders are live-reloaded.
+If a failure occurs during live-reload, an error is logged and the previous shader is kept.
+
+#### Inspecting final source
+
+If `RERUN_WGSL_SHADER_DUMP_PATH` is set, all readily stitched (import resolve) and patched
+wgsl shaders will be written to the specified directory.
+
+Often you're also interested in the Naga translated shader. This can be done easily from command line using
+```sh
+cargo install naga-cli --all-features
+```
+
+Example for translating a wgsl fragment shader to GL as used on WebGL:
+```sh
+naga ./wgsl_dump/rectangle_fs.wgsl ./wgsl_dump/rectangle_fs.frag --entry-point fs_main --profile es300
+```
+Example for translating a wgsl vertex shader to GL as used on WebGL:
+```sh
+naga ./wgsl_dump/rectangle_vs.wgsl ./wgsl_dump/rectangle_vs.vert --entry-point vs_main --profile es300
+```
+Note that a single shader entry point from wgsl maps to a single frag/vert file!
+
+Example for translating a wgsl to MSL as used on MacOS.
+Note that a single metal file maps to a single wgsl file.
+```sh
+naga ./wgsl_dump/rectangle_fs.wgsl ./wgsl_dump/rectangle_fs.metal
+```
+
