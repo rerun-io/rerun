@@ -301,7 +301,7 @@ namespace rerun {
         ComponentBatch<TComponent> operator()(const std::vector<T>& input) {
             std::vector<TComponent> transformed(input.size());
 
-            std::transform(input.begin(), input.end(), transformed.begin(), [](auto datum) {
+            std::transform(input.begin(), input.end(), transformed.begin(), [](const T& datum) {
                 return TComponent(datum);
             });
 
@@ -311,9 +311,12 @@ namespace rerun {
         ComponentBatch<TComponent> operator()(std::vector<T>&& input) {
             std::vector<TComponent> transformed(input.size());
 
-            std::transform(input.begin(), input.end(), transformed.begin(), [](auto datum) {
-                return TComponent(datum);
-            });
+            std::transform(
+                std::make_move_iterator(input.begin()),
+                std::make_move_iterator(input.end()),
+                transformed.begin(),
+                [](T&& datum) { return TComponent(datum); }
+            );
 
             return ComponentBatch<TComponent>::take_ownership(std::move(transformed));
         }

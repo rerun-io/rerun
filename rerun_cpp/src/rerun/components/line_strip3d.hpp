@@ -43,8 +43,8 @@ namespace rerun {
             // Extensions to generated type defined in 'line_strip3d_ext.cpp'
 
             template <typename T>
-            LineStrip3D(std::vector<T>& points_) : points(points_.size()) {
-                std::transform(points_.begin(), points_.end(), points.begin(), [](auto pt) {
+            LineStrip3D(const std::vector<T>& points_) : points(points_.size()) {
+                std::transform(points_.begin(), points_.end(), points.begin(), [](const T& pt) {
                     return rerun::datatypes::Vec3D(pt);
                 });
             }
