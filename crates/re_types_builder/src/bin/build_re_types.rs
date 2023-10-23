@@ -34,15 +34,11 @@ macro_rules! join {
 fn main() {
     re_log::setup_native_logging();
 
-    // This isn't a build.rs script, so opt out of cargo build instrctinsr
+    let mut profiler = re_tracing::Profiler::default(); // must be started early and dropped late to catch everything
+
+    // This isn't a build.rs script, so opt out of cargo build instructions
     set_output_cargo_build_instructions(false);
 
-    rayon::ThreadPoolBuilder::new()
-        .thread_name(|i| format!("rayon-{i}"))
-        .build_global()
-        .unwrap();
-
-    let mut profiler = re_tracing::Profiler::default();
     let mut always_run = false;
     let mut check = false;
 
@@ -64,6 +60,11 @@ fn main() {
             }
         }
     }
+
+    rayon::ThreadPoolBuilder::new()
+        .thread_name(|i| format!("rayon-{i}"))
+        .build_global()
+        .unwrap();
 
     let workspace_dir = Utf8Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
