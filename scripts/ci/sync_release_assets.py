@@ -100,28 +100,30 @@ def fetch_binary_assets(
         rerun_cpp_sdk_blob = bucket.get_blob(f"commit/{commit_short}/rerun_cpp_sdk.zip")
         for blob in [rerun_cpp_sdk_blob]:
             if blob is not None and blob.name is not None:
-                name = f"rerun_cpp_sdk-{tag}-multiplatform.zip"
+                name = blob.name.split("/")[-1]
                 print(f"    Found Rerun cross-platform bundle: {name}")
                 assets[name] = blob
+                # NOTE: Want a versioned one too.
+                assets[f"rerun_cpp_sdk-{tag}-multiplatform.zip"] = blob
 
     # rerun-cli
     if do_rerun_cli:
         rerun_cli_blobs = [
             (
                 f"rerun-cli-{tag}-x86_64-pc-windows-msvc.exe",
-                bucket.get_blob(f"commit/{commit_short}/rerun/windows/rerun.exe"),
+                bucket.get_blob(f"commit/{commit_short}/rerun-cli/windows/rerun.exe"),
             ),
             (
                 f"rerun-cli-{tag}-x86_64-unknown-linux-gnu",
-                bucket.get_blob(f"commit/{commit_short}/rerun/linux/rerun"),
+                bucket.get_blob(f"commit/{commit_short}/rerun-cli/linux/rerun"),
             ),
             (
                 f"rerun-cli-{tag}-aarch64-apple-darwin",
-                bucket.get_blob(f"commit/{commit_short}/rerun/macos-arm/rerun"),
+                bucket.get_blob(f"commit/{commit_short}/rerun-cli/macos-arm/rerun"),
             ),
             (
                 f"rerun-cli-{tag}-x86_64-apple-darwin",
-                bucket.get_blob(f"commit/{commit_short}/rerun/macos-intel/rerun"),
+                bucket.get_blob(f"commit/{commit_short}/rerun-cli/macos-intel/rerun"),
             ),
         ]
         for name, blob in rerun_cli_blobs:
