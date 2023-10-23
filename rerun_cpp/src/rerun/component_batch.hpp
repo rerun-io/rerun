@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <utility>
 #include <vector>
@@ -98,6 +99,19 @@ namespace rerun {
         /// Construct using a `ComponentBatchAdapter`.
         template <typename T>
         ComponentBatch(T&& input) : ComponentBatch(TAdapter<T>()(std::forward<T>(input))) {}
+
+        // Construct using a vector
+        template <typename T>
+        ComponentBatch(std::vector<T>& input) : ownership(BatchOwnership::VectorOwned) {
+            new (&storage.vector_owned) std::vector<TComponent>(input.size());
+
+            std::transform(
+                input.begin(),
+                input.end(),
+                storage.vector_owned.begin(),
+                [](auto datum) { return TComponentType(datum); }
+            );
+        }
 
         /// Construct from a temporary list of components.
         ///
