@@ -1,4 +1,4 @@
-// Log some very simple points.
+// Log some random points with color and radii.
 
 #include <rerun.hpp>
 
