@@ -88,8 +88,10 @@ def main() -> None:
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: INFO)",
     )
-    parser.add_argument("--num-threads", type=int, default=8, help="Number of threads to use (default: 4)")
-    parser.add_argument("--skip", type=str, default="", help="Comma-separated list of tasks to skip")
+    parser.add_argument("--num-threads", type=int, default=8, help="Number of threads to use (default: 8).")
+    parser.add_argument(
+        "--skip", type=str, default=os.environ.get("RERUN_LINT_SKIP", ""), help="Comma-separated list of tasks to skip."
+    )
     parser.add_argument("--no-change-filter", action="store_true", help="Run lints without filtering based on changes.")
     parser.add_argument(
         "files",
@@ -115,7 +117,7 @@ def main() -> None:
     else:
         files = changed_files()
 
-    skip = args.skip.split(",")
+    skip = [s for s in args.skip.split(",") if s != ""]
 
     logging.debug("Checking:")
     for f in files:
