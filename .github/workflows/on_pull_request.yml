@@ -44,6 +44,16 @@ jobs:
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
+  build-rerun-cli-and-upload:
+    name: "Build & Upload rerun-cli (Linux x64)"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PLATFORM: linux
+      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
+    secrets: inherit
+
   bundle-and-upload-rerun_cpp:
     name: "Bundle and upload rerun_cpp"
     needs: [build-rerun_c-and-upload]
