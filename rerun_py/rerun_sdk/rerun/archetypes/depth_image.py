@@ -44,7 +44,7 @@ class DepthImage(DepthImageExt, Archetype):
         rr.Pinhole(
             width=depth_image.shape[1],
             height=depth_image.shape[0],
-            focal_length=20,
+            focal_length=200,
         ),
     )
 
