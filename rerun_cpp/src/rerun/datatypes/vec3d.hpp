@@ -28,7 +28,7 @@ namespace rerun {
             Vec3D(float x, float y, float z) : xyz{x, y, z} {}
 
             /// Construct Vec3D from x/y/z float pointer.
-            Vec3D(const float* ptr) : xyz{ptr[0], ptr[1], ptr[2]} {}
+            explicit Vec3D(const float* xyz_) : xyz{xyz_[0], xyz_[1], xyz_[2]} {}
 
             float x() const {
                 return xyz[0];

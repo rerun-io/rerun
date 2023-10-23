@@ -43,6 +43,10 @@ def test_expected_warnings() -> None:
                 rr.log("test_transform", rr.TranslationAndMat3x3(translation=[1, 0, 0])),  # type: ignore[arg-type]
                 "Expected an object implementing rerun.AsComponents or an iterable of rerun.ComponentBatchLike, but got",
             ),
+            (
+                rr.log("world/image", rr.Pinhole(focal_length=3)),
+                "Must provide one of principal_point, resolution, or width/height)",
+            ),
         ]
 
         assert len(warnings) == len(expected_warnings)
