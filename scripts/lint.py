@@ -68,13 +68,13 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
         return "Found 'the the'"
 
     if file_extension not in ("txt"):
-        if ellipsis.search(line):
-            if (
-                not ellipsis_expression.search(line)
-                and not ellipsis_bare.search(line)
-                and not ellipsis_reference.search(line)
-            ):
-                return "Use … instead of ..."
+        if (
+            ellipsis.search(line)
+            and not ellipsis_expression.search(line)
+            and not ellipsis_bare.search(line)
+            and not ellipsis_reference.search(line)
+        ):
+            return "Use … instead of ..."
 
     if "FIXME" in line:
         return "we prefer TODO over FIXME"
