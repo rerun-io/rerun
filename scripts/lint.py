@@ -265,8 +265,8 @@ def lint_vertical_spacing(lines_in: list[str]) -> tuple[list[str], list[str]]:
     """Only for Rust files."""
     prev_line = None
 
-    errors = []
-    lines_out = []
+    errors: list[str] = []
+    lines_out: list[str] = []
 
     for line_nr, line in enumerate(lines_in):
         line_nr = line_nr + 1
@@ -509,7 +509,7 @@ def lint_example_description(filepath: str, fm: frontmatter.Post) -> list[str]:
 def lint_frontmatter(filepath: str, content: str) -> list[str]:
     """Only for Markdown files."""
 
-    errors = []
+    errors: list[str] = []
     if not filepath.endswith(".md"):
         return errors
 
@@ -587,6 +587,8 @@ class SourceFile:
 def lint_file(filepath: str, args: Any) -> int:
     source = SourceFile(filepath)
     num_errors = 0
+
+    error: str | None
 
     for line_nr, line in enumerate(source.lines):
         if line == "" or line[-1] != "\n":
