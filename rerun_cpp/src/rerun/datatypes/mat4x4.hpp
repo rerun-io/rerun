@@ -60,7 +60,7 @@ namespace rerun {
                   } {}
 
             /// Construct a new 4x4 matrix from a pointer to 16 floats (in row major order).
-            Mat4x4(const float* elements)
+            explicit Mat4x4(const float* elements)
                 : flat_columns{
                       elements[0],
                       elements[1],
