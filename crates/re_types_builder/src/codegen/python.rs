@@ -1067,11 +1067,11 @@ fn quote_aliases_from_object(obj: &Object) -> String {
 
     let mut code = String::new();
 
-    if aliases.is_empty() {
-        code.push_unindented_text(&format!("{name}Like = {name}"), 1);
-    } else {
-        code.push_unindented_text(
-            &format!(
+    code.push_unindented_text(
+        &if aliases.is_empty() {
+            format!("{name}Like = {name}")
+        } else {
+            format!(
                 r#"
                 if TYPE_CHECKING:
                     {name}Like = {name} | {}
@@ -1079,25 +1079,22 @@ fn quote_aliases_from_object(obj: &Object) -> String {
                     {name}Like = Any
                 "#,
                 aliases.iter().join(" | ")
-            ),
-            1,
-        );
-    }
+            )
+        },
+        1,
+    );
 
-    if array_aliases.is_empty() {
-        code.push_unindented_text(
-            format!("{name}ArrayLike = {name} | Sequence[{name}Like]"),
-            0,
-        );
-    } else {
-        code.push_unindented_text(
+    code.push_unindented_text(
+        if array_aliases.is_empty() {
+            format!("{name}ArrayLike = {name} | Sequence[{name}Like]")
+        } else {
             format!(
                 "{name}ArrayLike = {name} | Sequence[{name}Like] | {}",
                 array_aliases.iter().join(" | ")
-            ),
-            0,
-        );
-    }
+            )
+        },
+        0,
+    );
 
     code
 }
