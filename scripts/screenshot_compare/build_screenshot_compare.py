@@ -288,7 +288,7 @@ def main() -> None:
                 input()
                 render_examples(examples)
                 copy_static_assets(examples)
-                copy_wasm(examples)
+                copy_wasm()
             except KeyboardInterrupt:
                 break
 
