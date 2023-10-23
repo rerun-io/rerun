@@ -20,7 +20,7 @@ namespace rerun {
 
             /// Construct resolution from width and height integers.
             Resolution(int width, int height)
-                : resolution{static_cast<float>(width), static_cast<float>(width)} {}
+                : resolution{static_cast<float>(width), static_cast<float>(height)} {}
 
             // [CODEGEN COPY TO HEADER END]
         };

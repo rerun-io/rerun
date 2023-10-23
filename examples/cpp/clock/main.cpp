@@ -31,7 +31,7 @@ void log_hand(
     );
 }
 
-int main(int argc, char** argv) {
+int main() {
     const float LENGTH_S = 20.0f;
     const float LENGTH_M = 10.0f;
     const float LENGTH_H = 4.0f;
