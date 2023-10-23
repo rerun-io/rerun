@@ -939,7 +939,7 @@ fn quote_doc_lines(lines: Vec<String>) -> String {
     if lines.len() == 1 {
         // single-line
         let line = &lines[0];
-        format!("\"\"\"{line}\"\"\"\n\n")
+        format!("\"\"\"{line}\"\"\"\n\n") // NOLINT
     } else {
         // multi-line
         format!("\"\"\"\n{}\n\"\"\"\n\n", lines.join("\n"))
