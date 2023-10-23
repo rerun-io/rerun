@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/annotation_info.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Annotation info annotating a class id or key-point id.
 ///
@@ -32,19 +37,7 @@ pub struct AnnotationInfo {
     pub color: Option<crate::datatypes::Rgba32>,
 }
 
-impl<'a> From<AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
-    #[inline]
-    fn from(value: AnnotationInfo) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AnnotationInfo> for ::std::borrow::Cow<'a, AnnotationInfo> {
-    #[inline]
-    fn from(value: &'a AnnotationInfo) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AnnotationInfo);
 
 impl ::re_types_core::Loggable for AnnotationInfo {
     type Name = ::re_types_core::DatatypeName;
@@ -54,7 +47,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
         "rerun.datatypes.AnnotationInfo".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -80,10 +73,10 @@ impl ::re_types_core::Loggable for AnnotationInfo {
         ])
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -221,10 +214,10 @@ impl ::re_types_core::Loggable for AnnotationInfo {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -236,7 +229,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field {
                                 name: "id".to_owned(),
@@ -273,7 +266,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                     .collect();
                 let id = {
                     if !arrays_by_name.contains_key("id") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "id",
                         ))
@@ -284,7 +277,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         .as_any()
                         .downcast_ref::<UInt16Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::UInt16,
                                 arrow_data.data_type().clone(),
                             )
@@ -295,7 +288,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 };
                 let label = {
                     if !arrays_by_name.contains_key("label") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "label",
                         ))
@@ -307,7 +300,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             .as_any()
                             .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::Utf8,
                                     arrow_data.data_type().clone(),
                                 )
@@ -324,12 +317,10 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 let start = *start as usize;
                                 let end = start + len;
                                 if end as usize > arrow_data_buf.len() {
-                                    return Err(
-                                        ::re_types_core::DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ),
-                                    );
+                                    return Err(DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        arrow_data_buf.len(),
+                                    ));
                                 }
 
                                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -346,14 +337,14 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 })
                             })
                         })
-                        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()
                         .with_context("rerun.datatypes.AnnotationInfo#label")?
                         .into_iter()
                     }
                 };
                 let color = {
                     if !arrays_by_name.contains_key("color") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "color",
                         ))
@@ -364,7 +355,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                         .as_any()
                         .downcast_ref::<UInt32Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::UInt32,
                                 arrow_data.data_type().clone(),
                             )
@@ -382,7 +373,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                     opt.map(|(id, label, color)| {
                         Ok(Self {
                             id: id
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.AnnotationInfo#id")?,
                             label,
                             color,
@@ -390,7 +381,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                     })
                     .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.AnnotationInfo")?
             }
         })

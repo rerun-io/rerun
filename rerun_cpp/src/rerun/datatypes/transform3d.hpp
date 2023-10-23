@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <utility>
 
 namespace arrow {
@@ -85,7 +86,8 @@ namespace rerun {
             ) {
                 Transform3D self;
                 self._tag = detail::Transform3DTag::TranslationAndMat3x3;
-                self._data.translation_and_mat3x3 = std::move(translation_and_mat3x3);
+                new (&self._data.translation_and_mat3x3)
+                    rerun::datatypes::TranslationAndMat3x3(std::move(translation_and_mat3x3));
                 return self;
             }
 
@@ -94,7 +96,9 @@ namespace rerun {
             ) {
                 Transform3D self;
                 self._tag = detail::Transform3DTag::TranslationRotationScale;
-                self._data.translation_rotation_scale = std::move(translation_rotation_scale);
+                new (&self._data.translation_rotation_scale
+                ) rerun::datatypes::TranslationRotationScale3D(std::move(translation_rotation_scale)
+                );
                 return self;
             }
 
@@ -105,6 +109,25 @@ namespace rerun {
             Transform3D(rerun::datatypes::TranslationRotationScale3D translation_rotation_scale) {
                 *this =
                     Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
+            }
+
+            /// Return a pointer to translation_and_mat3x3 if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::TranslationAndMat3x3* get_translation_and_mat3x3() const {
+                if (_tag == detail::Transform3DTag::TranslationAndMat3x3) {
+                    return &_data.translation_and_mat3x3;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to translation_rotation_scale if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::TranslationRotationScale3D* get_translation_rotation_scale(
+            ) const {
+                if (_tag == detail::Transform3DTag::TranslationRotationScale) {
+                    return &_data.translation_rotation_scale;
+                } else {
+                    return nullptr;
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

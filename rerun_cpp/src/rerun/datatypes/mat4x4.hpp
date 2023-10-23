@@ -6,6 +6,7 @@
 #include "../result.hpp"
 #include "vec4d.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -30,7 +31,7 @@ namespace rerun {
         /// ```
         struct Mat4x4 {
             /// Flat list of matrix coefficients in column-major order.
-            float flat_columns[16];
+            std::array<float, 16> flat_columns;
 
           public:
             // Extensions to generated type defined in 'mat4x4_ext.cpp'
@@ -58,27 +59,29 @@ namespace rerun {
                       columns[3].w(),
                   } {}
 
+            /// Construct a new 4x4 matrix from a pointer to 16 floats (in row major order).
+            explicit Mat4x4(const float* elements)
+                : flat_columns{
+                      elements[0],
+                      elements[1],
+                      elements[2],
+                      elements[3],
+                      elements[4],
+                      elements[5],
+                      elements[6],
+                      elements[7],
+                      elements[8],
+                      elements[9],
+                      elements[10],
+                      elements[11],
+                      elements[12],
+                      elements[13],
+                      elements[14],
+                      elements[15],
+                  } {}
+
           public:
             Mat4x4() = default;
-
-            Mat4x4(const float (&_flat_columns)[16])
-                : flat_columns{
-                      _flat_columns[0],
-                      _flat_columns[1],
-                      _flat_columns[2],
-                      _flat_columns[3],
-                      _flat_columns[4],
-                      _flat_columns[5],
-                      _flat_columns[6],
-                      _flat_columns[7],
-                      _flat_columns[8],
-                      _flat_columns[9],
-                      _flat_columns[10],
-                      _flat_columns[11],
-                      _flat_columns[12],
-                      _flat_columns[13],
-                      _flat_columns[14],
-                      _flat_columns[15]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

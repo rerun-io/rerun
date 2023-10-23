@@ -8,7 +8,7 @@ use re_types_core::{components::InstanceKey, Archetype, Component, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 
-/// Make it so that our arrays can be deserialized again by arrow2-convert
+/// Make it so that our arrays can be deserialized again by `polars`.
 fn fix_polars_nulls<C: Component>(array: &dyn Array) -> Box<dyn Array> {
     // TODO(jleibs): This is an ugly work-around but gets our serializers
     // working again
@@ -196,7 +196,7 @@ fn test_df_builder() {
     eprintln!("{df:?}");
     //
     // ┌──────────────┬─────────────────┐
-    // │ rerun.components.Radius ┆ rerun.components.Color │
+    // │ Radius       ┆ Color           │
     // │ ---          ┆ ---             │
     // │ f32          ┆ u32             │
     // ╞══════════════╪═════════════════╡

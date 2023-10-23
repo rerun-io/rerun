@@ -6,6 +6,7 @@
 #include "../result.hpp"
 #include "vec3d.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -29,7 +30,7 @@ namespace rerun {
         /// ```
         struct Mat3x3 {
             /// Flat list of matrix coefficients in column-major order.
-            float flat_columns[9];
+            std::array<float, 9> flat_columns;
 
           public:
             // Extensions to generated type defined in 'mat3x3_ext.cpp'
@@ -50,20 +51,22 @@ namespace rerun {
                       columns[2].z(),
                   } {}
 
+            /// Construct a new 3x3 matrix from a pointer to 9 floats (in row major order).
+            explicit Mat3x3(const float* elements)
+                : flat_columns{
+                      elements[0],
+                      elements[1],
+                      elements[2],
+                      elements[3],
+                      elements[4],
+                      elements[5],
+                      elements[6],
+                      elements[7],
+                      elements[8],
+                  } {}
+
           public:
             Mat3x3() = default;
-
-            Mat3x3(const float (&_flat_columns)[9])
-                : flat_columns{
-                      _flat_columns[0],
-                      _flat_columns[1],
-                      _flat_columns[2],
-                      _flat_columns[3],
-                      _flat_columns[4],
-                      _flat_columns[5],
-                      _flat_columns[6],
-                      _flat_columns[7],
-                      _flat_columns[8]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

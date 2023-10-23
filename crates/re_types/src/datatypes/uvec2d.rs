@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/uvec2d.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A uint32 vector in 2D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
@@ -35,19 +40,7 @@ impl From<UVec2D> for [u32; 2usize] {
     }
 }
 
-impl<'a> From<UVec2D> for ::std::borrow::Cow<'a, UVec2D> {
-    #[inline]
-    fn from(value: UVec2D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a UVec2D> for ::std::borrow::Cow<'a, UVec2D> {
-    #[inline]
-    fn from(value: &'a UVec2D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(UVec2D);
 
 impl ::re_types_core::Loggable for UVec2D {
     type Name = ::re_types_core::DatatypeName;
@@ -57,7 +50,7 @@ impl ::re_types_core::Loggable for UVec2D {
         "rerun.datatypes.UVec2D".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -72,10 +65,10 @@ impl ::re_types_core::Loggable for UVec2D {
         )
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -134,10 +127,10 @@ impl ::re_types_core::Loggable for UVec2D {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -149,7 +142,7 @@ impl ::re_types_core::Loggable for UVec2D {
                 .as_any()
                 .downcast_ref::<arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::FixedSizeList(
                             Box::new(Field {
                                 name: "item".to_owned(),
@@ -175,7 +168,7 @@ impl ::re_types_core::Loggable for UVec2D {
                         .as_any()
                         .downcast_ref::<UInt32Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::UInt32,
                                 arrow_data_inner.data_type().clone(),
                             )
@@ -193,7 +186,7 @@ impl ::re_types_core::Loggable for UVec2D {
                     elem.map(|(start, end)| {
                         debug_assert!(end - start == 2usize);
                         if end as usize > arrow_data_inner.len() {
-                            return Err(::re_types_core::DeserializationError::offset_slice_oob(
+                            return Err(DeserializationError::offset_slice_oob(
                                 (start, end),
                                 arrow_data_inner.len(),
                             ));
@@ -208,13 +201,13 @@ impl ::re_types_core::Loggable for UVec2D {
                     })
                     .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                .collect::<DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
-        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+        .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.datatypes.UVec2D#xy")
         .with_context("rerun.datatypes.UVec2D")?)
     }

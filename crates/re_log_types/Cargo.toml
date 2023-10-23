@@ -50,8 +50,8 @@ arrow2 = { workspace = true, features = [
   "io_print",
   "compute_concatenate",
 ] }
-arrow2_convert.workspace = true
 backtrace.workspace = true
+bytemuck.workspace = true
 document-features.workspace = true
 fixed = { version = "1.17", default-features = false, features = ["serde"] }
 # `fixed` depends on `half`, so even though `half` is not directly used in this crate,

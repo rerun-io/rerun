@@ -17,6 +17,7 @@ mod ui;
 mod ui_2d;
 mod ui_3d;
 
+use re_types::components::{Resolution, TensorData};
 pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
 
@@ -31,6 +32,20 @@ mod view_kind {
         TwoD,
         ThreeD,
     }
+}
+
+fn resolution_from_tensor(
+    store: &re_arrow_store::DataStore,
+    query: &re_arrow_store::LatestAtQuery,
+    entity_path: &re_log_types::EntityPath,
+) -> Option<Resolution> {
+    store
+        .query_latest_component::<TensorData>(entity_path, query)
+        .and_then(|tensor| {
+            tensor
+                .image_height_width_channels()
+                .map(|hwc| Resolution([hwc[1] as f32, hwc[0] as f32].into()))
+        })
 }
 
 /// Utility for querying a pinhole archetype instance.
@@ -48,7 +63,8 @@ fn query_pinhole(
             image_from_camera: image_from_camera.value,
             resolution: store
                 .query_latest_component(entity_path, query)
-                .map(|c| c.value),
+                .map(|c| c.value)
+                .or_else(|| resolution_from_tensor(store, query, entity_path)),
             camera_xyz: store
                 .query_latest_component(entity_path, query)
                 .map(|c| c.value),

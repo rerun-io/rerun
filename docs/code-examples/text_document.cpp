@@ -8,7 +8,7 @@ namespace rrd = rerun::datatypes;
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_text_document");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     rec.log("text_document", rerun::archetypes::TextDocument("Hello, TextDocument!"));
 

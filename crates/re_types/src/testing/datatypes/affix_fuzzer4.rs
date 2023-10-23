@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/testing/datatypes/fuzzy.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer4 {
@@ -23,19 +28,7 @@ pub enum AffixFuzzer4 {
     ManyOptional(Option<Vec<crate::testing::datatypes::AffixFuzzer3>>),
 }
 
-impl<'a> From<AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
-    #[inline]
-    fn from(value: AffixFuzzer4) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer4> for ::std::borrow::Cow<'a, AffixFuzzer4> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer4) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer4);
 
 impl ::re_types_core::Loggable for AffixFuzzer4 {
     type Name = ::re_types_core::DatatypeName;
@@ -45,7 +38,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
         "rerun.testing.datatypes.AffixFuzzer4".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -91,10 +84,10 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
         )
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -292,10 +285,10 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -307,7 +300,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Union(
                             vec![
                             Field { name : "_null_markers".to_owned(), data_type :
@@ -342,14 +335,14 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        ::re_types_core::DeserializationError::datatype_mismatch(
+                        DeserializationError::datatype_mismatch(
                             Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.testing.datatypes.AffixFuzzer4")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
-                    return Err(::re_types_core::DeserializationError::offset_slice_oob(
+                    return Err(DeserializationError::offset_slice_oob(
                         (0, arrow_data_types.len()),
                         arrow_data_offsets.len(),
                     ))
@@ -374,7 +367,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                         let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                            .ok_or_else(|| DeserializationError::datatype_mismatch(
                                 DataType::List(
                                     Box::new(Field {
                                         name: "item".to_owned(),
@@ -414,7 +407,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                             let end = start + len;
                                             if end as usize > arrow_data_inner.len() {
                                                 return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
+                                                    DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         arrow_data_inner.len(),
                                                     ),
@@ -434,9 +427,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                         })
                                         .transpose()
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                             .into_iter()
                     }
@@ -451,7 +442,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                         let arrow_data = arrow_data
                             .as_any()
                             .downcast_ref::<arrow2::array::ListArray<i32>>()
-                            .ok_or_else(|| ::re_types_core::DeserializationError::datatype_mismatch(
+                            .ok_or_else(|| DeserializationError::datatype_mismatch(
                                 DataType::List(
                                     Box::new(Field {
                                         name: "item".to_owned(),
@@ -491,7 +482,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                             let end = start + len;
                                             if end as usize > arrow_data_inner.len() {
                                                 return Err(
-                                                    ::re_types_core::DeserializationError::offset_slice_oob(
+                                                    DeserializationError::offset_slice_oob(
                                                         (start, end),
                                                         arrow_data_inner.len(),
                                                     ),
@@ -511,9 +502,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                         })
                                         .transpose()
                                 })
-                                .collect::<
-                                    ::re_types_core::DeserializationResult<Vec<Option<_>>>,
-                                >()?
+                                .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                             .into_iter()
                     }
@@ -530,12 +519,10 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             Ok(Some(match typ {
                                 1i8 => AffixFuzzer4::SingleRequired({
                                     if offset as usize >= single_required.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                single_required.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            single_required.len(),
+                                        ))
                                         .with_context(
                                             "rerun.testing.datatypes.AffixFuzzer4#single_required",
                                         );
@@ -544,21 +531,17 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { single_required.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context(
                                             "rerun.testing.datatypes.AffixFuzzer4#single_required",
                                         )?
                                 }),
                                 2i8 => AffixFuzzer4::ManyRequired({
                                     if offset as usize >= many_required.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                many_required.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            many_required.len(),
+                                        ))
                                         .with_context(
                                             "rerun.testing.datatypes.AffixFuzzer4#many_required",
                                         );
@@ -567,21 +550,17 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { many_required.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context(
                                             "rerun.testing.datatypes.AffixFuzzer4#many_required",
                                         )?
                                 }),
                                 3i8 => AffixFuzzer4::ManyOptional({
                                     if offset as usize >= many_optional.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                many_optional.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            many_optional.len(),
+                                        ))
                                         .with_context(
                                             "rerun.testing.datatypes.AffixFuzzer4#many_optional",
                                         );
@@ -591,19 +570,17 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                     unsafe { many_optional.get_unchecked(offset as usize) }.clone()
                                 }),
                                 _ => {
-                                    return Err(
-                                        ::re_types_core::DeserializationError::missing_union_arm(
-                                            Self::arrow_datatype(),
-                                            "<invalid>",
-                                            *typ as _,
-                                        ),
-                                    )
+                                    return Err(DeserializationError::missing_union_arm(
+                                        Self::arrow_datatype(),
+                                        "<invalid>",
+                                        *typ as _,
+                                    ))
                                     .with_context("rerun.testing.datatypes.AffixFuzzer4");
                                 }
                             }))
                         }
                     })
-                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.testing.datatypes.AffixFuzzer4")?
             }
         })

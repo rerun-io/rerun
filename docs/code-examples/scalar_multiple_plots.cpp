@@ -8,7 +8,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_points3d_simple");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     int64_t lcg_state = 0;
 

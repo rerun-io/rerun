@@ -94,55 +94,55 @@ namespace rerun {
             TensorBuffer(const TensorBuffer& other) : _tag(other._tag) {
                 switch (other._tag) {
                     case detail::TensorBufferTag::U8: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         new (&_data.u8) TypeAlias(other._data.u8);
                     } break;
                     case detail::TensorBufferTag::U16: {
-                        typedef std::vector<uint16_t> TypeAlias;
+                        using TypeAlias = std::vector<uint16_t>;
                         new (&_data.u16) TypeAlias(other._data.u16);
                     } break;
                     case detail::TensorBufferTag::U32: {
-                        typedef std::vector<uint32_t> TypeAlias;
+                        using TypeAlias = std::vector<uint32_t>;
                         new (&_data.u32) TypeAlias(other._data.u32);
                     } break;
                     case detail::TensorBufferTag::U64: {
-                        typedef std::vector<uint64_t> TypeAlias;
+                        using TypeAlias = std::vector<uint64_t>;
                         new (&_data.u64) TypeAlias(other._data.u64);
                     } break;
                     case detail::TensorBufferTag::I8: {
-                        typedef std::vector<int8_t> TypeAlias;
+                        using TypeAlias = std::vector<int8_t>;
                         new (&_data.i8) TypeAlias(other._data.i8);
                     } break;
                     case detail::TensorBufferTag::I16: {
-                        typedef std::vector<int16_t> TypeAlias;
+                        using TypeAlias = std::vector<int16_t>;
                         new (&_data.i16) TypeAlias(other._data.i16);
                     } break;
                     case detail::TensorBufferTag::I32: {
-                        typedef std::vector<int32_t> TypeAlias;
+                        using TypeAlias = std::vector<int32_t>;
                         new (&_data.i32) TypeAlias(other._data.i32);
                     } break;
                     case detail::TensorBufferTag::I64: {
-                        typedef std::vector<int64_t> TypeAlias;
+                        using TypeAlias = std::vector<int64_t>;
                         new (&_data.i64) TypeAlias(other._data.i64);
                     } break;
                     case detail::TensorBufferTag::F16: {
-                        typedef std::vector<rerun::half> TypeAlias;
+                        using TypeAlias = std::vector<rerun::half>;
                         new (&_data.f16) TypeAlias(other._data.f16);
                     } break;
                     case detail::TensorBufferTag::F32: {
-                        typedef std::vector<float> TypeAlias;
+                        using TypeAlias = std::vector<float>;
                         new (&_data.f32) TypeAlias(other._data.f32);
                     } break;
                     case detail::TensorBufferTag::F64: {
-                        typedef std::vector<double> TypeAlias;
+                        using TypeAlias = std::vector<double>;
                         new (&_data.f64) TypeAlias(other._data.f64);
                     } break;
                     case detail::TensorBufferTag::JPEG: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         new (&_data.jpeg) TypeAlias(other._data.jpeg);
                     } break;
                     case detail::TensorBufferTag::NV12: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         new (&_data.nv12) TypeAlias(other._data.nv12);
                     } break;
                     case detail::TensorBufferTag::NONE: {
@@ -171,55 +171,55 @@ namespace rerun {
                         // Nothing to destroy
                     } break;
                     case detail::TensorBufferTag::U8: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         _data.u8.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::U16: {
-                        typedef std::vector<uint16_t> TypeAlias;
+                        using TypeAlias = std::vector<uint16_t>;
                         _data.u16.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::U32: {
-                        typedef std::vector<uint32_t> TypeAlias;
+                        using TypeAlias = std::vector<uint32_t>;
                         _data.u32.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::U64: {
-                        typedef std::vector<uint64_t> TypeAlias;
+                        using TypeAlias = std::vector<uint64_t>;
                         _data.u64.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::I8: {
-                        typedef std::vector<int8_t> TypeAlias;
+                        using TypeAlias = std::vector<int8_t>;
                         _data.i8.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::I16: {
-                        typedef std::vector<int16_t> TypeAlias;
+                        using TypeAlias = std::vector<int16_t>;
                         _data.i16.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::I32: {
-                        typedef std::vector<int32_t> TypeAlias;
+                        using TypeAlias = std::vector<int32_t>;
                         _data.i32.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::I64: {
-                        typedef std::vector<int64_t> TypeAlias;
+                        using TypeAlias = std::vector<int64_t>;
                         _data.i64.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::F16: {
-                        typedef std::vector<rerun::half> TypeAlias;
+                        using TypeAlias = std::vector<rerun::half>;
                         _data.f16.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::F32: {
-                        typedef std::vector<float> TypeAlias;
+                        using TypeAlias = std::vector<float>;
                         _data.f32.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::F64: {
-                        typedef std::vector<double> TypeAlias;
+                        using TypeAlias = std::vector<double>;
                         _data.f64.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::JPEG: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         _data.jpeg.~TypeAlias();
                     } break;
                     case detail::TensorBufferTag::NV12: {
-                        typedef std::vector<uint8_t> TypeAlias;
+                        using TypeAlias = std::vector<uint8_t>;
                         _data.nv12.~TypeAlias();
                     } break;
                 }
@@ -283,107 +283,211 @@ namespace rerun {
             }
 
             static TensorBuffer u8(std::vector<uint8_t> u8) {
-                typedef std::vector<uint8_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U8;
-                new (&self._data.u8) TypeAlias(std::move(u8));
+                new (&self._data.u8) std::vector<uint8_t>(std::move(u8));
                 return self;
             }
 
             static TensorBuffer u16(std::vector<uint16_t> u16) {
-                typedef std::vector<uint16_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U16;
-                new (&self._data.u16) TypeAlias(std::move(u16));
+                new (&self._data.u16) std::vector<uint16_t>(std::move(u16));
                 return self;
             }
 
             static TensorBuffer u32(std::vector<uint32_t> u32) {
-                typedef std::vector<uint32_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U32;
-                new (&self._data.u32) TypeAlias(std::move(u32));
+                new (&self._data.u32) std::vector<uint32_t>(std::move(u32));
                 return self;
             }
 
             static TensorBuffer u64(std::vector<uint64_t> u64) {
-                typedef std::vector<uint64_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U64;
-                new (&self._data.u64) TypeAlias(std::move(u64));
+                new (&self._data.u64) std::vector<uint64_t>(std::move(u64));
                 return self;
             }
 
             static TensorBuffer i8(std::vector<int8_t> i8) {
-                typedef std::vector<int8_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I8;
-                new (&self._data.i8) TypeAlias(std::move(i8));
+                new (&self._data.i8) std::vector<int8_t>(std::move(i8));
                 return self;
             }
 
             static TensorBuffer i16(std::vector<int16_t> i16) {
-                typedef std::vector<int16_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I16;
-                new (&self._data.i16) TypeAlias(std::move(i16));
+                new (&self._data.i16) std::vector<int16_t>(std::move(i16));
                 return self;
             }
 
             static TensorBuffer i32(std::vector<int32_t> i32) {
-                typedef std::vector<int32_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I32;
-                new (&self._data.i32) TypeAlias(std::move(i32));
+                new (&self._data.i32) std::vector<int32_t>(std::move(i32));
                 return self;
             }
 
             static TensorBuffer i64(std::vector<int64_t> i64) {
-                typedef std::vector<int64_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I64;
-                new (&self._data.i64) TypeAlias(std::move(i64));
+                new (&self._data.i64) std::vector<int64_t>(std::move(i64));
                 return self;
             }
 
             static TensorBuffer f16(std::vector<rerun::half> f16) {
-                typedef std::vector<rerun::half> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F16;
-                new (&self._data.f16) TypeAlias(std::move(f16));
+                new (&self._data.f16) std::vector<rerun::half>(std::move(f16));
                 return self;
             }
 
             static TensorBuffer f32(std::vector<float> f32) {
-                typedef std::vector<float> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F32;
-                new (&self._data.f32) TypeAlias(std::move(f32));
+                new (&self._data.f32) std::vector<float>(std::move(f32));
                 return self;
             }
 
             static TensorBuffer f64(std::vector<double> f64) {
-                typedef std::vector<double> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F64;
-                new (&self._data.f64) TypeAlias(std::move(f64));
+                new (&self._data.f64) std::vector<double>(std::move(f64));
                 return self;
             }
 
             static TensorBuffer jpeg(std::vector<uint8_t> jpeg) {
-                typedef std::vector<uint8_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::JPEG;
-                new (&self._data.jpeg) TypeAlias(std::move(jpeg));
+                new (&self._data.jpeg) std::vector<uint8_t>(std::move(jpeg));
                 return self;
             }
 
             static TensorBuffer nv12(std::vector<uint8_t> nv12) {
-                typedef std::vector<uint8_t> TypeAlias;
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::NV12;
-                new (&self._data.nv12) TypeAlias(std::move(nv12));
+                new (&self._data.nv12) std::vector<uint8_t>(std::move(nv12));
                 return self;
+            }
+
+            /// Return a pointer to u8 if the union is in that state, otherwise `nullptr`.
+            const std::vector<uint8_t>* get_u8() const {
+                if (_tag == detail::TensorBufferTag::U8) {
+                    return &_data.u8;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to u16 if the union is in that state, otherwise `nullptr`.
+            const std::vector<uint16_t>* get_u16() const {
+                if (_tag == detail::TensorBufferTag::U16) {
+                    return &_data.u16;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to u32 if the union is in that state, otherwise `nullptr`.
+            const std::vector<uint32_t>* get_u32() const {
+                if (_tag == detail::TensorBufferTag::U32) {
+                    return &_data.u32;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to u64 if the union is in that state, otherwise `nullptr`.
+            const std::vector<uint64_t>* get_u64() const {
+                if (_tag == detail::TensorBufferTag::U64) {
+                    return &_data.u64;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to i8 if the union is in that state, otherwise `nullptr`.
+            const std::vector<int8_t>* get_i8() const {
+                if (_tag == detail::TensorBufferTag::I8) {
+                    return &_data.i8;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to i16 if the union is in that state, otherwise `nullptr`.
+            const std::vector<int16_t>* get_i16() const {
+                if (_tag == detail::TensorBufferTag::I16) {
+                    return &_data.i16;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to i32 if the union is in that state, otherwise `nullptr`.
+            const std::vector<int32_t>* get_i32() const {
+                if (_tag == detail::TensorBufferTag::I32) {
+                    return &_data.i32;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to i64 if the union is in that state, otherwise `nullptr`.
+            const std::vector<int64_t>* get_i64() const {
+                if (_tag == detail::TensorBufferTag::I64) {
+                    return &_data.i64;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to f16 if the union is in that state, otherwise `nullptr`.
+            const std::vector<rerun::half>* get_f16() const {
+                if (_tag == detail::TensorBufferTag::F16) {
+                    return &_data.f16;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to f32 if the union is in that state, otherwise `nullptr`.
+            const std::vector<float>* get_f32() const {
+                if (_tag == detail::TensorBufferTag::F32) {
+                    return &_data.f32;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to f64 if the union is in that state, otherwise `nullptr`.
+            const std::vector<double>* get_f64() const {
+                if (_tag == detail::TensorBufferTag::F64) {
+                    return &_data.f64;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to jpeg if the union is in that state, otherwise `nullptr`.
+            const std::vector<uint8_t>* get_jpeg() const {
+                if (_tag == detail::TensorBufferTag::JPEG) {
+                    return &_data.jpeg;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to nv12 if the union is in that state, otherwise `nullptr`.
+            const std::vector<uint8_t>* get_nv12() const {
+                if (_tag == detail::TensorBufferTag::NV12) {
+                    return &_data.nv12;
+                } else {
+                    return nullptr;
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <utility>
 
 namespace arrow {
@@ -91,7 +92,7 @@ namespace rerun {
             static Rotation3D quaternion(rerun::datatypes::Quaternion quaternion) {
                 Rotation3D self;
                 self._tag = detail::Rotation3DTag::Quaternion;
-                self._data.quaternion = std::move(quaternion);
+                new (&self._data.quaternion) rerun::datatypes::Quaternion(std::move(quaternion));
                 return self;
             }
 
@@ -99,7 +100,8 @@ namespace rerun {
             static Rotation3D axis_angle(rerun::datatypes::RotationAxisAngle axis_angle) {
                 Rotation3D self;
                 self._tag = detail::Rotation3DTag::AxisAngle;
-                self._data.axis_angle = std::move(axis_angle);
+                new (&self._data.axis_angle)
+                    rerun::datatypes::RotationAxisAngle(std::move(axis_angle));
                 return self;
             }
 
@@ -111,6 +113,24 @@ namespace rerun {
             /// Rotation defined with an axis and an angle.
             Rotation3D(rerun::datatypes::RotationAxisAngle axis_angle) {
                 *this = Rotation3D::axis_angle(std::move(axis_angle));
+            }
+
+            /// Return a pointer to quaternion if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::Quaternion* get_quaternion() const {
+                if (_tag == detail::Rotation3DTag::Quaternion) {
+                    return &_data.quaternion;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to axis_angle if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::RotationAxisAngle* get_axis_angle() const {
+                if (_tag == detail::Rotation3DTag::AxisAngle) {
+                    return &_data.axis_angle;
+                } else {
+                    return nullptr;
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

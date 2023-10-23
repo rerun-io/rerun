@@ -230,7 +230,20 @@ pub mod components {
 /// The low-level datatypes that [`components`] are built from.
 ///
 /// They all implement the [`Datatype`] trait.
-pub mod datatypes;
+pub mod datatypes {
+
+    // Some datatypes (e.g. `InstanceKey`) are so fundamental and used everywhere that we want
+    // them to be exposed by `re_types_core` directly; that way we don't force a dependency on the
+    // `re_types` behemoth just so one can use one of these fundamental types.
+    //
+    // To do so, re-inject `re_types_core`'s datatypes into our own module.
+
+    #[path = "../datatypes/mod.rs"]
+    mod _datatypes;
+
+    pub use self::_datatypes::*;
+    pub use re_types_core::datatypes::*;
+}
 
 #[cfg(feature = "datagen")]
 pub mod datagen;

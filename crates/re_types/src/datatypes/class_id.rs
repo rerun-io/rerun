@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/class_id.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 16-bit ID representing a type of semantic class.
 ///
@@ -50,19 +55,7 @@ impl From<ClassId> for u16 {
     }
 }
 
-impl<'a> From<ClassId> for ::std::borrow::Cow<'a, ClassId> {
-    #[inline]
-    fn from(value: ClassId) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a ClassId> for ::std::borrow::Cow<'a, ClassId> {
-    #[inline]
-    fn from(value: &'a ClassId) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(ClassId);
 
 impl ::re_types_core::Loggable for ClassId {
     type Name = ::re_types_core::DatatypeName;
@@ -72,17 +65,17 @@ impl ::re_types_core::Loggable for ClassId {
         "rerun.datatypes.ClassId".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
         DataType::UInt16
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -114,10 +107,10 @@ impl ::re_types_core::Loggable for ClassId {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -128,7 +121,7 @@ impl ::re_types_core::Loggable for ClassId {
             .as_any()
             .downcast_ref::<UInt16Array>()
             .ok_or_else(|| {
-                ::re_types_core::DeserializationError::datatype_mismatch(
+                DeserializationError::datatype_mismatch(
                     DataType::UInt16,
                     arrow_data.data_type().clone(),
                 )
@@ -136,9 +129,9 @@ impl ::re_types_core::Loggable for ClassId {
             .with_context("rerun.datatypes.ClassId#id")?
             .into_iter()
             .map(|opt| opt.copied())
-            .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+            .map(|v| v.ok_or_else(DeserializationError::missing_data))
             .map(|res| res.map(|v| Some(Self(v))))
-            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.ClassId#id")
             .with_context("rerun.datatypes.ClassId")?)
     }

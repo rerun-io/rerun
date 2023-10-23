@@ -71,7 +71,6 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// ## Example
 ///
 /// ```rust
-/// # use arrow2_convert::field::ArrowField as _;
 /// # use itertools::Itertools as _;
 /// #
 /// # use re_log_types::DataCell;
@@ -97,7 +96,7 @@ pub type DataCellResult<T> = ::std::result::Result<T, DataCellError>;
 /// #
 /// # assert_eq!(MyPoint::name(), cell.component_name());
 /// # assert_eq!(3, cell.num_instances());
-/// # assert_eq!(cell.datatype(), &MyPoint::data_type());
+/// # assert_eq!(cell.datatype(), &MyPoint::arrow_datatype());
 /// #
 /// # assert_eq!(points, cell.to_native().as_slice());
 /// ```
@@ -157,7 +156,6 @@ pub struct DataCellInner {
     pub(crate) values: Box<dyn arrow2::array::Array>,
 }
 
-// TODO(cmc): We should be able to build a cell from non-reference types.
 // TODO(#1696): We shouldn't have to specify the component name separately, this should be
 // part of the metadata by using an extension.
 // TODO(#1696): Check that the array is indeed a leaf / component type when building a cell from an
@@ -232,6 +230,7 @@ impl DataCell {
     }
 
     /// Builds a cell from an iterable of items that can be turned into a [`Component`].
+    #[inline]
     pub fn from_component<'a, C>(values: impl IntoIterator<Item = impl Into<C>>) -> Self
     where
         C: Component + Clone + 'a,
@@ -241,10 +240,7 @@ impl DataCell {
     }
 
     /// Builds a cell from an iterable of items that can be turned into a [`Component`].
-    ///
-    /// ⚠ Due to quirks in `arrow2-convert`, this requires consuming and collecting the passed-in
-    /// iterator into a vector first.
-    /// Prefer [`Self::from_native`] when performance matters.
+    #[inline]
     pub fn from_component_sparse<'a, C>(
         values: impl IntoIterator<Item = Option<impl Into<C>>>,
     ) -> Self

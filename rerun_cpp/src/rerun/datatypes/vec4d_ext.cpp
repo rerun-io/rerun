@@ -16,6 +16,11 @@ namespace rerun {
             /// Construct Vec4D from x/y/z/w values.
             Vec4D(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
 
+            /// Construct Vec4D from x/y/z/w float pointer.
+            ///
+            /// Attention: The pointer must point to at least least 4 floats long.
+            explicit Vec4D(const float* xyzw_) : xyzw{xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]} {}
+
             float x() const {
                 return xyzw[0];
             }

@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/rotation3d.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 3D rotation.
 #[derive(Clone, Debug, Copy, PartialEq)]
@@ -26,19 +31,7 @@ pub enum Rotation3D {
     AxisAngle(crate::datatypes::RotationAxisAngle),
 }
 
-impl<'a> From<Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
-    #[inline]
-    fn from(value: Rotation3D) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Rotation3D> for ::std::borrow::Cow<'a, Rotation3D> {
-    #[inline]
-    fn from(value: &'a Rotation3D) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Rotation3D);
 
 impl ::re_types_core::Loggable for Rotation3D {
     type Name = ::re_types_core::DatatypeName;
@@ -48,7 +41,7 @@ impl ::re_types_core::Loggable for Rotation3D {
         "rerun.datatypes.Rotation3D".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -78,10 +71,10 @@ impl ::re_types_core::Loggable for Rotation3D {
         )
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -227,10 +220,10 @@ impl ::re_types_core::Loggable for Rotation3D {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -242,7 +235,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Union(
                             vec![
                                 Field {
@@ -280,14 +273,14 @@ impl ::re_types_core::Loggable for Rotation3D {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        ::re_types_core::DeserializationError::datatype_mismatch(
+                        DeserializationError::datatype_mismatch(
                             Self::arrow_datatype(),
                             arrow_data.data_type().clone(),
                         )
                     })
                     .with_context("rerun.datatypes.Rotation3D")?;
                 if arrow_data_types.len() != arrow_data_offsets.len() {
-                    return Err(::re_types_core::DeserializationError::offset_slice_oob(
+                    return Err(DeserializationError::offset_slice_oob(
                         (0, arrow_data_types.len()),
                         arrow_data_offsets.len(),
                     ))
@@ -303,7 +296,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(
                                         Box::new(Field {
                                             name: "item".to_owned(),
@@ -329,7 +322,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Float32,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -347,12 +340,10 @@ impl ::re_types_core::Loggable for Rotation3D {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 4usize);
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -370,7 +361,7 @@ impl ::re_types_core::Loggable for Rotation3D {
                                     res_or_opt.map(|v| crate::datatypes::Quaternion(v))
                                 })
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
@@ -397,56 +388,46 @@ impl ::re_types_core::Loggable for Rotation3D {
                             Ok(Some(match typ {
                                 1i8 => Rotation3D::Quaternion({
                                     if offset as usize >= quaternion.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                quaternion.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            quaternion.len(),
+                                        ))
                                         .with_context("rerun.datatypes.Rotation3D#Quaternion");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { quaternion.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Rotation3D#Quaternion")?
                                 }),
                                 2i8 => Rotation3D::AxisAngle({
                                     if offset as usize >= axis_angle.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_oob(
-                                                offset as _,
-                                                axis_angle.len(),
-                                            ),
-                                        )
+                                        return Err(DeserializationError::offset_oob(
+                                            offset as _,
+                                            axis_angle.len(),
+                                        ))
                                         .with_context("rerun.datatypes.Rotation3D#AxisAngle");
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                                     unsafe { axis_angle.get_unchecked(offset as usize) }
                                         .clone()
-                                        .ok_or_else(
-                                            ::re_types_core::DeserializationError::missing_data,
-                                        )
+                                        .ok_or_else(DeserializationError::missing_data)
                                         .with_context("rerun.datatypes.Rotation3D#AxisAngle")?
                                 }),
                                 _ => {
-                                    return Err(
-                                        ::re_types_core::DeserializationError::missing_union_arm(
-                                            Self::arrow_datatype(),
-                                            "<invalid>",
-                                            *typ as _,
-                                        ),
-                                    )
+                                    return Err(DeserializationError::missing_union_arm(
+                                        Self::arrow_datatype(),
+                                        "<invalid>",
+                                        *typ as _,
+                                    ))
                                     .with_context("rerun.datatypes.Rotation3D");
                                 }
                             }))
                         }
                     })
-                    .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                    .collect::<DeserializationResult<Vec<_>>>()
                     .with_context("rerun.datatypes.Rotation3D")?
             }
         })

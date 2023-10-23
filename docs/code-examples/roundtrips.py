@@ -26,6 +26,7 @@ opt_out_run = {
     "image_advanced": ["cpp", "rust"], # Missing examples
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
+    "quick_start_spawn": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
 
     # This is this script, it's not an example.
@@ -44,9 +45,9 @@ opt_out_compare = {
     "point2d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "point3d_random": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
     "quick_start_connect":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
+    "quick_start_spawn":  ["cpp", "py", "rust"], # These example don't have exactly the same implementation.
     "scalar_multiple_plots": ["cpp"], # trigonometric functions have slightly different outcomes
     "tensor_simple": ["cpp", "py", "rust"], # TODO(#3206): examples use different RNGs
-    "transform3d_simple": ["cpp"], # TODO(#2919): Something broken in the C++ SDK
 }
 
 extra_args = {

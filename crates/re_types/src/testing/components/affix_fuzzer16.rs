@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/testing/components/fuzzy.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer16(pub Vec<crate::testing::datatypes::AffixFuzzer3>);
@@ -27,19 +32,7 @@ impl<I: Into<crate::testing::datatypes::AffixFuzzer3>, T: IntoIterator<Item = I>
     }
 }
 
-impl<'a> From<AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
-    #[inline]
-    fn from(value: AffixFuzzer16) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a AffixFuzzer16> for ::std::borrow::Cow<'a, AffixFuzzer16> {
-    #[inline]
-    fn from(value: &'a AffixFuzzer16) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(AffixFuzzer16);
 
 impl ::re_types_core::Loggable for AffixFuzzer16 {
     type Name = ::re_types_core::ComponentName;
@@ -49,7 +42,7 @@ impl ::re_types_core::Loggable for AffixFuzzer16 {
         "rerun.testing.components.AffixFuzzer16".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -61,10 +54,10 @@ impl ::re_types_core::Loggable for AffixFuzzer16 {
         }))
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -118,10 +111,10 @@ impl ::re_types_core::Loggable for AffixFuzzer16 {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -133,7 +126,7 @@ impl ::re_types_core::Loggable for AffixFuzzer16 {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::List(Box::new(Field {
                             name: "item".to_owned(),
                             data_type: <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
@@ -166,7 +159,7 @@ impl ::re_types_core::Loggable for AffixFuzzer16 {
                         let start = *start as usize;
                         let end = start + len;
                         if end as usize > arrow_data_inner.len() {
-                            return Err(::re_types_core::DeserializationError::offset_slice_oob(
+                            return Err(DeserializationError::offset_slice_oob(
                                 (start, end),
                                 arrow_data_inner.len(),
                             ));
@@ -184,13 +177,13 @@ impl ::re_types_core::Loggable for AffixFuzzer16 {
                     })
                     .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                .collect::<DeserializationResult<Vec<Option<_>>>>()?
             }
             .into_iter()
         }
-        .map(|v| v.ok_or_else(::re_types_core::DeserializationError::missing_data))
+        .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))
-        .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()
+        .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.testing.components.AffixFuzzer16#many_required_unions")
         .with_context("rerun.testing.components.AffixFuzzer16")?)
     }

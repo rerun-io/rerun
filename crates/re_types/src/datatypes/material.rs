@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/material.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Material properties of a mesh.
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash)]
@@ -47,19 +52,7 @@ impl std::ops::Deref for Material {
     }
 }
 
-impl<'a> From<Material> for ::std::borrow::Cow<'a, Material> {
-    #[inline]
-    fn from(value: Material) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a Material> for ::std::borrow::Cow<'a, Material> {
-    #[inline]
-    fn from(value: &'a Material) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(Material);
 
 impl ::re_types_core::Loggable for Material {
     type Name = ::re_types_core::DatatypeName;
@@ -69,7 +62,7 @@ impl ::re_types_core::Loggable for Material {
         "rerun.datatypes.Material".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -81,10 +74,10 @@ impl ::re_types_core::Loggable for Material {
         }])
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -146,10 +139,10 @@ impl ::re_types_core::Loggable for Material {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -161,7 +154,7 @@ impl ::re_types_core::Loggable for Material {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![Field {
                             name: "albedo_factor".to_owned(),
                             data_type: <crate::datatypes::Rgba32>::arrow_datatype(),
@@ -184,7 +177,7 @@ impl ::re_types_core::Loggable for Material {
                     .collect();
                 let albedo_factor = {
                     if !arrays_by_name.contains_key("albedo_factor") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "albedo_factor",
                         ))
@@ -195,7 +188,7 @@ impl ::re_types_core::Loggable for Material {
                         .as_any()
                         .downcast_ref::<UInt32Array>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::UInt32,
                                 arrow_data.data_type().clone(),
                             )
@@ -213,7 +206,7 @@ impl ::re_types_core::Loggable for Material {
                     opt.map(|(albedo_factor)| Ok(Self { albedo_factor }))
                         .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.Material")?
             }
         })

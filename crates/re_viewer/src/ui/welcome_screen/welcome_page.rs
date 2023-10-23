@@ -11,7 +11,30 @@ use std::collections::HashMap;
 
 const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
-const HOW_DOES_IT_WORK: &str = include_str!("../../../data/quick_start_guides/how_does_it_work.md");
+const CPP_CONNECT_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/cpp_connect.md");
+const CPP_SPAWN_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/cpp_spawn.md");
+const PYTHON_CONNECT_MARKDOWN: &str =
+    include_str!("../../../data/quick_start_guides/python_connect.md");
+const PYTHON_SPAWN_MARKDOWN: &str =
+    include_str!("../../../data/quick_start_guides/python_spawn.md");
+const RUST_CONNECT_MARKDOWN: &str =
+    include_str!("../../../data/quick_start_guides/rust_connect.md");
+const RUST_SPAWN_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/rust_spawn.md");
+const HOW_DOES_IT_WORK_MARKDOWN: &str =
+    include_str!("../../../data/quick_start_guides/how_does_it_work.md");
+
+const CPP_CONNECT_CODE_EXAMPLE: &str =
+    include_str!("../../../data/quick_start_guides/quick_start_connect.cpp");
+const CPP_SPAWN_CODE_EXAMPLE: &str =
+    include_str!("../../../data/quick_start_guides/quick_start_spawn.cpp");
+const PYTHON_CONNECT_CODE_EXAMPLE: &str =
+    include_str!("../../../data/quick_start_guides/quick_start_connect.py");
+const PYTHON_SPAWN_CODE_EXAMPLE: &str =
+    include_str!("../../../data/quick_start_guides/quick_start_spawn.py");
+const RUST_CONNECT_CODE_EXAMPLE: &str =
+    include_str!("../../../data/quick_start_guides/quick_start_connect.rs");
+const RUST_SPAWN_CODE_EXAMPLE: &str =
+    include_str!("../../../data/quick_start_guides/quick_start_spawn.rs");
 
 /// Show the welcome page.
 ///
@@ -22,7 +45,9 @@ pub(super) fn welcome_page_ui(
     command_sender: &re_viewer_context::CommandSender,
 ) -> WelcomeScreenResponse {
     ui.vertical(|ui| {
-        let show_example = onboarding_content_ui(ui, command_sender);
+        let accepts_connections = rx.accepts_tcp_connections();
+
+        let show_example = onboarding_content_ui(ui, command_sender, accepts_connections);
 
         for status_strings in status_strings(rx) {
             if status_strings.long_term {
@@ -52,6 +77,7 @@ struct WelcomePagePanel<'a> {
 fn onboarding_content_ui(
     ui: &mut Ui,
     command_sender: &re_viewer_context::CommandSender,
+    accepts_connections: bool,
 ) -> WelcomeScreenResponse {
     // The panel data is stored in this ad hoc structure such that it can easily be iterated over
     // in chunks, to make the layout grid code simpler.
@@ -63,20 +89,21 @@ fn onboarding_content_ui(
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
                 //TODO(#3870): enable with C++ guides are completed
-                #[allow(clippy::collapsible_if)]
+                #[allow(clippy::collapsible_if, clippy::if_same_then_else)]
                 if false {
                     if large_text_button(ui, "C++").clicked() {
+                        let (markdown, code) = if accepts_connections {
+                            (CPP_CONNECT_MARKDOWN, CPP_CONNECT_CODE_EXAMPLE)
+                        } else {
+                            (CPP_SPAWN_MARKDOWN, CPP_SPAWN_CODE_EXAMPLE)
+                        };
+
                         open_quick_start(
                             command_sender,
-                            include_str!("../../../data/quick_start_guides/cpp_native.md"),
+                            markdown,
                             [
-                                (
-                                    "EXAMPLE_CODE",
-                                    include_str!(
-                                        "../../../data/quick_start_guides/quick_start_connect.cpp"
-                                    ),
-                                ),
-                                ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK),
+                                ("EXAMPLE_CODE", code),
+                                ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
                                 ("SAFARI_WARNING", safari_warning()),
                             ]
                             .into(),
@@ -86,17 +113,18 @@ fn onboarding_content_ui(
                     }
                 }
                 if large_text_button(ui, "Python").clicked() {
+                    let (markdown, code) = if accepts_connections {
+                        (PYTHON_CONNECT_MARKDOWN, PYTHON_CONNECT_CODE_EXAMPLE)
+                    } else {
+                        (PYTHON_SPAWN_MARKDOWN, PYTHON_SPAWN_CODE_EXAMPLE)
+                    };
+
                     open_quick_start(
                         command_sender,
-                        include_str!("../../../data/quick_start_guides/python_native.md"),
+                        markdown,
                         [
-                            (
-                                "EXAMPLE_CODE",
-                                include_str!(
-                                    "../../../data/quick_start_guides/quick_start_connect.py"
-                                ),
-                            ),
-                            ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK),
+                            ("EXAMPLE_CODE", code),
+                            ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
                             ("SAFARI_WARNING", safari_warning()),
                         ]
                         .into(),
@@ -105,17 +133,18 @@ fn onboarding_content_ui(
                     );
                 }
                 if large_text_button(ui, "Rust").clicked() {
+                    let (markdown, code) = if accepts_connections {
+                        (RUST_CONNECT_MARKDOWN, RUST_CONNECT_CODE_EXAMPLE)
+                    } else {
+                        (RUST_SPAWN_MARKDOWN, RUST_SPAWN_CODE_EXAMPLE)
+                    };
+
                     open_quick_start(
                         command_sender,
-                        include_str!("../../../data/quick_start_guides/rust_native.md"),
+                        markdown,
                         [
-                            (
-                                "EXAMPLE_CODE",
-                                include_str!(
-                                    "../../../data/quick_start_guides/quick_start_connect.rs"
-                                ),
-                            ),
-                            ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK),
+                            ("EXAMPLE_CODE", code),
+                            ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
                             ("SAFARI_WARNING", safari_warning()),
                         ]
                         .into(),

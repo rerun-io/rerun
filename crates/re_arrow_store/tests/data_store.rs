@@ -810,7 +810,7 @@ fn joint_df(cluster_key: ComponentName, rows: &[(ComponentName, &DataRow)]) -> D
                 let num_instances = row.num_instances();
                 Series::try_from((
                     cluster_key.as_ref(),
-                    DataCell::from_component::<InstanceKey>(0..num_instances as u64)
+                    DataCell::from_component::<InstanceKey>(0..num_instances.get() as u64)
                         .to_arrow_monolist(),
                 ))
                 .unwrap()

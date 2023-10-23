@@ -140,6 +140,10 @@ name = "quick_start_connect"
 path = "quick_start_connect.rs"
 
 [[bin]]
+name = "quick_start_spawn"
+path = "quick_start_spawn.rs"
+
+[[bin]]
 name = "scalar_simple"
 path = "scalar_simple.rs"
 

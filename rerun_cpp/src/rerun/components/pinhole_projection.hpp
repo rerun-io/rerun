@@ -37,6 +37,14 @@ namespace rerun {
             static const char NAME[];
 
           public:
+            // Extensions to generated type defined in 'pinhole_projection_ext.cpp'
+
+            /// Construct a new 3x3 pinhole matrix from a pointer to 9 floats (in row major order).
+            static PinholeProjection from_mat3x3(const float* elements) {
+                return PinholeProjection(rerun::datatypes::Mat3x3(elements));
+            }
+
+          public:
             PinholeProjection() = default;
 
             PinholeProjection(rerun::datatypes::Mat3x3 _image_from_camera)

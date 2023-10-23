@@ -22,7 +22,7 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         &Boxes3D::from_half_sizes([[10., 9., 8.], [5., -5., 5.]])
             .with_centers([[0., 0., 0.], [-1., 1., -2.]])
             .with_rotations([
-                Rotation3D::from(Quaternion::new(0., 1., 2., 3.)),
+                Rotation3D::from(Quaternion::from_xyzw([0., 1., 2., 3.])),
                 Rotation3D::from(RotationAxisAngle::new([0., 1., 2.], Angle::Degrees(45.))),
             ])
             .with_colors([0xAA0000CC, 0x00BB00DD])

@@ -6,6 +6,7 @@
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -35,7 +36,7 @@ namespace rerun {
         ///  * Back = 6
         struct ViewCoordinates {
             /// The directions of the [x, y, z] axes.
-            uint8_t coordinates[3];
+            std::array<uint8_t, 3> coordinates;
 
             /// Name of the component, used for serialization.
             static const char NAME[];

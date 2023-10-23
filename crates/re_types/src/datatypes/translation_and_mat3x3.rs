@@ -2,6 +2,7 @@
 // Based on "crates/re_types/definitions/rerun/datatypes/translation_and_mat3x3.fbs".
 
 #![allow(trivial_numeric_casts)]
+#![allow(unused_imports)]
 #![allow(unused_parens)]
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::iter_on_single_items)]
@@ -15,6 +16,10 @@
 #![allow(clippy::unnecessary_cast)]
 
 use ::re_types_core::external::arrow2;
+use ::re_types_core::ComponentName;
+use ::re_types_core::SerializationResult;
+use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Representation of an affine transform via a 3x3 affine matrix paired with a translation.
 ///
@@ -34,19 +39,7 @@ pub struct TranslationAndMat3x3 {
     pub from_parent: bool,
 }
 
-impl<'a> From<TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAndMat3x3> {
-    #[inline]
-    fn from(value: TranslationAndMat3x3) -> Self {
-        std::borrow::Cow::Owned(value)
-    }
-}
-
-impl<'a> From<&'a TranslationAndMat3x3> for ::std::borrow::Cow<'a, TranslationAndMat3x3> {
-    #[inline]
-    fn from(value: &'a TranslationAndMat3x3) -> Self {
-        std::borrow::Cow::Borrowed(value)
-    }
-}
+::re_types_core::macros::impl_into_cow!(TranslationAndMat3x3);
 
 impl ::re_types_core::Loggable for TranslationAndMat3x3 {
     type Name = ::re_types_core::DatatypeName;
@@ -56,7 +49,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
         "rerun.datatypes.TranslationAndMat3x3".into()
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
@@ -82,10 +75,10 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
         ])
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> ::re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
@@ -271,10 +264,10 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
         })
     }
 
-    #[allow(unused_imports, clippy::wildcard_imports)]
+    #[allow(clippy::wildcard_imports)]
     fn from_arrow_opt(
         arrow_data: &dyn arrow2::array::Array,
-    ) -> ::re_types_core::DeserializationResult<Vec<Option<Self>>>
+    ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
@@ -286,7 +279,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    ::re_types_core::DeserializationError::datatype_mismatch(
+                    DeserializationError::datatype_mismatch(
                         DataType::Struct(vec![
                             Field {
                                 name: "translation".to_owned(),
@@ -323,7 +316,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                     .collect();
                 let translation = {
                     if !arrays_by_name.contains_key("translation") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "translation",
                         ))
@@ -335,7 +328,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(
                                         Box::new(Field {
                                             name: "item".to_owned(),
@@ -361,7 +354,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Float32,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -381,12 +374,10 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 3usize);
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -404,14 +395,14 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                     res_or_opt.map(|v| crate::datatypes::Vec3D(v))
                                 })
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
                 };
                 let mat3x3 = {
                     if !arrays_by_name.contains_key("mat3x3") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "mat3x3",
                         ))
@@ -423,7 +414,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             .as_any()
                             .downcast_ref::<arrow2::array::FixedSizeListArray>()
                             .ok_or_else(|| {
-                                ::re_types_core::DeserializationError::datatype_mismatch(
+                                DeserializationError::datatype_mismatch(
                                     DataType::FixedSizeList(
                                         Box::new(Field {
                                             name: "item".to_owned(),
@@ -449,7 +440,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                     .as_any()
                                     .downcast_ref::<Float32Array>()
                                     .ok_or_else(|| {
-                                        ::re_types_core::DeserializationError::datatype_mismatch(
+                                        DeserializationError::datatype_mismatch(
                                             DataType::Float32,
                                             arrow_data_inner.data_type().clone(),
                                         )
@@ -467,12 +458,10 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                 elem.map(|(start, end)| {
                                     debug_assert!(end - start == 9usize);
                                     if end as usize > arrow_data_inner.len() {
-                                        return Err(
-                                            ::re_types_core::DeserializationError::offset_slice_oob(
-                                                (start, end),
-                                                arrow_data_inner.len(),
-                                            ),
-                                        );
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
                                     }
 
                                     #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
@@ -490,14 +479,14 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                                     res_or_opt.map(|v| crate::datatypes::Mat3x3(v))
                                 })
                             })
-                            .collect::<::re_types_core::DeserializationResult<Vec<Option<_>>>>()?
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
                         }
                         .into_iter()
                     }
                 };
                 let from_parent = {
                     if !arrays_by_name.contains_key("from_parent") {
-                        return Err(::re_types_core::DeserializationError::missing_struct_field(
+                        return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
                             "from_parent",
                         ))
@@ -508,7 +497,7 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                         .as_any()
                         .downcast_ref::<BooleanArray>()
                         .ok_or_else(|| {
-                            ::re_types_core::DeserializationError::datatype_mismatch(
+                            DeserializationError::datatype_mismatch(
                                 DataType::Boolean,
                                 arrow_data.data_type().clone(),
                             )
@@ -526,13 +515,13 @@ impl ::re_types_core::Loggable for TranslationAndMat3x3 {
                             translation,
                             mat3x3,
                             from_parent: from_parent
-                                .ok_or_else(::re_types_core::DeserializationError::missing_data)
+                                .ok_or_else(DeserializationError::missing_data)
                                 .with_context("rerun.datatypes.TranslationAndMat3x3#from_parent")?,
                         })
                     })
                     .transpose()
                 })
-                .collect::<::re_types_core::DeserializationResult<Vec<_>>>()
+                .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.datatypes.TranslationAndMat3x3")?
             }
         })

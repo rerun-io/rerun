@@ -53,6 +53,14 @@ impl<T: Send> ReceiveSet<T> {
         !self.is_empty()
     }
 
+    /// Does this viewer accept inbound TCP connections?
+    pub fn accepts_tcp_connections(&self) -> bool {
+        re_tracing::profile_function!();
+        self.sources()
+            .iter()
+            .any(|s| matches!(**s, SmartChannelSource::TcpServer { .. }))
+    }
+
     /// No connected receivers?
     ///
     /// This gets updated after calling one of the `recv` methods.
