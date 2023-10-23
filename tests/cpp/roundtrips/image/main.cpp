@@ -26,7 +26,7 @@ rerun::half half_from_float(const float x) {
     return rerun::half{static_cast<uint16_t>(f16)};
 }
 
-int main(int argc, char** argv) {
+int main(int, char** argv) {
     auto rec = rerun::RecordingStream("rerun_example_roundtrip_image");
     rec.save(argv[1]).throw_on_failure();
 
