@@ -26,7 +26,12 @@ Assets = Dict[str, storage.Blob]
 
 
 def fetch_binary_assets(
-    commit: str, *, do_wheels: bool = True, do_rerun_c: bool = True, do_rerun_cpp_sdk: bool = True
+    commit: str,
+    *,
+    do_wheels: bool = True,
+    do_rerun_c: bool = True,
+    do_rerun_cpp_sdk: bool = True,
+    do_rerun_cli: bool = True,
 ) -> Assets:
     """Given a release ID, fetches all associated binary assets from our cloud storage (build.rerun.io)."""
     assets = dict()
@@ -39,6 +44,7 @@ def fetch_binary_assets(
     print(f"  - wheels: {do_wheels}")
     print(f"  - C libs: {do_rerun_c}")
     print(f"  - C++ uber SDK: {do_rerun_cpp_sdk}")
+    print(f"  - CLI (Viewer): {do_rerun_cli}")
 
     # Python wheels
     if do_wheels:
@@ -83,13 +89,30 @@ def fetch_binary_assets(
                 print(f"    Found Rerun cross-platform bundle: {name}")
                 assets[name] = blob
 
-    # rerun_cpp_sdk
-    rerun_cpp_sdk_blob = bucket.get_blob(f"commit/{commit_short}/rerun_cpp_sdk.zip")
-    for blob in [rerun_cpp_sdk_blob]:
-        if blob is not None and blob.name is not None:
-            name = blob.name.split("/")[-1]
-            print(f"    Found Rerun cross-platform bundle: {name} ({blob.size} bytes)")
-            assets[name] = blob
+    # rerun-cli
+    if do_rerun_cli:
+        rerun_cli_blobs = [
+            (
+                "rerun.x86_64-pc-windows-msvc.exe",
+                bucket.get_blob(f"commit/{commit_short}/rerun/windows/rerun.exe"),
+            ),
+            (
+                "rerun.x86_64-unknown-linux-gnu",
+                bucket.get_blob(f"commit/{commit_short}/rerun/linux/rerun"),
+            ),
+            (
+                "rerun.aarch64-apple-darwin.a",
+                bucket.get_blob(f"commit/{commit_short}/rerun/macos-arm/rerun"),
+            ),
+            (
+                "rerun.x86_64-apple-darwin.a",
+                bucket.get_blob(f"commit/{commit_short}/rerun/macos-intel/rerun"),
+            ),
+        ]
+        for name, blob in rerun_cli_blobs:
+            if blob is not None:
+                print(f"    Found Rerun CLI binary: {name}")
+                assets[name] = blob
 
     return assets
 
@@ -134,6 +157,7 @@ def main() -> None:
     parser.add_argument("--no-wheels", action="store_true", help="Don't upload Python wheels")
     parser.add_argument("--no-rerun-c", action="store_true", help="Don't upload C libraries")
     parser.add_argument("--no-rerun-cpp-sdk", action="store_true", help="Don't upload C++ uber SDK")
+    parser.add_argument("--no-rerun-cli", action="store_true", help="Don't upload CLI")
     args = parser.parse_args()
 
     gh = Github(args.github_token, timeout=args.github_timeout)
@@ -150,6 +174,7 @@ def main() -> None:
         do_wheels=not args.no_wheels,
         do_rerun_c=not args.no_rerun_c,
         do_rerun_cpp_sdk=not args.no_rerun_cpp_sdk,
+        do_rerun_cli=not args.no_rerun_cli,
     )
 
     if args.remove:
