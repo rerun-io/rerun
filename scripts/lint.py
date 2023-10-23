@@ -678,7 +678,6 @@ def main() -> None:
     if args.files:
         for filepath in args.files:
             filepath = os.path.join(".", os.path.relpath(filepath, root_dirpath))
-            print(f"Checking: {filepath}")
             extension = filepath.split(".")[-1]
             if extension in extensions:
                 if should_ignore(filepath):
