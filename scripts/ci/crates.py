@@ -183,6 +183,7 @@ class Bump(Enum):
     PATCH = "patch"
     PRERELEASE = "prerelease"
     FINALIZE = "finalize"
+    AUTO = "auto"
 
     def __str__(self) -> str:
         return self.value
@@ -203,6 +204,17 @@ class Bump(Enum):
                 return version.bump_prerelease()
         elif self is Bump.FINALIZE:
             return version.finalize_version()
+        elif self is Bump.AUTO:
+            latest_version = get_version(Target.CratesIo)
+            latest_version_finalized = latest_version.finalize_version()
+            if latest_version == latest_version_finalized:
+                # Latest published is not a pre-release, bump minor and add alpha+dev
+                # example: 0.9.1 -> 0.10.0-alpha.1+dev
+                return version.bump_minor().bump_prerelease(token="alpha").replace(build="dev")
+            else:
+                # Latest published is a pre-release, bump prerelease
+                # example: 0.10.0-alpha.5 -> 0.10.0-alpha.6+dev
+                return version.bump_prerelease(token="alpha").replace(build="dev")
 
 
 def is_pinned(version: str) -> bool:
@@ -294,7 +306,7 @@ def bump_dependency_versions(
             info["version"] = update_to
 
 
-def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> None:
+def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> None:
     ctx = Context()
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
@@ -478,13 +490,13 @@ def get_latest_published_version(crate_name: str) -> str | None:
 
 class Target(Enum):
     Git = "git"
-    CratesIo = "cio"
+    CratesIo = "cratesio"
 
     def __str__(self) -> str:
         return self.value
 
 
-def get_version(finalize: bool, target: Target | None, pre_id: bool) -> None:
+def get_version(target: Target | None) -> VersionInfo:
     if target is Target.Git:
         branch_name = git.Repo().active_branch.name.lstrip("release-")
         try:
@@ -501,6 +513,12 @@ def get_version(finalize: bool, target: Target | None, pre_id: bool) -> None:
     else:
         root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
         current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
+
+    return current_version
+
+
+def print_version(target: Target | None, finalize: bool = False, pre_id: bool = False) -> None:
+    current_version = get_version(target)
 
     if finalize:
         current_version = current_version.finalize_version()
@@ -557,7 +575,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.cmd == "get-version":
-        get_version(args.finalize, args.target, args.pre_id)
+        print_version(args.target, args.finalize, args.pre_id)
     if args.cmd == "version":
         if args.dev and args.pre_id != "alpha":
             parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")
@@ -566,9 +584,9 @@ def main() -> None:
             parser.error("one of `--bump`, `--exact`, `--dev` is required")
 
         if args.bump:
-            version(args.dry_run, args.bump, args.pre_id, args.dev)
+            bump_version(args.dry_run, args.bump, args.pre_id, args.dev)
         else:
-            version(args.dry_run, args.exact, args.pre_id, args.dev)
+            bump_version(args.dry_run, args.exact, args.pre_id, args.dev)
     if args.cmd == "publish":
         if not args.dry_run and not args.token:
             parser.error("`--token` is required when `--dry-run` is not set")
