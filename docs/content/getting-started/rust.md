@@ -1,20 +1,17 @@
 ---
 title: Rust Quick Start
-order: 2
+order: 3
 ---
 
 ## Installing Rerun
 The Rerun SDK for Rust requires a working installation of Rust 1.72+.
 
-To use Rerun, you need to install the `rerun` binary with `cargo install rerun-cli`, and [the rerun crate](https://crates.io/crates/rerun) with `cargo add rerun`.
+After you [installed the viewer](installing-viewer.md) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand new Rust project:
 ```bash
 $ cargo init cube && cd cube && cargo add rerun --features native_viewer
 ```
-
-## Starting the viewer
-Just run `rerun` to start the [Rerun Viewer](../reference/viewer/overview.md). It will wait for your application to log some data to it.
 
 ## Logging some data
 Add the following code to your `main.rs`
