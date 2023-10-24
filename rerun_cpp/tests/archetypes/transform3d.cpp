@@ -33,15 +33,14 @@ SCENARIO(
         GIVEN("Transform3D from translation & matrix and from_parent==" << from_parent) {
             translation_and_mat3.translation = {1.0f, 2.0f, 3.0f};
             translation_and_mat3.from_parent = from_parent;
-            manual.transform.repr =
-                rrd::Transform3D::from_translation_and_mat3x3(translation_and_mat3);
+            manual.transform.repr = rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
             AND_GIVEN("matrix as initializer list") {
                 auto utility = from_parent ? Transform3D({1.0f, 2.0f, 3.0f}, MATRIX_ILIST, true)
                                            : Transform3D({1.0f, 2.0f, 3.0f}, MATRIX_ILIST);
                 translation_and_mat3.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
                 manual.transform.repr =
-                    rrd::Transform3D::from_translation_and_mat3x3(translation_and_mat3);
+                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
                 test_compare_archetype_serialization(manual, utility);
             }
@@ -50,7 +49,7 @@ SCENARIO(
                                            : Transform3D({1.0f, 2.0f, 3.0f}, columns);
                 translation_and_mat3.mat3x3 = columns;
                 manual.transform.repr =
-                    rrd::Transform3D::from_translation_and_mat3x3(translation_and_mat3);
+                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
                 test_compare_archetype_serialization(manual, utility);
             }
@@ -64,7 +63,7 @@ SCENARIO(
                     from_parent ? Transform3D(MATRIX_ILIST, true) : Transform3D(MATRIX_ILIST);
                 translation_and_mat3.mat3x3 = rrd::Mat3x3(MATRIX_ILIST);
                 manual.transform.repr =
-                    rrd::Transform3D::from_translation_and_mat3x3(translation_and_mat3);
+                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
                 test_compare_archetype_serialization(manual, utility);
             }
@@ -72,7 +71,7 @@ SCENARIO(
                 auto utility = from_parent ? Transform3D(columns, true) : Transform3D(columns);
                 translation_and_mat3.mat3x3 = columns;
                 manual.transform.repr =
-                    rrd::Transform3D::from_translation_and_mat3x3(translation_and_mat3);
+                    rrd::Transform3D::translation_and_mat3x3(translation_and_mat3);
 
                 test_compare_archetype_serialization(manual, utility);
             }
@@ -94,7 +93,7 @@ SCENARIO(
             translation_rotation_scale.scale = std::nullopt;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rrd::Transform3D::from_translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_compare_archetype_serialization(manual, utility);
         }
@@ -107,7 +106,7 @@ SCENARIO(
             translation_rotation_scale.scale = 1.0f;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rrd::Transform3D::from_translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_compare_archetype_serialization(manual, utility);
         }
@@ -120,7 +119,7 @@ SCENARIO(
             translation_rotation_scale.scale = 1.0f;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rrd::Transform3D::from_translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_compare_archetype_serialization(manual, utility);
         }
@@ -133,7 +132,7 @@ SCENARIO(
             translation_rotation_scale.scale = std::nullopt;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rrd::Transform3D::from_translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_compare_archetype_serialization(manual, utility);
         }
@@ -146,7 +145,7 @@ SCENARIO(
             translation_rotation_scale.scale = 1.0f;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rrd::Transform3D::from_translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_compare_archetype_serialization(manual, utility);
         }
@@ -158,7 +157,7 @@ SCENARIO(
             translation_rotation_scale.scale = std::nullopt;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rrd::Transform3D::from_translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_compare_archetype_serialization(manual, utility);
         }
@@ -170,7 +169,7 @@ SCENARIO(
             translation_rotation_scale.scale = 1.0f;
             translation_rotation_scale.from_parent = from_parent;
             manual.transform.repr =
-                rrd::Transform3D::from_translation_rotation_scale(translation_rotation_scale);
+                rrd::Transform3D::translation_rotation_scale(translation_rotation_scale);
 
             test_compare_archetype_serialization(manual, utility);
         }

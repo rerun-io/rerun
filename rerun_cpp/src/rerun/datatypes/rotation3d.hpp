@@ -90,16 +90,16 @@ namespace rerun {
 
             /// Rotation defined by a quaternion.
             Rotation3D(rerun::datatypes::Quaternion quaternion) {
-                *this = Rotation3D::from_quaternion(std::move(quaternion));
+                *this = Rotation3D::quaternion(std::move(quaternion));
             }
 
             /// Rotation defined with an axis and an angle.
             Rotation3D(rerun::datatypes::RotationAxisAngle axis_angle) {
-                *this = Rotation3D::from_axis_angle(std::move(axis_angle));
+                *this = Rotation3D::axis_angle(std::move(axis_angle));
             }
 
             /// Rotation defined by a quaternion.
-            static Rotation3D from_quaternion(rerun::datatypes::Quaternion quaternion) {
+            static Rotation3D quaternion(rerun::datatypes::Quaternion quaternion) {
                 Rotation3D self;
                 self._tag = detail::Rotation3DTag::Quaternion;
                 new (&self._data.quaternion) rerun::datatypes::Quaternion(std::move(quaternion));
@@ -107,7 +107,7 @@ namespace rerun {
             }
 
             /// Rotation defined with an axis and an angle.
-            static Rotation3D from_axis_angle(rerun::datatypes::RotationAxisAngle axis_angle) {
+            static Rotation3D axis_angle(rerun::datatypes::RotationAxisAngle axis_angle) {
                 Rotation3D self;
                 self._tag = detail::Rotation3DTag::AxisAngle;
                 new (&self._data.axis_angle)

@@ -18,48 +18,46 @@ namespace rerun {
             // TODO(#3794): don't use std::vector here
 
             /// Construct a `TensorBuffer` from a `std::vector<uint8_t>`.
-            TensorBuffer(std::vector<uint8_t> u8)
-                : TensorBuffer(TensorBuffer::from_u8(std::move(u8))) {}
+            TensorBuffer(std::vector<uint8_t> u8) : TensorBuffer(TensorBuffer::u8(std::move(u8))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint16_t>`.
             TensorBuffer(std::vector<uint16_t> u16)
-                : TensorBuffer(TensorBuffer::from_u16(std::move(u16))) {}
+                : TensorBuffer(TensorBuffer::u16(std::move(u16))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint32_t>`.
             TensorBuffer(std::vector<uint32_t> u32)
-                : TensorBuffer(TensorBuffer::from_u32(std::move(u32))) {}
+                : TensorBuffer(TensorBuffer::u32(std::move(u32))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint64_t>`.
             TensorBuffer(std::vector<uint64_t> u64)
-                : TensorBuffer(TensorBuffer::from_u64(std::move(u64))) {}
+                : TensorBuffer(TensorBuffer::u64(std::move(u64))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int8_t>`.
-            TensorBuffer(std::vector<int8_t> i8)
-                : TensorBuffer(TensorBuffer::from_i8(std::move(i8))) {}
+            TensorBuffer(std::vector<int8_t> i8) : TensorBuffer(TensorBuffer::i8(std::move(i8))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int16_t>`.
             TensorBuffer(std::vector<int16_t> i16)
-                : TensorBuffer(TensorBuffer::from_i16(std::move(i16))) {}
+                : TensorBuffer(TensorBuffer::i16(std::move(i16))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int32_t>`.
             TensorBuffer(std::vector<int32_t> i32)
-                : TensorBuffer(TensorBuffer::from_i32(std::move(i32))) {}
+                : TensorBuffer(TensorBuffer::i32(std::move(i32))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int64_t>`.
             TensorBuffer(std::vector<int64_t> i64)
-                : TensorBuffer(TensorBuffer::from_i64(std::move(i64))) {}
+                : TensorBuffer(TensorBuffer::i64(std::move(i64))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<half>`.
             TensorBuffer(std::vector<rerun::half> f16)
-                : TensorBuffer(TensorBuffer::from_f16(std::move(f16))) {}
+                : TensorBuffer(TensorBuffer::f16(std::move(f16))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<float>`.
             TensorBuffer(std::vector<float> f32)
-                : TensorBuffer(TensorBuffer::from_f32(std::move(f32))) {}
+                : TensorBuffer(TensorBuffer::f32(std::move(f32))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<double>`.
             TensorBuffer(std::vector<double> f64)
-                : TensorBuffer(TensorBuffer::from_f64(std::move(f64))) {}
+                : TensorBuffer(TensorBuffer::f64(std::move(f64))) {}
 
             /// Number of elements in the buffer.
             ///

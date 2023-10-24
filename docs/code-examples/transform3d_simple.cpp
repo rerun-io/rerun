@@ -23,7 +23,7 @@ int main() {
     rec.log(
         "base/rotated_scaled",
         rerun::Transform3D(
-            rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::from_radians(TAU / 8.0f)),
+            rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(TAU / 8.0f)),
             2.0f
         )
     );

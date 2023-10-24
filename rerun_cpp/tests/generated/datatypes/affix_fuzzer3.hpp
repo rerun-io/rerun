@@ -121,22 +121,21 @@ namespace rerun {
                 this->_data.swap(other._data);
             }
 
-            static AffixFuzzer3 from_degrees(float degrees) {
+            static AffixFuzzer3 degrees(float degrees) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::degrees;
                 new (&self._data.degrees) float(std::move(degrees));
                 return self;
             }
 
-            static AffixFuzzer3 from_radians(std::optional<float> radians) {
+            static AffixFuzzer3 radians(std::optional<float> radians) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::radians;
                 new (&self._data.radians) std::optional<float>(std::move(radians));
                 return self;
             }
 
-            static AffixFuzzer3 from_craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness
-            ) {
+            static AffixFuzzer3 craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::craziness;
                 new (&self._data.craziness)
@@ -144,8 +143,7 @@ namespace rerun {
                 return self;
             }
 
-            static AffixFuzzer3 from_fixed_size_shenanigans(
-                std::array<float, 3> fixed_size_shenanigans
+            static AffixFuzzer3 fixed_size_shenanigans(std::array<float, 3> fixed_size_shenanigans
             ) {
                 AffixFuzzer3 self;
                 self._tag = detail::AffixFuzzer3Tag::fixed_size_shenanigans;

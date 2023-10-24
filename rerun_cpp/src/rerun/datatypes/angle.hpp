@@ -79,14 +79,14 @@ namespace rerun {
                 this->_data.swap(other._data);
             }
 
-            static Angle from_radians(float radians) {
+            static Angle radians(float radians) {
                 Angle self;
                 self._tag = detail::AngleTag::Radians;
                 new (&self._data.radians) float(std::move(radians));
                 return self;
             }
 
-            static Angle from_degrees(float degrees) {
+            static Angle degrees(float degrees) {
                 Angle self;
                 self._tag = detail::AngleTag::Degrees;
                 new (&self._data.degrees) float(std::move(degrees));

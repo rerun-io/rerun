@@ -763,11 +763,7 @@ impl QuotedObject {
                     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
                     let param_declaration =
                         quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
-
-                    // Call the `from_` static constructor
-                    let from_static_ctor_ident =
-                        format_ident!("from_{}", obj_field.snake_case_name());
-                    let definition_body = quote!(*this = #pascal_case_ident::#from_static_ctor_ident(std::move(#snake_case_ident)););
+                    let definition_body = quote!(*this = #pascal_case_ident::#snake_case_ident(std::move(#snake_case_ident)););
 
                     methods.push(Method {
                         docs: obj_field.docs.clone().into(),
@@ -1815,7 +1811,7 @@ fn quote_field_ptr_access(typ: &Type, field_accessor: &TokenStream) -> TokenStre
     }
 }
 
-/// e.g. `static Angle from_radians(float radians);` -> `auto angle = Angle::from_radians(radians);`
+/// e.g. `static Angle radians(float radians);` -> `auto angle = Angle::radians(radians);`
 fn static_constructor_for_enum_type(
     hpp_includes: &mut Includes,
     obj_field: &ObjectField,
@@ -1823,7 +1819,9 @@ fn static_constructor_for_enum_type(
     tag_typename: &Ident,
 ) -> Method {
     let tag_ident = format_ident!("{}", obj_field.name);
-    let function_name_ident = format_ident!("from_{}", obj_field.snake_case_name());
+    // We don't use the `from_` prefix here, because this is instantiating an enum variant,
+    // e.g. `Scale3D::Uniform(2.0)` in Rust becomes `Scale3D::uniform(2.0)` in C++.
+    let function_name_ident = format_ident!("{}", obj_field.snake_case_name());
     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
     let docs = obj_field.docs.clone().into();
 

@@ -82,16 +82,15 @@ namespace rerun {
             }
 
             Transform3D(rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3) {
-                *this = Transform3D::from_translation_and_mat3x3(std::move(translation_and_mat3x3));
+                *this = Transform3D::translation_and_mat3x3(std::move(translation_and_mat3x3));
             }
 
             Transform3D(rerun::datatypes::TranslationRotationScale3D translation_rotation_scale) {
-                *this = Transform3D::from_translation_rotation_scale(
-                    std::move(translation_rotation_scale)
-                );
+                *this =
+                    Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
             }
 
-            static Transform3D from_translation_and_mat3x3(
+            static Transform3D translation_and_mat3x3(
                 rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3
             ) {
                 Transform3D self;
@@ -101,7 +100,7 @@ namespace rerun {
                 return self;
             }
 
-            static Transform3D from_translation_rotation_scale(
+            static Transform3D translation_rotation_scale(
                 rerun::datatypes::TranslationRotationScale3D translation_rotation_scale
             ) {
                 Transform3D self;

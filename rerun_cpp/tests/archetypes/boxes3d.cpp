@@ -17,7 +17,7 @@ SCENARIO(
                                 .with_centers({{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}})
                                 .with_rotations({
                                     Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f),
-                                    RotationAxisAngle({0.f, 1.f, 2.f}, Angle::from_radians(45.f)),
+                                    RotationAxisAngle({0.f, 1.f, 2.f}, Angle::radians(45.f)),
                                 })
                                 .with_colors({0xAA0000CC, 0x00BB00DD})
                                 .with_labels({"hello", "friend"})
@@ -30,7 +30,7 @@ SCENARIO(
         from_manual.centers = {{0.f, 0.f, 0.f}, {-1.f, 1.f, -2.f}};
         from_manual.rotations = {
             Quaternion::from_xyzw(0.f, 1.f, 2.f, 3.f),
-            RotationAxisAngle({0.f, 1.f, 2.f}, Angle::from_radians(45.f)),
+            RotationAxisAngle({0.f, 1.f, 2.f}, Angle::radians(45.f)),
         };
         from_manual.colors = {{0xAA, 0x00, 0x00, 0xCC}, {0x00, 0xBB, 0x00, 0xDD}};
         from_manual.labels = {"hello", "friend"};

@@ -18,7 +18,7 @@ int main() {
                 rerun::datatypes::Quaternion::from_xyzw(0.0f, 0.0f, 0.382683f, 0.923880f),
                 rerun::datatypes::RotationAxisAngle(
                     {0.0f, 1.0f, 0.0f},
-                    rerun::datatypes::Angle::from_degrees(30.0f)
+                    rerun::datatypes::Angle::degrees(30.0f)
                 ),
             })
             .with_radii({0.025f})
