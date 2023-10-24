@@ -14,6 +14,11 @@ add_library(rerun_sdk ${rerun_sdk_SRC})
 # Rerun needs at least C++17.
 set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
 
+# Do multithreaded compiling on MSVC.
+if(MSVC)
+    target_compile_options(rerun_sdk PRIVATE "/MP")
+endif()
+
 # ------------------------------------------------------------------------------
 # Rerun development setup only:
 if(DEFINED RERUN_REPOSITORY)
