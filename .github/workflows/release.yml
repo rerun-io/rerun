@@ -263,18 +263,8 @@ jobs:
       - name: Update version
         id: update-version
         run: |
-          latest=$(python3 scripts/ci/crates.py get-version --from=cio)
-          latest_finalized=$(python3 scripts/ci/crates.py get-version --from=cio --finalize)
-          if [ $latest_published = $latest_finalized ]; then
-            # Latest published is a non-prerelease (e.g. 0.9.1), bump minor and add alpha+dev
-            python3 scripts/ci/crates.py version --bump minor
-            python3 scripts/ci/crates.py version --bump prerelease --dev --pre-id=alpha
-            echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
-          else
-            # Latest published is a pre-release (e.g. 0.10.0-alpha.5), bump prerelease
-            python3 scripts/ci/crates.py version --bump prerelease --dev --pre-id=alpha
-            echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
-          fi
+          python3 scripts/ci/crates.py version --bump auto
+          echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
       - name: "Taplo fmt"
         run: taplo fmt
