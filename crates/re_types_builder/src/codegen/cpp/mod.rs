@@ -756,16 +756,6 @@ impl QuotedObject {
             quote_constants_header_and_cpp(obj, objects, &pascal_case_ident);
         let mut methods = Vec::new();
 
-        // Add one static constructor for every field.
-        for obj_field in &obj.fields {
-            methods.push(static_constructor_for_enum_type(
-                &mut hpp_includes,
-                obj_field,
-                &pascal_case_ident,
-                &tag_typename,
-            ));
-        }
-
         if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
             if are_types_disjoint(&obj.fields) {
                 // Implicit construct from the different variant types:
@@ -788,6 +778,16 @@ impl QuotedObject {
                 // Cannot make implicit constructors, e.g. for
                 // `enum Angle { Radians(f32), Degrees(f32) };`
             }
+        }
+
+        // Add one static constructor for every field.
+        for obj_field in &obj.fields {
+            methods.push(static_constructor_for_enum_type(
+                &mut hpp_includes,
+                obj_field,
+                &pascal_case_ident,
+                &tag_typename,
+            ));
         }
 
         // Code that allows to access the data of the union in a safe way.
