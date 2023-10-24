@@ -4,6 +4,7 @@ order: 0
 ---
 
 The [Rerun Viewer](../reference/viewer/overview.md) can be installed independent of the SDK language you're using.
+Generally, you should make sure that your SDK version matches the version of the Viewer you're using to display any data you are logging.
 
 There are many ways to install the viewer. Please pick whatever works best for your setup:
 
@@ -14,7 +15,6 @@ There are many ways to install the viewer. Please pick whatever works best for y
   * `pip3 install rerun-sdk` - download it via pip
   * `conda install -c conda-forge rerun-sdk` - download via Conda
   * `pixi global install rerun-sdk` - download it via [Pixi](https://prefix.dev/docs/pixi/overview
-
 
 In any case you should be able to run `rerun` afterwards to start the Viewer.
 You'll be welcomed by an overview page that allows you to jump into some examples.

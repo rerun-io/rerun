@@ -12,7 +12,7 @@ Building from source:
 Using `pip`:
 * `pip install rerun-sdk`
 
-After you've installed it, type `rerun` in your terminal to start the viewer.
+After you have installed it, type `rerun` in your terminal to start the viewer.
 
 
 #### Using the Rerun C++ SDK

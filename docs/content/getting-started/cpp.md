@@ -42,7 +42,7 @@ include(FetchContent)
 FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
 FetchContent_MakeAvailable(rerun_sdk)
 
-# Rerun requires at least C++17, but you can use an even newer version.
+# Rerun requires at least C++17, but it should be compatible with newer versions.
 set_property(TARGET example PROPERTY CXX_STANDARD 17)
 
 # Link against rerun_sdk.
