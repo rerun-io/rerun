@@ -217,3 +217,6 @@ update-insta-tests:
 
 upload *ARGS:
     python3 "scripts/upload_image.py" {{ARGS}}
+
+crates *ARGS:
+    python3 "scripts/ci/crates.py" {{ARGS}}

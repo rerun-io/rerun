@@ -179,10 +179,28 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
 
 class Bump(Enum):
     MAJOR = "major"
+    """Bump the major version, e.g. `0.9.0-alpha.5+dev` -> `1.0.0`"""
+
     MINOR = "minor"
+    """Bump the minor version, e.g. `0.9.0-alpha.5+dev` -> `0.10.0`"""
+
     PATCH = "patch"
+    """Bump the patch version, e.g. `0.9.0-alpha.5+dev` -> `0.9.1`"""
+
     PRERELEASE = "prerelease"
+    """Bump the pre-release version, e.g. `0.9.0-alpha.5+dev` -> `0.9.0-alpha.6+dev`"""
+
     FINALIZE = "finalize"
+    """Remove the pre-release identifier and build metadata, e.g. `0.9.0-alpha.5+dev` -> `0.9.0`"""
+
+    AUTO = "auto"
+    """
+    Automatically determine the next version and bump to it.
+
+    This depends on the latest version published to crates.io:
+    - If it is a pre-release, then bump the pre-release.
+    - If it is not a pre-release, then bump the minor version, and add `-alpha.N+dev`.
+    """
 
     def __str__(self) -> str:
         return self.value
@@ -203,6 +221,17 @@ class Bump(Enum):
                 return version.bump_prerelease()
         elif self is Bump.FINALIZE:
             return version.finalize_version()
+        elif self is Bump.AUTO:
+            latest_version = get_version(Target.CratesIo)
+            latest_version_finalized = latest_version.finalize_version()
+            if latest_version == latest_version_finalized:
+                # Latest published is not a pre-release, bump minor and add alpha+dev
+                # example: 0.9.1 -> 0.10.0-alpha.1+dev
+                return version.bump_minor().bump_prerelease(token="alpha").replace(build="dev")
+            else:
+                # Latest published is a pre-release, bump prerelease
+                # example: 0.10.0-alpha.5 -> 0.10.0-alpha.6+dev
+                return version.bump_prerelease(token="alpha").replace(build="dev")
 
 
 def is_pinned(version: str) -> bool:
@@ -294,7 +323,7 @@ def bump_dependency_versions(
             info["version"] = update_to
 
 
-def version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> None:
+def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool) -> None:
     ctx = Context()
 
     root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
@@ -459,8 +488,33 @@ def publish(dry_run: bool, token: str) -> None:
         publish_unpublished_crates_in_parallel(crates, version, token)
 
 
-def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
-    if from_git:
+def get_latest_published_version(crate_name: str) -> str | None:
+    resp = requests.get(
+        f"https://crates.io/api/v1/crates/{crate_name}",
+        headers={"user-agent": "rerun-publishing-script (rerun.io)"},
+    )
+    body = resp.json()
+
+    if not resp.ok:
+        raise Exception(f"failed to get crate {crate_name}: {body['errors'][0]['detail']}")
+
+    if "versions" not in body:
+        return None
+
+    # response orders versions by semver
+    return body["versions"][0]["num"]
+
+
+class Target(Enum):
+    Git = "git"
+    CratesIo = "cratesio"
+
+    def __str__(self) -> str:
+        return self.value
+
+
+def get_version(target: Target | None) -> VersionInfo:
+    if target is Target.Git:
         branch_name = git.Repo().active_branch.name.lstrip("release-")
         try:
             current_version = VersionInfo.parse(branch_name)  # ensures that it is a valid version
@@ -468,9 +522,20 @@ def get_version(finalize: bool, from_git: bool, pre_id: bool) -> None:
             print(f"the current branch `{branch_name}` does not specify a valid version.")
             print("this script expects the format `release-x.y.z-meta.N`")
             exit(1)
+    elif target is Target.CratesIo:
+        latest_published_version = get_latest_published_version("rerun")
+        if not latest_published_version:
+            raise Exception("Failed to get latest published version for `rerun` crate")
+        current_version = VersionInfo.parse(latest_published_version)
     else:
         root: dict[str, Any] = tomlkit.parse(Path("Cargo.toml").read_text())
         current_version = VersionInfo.parse(root["workspace"]["package"]["version"])
+
+    return current_version
+
+
+def print_version(target: Target | None, finalize: bool = False, pre_id: bool = False) -> None:
+    current_version = get_version(target)
 
     if finalize:
         current_version = current_version.finalize_version()
@@ -491,8 +556,11 @@ def main() -> None:
 
     version_parser = cmds_parser.add_parser("version", help="Bump the crate versions")
     target_version_parser = version_parser.add_mutually_exclusive_group()
-    target_version_parser.add_argument("--bump", type=Bump, choices=list(Bump), help="Bump version according to semver")
-    target_version_parser.add_argument("--exact", type=str, help="Update version to an exact value")
+    target_version_update_group = target_version_parser.add_mutually_exclusive_group()
+    target_version_update_group.add_argument(
+        "--bump", type=Bump, choices=list(Bump), help="Bump version according to semver"
+    )
+    target_version_update_group.add_argument("--exact", type=str, help="Update version to an exact value")
     dev_parser = version_parser.add_mutually_exclusive_group()
     dev_parser.add_argument("--dev", default=None, action="store_true", help="Set build metadata to `+dev`")
     dev_parser.add_argument(
@@ -516,12 +584,15 @@ def main() -> None:
     get_version_parser.add_argument(
         "--finalize", action="store_true", help="Return version finalized if it is a pre-release"
     )
-    get_version_parser.add_argument("--from-git", action="store_true", help="Get version from branch name")
     get_version_parser.add_argument("--pre-id", action="store_true", help="Retrieve only the prerelease identifier")
+    get_version_parser.add_argument(
+        "--from", type=Target, choices=list(Target), help="Get version from git or crates.io", dest="target"
+    )
+
     args = parser.parse_args()
 
     if args.cmd == "get-version":
-        get_version(args.finalize, args.from_git, args.pre_id)
+        print_version(args.target, args.finalize, args.pre_id)
     if args.cmd == "version":
         if args.dev and args.pre_id != "alpha":
             parser.error("`--pre-id` must be set to `alpha` when `--dev` is set")
@@ -530,9 +601,9 @@ def main() -> None:
             parser.error("one of `--bump`, `--exact`, `--dev` is required")
 
         if args.bump:
-            version(args.dry_run, args.bump, args.pre_id, args.dev)
+            bump_version(args.dry_run, args.bump, args.pre_id, args.dev)
         else:
-            version(args.dry_run, args.exact, args.pre_id, args.dev)
+            bump_version(args.dry_run, args.exact, args.pre_id, args.dev)
     if args.cmd == "publish":
         if not args.dry_run and not args.token:
             parser.error("`--token` is required when `--dry-run` is not set")
