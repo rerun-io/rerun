@@ -25,7 +25,6 @@ opt_out_run = {
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
-    "quick_start_connect": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "quick_start_spawn": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
 

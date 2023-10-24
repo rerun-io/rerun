@@ -2,7 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
   "version": "0.2",
   "usePnP": true,
-  "ignorePaths": ["node_modules/**"],
+  "ignorePaths": [
+    "node_modules/**"
+  ],
   "ignoreWords": [
     "Angjoo",
     "Ankush",
@@ -252,6 +254,7 @@
     "pacman",
     "parametrizations",
     "photogrammetrically",
+    "pixi",
     "pngcrush",
     "pointcloud",
     "prettyplease",

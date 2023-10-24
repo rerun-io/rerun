@@ -12,7 +12,7 @@ use std::collections::HashMap;
 const SPACE_VIEWS_HELP: &str = "https://www.rerun.io/docs/getting-started/viewer-walkthrough";
 
 const CPP_CONNECT_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/cpp_connect.md");
-const CPP_SPAWN_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/cpp_spawn.md");
+const CPP_SPAWN_MARKDOWN: &str = include_str!("../../../data/quick_start_guides/cpp_connect.md"); // TODO(#3757)
 const PYTHON_CONNECT_MARKDOWN: &str =
     include_str!("../../../data/quick_start_guides/python_connect.md");
 const PYTHON_SPAWN_MARKDOWN: &str =
@@ -26,7 +26,7 @@ const HOW_DOES_IT_WORK_MARKDOWN: &str =
 const CPP_CONNECT_CODE_EXAMPLE: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.cpp");
 const CPP_SPAWN_CODE_EXAMPLE: &str =
-    include_str!("../../../data/quick_start_guides/quick_start_spawn.cpp");
+    include_str!("../../../data/quick_start_guides/quick_start_connect.cpp"); // TODO(#3757)
 const PYTHON_CONNECT_CODE_EXAMPLE: &str =
     include_str!("../../../data/quick_start_guides/quick_start_connect.py");
 const PYTHON_SPAWN_CODE_EXAMPLE: &str =
@@ -88,29 +88,25 @@ fn onboarding_content_ui(
                 Visualize synchronized data from multiple processes, locally or over a network.",
             image: &re_ui::icons::WELCOME_SCREEN_LIVE_DATA,
             add_buttons: Box::new(|ui: &mut egui::Ui| {
-                //TODO(#3870): enable with C++ guides are completed
-                #[allow(clippy::collapsible_if, clippy::if_same_then_else)]
-                if false {
-                    if large_text_button(ui, "C++").clicked() {
-                        let (markdown, code) = if accepts_connections {
-                            (CPP_CONNECT_MARKDOWN, CPP_CONNECT_CODE_EXAMPLE)
-                        } else {
-                            (CPP_SPAWN_MARKDOWN, CPP_SPAWN_CODE_EXAMPLE)
-                        };
+                if large_text_button(ui, "C++").clicked() {
+                    let (markdown, code) = if accepts_connections {
+                        (CPP_CONNECT_MARKDOWN, CPP_CONNECT_CODE_EXAMPLE)
+                    } else {
+                        (CPP_SPAWN_MARKDOWN, CPP_SPAWN_CODE_EXAMPLE)
+                    };
 
-                        open_quick_start(
-                            command_sender,
-                            markdown,
-                            [
-                                ("EXAMPLE_CODE", code),
-                                ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
-                                ("SAFARI_WARNING", safari_warning()),
-                            ]
-                            .into(),
-                            "C++ Quick Start",
-                            "cpp_quick_start",
-                        );
-                    }
+                    open_quick_start(
+                        command_sender,
+                        markdown,
+                        [
+                            ("EXAMPLE_CODE", code),
+                            ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
+                            ("SAFARI_WARNING", safari_warning()),
+                        ]
+                        .into(),
+                        "C++ Quick Start",
+                        "cpp_quick_start",
+                    );
                 }
                 if large_text_button(ui, "Python").clicked() {
                     let (markdown, code) = if accepts_connections {
