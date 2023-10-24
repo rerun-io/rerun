@@ -76,7 +76,7 @@ if(NOT DEFINED RERUN_C_LIB_DEFAULT)
         set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_x64.a)
     elseif(WIN32)
         # TODO(andreas): Arm support.
-        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__win_x64.lib)
+        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/rerun_c__win_x64.lib)
     else()
         message(WARNING "Unsupported platform ${RERUN_C_LIB_DEFAULT}, can't find rerun_c library.")
     endif()
