@@ -1,4 +1,4 @@
-//! Log some transforms.
+//! Log different transforms between three arrows.
 
 use std::f32::consts::TAU;
 

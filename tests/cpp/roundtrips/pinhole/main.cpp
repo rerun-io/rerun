@@ -1,7 +1,7 @@
 #include <rerun/archetypes/pinhole.hpp>
 #include <rerun/recording_stream.hpp>
 
-int main(int argc, char** argv) {
+int main(int, char** argv) {
     auto rec = rerun::RecordingStream("rerun_example_roundtrip_pinhole");
     rec.save(argv[1]).throw_on_failure();
 

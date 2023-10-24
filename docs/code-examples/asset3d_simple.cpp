@@ -1,4 +1,4 @@
-// Log a batch of 3D arrows.
+// Log a a simple 3D asset.
 
 #include <rerun.hpp>
 
