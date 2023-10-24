@@ -21,6 +21,10 @@ demo: true
 
 Simple example of logging point and line primitives to draw a 3D helix.
 
+
+To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
-python examples/python/dna/main.py
+cmake .
+cmake --build . --target example_dna
+./examples/cpp/dna/dna
 ```

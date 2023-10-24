@@ -87,8 +87,8 @@ pub fn color_spiral(
         .map(move |i| {
             let angle = i as f32 * angular_step * TAU + angular_offset;
             glam::Vec3::new(
-                angle.sin() * radius,
                 angle.cos() * radius,
+                angle.sin() * radius,
                 i as f32 * z_step,
             )
         })

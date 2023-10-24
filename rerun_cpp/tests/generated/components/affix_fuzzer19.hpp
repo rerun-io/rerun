@@ -48,6 +48,11 @@ namespace rerun {
                 return *this;
             }
 
+            /// Cast to the underlying AffixFuzzer5 datatype
+            operator rerun::datatypes::AffixFuzzer5() const {
+                return just_a_table_nothing_shady;
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

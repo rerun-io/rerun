@@ -71,6 +71,11 @@ namespace rerun {
                 return *this;
             }
 
+            /// Cast to the underlying Rgba32 datatype
+            operator rerun::datatypes::Rgba32() const {
+                return rgba;
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

@@ -64,6 +64,11 @@ namespace rerun {
                 return *this;
             }
 
+            /// Cast to the underlying Vec3D datatype
+            operator rerun::datatypes::Vec3D() const {
+                return xyz;
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

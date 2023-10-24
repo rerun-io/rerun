@@ -46,6 +46,11 @@ namespace rerun {
                 return *this;
             }
 
+            /// Cast to the underlying TensorData datatype
+            operator rerun::datatypes::TensorData() const {
+                return data;
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

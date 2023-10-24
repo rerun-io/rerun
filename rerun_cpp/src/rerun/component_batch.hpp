@@ -34,9 +34,9 @@ namespace rerun {
         template <typename... Ts>
         struct NoAdapterFor : std::false_type {};
 
+        // `NoAdapterFor` always evaluates to false, but in a way that requires template instantiation.
         static_assert(
-            NoAdapterFor<TComponent, TInput>::value, // Always evaluate to false, but in a way that
-                                                     // requires template instantiation.
+            NoAdapterFor<TComponent, TInput>::value,
             "ComponentBatchAdapter is not implemented for this type. "
             "It is implemented for for single components as well as std::vector, std::array, and "
             "c-arrays of components. "

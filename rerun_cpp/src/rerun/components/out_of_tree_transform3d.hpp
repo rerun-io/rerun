@@ -38,6 +38,11 @@ namespace rerun {
                 return *this;
             }
 
+            /// Cast to the underlying Transform3D datatype
+            operator rerun::datatypes::Transform3D() const {
+                return repr;
+            }
+
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 

@@ -48,6 +48,11 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
 
+cpp-build-all = { depends_on = [
+  "cpp-build-tests",
+  "cpp-build-examples",
+  "cpp-build-doc-examples",
+] }
 cpp-prepare = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 cpp-build-tests = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",

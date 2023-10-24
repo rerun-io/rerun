@@ -22,5 +22,5 @@ demo: true
 Simple example of logging point and line primitives to draw a 3D helix.
 
 ```bash
-python examples/python/dna/main.py
+cargo run --release
 ```
