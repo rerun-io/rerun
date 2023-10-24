@@ -80,7 +80,7 @@ namespace rerun {
             // Extensions to generated type defined in 'asset3d_ext.cpp'
 
             static std::optional<rerun::components::MediaType> guess_media_type(
-                const std::string& path
+                const std::filesystem::path& path
             );
 
             /// Creates a new [`Asset3D`] from the file contents at `path`.

@@ -13,8 +13,7 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
         // [CODEGEN COPY TO HEADER START]
 
-        static std::optional<rerun::components::MediaType> guess_media_type(const std::string& path
-        );
+        static std::optional<rerun::components::MediaType> guess_media_type(const std::filesystem::path& path);
 
         /// Creates a new [`Asset3D`] from the file contents at `path`.
         ///
