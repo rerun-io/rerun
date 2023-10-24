@@ -3,8 +3,8 @@
 use rerun::Archetype as _;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_manual_indicator").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_manual_indicator")
+        .spawn(&rerun::SpawnOptions::default(), None)?;
 
     // Specify both a Mesh3D and a Points3D indicator component so that the data is shown as both a
     // 3D mesh _and_ a point cloud by default.
@@ -21,6 +21,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ],
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

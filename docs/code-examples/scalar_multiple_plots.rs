@@ -1,8 +1,8 @@
 //! Log a scalar over time.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_scalar_multiple_plots").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar_multiple_plots")
+        .spawn(&rerun::SpawnOptions::default(), None)?;
     let mut lcg_state = 0_i64;
 
     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {
@@ -33,6 +33,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

@@ -3,9 +3,8 @@
 use ndarray::{s, Array, ShapeBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation")
-            .memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation")
+        .spawn(&rerun::SpawnOptions::default(), None)?;
 
     // create an annotation context to describe the classes
     rec.log_timeless(
@@ -26,6 +25,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::SegmentationImage::try_from(data)?,
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

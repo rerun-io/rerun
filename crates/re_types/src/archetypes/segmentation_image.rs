@@ -38,8 +38,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use ndarray::{s, Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_segmentation_image")
+///         .spawn(&rerun::SpawnOptions::default(), None)?;
 ///
 ///     // create a segmentation image
 ///     let mut image = Array::<u8, _>::zeros((8, 12).f());
@@ -57,7 +57,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     rec.log("image", &rerun::SegmentationImage::try_from(image)?)?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```

@@ -1,8 +1,8 @@
 //! Log a batch of oriented bounding boxes.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_box3d_batch").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_box3d_batch")
+        .spawn(&rerun::SpawnOptions::default(), None)?;
 
     rec.log(
         "batch",
@@ -24,6 +24,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_labels(["red", "green", "blue"]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

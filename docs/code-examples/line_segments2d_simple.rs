@@ -1,8 +1,8 @@
 //! Log a couple 2D line segments using 2D line strips.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_line_segments2d").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_segments2d")
+        .spawn(&rerun::SpawnOptions::default(), None)?;
 
     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     rec.log("segments", &rerun::LineStrips2D::new(points.chunks(2)))?;
@@ -13,6 +13,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::Boxes2D::from_centers_and_sizes([(3.0, 0.0)], [(8.0, 6.0)]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

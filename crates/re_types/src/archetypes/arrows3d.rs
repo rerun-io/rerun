@@ -30,7 +30,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use std::f32::consts::TAU;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_arrow3d").memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_arrow3d")
+///         .spawn(&rerun::SpawnOptions::default(), None)?;
 ///
 ///     let origins = vec![rerun::Position3D::ZERO; 100];
 ///     let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)
@@ -52,7 +53,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///             .with_colors(colors),
 ///     )?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```

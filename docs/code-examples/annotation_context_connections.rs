@@ -1,9 +1,8 @@
 //! Log annotation context with connections between keypoints.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_connections")
-            .memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_connections")
+        .spawn(&rerun::SpawnOptions::default(), None)?;
 
     // Log an annotation context to assign a label and color to each class
     // Create a class description with labels and color for each keypoint ID as well as some
@@ -35,6 +34,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_class_ids([0]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }
