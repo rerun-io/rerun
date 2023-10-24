@@ -14,7 +14,7 @@ There are many ways to install the viewer. Please pick whatever works best for y
 * Together with the Rerun [Python SDK](python.md):
   * `pip3 install rerun-sdk` - download it via pip
   * `conda install -c conda-forge rerun-sdk` - download via Conda
-  * `pixi global install rerun-sdk` - download it via [Pixi](https://prefix.dev/docs/pixi/overview
+  * `pixi global install rerun-sdk` - download it via [Pixi](https://prefix.dev/docs/pixi/overview)
 
 In any case you should be able to run `rerun` afterwards to start the Viewer.
 You'll be welcomed by an overview page that allows you to jump into some examples.
