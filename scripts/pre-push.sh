@@ -18,7 +18,7 @@ while read local_ref local_sha remote_ref remote_sha; do
 
     # Check if the pushed branch matches the active branch
     if [ "$branch_name" = "$active_branch" ]; then
-        exec pixi run fast-lint
+        exec pixi run fast-lint $@
     else
         echo "Skipping fast-lint because the pushed branch ($branch_name) does not match the active branch ($active_branch)."
     fi
