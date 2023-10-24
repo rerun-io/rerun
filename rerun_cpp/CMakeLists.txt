@@ -104,6 +104,11 @@ if(RERUN_ARROW_LINK_SHARED)
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_shared)
 else()
     message(STATUS "Arrow version: ${ARROW_VERSION}")
+
+    if(WIN32)
+        message(WARNING "As of writing static linking with libarrow is broken on Windows. See https://github.com/apache/arrow/issues/33145")
+    endif()
+
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_static)
 endif()
 
@@ -114,5 +119,5 @@ if(APPLE)
 elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_sdk PRIVATE "-lm -ldl -pthread")
 elseif(WIN32)
-    target_link_libraries(rerun_sdk PUBLIC ws2_32.dll Bcrypt.dll Userenv.dll)
+    target_link_libraries(rerun_sdk PUBLIC ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
 endif()
