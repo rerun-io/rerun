@@ -52,9 +52,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     )?;
 ///
 ///     // create a segmentation image
-///     let mut data = Array::<u8, _>::zeros((8, 12).f());
-///     data.slice_mut(s![0..4, 0..6]).fill(1);
-///     data.slice_mut(s![4..8, 6..12]).fill(2);
+///     let mut data = Array::<u8, _>::zeros((200, 300).f());
+///     data.slice_mut(s![50..100, 50..120]).fill(1);
+///     data.slice_mut(s![100..180, 130..280]).fill(2);
 ///
 ///     rec.log(
 ///         "segmentation/image",
