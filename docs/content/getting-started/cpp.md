@@ -1,5 +1,5 @@
 ---
-title: Rust Quick Start
+title: C++ Quick Start
 order: 2
 ---
 
