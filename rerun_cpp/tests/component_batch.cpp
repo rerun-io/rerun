@@ -229,4 +229,8 @@ SCENARIO("ComponentBatch move behavior", TEST_TAG) {
             CHECK(borrowed.get_ownership() == rerun::BatchOwnership::Borrowed);
         }
     }
+
+    // Uncomment to check if the error message for missing adapter is sane:
+    //std::vector<std::string> strings = {"a", "b", "c"};
+    //rerun::ComponentBatch<Position2D> batch(strings);
 }

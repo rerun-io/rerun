@@ -30,7 +30,7 @@ namespace rerun {
     /// input)` in order to to accidentally borrow data that is passed in as a temporary!
     ///
     /// TODO(andreas): Point to an example here and in the assert.
-    template <typename TComponent, typename TInput>
+    template <typename TComponent, typename TInput, typename Enable = std::enable_if_t<true>>
     struct ComponentBatchAdapter {
         template <typename... Ts>
         struct NoAdapterFor : std::false_type {};
@@ -83,8 +83,8 @@ namespace rerun {
 
         /// Type of an adapter given input types Ts.
         template <typename T>
-        using TAdapter =
-            ComponentBatchAdapter<TComponent, std::remove_cv_t<std::remove_reference_t<T>>>;
+        using TAdapter = ComponentBatchAdapter<
+            TComponent, std::remove_cv_t<std::remove_reference_t<T>>, std::enable_if_t<true>>;
 
         /// Creates a new empty component batch.
         ///
@@ -297,7 +297,10 @@ namespace rerun {
 
     /// Adapter from std::vector<T> where T can be converted to TComponent
     template <typename TComponent, typename T>
-    struct ComponentBatchAdapter<TComponent, std::vector<T>> {
+    struct ComponentBatchAdapter<
+        TComponent, std::vector<T>,
+        std::enable_if_t<
+            !std::is_same_v<TComponent, T> && std::is_constructible_v<TComponent, const T&>>> {
         ComponentBatch<TComponent> operator()(const std::vector<T>& input) {
             std::vector<TComponent> transformed(input.size());
 
@@ -315,7 +318,7 @@ namespace rerun {
                 std::make_move_iterator(input.begin()),
                 std::make_move_iterator(input.end()),
                 transformed.begin(),
-                [](T&& datum) { return TComponent(datum); }
+                [](T&& datum) { return TComponent(std::move(datum)); }
             );
 
             return ComponentBatch<TComponent>::take_ownership(std::move(transformed));
