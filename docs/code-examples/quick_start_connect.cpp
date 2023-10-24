@@ -21,7 +21,7 @@ int main() {
                 const float yf = remap(yi, 0.f, 10.f, -10.f, 10.f);
                 const float zf = remap(zi, 0.f, 10.f, -10.f, 10.f);
 
-                positions.push_back({xf, yf, zf});
+                positions.emplace_back(xf, yf, zf);
 
                 const auto r = static_cast<uint8_t>(roundf(remap(xi, 0.f, 10.f, 0.f, 255.f)));
                 const auto g = static_cast<uint8_t>(roundf(remap(yi, 0.f, 10.f, 0.f, 255.f)));
