@@ -41,7 +41,7 @@ image itself is logged as an
 [rr.SegmentationImage archetype](https://www.rerun.io/docs/reference/types/archetypes/segmentation_image) and
 contains the id for each pixel. The color is determined by the
 [rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
-logged with `rr.log(..., timeless=True` as it should apply to the whole sequence.
+logged with `rr.log(…, timeless=True` as it should apply to the whole sequence.
 
 ### Skeletons
 The [2D](recording://video/pose/points) and [3D skeletons](recording://person/pose/points) are also logged through a

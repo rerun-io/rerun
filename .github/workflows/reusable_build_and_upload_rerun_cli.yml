@@ -1,0 +1,240 @@
+name: Reusable Rerun CLI build & upload
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      PLATFORM:
+        required: true
+        type: string
+      RELEASE_VERSION:
+        required: false
+        type: string
+        default: "prerelease"
+      UPLOAD_COMMIT_OVERRIDE:
+        required: false
+        type: string
+        default: ""
+      UPLOAD_COMMIT:
+        required: false
+        type: boolean
+        default: true
+      ADHOC_NAME:
+        required: false
+        type: string
+        default: ""
+
+  workflow_dispatch:
+    inputs:
+      ADHOC_NAME:
+        required: true
+        type: string
+        description: "Name of the adhoc build, used for upload directory"
+      PLATFORM:
+        type: choice
+        options:
+          - linux
+          - windows
+          - macos-arm
+          - macos-intel
+        description: "Platform to build for"
+        required: true
+      CONCURRENCY:
+        required: false
+        type: string
+        default: "adhoc"
+      RELEASE_VERSION:
+        required: false
+        type: string
+        default: "prerelease"
+      UPLOAD_COMMIT_OVERRIDE:
+        required: false
+        type: string
+        default: ""
+      UPLOAD_COMMIT:
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-build-rerun-cli
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.8"
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+
+permissions:
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  set-config:
+    name: Set Config (${{ inputs.PLATFORM }})
+    runs-on: ubuntu-latest-16-cores
+    outputs:
+      RUNNER: ${{ steps.set-config.outputs.runner }}
+      TARGET: ${{ steps.set-config.outputs.target }}
+      CONTAINER: ${{ steps.set-config.outputs.container }}
+      BIN_NAME: ${{ steps.set-config.outputs.bin_name }}
+    steps:
+      - name: Set runner and target based on platform
+        id: set-config
+        run: |
+          case "${{ inputs.PLATFORM }}" in
+            linux)
+              runner="ubuntu-latest-16-cores"
+              target="x86_64-unknown-linux-gnu"
+              container="{'image': 'rerunio/ci_docker:0.10.0'}"
+              bin_name="rerun"
+              ;;
+            windows)
+              runner="windows-latest-8-cores"
+              target="x86_64-pc-windows-msvc"
+              container="null"
+              bin_name="rerun.exe"
+              ;;
+            macos-arm)
+              runner="macos-latest"
+              target="aarch64-apple-darwin"
+              container="null"
+              bin_name="rerun"
+              ;;
+            macos-intel)
+              runner="macos-latest"
+              target="x86_64-apple-darwin"
+              container="null"
+              bin_name="rerun"
+              ;;
+            *) echo "Invalid platform" && exit 1 ;;
+          esac
+          echo "runner=$runner" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "container=$container" >> "$GITHUB_OUTPUT"
+          echo "bin_name=$bin_name" >> "$GITHUB_OUTPUT"
+
+  build-rerun-cli:
+    name: Build rerun-cli (${{ needs.set-config.outputs.RUNNER }})
+
+    needs: [set-config]
+
+    runs-on: ${{ needs.set-config.outputs.RUNNER }}
+    container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+
+    steps:
+      - name: Show context
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
+
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-${{ inputs.PLATFORM }}"
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+          targets: ${{ needs.set-config.outputs.TARGET }}
+
+      # The pip-cache setup logic doesn't work in the ubuntu docker container
+      # That's probably fine since we bake these deps into the container already
+      - name: Setup python
+        if: ${{ inputs.PLATFORM != 'linux' }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "scripts/ci/requirements.txt"
+
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
+      - run: pip install -r scripts/ci/requirements.txt
+
+      # We have a nice script for that: ./scripts/setup_web.sh
+      # Unfortunately, we can't run that on Windows, because Windows doesn't come with
+      # a package manager like grown-up OSes do (at least not the CI version of Windows).
+      # Also we can't run it on linux because the 20.04 Docker container will install
+      # an old version of binaryen/wasm-opt that barfs on the `--fast-math` flag
+      # So we only run the script on macos, and then on Windows we do the parts of the script manually.
+      # On ubuntu, the correct packages are pre-installed in our docker container.
+
+      - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
+        if: (inputs.PLATFORM == 'macos-intel') || (inputs.PLATFORM == 'macos-arm')
+        shell: bash
+        run: ./scripts/setup_web.sh
+
+      # The first steps of setup_web.sh, for Windows:
+      - name: Install wasm32 cargo target for building the web-viewer Wasm on windows
+        if: inputs.PLATFORM == 'windows'
+        shell: bash
+        run: rustup target add wasm32-unknown-unknown
+
+      # The last step of setup_web.sh, for Windows.
+      # Since 'winget' is not available within the GitHub runner, we download the package directly:
+      # See: https://github.com/marketplace/actions/engineerd-configurator
+      - name: Install binaryen for building the web-viewer Wasm on windows
+        if: inputs.PLATFORM == 'windows'
+        uses: engineerd/configurator@v0.0.9
+        with:
+          name: "wasm-opt.exe"
+          url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
+          pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
+
+      - name: Build rerun-cli (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --locked -p rerun-cli --no-default-features --features native_viewer,web_viewer --release --target ${{ needs.set-config.outputs.TARGET }}
+
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
+        id: "short-sha"
+        run: |
+          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
+          fi
+          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: "Upload rerun-cli (commit)"
+        if: ${{ inputs.UPLOAD_COMMIT }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          destination: "rerun-builds/commit/${{ steps.short-sha.outputs.SHORT_SHA }}/rerun-cli/${{ inputs.PLATFORM }}"
+          parent: false
+
+      - name: "Upload rerun-cli (adhoc)"
+        if: ${{ inputs.ADHOC_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
+          destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
+          parent: false

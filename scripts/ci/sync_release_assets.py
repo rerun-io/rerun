@@ -26,7 +26,13 @@ Assets = Dict[str, storage.Blob]
 
 
 def fetch_binary_assets(
-    commit: str, *, do_wheels: bool = True, do_rerun_c: bool = True, do_rerun_cpp_sdk: bool = True
+    tag: str,
+    commit: str,
+    *,
+    do_wheels: bool = True,
+    do_rerun_c: bool = True,
+    do_rerun_cpp_sdk: bool = True,
+    do_rerun_cli: bool = True,
 ) -> Assets:
     """Given a release ID, fetches all associated binary assets from our cloud storage (build.rerun.io)."""
     assets = dict()
@@ -39,6 +45,7 @@ def fetch_binary_assets(
     print(f"  - wheels: {do_wheels}")
     print(f"  - C libs: {do_rerun_c}")
     print(f"  - C++ uber SDK: {do_rerun_cpp_sdk}")
+    print(f"  - CLI (Viewer): {do_rerun_cli}")
 
     # Python wheels
     if do_wheels:
@@ -46,6 +53,20 @@ def fetch_binary_assets(
         for blob in [bucket.get_blob(blob.name) for blob in wheel_blobs if blob.name.endswith(".whl")]:
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
+
+                if "macosx" in name:
+                    if "x86_64" in name:
+                        name = f"rerun_sdk-{tag}-aarch64-apple-darwin.whl"
+                    if "arm64" in name:
+                        name = f"rerun_sdk-{tag}-x86_64-apple-darwin.whl"
+
+                if "manylinux_2_31_x86_64" in name:
+                    if "x86_64" in name:
+                        name = f"rerun_sdk-{tag}-x86_64-unknown-linux-gnu.whl"
+
+                if "win_amd64" in name:
+                    name = f"rerun_sdk-{tag}-x86_64-pc-windows-msvc.whl"
+
                 print(f"    Found Python wheel: {name} ")
                 assets[name] = blob
 
@@ -53,19 +74,19 @@ def fetch_binary_assets(
     if do_rerun_c:
         rerun_c_blobs = [
             (
-                "librerun_c.x86_64-pc-windows-msvc.lib",
+                f"rerun_c-{tag}-x86_64-pc-windows-msvc.lib",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/windows/rerun_c.lib"),
             ),
             (
-                "librerun_c.x86_64-unknown-linux-gnu.a",
+                f"librerun_c-{tag}-x86_64-unknown-linux-gnu.a",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/linux/librerun_c.a"),
             ),
             (
-                "librerun_c.aarch64-apple-darwin.a",
+                f"librerun_c-{tag}-aarch64-apple-darwin.a",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a"),
             ),
             (
-                "librerun_c.x86_64-apple-darwin.a",
+                f"librerun_c-{tag}-x86_64-apple-darwin.a",
                 bucket.get_blob(f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a"),
             ),
         ]
@@ -82,14 +103,33 @@ def fetch_binary_assets(
                 name = blob.name.split("/")[-1]
                 print(f"    Found Rerun cross-platform bundle: {name}")
                 assets[name] = blob
+                # NOTE: Want a versioned one too.
+                assets[f"rerun_cpp_sdk-{tag}-multiplatform.zip"] = blob
 
-    # rerun_cpp_sdk
-    rerun_cpp_sdk_blob = bucket.get_blob(f"commit/{commit_short}/rerun_cpp_sdk.zip")
-    for blob in [rerun_cpp_sdk_blob]:
-        if blob is not None and blob.name is not None:
-            name = blob.name.split("/")[-1]
-            print(f"    Found Rerun cross-platform bundle: {name} ({blob.size} bytes)")
-            assets[name] = blob
+    # rerun-cli
+    if do_rerun_cli:
+        rerun_cli_blobs = [
+            (
+                f"rerun-cli-{tag}-x86_64-pc-windows-msvc.exe",
+                bucket.get_blob(f"commit/{commit_short}/rerun-cli/windows/rerun.exe"),
+            ),
+            (
+                f"rerun-cli-{tag}-x86_64-unknown-linux-gnu",
+                bucket.get_blob(f"commit/{commit_short}/rerun-cli/linux/rerun"),
+            ),
+            (
+                f"rerun-cli-{tag}-aarch64-apple-darwin",
+                bucket.get_blob(f"commit/{commit_short}/rerun-cli/macos-arm/rerun"),
+            ),
+            (
+                f"rerun-cli-{tag}-x86_64-apple-darwin",
+                bucket.get_blob(f"commit/{commit_short}/rerun-cli/macos-intel/rerun"),
+            ),
+        ]
+        for name, blob in rerun_cli_blobs:
+            if blob is not None:
+                print(f"    Found Rerun CLI binary: {name}")
+                assets[name] = blob
 
     return assets
 
@@ -134,6 +174,7 @@ def main() -> None:
     parser.add_argument("--no-wheels", action="store_true", help="Don't upload Python wheels")
     parser.add_argument("--no-rerun-c", action="store_true", help="Don't upload C libraries")
     parser.add_argument("--no-rerun-cpp-sdk", action="store_true", help="Don't upload C++ uber SDK")
+    parser.add_argument("--no-rerun-cli", action="store_true", help="Don't upload CLI")
     args = parser.parse_args()
 
     gh = Github(args.github_token, timeout=args.github_timeout)
@@ -146,10 +187,12 @@ def main() -> None:
     )
 
     assets = fetch_binary_assets(
+        release.tag_name,
         commit.sha,
         do_wheels=not args.no_wheels,
         do_rerun_c=not args.no_rerun_c,
         do_rerun_cpp_sdk=not args.no_rerun_cpp_sdk,
+        do_rerun_cli=not args.no_rerun_cli,
     )
 
     if args.remove:

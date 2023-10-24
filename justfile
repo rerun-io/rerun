@@ -17,6 +17,10 @@ format: cpp-format toml-format py-format
 # Lint all of our code
 lint: toml-lint py-lint rs-lint
 
+# Run the fast versions of our linters
+fast-lint *ARGS:
+    pixi run fast-lint {{ARGS}}
+
 ### C and C++
 
 # Clear the C++ build directories
@@ -33,6 +37,14 @@ cpp-format:
 # Build our C++ SDK and tests
 cpp-build:
     pixi run cpp-build
+
+# Build all our C++ examples.
+cpp-build-examples:
+    pixi run cpp-build-examples
+
+# Build all our C++ api doc examples.
+cpp-build-doc-examples:
+    pixi run cpp-build-doc-examples
 
 # Run our C++ tests
 cpp-test:

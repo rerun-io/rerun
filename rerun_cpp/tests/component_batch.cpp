@@ -127,7 +127,7 @@ namespace rerun {
             );
         }
 
-        ComponentBatch<components::Position2D> operator()(MyVec2Container&& container) {
+        ComponentBatch<components::Position2D> operator()(MyVec2Container&&) {
             throw std::runtime_error("Not implemented for temporaries");
         }
     };
