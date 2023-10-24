@@ -12,7 +12,7 @@ Building from source:
 Using `pip`:
 * `pip install rerun-sdk`
 
-After you've installed it, type `rerun` in your terminal to start the viewer.
+After you have installed it, type `rerun` in your terminal to start the viewer.
 
 
 #### Using the Rerun C++ SDK
@@ -24,7 +24,7 @@ If you're using CMake, you can add the following to your `CMakeLists.txt`:
 
 ```cmake
 include(FetchContent)
-FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/06dd483/rerun_cpp_sdk.zip) # 2023-10-20
+FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
 FetchContent_MakeAvailable(rerun_sdk)
 ```
 
@@ -39,7 +39,7 @@ target_link_libraries(your_executable PRIVATE rerun_sdk)
 
 Put the following code to your `main.cpp`:
 
-```rust
+```cpp
 ${EXAMPLE_CODE}
 ```
 

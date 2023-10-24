@@ -34,9 +34,18 @@ namespace rerun {
 
         /// Given two 3D vectors `from` and `to`, linearly interpolates between them in `n` steps along
         /// the three axes, returning the intermediate result at each step.
-        std::vector<components::Position3D> grid(
-            components::Position3D from, components::Position3D to, size_t n
-        );
+        template <typename T, typename Elem>
+        std::vector<T> grid(std::array<Elem, 3> from, std::array<Elem, 3> to, size_t n) {
+            std::vector<T> output;
+            for (Elem z : linspace(from[0], to[0], n)) {
+                for (Elem y : linspace(from[1], to[1], n)) {
+                    for (Elem x : linspace(from[2], to[2], n)) {
+                        output.emplace_back(x, y, z);
+                    }
+                }
+            }
+            return output;
+        }
 
         /// Create a spiral of points with colors along the Z axis.
         ///

@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-order: 7
+order: 8
 ---
 
 You can set `RUST_LOG=debug` before running to get some verbose logging output.
