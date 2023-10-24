@@ -16,7 +16,7 @@ use crate::{
 
 #[derive(thiserror::Error, Debug)]
 pub enum DataTableError {
-    #[error("Trying to deserialize data that is missing a column present in the schema: {0:?}")]
+    #[error("The schema has a column {0:?} that is missing in the data")]
     MissingColumn(String),
 
     #[error(

@@ -245,6 +245,7 @@ pub fn generate_lang_agnostic(
     entrypoint_path: impl AsRef<Utf8Path>,
 ) -> (Objects, ArrowRegistry) {
     re_tracing::profile_function!();
+
     use xshell::Shell;
 
     let sh = Shell::new().unwrap();
@@ -324,6 +325,8 @@ fn generate_gitattributes_for_generated_files(files_to_write: &mut GeneratedFile
 
 /// This will automatically emit a `rerun-if-changed` clause for all the files that were hashed.
 pub fn compute_re_types_builder_hash() -> String {
+    re_tracing::profile_function!();
+
     compute_crate_hash("re_types_builder")
 }
 
@@ -336,6 +339,8 @@ pub struct SourceLocations<'a> {
 
 /// Also triggers a re-build if anything that affects the hash changes.
 pub fn compute_re_types_hash(locations: &SourceLocations<'_>) -> String {
+    re_tracing::profile_function!();
+
     // NOTE: We need to hash both the flatbuffers definitions as well as the source code of the
     // code generator itself!
     let re_types_builder_hash = compute_re_types_builder_hash();

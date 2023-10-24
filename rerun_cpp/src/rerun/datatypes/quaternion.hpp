@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -21,7 +22,7 @@ namespace rerun {
         /// Note: although the x,y,z,w components of the quaternion will be passed through to the
         /// datastore as provided, when used in the viewer Quaternions will always be normalized.
         struct Quaternion {
-            float xyzw[4];
+            std::array<float, 4> xyzw;
 
           public:
             // Extensions to generated type defined in 'quaternion_ext.cpp'
@@ -29,7 +30,34 @@ namespace rerun {
             static const Quaternion IDENTITY;
 
             /// Construct Quaternion from x/y/z/w values.
-            Quaternion(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
+            static Quaternion from_xyzw(float x, float y, float z, float w) {
+                return Quaternion{x, y, z, w};
+            }
+
+            /// Construct Quaternion from w/x/y/z values.
+            static Quaternion from_wxyz(float w, float x, float y, float z) {
+                return Quaternion{x, y, z, w};
+            }
+
+            /// Construct Quaternion from x/y/z/w array.
+            static Quaternion from_xyzw(std::array<float, 4> xyzw_) {
+                return Quaternion{xyzw_};
+            }
+
+            /// Construct Quaternion from w/x/y/z array.
+            static Quaternion from_wxyz(std::array<float, 4> wxyz_) {
+                return Quaternion{wxyz_[1], wxyz_[2], wxyz_[3], wxyz_[0]};
+            }
+
+            /// Construct Quaternion from x/y/z/w float pointer.
+            static Quaternion from_xyzw(const float* xyzw_) {
+                return Quaternion{xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]};
+            }
+
+            /// Construct Quaternion from w/x/y/z float pointer.
+            static Quaternion from_wxyz(const float* wxyz_) {
+                return Quaternion{wxyz_[1], wxyz_[2], wxyz_[3], wxyz_[0]};
+            }
 
             float x() const {
                 return xyzw[0];
@@ -49,8 +77,6 @@ namespace rerun {
 
           public:
             Quaternion() = default;
-
-            Quaternion(const float (&_xyzw)[4]) : xyzw{_xyzw[0], _xyzw[1], _xyzw[2], _xyzw[3]} {}
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

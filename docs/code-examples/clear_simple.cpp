@@ -1,4 +1,4 @@
-// Log a batch of 3D arrows.
+// Log and then clear data.
 
 #include <rerun.hpp>
 
@@ -7,7 +7,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_clear_simple");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     std::vector<rerun::components::Vector3D> vectors = {
         {1.0, 0.0, 0.0},

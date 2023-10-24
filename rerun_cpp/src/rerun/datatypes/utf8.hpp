@@ -35,10 +35,10 @@ namespace rerun {
           public:
             Utf8() = default;
 
-            Utf8(std::string _value) : value(std::move(_value)) {}
+            Utf8(std::string value_) : value(std::move(value_)) {}
 
-            Utf8& operator=(std::string _value) {
-                value = std::move(_value);
+            Utf8& operator=(std::string value_) {
+                value = std::move(value_);
                 return *this;
             }
 

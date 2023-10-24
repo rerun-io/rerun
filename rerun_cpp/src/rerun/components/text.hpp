@@ -40,14 +40,19 @@ namespace rerun {
           public:
             Text() = default;
 
-            Text(rerun::datatypes::Utf8 _value) : value(std::move(_value)) {}
+            Text(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
 
-            Text& operator=(rerun::datatypes::Utf8 _value) {
-                value = std::move(_value);
+            Text& operator=(rerun::datatypes::Utf8 value_) {
+                value = std::move(value_);
                 return *this;
             }
 
-            Text(std::string arg) : value(std::move(arg)) {}
+            Text(std::string value_) : value(std::move(value_)) {}
+
+            Text& operator=(std::string value_) {
+                value = std::move(value_);
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

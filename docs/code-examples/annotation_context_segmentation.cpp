@@ -6,7 +6,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     // create an annotation context to describe the classes
     rec.log_timeless(

@@ -62,7 +62,7 @@ contains the id for each pixel. It is logged to the [image_scaled/segmentation e
 
 The color and label for each class is determined by the
 [rr.AnnotationContext archetype](https://www.rerun.io/docs/reference/types/archetypes/annotation_context) which is
-logged to the root entity using `rr.log("/", ..., timeless=True` as it should apply to the whole sequence and all
+logged to the root entity using `rr.log("/", …, timeless=True` as it should apply to the whole sequence and all
 entities that have a class id.
 
 ### Detections

@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class BooleanBuilder;
@@ -29,10 +28,10 @@ namespace rerun {
           public:
             ClearIsRecursive() = default;
 
-            ClearIsRecursive(bool _recursive) : recursive(std::move(_recursive)) {}
+            ClearIsRecursive(bool recursive_) : recursive(recursive_) {}
 
-            ClearIsRecursive& operator=(bool _recursive) {
-                recursive = std::move(_recursive);
+            ClearIsRecursive& operator=(bool recursive_) {
+                recursive = recursive_;
                 return *this;
             }
 

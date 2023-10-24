@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
     auto path = argv[1];
 
     auto rec = rerun::RecordingStream("rerun_example_asset3d_out_of_tree");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
 

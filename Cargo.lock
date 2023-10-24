@@ -108,9 +108,9 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
 name = "ahash"
-version = "0.7.6"
+version = "0.7.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcb51a0695d8f838b1ee009b3fbf66bda078cd64590202a864a8f3e8c4315c47"
+checksum = "5a824f2aa7e75a0c98c5a504fceb80649e9c35265d44525b5f94de4771a395cd"
 dependencies = [
  "getrandom",
  "once_cell",
@@ -119,15 +119,16 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.8.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c99f64d1e06488f620f932677e24bc6e2897582980441ae90a671415bd7ec2f"
+checksum = "cd7d5a2cecb58716e47d67d5703a249964b14c7be1ec3cad3affc295b2d1c35d"
 dependencies = [
  "cfg-if",
  "getrandom",
  "once_cell",
  "serde",
  "version_check",
+ "zerocopy",
 ]
 
 [[package]]
@@ -302,7 +303,7 @@ version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a0f73029049896b3d70ba17756afef171ceef3569016cfa9dbca58d29e0e16f9"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "arrow-format",
  "bytemuck",
  "chrono",
@@ -447,7 +448,7 @@ checksum = "0e97ce7de6cf12de5d7226c73f5ba9811622f4db3a5b91b55c53e987e5f91cba"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -490,7 +491,7 @@ checksum = "b9ccdd8f2a161be9bd5c023df56f1b2a0bd1d83872ae53b71a84a12c9bf6e842"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -688,7 +689,7 @@ checksum = "fdde5c9cd29ebd706ce1b35600920a33550e402fc998a2e53ad3b42c3c47a192"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -880,7 +881,7 @@ dependencies = [
  "heck 0.4.1",
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1300,7 +1301,7 @@ dependencies = [
  "ident_case",
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1311,7 +1312,7 @@ checksum = "29a358ff9f12ec09c3e61fef9b5a9902623a695a46a917b07f269bff1445611a"
 dependencies = [
  "darling_core",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1458,7 +1459,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8bd69fed5fcf4fbb8225b24e80ea6193b61e17a625db105ef0c4d71dde6eb8b7"
 dependencies = [
  "accesskit",
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "backtrace",
  "epaint",
  "log",
@@ -1562,7 +1563,7 @@ version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "54986fb00d53325eaa4033cb5d8b1c1a77d4173fa3ed0d6602c6a542b151ace9"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "egui",
  "itertools 0.11.0",
  "log",
@@ -1625,7 +1626,7 @@ checksum = "04d0b288e3bb1d861c4403c1774a6f7a798781dfc519b3647df2a3dd4ae95f25"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1646,7 +1647,7 @@ checksum = "5e9a1f9f7d83e59740248a6e14ecf93929ade55027844dfcea78beafccc15745"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1657,7 +1658,7 @@ checksum = "48016319042fb7c87b78d2993084a831793a897a5cd1a2a67cab9d1eeb4b7d76"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1678,7 +1679,7 @@ dependencies = [
  "darling",
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1701,7 +1702,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58067b840d009143934d91d8dcb8ded054d8301d7c11a517ace0a99bb1e1595e"
 dependencies = [
  "ab_glyph",
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "bytemuck",
  "ecolor",
  "emath",
@@ -1882,7 +1883,7 @@ checksum = "1a5c6c585bc94aaf2c7b51dd4c2ba22680844aba4c687be581871a6f518c5742"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1992,7 +1993,7 @@ checksum = "89ca545a94061b6365f2c7355b4b32bd20df3ff95f02da9329b34ccc3bd6ee72"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -2242,7 +2243,7 @@ version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a9ee70c43aaf417c914396645a0fa852624801b24ebb7ae78fe8272889ac888"
 dependencies = [
- "ahash 0.7.6",
+ "ahash 0.7.7",
 ]
 
 [[package]]
@@ -2251,7 +2252,7 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43a3c133739dddd0d2990f9a4bdf8eb4b21ef50e4851ca85ab661199821d510e"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "rayon",
 ]
 
@@ -3590,7 +3591,7 @@ version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caa1f5af0505c67333487c1287f29644c172afbab7374e48a77843646064411c"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "arrow2",
  "bitflags 1.3.2",
  "chrono",
@@ -3718,7 +3719,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c64d9ba0963cdcea2e1b2230fbae2bab30eb25a174be395c41e764bfb65dd62"
 dependencies = [
  "proc-macro2",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -4034,7 +4035,7 @@ dependencies = [
 name = "re_arrow_store"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "arrow2",
  "criterion",
@@ -4142,7 +4143,7 @@ dependencies = [
 name = "re_data_ui"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "bytemuck",
  "egui",
@@ -4234,7 +4235,7 @@ dependencies = [
 name = "re_log_types"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "arrow2",
  "backtrace",
@@ -4271,7 +4272,7 @@ dependencies = [
 name = "re_memory"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "backtrace",
  "emath",
  "itertools 0.11.0",
@@ -4315,7 +4316,7 @@ dependencies = [
 name = "re_renderer"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "arrow2",
  "async-executor",
@@ -4368,7 +4369,7 @@ dependencies = [
 name = "re_sdk"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "crossbeam",
  "document-features",
@@ -4401,7 +4402,7 @@ dependencies = [
 name = "re_sdk_comms"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "crossbeam",
  "document-features",
  "rand",
@@ -4459,7 +4460,7 @@ dependencies = [
 name = "re_space_view_spatial"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "bytemuck",
  "criterion",
@@ -4493,7 +4494,7 @@ dependencies = [
 name = "re_space_view_tensor"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "bytemuck",
  "egui",
@@ -4574,7 +4575,7 @@ dependencies = [
 name = "re_string_interner"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "nohash-hasher",
  "once_cell",
  "parking_lot 0.12.1",
@@ -4585,7 +4586,7 @@ dependencies = [
 name = "re_tensor_ops"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "ndarray",
  "re_types",
  "serde",
@@ -4687,7 +4688,7 @@ dependencies = [
  "re_log",
  "re_tracing",
  "rust-format",
- "syn 2.0.28",
+ "syn 2.0.32",
  "tempfile",
  "unindent",
  "xshell",
@@ -4730,7 +4731,7 @@ dependencies = [
 name = "re_viewer"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "bytemuck",
  "cfg-if",
@@ -4787,7 +4788,7 @@ dependencies = [
 name = "re_viewer_context"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "anyhow",
  "arboard",
  "bytemuck",
@@ -4823,7 +4824,7 @@ dependencies = [
 name = "re_viewport"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "arrow2",
  "egui",
  "egui_tiles",
@@ -4996,7 +4997,7 @@ dependencies = [
 name = "rerun_c"
 version = "0.10.0-alpha.7+dev"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
  "arrow2",
  "once_cell",
  "parking_lot 0.12.1",
@@ -5433,7 +5434,7 @@ checksum = "8c805777e3930c8883389c602315a24224bcc738b63905ef87cd1420353ea93e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -5455,7 +5456,7 @@ checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -5740,9 +5741,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.28"
+version = "2.0.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04361975b3f5e348b2189d8dc55bc942f278b2d482a6a0365de5bdd62d351567"
+checksum = "239814284fd6f1a4ffe4ca893952cdd93c224b6a1571c9a9eadd670295c0c9e2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5844,7 +5845,7 @@ checksum = "f9456a42c5b0d803c8cd86e73dd7cc9edd429499f37a3550d286d5e86720569f"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -5955,7 +5956,7 @@ version = "4.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b450e3ba06251ec4fc76917dafeaf55805ffb26dbf7d5500bfb9511ce63a0d1f"
 dependencies = [
- "ahash 0.8.3",
+ "ahash 0.8.5",
 ]
 
 [[package]]
@@ -5984,7 +5985,7 @@ checksum = "630bdcf245f78637c13ec01ffae6187cca34625e8c63150d424b59e55af2675e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -6057,7 +6058,7 @@ checksum = "0f57e3ca2a01450b1a921183a9c9cbfda207fd822cef4ccb00a65402cbba7a74"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -6368,7 +6369,7 @@ dependencies = [
  "once_cell",
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
  "wasm-bindgen-shared",
 ]
 
@@ -6434,7 +6435,7 @@ checksum = "54681b18a46765f095758388f2d0cf16eb8d4169b639ab575a8f5693af210c7b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.28",
+ "syn 2.0.32",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -7173,6 +7174,26 @@ dependencies = [
  "serde",
  "static_assertions",
  "zvariant",
+]
+
+[[package]]
+name = "zerocopy"
+version = "0.7.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c19fae0c8a9efc6a8281f2e623db8af1db9e57852e04cde3e754dd2dc29340f"
+dependencies = [
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.7.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc56589e9ddd1f1c28d4b4b5c773ce232910a6bb67a70133d61c9e347585efe9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.32",
 ]
 
 [[package]]

@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -18,12 +19,17 @@ namespace rerun {
     namespace datatypes {
         /// **Datatype**: A uint32 vector in 3D space.
         struct UVec3D {
-            uint32_t xyz[3];
+            std::array<uint32_t, 3> xyz;
 
           public:
             UVec3D() = default;
 
-            UVec3D(const uint32_t (&_xyz)[3]) : xyz{_xyz[0], _xyz[1], _xyz[2]} {}
+            UVec3D(std::array<uint32_t, 3> xyz_) : xyz(xyz_) {}
+
+            UVec3D& operator=(std::array<uint32_t, 3> xyz_) {
+                xyz = xyz_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

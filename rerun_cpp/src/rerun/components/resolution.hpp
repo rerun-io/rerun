@@ -7,9 +7,9 @@
 #include "../datatypes/vec2d.hpp"
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -29,16 +29,33 @@ namespace rerun {
             static const char NAME[];
 
           public:
+            // Extensions to generated type defined in 'resolution_ext.cpp'
+
+            static const Resolution IDENTITY;
+
+            /// Construct resolution from width and height floats.
+            Resolution(float width, float height) : resolution{width, height} {}
+
+            /// Construct resolution from width and height integers.
+            Resolution(int width, int height)
+                : resolution{static_cast<float>(width), static_cast<float>(height)} {}
+
+          public:
             Resolution() = default;
 
-            Resolution(rerun::datatypes::Vec2D _resolution) : resolution(std::move(_resolution)) {}
+            Resolution(rerun::datatypes::Vec2D resolution_) : resolution(resolution_) {}
 
-            Resolution& operator=(rerun::datatypes::Vec2D _resolution) {
-                resolution = std::move(_resolution);
+            Resolution& operator=(rerun::datatypes::Vec2D resolution_) {
+                resolution = resolution_;
                 return *this;
             }
 
-            Resolution(const float (&arg)[2]) : resolution(arg) {}
+            Resolution(std::array<float, 2> xy_) : resolution(xy_) {}
+
+            Resolution& operator=(std::array<float, 2> xy_) {
+                resolution = xy_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

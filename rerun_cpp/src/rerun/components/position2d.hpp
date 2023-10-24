@@ -7,9 +7,9 @@
 #include "../datatypes/vec2d.hpp"
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -43,14 +43,19 @@ namespace rerun {
           public:
             Position2D() = default;
 
-            Position2D(rerun::datatypes::Vec2D _xy) : xy(std::move(_xy)) {}
+            Position2D(rerun::datatypes::Vec2D xy_) : xy(xy_) {}
 
-            Position2D& operator=(rerun::datatypes::Vec2D _xy) {
-                xy = std::move(_xy);
+            Position2D& operator=(rerun::datatypes::Vec2D xy_) {
+                xy = xy_;
                 return *this;
             }
 
-            Position2D(const float (&arg)[2]) : xy(arg) {}
+            Position2D(std::array<float, 2> xy_) : xy(xy_) {}
+
+            Position2D& operator=(std::array<float, 2> xy_) {
+                xy = xy_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

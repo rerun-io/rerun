@@ -1,4 +1,5 @@
 include "arrow/attributes.fbs";
+include "cpp/attributes.fbs";
 include "fbs/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";

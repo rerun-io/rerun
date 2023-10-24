@@ -34,7 +34,7 @@ pub enum Error {
     #[error("The incoming data was inconsistent: {0}")]
     DataRead(#[from] re_log_types::DataReadError),
 
-    #[error("Error with one the underlying data table")]
+    #[error("Error with one the underlying data table: {0}")]
     DataTable(#[from] DataTableError),
 
     #[error(transparent)]

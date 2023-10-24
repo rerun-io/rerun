@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <new>
 #include <utility>
 
 namespace arrow {
@@ -85,7 +86,7 @@ namespace rerun {
             static Scale3D three_d(rerun::datatypes::Vec3D three_d) {
                 Scale3D self;
                 self._tag = detail::Scale3DTag::ThreeD;
-                self._data.three_d = std::move(three_d);
+                new (&self._data.three_d) rerun::datatypes::Vec3D(std::move(three_d));
                 return self;
             }
 
@@ -93,7 +94,7 @@ namespace rerun {
             static Scale3D uniform(float uniform) {
                 Scale3D self;
                 self._tag = detail::Scale3DTag::Uniform;
-                self._data.uniform = std::move(uniform);
+                new (&self._data.uniform) float(std::move(uniform));
                 return self;
             }
 
@@ -105,6 +106,24 @@ namespace rerun {
             /// Uniform scaling factor along all axis.
             Scale3D(float uniform) {
                 *this = Scale3D::uniform(std::move(uniform));
+            }
+
+            /// Return a pointer to three_d if the union is in that state, otherwise `nullptr`.
+            const rerun::datatypes::Vec3D* get_three_d() const {
+                if (_tag == detail::Scale3DTag::ThreeD) {
+                    return &_data.three_d;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            /// Return a pointer to uniform if the union is in that state, otherwise `nullptr`.
+            const float* get_uniform() const {
+                if (_tag == detail::Scale3DTag::Uniform) {
+                    return &_data.uniform;
+                } else {
+                    return nullptr;
+                }
             }
 
             /// Returns the arrow data type this type corresponds to.

@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -18,12 +19,17 @@ namespace rerun {
     namespace datatypes {
         /// **Datatype**: A uint vector in 4D space.
         struct UVec4D {
-            uint32_t xyzw[4];
+            std::array<uint32_t, 4> xyzw;
 
           public:
             UVec4D() = default;
 
-            UVec4D(const uint32_t (&_xyzw)[4]) : xyzw{_xyzw[0], _xyzw[1], _xyzw[2], _xyzw[3]} {}
+            UVec4D(std::array<uint32_t, 4> xyzw_) : xyzw(xyzw_) {}
+
+            UVec4D& operator=(std::array<uint32_t, 4> xyzw_) {
+                xyzw = xyzw_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

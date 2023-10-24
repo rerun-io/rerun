@@ -5,6 +5,7 @@
 
 #include "../result.hpp"
 
+#include <array>
 #include <cstdint>
 #include <memory>
 
@@ -18,13 +19,16 @@ namespace rerun {
     namespace datatypes {
         /// **Datatype**: A vector in 4D space.
         struct Vec4D {
-            float xyzw[4];
+            std::array<float, 4> xyzw;
 
           public:
             // Extensions to generated type defined in 'vec4d_ext.cpp'
 
             /// Construct Vec4D from x/y/z/w values.
             Vec4D(float x, float y, float z, float w) : xyzw{x, y, z, w} {}
+
+            /// Construct Vec4D from x/y/z/w float pointer.
+            explicit Vec4D(const float* xyzw_) : xyzw{xyzw_[0], xyzw_[1], xyzw_[2], xyzw_[3]} {}
 
             float x() const {
                 return xyzw[0];
@@ -45,7 +49,12 @@ namespace rerun {
           public:
             Vec4D() = default;
 
-            Vec4D(const float (&_xyzw)[4]) : xyzw{_xyzw[0], _xyzw[1], _xyzw[2], _xyzw[3]} {}
+            Vec4D(std::array<float, 4> xyzw_) : xyzw(xyzw_) {}
+
+            Vec4D& operator=(std::array<float, 4> xyzw_) {
+                xyzw = xyzw_;
+                return *this;
+            }
 
             /// Returns the arrow data type this type corresponds to.
             static const std::shared_ptr<arrow::DataType>& arrow_datatype();

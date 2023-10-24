@@ -44,5 +44,8 @@ screenshot*.png
 # Web demo app build
 web_demo
 
+# Screenshot comparison build
+/compare_screenshot
+
 .nox/
 *.rrd

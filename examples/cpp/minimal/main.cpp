@@ -4,9 +4,9 @@
 
 namespace rrc = rerun::components;
 
-int main(int argc, char** argv) {
+int main() {
     auto rec = rerun::RecordingStream("rerun_example_cpp_app");
-    rec.connect("127.0.0.1:9876").throw_on_failure();
+    rec.connect().throw_on_failure();
 
     // Log points with the archetype api - this is the preferred way of logging.
     rec.log(

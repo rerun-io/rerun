@@ -30,13 +30,13 @@ namespace rerun {
           public:
             AffixFuzzer7() = default;
 
-            AffixFuzzer7(std::optional<std::vector<rerun::datatypes::AffixFuzzer1>> _many_optional)
-                : many_optional(std::move(_many_optional)) {}
+            AffixFuzzer7(std::optional<std::vector<rerun::datatypes::AffixFuzzer1>> many_optional_)
+                : many_optional(std::move(many_optional_)) {}
 
             AffixFuzzer7& operator=(
-                std::optional<std::vector<rerun::datatypes::AffixFuzzer1>> _many_optional
+                std::optional<std::vector<rerun::datatypes::AffixFuzzer1>> many_optional_
             ) {
-                many_optional = std::move(_many_optional);
+                many_optional = std::move(many_optional_);
                 return *this;
             }
 

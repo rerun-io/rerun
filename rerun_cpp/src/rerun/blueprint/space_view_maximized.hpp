@@ -28,10 +28,10 @@ namespace rerun {
           public:
             SpaceViewMaximized() = default;
 
-            SpaceViewMaximized(std::optional<std::vector<uint8_t>> _id) : id(std::move(_id)) {}
+            SpaceViewMaximized(std::optional<std::vector<uint8_t>> id_) : id(std::move(id_)) {}
 
-            SpaceViewMaximized& operator=(std::optional<std::vector<uint8_t>> _id) {
-                id = std::move(_id);
+            SpaceViewMaximized& operator=(std::optional<std::vector<uint8_t>> id_) {
+                id = std::move(id_);
                 return *this;
             }
 

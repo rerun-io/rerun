@@ -33,10 +33,6 @@ function(set_default_warning_settings target)
             )
         endif()
 
-        # Disabled warnings
-        # arrow has a bunch of unused parameters in its headers.
-        target_compile_options(${target} PRIVATE -Wno-unused-parameter)
-
         # CMAKE_COMPILE_WARNING_AS_ERROR is only directly supported starting in CMake `3.24`
         # https://cmake.org/cmake/help/latest/prop_tgt/COMPILE_WARNING_AS_ERROR.html
         if(${CMAKE_COMPILE_WARNING_AS_ERROR})
@@ -51,6 +47,11 @@ function(set_default_warning_settings target)
         endif()
     endif()
 endfunction()
+
+if(DEFINED ENV{WARNINGS_AS_ERRORS})
+    message(STATUS "Compiling with warnings as errors since WARNINGS_AS_ERRORS is set.")
+    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+endif()
 
 # Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.
 if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
@@ -70,7 +71,7 @@ set(RERUN_REPOSITORY YES)
 file(READ "Cargo.toml" CARGO_TOML)
 string(REGEX MATCH "\nversion = \"([a-z0-9\.\+-]+)\"\n" _ ${CARGO_TOML})
 set(RERUN_VERSION ${CMAKE_MATCH_1})
-message(INFO "Rerun version ${RERUN_VERSION}")
+message(STATUS "Rerun version ${RERUN_VERSION}")
 
 # ------------------------------------------------------------------------------
 # Loguru logging library (https://github.com/emilk/loguru):
