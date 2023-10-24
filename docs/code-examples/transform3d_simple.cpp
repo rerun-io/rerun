@@ -1,12 +1,9 @@
 // Log different transforms between three arrows.
 
 #include <rerun.hpp>
-
 #include <cmath>
 
-namespace rrd = rerun::datatypes;
-
-const float TAU = static_cast<float>(2.0 * M_PI);
+constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_transform3d");
@@ -23,7 +20,7 @@ int main() {
     rec.log(
         "base/rotated_scaled",
         rerun::Transform3D(
-            rrd::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rrd::Angle::radians(TAU / 8.0f)),
+            rerun::RotationAxisAngle({0.0f, 0.0f, 1.0f}, rerun::Angle::radians(TAU / 8.0f)),
             2.0f
         )
     );

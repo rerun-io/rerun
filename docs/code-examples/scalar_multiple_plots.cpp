@@ -1,11 +1,10 @@
 // Log a scalar over time.
 
-#include <rerun.hpp>
 
+#include <rerun.hpp>
 #include <cmath>
 
-#define TAU (M_PI * 2.0)
-
+constexpr float TAU = 6.28318530717958647692528676655900577f;
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_points3d_simple");
     rec.connect().throw_on_failure();

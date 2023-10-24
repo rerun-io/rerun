@@ -9,7 +9,8 @@
 
 namespace rerun {
     namespace demo {
-        constexpr float TAU = static_cast<float>(M_PI * 2.0);
+        constexpr float PI = 3.14159265358979323846264338327950288f;
+        constexpr float TAU = 6.28318530717958647692528676655900577f;
 
         /// A linear interpolator that bounces between `a` and `b` as `t` goes above `1.0`.
         inline float bounce_lerp(float a, float b, float t) {
