@@ -26,7 +26,9 @@ FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/06dd483/rerun_c
 FetchContent_MakeAvailable(rerun_sdk)
 ```
 
-Make sure you link with `rerun_sdk`.
+Make sure you link with `rerun_sdk`:
+```cmake
+target_link_libraries(your_executable PRIVATE rerun_sdk)
 
 ##### Logging your own data
 
