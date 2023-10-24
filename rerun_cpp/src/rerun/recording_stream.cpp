@@ -32,13 +32,29 @@ namespace rerun {
 
         rr_error status = {};
         this->_id = rr_recording_stream_new(&store_info, &status);
-        Error(status).handle();
+        auto err = Error(status);
+        if (err.is_ok()) {
+            this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
+            Error(status).handle();
+        } else {
+            this->_enabled = false;
+            err.handle();
+        }
     }
 
     RecordingStream::RecordingStream(RecordingStream&& other)
-        : _id(other._id), _store_kind(other._store_kind) {
+        : _id(other._id), _store_kind(other._store_kind), _enabled(other._enabled) {
         // Set to `RERUN_REC_STREAM_CURRENT_RECORDING` since it's a no-op on destruction.
         other._id = RERUN_REC_STREAM_CURRENT_RECORDING;
+    }
+
+    RecordingStream::RecordingStream(uint32_t id, StoreKind store_kind)
+        : _id(id), _store_kind(store_kind) {
+        rr_error status = {};
+        this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
+        // TODO(jleibs): Should we handle this error? This comes up if this comes up
+        // if we never set a thread-local or global recording stream.
+        //Error(status).handle();
     }
 
     RecordingStream::~RecordingStream() {

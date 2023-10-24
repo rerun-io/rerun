@@ -313,9 +313,10 @@ namespace rerun {
         );
 
       private:
-        RecordingStream(uint32_t id, StoreKind store_kind) : _id(id), _store_kind(store_kind) {}
+        RecordingStream(uint32_t id, StoreKind store_kind);
 
         uint32_t _id;
         StoreKind _store_kind;
+        bool _enabled;
     };
 } // namespace rerun

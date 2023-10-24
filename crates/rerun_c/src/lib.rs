@@ -237,6 +237,26 @@ pub extern "C" fn rr_recording_stream_set_thread_local(
 
 #[allow(unsafe_code)]
 #[no_mangle]
+pub extern "C" fn rr_recording_stream_is_enabled(
+    stream: CRecordingStream,
+    error: *mut CError,
+) -> bool {
+    match rr_recording_stream_is_enabled_impl(stream) {
+        Ok(enabled) => enabled,
+        Err(err) => {
+            err.write_error(error);
+            false
+        }
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CError> {
+    Ok(recording_stream(id)?.is_enabled())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
 pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
         stream.flush_blocking();
