@@ -5,7 +5,7 @@ order: 0
 
 The [Rerun Viewer](../reference/viewer/overview.md) can be installed independent of the SDK language you're using.
 
-There's several ways to install it, pick whatever works best for your setup:
+There are many ways to install the viewer. Please pick whatever works best for your setup:
 
 * `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
 * `cargo install rerun-cli` - build it from source (this requires Rust 1.72+)
