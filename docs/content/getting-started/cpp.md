@@ -52,7 +52,7 @@ target_link_libraries(example PRIVATE rerun_sdk)
 ## Logging some data
 Add the following code to your `main.cpp`
 <!-- TODO(#3962): Update Link -->
-(This example also lives in the `rerun` source tree [example](https://github.com/rerun-io/rerun/tree/main/examples/cpp/minimal/main.rs))
+(This example also lives in the `rerun` source tree [example](https://github.com/rerun-io/rerun/blob/main/examples/cpp/minimal/main.cpp))
 ```cpp
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
