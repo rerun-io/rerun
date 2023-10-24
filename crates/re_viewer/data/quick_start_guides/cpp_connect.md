@@ -16,9 +16,11 @@ After you've installed it, type `rerun` in your terminal to start the viewer.
 
 
 #### Using the Rerun C++ SDK
-First install the `arrow-cpp` library on your system using your favorite package manager.
+First you need to install the `arrow-cpp` library on your system using your favorite package manager.
+If you are using [pixi], you can simply type `pixi global install arrow-cpp`.
+Find more information at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
 
-Then add the following to your `CMakeLists.txt`:
+If you're using CMake, you can add the following to your `CMakeLists.txt`:
 
 ```cmake
 include(FetchContent)
@@ -26,9 +28,12 @@ FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/06dd483/rerun_c
 FetchContent_MakeAvailable(rerun_sdk)
 ```
 
+This will download a bundle with pre-built Rerun C static libraries for most desktop platforms, all Rerun C++ sources and headers, as well as CMake build instructions for them.
+
 Make sure you link with `rerun_sdk`:
 ```cmake
 target_link_libraries(your_executable PRIVATE rerun_sdk)
+```
 
 ##### Logging your own data
 
