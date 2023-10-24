@@ -179,11 +179,28 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
 
 class Bump(Enum):
     MAJOR = "major"
+    """Bump the major version, e.g. `0.9.0-alpha.5+dev` -> `1.0.0`"""
+
     MINOR = "minor"
+    """Bump the minor version, e.g. `0.9.0-alpha.5+dev` -> `0.10.0`"""
+
     PATCH = "patch"
+    """Bump the patch version, e.g. `0.9.0-alpha.5+dev` -> `0.9.1`"""
+
     PRERELEASE = "prerelease"
+    """Bump the pre-release version, e.g. `0.9.0-alpha.5+dev` -> `0.9.0-alpha.6+dev`"""
+
     FINALIZE = "finalize"
+    """Remove the pre-release identifier and build metadata, e.g. `0.9.0-alpha.5+dev` -> `0.9.0`"""
+
     AUTO = "auto"
+    """
+    Automatically determine the next version and bump to it.
+
+    This depends on the latest version published to crates.io:
+    - If it is a pre-release, then bump the pre-release.
+    - If it is not a pre-release, then bump the minor version, and add `-alpha.N+dev`.
+    """
 
     def __str__(self) -> str:
         return self.value
