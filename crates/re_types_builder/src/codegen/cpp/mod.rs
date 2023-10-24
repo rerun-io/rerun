@@ -763,7 +763,11 @@ impl QuotedObject {
                     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
                     let param_declaration =
                         quote_variable(&mut hpp_includes, obj_field, &snake_case_ident);
-                    let definition_body = quote!(*this = #pascal_case_ident::#snake_case_ident(std::move(#snake_case_ident)););
+
+                    // Call the `from_` static constructor
+                    let from_static_ctor_ident =
+                        format_ident!("from_{}", obj_field.snake_case_name());
+                    let definition_body = quote!(*this = #pascal_case_ident::#from_static_ctor_ident(std::move(#snake_case_ident)););
 
                     methods.push(Method {
                         docs: obj_field.docs.clone().into(),
@@ -1811,7 +1815,7 @@ fn quote_field_ptr_access(typ: &Type, field_accessor: &TokenStream) -> TokenStre
     }
 }
 
-/// e.g. `static Angle radians(float radians);` -> `auto angle = Angle::radians(radians);`
+/// e.g. `static Angle from_radians(float radians);` -> `auto angle = Angle::from_radians(radians);`
 fn static_constructor_for_enum_type(
     hpp_includes: &mut Includes,
     obj_field: &ObjectField,
@@ -1819,6 +1823,7 @@ fn static_constructor_for_enum_type(
     tag_typename: &Ident,
 ) -> Method {
     let tag_ident = format_ident!("{}", obj_field.name);
+    let function_name_ident = format_ident!("from_{}", obj_field.snake_case_name());
     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
     let docs = obj_field.docs.clone().into();
 
@@ -1826,7 +1831,7 @@ fn static_constructor_for_enum_type(
     let declaration = MethodDeclaration {
         is_static: true,
         return_type: quote!(#pascal_case_ident),
-        name_and_parameters: quote!(#snake_case_ident(#param_declaration)),
+        name_and_parameters: quote!(#function_name_ident(#param_declaration)),
     };
 
     // We need to use placement-new since the union is in an uninitialized state here:

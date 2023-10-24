@@ -50,7 +50,7 @@ int main(int, char** argv) {
             {1.0f, 2.0f, 3.0f},
             rerun::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
-                rerun::datatypes::Angle::radians(static_cast<float>(M_PI))
+                rerun::datatypes::Angle::from_radians(static_cast<float>(M_PI))
             )
         )
     );
@@ -61,7 +61,7 @@ int main(int, char** argv) {
             {1.0f, 2.0f, 3.0f},
             rerun::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
-                rerun::datatypes::Angle::radians(static_cast<float>(M_PI))
+                rerun::datatypes::Angle::from_radians(static_cast<float>(M_PI))
             ),
             42.0f,
             true

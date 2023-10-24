@@ -71,7 +71,7 @@ int main() {
             "dna/structure",
             rerun::archetypes::Transform3D(rerun::RotationAxisAngle(
                 {0.0f, 0.0f, 1.0f},
-                rerun::Angle::radians(time / 4.0f * TAU)
+                rerun::Angle::from_radians(time / 4.0f * TAU)
             ))
         );
     }

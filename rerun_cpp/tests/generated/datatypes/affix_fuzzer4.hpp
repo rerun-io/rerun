@@ -119,7 +119,8 @@ namespace rerun {
                 this->_data.swap(other._data);
             }
 
-            static AffixFuzzer4 single_required(rerun::datatypes::AffixFuzzer3 single_required) {
+            static AffixFuzzer4 from_single_required(rerun::datatypes::AffixFuzzer3 single_required
+            ) {
                 AffixFuzzer4 self;
                 self._tag = detail::AffixFuzzer4Tag::single_required;
                 new (&self._data.single_required)
@@ -127,7 +128,7 @@ namespace rerun {
                 return self;
             }
 
-            static AffixFuzzer4 many_required(
+            static AffixFuzzer4 from_many_required(
                 std::vector<rerun::datatypes::AffixFuzzer3> many_required
             ) {
                 AffixFuzzer4 self;
@@ -137,7 +138,7 @@ namespace rerun {
                 return self;
             }
 
-            static AffixFuzzer4 many_optional(
+            static AffixFuzzer4 from_many_optional(
                 std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> many_optional
             ) {
                 AffixFuzzer4 self;

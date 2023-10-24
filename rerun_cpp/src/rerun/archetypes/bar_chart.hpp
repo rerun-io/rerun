@@ -55,47 +55,47 @@ namespace rerun {
 
             /// Construct a `BarChart` from a `std::vector<uint8_t>`.
             BarChart(std::vector<uint8_t> u8)
-                : BarChart(rerun::datatypes::TensorBuffer::u8(std::move(u8))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_u8(std::move(u8))) {}
 
             /// Construct a `BarChart` from a `std::vector<uint16_t>`.
             BarChart(std::vector<uint16_t> u16)
-                : BarChart(rerun::datatypes::TensorBuffer::u16(std::move(u16))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_u16(std::move(u16))) {}
 
             /// Construct a `BarChart` from a `std::vector<uint32_t>`.
             BarChart(std::vector<uint32_t> u32)
-                : BarChart(rerun::datatypes::TensorBuffer::u32(std::move(u32))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_u32(std::move(u32))) {}
 
             /// Construct a `BarChart` from a `std::vector<uint64_t>`.
             BarChart(std::vector<uint64_t> u64)
-                : BarChart(rerun::datatypes::TensorBuffer::u64(std::move(u64))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_u64(std::move(u64))) {}
 
             /// Construct a `BarChart` from a `std::vector<int8_t>`.
             BarChart(std::vector<int8_t> i8)
-                : BarChart(rerun::datatypes::TensorBuffer::i8(std::move(i8))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_i8(std::move(i8))) {}
 
             /// Construct a `BarChart` from a `std::vector<int16_t>`.
             BarChart(std::vector<int16_t> i16)
-                : BarChart(rerun::datatypes::TensorBuffer::i16(std::move(i16))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_i16(std::move(i16))) {}
 
             /// Construct a `BarChart` from a `std::vector<int32_t>`.
             BarChart(std::vector<int32_t> i32)
-                : BarChart(rerun::datatypes::TensorBuffer::i32(std::move(i32))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_i32(std::move(i32))) {}
 
             /// Construct a `BarChart` from a `std::vector<int64_t>`.
             BarChart(std::vector<int64_t> i64)
-                : BarChart(rerun::datatypes::TensorBuffer::i64(std::move(i64))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_i64(std::move(i64))) {}
 
             /// Construct aBarChart` from a `std::vector<half>`.
             BarChart(std::vector<rerun::half> f16)
-                : BarChart(rerun::datatypes::TensorBuffer::f16(std::move(f16))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_f16(std::move(f16))) {}
 
             /// Construct a `BarChart` from a `std::vector<float>`.
             BarChart(std::vector<float> f32)
-                : BarChart(rerun::datatypes::TensorBuffer::f32(std::move(f32))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_f32(std::move(f32))) {}
 
             /// Construct a `BarChart` from a `std::vector<double>`.
             BarChart(std::vector<double> f64)
-                : BarChart(rerun::datatypes::TensorBuffer::f64(std::move(f64))) {}
+                : BarChart(rerun::datatypes::TensorBuffer::from_f64(std::move(f64))) {}
 
             // --------------------------------------------------------------------
             // Explicit static constructors:

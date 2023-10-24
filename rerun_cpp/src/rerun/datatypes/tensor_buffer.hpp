@@ -231,46 +231,48 @@ namespace rerun {
             // TODO(#3794): don't use std::vector here
 
             /// Construct a `TensorBuffer` from a `std::vector<uint8_t>`.
-            TensorBuffer(std::vector<uint8_t> u8) : TensorBuffer(TensorBuffer::u8(std::move(u8))) {}
+            TensorBuffer(std::vector<uint8_t> u8)
+                : TensorBuffer(TensorBuffer::from_u8(std::move(u8))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint16_t>`.
             TensorBuffer(std::vector<uint16_t> u16)
-                : TensorBuffer(TensorBuffer::u16(std::move(u16))) {}
+                : TensorBuffer(TensorBuffer::from_u16(std::move(u16))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint32_t>`.
             TensorBuffer(std::vector<uint32_t> u32)
-                : TensorBuffer(TensorBuffer::u32(std::move(u32))) {}
+                : TensorBuffer(TensorBuffer::from_u32(std::move(u32))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<uint64_t>`.
             TensorBuffer(std::vector<uint64_t> u64)
-                : TensorBuffer(TensorBuffer::u64(std::move(u64))) {}
+                : TensorBuffer(TensorBuffer::from_u64(std::move(u64))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int8_t>`.
-            TensorBuffer(std::vector<int8_t> i8) : TensorBuffer(TensorBuffer::i8(std::move(i8))) {}
+            TensorBuffer(std::vector<int8_t> i8)
+                : TensorBuffer(TensorBuffer::from_i8(std::move(i8))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int16_t>`.
             TensorBuffer(std::vector<int16_t> i16)
-                : TensorBuffer(TensorBuffer::i16(std::move(i16))) {}
+                : TensorBuffer(TensorBuffer::from_i16(std::move(i16))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int32_t>`.
             TensorBuffer(std::vector<int32_t> i32)
-                : TensorBuffer(TensorBuffer::i32(std::move(i32))) {}
+                : TensorBuffer(TensorBuffer::from_i32(std::move(i32))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<int64_t>`.
             TensorBuffer(std::vector<int64_t> i64)
-                : TensorBuffer(TensorBuffer::i64(std::move(i64))) {}
+                : TensorBuffer(TensorBuffer::from_i64(std::move(i64))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<half>`.
             TensorBuffer(std::vector<rerun::half> f16)
-                : TensorBuffer(TensorBuffer::f16(std::move(f16))) {}
+                : TensorBuffer(TensorBuffer::from_f16(std::move(f16))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<float>`.
             TensorBuffer(std::vector<float> f32)
-                : TensorBuffer(TensorBuffer::f32(std::move(f32))) {}
+                : TensorBuffer(TensorBuffer::from_f32(std::move(f32))) {}
 
             /// Construct a `TensorBuffer` from a `std::vector<double>`.
             TensorBuffer(std::vector<double> f64)
-                : TensorBuffer(TensorBuffer::f64(std::move(f64))) {}
+                : TensorBuffer(TensorBuffer::from_f64(std::move(f64))) {}
 
             /// Number of elements in the buffer.
             ///
@@ -282,91 +284,91 @@ namespace rerun {
                 this->_data.swap(other._data);
             }
 
-            static TensorBuffer u8(std::vector<uint8_t> u8) {
+            static TensorBuffer from_u8(std::vector<uint8_t> u8) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U8;
                 new (&self._data.u8) std::vector<uint8_t>(std::move(u8));
                 return self;
             }
 
-            static TensorBuffer u16(std::vector<uint16_t> u16) {
+            static TensorBuffer from_u16(std::vector<uint16_t> u16) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U16;
                 new (&self._data.u16) std::vector<uint16_t>(std::move(u16));
                 return self;
             }
 
-            static TensorBuffer u32(std::vector<uint32_t> u32) {
+            static TensorBuffer from_u32(std::vector<uint32_t> u32) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U32;
                 new (&self._data.u32) std::vector<uint32_t>(std::move(u32));
                 return self;
             }
 
-            static TensorBuffer u64(std::vector<uint64_t> u64) {
+            static TensorBuffer from_u64(std::vector<uint64_t> u64) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::U64;
                 new (&self._data.u64) std::vector<uint64_t>(std::move(u64));
                 return self;
             }
 
-            static TensorBuffer i8(std::vector<int8_t> i8) {
+            static TensorBuffer from_i8(std::vector<int8_t> i8) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I8;
                 new (&self._data.i8) std::vector<int8_t>(std::move(i8));
                 return self;
             }
 
-            static TensorBuffer i16(std::vector<int16_t> i16) {
+            static TensorBuffer from_i16(std::vector<int16_t> i16) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I16;
                 new (&self._data.i16) std::vector<int16_t>(std::move(i16));
                 return self;
             }
 
-            static TensorBuffer i32(std::vector<int32_t> i32) {
+            static TensorBuffer from_i32(std::vector<int32_t> i32) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I32;
                 new (&self._data.i32) std::vector<int32_t>(std::move(i32));
                 return self;
             }
 
-            static TensorBuffer i64(std::vector<int64_t> i64) {
+            static TensorBuffer from_i64(std::vector<int64_t> i64) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::I64;
                 new (&self._data.i64) std::vector<int64_t>(std::move(i64));
                 return self;
             }
 
-            static TensorBuffer f16(std::vector<rerun::half> f16) {
+            static TensorBuffer from_f16(std::vector<rerun::half> f16) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F16;
                 new (&self._data.f16) std::vector<rerun::half>(std::move(f16));
                 return self;
             }
 
-            static TensorBuffer f32(std::vector<float> f32) {
+            static TensorBuffer from_f32(std::vector<float> f32) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F32;
                 new (&self._data.f32) std::vector<float>(std::move(f32));
                 return self;
             }
 
-            static TensorBuffer f64(std::vector<double> f64) {
+            static TensorBuffer from_f64(std::vector<double> f64) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::F64;
                 new (&self._data.f64) std::vector<double>(std::move(f64));
                 return self;
             }
 
-            static TensorBuffer jpeg(std::vector<uint8_t> jpeg) {
+            static TensorBuffer from_jpeg(std::vector<uint8_t> jpeg) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::JPEG;
                 new (&self._data.jpeg) std::vector<uint8_t>(std::move(jpeg));
                 return self;
             }
 
-            static TensorBuffer nv12(std::vector<uint8_t> nv12) {
+            static TensorBuffer from_nv12(std::vector<uint8_t> nv12) {
                 TensorBuffer self;
                 self._tag = detail::TensorBufferTag::NV12;
                 new (&self._data.nv12) std::vector<uint8_t>(std::move(nv12));

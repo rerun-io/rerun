@@ -20,7 +20,7 @@ int main() {
     std::srand(static_cast<uint32_t>(std::time(nullptr)));
     std::vector<uint8_t> random_data(3 * 3 * 3);
     std::generate(random_data.begin(), random_data.end(), std::rand);
-    tensor.buffer = rerun::datatypes::TensorBuffer::u8(random_data);
+    tensor.buffer = random_data;
 
     rec.log("world/image", rerun::Image(tensor));
 }

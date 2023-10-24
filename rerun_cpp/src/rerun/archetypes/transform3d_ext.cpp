@@ -21,7 +21,8 @@ namespace rerun {
 
             /// New 3D transform from translation/matrix datatype.
             Transform3D(const datatypes::TranslationAndMat3x3& translation_and_mat3x3)
-                : Transform3D(datatypes::Transform3D::translation_and_mat3x3(translation_and_mat3x3)
+                : Transform3D(
+                      datatypes::Transform3D::from_translation_and_mat3x3(translation_and_mat3x3)
                   ) {}
 
             /// Creates a new 3D transform from translation and matrix provided as 3 columns.
@@ -75,7 +76,7 @@ namespace rerun {
 
             /// New 3D transform from translation/rotation/scale datatype.
             Transform3D(const datatypes::TranslationRotationScale3D& translation_rotation_scale3d)
-                : Transform3D(datatypes::Transform3D::translation_rotation_scale(
+                : Transform3D(datatypes::Transform3D::from_translation_rotation_scale(
                       translation_rotation_scale3d
                   )) {}
 
