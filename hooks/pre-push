@@ -5,7 +5,7 @@
 repo_root=$(git rev-parse --show-toplevel)
 pre_push_hook=$repo_root/scripts/pre-push.sh
 if [ -f "$pre_push_hook" ]; then
-    exec $pre_push_hook $@
+    exec $pre_push_hook
 else
     echo "The pre-push hook appears to be missing from: $pre_push_hook -- Skipping."
     exit 0
