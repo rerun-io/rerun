@@ -29,7 +29,7 @@ int main() {
 
     std::vector<rerun::LineStrip3D> lines;
     for (size_t i = 0; i < points1.size(); ++i) {
-        lines.emplace_back(points1[i], points2[i]);
+        lines.emplace_back(rerun::LineStrip3D({points1[i].xyz, points2[i].xyz}));
     }
 
     rec.log(

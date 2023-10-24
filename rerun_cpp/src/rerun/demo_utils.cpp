@@ -1,6 +1,6 @@
 #include "demo_utils.hpp"
+#include <assert.h>
 #include <algorithm>
-#include <assert>
 
 namespace rerun {
     namespace demo {
