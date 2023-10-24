@@ -4,18 +4,18 @@
 
 #define TEST_TAG "[set_enabled]"
 
-SCENARIO("Rerun can be disabled", TEST_TAG) {
+SCENARIO("Rerun default_enabled can be configured", TEST_TAG) {
     GIVEN("The initial state") {
-        THEN("The default value of enabled is true") {
-            CHECK(rerun::is_enabled());
+        THEN("The default value of default_enabled is true") {
+            CHECK(rerun::is_default_enabled());
         }
     }
 
     GIVEN("Logging has been disabled") {
-        rerun::set_enabled(false);
+        rerun::set_default_enabled(false);
 
-        THEN("is_enabled returns false") {
-            CHECK_FALSE(rerun::is_enabled());
+        THEN("default_enabled returns false") {
+            CHECK_FALSE(rerun::is_default_enabled());
         }
     }
 }

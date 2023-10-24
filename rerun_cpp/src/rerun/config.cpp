@@ -23,12 +23,12 @@ namespace rerun {
                 ::tolower
             );
             if (envVarValueStr == "1" || envVarValueStr == "true" || envVarValueStr == "yes") {
-                enabled.store(true, std::memory_order_seq_cst);
+                default_enabled.store(true, std::memory_order_seq_cst);
             } else if (envVarValueStr == "0" || envVarValueStr == "false" || envVarValueStr == "no") {
-                enabled.store(false, std::memory_order_seq_cst);
+                default_enabled.store(false, std::memory_order_seq_cst);
             }
         } else {
-            enabled = true;
+            default_enabled = true;
         }
 #else
         enabled = false;
