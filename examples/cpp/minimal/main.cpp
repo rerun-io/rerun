@@ -1,7 +1,7 @@
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
 
-using namespace rerun::demo;
+using rerun::demo::grid;
 
 int main() {
     // Create a new `RecordingStream` which sends data over TCP to the viewer process.
