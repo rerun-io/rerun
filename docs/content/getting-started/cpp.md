@@ -30,7 +30,7 @@ Make sure you link with `rerun_sdk`:
 target_link_libraries(example PRIVATE rerun_sdk)
 ```
 
-Everything put together that goes to `CMakeLists.txt`:
+Combining the above, a minimal self-contained `CMakeLists.txt` looks like:
 ```cmake
 project(example LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.16)
