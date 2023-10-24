@@ -23,7 +23,7 @@ int main() {
     rec.log(
         "world/camera",
         rerun::Pinhole::from_focal_length_and_resolution(
-            {200.0f, 200.0f},
+            200.0f,
             {static_cast<float>(WIDTH), static_cast<float>(HEIGHT)}
         )
     );
