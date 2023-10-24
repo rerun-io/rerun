@@ -27,7 +27,7 @@ int main() {
                 const auto g = static_cast<uint8_t>(roundf(remap(yi, 0.f, 10.f, 0.f, 255.f)));
                 const auto b = static_cast<uint8_t>(roundf(remap(zi, 0.f, 10.f, 0.f, 255.f)));
 
-                colors.push_back(rerun::Color(r, g, b));
+                colors.emplace_back(r, g, b);
             }
         }
     }
