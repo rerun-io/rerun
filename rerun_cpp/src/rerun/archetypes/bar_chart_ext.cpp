@@ -66,57 +66,57 @@ namespace rerun {
         // TODO(#3794): don't use std::vector here
 
         /// Construct a `BarChart` from a `std::vector<uint8_t>`.
-        static BarChart u8(std::vector<uint8_t> u8) {
+        static BarChart from_u8(std::vector<uint8_t> u8) {
             return BarChart(u8);
         }
 
         /// Construct a `BarChart` from a `std::vector<uint16_t>`.
-        static BarChart u16(std::vector<uint16_t> u16) {
+        static BarChart from_u16(std::vector<uint16_t> u16) {
             return BarChart(u16);
         }
 
         /// Construct a `BarChart` from a `std::vector<uint32_t>`.
-        static BarChart u32(std::vector<uint32_t> u32) {
+        static BarChart from_u32(std::vector<uint32_t> u32) {
             return BarChart(u32);
         }
 
         /// Construct a `BarChart` from a `std::vector<uint64_t>`.
-        static BarChart u64(std::vector<uint64_t> u64) {
+        static BarChart from_u64(std::vector<uint64_t> u64) {
             return BarChart(u64);
         }
 
         /// Construct a `BarChart` from a `std::vector<int8_t>`.
-        static BarChart i8(std::vector<int8_t> i8) {
+        static BarChart from_i8(std::vector<int8_t> i8) {
             return BarChart(i8);
         }
 
         /// Construct a `BarChart` from a `std::vector<int16_t>`.
-        static BarChart i16(std::vector<int16_t> i16) {
+        static BarChart from_i16(std::vector<int16_t> i16) {
             return BarChart(i16);
         }
 
         /// Construct a `BarChart` from a `std::vector<int32_t>`.
-        static BarChart i32(std::vector<int32_t> i32) {
+        static BarChart from_i32(std::vector<int32_t> i32) {
             return BarChart(i32);
         }
 
         /// Construct a `BarChart` from a `std::vector<int64_t>`.
-        static BarChart i64(std::vector<int64_t> i64) {
+        static BarChart from_i64(std::vector<int64_t> i64) {
             return BarChart(i64);
         }
 
         /// Construct a `BarChart` from a  `std::vector<half>`.
-        static BarChart f16(std::vector<rerun::half> f16) {
+        static BarChart from_f16(std::vector<rerun::half> f16) {
             return BarChart(f16);
         }
 
         /// Construct a `BarChart` from a `std::vector<float>`.
-        static BarChart f32(std::vector<float> f32) {
+        static BarChart from_f32(std::vector<float> f32) {
             return BarChart(f32);
         }
 
         /// Construct a `BarChart` from a `std::vector<double>`.
-        static BarChart f64(std::vector<double> f64) {
+        static BarChart from_f64(std::vector<double> f64) {
             return BarChart(f64);
         }
 
