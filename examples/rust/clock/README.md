@@ -2,7 +2,8 @@
 title: Clock
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/clock/main.py
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/clock/src/main.rs
-cpp: https://github.com/rerun-io/rerun/tree/latest/examples/cpp/clock/main.cpp
+# TODO(#3962): Update Link
+cpp: https://github.com/rerun-io/rerun/tree/main/examples/cpp/clock/main.cpp
 thumbnail: https://static.rerun.io/clock/ae4b8970edba8480431cb71e57b8cddd9e1769c7/480w.png
 ---
 
