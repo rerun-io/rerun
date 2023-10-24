@@ -6,7 +6,7 @@ int main() {
     auto rec = rerun::RecordingStream("rerun_example_line_segments2d");
     rec.connect().throw_on_failure();
 
-    std::vector < std::vector<std::array<float, 2>> points = {
+    std::vector<std::vector<std::array<float, 2>>> points = {
         {{0.f, 0.f}, {2.f, 1.f}},
         {{4.f, -1.f}, {6.f, 0.f}},
     };
