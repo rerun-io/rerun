@@ -1,6 +1,6 @@
 #include <algorithm>
-#include <filesystem> // TODO(andreas): Should not leak into public header.
-#include <fstream>    // TODO(andreas): Should not leak into public header.
+#include <filesystem> // TODO(#3991): Should not leak into public header.
+#include <fstream>    // TODO(#3991): Should not leak into public header.
 #include <string>
 
 #include "asset3d.hpp"
@@ -57,7 +57,7 @@ namespace rerun {
         }
 
         std::optional<rerun::components::MediaType> Asset3D::guess_media_type(
-            const std::string& path //
+            const std::filesystem::path& path
         ) {
             std::filesystem::path file_path(path);
             std::string ext = file_path.extension().string();
