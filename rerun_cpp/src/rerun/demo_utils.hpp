@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
+
 #include "components/color.hpp"
 #include "components/position3d.hpp"
 

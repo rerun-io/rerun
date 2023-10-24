@@ -61,15 +61,16 @@ class LintJob:
 
         cmd_arr = ["pixi", "run", cmd]
 
-        cmd_preview = " ".join(cmd_arr) + " <FILES>" if files else ""
+        cmd_preview = subprocess.list2cmdline(cmd_arr + ["<FILES>"]) if files else subprocess.list2cmdline(cmd_arr)
 
-        proc = subprocess.run(cmd_arr + files, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        full_cmd = cmd_arr + files
+        proc = subprocess.run(full_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if proc.returncode == 0:
             logging.info(f"PASS: {cmd} in {time.time() - start:.2f}s")
             logging.debug(f"----------\n{cmd_preview}\n{proc.stdout}\n----------")
         else:
             logging.info(
-                f"FAIL: {cmd} in {time.time() - start:.2f}s \n----------\n{cmd_preview}\n{proc.stdout}\n----------"
+                f"FAIL: {cmd} in {time.time() - start:.2f}s \n----------\n{subprocess.list2cmdline(full_cmd)}\n{proc.stdout}\n----------"
             )
 
         return proc.returncode == 0
