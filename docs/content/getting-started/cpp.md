@@ -30,11 +30,23 @@ Make sure you link with `rerun_sdk`:
 target_link_libraries(example PRIVATE rerun_sdk)
 ```
 
-Everything put together:
-
+Everything put together that goes to `CMakeLists.txt`:
 ```cmake
+project(example LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.16)
 
+add_executable(example main.cpp)
 
+# Download the rerun_sdk
+include(FetchContent)
+FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_MakeAvailable(rerun_sdk)
+
+# Rerun requires at least C++17, but you can use an even newer version.
+set_property(TARGET example PROPERTY CXX_STANDARD 17)
+
+# Link against rerun_sdk.
+target_link_libraries(example PRIVATE rerun_sdk)
 ```
 
 ## Logging some data
