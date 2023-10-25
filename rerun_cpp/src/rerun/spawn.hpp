@@ -26,16 +26,10 @@ namespace rerun {
     /// executable_path:
     /// Enforce a specific executable to use instead of searching though PATH
     /// for [`Self::executable_name`].
-    ///
-    /// flush_timeout_sec:
-    /// The minimum time the SDK will wait during a flush before potentially
-    /// dropping data if progress is not being made. Passing a negative value indicates no
-    /// timeout, and can cause a call to `flush` to block indefinitely.
     Error spawn(
         uint16_t port = 9876,                  //
         const char* memory_limit = "75%",      //
         const char* executable_name = nullptr, //
-        const char* executable_path = nullptr, //
-        float flush_timeout_sec = 2.0          //
+        const char* executable_path = nullptr  //
     );
 } // namespace rerun
