@@ -41,7 +41,11 @@ namespace rerun {
             for (Elem z : linspace(from[0], to[0], n)) {
                 for (Elem y : linspace(from[1], to[1], n)) {
                     for (Elem x : linspace(from[2], to[2], n)) {
-                        output.emplace_back(static_cast<Elem>(x), static_cast<Elem>(y), static_cast<Elem>(z));
+                        output.emplace_back(
+                            static_cast<Elem>(x),
+                            static_cast<Elem>(y),
+                            static_cast<Elem>(z)
+                        );
                     }
                 }
             }

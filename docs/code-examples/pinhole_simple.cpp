@@ -19,7 +19,9 @@ int main() {
     tensor.shape = {dim3, dim3, dim3};
     std::srand(static_cast<uint32_t>(std::time(nullptr)));
     std::vector<uint8_t> random_data(3 * 3 * 3);
-    std::generate(random_data.begin(), random_data.end(), []{ return static_cast<uint8_t>(std::rand()); });
+    std::generate(random_data.begin(), random_data.end(), [] {
+        return static_cast<uint8_t>(std::rand());
+    });
     tensor.buffer = rerun::datatypes::TensorBuffer::u8(random_data);
 
     rec.log("world/image", rerun::Image(tensor));
