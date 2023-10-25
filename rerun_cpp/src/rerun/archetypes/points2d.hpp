@@ -41,10 +41,8 @@ namespace rerun {
         ///     std::default_random_engine gen;
         ///     std::uniform_real_distribution<float> dist_pos(-5.0f, 5.0f);
         ///     std::uniform_real_distribution<float> dist_radius(0.1f, 1.0f);
-        ///     std::uniform_int_distribution<int> dist_color(
-        ///         0,
-        ///         255
-        ///     ); // On MSVC uint8_t distributions are not supported.
+        ///     // On MSVC uint8_t distributions are not supported.
+        ///     std::uniform_int_distribution<int> dist_color(0, 255);
         ///
         ///     std::vector<rerun::components::Position2D> points2d(10);
         ///     std::generate(points2d.begin(), points2d.end(), [&] {
