@@ -135,5 +135,5 @@ c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
 ninja = "1.11.1"
 
-[target.win-64.dependecies]
+[target.win-64.dependencies]
 vs2022_win-64 = "19.37.32822"

@@ -8517,28 +8517,6 @@ package:
   license_family: Apache
   size: 107047
   timestamp: 1676837935565
-- name: ninja
-  version: 1.11.1
-  manager: conda
-  platform: win-64
-  dependencies:
-    ucrt: '>=10.0.20348.0'
-    vc: '>=14.2,<15'
-    vs2015_runtime: '>=14.29.30139'
-  url: https://conda.anaconda.org/conda-forge/win-64/ninja-1.11.1-h91493d7_0.conda
-  hash:
-    md5: 44a99ef26178ea98626ff8e027702795
-    sha256: 0ffb1912768af8354a930f482368ef170bf3d8217db328dfea1c8b09772c8c71
-  optional: false
-  category: main
-  build: h91493d7_0
-  arch: x86_64
-  subdir: win-64
-  build_number: 0
-  license: Apache-2.0
-  license_family: Apache
-  size: 279200
-  timestamp: 1676838681615
 - name: numpy
   version: 1.26.0
   manager: conda
@@ -11676,6 +11654,47 @@ package:
   license_family: BSD
   size: 17207
   timestamp: 1688020635322
+- name: vs2022_win-64
+  version: 19.37.32822
+  manager: conda
+  platform: win-64
+  dependencies:
+    vswhere: '*'
+  url: https://conda.anaconda.org/conda-forge/win-64/vs2022_win-64-19.37.32822-h0123c8e_17.conda
+  hash:
+    md5: 8b02594cf497f7516a3ed20a164de75e
+    sha256: 259b5d4ac07b131bf15bf1a2d101eb9eb039e32cfef57de79061cb4c8f1889fe
+  optional: false
+  category: main
+  build: h0123c8e_17
+  arch: x86_64
+  subdir: win-64
+  build_number: 17
+  track_features:
+  - vc14
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 19405
+  timestamp: 1694292390059
+- name: vswhere
+  version: 3.1.4
+  manager: conda
+  platform: win-64
+  dependencies: {}
+  url: https://conda.anaconda.org/conda-forge/win-64/vswhere-3.1.4-h57928b3_0.conda
+  hash:
+    md5: b1d1d6a1f874d8c93a57b5efece52f03
+    sha256: 553c41fc1a883415a39444313f8d99236685529776fdd04e8d97288b73496002
+  optional: false
+  category: main
+  build: h57928b3_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 218421
+  timestamp: 1682376911339
 - name: wheel
   version: 0.38.4
   manager: conda
