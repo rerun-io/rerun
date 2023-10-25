@@ -92,7 +92,7 @@ class AnnotationInfo(AnnotationInfoExt):
 
 
 if TYPE_CHECKING:
-    AnnotationInfoLike = AnnotationInfo | int | Tuple[int | str] | Tuple[int | str | datatypes.Rgba32Like]
+    AnnotationInfoLike = AnnotationInfo | int | Tuple[int, str] | Tuple[int, str, datatypes.Rgba32Like]
 else:
     AnnotationInfoLike = Any
 

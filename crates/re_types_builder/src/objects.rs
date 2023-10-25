@@ -613,13 +613,12 @@ impl Object {
     }
 
     pub fn get_attr_list(&self, name: &str) -> Vec<String> {
-        self.attrs
-            .try_get::<String>(self.fqname.as_str(), name)
-            .unwrap_or_default()
-            .split(", ")
-            .filter(|s| !s.is_empty())
-            .map(|s| s.to_owned())
-            .collect()
+        split_list(
+            &self
+                .attrs
+                .try_get::<String>(self.fqname.as_str(), name)
+                .unwrap_or_default(),
+        )
     }
 
     pub fn is_attr_set(&self, name: impl AsRef<str>) -> bool {
@@ -1342,4 +1341,78 @@ fn filepath_from_declaration_file(
     }
     .canonicalize_utf8()
     .expect("Failed to canonicalize declaration path")
+}
+
+fn split_list(str: &str) -> Vec<String> {
+    let mut bow = 0;
+    let mut angles = 0;
+    let mut curly = 0;
+    let mut square = 0;
+
+    let mut results = Vec::new();
+    let mut current = String::new();
+
+    for c in str.chars() {
+        match c {
+            '<' => angles += 1,
+            '>' => angles -= 1,
+
+            '(' => bow += 1,
+            ')' => bow -= 1,
+
+            '{' => curly += 1,
+            '}' => curly -= 1,
+
+            '[' => square += 1,
+            ']' => square -= 1,
+
+            ',' if angles == 0 && bow == 0 && curly == 0 && square == 0 => {
+                results.push(current.trim().to_owned());
+                current = String::new();
+                continue; // skip the comma
+            }
+            _ => {}
+        }
+        current.push(c);
+    }
+
+    current = current.trim().to_owned();
+    if !current.is_empty() {
+        results.push(current);
+    }
+    results
+}
+
+#[test]
+fn test_split_list() {
+    assert_eq!(split_list(""), Vec::<String>::new());
+    assert_eq!(split_list(" hello "), vec!["hello".to_owned()]);
+    assert_eq!(
+        split_list("hello, there"),
+        vec!["hello".to_owned(), "there".to_owned()]
+    );
+
+    // Python:
+    assert_eq!(
+        split_list("int, Tuple[int, str], Tuple[int, str, datatypes.Rgba32Like]"),
+        vec![
+            "int".to_owned(),
+            "Tuple[int, str]".to_owned(),
+            "Tuple[int, str, datatypes.Rgba32Like]".to_owned(),
+        ]
+    );
+    assert_eq!(
+        split_list("int, Sequence[Union[int, float]], npt.NDArray[Union[np.uint8, np.float32, np.float64]]"),
+        vec![
+            "int".to_owned(),
+            "Sequence[Union[int, float]]".to_owned(),
+            "npt.NDArray[Union[np.uint8, np.float32, np.float64]]".to_owned(),
+        ]
+    );
+
+    // Rust:
+    assert_eq!(
+        split_list("HashMap<int, String>, bool"),
+        vec!["HashMap<int, String>".to_owned(), "bool".to_owned()]
+    );
 }
