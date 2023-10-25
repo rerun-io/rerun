@@ -42,7 +42,9 @@ namespace rerun {
 
                 std::array<float, 3> fixed_size_shenanigans;
 
-                AffixFuzzer3Data() {}
+                AffixFuzzer3Data() {
+                    std::memset(reinterpret_cast<void*>(this), 0, sizeof(AffixFuzzer3Data));
+                }
 
                 ~AffixFuzzer3Data() {}
 

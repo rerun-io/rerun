@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cstring>
+
 #include <utility>
 #include <vector>
 
@@ -92,6 +94,7 @@ namespace rerun {
         /// batch: When you log an empty component batch at an entity that already has some
         /// components of the same type, it will clear out all components of that type.
         ComponentBatch() : ownership(BatchOwnership::Borrowed) {
+            memset(reinterpret_cast<void*>(&storage), 0, sizeof(storage));
             storage.borrowed.data = nullptr;
             storage.borrowed.num_instances = 0;
         }

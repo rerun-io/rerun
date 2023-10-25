@@ -768,7 +768,7 @@ impl QuotedObject {
                     methods.push(Method {
                         docs: obj_field.docs.clone().into(),
                         declaration: MethodDeclaration::constructor(
-                            quote!(#pascal_case_ident(#param_declaration)),
+                            quote!(#pascal_case_ident(#param_declaration) : #pascal_case_ident()),
                         ),
                         definition_body,
                         inline: true,
@@ -986,7 +986,10 @@ impl QuotedObject {
                         union #data_typename {
                             #(#enum_data_declarations;)*
 
-                            #data_typename() { } // Required by static constructors
+                            // Required by static constructors
+                            #data_typename() {
+                                std::memset(reinterpret_cast<void*>(this), 0, sizeof(#data_typename));
+                            }
                             ~#data_typename() { }
 
                             // Note that this type is *not* copyable unless all enum fields are trivially destructable.
