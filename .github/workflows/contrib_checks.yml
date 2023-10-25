@@ -88,6 +88,11 @@ jobs:
       # PR introduces a new type and another PR changes the codegen.
       - uses: actions/checkout@v4
 
+      # So we can format the Python code
+      - name: Set up Python
+        run: |
+          pip install -r rerun_py/requirements-lint.txt
+
       - name: Codegen
         uses: actions-rs/cargo@v1
         with:

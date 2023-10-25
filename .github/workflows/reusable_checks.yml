@@ -130,6 +130,11 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      # So we can format the Python code
+      - name: Set up Python
+        run: |
+          pip install -r rerun_py/requirements-lint.txt
+
       - name: Codegen
         uses: actions-rs/cargo@v1
         with:
