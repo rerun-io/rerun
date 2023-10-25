@@ -12,6 +12,9 @@ namespace rerun {
     }
 
     RerunGlobalConfig::RerunGlobalConfig() {
+        // NOTE: we set the default value of default_enabled to match the environment
+        // variable, but in reality this doesn't actually do anything. The rust SDK
+        // will independently parse RERUN and disable `RecordingStream`s if it's set.
         const char* envVarValue = std::getenv("RERUN");
         if (envVarValue != nullptr) {
             std::string envVarValueStr(envVarValue);
