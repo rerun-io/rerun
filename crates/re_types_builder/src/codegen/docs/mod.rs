@@ -192,7 +192,11 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             putln!(page);
             write_used_by(&mut page, reporter, object, object_map);
         }
-        ObjectKind::Blueprint | ObjectKind::Archetype => {}
+        ObjectKind::Blueprint | ObjectKind::Archetype => {
+            if examples.is_empty() {
+                reporter.warn(&object.virtpath, &object.fqname, "No exampels");
+            }
+        }
     }
 
     page
