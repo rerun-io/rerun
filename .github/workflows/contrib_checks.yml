@@ -263,7 +263,7 @@ jobs:
         id: expected_version
         run: ./scripts/ci/cargo_deny.sh
 
-  cpp-formating:
+  cpp-formatting:
     name: C++ formatting check
     runs-on: ubuntu-latest
     steps:

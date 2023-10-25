@@ -355,7 +355,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  cpp-formating:
+  cpp-formatting:
     name: C++ formatting check
     runs-on: ubuntu-latest
     steps:
