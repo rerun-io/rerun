@@ -16,6 +16,12 @@ use crate::{
 #[derive(Clone)]
 pub struct GpuTexture2D(GpuTexture);
 
+impl std::fmt::Debug for GpuTexture2D {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("GpuTexture2D").field(&self.0.handle).finish()
+    }
+}
+
 impl GpuTexture2D {
     #[inline]
     pub fn handle(&self) -> crate::wgpu_resources::GpuTextureHandle {
