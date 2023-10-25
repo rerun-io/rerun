@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Log a `TextDocument`."""
 
 import rerun as rr
