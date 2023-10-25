@@ -160,6 +160,10 @@ pub fn color_tensor_to_gpu(
     let multiply_rgb_with_alpha = depth == 4;
     let gamma = 1.0;
 
+    re_log::trace_once!(
+        "color_tensor_to_gpu {debug_name:?}, range: {range:?}, decode_srgb: {decode_srgb:?}, multiply_rgb_with_alpha: {multiply_rgb_with_alpha:?}, gamma: {gamma:?}, color_mapper: {color_mapper:?}, shader_decoding: {shader_decoding:?}",
+    );
+
     Ok(ColormappedTexture {
         texture: texture_handle,
         range,

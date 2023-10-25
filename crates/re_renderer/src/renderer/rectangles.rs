@@ -95,7 +95,7 @@ pub struct ColormappedTexture {
 }
 
 /// How to map the normalized `.r` component to a color.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ColorMapper {
     /// Apply the given function.
     Function(Colormap),
