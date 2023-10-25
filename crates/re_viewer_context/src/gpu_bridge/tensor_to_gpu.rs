@@ -86,6 +86,7 @@ pub fn color_tensor_to_gpu(
     tensor_stats: &TensorStats,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
+
     let texture_key = hash(tensor_data_row_id);
     let [height, width, depth] = texture_height_width_channels(tensor)?;
 
@@ -148,11 +149,25 @@ pub fn color_tensor_to_gpu(
         super::tensor_data_range_heuristic(tensor_stats, tensor.dtype())?
     };
 
-    let color_mapper = if shader_decoding.is_none() && texture_format.components() == 1 {
-        // Single-channel images = luminance = grayscale
-        Some(ColorMapper::Function(re_renderer::Colormap::Grayscale))
-    } else {
-        None
+    let color_mapper = match shader_decoding {
+        None => {
+            if texture_format.components() == 1 {
+                if decode_srgb {
+                    // Leave grayscale images unmolested - don't apply a colormap to them.
+                    ColorMapper::OffGrayscale
+                } else {
+                    // This is something like a uint16 image, or a float image
+                    // with a range outside of 0-255 (see tensor_decode_srgb_gamma_heuristic).
+                    // `tensor_data_range_heuristic` will make sure we map this to a 0-1
+                    // range, and then we apply a gray colormap to it.
+                    ColorMapper::Function(re_renderer::Colormap::Grayscale)
+                }
+            } else {
+                ColorMapper::OffRGB
+            }
+        }
+
+        Some(ShaderDecoding::Nv12) => ColorMapper::OffRGB,
     };
 
     // TODO(wumpf): There should be a way to specify whether a texture uses pre-multiplied alpha or not.
@@ -246,7 +261,7 @@ pub fn class_id_tensor_to_gpu(
         decode_srgb: false, // Setting this to true would affect the class ids, not the color they resolve to.
         multiply_rgb_with_alpha: false, // already premultiplied!
         gamma: 1.0,
-        color_mapper: Some(ColorMapper::Texture(colormap_texture_handle)),
+        color_mapper: ColorMapper::Texture(colormap_texture_handle),
         shader_decoding: None,
     })
 }
@@ -283,7 +298,7 @@ pub fn depth_tensor_to_gpu(
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
-        color_mapper: Some(ColorMapper::Function(re_renderer::Colormap::Turbo)),
+        color_mapper: ColorMapper::Function(re_renderer::Colormap::Turbo),
         shader_decoding: None,
     })
 }

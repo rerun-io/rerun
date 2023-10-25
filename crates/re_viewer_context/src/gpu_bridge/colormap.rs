@@ -43,7 +43,7 @@ fn colormap_preview_ui(
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
         shader_decoding: None,
-        color_mapper: Some(re_renderer::renderer::ColorMapper::Function(colormap)),
+        color_mapper: re_renderer::renderer::ColorMapper::Function(colormap),
     };
 
     let debug_name = format!("colormap_{colormap}");
