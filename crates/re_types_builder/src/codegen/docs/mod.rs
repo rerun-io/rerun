@@ -259,7 +259,9 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
         // reference other tables, but they are unwrapped in the codegen.
         // So for instance: `union Angle` uses `rerun.datatypes.Float32` in
         // `angle.fbs`, but in the generated code that datatype is unused.
-        reporter.warn(&object.virtpath, &object.fqname, "Unused object");
+        if false {
+            reporter.warn(&object.virtpath, &object.fqname, "Unused object");
+        }
     } else {
         putln!(o, "## Used by");
         putln!(o);
