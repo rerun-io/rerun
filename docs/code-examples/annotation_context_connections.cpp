@@ -4,7 +4,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     // Log an annotation context to assign a label and color to each class
     // Create a class description with labels and color for each keypoint ID as well as some

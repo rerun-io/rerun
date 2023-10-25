@@ -30,7 +30,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
-        ///     rec.connect().throw_on_failure();
+        ///     rec.spawn().throw_on_failure();
         ///
         ///     // These two points can be projected into the same space..
         ///     rec.log("world/room1/point", rerun::Points3D({{0.0f, 0.0f, 0.0f}}));
