@@ -37,36 +37,28 @@ pub struct CSpawnOptions {
 impl CSpawnOptions {
     #[allow(clippy::result_large_err)]
     pub fn as_rust(&self) -> Result<re_sdk::SpawnOptions, CError> {
-        let port = if self.port == 0 {
-            None
-        } else {
-            Some(self.port)
-        };
+        let mut spawn_opts = re_sdk::SpawnOptions::default();
 
-        let memory_limit = if self.memory_limit.is_null() {
-            None
-        } else {
-            Some(ptr::try_char_ptr_as_str(self.memory_limit, "memory_limit")?.to_owned())
-        };
+        if self.port != 0 {
+            spawn_opts.port = self.port;
+        }
 
-        let executable_name = if self.executable_name.is_null() {
-            None
-        } else {
-            Some(ptr::try_char_ptr_as_str(self.executable_name, "executable_name")?.to_owned())
-        };
+        if !self.memory_limit.is_null() {
+            spawn_opts.memory_limit =
+                ptr::try_char_ptr_as_str(self.memory_limit, "memory_limit")?.to_owned();
+        }
 
-        let executable_path = if self.executable_path.is_null() {
-            None
-        } else {
-            Some(ptr::try_char_ptr_as_str(self.executable_path, "executable_path")?.to_owned())
-        };
+        if !self.executable_name.is_null() {
+            spawn_opts.executable_name =
+                ptr::try_char_ptr_as_str(self.executable_name, "executable_name")?.to_owned();
+        }
 
-        Ok(re_sdk::SpawnOptions {
-            port,
-            memory_limit,
-            executable_name,
-            executable_path,
-        })
+        if !self.executable_path.is_null() {
+            spawn_opts.executable_path =
+                Some(ptr::try_char_ptr_as_str(self.executable_path, "executable_path")?.to_owned());
+        }
+
+        Ok(spawn_opts)
     }
 }
 
@@ -394,7 +386,7 @@ fn rr_recording_stream_spawn_impl(
     };
 
     stream
-        .spawn(&spawn_opts, flush_timeout)
+        .spawn_opts(&spawn_opts, flush_timeout)
         .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
 
     Ok(())
