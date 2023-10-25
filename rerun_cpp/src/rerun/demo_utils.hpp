@@ -13,7 +13,7 @@ namespace rerun {
 
         /// A linear interpolator that bounces between `a` and `b` as `t` goes above `1.0`.
         inline float bounce_lerp(float a, float b, float t) {
-            auto tf = t - static_cast<int32_t>(t);
+            auto tf = t - roundf(t);
             if (static_cast<int32_t>(t) % 2 == 0) {
                 return (1.0f - tf) * a + tf * b;
             } else {
