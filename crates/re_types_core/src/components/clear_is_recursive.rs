@@ -21,7 +21,7 @@ use crate::SerializationResult;
 use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
-/// **Component**: Configures how a clear operation should behave - recursive or not?
+/// **Component**: Configures how a clear operation should behave - recursive or not.
 #[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct ClearIsRecursive(
     /// If true, also clears all recursive children entities.
