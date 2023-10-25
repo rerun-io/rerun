@@ -1938,25 +1938,6 @@ package:
   license: BSD
   size: 6269
   timestamp: 1689097851052
-- name: c-compiler
-  version: 1.6.0
-  manager: conda
-  platform: win-64
-  dependencies:
-    vs2019_win-64: '*'
-  url: https://conda.anaconda.org/conda-forge/win-64/c-compiler-1.6.0-hcfcfb64_0.conda
-  hash:
-    md5: 9246624ea9ea636c9801b3279f88f3a4
-    sha256: 10d113359a3906d9eda66062ab3a36e0f21381c8448ec50c7a9e09e0a9bb4f21
-  optional: false
-  category: main
-  build: hcfcfb64_0
-  arch: x86_64
-  subdir: win-64
-  build_number: 0
-  license: BSD
-  size: 6381
-  timestamp: 1689097760340
 - name: ca-certificates
   version: 2023.7.22
   manager: conda
@@ -2205,32 +2186,6 @@ package:
   license_family: Apache
   size: 133018
   timestamp: 1690549798814
-- name: clang
-  version: 15.0.7
-  manager: conda
-  platform: win-64
-  dependencies:
-    clang-15: ==15.0.7 default_h66ee7f4_3
-    libzlib: '>=1.2.13,<1.3.0a0'
-  url: https://conda.anaconda.org/conda-forge/win-64/clang-15.0.7-h8e541a6_3.conda
-  hash:
-    md5: 22ceaf22487b0145a19c5bd61fbae126
-    sha256: beec8e1ebd4ee1722f7d3168ae0bef3b67bc5949071f0811d26808f0a75ab062
-  optional: false
-  category: main
-  build: h8e541a6_3
-  arch: x86_64
-  subdir: win-64
-  build_number: 3
-  constrains:
-  - clang-tools 15.0.7.*
-  - llvm 15.0.7.*
-  - llvm-tools 15.0.7.*
-  - llvmdev 15.0.7.*
-  license: Apache-2.0 WITH LLVM-exception
-  license_family: Apache
-  size: 85642361
-  timestamp: 1690552752505
 - name: clang-15
   version: 15.0.7
   manager: conda
@@ -2314,34 +2269,6 @@ package:
   license_family: Apache
   size: 795051
   timestamp: 1690549670667
-- name: clang-15
-  version: 15.0.7
-  manager: conda
-  platform: win-64
-  dependencies:
-    libzlib: '>=1.2.13,<1.3.0a0'
-    ucrt: '>=10.0.20348.0'
-    vc: '>=14.2,<15'
-    vc14_runtime: '>=14.29.30139'
-  url: https://conda.anaconda.org/conda-forge/win-64/clang-15-15.0.7-default_h66ee7f4_3.conda
-  hash:
-    md5: 5f127f81d123de0eb5795cf8436b035b
-    sha256: 839a0143214802f0f3b2d6295150e28754863021344b0c82719c60f379b09776
-  optional: false
-  category: main
-  build: default_h66ee7f4_3
-  arch: x86_64
-  subdir: win-64
-  build_number: 3
-  constrains:
-  - clangxx 15.0.7
-  - llvm-tools 15.0.7
-  - clangdev 15.0.7
-  - clang-tools 15.0.7
-  license: Apache-2.0 WITH LLVM-exception
-  license_family: Apache
-  size: 29291788
-  timestamp: 1690552522050
 - name: clang-format
   version: 15.0.7
   manager: conda
@@ -3202,25 +3129,6 @@ package:
   license: BSD
   size: 6301
   timestamp: 1689097905706
-- name: cxx-compiler
-  version: 1.6.0
-  manager: conda
-  platform: win-64
-  dependencies:
-    vs2019_win-64: '*'
-  url: https://conda.anaconda.org/conda-forge/win-64/cxx-compiler-1.6.0-h91493d7_0.conda
-  hash:
-    md5: b1219f0b49bd243c7139cb9c42c4710c
-    sha256: 625af0fe202d3df70ba29bb6c80f3e45887b571a87dfd5bff94fa75577e2c417
-  optional: false
-  category: main
-  build: h91493d7_0
-  arch: x86_64
-  subdir: win-64
-  build_number: 0
-  license: BSD
-  size: 6421
-  timestamp: 1689097764951
 - name: exceptiongroup
   version: 1.1.3
   manager: conda
@@ -11768,47 +11676,6 @@ package:
   license_family: BSD
   size: 17207
   timestamp: 1688020635322
-- name: vs2019_win-64
-  version: 19.29.30139
-  manager: conda
-  platform: win-64
-  dependencies:
-    vswhere: '*'
-  url: https://conda.anaconda.org/conda-forge/win-64/vs2019_win-64-19.29.30139-he1865b1_17.conda
-  hash:
-    md5: 6351cac64b43c84c64bb6fe646d6acfe
-    sha256: 48ae2875083ef9e0b4dc2a3045154a4197e67f948dec44ae02c5348960445b93
-  optional: false
-  category: main
-  build: he1865b1_17
-  arch: x86_64
-  subdir: win-64
-  build_number: 17
-  track_features:
-  - vc14
-  license: BSD-3-Clause
-  license_family: BSD
-  size: 19812
-  timestamp: 1688020390940
-- name: vswhere
-  version: 3.1.4
-  manager: conda
-  platform: win-64
-  dependencies: {}
-  url: https://conda.anaconda.org/conda-forge/win-64/vswhere-3.1.4-h57928b3_0.conda
-  hash:
-    md5: b1d1d6a1f874d8c93a57b5efece52f03
-    sha256: 553c41fc1a883415a39444313f8d99236685529776fdd04e8d97288b73496002
-  optional: false
-  category: main
-  build: h57928b3_0
-  arch: x86_64
-  subdir: win-64
-  build_number: 0
-  license: MIT
-  license_family: MIT
-  size: 218421
-  timestamp: 1682376911339
 - name: wheel
   version: 0.38.4
   manager: conda

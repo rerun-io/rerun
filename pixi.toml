@@ -72,11 +72,8 @@ arrow-cpp = "10.0.1"
 attrs = ">=23.1.0"
 black = "23.3.0"
 blackdoc = "0.3.8"
-c-compiler = "1.6.0.*"
-clang = ">=15,<16"
 clang-tools = ">=15,<16"
 cmake = "3.27.6"
-cxx-compiler = "1.6.0.*"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
@@ -98,3 +95,19 @@ wheel = ">=0.38,<0.39"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
+clang = ">=15,<16"
+c-compiler = "1.6.0.*"
+cxx-compiler = "1.6.0.*"
+
+[target.osx-64.dependencies]
+clang = ">=15,<16"
+c-compiler = "1.6.0.*"
+cxx-compiler = "1.6.0.*"
+
+[target.osx-arm64.dependencies]
+clang = ">=15,<16"
+c-compiler = "1.6.0.*"
+cxx-compiler = "1.6.0.*"
+
+[target.win-64.dependecies]
+vs2022_win-64 = "19.37.32822"
