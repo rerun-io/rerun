@@ -1,5 +1,6 @@
 #include "recording_stream.hpp"
 #include "components/instance_key.hpp"
+#include "config.hpp"
 
 #include "c/rerun.h"
 
@@ -29,6 +30,7 @@ namespace rerun {
         rr_store_info store_info;
         store_info.application_id = app_id;
         store_info.store_kind = store_kind_to_c(store_kind);
+        store_info.default_enabled = is_default_enabled();
 
         rr_error status = {};
         this->_id = rr_recording_stream_new(&store_info, &status);

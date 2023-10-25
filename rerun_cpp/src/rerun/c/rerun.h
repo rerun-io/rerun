@@ -66,6 +66,9 @@ typedef struct rr_store_info {
 
     /// `RERUN_STORE_KIND_RECORDING` or `RERUN_STORE_KIND_BLUEPRINT`
     rr_store_kind store_kind;
+
+    /// Whether logging should be enabled by default
+    bool default_enabled;
 } rr_store_info;
 
 /// Arrow-encoded data of a single component for a single entity.

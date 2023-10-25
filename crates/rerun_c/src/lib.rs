@@ -52,6 +52,8 @@ pub struct CStoreInfo {
     pub application_id: *const c_char,
 
     pub store_kind: CStoreKind,
+
+    pub default_enabled: bool,
 }
 
 #[repr(C)]
@@ -175,6 +177,7 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
     let CStoreInfo {
         application_id,
         store_kind,
+        default_enabled,
     } = *store_info;
 
     let application_id = ptr::try_char_ptr_as_str(application_id, "store_info.application_id")?;
@@ -182,7 +185,8 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
-        .store_source(re_log_types::StoreSource::CSdk);
+        .store_source(re_log_types::StoreSource::CSdk)
+        .default_enabled(default_enabled);
 
     if store_kind == CStoreKind::Blueprint {
         rec_builder = rec_builder.blueprint();
