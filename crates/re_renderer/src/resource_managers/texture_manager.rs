@@ -107,6 +107,18 @@ pub enum TextureCreationError {
     },
 
     #[error(
+        "Wrong number of bytes in the texture data buffer - expected {width}x{height}x{bytes_per_texel}={expected_bytes}, got {actual_bytes}"
+    )]
+    WrongBufferSize {
+        width: u32,
+        height: u32,
+        bytes_per_texel: u32,
+        expected_bytes: usize, // product of the avbove
+
+        actual_bytes: usize,
+    },
+
+    #[error(
         "Texture with debug label {label:?} has a format {format:?} that data can't be transferred to!"
     )]
     UnsupportedFormatForTransfer {
@@ -346,52 +358,79 @@ impl TextureManager2D {
     ) -> Result<GpuTexture2D, TextureCreationError> {
         re_tracing::profile_function!();
 
-        if creation_desc.width == 0 || creation_desc.height == 0 {
-            return Err(TextureCreationError::ZeroSize(creation_desc.label.clone()));
+        let Texture2DCreationDesc {
+            label,
+            data,
+            format,
+            width,
+            height,
+        } = creation_desc;
+        let (width, height, format) = (*width, *height, *format);
+
+        if width == 0 || height == 0 {
+            return Err(TextureCreationError::ZeroSize(label.clone()));
         }
 
         let max_texture_dimension_2d = device.limits().max_texture_dimension_2d;
-        if creation_desc.width > max_texture_dimension_2d
-            || creation_desc.height > max_texture_dimension_2d
-        {
+        if width > max_texture_dimension_2d || height > max_texture_dimension_2d {
             return Err(TextureCreationError::TooLarge {
-                width: creation_desc.width,
-                height: creation_desc.height,
+                width,
+                height,
                 max_texture_dimension_2d,
             });
         }
 
+        if !format.is_compressed() {
+            if let Some(bytes_per_texel) = creation_desc
+                .format
+                .block_size(Some(wgpu::TextureAspect::All))
+            {
+                let expected_bytes = width as usize * height as usize * bytes_per_texel as usize;
+
+                if data.len() != expected_bytes {
+                    return Err(TextureCreationError::WrongBufferSize {
+                        width,
+                        height,
+                        bytes_per_texel,
+                        expected_bytes,
+
+                        actual_bytes: data.len(),
+                    });
+                }
+            }
+        }
+
         let size = wgpu::Extent3d {
-            width: creation_desc.width,
-            height: creation_desc.height,
+            width,
+            height,
             depth_or_array_layers: 1,
         };
         let texture = texture_pool.alloc(
             device,
             &TextureDesc {
-                label: creation_desc.label.clone(),
+                label: label.clone(),
                 size,
                 mip_level_count: 1, // TODO(andreas)
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
-                format: creation_desc.format,
+                format,
                 usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
         );
 
-        let width_blocks = creation_desc.width / creation_desc.format.block_dimensions().0;
+        let width_blocks = width / format.block_dimensions().0;
         let block_size = creation_desc
             .format
             .block_size(Some(wgpu::TextureAspect::All))
             .ok_or_else(|| TextureCreationError::UnsupportedFormatForTransfer {
-                label: creation_desc.label.clone(),
-                format: creation_desc.format,
+                label: label.clone(),
+                format,
             })?;
         let bytes_per_row_unaligned = width_blocks * block_size;
 
         // TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
         // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuisance!
-        let data: &[u8] = creation_desc.data.as_ref();
+        let data: &[u8] = data.as_ref();
 
         // TODO(andreas): temp allocator for staging data?
         // We don't do any further validation of the buffer here as wgpu does so extensively.
