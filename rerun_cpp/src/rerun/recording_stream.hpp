@@ -71,6 +71,10 @@ namespace rerun {
             return _store_kind;
         }
 
+        bool is_enabled() const {
+            return _enabled;
+        }
+
         // -----------------------------------------------------------------------------------------
         // Controlling globally available instances of RecordingStream.
 
@@ -188,6 +192,9 @@ namespace rerun {
         /// @see try_log
         template <typename... Ts>
         void log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            if (!is_enabled()) {
+                return;
+            }
             try_log_with_timeless(entity_path, false, archetypes_or_component_batches...).handle();
         }
 
@@ -206,6 +213,9 @@ namespace rerun {
         /// @see try_log
         template <typename... Ts>
         void log_timeless(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            if (!is_enabled()) {
+                return;
+            }
             try_log_with_timeless(entity_path, true, archetypes_or_component_batches...).handle();
         }
 
@@ -220,6 +230,9 @@ namespace rerun {
         /// @see try_log
         template <typename... Ts>
         Error try_log(const char* entity_path, const Ts&... archetypes_or_component_batches) {
+            if (!is_enabled()) {
+                return Error::ok();
+            }
             return try_log_with_timeless(entity_path, false, archetypes_or_component_batches...);
         }
 
@@ -240,6 +253,9 @@ namespace rerun {
         Error try_log_timeless(
             const char* entity_path, const Ts&... archetypes_or_component_batches
         ) {
+            if (!is_enabled()) {
+                return Error::ok();
+            }
             return try_log_with_timeless(entity_path, true, archetypes_or_component_batches...);
         }
 
@@ -256,6 +272,9 @@ namespace rerun {
         Error try_log_with_timeless(
             const char* entity_path, bool timeless, const Ts&... archetypes_or_component_batches
         ) {
+            if (!is_enabled()) {
+                return Error::ok();
+            }
             std::vector<SerializedComponentBatch> serialized_batches;
             Error err;
             (
@@ -313,9 +332,10 @@ namespace rerun {
         );
 
       private:
-        RecordingStream(uint32_t id, StoreKind store_kind) : _id(id), _store_kind(store_kind) {}
+        RecordingStream(uint32_t id, StoreKind store_kind);
 
         uint32_t _id;
         StoreKind _store_kind;
+        bool _enabled;
     };
 } // namespace rerun

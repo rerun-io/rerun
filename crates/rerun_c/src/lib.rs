@@ -124,8 +124,10 @@ impl RecStreams {
 
     fn get(&self, id: CRecordingStream) -> Option<RecordingStream> {
         match id {
-            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None),
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None),
+            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None)
+                .or(Some(RecordingStream::disabled())),
+            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None)
+                .or(Some(RecordingStream::disabled())),
             _ => self.streams.get(&id).cloned(),
         }
     }
@@ -233,6 +235,26 @@ pub extern "C" fn rr_recording_stream_set_thread_local(
 ) {
     let stream = RECORDING_STREAMS.lock().get(id);
     RecordingStream::set_thread_local(store_kind.into(), stream);
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_is_enabled(
+    stream: CRecordingStream,
+    error: *mut CError,
+) -> bool {
+    match rr_recording_stream_is_enabled_impl(stream) {
+        Ok(enabled) => enabled,
+        Err(err) => {
+            err.write_error(error);
+            false
+        }
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CError> {
+    Ok(recording_stream(id)?.is_enabled())
 }
 
 #[allow(unsafe_code)]

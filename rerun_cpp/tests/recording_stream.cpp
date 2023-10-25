@@ -112,6 +112,10 @@ SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
                 THEN("it reports the correct kind") {
                     CHECK(stream.kind() == kind);
                 }
+
+                THEN("it is not enabled") {
+                    CHECK(!stream.is_enabled());
+                }
             }
 
             WHEN("creating a new stream") {
