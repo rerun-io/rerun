@@ -44,7 +44,7 @@ int main(int, char** argv) {
         std::vector<rerun::half> data;
         for (auto y = 0; y < 4; ++y) {
             for (auto x = 0; x < 5; ++x) {
-                data.push_back(half_from_float(x * y * 123.4f));
+                data.push_back(half_from_float(static_cast<float>(x * y) * 123.4f));
             }
         }
         auto img = rerun::datatypes::TensorData({4, 5}, std::move(data));

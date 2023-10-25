@@ -12,7 +12,7 @@ namespace rerun {
         /// cameras.
         ///
         /// Assumes the principal point to be in the middle of the sensor.
-        static Pinhole focal_length_and_resolution(
+        static Pinhole from_focal_length_and_resolution(
             const datatypes::Vec2D& focal_length, const datatypes::Vec2D& resolution
         );
 
@@ -22,10 +22,10 @@ namespace rerun {
         /// The focal length is the diagonal of the projection matrix.
         ///
         /// Assumes the principal point to be in the middle of the sensor.
-        static Pinhole focal_length_and_resolution(
+        static Pinhole from_focal_length_and_resolution(
             float focal_length, const datatypes::Vec2D& resolution
         ) {
-            return focal_length_and_resolution({focal_length, focal_length}, resolution);
+            return from_focal_length_and_resolution({focal_length, focal_length}, resolution);
         }
 
         /// Pixel resolution (usually integers) of child image space. Width and height.
@@ -47,7 +47,7 @@ namespace rerun {
         // [CODEGEN COPY TO HEADER END]
 #endif
 
-        Pinhole Pinhole::focal_length_and_resolution(
+        Pinhole Pinhole::from_focal_length_and_resolution(
             const datatypes::Vec2D& focal_length, const datatypes::Vec2D& _resolution
         ) {
             const float u_cen = _resolution.x() / 2.0f;

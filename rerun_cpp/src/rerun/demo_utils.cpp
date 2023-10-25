@@ -20,7 +20,9 @@ namespace rerun {
                     static_cast<float>(i) * z_step,
                 });
 
-                out_colors.push_back(colormap_turbo_srgb(static_cast<float>(i) / num_points));
+                out_colors.push_back(
+                    colormap_turbo_srgb(static_cast<float>(i) / static_cast<float>(num_points))
+                );
             }
         }
 
