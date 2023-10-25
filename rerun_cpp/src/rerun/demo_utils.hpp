@@ -28,7 +28,7 @@ namespace rerun {
         inline std::vector<T> linspace(T start, T end, size_t num) {
             std::vector<T> linspaced(num);
             std::generate(linspaced.begin(), linspaced.end(), [&, i = 0]() mutable {
-                return start + i++ * (end - start) / static_cast<T>(num - 1);
+                return static_cast<T>(start + i++ * (end - start) / static_cast<T>(num - 1));
             });
             return linspaced;
         }
@@ -41,7 +41,7 @@ namespace rerun {
             for (Elem z : linspace(from[0], to[0], n)) {
                 for (Elem y : linspace(from[1], to[1], n)) {
                     for (Elem x : linspace(from[2], to[2], n)) {
-                        output.emplace_back(x, y, z);
+                        output.emplace_back(static_cast<Elem>(x), static_cast<Elem>(y), static_cast<Elem>(z));
                     }
                 }
             }
