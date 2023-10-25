@@ -26,16 +26,19 @@
     }
   },
   "files": [
-    "package.json",
-    "tsconfig.json",
     "index.d.ts",
     "index.d.ts.map",
     "index.js",
-    "re_viewer.js",
+    "package.json",
     "re_viewer_bg.js",
-    "re_viewer_bg.wasm"
+    "re_viewer_bg.wasm",
+    "re_viewer_bg.wasm.d.ts",
+    "re_viewer.d.ts",
+    "re_viewer.js",
+    "tsconfig.json"
   ],
   "devDependencies": {
     "dts-buddy": "^0.3.0"
   }
 }
+
