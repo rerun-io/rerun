@@ -81,14 +81,7 @@ fn format_path_for_tmp_dir(
 fn format_python_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
-    // The order below is important and sadly we need to call black twice. Ruff does not yet
-    // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
-    //
-    // 1) Call ruff format, which among others things fixes line-length
-    // 2) Call ruff --fix, which requires line-lengths to be correct
-    // 3) Call ruff format again to cleanup some whitespace issues ruff might introduce
-
-    run_ruff_format_on_dir(dir).context("ruff --format")?;
+    // NOTE: the order here matches the one in `justfile`:
     run_ruff_fix_on_dir(dir).context("ruff --fix")?;
     run_ruff_format_on_dir(dir).context("ruff --format")?;
     Ok(())

@@ -101,6 +101,7 @@ py-build *ARGS:
 py-format:
     #!/usr/bin/env bash
     set -euo pipefail
+    # NOTE: the order here matches the one in `crates/re_types_builder/src/format/python.rs`:
     ruff --fix --config rerun_py/pyproject.toml {{py_folders}}
     ruff format --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc {{py_folders}}
