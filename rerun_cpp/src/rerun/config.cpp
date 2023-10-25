@@ -12,7 +12,6 @@ namespace rerun {
     }
 
     RerunGlobalConfig::RerunGlobalConfig() {
-#if RERUN_ENABLED
         const char* envVarValue = std::getenv("RERUN");
         if (envVarValue != nullptr) {
             std::string envVarValueStr(envVarValue);
@@ -30,9 +29,6 @@ namespace rerun {
         } else {
             default_enabled = true;
         }
-#else
-        enabled = false;
-#endif
     }
 
 } // namespace rerun

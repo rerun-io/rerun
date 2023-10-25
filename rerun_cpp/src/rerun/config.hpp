@@ -20,27 +20,22 @@ namespace rerun {
         ~RerunGlobalConfig() {}
     };
 
-    /// Enable/disable all Rerun log statements.
+    /// Change whether `RecordingStream`s are enabled by default.
     ///
-    /// The default value of default_enabled is controlled by the RERUN environment variable.
+    /// This governs the creation of new `RecordingStream`s. If `default_enabled` is
+    /// is `false`, `RecordingStreams` will be created in the disabled state. Changing
+    /// the value of `default_enabled` will not affect existing `RecordingStream`s.
     ///
-    /// If RERUN is set to 1, true, or yes, then Rerun is enabled.
-    /// If RERUN is set to 0, false, or no, then Rerun is disabled.
+    /// Note that regardless of usage of this API, the value of default_enabled will
+    /// be overridden by the RERUN environment variable.
     ///
-    /// RERUN can also be compile-timed disabled by compiling with `-DRERUN_ENABLED=0`
+    /// If RERUN is set to `1`, `true`, or `yes`, then Rerun is enabled. If RERUN is
+    /// set to `0`, `false`, or `no`, then Rerun is disabled.
     inline void set_default_enabled(bool default_enabled) {
-#if RERUN_ENABLED
         RerunGlobalConfig::instance().default_enabled.store(
             default_enabled,
             std::memory_order_seq_cst
         );
-#else
-        fprintf(
-            stderr,
-            "Tried to call set_default_enabled but rerun was compiled with RERUN_ENABLED=0",
-            env
-        );
-#endif
     }
 
     /// Check if Rerun is enabled.
