@@ -12,7 +12,9 @@ Embed the Rerun web viewer within your app.
 npm i @rerun-io/web-viewer
 ```
 
-## Example
+## Usage
+
+The web viewer is an object which manages a canvas element:
 
 ```js
 import { WebViewer } from "@rerun-io/web-viewer";
@@ -27,9 +29,14 @@ await viewer.start(URL, parentElement);
 viewer.stop();
 ```
 
+You can style this canvas element however you wish.
+
+For a live example, see https://github.com/rerun-io/web-viewer-example.
+
 ℹ️ Note:
-This package only targets recent browsers.
-Your environment must support importing `.wasm` files as ES modules.
+This package only targets recent versions of browsers.
+If your target browser does not support WASM imports or top-level await,
+you may need to install additional plugins for your bundler.
 
 ## Development
 
