@@ -882,7 +882,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             );
             assert!(
                 !line.contains("\"\"\""),
-                "Example {name:?} contains ``` in it, so we can't embed it in the Python API docs."
+                "Example {name:?} contains \"\"\" in it, so we can't embed it in the Python API docs."
             );
         }
 
