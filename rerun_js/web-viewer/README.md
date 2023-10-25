@@ -35,7 +35,7 @@ For a live example, see https://github.com/rerun-io/web-viewer-example.
 
 ℹ️ Note:
 This package only targets recent versions of browsers.
-If your target browser does not support WASM imports or top-level await,
+If your target browser does not support Wasm imports or top-level await,
 you may need to install additional plugins for your bundler.
 
 ## Development
