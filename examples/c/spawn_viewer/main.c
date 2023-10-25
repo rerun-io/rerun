@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 int main(void) {
-    rr_error error = {0};
+    rr_error error = {};
     rr_spawn(NULL, &error);
 
     if (error.code != 0) {

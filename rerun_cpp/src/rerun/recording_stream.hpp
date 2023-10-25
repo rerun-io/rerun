@@ -117,7 +117,8 @@ namespace rerun {
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over TCP.
         ///
-        /// This function returns immediately.
+        /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+        /// that viewer instead of starting a new one.
         ///
         /// ## Parameters
         ///
@@ -142,11 +143,11 @@ namespace rerun {
         /// dropping data if progress is not being made. Passing a negative value indicates no
         /// timeout, and can cause a call to `flush` to block indefinitely.
         Error spawn(
-            uint16_t port = 9876,                  //
-            const char* memory_limit = "75%",      //
-            const char* executable_name = nullptr, //
-            const char* executable_path = nullptr, //
-            float flush_timeout_sec = 2.0          //
+            uint16_t port = 0,                     // defer to default value
+            const char* memory_limit = nullptr,    // defer to default value
+            const char* executable_name = nullptr, // defer to default value
+            const char* executable_path = nullptr, // defer to default value
+            float flush_timeout_sec = 2.0
         );
 
         /// Stream all log-data to a given file.

@@ -137,7 +137,7 @@ pub enum CErrorCode {
 #[derive(Clone)]
 pub struct CError {
     pub code: CErrorCode,
-    pub message: [c_char; 512],
+    pub message: [c_char; Self::MAX_MESSAGE_SIZE_BYTES],
 }
 
 // ----------------------------------------------------------------------------

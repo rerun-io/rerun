@@ -9,6 +9,9 @@ namespace rerun {
     /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
     /// listen for incoming TCP connections.
     ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
     /// ## Parameters
     ///
     /// port:
@@ -27,9 +30,9 @@ namespace rerun {
     /// Enforce a specific executable to use instead of searching though PATH
     /// for [`Self::executable_name`].
     Error spawn(
-        uint16_t port = 9876,                  //
-        const char* memory_limit = "75%",      //
-        const char* executable_name = nullptr, //
-        const char* executable_path = nullptr  //
+        uint16_t port = 0,                     // defer to default value
+        const char* memory_limit = nullptr,    // defer to default value
+        const char* executable_name = nullptr, // defer to default value
+        const char* executable_path = nullptr  // defer to default value
     );
 } // namespace rerun

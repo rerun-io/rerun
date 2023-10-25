@@ -175,7 +175,9 @@ typedef struct rr_error {
     rr_error_code code;
 
     /// Human readable description of the error in null-terminated UTF8.
-    char description[512];
+    //
+    // NOTE: You must update `CError::MAX_MESSAGE_SIZE_BYTES` too if you modify this value.
+    char description[2048];
 } rr_error;
 
 // ----------------------------------------------------------------------------

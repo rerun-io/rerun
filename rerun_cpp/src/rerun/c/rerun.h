@@ -175,7 +175,9 @@ typedef struct rr_error {
     rr_error_code code;
 
     /// Human readable description of the error in null-terminated UTF8.
-    char description[512];
+    //
+    // NOTE: You must update `CError::MAX_MESSAGE_SIZE_BYTES` too if you modify this value.
+    char description[2048];
 } rr_error;
 
 // ----------------------------------------------------------------------------
@@ -186,6 +188,9 @@ extern const char* rr_version_string(void);
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
 /// listen for incoming TCP connections.
+///
+/// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+/// that viewer instead of starting a new one.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
 /// Creates a new recording stream to log to.
