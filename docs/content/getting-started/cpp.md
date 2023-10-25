@@ -9,6 +9,8 @@ Before adding Rerun to your application, start by [installing the viewer](instal
 The Rerun C++ SDK depends on an install of the `arrow-cpp` library on your system using.
 If you are using [Pixi](https://prefix.dev/docs/pixi/overview), you can simply type `pixi global install arrow-cpp`.
 Find more information about other package managers at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
+⚠️ On Windows this only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes. For debug builds you have to build Arrow yourself, see [Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html).
+🚧 In the future we want to make this part of the setup easier.
 
 If you're using CMake, you can add the following to your `CMakeLists.txt`:
 
