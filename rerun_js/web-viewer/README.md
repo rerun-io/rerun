@@ -19,7 +19,7 @@ The web viewer is an object which manages a canvas element:
 ```js
 import { WebViewer } from "@rerun-io/web-viewer";
 
-const URL = "...";
+const URL = "…";
 const parentElement = document.body;
 
 const viewer = new WebViewer();
