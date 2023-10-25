@@ -36,7 +36,9 @@ namespace rerun {
                 /// Rotation defined with an axis and an angle.
                 rerun::datatypes::RotationAxisAngle axis_angle;
 
-                Rotation3DData() {}
+                Rotation3DData() {
+                    std::memset(reinterpret_cast<void*>(this), 0, sizeof(Rotation3DData));
+                }
 
                 ~Rotation3DData() {}
 
@@ -81,7 +83,7 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'rotation3d_ext.cpp'
 
-            // static const Rotation3D IDENTITY;
+            static const Rotation3D IDENTITY;
 
             void swap(Rotation3D& other) noexcept {
                 std::swap(this->_tag, other._tag);
@@ -89,12 +91,12 @@ namespace rerun {
             }
 
             /// Rotation defined by a quaternion.
-            Rotation3D(rerun::datatypes::Quaternion quaternion) {
+            Rotation3D(rerun::datatypes::Quaternion quaternion) : Rotation3D() {
                 *this = Rotation3D::quaternion(std::move(quaternion));
             }
 
             /// Rotation defined with an axis and an angle.
-            Rotation3D(rerun::datatypes::RotationAxisAngle axis_angle) {
+            Rotation3D(rerun::datatypes::RotationAxisAngle axis_angle) : Rotation3D() {
                 *this = Rotation3D::axis_angle(std::move(axis_angle));
             }
 

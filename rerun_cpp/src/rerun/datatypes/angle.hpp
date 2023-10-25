@@ -32,7 +32,9 @@ namespace rerun {
 
                 float degrees;
 
-                AngleData() {}
+                AngleData() {
+                    std::memset(reinterpret_cast<void*>(this), 0, sizeof(AngleData));
+                }
 
                 ~AngleData() {}
 

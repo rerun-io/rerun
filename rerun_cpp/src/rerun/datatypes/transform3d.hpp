@@ -34,7 +34,9 @@ namespace rerun {
 
                 rerun::datatypes::TranslationRotationScale3D translation_rotation_scale;
 
-                Transform3DData() {}
+                Transform3DData() {
+                    std::memset(reinterpret_cast<void*>(this), 0, sizeof(Transform3DData));
+                }
 
                 ~Transform3DData() {}
 
@@ -81,11 +83,13 @@ namespace rerun {
                 this->_data.swap(other._data);
             }
 
-            Transform3D(rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3) {
+            Transform3D(rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3)
+                : Transform3D() {
                 *this = Transform3D::translation_and_mat3x3(std::move(translation_and_mat3x3));
             }
 
-            Transform3D(rerun::datatypes::TranslationRotationScale3D translation_rotation_scale) {
+            Transform3D(rerun::datatypes::TranslationRotationScale3D translation_rotation_scale)
+                : Transform3D() {
                 *this =
                     Transform3D::translation_rotation_scale(std::move(translation_rotation_scale));
             }

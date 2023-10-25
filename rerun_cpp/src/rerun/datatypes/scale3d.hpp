@@ -35,7 +35,9 @@ namespace rerun {
                 /// Uniform scaling factor along all axis.
                 float uniform;
 
-                Scale3DData() {}
+                Scale3DData() {
+                    std::memset(reinterpret_cast<void*>(this), 0, sizeof(Scale3DData));
+                }
 
                 ~Scale3DData() {}
 
@@ -83,12 +85,12 @@ namespace rerun {
             }
 
             /// Individual scaling factors for each axis, distorting the original object.
-            Scale3D(rerun::datatypes::Vec3D three_d) {
+            Scale3D(rerun::datatypes::Vec3D three_d) : Scale3D() {
                 *this = Scale3D::three_d(std::move(three_d));
             }
 
             /// Uniform scaling factor along all axis.
-            Scale3D(float uniform) {
+            Scale3D(float uniform) : Scale3D() {
                 *this = Scale3D::uniform(std::move(uniform));
             }
 
