@@ -36,7 +36,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
-        ///     rec.connect().throw_on_failure();
+        ///     rec.spawn().throw_on_failure();
         ///
         ///     // Create a segmentation image
         ///     const int HEIGHT = 8;

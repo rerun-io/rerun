@@ -9,7 +9,7 @@ const float TAU = static_cast<float>(2.0 * M_PI);
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_arrow3d");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     std::vector<rerun::components::Position3D> origins;
     std::vector<rerun::components::Vector3D> vectors;

@@ -6,7 +6,7 @@ using namespace rerun::demo;
 int main() {
     // Create a new `RecordingStream` which sends data over TCP to the viewer process.
     auto rec = rerun::RecordingStream("rerun_example_demo");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     // Create some data using the `grid` utility function.
     auto points = grid<rerun::Position3D, float>({-10.f, -10.f, -10.f}, {10.f, 10.f, 10.f}, 10);
