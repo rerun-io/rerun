@@ -50,6 +50,7 @@ if(DEFINED RERUN_REPOSITORY)
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src/rerun.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h"
+        NEWLINE_STYLE LF # Specify line endings, otherwise CMake wants to change them on Windows.
     )
 
     # Add tests!
