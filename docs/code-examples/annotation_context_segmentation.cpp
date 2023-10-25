@@ -21,10 +21,10 @@ int main() {
     const int HEIGHT = 200;
     const int WIDTH = 300;
     std::vector<uint8_t> data(WIDTH * HEIGHT, 0);
-    for (uint8_t y = 50; y < 100; ++y) {
+    for (auto y = 50; y < 100; ++y) {
         std::fill_n(data.begin() + y * WIDTH + 50, 70, static_cast<uint8_t>(1));
     }
-    for (uint8_t y = 100; y < 180; ++y) {
+    for (auto y = 100; y < 180; ++y) {
         std::fill_n(data.begin() + y * WIDTH + 130, 150, static_cast<uint8_t>(2));
     }
 

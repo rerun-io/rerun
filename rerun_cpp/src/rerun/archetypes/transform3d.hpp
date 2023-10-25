@@ -21,8 +21,8 @@ namespace rerun {
         ///
         /// ### Variety of 3D transforms
         /// ```cpp,ignore
-        /// #include <rerun.hpp>
         /// #include <cmath>
+        /// #include <rerun.hpp>
         ///
         /// constexpr float TAU = 6.28318530717958647692528676655900577f;
         ///
