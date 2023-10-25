@@ -36,7 +36,7 @@ class Scale3D(Scale3DExt):
 
     # You can define your own __init__ function as a member of Scale3DExt in scale3d_ext.py
 
-    inner: datatypes.Vec3D | float = field(converter=Scale3DExt.inner__field_converter_override)  # type: ignore[misc]
+    inner: Union[datatypes.Vec3D, float] = field(converter=Scale3DExt.inner__field_converter_override)  # type: ignore[misc]
     """
     ThreeD (datatypes.Vec3D):
         Individual scaling factors for each axis, distorting the original object.
