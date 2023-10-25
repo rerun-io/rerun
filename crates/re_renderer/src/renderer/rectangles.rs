@@ -88,15 +88,21 @@ pub struct ColormappedTexture {
     ///
     /// Setting a color mapper for a four-component texture is an error.
     /// Failure to set a color mapper for a one-component texture is an error.
-    pub color_mapper: Option<ColorMapper>,
+    pub color_mapper: ColorMapper,
 
     /// For textures that need decoding in the shader, for example NV12 encoded images.
     pub shader_decoding: Option<ShaderDecoding>,
 }
 
 /// How to map the normalized `.r` component to a color.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ColorMapper {
+    /// Colormapping is off. Take the .r color and splat onto rgb.
+    OffGrayscale,
+
+    /// Colormapping is off. Keep rgb as is.
+    OffRGB,
+
     /// Apply the given function.
     Function(Colormap),
 
@@ -110,6 +116,16 @@ pub enum ColorMapper {
     Texture(GpuTexture2D),
 }
 
+impl ColorMapper {
+    #[inline]
+    pub fn is_on(&self) -> bool {
+        match self {
+            ColorMapper::OffGrayscale | ColorMapper::OffRGB => false,
+            ColorMapper::Function(_) | ColorMapper::Texture(_) => true,
+        }
+    }
+}
+
 impl ColormappedTexture {
     /// Assumes a separate/unmultiplied alpha.
     pub fn from_unorm_rgba(texture: GpuTexture2D) -> Self {
@@ -121,7 +137,7 @@ impl ColormappedTexture {
             range: [0.0, 1.0],
             gamma: 1.0,
             multiply_rgb_with_alpha: true,
-            color_mapper: None,
+            color_mapper: ColorMapper::OffRGB,
             shader_decoding: None,
         }
     }
@@ -221,9 +237,10 @@ mod gpu_data {
     const SAMPLE_TYPE_NV12: u32 = 4;
 
     // How do we do colormapping?
-    const COLOR_MAPPER_OFF: u32 = 1;
-    const COLOR_MAPPER_FUNCTION: u32 = 2;
-    const COLOR_MAPPER_TEXTURE: u32 = 3;
+    const COLOR_MAPPER_OFF_GRAYSCALE: u32 = 1;
+    const COLOR_MAPPER_OFF_RGB: u32 = 2;
+    const COLOR_MAPPER_FUNCTION: u32 = 3;
+    const COLOR_MAPPER_TEXTURE: u32 = 4;
 
     const FILTER_NEAREST: u32 = 1;
     const FILTER_BILINEAR: u32 = 2;
@@ -309,33 +326,27 @@ mod gpu_data {
             };
 
             let mut colormap_function = 0;
-            let color_mapper_int;
-
-            match texture_format.components() {
+            let color_mapper_int = match texture_format.components() {
                 1 => match color_mapper {
-                    Some(ColorMapper::Function(colormap)) => {
-                        color_mapper_int = COLOR_MAPPER_FUNCTION;
+                    ColorMapper::OffGrayscale => COLOR_MAPPER_OFF_GRAYSCALE,
+                    ColorMapper::OffRGB => COLOR_MAPPER_OFF_RGB,
+                    ColorMapper::Function(colormap) => {
                         colormap_function = *colormap as u32;
+                        COLOR_MAPPER_FUNCTION
                     }
-                    Some(ColorMapper::Texture(_)) => {
-                        color_mapper_int = COLOR_MAPPER_TEXTURE;
-                    }
-                    None => match shader_decoding {
-                        Some(super::ShaderDecoding::Nv12) => color_mapper_int = COLOR_MAPPER_OFF,
-                        _ => return Err(RectangleError::MissingColorMapper),
-                    },
+                    ColorMapper::Texture(_) => COLOR_MAPPER_TEXTURE,
                 },
-                4 => {
-                    if color_mapper.is_some() {
+                4 => match color_mapper {
+                    ColorMapper::OffGrayscale => COLOR_MAPPER_OFF_GRAYSCALE, // This is a bit weird, but why not
+                    ColorMapper::OffRGB => COLOR_MAPPER_OFF_RGB,
+                    ColorMapper::Function(_) | ColorMapper::Texture(_) => {
                         return Err(RectangleError::ColormappingRgbaTexture);
-                    } else {
-                        color_mapper_int = COLOR_MAPPER_OFF;
                     }
-                }
+                },
                 num_components => {
                     return Err(RectangleError::UnsupportedComponentCount(num_components));
                 }
-            }
+            };
 
             let minification_filter = match rectangle.options.texture_filter_minification {
                 super::TextureFilterMin::Linear => FILTER_BILINEAR,
@@ -448,17 +459,16 @@ impl RectangleDrawData {
             }
 
             // We also set up an optional colormap texture.
-            let colormap_texture = if let Some(ColorMapper::Texture(handle)) =
-                &rectangle.colormapped_texture.color_mapper
-            {
-                let format = handle.format();
-                if format != wgpu::TextureFormat::Rgba8UnormSrgb {
-                    return Err(RectangleError::UnsupportedColormapTextureFormat(format));
-                }
-                handle.handle()
-            } else {
-                ctx.texture_manager_2d.zeroed_texture_float().handle
-            };
+            let colormap_texture =
+                if let ColorMapper::Texture(handle) = &rectangle.colormapped_texture.color_mapper {
+                    let format = handle.format();
+                    if format != wgpu::TextureFormat::Rgba8UnormSrgb {
+                        return Err(RectangleError::UnsupportedColormapTextureFormat(format));
+                    }
+                    handle.handle()
+                } else {
+                    ctx.texture_manager_2d.zeroed_texture_float().handle
+                };
 
             instances.push(RectangleInstance {
                 bind_group: ctx.gpu_resources.bind_groups.alloc(

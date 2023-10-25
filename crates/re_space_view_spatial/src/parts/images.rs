@@ -96,7 +96,7 @@ fn to_textured_rect(
             // so it's usually safer to turn off.
             // The best heuristic is this: if there is a color map being applied, use nearest.
             // TODO(emilk): apply filtering _after_ the color map?
-            let texture_filter_minification = if colormapped_texture.color_mapper.is_some() {
+            let texture_filter_minification = if colormapped_texture.color_mapper.is_on() {
                 re_renderer::renderer::TextureFilterMin::Nearest
             } else {
                 re_renderer::renderer::TextureFilterMin::Linear
