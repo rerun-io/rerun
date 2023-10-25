@@ -52,9 +52,7 @@ namespace rerun {
         : _id(id), _store_kind(store_kind) {
         rr_error status = {};
         this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
-        // TODO(jleibs): Should we handle this error? This comes up if this comes up
-        // if we never set a thread-local or global recording stream.
-        //Error(status).handle();
+        Error(status).handle();
     }
 
     RecordingStream::~RecordingStream() {

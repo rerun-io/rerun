@@ -124,8 +124,10 @@ impl RecStreams {
 
     fn get(&self, id: CRecordingStream) -> Option<RecordingStream> {
         match id {
-            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None),
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None),
+            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None)
+                .or(Some(RecordingStream::disabled())),
+            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None)
+                .or(Some(RecordingStream::disabled())),
             _ => self.streams.get(&id).cloned(),
         }
     }
