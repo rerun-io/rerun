@@ -10,7 +10,7 @@ rr.log("text_document", rr.TextDocument("Hello, TextDocument!"))
 rr.log(
     "markdown",
     rr.TextDocument(
-        """
+        '''
 # Hello Markdown!
 [Click here to see the raw text](recording://markdown.Text).
 
@@ -44,7 +44,7 @@ Of course you can also have [normal https links](https://github.com/rerun-io/rer
 
 ## Image
 ![A random image](https://picsum.photos/640/480)
-""".strip(),
+'''.strip(),
         media_type=rr.MediaType.MARKDOWN,
     ),
 )
