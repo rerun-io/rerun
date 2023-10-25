@@ -24,6 +24,82 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: A text element intended to be displayed in its own text-box.
 ///
 /// Supports raw text and markdown.
+///
+/// ## Example
+///
+/// ### Markdown text document
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let (rec, storage) =
+///         rerun::RecordingStreamBuilder::new("rerun_example_text_document").memory()?;
+///
+///     rec.log(
+///         "text_document",
+///         &rerun::TextDocument::new("Hello, TextDocument!"),
+///     )?;
+///
+///     rec.log(
+///         "markdown",
+///         &rerun::TextDocument::new(
+///             r#"
+/// # Hello Markdown!
+/// [Click here to see the raw text](recording://markdown.Text).
+///
+/// Basic formatting:
+///
+/// | **Feature**       | **Alternative** |
+/// | ----------------- | --------------- |
+/// | Plain             |                 |
+/// | *italics*         | _italics_       |
+/// | **bold**          | __bold__        |
+/// | ~~strikethrough~~ |                 |
+/// | `inline code`     |                 |
+///
+/// ----------------------------------
+///
+/// Some code:
+/// ```rs
+/// fn main() {
+///     println!("Hello, world!");
+/// }
+/// ```
+///
+/// ## Support
+/// - [x] [Commonmark](https://commonmark.org/help/) support
+/// - [x] GitHub-style strikethrough, tables, and checkboxes
+/// - Basic syntax highlighting for:
+///   - [x] C and C++
+///   - [x] Python
+///   - [x] Rust
+///   - [ ] Other languages
+///
+/// ## Links
+/// You can link to [an entity](recording://markdown),
+/// a [specific instance of an entity](recording://markdown[#0]),
+/// or a [specific component](recording://markdown.Text).
+///
+/// Of course you can also have [normal https links](https://github.com/rerun-io/rerun), e.g. <https://rerun.io>.
+///
+/// ## Image
+/// ![A random image](https://picsum.photos/640/480)
+/// "#.trim(),
+///         )
+///         .with_media_type(rerun::MediaType::markdown()),
+///     )?;
+///
+///     rerun::native_viewer::show(storage.take())?;
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png">
+///   <img src="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextDocument {
     /// Contents of the text document.
