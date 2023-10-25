@@ -521,14 +521,27 @@ fn doc_as_lines(
                 name, title, image, ..
             } = &example.base;
 
+            for line in &example.lines {
+                if line.contains("```") {
+                    reporter.error(
+                        virtpath,
+                        fqname,
+                        format!("Example {name:?} contains ``` in it, so we can't embed it in the Rust API docs."),
+                    );
+                    continue;
+                }
+            }
+
             if let Some(title) = title {
                 lines.push(format!("### {title}"));
             } else {
                 lines.push(format!("### `{name}`:"));
             }
+
             lines.push("```ignore".into());
             lines.extend(example.lines.into_iter());
             lines.push("```".into());
+
             if let Some(image) = &image {
                 lines.extend(image.image_stack().into_iter());
             }

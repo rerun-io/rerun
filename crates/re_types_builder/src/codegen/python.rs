@@ -875,6 +875,17 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             name, title, image, ..
         } = &example.base;
 
+        for line in &example.lines {
+            assert!(
+                !line.contains("```"),
+                "Example {name:?} contains ``` in it, so we can't embed it in the Python API docs."
+            );
+            assert!(
+                !line.contains("\"\"\""),
+                "Example {name:?} contains ``` in it, so we can't embed it in the Python API docs."
+            );
+        }
+
         if let Some(title) = title {
             lines.push(format!("### {title}:"));
         } else {
@@ -926,6 +937,13 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
 fn quote_doc_lines(lines: &[String]) -> String {
     if lines.is_empty() {
         return String::new();
+    }
+
+    for line in lines {
+        assert!(
+            !line.contains("\"\"\""),
+            "Cannot put triple quotes in Python docstrings"
+        );
     }
 
     // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
