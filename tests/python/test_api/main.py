@@ -415,6 +415,25 @@ def run_extension_component(experimental_api: bool) -> None:
     )
 
 
+def run_gradient_image(experimental_api: bool) -> None:
+    rr.log(
+        "gradient_explain",
+        rr.TextLog("gradients should look the same, and external color picket should show 128 in the middle"),
+    )
+
+    x, _ = np.meshgrid(np.arange(0, 256), np.arange(0, 64))
+    im = x.astype(np.uint8)
+    rr.log("gradient_u8", rr.Image(im))
+
+    x, _ = np.meshgrid(np.arange(0, 255), np.arange(0, 64))
+    im = (x / 255.0).astype(np.float32)
+    rr.log("gradient_f32", rr.Image(im))
+
+    x, _ = np.meshgrid(np.arange(0, 256), np.arange(0, 64))
+    im = (x * 4).astype(np.uint16)
+    rr.log("gradient_u16_0_1020", rr.Image(im))
+
+
 def run_image_tensors(experimental_api: bool) -> None:
     # Make sure you use a colorful image with alpha!
     dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -460,6 +479,7 @@ def main() -> None:
         "3d_points": run_3d_points,
         "bbox": run_bounding_box,
         "extension_components": run_extension_component,
+        "gradient_image": run_gradient_image,
         "image_tensors": run_image_tensors,
         "log_cleared": run_log_cleared,
         "raw_mesh": raw_mesh,
