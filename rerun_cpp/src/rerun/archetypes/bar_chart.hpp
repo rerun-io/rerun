@@ -46,7 +46,8 @@ namespace rerun {
             // Extensions to generated type defined in 'bar_chart_ext.cpp'
 
             BarChart(rerun::datatypes::TensorBuffer buffer) {
-                this->values = rerun::components::TensorData({1}, std::move(buffer));
+                this->values =
+                    rerun::components::TensorData({buffer.num_elems()}, std::move(buffer));
             }
 
             // --------------------------------------------------------------------

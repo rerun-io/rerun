@@ -10,7 +10,7 @@ namespace rerun {
         // [CODEGEN COPY TO HEADER START]
 
         BarChart(rerun::datatypes::TensorBuffer buffer) {
-            this->values = rerun::components::TensorData({1}, std::move(buffer));
+            this->values = rerun::components::TensorData({buffer.num_elems()}, std::move(buffer));
         }
 
         // --------------------------------------------------------------------
