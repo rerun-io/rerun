@@ -953,7 +953,7 @@ fn quote_doc_lines(lines: Vec<String>) -> String {
         return String::new();
     }
 
-    for line in lines {
+    for line in &lines {
         assert!(
             !line.contains("\"\"\""),
             "Cannot put triple quotes in Python docstrings"
