@@ -1,7 +1,6 @@
 //! The Rerun C SDK.
 //!
 //! The functions here must match `rerun.h`.
-// TODO(emilk): error handling
 
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
@@ -24,6 +23,52 @@ use re_sdk::{
 // Types:
 
 type CRecordingStream = u32;
+
+/// C version of [`re_sdk::SpawnOptions`].
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub struct CSpawnOptions {
+    pub port: u16,
+    pub memory_limit: *const c_char,
+    pub executable_name: *const c_char,
+    pub executable_path: *const c_char,
+}
+
+impl CSpawnOptions {
+    #[allow(clippy::result_large_err)]
+    pub fn as_rust(&self) -> Result<re_sdk::SpawnOptions, CError> {
+        let port = if self.port == 0 {
+            None
+        } else {
+            Some(self.port)
+        };
+
+        let memory_limit = if self.memory_limit.is_null() {
+            None
+        } else {
+            Some(ptr::try_char_ptr_as_str(self.memory_limit, "memory_limit")?.to_owned())
+        };
+
+        let executable_name = if self.executable_name.is_null() {
+            None
+        } else {
+            Some(ptr::try_char_ptr_as_str(self.executable_name, "executable_name")?.to_owned())
+        };
+
+        let executable_path = if self.executable_path.is_null() {
+            None
+        } else {
+            Some(ptr::try_char_ptr_as_str(self.executable_path, "executable_path")?.to_owned())
+        };
+
+        Ok(re_sdk::SpawnOptions {
+            port,
+            memory_limit,
+            executable_name,
+            executable_path,
+        })
+    }
+}
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,6 +132,7 @@ pub enum CErrorCode {
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
     RecordingStreamSaveFailure,
+    RecordingStreamSpawnFailure,
 
     _CategoryArrow = 0x0000_1000,
     ArrowIpcMessageParsingFailure,
@@ -164,6 +210,29 @@ pub extern "C" fn rr_version_string() -> *const c_char {
         Lazy::new(|| CString::new(re_sdk::build_info().to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_spawn_impl(spawn_opts: *const CSpawnOptions) -> Result<(), CError> {
+    let spawn_opts = if spawn_opts.is_null() {
+        re_sdk::SpawnOptions::default()
+    } else {
+        let spawn_opts = ptr::try_ptr_as_ref(spawn_opts, "spawn_opts")?;
+        spawn_opts.as_rust()?
+    };
+
+    re_sdk::spawn(&spawn_opts)
+        .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_spawn(spawn_opts: *const CSpawnOptions, error: *mut CError) {
+    if let Err(err) = rr_spawn_impl(spawn_opts) {
+        err.write_error(error);
+    }
 }
 
 #[allow(clippy::result_large_err)]
@@ -300,6 +369,46 @@ pub extern "C" fn rr_recording_stream_connect(
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_spawn_impl(
+    stream: CRecordingStream,
+    spawn_opts: *const CSpawnOptions,
+    flush_timeout_sec: f32,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let spawn_opts = if spawn_opts.is_null() {
+        re_sdk::SpawnOptions::default()
+    } else {
+        let spawn_opts = ptr::try_ptr_as_ref(spawn_opts, "spawn_opts")?;
+        spawn_opts.as_rust()?
+    };
+    let flush_timeout = if flush_timeout_sec >= 0.0 {
+        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
+    } else {
+        None
+    };
+
+    stream
+        .spawn(&spawn_opts, flush_timeout)
+        .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_spawn(
+    id: CRecordingStream,
+    spawn_opts: *const CSpawnOptions,
+    flush_timeout_sec: f32,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_spawn_impl(id, spawn_opts, flush_timeout_sec) {
         err.write_error(error);
     }
 }
