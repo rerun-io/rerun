@@ -30,7 +30,7 @@ permissions:
 
 jobs:
   py-lints:
-    name: Python lints (black, mypy, flake8)
+    name: Python lints (ruff, mypy, …)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
