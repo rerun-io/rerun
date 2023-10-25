@@ -33,9 +33,7 @@ class LintJob:
     no_filter_cmd: str | None = None
     allow_no_filter: bool = True
 
-    def run_cmd(
-        self, files: list[str], skip_list: list[str], no_change_filter: bool
-    ) -> bool:
+    def run_cmd(self, files: list[str], skip_list: list[str], no_change_filter: bool) -> bool:
         start = time.time()
 
         cmd = self.command
@@ -63,16 +61,10 @@ class LintJob:
 
         cmd_arr = ["pixi", "run", cmd]
 
-        cmd_preview = (
-            subprocess.list2cmdline(cmd_arr + ["<FILES>"])
-            if files
-            else subprocess.list2cmdline(cmd_arr)
-        )
+        cmd_preview = subprocess.list2cmdline(cmd_arr + ["<FILES>"]) if files else subprocess.list2cmdline(cmd_arr)
 
         full_cmd = cmd_arr + files
-        proc = subprocess.run(
-            full_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
+        proc = subprocess.run(full_cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if proc.returncode == 0:
             logging.info(f"PASS: {cmd} in {time.time() - start:.2f}s")
             logging.debug(f"----------\n{cmd_preview}\n{proc.stdout}\n----------")
@@ -89,9 +81,7 @@ PY_FOLDERS = ["docs/code-examples", "examples", "rerun_py", "scripts", "tests"]
 
 def main() -> None:
     start = time.time()
-    parser = argparse.ArgumentParser(
-        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
-    )
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument(
         "--log-level",
         dest="log_level",
@@ -125,9 +115,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    logging.basicConfig(
-        level=args.log_level, format="%(name)s(%(levelname)s): %(message)s"
-    )
+    logging.basicConfig(level=args.log_level, format="%(name)s(%(levelname)s): %(message)s")
     root_logger = logging.getLogger()
     root_logger.name = "fast-lint"
 
@@ -171,18 +159,11 @@ def main() -> None:
 
     for command in skip:
         if command not in [j.command for j in jobs]:
-            logging.error(
-                f"Unknown command '{command}' in 'skip', expected one of {[j.command for j in jobs]}"
-            )
+            logging.error(f"Unknown command '{command}' in 'skip', expected one of {[j.command for j in jobs]}")
             sys.exit(1)
 
-    with concurrent.futures.ThreadPoolExecutor(
-        max_workers=args.num_threads
-    ) as executor:
-        results = [
-            executor.submit(job.run_cmd, files, skip, args.no_change_filter)
-            for job in jobs
-        ]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.num_threads) as executor:
+        results = [executor.submit(job.run_cmd, files, skip, args.no_change_filter) for job in jobs]
 
     success = all(result.result() for result in results)
 
