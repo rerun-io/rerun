@@ -433,7 +433,6 @@ impl TextureManager2D {
         let data: &[u8] = data.as_ref();
 
         // TODO(andreas): temp allocator for staging data?
-        // We don't do any further validation of the buffer here as wgpu does so extensively.
         re_tracing::profile_scope!("write_texture");
         queue.write_texture(
             wgpu::ImageCopyTexture {
