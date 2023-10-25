@@ -87,8 +87,7 @@ ignore = [
   # allow relative imports
   "TID252",
 
-  # We still use `Union[…]` in our codegen. See https://github.com/rerun-io/rerun/pull/3956#issuecomment-1779596589
-  "UP007",
+  "UP007", # We need this, or `ruff format` will convert `Union[X, Y]` to `X | Y` which break on Python 3.8
 ]
 
 line-length = 120
