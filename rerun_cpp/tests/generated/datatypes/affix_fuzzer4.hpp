@@ -38,7 +38,9 @@ namespace rerun {
 
                 std::optional<std::vector<rerun::datatypes::AffixFuzzer3>> many_optional;
 
-                AffixFuzzer4Data() {}
+                AffixFuzzer4Data() {
+                    std::memset(reinterpret_cast<void*>(this), 0, sizeof(AffixFuzzer4Data));
+                }
 
                 ~AffixFuzzer4Data() {}
 

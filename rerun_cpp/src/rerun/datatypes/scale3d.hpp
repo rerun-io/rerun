@@ -35,7 +35,9 @@ namespace rerun {
                 /// Uniform scaling factor along all axis.
                 float uniform;
 
-                Scale3DData() {}
+                Scale3DData() {
+                    std::memset(reinterpret_cast<void*>(this), 0, sizeof(Scale3DData));
+                }
 
                 ~Scale3DData() {}
 
@@ -83,6 +85,16 @@ namespace rerun {
             }
 
             /// Individual scaling factors for each axis, distorting the original object.
+            Scale3D(rerun::datatypes::Vec3D three_d) : Scale3D() {
+                *this = Scale3D::three_d(std::move(three_d));
+            }
+
+            /// Uniform scaling factor along all axis.
+            Scale3D(float uniform) : Scale3D() {
+                *this = Scale3D::uniform(std::move(uniform));
+            }
+
+            /// Individual scaling factors for each axis, distorting the original object.
             static Scale3D three_d(rerun::datatypes::Vec3D three_d) {
                 Scale3D self;
                 self._tag = detail::Scale3DTag::ThreeD;
@@ -96,16 +108,6 @@ namespace rerun {
                 self._tag = detail::Scale3DTag::Uniform;
                 new (&self._data.uniform) float(std::move(uniform));
                 return self;
-            }
-
-            /// Individual scaling factors for each axis, distorting the original object.
-            Scale3D(rerun::datatypes::Vec3D three_d) {
-                *this = Scale3D::three_d(std::move(three_d));
-            }
-
-            /// Uniform scaling factor along all axis.
-            Scale3D(float uniform) {
-                *this = Scale3D::uniform(std::move(uniform));
             }
 
             /// Return a pointer to three_d if the union is in that state, otherwise `nullptr`.

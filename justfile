@@ -34,6 +34,10 @@ cpp-format:
     fd --extension c --exec clang-format -i
     fd --extension cpp --exec clang-format -i
 
+# Build our C++ SDK, and all our tests and examples
+cpp-build-all:
+    pixi run cpp-build-all
+
 # Build our C++ SDK and tests
 cpp-build:
     pixi run cpp-build

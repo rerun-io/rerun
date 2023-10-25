@@ -142,9 +142,6 @@ We prefer `{}` for constructors (`Foo{…}` instead of `Foo(…)`), though there
 
 Prefer `using Type = …;` over `typedef … Type;`.
 
-### Misc
-We don't add `inline` before class/struct member functions if they are inlined in the class/struct definition.
-
 ### Members
 We prefix _private_ member variables with a `_`:
 
@@ -174,6 +171,26 @@ struct Thing {
     }
 }
 ```
+
+### Constructors and builder pattern
+We use C++ constructors when it is unambiguous, but prefer _named static constructors_ otherwise.
+Like Rust, we use the `from_` prefix for static constructors, and the `with_` prefix for builder methods.
+
+```C++
+class Rect {
+    // We can't just overload normal constructors for these:
+    static Rect from_min_max(Vec2 min, Vec2 max) { … }
+    static Rect from_center_size(Vec2 center, Vec2 size) { … }
+
+    Rect with_color(Color color) && {
+        _color = color;
+        return std::move(*this);
+    }
+}
+```
+
+### Misc
+We don't add `inline` before class/struct member functions if they are inlined in the class/struct definition.
 
 
 ## Naming

@@ -76,7 +76,7 @@ namespace rerun {
         size_t TensorBufferExt::num_elems() const {
             switch (this->_tag) {
                 case detail::TensorBufferTag::NONE: {
-                    break; // Nothing to destroy
+                    return 0;
                 }
                 case detail::TensorBufferTag::U8: {
                     return _data.u8.size();

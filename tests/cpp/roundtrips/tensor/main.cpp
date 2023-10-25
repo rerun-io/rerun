@@ -13,10 +13,5 @@ int main(int, char** argv) {
     std::vector<int32_t> data(360);
     std::generate(data.begin(), data.end(), [n = 0]() mutable { return n++; });
 
-    rec.log(
-        "tensor",
-        rerun::archetypes::Tensor(
-            rerun::datatypes::TensorData{dimensions, rerun::datatypes::TensorBuffer::i32(data)}
-        )
-    );
+    rec.log("tensor", rerun::archetypes::Tensor(rerun::datatypes::TensorData{dimensions, data}));
 }

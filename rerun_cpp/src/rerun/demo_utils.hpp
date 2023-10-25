@@ -13,7 +13,7 @@ namespace rerun {
 
         /// A linear interpolator that bounces between `a` and `b` as `t` goes above `1.0`.
         inline float bounce_lerp(float a, float b, float t) {
-            auto tf = t - roundf(t);
+            auto tf = t - floorf(t);
             if (static_cast<int32_t>(t) % 2 == 0) {
                 return (1.0f - tf) * a + tf * b;
             } else {
@@ -27,7 +27,7 @@ namespace rerun {
         inline std::vector<T> linspace(T start, T end, size_t num) {
             std::vector<T> linspaced(num);
             std::generate(linspaced.begin(), linspaced.end(), [&, i = 0]() mutable {
-                return start + i++ * (end - start) / static_cast<T>(num - 1);
+                return start + static_cast<float>(i++) * (end - start) / static_cast<T>(num - 1);
             });
             return linspaced;
         }
