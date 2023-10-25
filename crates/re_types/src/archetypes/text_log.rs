@@ -48,6 +48,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .init()?;
 ///     log::info!("This INFO log got added through the standard logging interface");
 ///
+///     log::logger().flush();
+///
 ///     Ok(())
 /// }
 /// ```

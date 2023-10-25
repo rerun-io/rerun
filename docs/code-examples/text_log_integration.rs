@@ -21,5 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init()?;
     log::info!("This INFO log got added through the standard logging interface");
 
+    log::logger().flush();
+
     Ok(())
 }
