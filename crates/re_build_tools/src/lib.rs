@@ -58,12 +58,16 @@ pub(crate) fn should_output_cargo_build_instructions() -> bool {
 // ------------------
 
 /// Where is this `build.rs` build script running?
+#[derive(Clone, Copy)]
 pub enum Environment {
     /// We are running `cargo publish` (via `scripts/ci/crates.py`); _probably_ on CI.
     PublishingCrates,
 
     /// We are running on CI, but NOT publishing crates
     CI,
+
+    /// We are running in the conda build environment
+    CondaBuild,
 
     /// Are we a developer running inside the workspace of <https://github.com/rerun-io/rerun> ?
     DeveloperInWorkspace,
@@ -89,6 +93,10 @@ impl Environment {
             // `CI` is an env-var set by GitHub actions.
             eprintln!("Environment: env-var CI is set");
             Self::CI
+        } else if is_on_conda() {
+            // `CONDA_BUILD` is an env-var set by conda build
+            eprintln!("Environment: env-var CONDA_BUILD is set");
+            Self::CondaBuild
         } else if is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE") {
             // IS_IN_RERUN_WORKSPACE is set by `.cargo/config.toml` and also in the Rust-analyzer settings in `.vscode/settings.json`
             eprintln!("Environment: env-var IS_IN_RERUN_WORKSPACE is set");
@@ -106,6 +114,12 @@ pub fn is_on_ci() -> bool {
     std::env::var("CI").is_ok()
 }
 
+/// Are we running in the Conda build environment?
+pub fn is_on_conda() -> bool {
+    // `CONDA_BUILD` is an env-var set by conda build
+    std::env::var("CONDA_BUILD").is_ok()
+}
+
 /// Call from the `build.rs` file of any crate you want to generate build info for.
 ///
 /// Use this crate together with the `re_build_info` crate.
@@ -113,7 +127,7 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
     let environment = Environment::detect();
 
     let export_datetime = match environment {
-        Environment::PublishingCrates | Environment::CI => true,
+        Environment::PublishingCrates | Environment::CI | Environment::CondaBuild => true,
 
         Environment::DeveloperInWorkspace => EXPORT_BUILD_TIME_FOR_DEVELOPERS,
 
@@ -128,7 +142,9 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         Environment::DeveloperInWorkspace => EXPORT_GIT_FOR_DEVELOPERS,
 
         // We shouldn't show the users git hash/branch in the rerun viewer.
-        Environment::UsedAsDependency => false,
+        // TODO(jleibs): Conda builds run off a downloaded source tar-ball
+        // the git environment is from conda itself.
+        Environment::UsedAsDependency | Environment::CondaBuild => false,
     };
 
     if export_datetime {

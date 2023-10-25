@@ -17,7 +17,7 @@ fn should_run() -> bool {
         // We cannot run this during publishing,
         // we don't need to,
         // and it can also can cause a Cargo.lock file to be generated.
-        Environment::PublishingCrates => false,
+        Environment::PublishingCrates | Environment::CondaBuild => false,
 
         // Dependencies shouldn't change on CI, but who knows 🤷‍♂️
         Environment::CI => true,
