@@ -101,10 +101,7 @@ impl RerunArgs {
             )),
 
             RerunBehavior::Spawn => Ok((
-                RecordingStreamBuilder::new(application_id).spawn(
-                    &crate::SpawnOptions::default(),
-                    crate::default_flush_timeout(),
-                )?,
+                RecordingStreamBuilder::new(application_id).spawn(crate::default_flush_timeout())?,
                 Default::default(),
             )),
 

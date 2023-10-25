@@ -15,8 +15,7 @@ static GLOBAL: AccountingAllocator<MiMalloc> = AccountingAllocator::new(MiMalloc
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_memory::accounting_allocator::turn_on_tracking_if_env_var("RERUN_TRACK_ALLOCATIONS");
 
-    let rec = rerun::RecordingStreamBuilder::new("test_image_memory_rs")
-        .spawn(&rerun::SpawnOptions::default(), None)?;
+    let rec = rerun::RecordingStreamBuilder::new("test_image_memory_rs").spawn(None)?;
     log_images(&rec).unwrap();
 
     Ok(())
