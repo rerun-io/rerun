@@ -21,6 +21,19 @@ readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
+# We could use Ninja on Windows as well, but this makes the compiler setup needlessly complicated.
+# Also, it's more likely that users are also going to use Visual Studio/MSBuild directly.
+[target.win-64.tasks]
+cpp-prepare = "cmake -G 'Visual Studio 17 2022' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+
+[target.linux-64.tasks]
+cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+
+[target.osx-64.tasks]
+cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+
+[target.osx-arm64.tasks]
+cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
@@ -53,7 +66,6 @@ cpp-build-all = { depends_on = [
   "cpp-build-examples",
   "cpp-build-doc-examples",
 ] }
-cpp-prepare = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 cpp-build-tests = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",
 ] }
@@ -80,7 +92,6 @@ gitpython = ">=3.1.40"
 just = ">=1.15.0"
 maturin = ">=0.14,<0.15"
 mypy = "1.4.1"
-ninja = "1.11.1"
 pip = ">=23"
 pyarrow = "10.0.1"
 pytest = ">=7"
@@ -98,16 +109,19 @@ patchelf = ">=0.17"
 clang = ">=15,<16"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
+ninja = "1.11.1"
 
 [target.osx-64.dependencies]
 clang = ">=15,<16"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
+ninja = "1.11.1"
 
 [target.osx-arm64.dependencies]
 clang = ">=15,<16"
 c-compiler = "1.6.0.*"
 cxx-compiler = "1.6.0.*"
+ninja = "1.11.1"
 
 [target.win-64.dependecies]
 vs2022_win-64 = "19.37.32822"
