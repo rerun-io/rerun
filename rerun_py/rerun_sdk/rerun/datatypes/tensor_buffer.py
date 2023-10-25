@@ -40,7 +40,9 @@ class TensorBuffer(TensorBufferExt):
         npt.NDArray[np.uint32],
         npt.NDArray[np.uint64],
         npt.NDArray[np.uint8],
-    ] = field(converter=TensorBufferExt.inner__field_converter_override)  # type: ignore[misc]
+    ] = field(
+        converter=TensorBufferExt.inner__field_converter_override  # type: ignore[misc]
+    )
     """
     U8 (npt.NDArray[np.uint8]):
 
