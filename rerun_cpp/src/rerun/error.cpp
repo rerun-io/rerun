@@ -9,8 +9,9 @@
 
 namespace rerun {
     bool is_strict_mode() {
-        const char* env = getenv("RERUN_STRICT");
-        if (env == nullptr) {
+        char env[512] = {};
+        size_t env_length = 0;
+        if (getenv_s(&env_length, env,  sizeof(env), "RERUN_STRICT") != 0) {
             return false;
         }
 

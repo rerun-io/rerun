@@ -1403,7 +1403,9 @@ fn quote_fill_arrow_array_builder(
             if field.is_nullable {
                 quote! {
                     (void)num_elements;
-                    return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+                    if (true) { // Works around unreachability compiler warning.
+                        return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+                    }
                 }
             } else {
                 // Trivial forwarding to inner type.

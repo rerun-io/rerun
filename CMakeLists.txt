@@ -58,6 +58,11 @@ if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
     set(CMAKE_GENERATOR "Unix Makefiles")
 endif()
 
+# If using MSVC, always enable multi-process compiling for all targets.
+if(MSVC)
+    add_compile_options(/MP)
+endif()
+
 # Arrow requires a C++17 compliant compiler.
 if(NOT DEFINED CMAKE_CXX_STANDARD)
     set(CMAKE_CXX_STANDARD 17)

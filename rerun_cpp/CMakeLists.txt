@@ -16,7 +16,7 @@ set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
 
 # Do multithreaded compiling on MSVC.
 if(MSVC)
-    target_compile_options(rerun_sdk PRIVATE "/MP")
+    target_compile_options(rerun_sdk PRIVATE /MP)
 endif()
 
 # ------------------------------------------------------------------------------
