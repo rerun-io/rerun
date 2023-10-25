@@ -194,7 +194,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         }
         ObjectKind::Blueprint | ObjectKind::Archetype => {
             if examples.is_empty() {
-                reporter.warn(&object.virtpath, &object.fqname, "No exampels");
+                reporter.warn(&object.virtpath, &object.fqname, "No examples");
             }
         }
     }
