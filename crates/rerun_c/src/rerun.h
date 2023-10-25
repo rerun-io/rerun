@@ -184,7 +184,8 @@ typedef struct rr_error {
 /// Returns a human-readable version string of the Rerun C SDK.
 extern const char* rr_version_string(void);
 
-/// Spawns a new Rerun Viewer process from an executable available in PATH.
+/// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
+/// listen for incoming TCP connections.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
 /// Creates a new recording stream to log to.

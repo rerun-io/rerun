@@ -60,6 +60,38 @@ enum {
 /// set it as a the global.
 typedef uint32_t rr_recording_stream;
 
+/// Options to control the behavior of `spawn`.
+///
+/// Refer to the field-level documentation for more information about each individual options.
+///
+/// The defaults are ok for most use cases.
+typedef struct rr_spawn_options {
+    /// The port to listen on.
+    ///
+    /// Defaults to `9876` if set to `0`.
+    uint16_t port;
+
+    /// An upper limit on how much memory the Rerun Viewer should use.
+    /// When this limit is reached, Rerun will drop the oldest data.
+    /// Example: `16GB` or `50%` (of system total).
+    ///
+    /// Defaults to `75%` if null.
+    const char* memory_limit;
+
+    /// Specifies the name of the Rerun executable.
+    ///
+    /// You can omit the `.exe` suffix on Windows.
+    ///
+    /// Defaults to `rerun` if null.
+    const char* executable_name;
+
+    /// Enforce a specific executable to use instead of searching though PATH
+    /// for [`Self::executable_name`].
+    ///
+    /// Unspecified by default.
+    const char* executable_path;
+} rr_spawn_options;
+
 typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     const char* application_id;
@@ -152,6 +184,10 @@ typedef struct rr_error {
 /// Returns a human-readable version string of the Rerun C SDK.
 extern const char* rr_version_string(void);
 
+/// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
+/// listen for incoming TCP connections.
+extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
+
 /// Creates a new recording stream to log to.
 ///
 /// You must call this at least once to enable logging.
@@ -197,6 +233,28 @@ extern void rr_recording_stream_set_thread_local(
 /// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect(
     rr_recording_stream stream, const char* tcp_addr, float flush_timeout_sec, rr_error* error
+);
+
+/// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
+/// over TCP.
+///
+/// This function returns immediately and will only raise an error for argument parsing errors,
+/// not for connection errors as these happen asynchronously.
+///
+/// ## Parameters
+///
+/// spawn_opts:
+/// Configuration of the spawned process.
+/// Refer to `rr_spawn_options` documentation for details.
+/// Passing null is valid and will result in sane defaults.
+///
+/// flush_timeout_sec:
+/// The minimum time the SDK will wait during a flush before potentially
+/// dropping data if progress is not being made. Passing a negative value indicates no timeout,
+/// and can cause a call to `flush` to block indefinitely.
+extern void rr_recording_stream_spawn(
+    rr_recording_stream stream, const rr_spawn_options* spawn_opts, float flush_timeout_sec,
+    rr_error* error
 );
 
 /// Stream all log-data to a given file.
