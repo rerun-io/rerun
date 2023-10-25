@@ -84,8 +84,12 @@ FetchContent_Declare(LoguruGitRepo
     GIT_TAG "master"
 )
 
-# set any loguru compile-time flags before calling MakeAvailable()
-set(LOGURU_STACKTRACES 1)
+# Set any loguru compile-time flags before calling MakeAvailable()
+# Stacktraces are not yet supported on Windows.
+if(NOT WIN32)
+    set(LOGURU_STACKTRACES 1)
+endif()
+
 FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 
 # ------------------------------------------------------------------------------
