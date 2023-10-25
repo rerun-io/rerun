@@ -72,6 +72,7 @@
     "C_Cpp.autoAddFileAssociations": false,
     "cmake.buildDirectory": "${workspaceRoot}/build/",
     "cmake.generator": "Ninja", // Use Ninja, just like we do in our just/pixi command.
+    "rust-analyzer.showUnlinkedFileNotification": false,
     "editor.defaultFormatter": "charliermarsh.ruff",
     "ruff.format.args": [
         "--config=rerun_py/pyproject.toml"
