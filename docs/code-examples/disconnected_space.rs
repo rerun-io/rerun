@@ -1,8 +1,7 @@
 //! Disconnect two spaces.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space")
-        .spawn(&rerun::SpawnOptions::default(), None)?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").spawn(None)?;
 
     // These two points can be projected into the same space..
     rec.log(

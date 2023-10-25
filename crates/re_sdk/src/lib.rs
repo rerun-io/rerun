@@ -26,7 +26,7 @@ mod log_integration;
 // -------------
 // Public items:
 
-pub use spawn::{spawn, SpawnOptions};
+pub use spawn::{spawn, SpawnError, SpawnOptions};
 
 pub use self::recording_stream::{
     RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,

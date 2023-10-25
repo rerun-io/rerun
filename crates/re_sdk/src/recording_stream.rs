@@ -67,8 +67,8 @@ pub enum RecordingStreamError {
     },
 
     /// Error spawning a Rerun Viewer process.
-    #[error("Failed to spawn Rerun Viewer process: {0}")]
-    SpawnViewer(std::io::Error),
+    #[error(transparent)] // makes bubbling all the way up to main look nice
+    SpawnViewer(#[from] crate::SpawnError),
 
     /// Failure to host a web viewer and/or Rerun server.
     #[cfg(feature = "web_viewer")]
@@ -318,6 +318,35 @@ impl RecordingStreamBuilder {
     /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
     /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
     ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").spawn(re_sdk::default_flush_timeout())?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn spawn(
+        self,
+        flush_timeout: Option<std::time::Duration>,
+    ) -> RecordingStreamResult<RecordingStream> {
+        self.spawn_opts(&Default::default(), flush_timeout)
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
+    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
+    ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// The behavior of the spawned Viewer can be configured via `opts`.
+    /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
+    ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
     /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
@@ -326,16 +355,14 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .spawn(&re_sdk::SpawnOptions::default(), re_sdk::default_flush_timeout())?;
+    ///     .spawn_opts(&re_sdk::SpawnOptions::default(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn spawn(
+    pub fn spawn_opts(
         self,
         opts: &crate::SpawnOptions,
         flush_timeout: Option<std::time::Duration>,
     ) -> RecordingStreamResult<RecordingStream> {
-        use std::{net::TcpStream, time::Duration};
-
         let connect_addr = opts.connect_addr();
 
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
@@ -344,22 +371,7 @@ impl RecordingStreamBuilder {
             return self.connect(connect_addr, flush_timeout);
         }
 
-        if TcpStream::connect_timeout(&connect_addr, Duration::from_millis(1)).is_ok() {
-            re_log::info!(
-                addr = %opts.listen_addr(),
-                "A process is already listening at this address. Trying to connect instead."
-            );
-        } else {
-            crate::spawn(opts).map_err(RecordingStreamError::SpawnViewer)?;
-
-            // Give the newly spawned Rerun Viewer some time to bind.
-            for _ in 0..5 {
-                if TcpStream::connect_timeout(&connect_addr, Duration::from_millis(1)).is_ok() {
-                    break;
-                }
-                std::thread::sleep(Duration::from_millis(100));
-            }
-        }
+        spawn(opts)?;
 
         self.connect(connect_addr, flush_timeout)
     }
@@ -1161,6 +1173,9 @@ impl RecordingStream {
     /// underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to send data to that
     /// new process.
     ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
     /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
@@ -1168,38 +1183,40 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn spawn(
+    pub fn spawn(&self, flush_timeout: Option<std::time::Duration>) -> RecordingStreamResult<()> {
+        self.spawn_opts(&Default::default(), flush_timeout)
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
+    /// underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to send data to that
+    /// new process.
+    ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// The behavior of the spawned Viewer can be configured via `opts`.
+    /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
+    ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn spawn_opts(
         &self,
         opts: &crate::SpawnOptions,
         flush_timeout: Option<std::time::Duration>,
     ) -> RecordingStreamResult<()> {
-        use std::{net::TcpStream, time::Duration};
-
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
             return Ok(());
         }
 
-        let connect_addr = opts.connect_addr();
+        spawn(opts)?;
 
-        if TcpStream::connect_timeout(&connect_addr, Duration::from_millis(1)).is_ok() {
-            re_log::info!(
-                addr = %opts.listen_addr(),
-                "A process is already listening at this address. Trying to connect instead."
-            );
-        } else {
-            crate::spawn(opts).map_err(RecordingStreamError::SpawnViewer)?;
-
-            // Give the newly spawned Rerun Viewer some time to bind.
-            for _ in 0..5 {
-                if TcpStream::connect_timeout(&connect_addr, Duration::from_millis(1)).is_ok() {
-                    break;
-                }
-                std::thread::sleep(Duration::from_millis(100));
-            }
-        }
-
-        self.connect(connect_addr, flush_timeout);
+        self.connect(opts.connect_addr(), flush_timeout);
 
         Ok(())
     }
@@ -1275,6 +1292,36 @@ impl fmt::Debug for RecordingStream {
             None => write!(f, "RecordingStream {{ disabled }}"),
         }
     }
+}
+
+/// Helper to deduplicate spawn logic across [`RecordingStreamBuilder`] & [`RecordingStream`].
+fn spawn(opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
+    use std::{net::TcpStream, time::Duration};
+
+    let connect_addr = opts.connect_addr();
+
+    if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+        re_log::info!(
+            addr = %opts.listen_addr(),
+            "A process is already listening at this address. Trying to connect instead."
+        );
+    } else {
+        crate::spawn(opts)?;
+
+        // Give the newly spawned Rerun Viewer some time to bind.
+        //
+        // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
+        // at all, the connection will fail immediately, irrelevant of the timeout configuration.
+        // For that reason we use an extra loop.
+        for _ in 0..5 {
+            if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    Ok(())
 }
 
 // --- Stateful time ---

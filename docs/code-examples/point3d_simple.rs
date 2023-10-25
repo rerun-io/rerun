@@ -1,8 +1,7 @@
 //! Log some very simple points.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_simple")
-        .spawn(&rerun::SpawnOptions::default(), None)?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_simple").spawn(None)?;
 
     rec.log(
         "points",

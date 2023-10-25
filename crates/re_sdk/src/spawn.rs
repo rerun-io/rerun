@@ -3,30 +3,34 @@
 /// Refer to the field-level documentation for more information about each individual options.
 ///
 /// The defaults are ok for most use cases: `SpawnOptions::default()`.
-/// Use the builder pattern to customize them further:
+/// Use the partial-default pattern to customize them further:
 /// ```no_run
-/// let opts = re_sdk::SpawnOptions::default().with_port(1234u16).with_memory_limit("25%");
+/// let opts = re_sdk::SpawnOptions {
+///     port: 1234,
+///     memory_limit: "25%".into(),
+///     ..Default::default()
+/// };
 /// ```
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SpawnOptions {
     /// The port to listen on.
     ///
-    /// Defaults to `9876` if unspecified.
-    pub port: Option<u16>,
+    /// Defaults to `9876`.
+    pub port: u16,
 
     /// An upper limit on how much memory the Rerun Viewer should use.
     /// When this limit is reached, Rerun will drop the oldest data.
     /// Example: `16GB` or `50%` (of system total).
     ///
-    /// Defaults to `75%` if unspecified.
-    pub memory_limit: Option<String>,
+    /// Defaults to `75%`.
+    pub memory_limit: String,
 
     /// Specifies the name of the Rerun executable.
     ///
     /// You can omit the `.exe` suffix on Windows.
     ///
-    /// Defaults to `rerun` if unspecified.
-    pub executable_name: Option<String>,
+    /// Defaults to `rerun`.
+    pub executable_name: String,
 
     /// Enforce a specific executable to use instead of searching though PATH
     /// for [`Self::executable_name`].
@@ -35,66 +39,78 @@ pub struct SpawnOptions {
     pub executable_path: Option<String>,
 }
 
-impl SpawnOptions {
-    /// Refer to field-level documentation.
-    pub fn with_port(mut self, port: impl Into<u16>) -> Self {
-        self.port = Some(port.into());
-        self
-    }
+// NOTE: No need for .exe extension on windows.
+const RERUN_BINARY: &str = "rerun";
 
-    /// Refer to field-level documentation.
-    pub fn with_memory_limit(mut self, memory_limit: impl AsRef<str>) -> Self {
-        self.memory_limit = Some(memory_limit.as_ref().to_owned());
-        self
-    }
-
-    /// Refer to field-level documentation.
-    pub fn with_executable_name(mut self, executable_name: impl AsRef<str>) -> Self {
-        self.executable_name = Some(executable_name.as_ref().to_owned());
-        self
-    }
-
-    /// Refer to field-level documentation.
-    pub fn with_executable_path(mut self, executable_path: impl AsRef<str>) -> Self {
-        self.executable_path = Some(executable_path.as_ref().to_owned());
-        self
+impl Default for SpawnOptions {
+    fn default() -> Self {
+        Self {
+            port: crate::default_server_addr().port(),
+            memory_limit: "75%".into(),
+            executable_name: RERUN_BINARY.into(),
+            executable_path: None,
+        }
     }
 }
 
 impl SpawnOptions {
-    /// Resolves the final port value.
-    pub fn port(&self) -> u16 {
-        self.port.unwrap_or(9876)
-    }
-
     /// Resolves the final connect address value.
     pub fn connect_addr(&self) -> std::net::SocketAddr {
-        std::net::SocketAddr::new("127.0.0.1".parse().unwrap(), self.port())
+        std::net::SocketAddr::new("127.0.0.1".parse().unwrap(), self.port)
     }
 
     /// Resolves the final listen address value.
     pub fn listen_addr(&self) -> std::net::SocketAddr {
-        std::net::SocketAddr::new("0.0.0.0".parse().unwrap(), self.port())
-    }
-
-    /// Resolves the final memory limit value.
-    pub fn memory_limit(&self) -> String {
-        self.memory_limit.as_deref().unwrap_or("75%").to_owned()
+        std::net::SocketAddr::new("0.0.0.0".parse().unwrap(), self.port)
     }
 
     /// Resolves the final executable path.
     pub fn executable_path(&self) -> String {
-        // NOTE: No need for .exe extension on windows.
-        const RERUN_BINARY: &str = "rerun";
-
         if let Some(path) = self.executable_path.as_deref() {
             return path.to_owned();
         }
 
-        self.executable_name
-            .as_deref()
-            .unwrap_or(RERUN_BINARY)
-            .to_owned()
+        self.executable_name.clone()
+    }
+}
+
+/// Errors that can occur when [`spawn`]ing a Rerun Viewer.
+#[derive(thiserror::Error)]
+pub enum SpawnError {
+    /// Failed to find Rerun Viewer executable in PATH.
+    #[error("Failed to find Rerun Viewer executable in PATH.\n{message}\nPATH={search_path:?}")]
+    ExecutableNotFoundInPath {
+        /// High-level error message meant to be printed to the user (install tips etc).
+        message: String,
+
+        /// Name used for the executable search.
+        executable_name: String,
+
+        /// Value of the `PATH` environment variable, if any.
+        search_path: String,
+    },
+
+    /// Failed to find Rerun Viewer executable at explicit path.
+    #[error("Failed to find Rerun Viewer executable at {executable_path:?}")]
+    ExecutableNotFound {
+        /// Explicit path of the executable (specified by the caller).
+        executable_path: String,
+    },
+
+    /// Other I/O error.
+    #[error("Failed to spawn the Rerun Viewer process: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+impl std::fmt::Debug for SpawnError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Due to how recording streams are initialized in practice, most of the time `SpawnError`s
+        // will bubble all the way up to `main` and crash the program, which will call into the
+        // `Debug` implementation.
+        //
+        // Spawn errors include a user guide, and so we need them to render in a nice way.
+        // Hence we redirect the debug impl to the display impl generated by `thiserror`.
+        <Self as std::fmt::Display>::fmt(self, f)
     }
 }
 
@@ -104,33 +120,24 @@ impl SpawnOptions {
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
 /// to [`crate::RecordingStream::connect`] or use [`crate::RecordingStream::spawn`] directly.
-pub fn spawn(opts: &SpawnOptions) -> std::io::Result<()> {
+pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     use std::{net::TcpStream, process::Command, time::Duration};
 
     // NOTE: It's indented on purpose, it just looks better and reads easier.
     const EXECUTABLE_NOT_FOUND: &str = //
     "
-    Couldn't find the Rerun Viewer executable in your PATH.
+    You can install binary releases of the Rerun Viewer:
+    * Using `cargo`: `cargo binstall rerun-cli` (see https://github.com/cargo-bins/cargo-binstall)
+    * Via direct download from our release assets: https://github.com/rerun-io/rerun/releases/latest/
+    * Using `pip`: `pip3 install rerun-sdk` (warning: pip version has slower start times!)
 
-    You can install binary releases of the Rerun Viewer using any of the following methods:
-    * Binary download with `cargo`: `cargo binstall rerun-cli` (see https://github.com/cargo-bins/cargo-binstall)
-    * Build from source with `cargo`: `cargo install rerun-cli` (requires Rust 1.72+)
-    * Direct download from our release assets: https://github.com/rerun-io/rerun/releases/latest/
-    * Or together with the Rerun Python SDK:
-      * Pip: `pip3 install rerun-sdk`
-      * Conda: `conda install -c conda-forge rerun-sdk`
-      * Binary download with `pixi`: `pixi global install rerun-sdk` (see https://prefix.dev/docs/pixi/overview)
-
-    If your platform and/or architecture is not available, you can refer to
-    https://github.com/rerun-io/rerun/blob/main/BUILD.md for instructions on how to build from source.
-
-    Otherwise, feel free to open an issue at https://github.com/rerun-io/rerun/issues if you'd like to
-    request binary releases for your specific platform.
+    For more information, refer to our complete install documentation over at:
+    https://rerun.io/docs/getting-started/installing-viewer
     ";
 
-    let port = opts.port();
+    let port = opts.port;
     let connect_addr = opts.connect_addr();
-    let memory_limit = opts.memory_limit();
+    let memory_limit = &opts.memory_limit;
     let executable_path = opts.executable_path();
 
     if TcpStream::connect_timeout(&connect_addr, Duration::from_millis(1)).is_ok() {
@@ -150,12 +157,20 @@ pub fn spawn(opts: &SpawnOptions) -> std::io::Result<()> {
     let rerun_bin = match res {
         Ok(rerun_bin) => rerun_bin,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            eprintln!("{EXECUTABLE_NOT_FOUND}");
-            return Err(err);
+            return if let Some(executable_path) = opts.executable_path.as_ref() {
+                Err(SpawnError::ExecutableNotFound {
+                    executable_path: executable_path.clone(),
+                })
+            } else {
+                Err(SpawnError::ExecutableNotFoundInPath {
+                    message: EXECUTABLE_NOT_FOUND.to_owned(),
+                    executable_name: opts.executable_name.clone(),
+                    search_path: std::env::var("PATH").unwrap_or_else(|_| String::new()),
+                })
+            }
         }
         Err(err) => {
-            re_log::info!(%err, "Failed to spawn Rerun Viewer");
-            return Err(err);
+            return Err(err.into());
         }
     };
 

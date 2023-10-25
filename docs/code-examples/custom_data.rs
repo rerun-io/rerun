@@ -72,8 +72,7 @@ impl rerun::Loggable for Confidence {
 // ---
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_custom_data")
-        .spawn(&rerun::SpawnOptions::default(), None)?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_custom_data").spawn(None)?;
 
     rec.log(
         "left/my_confident_point_cloud",

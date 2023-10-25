@@ -30,8 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use std::f32::consts::TAU;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d")
-///         .spawn(&rerun::SpawnOptions::default(), None)?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d").spawn(None)?;
 ///
 ///     let arrow = rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]);
 ///

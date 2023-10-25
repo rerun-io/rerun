@@ -30,8 +30,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rerun::external::log;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_text_log_integration")
-///         .spawn(&rerun::SpawnOptions::default(), None)?;
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_text_log_integration").spawn(None)?;
 ///
 ///     // Log a text entry directly:
 ///     rec.log(

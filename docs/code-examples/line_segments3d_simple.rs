@@ -1,8 +1,7 @@
 //! Log a simple set of line segments.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_segments3d")
-        .spawn(&rerun::SpawnOptions::default(), None)?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_segments3d").spawn(None)?;
 
     let points = [
         [0., 0., 0.],

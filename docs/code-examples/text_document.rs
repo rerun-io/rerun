@@ -1,8 +1,7 @@
 //! Log a `TextDocument`
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_text_document")
-        .spawn(&rerun::SpawnOptions::default(), None)?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_text_document").spawn(None)?;
 
     rec.log(
         "text_document",

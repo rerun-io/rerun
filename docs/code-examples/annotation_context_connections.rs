@@ -2,7 +2,7 @@
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_connections")
-        .spawn(&rerun::SpawnOptions::default(), None)?;
+        .spawn(None)?;
 
     // Log an annotation context to assign a label and color to each class
     // Create a class description with labels and color for each keypoint ID as well as some
