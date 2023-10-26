@@ -12,6 +12,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -111,7 +112,8 @@ namespace rerun {
             /// line will use the default width of `1.0`.
             TimeSeriesScalar with_radius(rerun::components::Radius _radius) && {
                 radius = std::move(_radius);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional color for the scalar entry.
@@ -127,7 +129,8 @@ namespace rerun {
             /// Otherwise, the line will appear gray in the legend.
             TimeSeriesScalar with_color(rerun::components::Color _color) && {
                 color = std::move(_color);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// An optional label for the point.
@@ -140,7 +143,8 @@ namespace rerun {
             /// the space it's in.
             TimeSeriesScalar with_label(rerun::components::Text _label) && {
                 label = std::move(_label);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Specifies whether a point in a scatter plot should form a continuous line.
@@ -152,7 +156,8 @@ namespace rerun {
             /// required.
             TimeSeriesScalar with_scattered(rerun::components::ScalarScattering _scattered) && {
                 scattered = std::move(_scattered);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.
