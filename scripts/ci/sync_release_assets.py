@@ -219,6 +219,13 @@ def main() -> None:
     if args.update:
         update_release_assets(release, assets)
 
+    # Github will unconditionally draft a release in some cases (e.g. because the branch it has
+    # originated from has been modified since). This is beyond our control.
+    #
+    # Draft releases are not accessible through any of the expected ways, so we make sure to fix
+    # that.
+    #
+    # See e.g. <https://github.com/ncipollo/release-action/issues/317>.
     if release.draft:
         print(f"Detected mistakenly drafted release, undrafting…")
         release.update_release(release.title, release.body, draft=False)
