@@ -15,8 +15,7 @@
 #endif
 
 #if defined(__GNUC__)
-#define DISABLE_MAYBE_UNINITIALIZED_POP \
-    _Pragma("GCC diagnostic pop")
+#define DISABLE_MAYBE_UNINITIALIZED_POP _Pragma("GCC diagnostic pop")
 #else
 #define DISABLE_MAYBE_UNINITIALIZED_WARNING
 #endif

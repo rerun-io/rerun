@@ -1,5 +1,5 @@
-#include "translation_rotation_scale3d.hpp"
 #include "../util.hpp"
+#include "translation_rotation_scale3d.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
@@ -26,10 +26,9 @@ namespace rerun {
             DISABLE_MAYBE_UNINITIALIZED_PUSH
             TranslationRotationScale3D(const TranslationRotationScale3D& other)
                 : translation(other.translation),
-                rotation(other.rotation),
-                scale(other.scale),
-                from_parent(other.from_parent) {
-            };
+                  rotation(other.rotation),
+                  scale(other.scale),
+                  from_parent(other.from_parent){};
             DISABLE_MAYBE_UNINITIALIZED_POP
 
             /// Creates a new 3D transform from translation/rotation/scale.
