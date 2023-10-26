@@ -34,7 +34,7 @@ SCENARIO(
         from_manual.labels = {"hello", "friend"};
         from_manual.class_ids = {126, 127};
         from_manual.instance_keys = {123ull, 124ull};
-        from_manual.draw_order = 123;
+        from_manual.draw_order = 123.0f;
 
         test_compare_archetype_serialization(from_manual, from_builder);
     }

@@ -9,10 +9,20 @@
 
 namespace rerun {
     bool is_strict_mode() {
-        const char* env = getenv("RERUN_STRICT");
+        // MSVC warns if the older `getenv` is used.
+        // The new C11 getenv_s on the other hand isn't supported by all C++ compilers.
+#ifdef _MSC_VER
+        char env[512] = {};
+        size_t env_length = 0;
+        if (getenv_s(&env_length, env, sizeof(env), "RERUN_STRICT") != 0) {
+            return false;
+        }
+#else
+        const char* env = std::getenv("RERUN_STRICT");
         if (env == nullptr) {
             return false;
         }
+#endif
 
         std::string v = env;
         std::transform(v.begin(), v.end(), v.begin(), [](char c) { return std::tolower(c); });

@@ -7,14 +7,16 @@ order: 2
 Before adding Rerun to your application, start by [installing the viewer](installing-viewer.md).
 
 The Rerun C++ SDK depends on an install of the `arrow-cpp` library on your system using.
-If you are using [pixi], you can simply type `pixi global install arrow-cpp`.
+If you are using [Pixi](https://prefix.dev/docs/pixi/overview), you can simply type `pixi global install arrow-cpp`.
 Find more information about other package managers at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
+⚠️ On Windows this only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes. For debug builds you have to build Arrow yourself, see [Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html).
+🚧 In the future we want to make this part of the setup easier.
 
 If you're using CMake, you can add the following to your `CMakeLists.txt`:
 
 ```cmake
 include(FetchContent)
-FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
 FetchContent_MakeAvailable(rerun_sdk)
 ```
 
@@ -32,14 +34,14 @@ target_link_libraries(example PRIVATE rerun_sdk)
 
 Combining the above, a minimal self-contained `CMakeLists.txt` looks like:
 ```cmake
-project(example LANGUAGES CXX)
 cmake_minimum_required(VERSION 3.16)
+project(example LANGUAGES CXX)
 
 add_executable(example main.cpp)
 
 # Download the rerun_sdk
 include(FetchContent)
-FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
 FetchContent_MakeAvailable(rerun_sdk)
 
 # Rerun requires at least C++17, but it should be compatible with newer versions.

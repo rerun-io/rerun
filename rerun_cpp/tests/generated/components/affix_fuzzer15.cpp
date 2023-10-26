@@ -42,7 +42,9 @@ namespace rerun {
             }
 
             (void)num_elements;
-            return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+            if (true) {
+                return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+            }
 
             return Error::ok();
         }

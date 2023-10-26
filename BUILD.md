@@ -67,10 +67,17 @@ If you want to build from source, use the following instructions.
 
 First, a local virtual environment must be created and the necessary dependencies installed (this needs to be done only once):
 
+Linux/Mac:
 ```sh
 just py-dev-env
 source venv/bin/activate
 ```
+Windows (powershell):
+```ps1
+just py-dev-env
+.\venv\Scripts\Activate.ps1
+```
+
 
 Then, the SDK can be compiled and installed in the virtual environment using the following command:
 
@@ -80,38 +87,22 @@ just py-build
 
 This needs to be repeated each time the Rust source code is updated, for example after updating your clone using `git pull`.
 
-Finally, the virtual environment must be activated to run Python examples:
-
+Now you can run the python examples from the repository, given that you're still in the virtual environment.
 ```sh
-source venv/bin/activate
 python examples/python/car/main.py
 ```
 
-### Windows (PowerShell)
+## Building and installing the Rerun C++ SDK
 
-The `justfile` currently doesn't support Windows, so each step must be run manually.
+On Windows you have to have a system install of Visual Studio 2022 in order to compile the SDK and samples.
 
-First, create and activate a local virtual environment and install the required dependencies using the following commands:
-
-```ps1
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r scripts/requirements-dev.txt
+All other dependencies are downloaded by Pixi! You can run tests with:
+```sh
+just cpp-test
 ```
-
-Then build and install the Rerun SDK with:
-
-```ps1
-maturin develop \
-    --manifest-path rerun_py/Cargo.toml \
-    --extras="tests"
-```
-
-You can then run the example using the following command:
-
-```ps1
-python examples/python/car/main.py
+and build all C++ artifacts with:
+```sh
+just cpp-build-all
 ```
 
 ## Building the docs

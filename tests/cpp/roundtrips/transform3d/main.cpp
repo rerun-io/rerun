@@ -3,7 +3,7 @@
 #include <rerun/archetypes/transform3d.hpp>
 #include <rerun/recording_stream.hpp>
 
-#include <cmath>
+constexpr float PI = 3.14159265358979323846264338327950288f;
 
 int main(int, char** argv) {
     auto rec = rerun::RecordingStream("rerun_example_roundtrip_transform3d");
@@ -50,7 +50,7 @@ int main(int, char** argv) {
             {1.0f, 2.0f, 3.0f},
             rerun::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
-                rerun::datatypes::Angle::radians(static_cast<float>(M_PI))
+                rerun::datatypes::Angle::radians(PI)
             )
         )
     );
@@ -61,7 +61,7 @@ int main(int, char** argv) {
             {1.0f, 2.0f, 3.0f},
             rerun::datatypes::RotationAxisAngle(
                 {0.2f, 0.2f, 0.8f},
-                rerun::datatypes::Angle::radians(static_cast<float>(M_PI))
+                rerun::datatypes::Angle::radians(PI)
             ),
             42.0f,
             true
