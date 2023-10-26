@@ -48,8 +48,11 @@ jobs:
           python-version: 3.x
 
       - name: Check links
+        # NOTE: We allow `?speculative-link` only in alpha releases
         run: |
-          python3 scripts/ci/check_links.py
+          if [ ${{ inputs.release-type }} = "alpha" ]; then
+            python3 scripts/ci/check_links.py
+          fi
 
   version:
     name: "Versioning"
