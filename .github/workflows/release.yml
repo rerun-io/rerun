@@ -313,7 +313,7 @@ jobs:
           cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
 
           cat <<EOF > comment-body.txt
-          Version ${{ needs.version.outputs.current }} published sucessfully.
+          Version ${{ needs.version.outputs.current }} published successfully.
 
           | artifact                    | install        |
           | --------------------------- | -------------- |
