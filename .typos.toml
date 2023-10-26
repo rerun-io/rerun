@@ -117,6 +117,12 @@ valour = "valor"
 vaporise = "vaporize"
 vigour = "vigor"
 
+# null-terminated is the name of the wikipedia article!
+# https://en.wikipedia.org/wiki/Null-terminated_string
+nullterminated = "null-terminated"
+zeroterminated = "null-terminated"
+zero-terminated = "null-terminated"
+
 [default]
 # Work around for typos inside of 8-character hashes. These show up inside of ipynb.
 # e.g. "f4e1caf9" -> `caf` should be `calf`

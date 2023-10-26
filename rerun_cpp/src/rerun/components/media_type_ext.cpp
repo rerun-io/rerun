@@ -10,8 +10,11 @@ namespace rerun {
         struct MediaTypeExt {
 #define MediaType MediaTypeExt
 
+            // Don't provide a string_view constructor, std::string constructor exists and covers this.
+
             // [CODEGEN COPY TO HEADER START]
 
+            /// Construct media type from a null-terminated UTF8 string.
             MediaType(const char* media_type) : value(media_type) {}
 
             // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can
