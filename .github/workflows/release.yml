@@ -93,7 +93,7 @@ jobs:
 
           # parse the release version from the branch name
           #   `release-0.8.1-meta.N` -> `0.8.1`
-          release_version=$(python3 scripts/ci/crates.py get-version --from-git --finalize)
+          release_version=$(python3 scripts/ci/crates.py get-version --from git --finalize)
 
           # store version before the update, so we can later detect if it changed
           previous=$(python3 scripts/ci/crates.py get-version)
