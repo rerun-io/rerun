@@ -27,12 +27,8 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let default_enabled = true;
-    args.rerun
-        .clone()
-        .run("rerun_example_clock", default_enabled, move |rec| {
-            run(&rec, &args).unwrap();
-        })
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_clock")?;
+    run(&rec, &args)
 }
 
 fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {

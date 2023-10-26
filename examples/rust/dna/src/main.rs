@@ -13,7 +13,7 @@ const NUM_POINTS: usize = 100;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
-        .connect(rerun::default_server_addr(), rerun::default_flush_timeout())?;
+        .spawn(rerun::default_flush_timeout())?;
 
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
