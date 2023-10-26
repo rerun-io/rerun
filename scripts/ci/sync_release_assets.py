@@ -190,7 +190,10 @@ def main() -> None:
 
     # Wait for a bit before doing anything.
     # Useful on CI because the google-cloud-storage upload action doesn't guarantee to read-your-writes.
-    time.sleep(args.wait)
+    wait_time_secs = float(args.wait)
+    if wait_time_secs > 0.0:
+        print(f"Waiting for {wait_time_secs}s…")
+        time.sleep(wait_time_secs)
 
     gh = Github(args.github_token, timeout=args.github_timeout)
     repo = gh.get_repo(args.github_repository)
