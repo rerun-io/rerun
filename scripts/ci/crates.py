@@ -496,7 +496,12 @@ def get_latest_published_version(crate_name: str) -> str | None:
     body = resp.json()
 
     if not resp.ok:
-        raise Exception(f"failed to get crate {crate_name}: {body['errors'][0]['detail']}")
+        detail = body["errors"][0]["detail"]
+        if detail == "Not Found":
+            # First time we're publishing this crate
+            return None
+        else:
+            raise Exception(f"failed to get crate {crate_name}: {detail}")
 
     if "versions" not in body:
         return None
