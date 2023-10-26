@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 from typing import Dict
+import time
 
 from github import Github
 from github.GitRelease import GitRelease
@@ -169,6 +170,7 @@ def main() -> None:
         "--github-release", required=True, help="ID of the Github (pre)release (e.g. `prerelease` or `0.9.0`)"
     )
     parser.add_argument("--github-timeout", default=120, help="Timeout for Github related operations")
+    parser.add_argument("--wait", default=0, help="Sleep a bit before doing anything")
     parser.add_argument("--remove", action="store_true", help="Remove existing assets from the specified release")
     parser.add_argument("--update", action="store_true", help="Update new assets to the specified release")
     parser.add_argument("--no-wheels", action="store_true", help="Don't upload Python wheels")
@@ -177,6 +179,9 @@ def main() -> None:
     parser.add_argument("--no-rerun-cli", action="store_true", help="Don't upload CLI")
     args = parser.parse_args()
 
+    # Wait for a bit before doing anything.
+    # Useful on CI because the google-cloud-storage upload action doesn't guarantee to read-your-writes.
+    time.sleep(args.wait)
     gh = Github(args.github_token, timeout=args.github_timeout)
     repo = gh.get_repo(args.github_repository)
     release = repo.get_release(args.github_release)
