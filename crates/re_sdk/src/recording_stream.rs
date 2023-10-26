@@ -1300,6 +1300,7 @@ fn spawn(opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
 
     let connect_addr = opts.connect_addr();
 
+    // TODO(#4019): application-level handshake
     if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
         re_log::info!(
             addr = %opts.listen_addr(),

@@ -4,7 +4,7 @@ use rerun::external::glam;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").spawn(None)?;
+        rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_partial_updates").spawn(rerun::default_flush_timeout())?;
 
     let vertex_positions = [[-1.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 

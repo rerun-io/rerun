@@ -30,7 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rand::{distributions::Uniform, Rng as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points2d").spawn(None)?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points2d").spawn(rerun::default_flush_timeout())?;
 ///
 ///     let mut rng = rand::thread_rng();
 ///     let dist = Uniform::new(-3., 3.);

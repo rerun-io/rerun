@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_asset3d_out_of_tree").spawn(None)?;
+        rerun::RecordingStreamBuilder::new("rerun_example_asset3d_out_of_tree").spawn(rerun::default_flush_timeout())?;
 
     rec.log_timeless("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 

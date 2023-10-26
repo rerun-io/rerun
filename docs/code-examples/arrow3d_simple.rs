@@ -3,7 +3,7 @@
 use std::f32::consts::TAU;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_arrow3d").spawn(None)?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_arrow3d").spawn(rerun::default_flush_timeout())?;
 
     let origins = vec![rerun::Position3D::ZERO; 100];
     let (vectors, colors): (Vec<_>, Vec<_>) = (0..100)

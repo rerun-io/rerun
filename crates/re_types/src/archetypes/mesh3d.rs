@@ -30,7 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Simple indexed 3D mesh
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").spawn(None)?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").spawn(rerun::default_flush_timeout())?;
 ///
 ///     rec.log(
 ///         "triangle",

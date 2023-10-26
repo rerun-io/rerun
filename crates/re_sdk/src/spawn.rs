@@ -37,6 +37,9 @@ pub struct SpawnOptions {
     ///
     /// Unspecified by default.
     pub executable_path: Option<String>,
+
+    /// Extra arguments that will be passed as-is to the Rerun Viewer process.
+    pub extra_args: Vec<String>,
 }
 
 // NOTE: No need for .exe extension on windows.
@@ -49,6 +52,7 @@ impl Default for SpawnOptions {
             memory_limit: "75%".into(),
             executable_name: RERUN_BINARY.into(),
             executable_path: None,
+            extra_args: Vec::new(),
         }
     }
 }
@@ -116,6 +120,9 @@ impl std::fmt::Debug for SpawnError {
 
 /// Spawns a new Rerun Viewer process ready to listen for TCP connections.
 ///
+/// If there is already a process listening on this port (Rerun or not), this function returns `Ok`
+/// WITHOUT spawning a `rerun` process (!).
+///
 /// Refer to [`SpawnOptions`]'s documentation for configuration options.
 ///
 /// This only starts a Viewer process: if you'd like to connect to it and start sending data, refer
@@ -140,7 +147,8 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     let memory_limit = &opts.memory_limit;
     let executable_path = opts.executable_path();
 
-    if TcpStream::connect_timeout(&connect_addr, Duration::from_millis(1)).is_ok() {
+    // TODO(#4019): application-level handshake
+    if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
         re_log::info!(
             addr = %opts.listen_addr(),
             "A process is already listening at this address. Assuming it's a Rerun Viewer."
@@ -152,6 +160,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
         .arg("--skip-welcome-screen")
+        .args(opts.extra_args.clone())
         .spawn();
 
     let rerun_bin = match res {
