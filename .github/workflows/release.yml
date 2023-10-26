@@ -159,10 +159,10 @@ jobs:
           cat <<EOF > pr-body.txt
           ### Next steps
           - Test the release
-          - If this is an `alpha` release, you can just merge the pull request.
+          - If this is an 'alpha' release, you can just merge the pull request.
           - Otherwise:
-            - For any added commits, run the release workflow in `rc` mode again
-            - After testing, run the release workflow in `release` mode
+            - For any added commits, run the release workflow in 'rc' mode again
+            - After testing, run the release workflow in 'release' mode
             - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
 
           - [ ] Tests
