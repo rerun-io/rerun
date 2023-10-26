@@ -50,6 +50,7 @@ impl From<CStoreKind> for StoreKind {
 pub struct CStoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: *const c_char,
+    pub application_id_length: u32,
 
     pub store_kind: CStoreKind,
 }
@@ -57,6 +58,7 @@ pub struct CStoreInfo {
 #[repr(C)]
 pub struct CDataCell {
     pub component_name: *const c_char,
+    pub component_name_length: u32,
 
     /// Length of [`Self::bytes`].
     pub num_bytes: u64,
@@ -68,6 +70,7 @@ pub struct CDataCell {
 #[repr(C)]
 pub struct CDataRow {
     pub entity_path: *const c_char,
+    pub entity_path_length: u32,
     pub num_instances: u32,
     pub num_data_cells: u32,
     pub data_cells: *const CDataCell,
@@ -174,10 +177,15 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
 
     let CStoreInfo {
         application_id,
+        application_id_length,
         store_kind,
     } = *store_info;
 
-    let application_id = ptr::try_char_ptr_as_str(application_id, "store_info.application_id")?;
+    let application_id = ptr::try_char_ptr_as_str(
+        application_id,
+        application_id_length,
+        "store_info.application_id",
+    )?;
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
@@ -269,11 +277,12 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
 fn rr_recording_stream_connect_impl(
     stream: CRecordingStream,
     tcp_addr: *const c_char,
+    tcp_addr_length: u32,
     flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
-    let tcp_addr = ptr::try_char_ptr_as_str(tcp_addr, "tcp_addr")?;
+    let tcp_addr = ptr::try_char_ptr_as_str(tcp_addr, tcp_addr_length, "tcp_addr")?;
     let tcp_addr = tcp_addr.parse().map_err(|err| {
         CError::new(
             CErrorCode::InvalidSocketAddress,
@@ -296,10 +305,13 @@ fn rr_recording_stream_connect_impl(
 pub extern "C" fn rr_recording_stream_connect(
     id: CRecordingStream,
     tcp_addr: *const c_char,
+    tcp_addr_length: u32,
     flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec) {
+    if let Err(err) =
+        rr_recording_stream_connect_impl(id, tcp_addr, tcp_addr_length, flush_timeout_sec)
+    {
         err.write_error(error);
     }
 }
@@ -308,8 +320,9 @@ pub extern "C" fn rr_recording_stream_connect(
 fn rr_recording_stream_save_impl(
     stream: CRecordingStream,
     path: *const c_char,
+    path_length: u32,
 ) -> Result<(), CError> {
-    let path = ptr::try_char_ptr_as_str(path, "path")?;
+    let path = ptr::try_char_ptr_as_str(path, path_length, "path")?;
     recording_stream(stream)?.save(path).map_err(|err| {
         CError::new(
             CErrorCode::RecordingStreamSaveFailure,
@@ -323,9 +336,10 @@ fn rr_recording_stream_save_impl(
 pub extern "C" fn rr_recording_stream_save(
     id: CRecordingStream,
     path: *const c_char,
+    path_length: u32,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_save_impl(id, path) {
+    if let Err(err) = rr_recording_stream_save_impl(id, path, path_length) {
         err.write_error(error);
     }
 }
@@ -334,9 +348,10 @@ pub extern "C" fn rr_recording_stream_save(
 fn rr_recording_stream_set_time_sequence_impl(
     stream: CRecordingStream,
     timeline_name: *const c_char,
+    timeline_name_length: u32,
     sequence: i64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, timeline_name_length, "timeline_name")?;
     recording_stream(stream)?.set_time_sequence(timeline, Some(sequence));
     Ok(())
 }
@@ -346,10 +361,16 @@ fn rr_recording_stream_set_time_sequence_impl(
 pub extern "C" fn rr_recording_stream_set_time_sequence(
     stream: CRecordingStream,
     timeline_name: *const c_char,
+    timeline_name_length: u32,
     sequence: i64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_time_sequence_impl(stream, timeline_name, sequence) {
+    if let Err(err) = rr_recording_stream_set_time_sequence_impl(
+        stream,
+        timeline_name,
+        timeline_name_length,
+        sequence,
+    ) {
         err.write_error(error);
     }
 }
@@ -358,9 +379,10 @@ pub extern "C" fn rr_recording_stream_set_time_sequence(
 fn rr_recording_stream_set_time_seconds_impl(
     stream: CRecordingStream,
     timeline_name: *const c_char,
+    timeline_name_length: u32,
     seconds: f64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, timeline_name_length, "timeline_name")?;
     recording_stream(stream)?.set_time_seconds(timeline, Some(seconds));
     Ok(())
 }
@@ -370,10 +392,16 @@ fn rr_recording_stream_set_time_seconds_impl(
 pub extern "C" fn rr_recording_stream_set_time_seconds(
     stream: CRecordingStream,
     timeline_name: *const c_char,
+    timeline_name_length: u32,
     seconds: f64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_time_seconds_impl(stream, timeline_name, seconds) {
+    if let Err(err) = rr_recording_stream_set_time_seconds_impl(
+        stream,
+        timeline_name,
+        timeline_name_length,
+        seconds,
+    ) {
         err.write_error(error);
     }
 }
@@ -382,9 +410,10 @@ pub extern "C" fn rr_recording_stream_set_time_seconds(
 fn rr_recording_stream_set_time_nanos_impl(
     stream: CRecordingStream,
     timeline_name: *const c_char,
+    timeline_name_length: u32,
     nanos: i64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, timeline_name_length, "timeline_name")?;
     recording_stream(stream)?.set_time_nanos(timeline, Some(nanos));
     Ok(())
 }
@@ -394,10 +423,13 @@ fn rr_recording_stream_set_time_nanos_impl(
 pub extern "C" fn rr_recording_stream_set_time_nanos(
     stream: CRecordingStream,
     timeline_name: *const c_char,
+    timeline_name_length: u32,
     nanos: i64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_time_nanos_impl(stream, timeline_name, nanos) {
+    if let Err(err) =
+        rr_recording_stream_set_time_nanos_impl(stream, timeline_name, timeline_name_length, nanos)
+    {
         err.write_error(error);
     }
 }
@@ -407,8 +439,9 @@ pub extern "C" fn rr_recording_stream_set_time_nanos(
 fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
     timeline_name: *const c_char,
+    timeline_name_length: u32,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
+    let timeline = ptr::try_char_ptr_as_str(timeline_name, timeline_name_length, "timeline_name")?;
     recording_stream(stream)?.set_time_sequence(timeline, None);
     Ok(())
 }
@@ -418,9 +451,12 @@ fn rr_recording_stream_disable_timeline_impl(
 pub extern "C" fn rr_recording_stream_disable_timeline(
     stream: CRecordingStream,
     timeline_name: *const c_char,
+    timeline_name_length: u32,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_disable_timeline_impl(stream, timeline_name) {
+    if let Err(err) =
+        rr_recording_stream_disable_timeline_impl(stream, timeline_name, timeline_name_length)
+    {
         err.write_error(error);
     }
 }
@@ -446,12 +482,13 @@ fn rr_log_impl(
 
     let CDataRow {
         entity_path,
+        entity_path_length,
         num_instances,
         num_data_cells,
         data_cells,
     } = *data_row;
 
-    let entity_path = ptr::try_char_ptr_as_str(entity_path, "entity_path")?;
+    let entity_path = ptr::try_char_ptr_as_str(entity_path, entity_path_length, "entity_path")?;
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
     re_log::debug!(
@@ -464,12 +501,16 @@ fn rr_log_impl(
         let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
         let CDataCell {
             component_name,
+            component_name_length,
             num_bytes,
             bytes,
         } = *data_cell;
 
-        let component_name =
-            ptr::try_char_ptr_as_str(component_name, "data_cells[i].component_name")?;
+        let component_name = ptr::try_char_ptr_as_str(
+            component_name,
+            component_name_length,
+            "data_cells[i].component_name",
+        )?;
         let component_name = ComponentName::from(component_name);
 
         let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };

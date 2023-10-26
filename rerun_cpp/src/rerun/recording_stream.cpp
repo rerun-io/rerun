@@ -24,10 +24,11 @@ namespace rerun {
         return RERUN_STORE_KIND_RECORDING;
     }
 
-    RecordingStream::RecordingStream(const char* app_id, StoreKind store_kind)
+    RecordingStream::RecordingStream(std::string_view app_id, StoreKind store_kind)
         : _store_kind(store_kind) {
         rr_store_info store_info;
-        store_info.application_id = app_id;
+        store_info.application_id = app_id.data();
+        store_info.application_id_length = static_cast<uint32_t>(app_id.size());
         store_info.store_kind = store_kind_to_c(store_kind);
 
         rr_error status = {};
@@ -92,15 +93,21 @@ namespace rerun {
         }
     }
 
-    Error RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
+    Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) {
         rr_error status = {};
-        rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec, &status);
+        rr_recording_stream_connect(
+            _id,
+            tcp_addr.data(),
+            static_cast<uint32_t>(tcp_addr.length()),
+            flush_timeout_sec,
+            &status
+        );
         return status;
     }
 
-    Error RecordingStream::save(const char* path) {
+    Error RecordingStream::save(std::string_view path) {
         rr_error status = {};
-        rr_recording_stream_save(_id, path, &status);
+        rr_recording_stream_save(_id, path.data(), static_cast<uint32_t>(path.length()), &status);
         return status;
     }
 
@@ -108,33 +115,56 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::set_time_sequence(const char* timeline_name, int64_t sequence_nr) {
+    void RecordingStream::set_time_sequence(std::string_view timeline_name, int64_t sequence_nr) {
         if (!is_enabled()) {
             return;
         }
         rr_error status = {};
-        rr_recording_stream_set_time_sequence(_id, timeline_name, sequence_nr, &status);
+        rr_recording_stream_set_time_sequence(
+            _id,
+            timeline_name.data(),
+            static_cast<uint32_t>(timeline_name.length()),
+            sequence_nr,
+            &status
+        );
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_seconds(const char* timeline_name, double seconds) {
+    void RecordingStream::set_time_seconds(std::string_view timeline_name, double seconds) {
         if (!is_enabled()) {
             return;
         }
         rr_error status = {};
-        rr_recording_stream_set_time_seconds(_id, timeline_name, seconds, &status);
+        rr_recording_stream_set_time_seconds(
+            _id,
+            timeline_name.data(),
+            static_cast<uint32_t>(timeline_name.length()),
+            seconds,
+            &status
+        );
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_nanos(const char* timeline_name, int64_t nanos) {
+    void RecordingStream::set_time_nanos(std::string_view timeline_name, int64_t nanos) {
         rr_error status = {};
-        rr_recording_stream_set_time_nanos(_id, timeline_name, nanos, &status);
+        rr_recording_stream_set_time_nanos(
+            _id,
+            timeline_name.data(),
+            static_cast<uint32_t>(timeline_name.length()),
+            nanos,
+            &status
+        );
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::disable_timeline(const char* timeline_name) {
+    void RecordingStream::disable_timeline(std::string_view timeline_name) {
         rr_error status = {};
-        rr_recording_stream_disable_timeline(_id, timeline_name, &status);
+        rr_recording_stream_disable_timeline(
+            _id,
+            timeline_name.data(),
+            static_cast<uint32_t>(timeline_name.length()),
+            &status
+        );
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
@@ -143,7 +173,8 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_serialized_batches(
-        const char* entity_path, bool timeless, const std::vector<SerializedComponentBatch>& batches
+        std::string_view entity_path, bool timeless,
+        const std::vector<SerializedComponentBatch>& batches
     ) {
         if (!is_enabled()) {
             return Error::ok();
@@ -185,7 +216,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_data_row(
-        const char* entity_path, size_t num_instances, size_t num_data_cells,
+        std::string_view entity_path, size_t num_instances, size_t num_data_cells,
         const DataCell* data_cells, bool inject_time
     ) {
         if (!is_enabled()) {
@@ -201,13 +232,16 @@ namespace rerun {
                 );
             }
 
-            c_data_cells[i].component_name = data_cells[i].component_name;
+            c_data_cells[i].component_name = data_cells[i].component_name.data();
+            c_data_cells[i].component_name_length =
+                static_cast<uint32_t>(data_cells[i].component_name.length());
             c_data_cells[i].num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size());
             c_data_cells[i].bytes = data_cells[i].buffer->data();
         }
 
         rr_data_row c_data_row;
-        c_data_row.entity_path = entity_path,
+        c_data_row.entity_path = entity_path.data();
+        c_data_row.entity_path_length = static_cast<uint32_t>(entity_path.length()),
         c_data_row.num_instances = static_cast<uint32_t>(num_instances);
         c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
         c_data_row.data_cells = c_data_cells.data();
