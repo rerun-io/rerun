@@ -3,14 +3,18 @@ title: C++ Quick Start
 order: 2
 ---
 
-## Installing Rerun
+## Setup
 Before adding Rerun to your application, start by [installing the viewer](installing-viewer.md).
 
 The Rerun C++ SDK depends on an install of the `arrow-cpp` library on your system using.
 If you are using [Pixi](https://prefix.dev/docs/pixi/overview), you can simply type `pixi global install arrow-cpp`.
 Find more information about other package managers at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
 
-If you're using CMake, you can add the following to your `CMakeLists.txt`:
+## Learning by example
+If you prefer to learn by example, check out our example repository which uses the Rerun C++ SDK to log some data from Eigen and OpenCV: <https://github.com/rerun-io/cpp-example-opencv-eigen>.
+
+## Using Rerun from CMake
+Add the following to your `CMakeLists.txt`:
 
 ```cmake
 include(FetchContent)
