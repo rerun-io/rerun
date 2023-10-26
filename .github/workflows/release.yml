@@ -112,7 +112,7 @@ jobs:
 
           echo If this is an 'alpha', set the version to whatever is in the git branch name.…
           if [ ${{ inputs.release-type }} = "alpha" ]; then
-            python3 scripts/ci/crates.py version --exact $(python3 scripts/ci/crates.py get-version --from-git)
+            python3 scripts/ci/crates.py version --exact $(python3 scripts/ci/crates.py get-version --from git)
           fi
 
           echo If this is a 'final', set the version to the final release version…
