@@ -29,14 +29,7 @@ struct rerun::ComponentBatchAdapter<rerun::Position3D, CustomContainer<CustomVec
     // Creating a ComponentBatch from a non-temporary is done by casting & borrowing binary compatible data.
     ComponentBatch<rerun::Position3D> operator()(const CustomContainer<CustomVectorType>& container
     ) {
-        // Sanity check that this is binary compatible.
-        static_assert(sizeof(rerun::Position3D) == sizeof(CustomVectorType));
-        static_assert(alignof(rerun::Position3D) <= alignof(CustomVectorType));
-
-        return ComponentBatch<rerun::Position3D>::borrow(
-            reinterpret_cast<const rerun::Position3D*>(container.data),
-            container.size
-        );
+        return ComponentBatch<rerun::Position3D>::borrow(container.data, container.size);
     }
 
     // For temporaries we have to do a copy since the pointer doesn't live long enough.

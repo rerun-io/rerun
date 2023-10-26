@@ -80,17 +80,36 @@ namespace rerun {
             new (&storage.vector_owned) std::vector<TComponent>(data);
         }
 
-        /// Borrows data into the component batch.
+        /// Borrows binary compatible data into the component batch.
         ///
         /// Borrowed data must outlive the component batch!
         /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
         /// resized.)
-        static ComponentBatch<TComponent> borrow(const TComponent* data, size_t num_instances) {
+        /// The passed type must be binary compatible with the component type.
+        template <typename T>
+        static ComponentBatch<TComponent> borrow(const T* data, size_t num_instances) {
+            static_assert(sizeof(T) == sizeof(TComponent), "Size of T and TComponent must match");
+            static_assert(
+                alignof(T) <= alignof(TComponent),
+                "Alignment of T musn't be smaller than TComponent"
+            );
+
             ComponentBatch<TComponent> batch;
             batch.ownership = BatchOwnership::Borrowed;
-            batch.storage.borrowed.data = data;
+            batch.storage.borrowed.data = reinterpret_cast<const TComponent*>(data);
             batch.storage.borrowed.num_instances = num_instances;
             return batch;
+        }
+
+        /// Borrows binary compatible data into the component batch.
+        ///
+        /// Version of `borrow` that takes a void pointer, omitting any checks.
+        ///
+        /// Borrowed data must outlive the component batch!
+        /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
+        /// resized.)
+        static ComponentBatch borrow(const void* data, size_t num_instances) {
+            return borrow(reinterpret_cast<const TComponent*>(data), num_instances);
         }
 
         /// Takes ownership of a temporary std::vector, moving it into the component batch.
