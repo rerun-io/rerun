@@ -234,9 +234,14 @@ def spawn(
             start_new_session=True,
         )
 
-        # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
-        # For example, wait until it prints "Hosting a SDK server over TCP at …"
-        sleep(0.5)  # almost as good as waiting the correct amount of time
+        # Give the newly spawned Rerun Viewer some time to bind.
+        #
+        # NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
+        # at all, the connection will fail immediately, irrelevant of the timeout configuration.
+        # For that reason we use an extra loop.
+        for _ in range(0, 5):
+            _check_for_existing_viewer(port)
+            sleep(0.1)
 
     if connect:
         _connect(f"127.0.0.1:{port}", recording=recording)
