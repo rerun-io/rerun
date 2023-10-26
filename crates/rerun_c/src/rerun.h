@@ -66,9 +66,6 @@ typedef struct rr_store_info {
 
     /// `RERUN_STORE_KIND_RECORDING` or `RERUN_STORE_KIND_BLUEPRINT`
     rr_store_kind store_kind;
-
-    /// Whether logging should be enabled by default
-    bool default_enabled;
 } rr_store_info;
 
 /// Arrow-encoded data of a single component for a single entity.
@@ -165,7 +162,7 @@ extern const char* rr_version_string(void);
 ///
 /// @return A handle to the recording stream, or null if an error occurred.
 extern rr_recording_stream rr_recording_stream_new(
-    const rr_store_info* store_info, rr_error* error
+    const rr_store_info* store_info, bool default_enabled, rr_error* error
 );
 
 /// Free the given recording stream. The handle will be invalid after this.

@@ -52,8 +52,6 @@ pub struct CStoreInfo {
     pub application_id: *const c_char,
 
     pub store_kind: CStoreKind,
-
-    pub default_enabled: bool,
 }
 
 #[repr(C)]
@@ -169,7 +167,10 @@ pub extern "C" fn rr_version_string() -> *const c_char {
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecordingStream, CError> {
+fn rr_recording_stream_new_impl(
+    store_info: *const CStoreInfo,
+    default_enabled: bool,
+) -> Result<CRecordingStream, CError> {
     initialize_logging();
 
     let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
@@ -177,7 +178,6 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
     let CStoreInfo {
         application_id,
         store_kind,
-        default_enabled,
     } = *store_info;
 
     let application_id = ptr::try_char_ptr_as_str(application_id, "store_info.application_id")?;
@@ -205,9 +205,10 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_new(
     store_info: *const CStoreInfo,
+    default_enabled: bool,
     error: *mut CError,
 ) -> CRecordingStream {
-    match rr_recording_stream_new_impl(store_info) {
+    match rr_recording_stream_new_impl(store_info, default_enabled) {
         Err(err) => {
             err.write_error(error);
             0

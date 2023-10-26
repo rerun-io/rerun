@@ -30,10 +30,9 @@ namespace rerun {
         rr_store_info store_info;
         store_info.application_id = app_id;
         store_info.store_kind = store_kind_to_c(store_kind);
-        store_info.default_enabled = is_default_enabled();
 
         rr_error status = {};
-        this->_id = rr_recording_stream_new(&store_info, &status);
+        this->_id = rr_recording_stream_new(&store_info, is_default_enabled(), &status);
         auto err = Error(status);
         if (err.is_ok()) {
             this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
