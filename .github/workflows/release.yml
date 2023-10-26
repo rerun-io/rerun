@@ -45,7 +45,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.x
+          python-version: 3.11
 
       - name: Check links
         run: |
@@ -73,7 +73,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.x
+          python-version: 3.11
 
       - name: Install deps
         run: |
@@ -310,7 +310,7 @@ jobs:
           cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
 
           cat <<EOF > comment-body.txt
-          Version ${{ needs.version.outputs.current }} published sucessfully.
+          Version ${{ needs.version.outputs.current }} published successfully.
 
           | artifact                    | install        |
           | --------------------------- | -------------- |
