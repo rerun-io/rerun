@@ -26,7 +26,7 @@ typedef struct rr_string {
     /// Rerun is guaranteed to not read beyond utf8[length_in_bytes-1].
     const char* utf8;
 
-    /// The length of the string in bytes, *excluding* null-terminator.
+    /// The length of the string in bytes (*excluding* null-terminator, if any).
     uint32_t length_in_bytes;
 } rr_string;
 

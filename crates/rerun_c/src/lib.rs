@@ -25,12 +25,12 @@ use re_sdk::{
 /// `rr_string` (the name `CString` was already taken)
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct CStringWithLength {
+pub struct CStringView {
     pub string: *const c_char,
     pub length: u32,
 }
 
-impl CStringWithLength {
+impl CStringView {
     #[allow(clippy::result_large_err)]
     pub fn as_str<'a>(&'a self, argument_name: &'a str) -> Result<&'a str, CError> {
         ptr::try_char_ptr_as_str(self.string, self.length, argument_name)
@@ -48,9 +48,9 @@ type CRecordingStream = u32;
 #[repr(C)]
 pub struct CSpawnOptions {
     pub port: u16,
-    pub memory_limit: CStringWithLength,
-    pub executable_name: CStringWithLength,
-    pub executable_path: CStringWithLength,
+    pub memory_limit: CStringView,
+    pub executable_name: CStringView,
+    pub executable_path: CStringView,
 }
 
 impl CSpawnOptions {
@@ -103,14 +103,14 @@ impl From<CStoreKind> for StoreKind {
 #[derive(Debug)]
 pub struct CStoreInfo {
     /// The user-chosen name of the application doing the logging.
-    pub application_id: CStringWithLength,
+    pub application_id: CStringView,
 
     pub store_kind: CStoreKind,
 }
 
 #[repr(C)]
 pub struct CDataCell {
-    pub component_name: CStringWithLength,
+    pub component_name: CStringView,
 
     /// Length of [`Self::bytes`].
     pub num_bytes: u64,
@@ -121,7 +121,7 @@ pub struct CDataCell {
 
 #[repr(C)]
 pub struct CDataRow {
-    pub entity_path: CStringWithLength,
+    pub entity_path: CStringView,
     pub num_instances: u32,
     pub num_data_cells: u32,
     pub data_cells: *const CDataCell,
@@ -347,7 +347,7 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_connect_impl(
     stream: CRecordingStream,
-    tcp_addr: CStringWithLength,
+    tcp_addr: CStringView,
     flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
@@ -374,7 +374,7 @@ fn rr_recording_stream_connect_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_connect(
     id: CRecordingStream,
-    tcp_addr: CStringWithLength,
+    tcp_addr: CStringView,
     flush_timeout_sec: f32,
     error: *mut CError,
 ) {
@@ -426,7 +426,7 @@ pub extern "C" fn rr_recording_stream_spawn(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_save_impl(
     stream: CRecordingStream,
-    path: CStringWithLength,
+    path: CStringView,
 ) -> Result<(), CError> {
     let path = path.as_str("path")?;
     recording_stream(stream)?.save(path).map_err(|err| {
@@ -441,7 +441,7 @@ fn rr_recording_stream_save_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_save(
     id: CRecordingStream,
-    path: CStringWithLength,
+    path: CStringView,
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_save_impl(id, path) {
@@ -452,7 +452,7 @@ pub extern "C" fn rr_recording_stream_save(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_sequence_impl(
     stream: CRecordingStream,
-    timeline_name: CStringWithLength,
+    timeline_name: CStringView,
     sequence: i64,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
@@ -464,7 +464,7 @@ fn rr_recording_stream_set_time_sequence_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_sequence(
     stream: CRecordingStream,
-    timeline_name: CStringWithLength,
+    timeline_name: CStringView,
     sequence: i64,
     error: *mut CError,
 ) {
@@ -476,7 +476,7 @@ pub extern "C" fn rr_recording_stream_set_time_sequence(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_seconds_impl(
     stream: CRecordingStream,
-    timeline_name: CStringWithLength,
+    timeline_name: CStringView,
     seconds: f64,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
@@ -488,7 +488,7 @@ fn rr_recording_stream_set_time_seconds_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_seconds(
     stream: CRecordingStream,
-    timeline_name: CStringWithLength,
+    timeline_name: CStringView,
     seconds: f64,
     error: *mut CError,
 ) {
@@ -500,7 +500,7 @@ pub extern "C" fn rr_recording_stream_set_time_seconds(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_nanos_impl(
     stream: CRecordingStream,
-    timeline_name: CStringWithLength,
+    timeline_name: CStringView,
     nanos: i64,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
@@ -512,7 +512,7 @@ fn rr_recording_stream_set_time_nanos_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_nanos(
     stream: CRecordingStream,
-    timeline_name: CStringWithLength,
+    timeline_name: CStringView,
     nanos: i64,
     error: *mut CError,
 ) {
@@ -525,7 +525,7 @@ pub extern "C" fn rr_recording_stream_set_time_nanos(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
-    timeline_name: CStringWithLength,
+    timeline_name: CStringView,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
     recording_stream(stream)?.set_time_sequence(timeline, None);
@@ -536,7 +536,7 @@ fn rr_recording_stream_disable_timeline_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_disable_timeline(
     stream: CRecordingStream,
-    timeline_name: CStringWithLength,
+    timeline_name: CStringView,
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_disable_timeline_impl(stream, timeline_name) {
