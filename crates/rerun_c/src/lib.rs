@@ -23,6 +23,21 @@ use re_sdk::{
 // ----------------------------------------------------------------------------
 // Types:
 
+/// `rr_string` (the name CString was already taken)
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CStringWithLength {
+    pub string: *const c_char,
+    pub length: u32,
+}
+
+impl CStringWithLength {
+    #[allow(clippy::result_large_err)]
+    pub fn as_str<'a>(&'a self, argument_name: &'a str) -> Result<&'a str, CError> {
+        ptr::try_char_ptr_as_str(self.string, self.length, argument_name)
+    }
+}
+
 type CRecordingStream = u32;
 
 #[repr(u32)]
@@ -49,16 +64,14 @@ impl From<CStoreKind> for StoreKind {
 #[derive(Debug)]
 pub struct CStoreInfo {
     /// The user-chosen name of the application doing the logging.
-    pub application_id: *const c_char,
-    pub application_id_length: u32,
+    pub application_id: CStringWithLength,
 
     pub store_kind: CStoreKind,
 }
 
 #[repr(C)]
 pub struct CDataCell {
-    pub component_name: *const c_char,
-    pub component_name_length: u32,
+    pub component_name: CStringWithLength,
 
     /// Length of [`Self::bytes`].
     pub num_bytes: u64,
@@ -69,8 +82,7 @@ pub struct CDataCell {
 
 #[repr(C)]
 pub struct CDataRow {
-    pub entity_path: *const c_char,
-    pub entity_path_length: u32,
+    pub entity_path: CStringWithLength,
     pub num_instances: u32,
     pub num_data_cells: u32,
     pub data_cells: *const CDataCell,
@@ -177,15 +189,10 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
 
     let CStoreInfo {
         application_id,
-        application_id_length,
         store_kind,
     } = *store_info;
 
-    let application_id = ptr::try_char_ptr_as_str(
-        application_id,
-        application_id_length,
-        "store_info.application_id",
-    )?;
+    let application_id = application_id.as_str("store_info.application_id")?;
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
@@ -482,13 +489,12 @@ fn rr_log_impl(
 
     let CDataRow {
         entity_path,
-        entity_path_length,
         num_instances,
         num_data_cells,
         data_cells,
     } = *data_row;
 
-    let entity_path = ptr::try_char_ptr_as_str(entity_path, entity_path_length, "entity_path")?;
+    let entity_path = entity_path.as_str("entity_path")?;
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
     re_log::debug!(
@@ -501,16 +507,11 @@ fn rr_log_impl(
         let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
         let CDataCell {
             component_name,
-            component_name_length,
             num_bytes,
             bytes,
         } = *data_cell;
 
-        let component_name = ptr::try_char_ptr_as_str(
-            component_name,
-            component_name_length,
-            "data_cells[i].component_name",
-        )?;
+        let component_name = component_name.as_str("data_cells[i].component_name")?;
         let component_name = ComponentName::from(component_name);
 
         let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };

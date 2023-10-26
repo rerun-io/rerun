@@ -18,6 +18,33 @@ extern "C" {
 // ----------------------------------------------------------------------------
 // Types:
 
+/// A Utf8 string with a length in bytes.
+typedef struct rr_string {
+    /// Pointer to a UTF8 string.
+    ///
+    /// Does *not* need to be null-terminated.
+    /// Rerun is guaranteed to not read beyond utf8[length_in_bytes-1].
+    const char* utf8;
+
+    /// The length of the string in bytes, *excluding* null-terminator.
+    uint32_t length_in_bytes;
+} rr_string;
+
+#ifndef __cplusplus
+
+/// Create a `rr_string` from a null-terminated string.
+///
+/// Calling with NULL is safe.
+rr_string rr_make_string(rr_string utf8) {
+    uint32_t length_in_bytes = 0;
+    if (utf8 == NULL) {
+        length_in_bytes = (uint32_t)strlen(utf8);
+    }
+    return rr_string{.utf8 = utf8, .length_in_bytes = length_in_bytes};
+}
+
+#endif
+
 /// Type of store log messages are sent to.
 typedef uint32_t rr_store_kind;
 
@@ -61,11 +88,8 @@ enum {
 typedef uint32_t rr_recording_stream;
 
 typedef struct rr_store_info {
-    /// The user-chosen name of the application doing the logging as a UTF-8 string.
-    const char* application_id;
-
-    /// Length of the `application_id` string in bytes.
-    uint32_t application_id_length;
+    /// The user-chosen name of the application doing the logging.
+    rr_string application_id;
 
     /// `RERUN_STORE_KIND_RECORDING` or `RERUN_STORE_KIND_BLUEPRINT`
     rr_store_kind store_kind;
@@ -73,11 +97,8 @@ typedef struct rr_store_info {
 
 /// Arrow-encoded data of a single component for a single entity.
 typedef struct rr_data_cell {
-    /// The name of the component, e.g. `position` as a UTF-8 string.
-    const char* component_name;
-
-    /// Length of the `component_name` string in bytes.
-    uint32_t component_name_length;
+    /// The name of the component, e.g. `position`.
+    rr_string component_name;
 
     /// The number of bytes in the `bytes` field.
     /// Must be a multiple of 8.
@@ -95,11 +116,8 @@ typedef struct rr_data_cell {
 /// Arrow-encoded log data for a single entity.
 /// May contain many components.
 typedef struct {
-    /// Where to log to, e.g. `world/camera` as a UTF-8 string.
-    const char* entity_path;
-
-    /// Length of the `entity_path` string in bytes.
-    uint32_t entity_path_length;
+    /// Where to log to, e.g. `world/camera`.
+    rr_string entity_path;
 
     /// Number of instances of this entity (e.g. number of points in a point
     /// cloud).
@@ -209,16 +227,13 @@ extern bool rr_recording_stream_is_enabled(rr_recording_stream stream, rr_error*
 /// This function returns immediately and will only raise an error for argument parsing errors,
 /// not for connection errors as these happen asynchronously.
 extern void rr_recording_stream_connect(
-    rr_recording_stream stream, const char* tcp_addr, uint32_t tcp_addr_length,
-    float flush_timeout_sec, rr_error* error
+    rr_recording_stream stream, rr_string tcp_addr, float flush_timeout_sec, rr_error* error
 );
 
 /// Stream all log-data to a given file.
 ///
 /// This function returns immediately.
-extern void rr_recording_stream_save(
-    rr_recording_stream stream, const char* path, uint32_t path_length, rr_error* error
-);
+extern void rr_recording_stream_save(rr_recording_stream stream, rr_string path, rr_error* error);
 
 /// Initiates a flush the batching pipeline and waits for it to propagate.
 ///
@@ -234,8 +249,7 @@ extern void rr_recording_stream_flush_blocking(rr_recording_stream stream);
 /// For example:
 /// `rr_recording_stream_set_time_sequence(stream, "frame_nr", &frame_nr, &err)`.
 extern void rr_recording_stream_set_time_sequence(
-    rr_recording_stream stream, const char* timeline_name, uint32_t timeline_name_length,
-    int64_t sequence, rr_error* error
+    rr_recording_stream stream, rr_string timeline_name, int64_t sequence, rr_error* error
 );
 
 /// Set the current time of the recording, for the current calling thread.
@@ -246,8 +260,7 @@ extern void rr_recording_stream_set_time_sequence(
 /// For example:
 /// `rr_recording_stream_set_time_seconds(stream, "sim_time", sim_time_secs, &err)`.
 extern void rr_recording_stream_set_time_seconds(
-    rr_recording_stream stream, const char* timeline_name, uint32_t timeline_name_length,
-    double seconds, rr_error* error
+    rr_recording_stream stream, rr_string timeline_name, double seconds, rr_error* error
 );
 
 /// Set the current time of the recording, for the current calling thread.
@@ -258,8 +271,7 @@ extern void rr_recording_stream_set_time_seconds(
 /// For example:
 /// `rr_recording_stream_set_time_nanos(stream, "sim_time", sim_time_nanos, &err)`.
 extern void rr_recording_stream_set_time_nanos(
-    rr_recording_stream stream, const char* timeline_name, uint32_t timeline_name_length,
-    int64_t ns, rr_error* error
+    rr_recording_stream stream, rr_string timeline_name, int64_t ns, rr_error* error
 );
 
 /// Stops logging to the specified timeline for subsequent log calls.
@@ -268,8 +280,7 @@ extern void rr_recording_stream_set_time_nanos(
 ///
 /// No-op if the timeline doesn't exist.
 void rr_recording_stream_disable_timeline(
-    rr_recording_stream stream, const char* timeline_name, uint32_t timeline_name_length,
-    rr_error* error
+    rr_recording_stream stream, rr_string timeline_name, rr_error* error
 );
 
 /// Clears out the current time of the recording, for the current calling thread.
