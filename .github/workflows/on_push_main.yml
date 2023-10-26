@@ -364,4 +364,10 @@ jobs:
     with:
       CONCURRENCY: push-${{ github.ref_name }}
       RELEASE_VERSION: prerelease
+      # The google-cloud-storage update action doesn't seem to have any kind of read-your-writes
+      # semantics, so make sure to wait for a bit before we start to sync stuff.
+      #
+      # 15 seconds might seem long, but the prerelease workflow takes about 40 minutes, so a drop in
+      # the ocean really... and I'd rather be on the safe side.
+      WAIT_TIME_SECS: 15
     secrets: inherit
