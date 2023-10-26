@@ -81,14 +81,18 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
             }
         }
 
-        AND_GIVEN("a nullptr for the application id") {
-            THEN("creating a new stream logs a null argument error") {
-                check_logged_error(
-                    [&] { rerun::RecordingStream stream(nullptr, kind); },
-                    rerun::ErrorCode::UnexpectedNullArgument
-                );
-            }
-        }
+        // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
+        // at least on some C++ implementations.
+        // If we'd want to support this in earnest we'd have to create out own string_view type.
+        //
+        // AND_GIVEN("a nullptr for the application id") {
+        //     THEN("creating a new stream logs a null argument error") {
+        //         check_logged_error(
+        //             [&] { rerun::RecordingStream stream(nullptr, kind); },
+        //             rerun::ErrorCode::UnexpectedNullArgument
+        //         );
+        //     }
+        // }
         AND_GIVEN("invalid utf8 character sequence for the application id") {
             THEN("creating a new stream logs an invalid string argument error") {
                 check_logged_error(
@@ -291,11 +295,15 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     GIVEN("a new RecordingStream") {
         auto stream0 = std::make_unique<rerun::RecordingStream>("test");
 
-        AND_GIVEN("a nullptr for the save path") {
-            THEN("then the save call returns a null argument error") {
-                CHECK(stream0->save(nullptr).code == rerun::ErrorCode::UnexpectedNullArgument);
-            }
-        }
+        // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
+        // at least on some C++ implementations.
+        // If we'd want to support this in earnest we'd have to create out own string_view type.
+        //
+        // AND_GIVEN("a nullptr for the save path") {
+        //     THEN("then the save call returns a null argument error") {
+        //         CHECK(stream0->save(nullptr).code == rerun::ErrorCode::UnexpectedNullArgument);
+        //     }
+        // }
         AND_GIVEN("valid save path " << test_rrd0) {
             AND_GIVEN("a directory already existing at this path") {
                 fs::create_directory(test_rrd0.c_str());
@@ -361,11 +369,15 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
 }
 
 void test_logging_to_connection(const char* address, rerun::RecordingStream& stream) {
-    AND_GIVEN("a nullptr for the socket address") {
-        THEN("then the connect call returns a null argument error") {
-            CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
-        }
-    }
+    // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
+    // at least on some C++ implementations.
+    // If we'd want to support this in earnest we'd have to create out own string_view type.
+    //
+    // AND_GIVEN("a nullptr for the socket address") {
+    //     THEN("then the connect call returns a null argument error") {
+    //         CHECK(stream.connect(nullptr, 0.0f).code == rerun::ErrorCode::UnexpectedNullArgument);
+    //     }
+    // }
     AND_GIVEN("an invalid address for the socket address") {
         THEN("then the save call fails") {
             CHECK(
@@ -436,40 +448,44 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test");
 
-        AND_GIVEN("an invalid path") {
-            auto variant = GENERATE(table<const char*, rerun::ErrorCode>({
-                std::tuple<const char*, rerun::ErrorCode>(
-                    nullptr,
-                    rerun::ErrorCode::UnexpectedNullArgument
-                ),
-            }));
-            const auto [path, error] = variant;
-            auto v = rrc::Position2D{1.0, 2.0};
+        // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
+        // at least on some C++ implementations.
+        // If we'd want to support this in earnest we'd have to create out own string_view type.
+        //
+        // AND_GIVEN("an invalid path") {
+        //     auto variant = GENERATE(table<const char*, rerun::ErrorCode>({
+        //         std::tuple<const char*, rerun::ErrorCode>(
+        //             nullptr,
+        //             rerun::ErrorCode::UnexpectedNullArgument
+        //         ),
+        //     }));
+        //     const auto [path, error] = variant;
+        //     auto v = rrc::Position2D{1.0, 2.0};
 
-            THEN("try_log_data_row returns the correct error") {
-                CHECK(stream.try_log_data_row(path, 0, 0, nullptr, true).code == error);
-            }
-            THEN("try_log returns the correct error") {
-                CHECK(stream.try_log(path, rerun::archetypes::Points2D(v)).code == error);
-            }
-            THEN("log logs the correct error") {
-                check_logged_error(
-                    [&] { stream.log(std::get<0>(variant), rerun::archetypes::Points2D(v)); },
-                    error
-                );
-            }
-            THEN("try_log_timeless returns the correct error") {
-                CHECK(stream.try_log_timeless(path, rerun::archetypes::Points2D(v)).code == error);
-            }
-            THEN("log_timeless logs the correct error") {
-                check_logged_error(
-                    [&] {
-                        stream.log_timeless(std::get<0>(variant), rerun::archetypes::Points2D(v));
-                    },
-                    error
-                );
-            }
-        }
+        //     THEN("try_log_data_row returns the correct error") {
+        //         CHECK(stream.try_log_data_row(path, 0, 0, nullptr, true).code == error);
+        //     }
+        //     THEN("try_log returns the correct error") {
+        //         CHECK(stream.try_log(path, rerun::archetypes::Points2D(v)).code == error);
+        //     }
+        //     THEN("log logs the correct error") {
+        //         check_logged_error(
+        //             [&] { stream.log(std::get<0>(variant), rerun::archetypes::Points2D(v)); },
+        //             error
+        //         );
+        //     }
+        //     THEN("try_log_timeless returns the correct error") {
+        //         CHECK(stream.try_log_timeless(path, rerun::archetypes::Points2D(v)).code == error);
+        //     }
+        //     THEN("log_timeless logs the correct error") {
+        //         check_logged_error(
+        //             [&] {
+        //                 stream.log_timeless(std::get<0>(variant), rerun::archetypes::Points2D(v));
+        //             },
+        //             error
+        //         );
+        //     }
+        // }
 
         AND_GIVEN("a valid path") {
             const char* path = "valid";
@@ -487,18 +503,22 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 }
             }
 
-            AND_GIVEN("a cell with a null component name") {
-                rerun::DataCell cell;
-                cell.buffer = std::make_shared<arrow::Buffer>(nullptr, 0);
-                cell.component_name = nullptr;
+            // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
+            // at least on some C++ implementations.
+            // If we'd want to support this in earnest we'd have to create out own string_view type.
+            //
+            // AND_GIVEN("a cell with a null component name") {
+            //     rerun::DataCell cell;
+            //     cell.buffer = std::make_shared<arrow::Buffer>(nullptr, 0);
+            //     cell.component_name = nullptr;
 
-                THEN("try_log_data_row fails with UnexpectedNullArgument") {
-                    CHECK(
-                        stream.try_log_data_row(path, 1, 1, &cell, true).code ==
-                        rerun::ErrorCode::UnexpectedNullArgument
-                    );
-                }
-            }
+            //     THEN("try_log_data_row fails with UnexpectedNullArgument") {
+            //         CHECK(
+            //             stream.try_log_data_row(path, 1, 1, &cell, true).code ==
+            //             rerun::ErrorCode::UnexpectedNullArgument
+            //         );
+            //     }
+            // }
 
             AND_GIVEN("a cell with a valid component name but invalid data") {
                 uint8_t invalid_data[1] = {0};

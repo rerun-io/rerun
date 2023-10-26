@@ -1,5 +1,6 @@
 #include "recording_stream.hpp"
 #include "components/instance_key.hpp"
+#include "string_utils.hpp"
 
 #include "c/rerun.h"
 
@@ -24,10 +25,10 @@ namespace rerun {
         return RERUN_STORE_KIND_RECORDING;
     }
 
-    RecordingStream::RecordingStream(const char* app_id, StoreKind store_kind)
+    RecordingStream::RecordingStream(std::string_view app_id, StoreKind store_kind)
         : _store_kind(store_kind) {
         rr_store_info store_info;
-        store_info.application_id = app_id;
+        store_info.application_id = detail::to_rr_string(app_id);
         store_info.store_kind = store_kind_to_c(store_kind);
 
         rr_error status = {};
@@ -92,30 +93,34 @@ namespace rerun {
         }
     }
 
-    Error RecordingStream::connect(const char* tcp_addr, float flush_timeout_sec) {
+    Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) {
         rr_error status = {};
-        rr_recording_stream_connect(_id, tcp_addr, flush_timeout_sec, &status);
+        rr_recording_stream_connect(
+            _id,
+            detail::to_rr_string(tcp_addr),
+            flush_timeout_sec,
+            &status
+        );
         return status;
     }
 
     Error RecordingStream::spawn(
-        uint16_t port, const char* memory_limit, const char* executable_name,
-        const char* executable_path, float flush_timeout_sec
+        uint16_t port, std::string_view memory_limit, std::string_view executable_name,
+        std::optional<std::string_view> executable_path, float flush_timeout_sec
     ) {
         rr_error status = {};
-        rr_spawn_options spawn_opts = {
-            port = port,
-            memory_limit = memory_limit,
-            executable_name = executable_name,
-            executable_path = executable_path,
-        };
+        rr_spawn_options spawn_opts;
+        spawn_opts.port = port;
+        spawn_opts.memory_limit = detail::to_rr_string(memory_limit);
+        spawn_opts.executable_name = detail::to_rr_string(executable_name);
+        spawn_opts.executable_path = detail::to_rr_string(executable_path);
         rr_recording_stream_spawn(_id, &spawn_opts, flush_timeout_sec, &status);
         return status;
     }
 
-    Error RecordingStream::save(const char* path) {
+    Error RecordingStream::save(std::string_view path) {
         rr_error status = {};
-        rr_recording_stream_save(_id, path, &status);
+        rr_recording_stream_save(_id, detail::to_rr_string(path), &status);
         return status;
     }
 
@@ -123,33 +128,48 @@ namespace rerun {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::set_time_sequence(const char* timeline_name, int64_t sequence_nr) {
+    void RecordingStream::set_time_sequence(std::string_view timeline_name, int64_t sequence_nr) {
         if (!is_enabled()) {
             return;
         }
         rr_error status = {};
-        rr_recording_stream_set_time_sequence(_id, timeline_name, sequence_nr, &status);
+        rr_recording_stream_set_time_sequence(
+            _id,
+            detail::to_rr_string(timeline_name),
+            sequence_nr,
+            &status
+        );
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_seconds(const char* timeline_name, double seconds) {
+    void RecordingStream::set_time_seconds(std::string_view timeline_name, double seconds) {
         if (!is_enabled()) {
             return;
         }
         rr_error status = {};
-        rr_recording_stream_set_time_seconds(_id, timeline_name, seconds, &status);
+        rr_recording_stream_set_time_seconds(
+            _id,
+            detail::to_rr_string(timeline_name),
+            seconds,
+            &status
+        );
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_nanos(const char* timeline_name, int64_t nanos) {
+    void RecordingStream::set_time_nanos(std::string_view timeline_name, int64_t nanos) {
         rr_error status = {};
-        rr_recording_stream_set_time_nanos(_id, timeline_name, nanos, &status);
+        rr_recording_stream_set_time_nanos(
+            _id,
+            detail::to_rr_string(timeline_name),
+            nanos,
+            &status
+        );
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::disable_timeline(const char* timeline_name) {
+    void RecordingStream::disable_timeline(std::string_view timeline_name) {
         rr_error status = {};
-        rr_recording_stream_disable_timeline(_id, timeline_name, &status);
+        rr_recording_stream_disable_timeline(_id, detail::to_rr_string(timeline_name), &status);
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
@@ -158,7 +178,8 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_serialized_batches(
-        const char* entity_path, bool timeless, const std::vector<SerializedComponentBatch>& batches
+        std::string_view entity_path, bool timeless,
+        const std::vector<SerializedComponentBatch>& batches
     ) {
         if (!is_enabled()) {
             return Error::ok();
@@ -200,7 +221,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_data_row(
-        const char* entity_path, size_t num_instances, size_t num_data_cells,
+        std::string_view entity_path, size_t num_instances, size_t num_data_cells,
         const DataCell* data_cells, bool inject_time
     ) {
         if (!is_enabled()) {
@@ -216,13 +237,13 @@ namespace rerun {
                 );
             }
 
-            c_data_cells[i].component_name = data_cells[i].component_name;
+            c_data_cells[i].component_name = detail::to_rr_string(data_cells[i].component_name);
             c_data_cells[i].num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size());
             c_data_cells[i].bytes = data_cells[i].buffer->data();
         }
 
         rr_data_row c_data_row;
-        c_data_row.entity_path = entity_path,
+        c_data_row.entity_path = detail::to_rr_string(entity_path);
         c_data_row.num_instances = static_cast<uint32_t>(num_instances);
         c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
         c_data_row.data_cells = c_data_cells.data();

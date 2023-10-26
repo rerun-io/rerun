@@ -19,11 +19,11 @@ void log_hand(
     rec.set_time_seconds("sim_time", step);
 
     rec.log(
-        (std::string("world/") + name + "_pt").c_str(),
+        std::string("world/") + name + "_pt",
         rerun::Points3D(rerun::components::Position3D(tip)).with_colors(color)
     );
     rec.log(
-        (std::string("world/") + name + "hand").c_str(),
+        std::string("world/") + name + "hand",
         rerun::Arrows3D::from_vectors(rerun::components::Vector3D(tip))
             .with_origins({{0.0f, 0.0f, 0.0f}})
             .with_colors(color)
