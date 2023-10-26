@@ -81,9 +81,9 @@ fn format_path_for_tmp_dir(
 fn format_python_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
-    // NOTE: the order here matches the one in `justfile`:
-    run_ruff_fix_on_dir(dir).context("ruff --fix")?;
-    run_ruff_format_on_dir(dir).context("ruff --format")?;
+    // NOTE: we need both `ruff check --fix` and `ruff format` in that order: https://twitter.com/charliermarsh/status/1717229721954799727
+    run_ruff_check_fix_on_dir(dir).context("ruff check --fix")?;
+    run_ruff_format_on_dir(dir).context("ruff format")?;
     Ok(())
 }
 
@@ -95,13 +95,14 @@ fn python_project_path() -> Utf8PathBuf {
     path
 }
 
-fn run_ruff_format_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
+fn run_ruff_check_fix_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
     let proc = Command::new("ruff")
-        .arg("format")
+        .arg("check")
         .arg(format!("--config={}", python_project_path()))
+        .arg("--fix")
         .arg(dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -118,13 +119,13 @@ fn run_ruff_format_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     }
 }
 
-fn run_ruff_fix_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
+fn run_ruff_format_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
     let proc = Command::new("ruff")
+        .arg("format")
         .arg(format!("--config={}", python_project_path()))
-        .arg("--fix")
         .arg(dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
