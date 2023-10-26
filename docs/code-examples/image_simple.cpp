@@ -4,7 +4,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_image_simple");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     // Create a synthetic image.
     const int HEIGHT = 200;

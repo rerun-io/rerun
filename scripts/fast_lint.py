@@ -89,11 +89,23 @@ def main() -> None:
         choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
         help="Set the logging level (default: INFO)",
     )
-    parser.add_argument("--num-threads", type=int, default=8, help="Number of threads to use (default: 8).")
     parser.add_argument(
-        "--skip", type=str, default=os.environ.get("RERUN_LINT_SKIP", ""), help="Comma-separated list of tasks to skip."
+        "--num-threads",
+        type=int,
+        default=8,
+        help="Number of threads to use (default: 8).",
     )
-    parser.add_argument("--no-change-filter", action="store_true", help="Run lints without filtering based on changes.")
+    parser.add_argument(
+        "--skip",
+        type=str,
+        default=os.environ.get("RERUN_LINT_SKIP", ""),
+        help="Comma-separated list of tasks to skip.",
+    )
+    parser.add_argument(
+        "--no-change-filter",
+        action="store_true",
+        help="Run lints without filtering based on changes.",
+    )
     parser.add_argument(
         "files",
         metavar="file",
@@ -137,7 +149,7 @@ def main() -> None:
             extensions=[".rs"],
             no_filter_cmd="lint-rs-all",
         ),
-        LintJob("lint-py-black", extensions=[".py"], no_filter_args=PY_FOLDERS),
+        LintJob("lint-py-fmt-check", extensions=[".py"], no_filter_args=PY_FOLDERS),
         LintJob("lint-py-blackdoc", extensions=[".py"], no_filter_args=PY_FOLDERS),
         LintJob("lint-py-mypy", extensions=[".py"]),
         LintJob("lint-py-ruff", extensions=[".py"], no_filter_args=PY_FOLDERS),

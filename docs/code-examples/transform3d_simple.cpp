@@ -7,7 +7,7 @@ constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_transform3d");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     auto arrow =
         rerun::Arrows3D::from_vectors({{0.0f, 1.0f, 0.0f}}).with_origins({{0.0f, 0.0f, 0.0f}});

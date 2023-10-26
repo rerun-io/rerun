@@ -6,7 +6,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_depth_image");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     // create a synthetic depth image.
     const int HEIGHT = 200;

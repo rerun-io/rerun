@@ -8,7 +8,7 @@ namespace rrd = rerun::datatypes;
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_text_document");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     rec.log("text_document", rerun::archetypes::TextDocument("Hello, TextDocument!"));
 
@@ -28,13 +28,6 @@ Basic formatting:
 | `inline code`     |                 |
 
 ----------------------------------
-
-Some code:
-```rs
-fn main() {
-    println!("Hello, world!");
-}
-```
 
 ## Support
 - [x] [Commonmark](https://commonmark.org/help/) support

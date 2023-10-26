@@ -3,8 +3,8 @@
 use rerun::external::glam;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_clear_recursive").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_clear_recursive")
+        .spawn(rerun::default_flush_timeout())?;
 
     #[rustfmt::skip]
     let (vectors, origins, colors) = (
@@ -26,6 +26,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Now clear all of them at once.
     rec.log("arrows", &rerun::Clear::recursive())?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

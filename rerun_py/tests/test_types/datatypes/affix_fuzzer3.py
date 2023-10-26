@@ -22,7 +22,7 @@ __all__ = ["AffixFuzzer3", "AffixFuzzer3ArrayLike", "AffixFuzzer3Batch", "AffixF
 class AffixFuzzer3:
     # You can define your own __init__ function as a member of AffixFuzzer3Ext in affix_fuzzer3_ext.py
 
-    inner: float | list[datatypes.AffixFuzzer1] | npt.NDArray[np.float32] = field()
+    inner: Union[float, list[datatypes.AffixFuzzer1], npt.NDArray[np.float32]] = field()
     """
     degrees (float):
 

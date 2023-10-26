@@ -2,7 +2,7 @@
 
 use std::{net::SocketAddr, path::PathBuf};
 
-use re_sdk::RecordingStream;
+use re_sdk::{RecordingStream, RecordingStreamBuilder};
 
 // ---
 
@@ -15,12 +15,8 @@ enum RerunBehavior {
     #[cfg(feature = "web_viewer")]
     Serve,
 
-    #[cfg(feature = "native_viewer")]
     Spawn,
 }
-
-// TODO(cmc): There are definitely ways of making this all nicer now (this, native_viewer and
-// web_viewer).. but one thing at a time.
 
 /// This struct implements a `clap::Parser` that defines all the arguments that a typical Rerun
 /// application might use, and provides helpers to evaluate those arguments and behave
@@ -43,7 +39,7 @@ enum RerunBehavior {
 #[derive(Clone, Debug, clap::Args)]
 #[clap(author, version, about)]
 pub struct RerunArgs {
-    /// Start a viewer and feed it data in real-time.
+    /// Start a new Rerun Viewer process and feed it data in real-time.
     #[clap(long, default_value = "true")]
     spawn: bool,
 
@@ -68,81 +64,82 @@ pub struct RerunArgs {
     bind: String,
 }
 
-impl RerunArgs {
-    /// Set up Rerun, and run the given code with a [`RecordingStream`] object
-    /// that can be used to log data.
-    ///
-    /// Logging will be controlled by the `RERUN` environment variable,
-    /// or the `default_enabled` argument if the environment variable is not set.
-    #[track_caller] // track_caller so that we can see if we are being called from an official example.
-    pub fn run(
-        &self,
-        application_id: &str,
-        default_enabled: bool,
-        run: impl FnOnce(RecordingStream) + Send + 'static,
-    ) -> anyhow::Result<()> {
-        // Ensure we have a running tokio runtime.
-        let mut tokio_runtime = None;
-        let tokio_runtime_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
-            handle
-        } else {
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-            tokio_runtime.get_or_insert(rt).handle().clone()
-        };
-        let _tokio_runtime_guard = tokio_runtime_handle.enter();
+/// [`RerunArgs::init`] might have to spawn a bunch of background tasks depending on what arguments
+/// were passed in.
+/// This object makes sure they live long enough and get polled as needed.
+#[doc(hidden)]
+#[derive(Default)]
+pub struct ServeGuard {
+    tokio_rt: Option<tokio::runtime::Runtime>,
+}
 
-        let (rerun_enabled, store_info, batcher_config) =
-            crate::RecordingStreamBuilder::new(application_id)
-                .default_enabled(default_enabled)
-                .into_args();
-
-        if !rerun_enabled {
-            run(RecordingStream::disabled());
-            return Ok(());
-        }
-
-        let sink: Box<dyn re_sdk::sink::LogSink> = match self.to_behavior()? {
-            RerunBehavior::Connect(addr) => Box::new(crate::sink::TcpSink::new(
-                addr,
-                crate::default_flush_timeout(),
-            )),
-
-            RerunBehavior::Save(path) => Box::new(crate::sink::FileSink::new(path)?),
-
-            #[cfg(feature = "web_viewer")]
-            RerunBehavior::Serve => {
-                let open_browser = true;
-                re_sdk::web_viewer::new_sink(
-                    open_browser,
-                    &self.bind,
-                    Default::default(),
-                    Default::default(),
-                )?
-            }
-
-            #[cfg(feature = "native_viewer")]
-            RerunBehavior::Spawn => {
-                crate::native_viewer::spawn(store_info, batcher_config, run)?;
-                return Ok(());
-            }
-        };
-
-        let rec = RecordingStream::new(store_info, batcher_config, sink)?;
-        run(rec.clone());
-
-        // The user callback is done executing, it's a good opportunity to flush the pipeline
-        // independently of the current flush thresholds (which might be `NEVER`).
-        rec.flush_async();
-
-        #[cfg(feature = "web_viewer")]
-        if matches!(self.to_behavior(), Ok(RerunBehavior::Serve)) {
-            // Sleep waiting for Ctrl-C:
-            tokio_runtime_handle.block_on(async {
+impl Drop for ServeGuard {
+    fn drop(&mut self) {
+        if let Some(tokio_rt) = self.tokio_rt.take() {
+            eprintln!("Sleeping indefinitely while serving web viewer... Press ^C when done.");
+            tokio_rt.block_on(async {
                 tokio::time::sleep(std::time::Duration::from_secs(u64::MAX)).await;
             });
         }
+    }
+}
 
-        Ok(())
+impl RerunArgs {
+    /// Creates a new [`RecordingStream`] according to the CLI parameters.
+    #[track_caller] // track_caller so that we can see if we are being called from an official example.
+    pub fn init(&self, application_id: &str) -> anyhow::Result<(RecordingStream, ServeGuard)> {
+        match self.to_behavior()? {
+            RerunBehavior::Connect(addr) => Ok((
+                RecordingStreamBuilder::new(application_id)
+                    .connect(addr, crate::default_flush_timeout())?,
+                Default::default(),
+            )),
+
+            RerunBehavior::Save(path) => Ok((
+                RecordingStreamBuilder::new(application_id).save(path)?,
+                Default::default(),
+            )),
+
+            RerunBehavior::Spawn => Ok((
+                RecordingStreamBuilder::new(application_id).spawn(crate::default_flush_timeout())?,
+                Default::default(),
+            )),
+
+            #[cfg(feature = "web_viewer")]
+            RerunBehavior::Serve => {
+                let mut tokio_rt = None;
+
+                // Get the Tokio runtime for the current thread, or create one if there isn't any.
+                // If we do create one, we'll have to make sure it both outlives and gets
+                // polled to completion as we return from this method!
+                let tokio_rt_handle = if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                    handle
+                } else {
+                    tokio_rt
+                        .get_or_insert(tokio::runtime::Runtime::new()?)
+                        .handle()
+                        .clone()
+                };
+
+                // Creating the actual web sink and associated servers will require the current
+                // thread to be in a Tokio context.
+                let _tokio_rt_guard = tokio_rt_handle.enter();
+
+                let open_browser = true;
+                let rec = RecordingStreamBuilder::new(application_id).serve(
+                    &self.bind,
+                    Default::default(),
+                    Default::default(),
+                    open_browser,
+                )?;
+
+                // If we had to create a Tokio runtime from scratch, make sure it outlives this
+                // method and gets polled to completion.
+                let sleep_guard = ServeGuard { tokio_rt };
+
+                Ok((rec, sleep_guard))
+            }
+        }
     }
 
     #[allow(clippy::unnecessary_wraps)] // False positive on some feature flags
@@ -162,10 +159,6 @@ impl RerunArgs {
             None => {}
         }
 
-        #[cfg(not(feature = "native_viewer"))]
-        anyhow::bail!("Expected --save, --connect, or --serve");
-
-        #[cfg(feature = "native_viewer")]
         Ok(RerunBehavior::Spawn)
     }
 }

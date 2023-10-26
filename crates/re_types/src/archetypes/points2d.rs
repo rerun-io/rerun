@@ -30,7 +30,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rand::{distributions::Uniform, Rng as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_points2d").memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points2d")
+///         .spawn(rerun::default_flush_timeout())?;
 ///
 ///     let mut rng = rand::thread_rng();
 ///     let dist = Uniform::new(-3., 3.);
@@ -45,7 +46,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // Log an extra rect to set the view bounds
 ///     rec.log("bounds", &rerun::Boxes2D::from_half_sizes([(4., 3.)]))?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```

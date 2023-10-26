@@ -115,6 +115,42 @@ namespace rerun {
         /// This function returns immediately.
         Error connect(std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
 
+        /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
+        /// over TCP.
+        ///
+        /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+        /// that viewer instead of starting a new one.
+        ///
+        /// ## Parameters
+        ///
+        /// port:
+        /// The port to listen on.
+        ///
+        /// memory_limit:
+        /// An upper limit on how much memory the Rerun Viewer should use.
+        /// When this limit is reached, Rerun will drop the oldest data.
+        /// Example: `16GB` or `50%` (of system total).
+        ///
+        /// executable_name:
+        /// Specifies the name of the Rerun executable.
+        /// You can omit the `.exe` suffix on Windows.
+        ///
+        /// executable_path:
+        /// Enforce a specific executable to use instead of searching though PATH
+        /// for [`Self::executable_name`].
+        ///
+        /// flush_timeout_sec:
+        /// The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
+        Error spawn(
+            uint16_t port = 9876,                  //
+            const char* memory_limit = "75%",      //
+            const char* executable_name = "rerun", //
+            const char* executable_path = nullptr, //
+            float flush_timeout_sec = 2.0
+        );
+
         /// Stream all log-data to a given file.
         ///
         /// This function returns immediately.

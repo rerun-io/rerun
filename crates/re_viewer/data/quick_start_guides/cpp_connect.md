@@ -17,7 +17,7 @@ After you have installed it, type `rerun` in your terminal to start the viewer.
 
 #### Using the Rerun C++ SDK
 First you need to install the `arrow-cpp` library on your system using your favorite package manager.
-If you are using [pixi], you can simply type `pixi global install arrow-cpp`.
+If you are using [Pixi](https://prefix.dev/docs/pixi/overview), you can simply type `pixi global install arrow-cpp`.
 Find more information at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
 
 If you're using CMake, you can add the following to your `CMakeLists.txt`:

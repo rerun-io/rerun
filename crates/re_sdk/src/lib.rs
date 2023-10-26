@@ -18,12 +18,15 @@
 mod global;
 mod log_sink;
 mod recording_stream;
+mod spawn;
 
 #[cfg(feature = "log")]
 mod log_integration;
 
 // -------------
 // Public items:
+
+pub use spawn::{spawn, SpawnError, SpawnOptions};
 
 pub use self::recording_stream::{
     RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,

@@ -4,7 +4,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_points2d_simple");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     rec.log("points", rerun::Points2D({{0.0f, 0.0f}, {1.0f, 1.0f}}));
 

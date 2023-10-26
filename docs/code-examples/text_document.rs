@@ -1,8 +1,8 @@
 //! Log a `TextDocument`
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_text_document").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_text_document")
+        .spawn(rerun::default_flush_timeout())?;
 
     rec.log(
         "text_document",
@@ -28,13 +28,6 @@ Basic formatting:
 
 ----------------------------------
 
-Some code:
-```rs
-fn main() {
-    println!("Hello, world!");
-}
-```
-
 ## Support
 - [x] [Commonmark](https://commonmark.org/help/) support
 - [x] GitHub-style strikethrough, tables, and checkboxes
@@ -58,6 +51,5 @@ Of course you can also have [normal https links](https://github.com/rerun-io/rer
         .with_media_type(rerun::MediaType::markdown()),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

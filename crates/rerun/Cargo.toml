@@ -96,7 +96,7 @@ re_web_viewer_server = { workspace = true, optional = true }
 clap = { workspace = true, features = ["derive"] }
 puffin.workspace = true
 rayon.workspace = true
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
 
 
 [build-dependencies]
