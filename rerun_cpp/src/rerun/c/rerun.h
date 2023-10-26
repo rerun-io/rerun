@@ -32,15 +32,17 @@ typedef struct rr_string {
 
 #ifndef __cplusplus
 
+#include <string.h> // For strlen
+
 /// Create a `rr_string` from a null-terminated string.
 ///
 /// Calling with NULL is safe.
 rr_string rr_make_string(const char* utf8) {
     uint32_t length_in_bytes = 0;
-    if (utf8 == NULL) {
+    if (utf8 != NULL) {
         length_in_bytes = (uint32_t)strlen(utf8);
     }
-    return rr_string{.utf8 = utf8, .length_in_bytes = length_in_bytes};
+    return (rr_string){.utf8 = utf8, .length_in_bytes = length_in_bytes};
 }
 
 #endif
