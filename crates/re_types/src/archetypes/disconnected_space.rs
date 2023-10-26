@@ -33,8 +33,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Disconnected Space
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space")
+///         .spawn(rerun::default_flush_timeout())?;
 ///
 ///     // These two points can be projected into the same space..
 ///     rec.log(
@@ -53,7 +53,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &rerun::Points3D::new([(2.0, 2.0, 2.0)]),
 ///     )?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```

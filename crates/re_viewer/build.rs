@@ -15,6 +15,8 @@
 
 use std::path::Path;
 
+use re_build_tools::Environment;
+
 fn parse_release_version(branch: &str) -> Option<&str> {
     // release-\d+.\d+.\d+(-alpha.\d+)?
 
@@ -151,21 +153,27 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
     )?))
 }
 
-fn get_base_url() -> anyhow::Result<String> {
+fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
     if let Ok(base_url) = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL") {
         // override via env var
         return Ok(base_url);
     }
 
-    let branch = re_build_tools::git_branch()?;
-    if branch == "main" || !re_build_tools::is_on_ci() {
-        // on `main` and local builds, use `version/nightly`
-        // this will point to data uploaded by `.github/workflows/reusable_upload_web_demo.yml`
-        // on every commit to the `main` branch
-        return Ok("https://demo.rerun.io/version/nightly".into());
-    }
+    // In the CondaBuild environment we can't trust the git_branch name -- if it exists
+    // at all it's going to be the feedstock branch-name, not our Rerun branch. However
+    // conda should ONLY be building released versions, so we want to version the manifest.
+    let versioned_manifest = matches!(build_env, Environment::CondaBuild) || {
+        let branch = re_build_tools::git_branch()?;
+        if branch == "main" || !re_build_tools::is_on_ci() {
+            // on `main` and local builds, use `version/nightly`
+            // this will point to data uploaded by `.github/workflows/reusable_upload_web_demo.yml`
+            // on every commit to the `main` branch
+            return Ok("https://demo.rerun.io/version/nightly".into());
+        }
+        parse_release_version(&branch).is_some()
+    };
 
-    if parse_release_version(&branch).is_some() {
+    if versioned_manifest {
         let metadata = re_build_tools::cargo_metadata()?;
         let workspace_root = metadata
             .root_package()
@@ -187,8 +195,8 @@ fn get_base_url() -> anyhow::Result<String> {
 
 const MANIFEST_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/data/examples_manifest.json");
 
-fn write_examples_manifest() -> anyhow::Result<()> {
-    let base_url = get_base_url()?;
+fn write_examples_manifest(build_env: Environment) -> anyhow::Result<()> {
+    let base_url = get_base_url(build_env)?;
 
     let mut manifest = vec![];
     for example in examples()? {
@@ -203,18 +211,19 @@ fn write_examples_manifest() -> anyhow::Result<()> {
 }
 
 fn write_examples_manifest_if_necessary() {
-    use re_build_tools::Environment;
-    let should_run = match Environment::detect() {
+    let build_env = Environment::detect();
+
+    let should_run = match build_env {
         // Can't run in thsese situations, because we can't find `examples/python`.
         Environment::PublishingCrates | Environment::UsedAsDependency => false,
 
         // Make sure the manifest reflects what is in `examples/python`.
-        Environment::CI | Environment::DeveloperInWorkspace => true,
+        Environment::CI | Environment::CondaBuild | Environment::DeveloperInWorkspace => true,
     };
 
     if should_run {
         re_build_tools::rerun_if_changed_or_doesnt_exist(MANIFEST_PATH);
-        if let Err(err) = write_examples_manifest() {
+        if let Err(err) = write_examples_manifest(build_env) {
             panic!("{err}");
         }
     }

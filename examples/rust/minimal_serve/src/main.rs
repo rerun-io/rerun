@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _guard = rt.enter();
 
     let open_browser = true;
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal_serve_rs").serve(
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal_serve").serve(
         "0.0.0.0",
         Default::default(),
         Default::default(),

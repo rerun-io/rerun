@@ -21,6 +21,31 @@ readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
+# We could use Ninja on Windows as well, but this makes the compiler setup needlessly complicated.
+# Also, it's more likely that users are also going to use Visual Studio/MSBuild directly.
+[target.win-64.tasks]
+cpp-prepare = "cmake -G 'Visual Studio 17 2022' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/Debug/rerun_sdk_tests.exe", depends_on = [
+  "cpp-build-tests",
+] }
+
+[target.linux-64.tasks]
+cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
+  "cpp-build-tests",
+] }
+
+[target.osx-64.tasks]
+cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
+  "cpp-build-tests",
+] }
+
+[target.osx-arm64.tasks]
+cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
+  "cpp-build-tests",
+] }
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
@@ -36,7 +61,7 @@ lint-cpp-files = "clang-format --dry-run"
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --check"
 lint-rs-all = "cargo fmt --check"
-lint-py-black = "black --check --config rerun_py/pyproject.toml"
+lint-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 lint-py-blackdoc = "blackdoc --check"
 lint-py-mypy = "mypy --install-types --non-interactive --no-warn-unused-ignore"
 lint-py-ruff = "ruff check --config rerun_py/pyproject.toml"
@@ -49,11 +74,11 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
 ] }
 
 cpp-build-all = { depends_on = [
+  "cpp-prepare",
   "cpp-build-tests",
   "cpp-build-examples",
   "cpp-build-doc-examples",
 ] }
-cpp-prepare = "cmake -G Ninja -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 cpp-build-tests = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",
 ] }
@@ -70,26 +95,21 @@ cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_t
 [dependencies]
 arrow-cpp = "10.0.1"
 attrs = ">=23.1.0"
-black = "23.3.0"
 blackdoc = "0.3.8"
-c-compiler = "1.6.0.*"
-clang = ">=15,<16"
 clang-tools = ">=15,<16"
 cmake = "3.27.6"
-cxx-compiler = "1.6.0.*"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 just = ">=1.15.0"
 maturin = ">=0.14,<0.15"
 mypy = "1.4.1"
-ninja = "1.11.1"
 pip = ">=23"
 pyarrow = "10.0.1"
 pytest = ">=7"
 python = ">=3.8,<3.12"
 python-frontmatter = ">=1.0.0"
-ruff = "0.0.276"
+ruff = "0.1.2"
 semver = ">=2.13,<2.14"
 taplo = ">=0.8.1"
 typing_extensions = ">4.5"
@@ -98,3 +118,22 @@ wheel = ">=0.38,<0.39"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
+clang = ">=15,<16"
+c-compiler = "1.6.0.*"
+cxx-compiler = "1.6.0.*"
+ninja = "1.11.1"
+
+[target.osx-64.dependencies]
+clang = ">=15,<16"
+c-compiler = "1.6.0.*"
+cxx-compiler = "1.6.0.*"
+ninja = "1.11.1"
+
+[target.osx-arm64.dependencies]
+clang = ">=15,<16"
+c-compiler = "1.6.0.*"
+cxx-compiler = "1.6.0.*"
+ninja = "1.11.1"
+
+[target.win-64.dependencies]
+vs2022_win-64 = "19.37.32822"

@@ -28,8 +28,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Batch of 3D boxes
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_box3d_batch").memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_box3d_batch")
+///         .spawn(rerun::default_flush_timeout())?;
 ///
 ///     rec.log(
 ///         "batch",
@@ -51,7 +51,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .with_labels(["red", "green", "blue"]),
 ///     )?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```

@@ -1,10 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/generators/catch_generators.hpp>
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wsign-conversion"
 #include <arrow/buffer.h>
-#pragma GCC diagnostic pop
 
 #include "error_check.hpp"
 

@@ -3,8 +3,8 @@
 use ndarray::{s, Array, ShapeBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_segmentation_image").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_segmentation_image")
+        .spawn(rerun::default_flush_timeout())?;
 
     // create a segmentation image
     let mut image = Array::<u8, _>::zeros((8, 12).f());
@@ -22,6 +22,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log("image", &rerun::SegmentationImage::try_from(image)?)?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

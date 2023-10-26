@@ -145,8 +145,7 @@ def serve(
     bindings.serve(open_browser, web_port, ws_port, recording=recording)
 
 
-# TODO(jleibs): Ideally this would include a quick handshake that we're not talking
-# to some other random process holding the port.
+# TODO(#4019): application-level handshake
 def _check_for_existing_viewer(port: int) -> bool:
     try:
         # Try opening a connection to the port to see if something is there
@@ -234,9 +233,14 @@ def spawn(
             start_new_session=True,
         )
 
-        # TODO(emilk): figure out a way to postpone connecting until the rerun viewer is listening.
-        # For example, wait until it prints "Hosting a SDK server over TCP at …"
-        sleep(0.5)  # almost as good as waiting the correct amount of time
+        # Give the newly spawned Rerun Viewer some time to bind.
+        #
+        # NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
+        # at all, the connection will fail immediately, irrelevant of the timeout configuration.
+        # For that reason we use an extra loop.
+        for _ in range(0, 5):
+            _check_for_existing_viewer(port)
+            sleep(0.1)
 
     if connect:
         _connect(f"127.0.0.1:{port}", recording=recording)

@@ -28,13 +28,14 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
-        ///     rec.connect().throw_on_failure();
+        ///     rec.spawn().throw_on_failure();
         ///
         ///     std::default_random_engine gen;
-        ///     std::uniform_int_distribution<uint8_t> dist(0, 255);
+        ///     // On MSVC uint8_t distributions are not supported.
+        ///     std::uniform_int_distribution<int> dist(0, 255);
         ///
         ///     std::vector<uint8_t> data(8 * 6 * 3 * 5);
-        ///     std::generate(data.begin(), data.end(), [&] { return dist(gen); });
+        ///     std::generate(data.begin(), data.end(), [&] { return static_cast<uint8_t>(dist(gen)); });
         ///
         ///     rec.log(
         ///         "tensor",

@@ -1406,7 +1406,9 @@ fn quote_fill_arrow_array_builder(
             if field.is_nullable {
                 quote! {
                     (void)num_elements;
-                    return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+                    if (true) { // Works around unreachability compiler warning.
+                        return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+                    }
                 }
             } else {
                 // Trivial forwarding to inner type.
@@ -2065,6 +2067,10 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
                 image: _, // TODO(andreas): Include images in doc
                 ..
             } = &example.base;
+
+            for line in &example.lines {
+                assert!(!line.contains("```"), "Example {name:?} contains ``` in it, so we can't embed it in the C++ API docs.");
+            }
 
             if let Some(title) = title {
                 lines.push(format!("### {title}"));

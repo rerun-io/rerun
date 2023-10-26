@@ -14,6 +14,11 @@ add_library(rerun_sdk ${rerun_sdk_SRC})
 # Rerun needs at least C++17.
 set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
 
+# Do multithreaded compiling on MSVC.
+if(MSVC)
+    target_compile_options(rerun_sdk PRIVATE /MP)
+endif()
+
 # ------------------------------------------------------------------------------
 # Rerun development setup only:
 if(DEFINED RERUN_REPOSITORY)
@@ -45,6 +50,7 @@ if(DEFINED RERUN_REPOSITORY)
     configure_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src/rerun.h"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h"
+        NEWLINE_STYLE LF # Specify line endings, otherwise CMake wants to change them on Windows.
     )
 
     # Add tests!
@@ -76,7 +82,7 @@ if(NOT DEFINED RERUN_C_LIB_DEFAULT)
         set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__linux_x64.a)
     elseif(WIN32)
         # TODO(andreas): Arm support.
-        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__win_x64.lib)
+        set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/rerun_c__win_x64.lib)
     else()
         message(WARNING "Unsupported platform ${RERUN_C_LIB_DEFAULT}, can't find rerun_c library.")
     endif()
@@ -104,6 +110,11 @@ if(RERUN_ARROW_LINK_SHARED)
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_shared)
 else()
     message(STATUS "Arrow version: ${ARROW_VERSION}")
+
+    if(WIN32)
+        message(WARNING "As of writing static linking with libarrow is broken on Windows. See https://github.com/apache/arrow/issues/33145")
+    endif()
+
     target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_static)
 endif()
 
@@ -114,5 +125,5 @@ if(APPLE)
 elseif(UNIX) # if(LINUX) # CMake 3.25
     target_link_libraries(rerun_sdk PRIVATE "-lm -ldl -pthread")
 elseif(WIN32)
-    target_link_libraries(rerun_sdk PUBLIC ws2_32.dll Bcrypt.dll Userenv.dll)
+    target_link_libraries(rerun_sdk PUBLIC ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
 endif()

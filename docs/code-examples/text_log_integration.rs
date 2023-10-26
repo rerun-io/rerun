@@ -3,8 +3,8 @@
 use rerun::external::log;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_text_log_integration").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_text_log_integration")
+        .spawn(rerun::default_flush_timeout())?;
 
     // Log a text entry directly:
     rec.log(
@@ -21,6 +21,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .init()?;
     log::info!("This INFO log got added through the standard logging interface");
 
-    rerun::native_viewer::show(storage.take())?;
+    log::logger().flush();
+
     Ok(())
 }

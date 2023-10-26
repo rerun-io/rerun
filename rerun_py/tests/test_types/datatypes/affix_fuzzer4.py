@@ -20,7 +20,7 @@ __all__ = ["AffixFuzzer4", "AffixFuzzer4ArrayLike", "AffixFuzzer4Batch", "AffixF
 class AffixFuzzer4:
     # You can define your own __init__ function as a member of AffixFuzzer4Ext in affix_fuzzer4_ext.py
 
-    inner: datatypes.AffixFuzzer3 | list[datatypes.AffixFuzzer3] = field()
+    inner: Union[datatypes.AffixFuzzer3, list[datatypes.AffixFuzzer3]] = field()
     """
     single_required (datatypes.AffixFuzzer3):
 
