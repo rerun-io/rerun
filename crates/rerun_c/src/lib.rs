@@ -22,7 +22,7 @@ use re_sdk::{
 // ----------------------------------------------------------------------------
 // Types:
 
-/// `rr_string` (the name `CString` was already taken)
+/// This is called `rr_string` in the C API.
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CStringView {

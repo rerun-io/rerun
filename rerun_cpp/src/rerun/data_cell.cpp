@@ -16,7 +16,7 @@ namespace rerun {
         RR_RETURN_NOT_OK(ipc_result.error);
 
         rerun::DataCell cell;
-        cell.component_name = name;
+        cell.component_name = std::move(name);
         cell.buffer = std::move(ipc_result.value);
 
         return cell;

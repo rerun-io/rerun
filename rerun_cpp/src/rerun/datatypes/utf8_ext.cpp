@@ -18,9 +18,6 @@ namespace rerun {
             /// Construct a `Utf8` from null-terminated UTF-8.
             Utf8(const char* str) : value(str) {}
 
-            /// Construct a `Utf8` from a string view.
-            Utf8(std::string_view str) : value(str) {}
-
             const char* c_str() const {
                 return value.c_str();
             }
