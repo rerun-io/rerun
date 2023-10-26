@@ -656,6 +656,7 @@ def main() -> None:
 
     num_errors = 0
 
+    # This list of file extensions matches the one in `.github/workflows/documentation.yaml`
     extensions = ["c", "cpp", "fbs", "h", "hpp", "html", "js", "md", "py", "rs", "sh", "toml", "txt", "wgsl", "yml"]
 
     exclude_paths = {
