@@ -25,8 +25,11 @@ impl CodeFormatter for PythonCodeFormatter {
 
         re_tracing::profile_function!();
 
-        // Running `black` once for each file is very slow, so we write all
+        // Back when we used `black` for formatting, it was very slow
+        // to run it for each file. So we write all
         // files to a temporary folder, format it, and copy back the results.
+        // Now that we use `ruff format` we could probably revisit this and instead
+        // format each file individually, in parallel.
 
         let tempdir = tempfile::tempdir().unwrap();
         let tempdir_path = Utf8PathBuf::try_from(tempdir.path().to_owned()).unwrap();
@@ -78,16 +81,9 @@ fn format_path_for_tmp_dir(
 fn format_python_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
-    // The order below is important and sadly we need to call black twice. Ruff does not yet
-    // fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
-    //
-    // 1) Call black, which among others things fixes line-length
-    // 2) Call ruff, which requires line-lengths to be correct
-    // 3) Call black again to cleanup some whitespace issues ruff might introduce
-
-    run_black_on_dir(dir).context("black")?;
-    run_ruff_on_dir(dir).context("ruff")?;
-    run_black_on_dir(dir).context("black")?;
+    // NOTE: we need both `ruff check --fix` and `ruff format` in that order: https://twitter.com/charliermarsh/status/1717229721954799727
+    run_ruff_check_fix_on_dir(dir).context("ruff check --fix")?;
+    run_ruff_format_on_dir(dir).context("ruff format")?;
     Ok(())
 }
 
@@ -99,12 +95,14 @@ fn python_project_path() -> Utf8PathBuf {
     path
 }
 
-fn run_black_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
+fn run_ruff_check_fix_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
-    let proc = Command::new("black")
+    let proc = Command::new("ruff")
+        .arg("check")
         .arg(format!("--config={}", python_project_path()))
+        .arg("--fix")
         .arg(dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -121,13 +119,13 @@ fn run_black_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     }
 }
 
-fn run_ruff_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
+fn run_ruff_format_on_dir(dir: &Utf8PathBuf) -> anyhow::Result<()> {
     re_tracing::profile_function!();
     use std::process::{Command, Stdio};
 
     let proc = Command::new("ruff")
+        .arg("format")
         .arg(format!("--config={}", python_project_path()))
-        .arg("--fix")
         .arg(dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

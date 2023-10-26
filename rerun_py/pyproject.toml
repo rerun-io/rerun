@@ -42,10 +42,6 @@ repository = "https://github.com/rerun-io/rerun"
 [project.scripts]
 rerun = "rerun.__main__:main"
 
-[tool.black]
-line-length = 120
-target-version = ["py38"]
-
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
 
@@ -90,6 +86,8 @@ ignore = [
 
   # allow relative imports
   "TID252",
+
+  "UP007", # We need this, or `ruff format` will convert `Union[X, Y]` to `X | Y` which break on Python 3.8
 ]
 
 line-length = 120

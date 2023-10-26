@@ -23,7 +23,7 @@ class Transform3D(Transform3DExt):
 
     # You can define your own __init__ function as a member of Transform3DExt in transform3d_ext.py
 
-    inner: datatypes.TranslationAndMat3x3 | datatypes.TranslationRotationScale3D = field()
+    inner: Union[datatypes.TranslationAndMat3x3, datatypes.TranslationRotationScale3D] = field()
     """
     TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):
 

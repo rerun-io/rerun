@@ -816,7 +816,7 @@ fn code_for_union(
 
     // Note: mypy gets confused using staticmethods for field-converters
     code.push_text(
-        format!("inner: {inner_type} = field({converter}) {type_ignore}"),
+        format!("inner: {inner_type} = field({converter} {type_ignore}\n)"),
         1,
         4,
     );
