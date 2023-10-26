@@ -91,40 +91,40 @@ jobs:
         id: versioning
         run: |
 
-          # parse the release version from the branch name
+          echo "release_version: $release_version"
+
+          echo Parse the release version from the branch name…
           #   `release-0.8.1-meta.N` -> `0.8.1`
           release_version=$(python3 scripts/ci/crates.py get-version --from git --finalize)
 
-          # store version before the update, so we can later detect if it changed
+          echo Store version before the update, so we can later detect if it changed…
           previous=$(python3 scripts/ci/crates.py get-version)
 
-          # if the version minus prerelease/build metadata is not the same as the release version,
-          # then update it.
+          echo If the version minus prerelease/build metadata is not the same as the release version, then update it.…
           if [ $(python3 scripts/ci/crates.py get-version --finalize) != $release_version ]; then
             python3 scripts/ci/crates.py version --exact $release_version
           fi
 
-          # if this is an `rc`, additionally set add `-rc.N`
-          # this will also bump the `N` if `-rc.N` is already set
+          echo If this is an 'rc', additionally set add '-rc.N'. This will also bump the 'N' if '-rc.N' is already set…
           if [ ${{ inputs.release-type }} = "rc" ]; then
             python3 scripts/ci/crates.py version --bump prerelease --pre-id=rc
           fi
 
-          # if this is an `alpha`, set the version to whatever is in the git branch name.
+          echo If this is an 'alpha', set the version to whatever is in the git branch name.…
           if [ ${{ inputs.release-type }} = "alpha" ]; then
             python3 scripts/ci/crates.py version --exact $(python3 scripts/ci/crates.py get-version --from-git)
           fi
 
-          # if this is a `final`, set the version to the final release version
+          echo If this is a 'final', set the version to the final release version…
           if [ ${{ inputs.release-type }} = "final" ]; then
             python3 scripts/ci/crates.py version --exact $release_version
           fi
 
-          # store version after the update, and the expected "final" release version
+          echo Store version after the update, and the expected "final" release version…
           current=$(python3 scripts/ci/crates.py get-version)
           final=$(python3 scripts/ci/crates.py get-version --finalize)
 
-          # output everything for use in other steps
+          echo Output everything for use in other steps…
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
