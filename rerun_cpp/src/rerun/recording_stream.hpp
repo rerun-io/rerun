@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint> // uint32_t etc.
+#include <optional>
 #include <string_view>
 #include <vector>
 
