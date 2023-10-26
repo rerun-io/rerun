@@ -226,7 +226,7 @@ def main() -> None:
     # See e.g. <https://github.com/ncipollo/release-action/issues/317>.
     if release.draft:
         print("Detected mistakenly drafted release, undrafting…")
-        release.update_release(release.title, release.body, draft=False)
+        release.update_release(release.title, release.body, draft=False, prerelease=release.prerelease)
 
 
 if __name__ == "__main__":
