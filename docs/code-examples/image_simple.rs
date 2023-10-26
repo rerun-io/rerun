@@ -3,7 +3,8 @@
 use ndarray::{s, Array, ShapeBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_simple").spawn(rerun::default_flush_timeout())?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_simple")
+        .spawn(rerun::default_flush_timeout())?;
 
     let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
     image.slice_mut(s![.., .., 0]).fill(255);

@@ -1,8 +1,8 @@
 //! Log a scalar over time.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec =
-        rerun::RecordingStreamBuilder::new("rerun_example_scalar_multiple_plots").spawn(rerun::default_flush_timeout())?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_scalar_multiple_plots")
+        .spawn(rerun::default_flush_timeout())?;
     let mut lcg_state = 0_i64;
 
     for t in 0..((std::f32::consts::TAU * 2.0 * 100.0) as i64) {

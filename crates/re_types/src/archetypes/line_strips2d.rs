@@ -28,7 +28,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### `line_strip2d_batch`:
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d").spawn(rerun::default_flush_timeout())?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d")
+///         .spawn(rerun::default_flush_timeout())?;
 ///
 ///     let strip1 = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
 ///     #[rustfmt::skip]

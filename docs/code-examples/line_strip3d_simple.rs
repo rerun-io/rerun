@@ -1,7 +1,8 @@
 //! Log a simple line strip.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d").spawn(rerun::default_flush_timeout())?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d")
+        .spawn(rerun::default_flush_timeout())?;
 
     let points = [
         [0., 0., 0.],

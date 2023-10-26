@@ -1,7 +1,8 @@
 //! Log some very simple 2D boxes.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_box2d").spawn(rerun::default_flush_timeout())?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_box2d")
+        .spawn(rerun::default_flush_timeout())?;
 
     rec.log(
         "simple",

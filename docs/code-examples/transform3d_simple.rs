@@ -3,7 +3,8 @@
 use std::f32::consts::TAU;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d").spawn(rerun::default_flush_timeout())?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_transform3d")
+        .spawn(rerun::default_flush_timeout())?;
 
     let arrow = rerun::Arrows3D::from_vectors([(0.0, 1.0, 0.0)]).with_origins([(0.0, 0.0, 0.0)]);
 

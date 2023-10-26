@@ -33,7 +33,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Disconnected Space
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").spawn(rerun::default_flush_timeout())?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space")
+///         .spawn(rerun::default_flush_timeout())?;
 ///
 ///     // These two points can be projected into the same space..
 ///     rec.log(

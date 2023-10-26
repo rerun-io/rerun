@@ -30,7 +30,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Simple bar chart
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_bar_chart").spawn(rerun::default_flush_timeout())?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_bar_chart")
+///         .spawn(rerun::default_flush_timeout())?;
 ///
 ///     rec.log(
 ///         "bar_chart",
