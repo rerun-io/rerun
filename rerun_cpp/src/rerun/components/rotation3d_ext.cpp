@@ -29,6 +29,6 @@ namespace rerun {
 #define Rotation3DExt Rotation3D
 #endif
 
-        const Rotation3D Rotation3D::IDENTITY = datatypes::Quaternion::IDENTITY;
+        const Rotation3DExt Rotation3DExt::IDENTITY = datatypes::Quaternion::IDENTITY;
     } // namespace components
 } // namespace rerun

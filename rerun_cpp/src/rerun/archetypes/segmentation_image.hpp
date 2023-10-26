@@ -10,6 +10,7 @@
 #include "../error.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -102,7 +103,8 @@ namespace rerun {
             /// Objects with higher values are drawn on top of those with lower values.
             SegmentationImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
                 draw_order = std::move(_draw_order);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.
