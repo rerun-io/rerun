@@ -16,14 +16,23 @@ Requires the following packages:
 from __future__ import annotations
 
 import argparse
-from typing import Dict
 import time
+from typing import cast, Dict
 
 from github import Github
 from github.GitRelease import GitRelease
+from github.Repository import Repository
 from google.cloud import storage
 
 Assets = Dict[str, storage.Blob]
+
+
+def get_any_release(repo: Repository, tag_name: str) -> GitRelease | None:
+    """
+    Fetch any release from a Github repository, even drafts.
+    """
+    # Do _not_ use `repo.get_release`, it silently ignores drafts.
+    return next(rel for rel in repo.get_releases() if rel.tag_name == tag_name)
 
 
 def fetch_binary_assets(
@@ -182,13 +191,14 @@ def main() -> None:
     # Wait for a bit before doing anything.
     # Useful on CI because the google-cloud-storage upload action doesn't guarantee to read-your-writes.
     time.sleep(args.wait)
+
     gh = Github(args.github_token, timeout=args.github_timeout)
     repo = gh.get_repo(args.github_repository)
-    release = repo.get_release(args.github_release)
+    release = cast(GitRelease, get_any_release(repo, args.github_release))
     commit = dict([(tag.name, tag.commit) for tag in repo.get_tags()])[args.github_release]
 
     print(
-        f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at}) #{commit.sha[:7]}…'
+        f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…'
     )
 
     assets = fetch_binary_assets(
