@@ -334,6 +334,7 @@ impl QuotedObject {
         let cpp_includes = Includes::new(obj.fqname.clone());
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
+        hpp_includes.insert_rerun("util.hpp");
 
         let field_declarations = obj
             .fields
@@ -401,22 +402,8 @@ impl QuotedObject {
             let method_ident = format_ident!("with_{}", obj_field.name);
             let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
 
-            let quoted_hash = quote!(#);
             let gcc_ignore_comment =
                 quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
-            let gcc_ignore_maybe_uninit_push = quote!(
-                #NEWLINE_TOKEN
-                #gcc_ignore_comment
-                #quoted_hash ifdef __GNUC__  #NEWLINE_TOKEN
-                #quoted_hash pragma GCC diagnostic push #NEWLINE_TOKEN
-                #quoted_hash pragma GCC diagnostic ignored "-Wmaybe-uninitialized" #NEWLINE_TOKEN
-                #quoted_hash endif #NEWLINE_TOKEN
-            );
-            let gcc_ignore_maybe_uninit_pop = quote!(
-                #quoted_hash ifdef __GNUC__ #NEWLINE_TOKEN
-                #quoted_hash pragma GCC diagnostic pop #NEWLINE_TOKEN
-                #quoted_hash endif #NEWLINE_TOKEN
-            );
 
             methods.push(Method {
                 docs: obj_field.docs.clone().into(),
@@ -429,9 +416,8 @@ impl QuotedObject {
                 },
                 definition_body: quote! {
                     #field_ident = std::move(#parameter_ident);
-                    #gcc_ignore_maybe_uninit_push
-                    return std::move(*this);
-                    #gcc_ignore_maybe_uninit_pop
+                    #gcc_ignore_comment
+                    WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
                 },
                 inline: true,
             });

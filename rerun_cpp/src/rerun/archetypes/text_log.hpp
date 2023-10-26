@@ -10,6 +10,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -46,30 +47,14 @@ namespace rerun {
             ///
             /// This can be used to filter the log messages in the Rerun Viewer.
             TextLog with_level(rerun::components::TextLogLevel _level) && {
-                level = std::move(_level);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                level = std::move(_level); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional color to use for the log line in the Rerun Viewer.
             TextLog with_color(rerun::components::Color _color) && {
-                color = std::move(_color);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                color = std::move(_color); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

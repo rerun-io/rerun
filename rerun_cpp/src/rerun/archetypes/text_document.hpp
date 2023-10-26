@@ -9,6 +9,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -108,16 +109,9 @@ namespace rerun {
             ///
             /// If omitted, `text/plain` is assumed.
             TextDocument with_media_type(rerun::components::MediaType _media_type) && {
-                media_type = std::move(_media_type);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                media_type =
+                    std::move(_media_type); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

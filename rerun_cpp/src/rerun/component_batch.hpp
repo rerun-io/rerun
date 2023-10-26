@@ -9,6 +9,7 @@
 
 #include "result.hpp"
 #include "serialized_component_batch.hpp"
+#include "util.hpp"
 
 namespace rerun {
     /// The ComponentBatchAdaptor trait is responsible for mapping an input argument to a
@@ -155,19 +156,12 @@ namespace rerun {
 
         /// Move assignment
         void operator=(ComponentBatch<TComponent>&& other) {
-// Need to disable the maybe-uninitialized here.  It seems like the compiler may be confused in situations where
-// we are assigning into an unused optional from a temporary. The fact that this hits the move-assignment without
-// having called the move constructor is suspicious though and hints of an actual bug.
-//
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-            this->swap(other);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+            // Need to disable the maybe-uninitialized here.  It seems like the compiler may be confused in situations where
+            // we are assigning into an unused optional from a temporary. The fact that this hits the move-assignment without
+            // having called the move constructor is suspicious though and hints of an actual bug.
+            //
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
         }
 
         /// Swaps the content of this component batch with another.

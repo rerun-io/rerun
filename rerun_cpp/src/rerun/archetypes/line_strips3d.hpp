@@ -13,6 +13,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -93,76 +94,38 @@ namespace rerun {
 
             /// Optional radii for the line strips.
             LineStrips3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
-                radii = std::move(_radii);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                radii = std::move(_radii); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional colors for the line strips.
             LineStrips3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
-                colors = std::move(_colors);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                colors = std::move(_colors); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional text labels for the line strips.
             LineStrips3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
-                labels = std::move(_labels);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                labels = std::move(_labels); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional `ClassId`s for the lines.
             ///
             /// The class ID provides colors and labels if not specified explicitly.
             LineStrips3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
-                class_ids = std::move(_class_ids);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                class_ids =
+                    std::move(_class_ids); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Unique identifiers for each individual line strip in the batch.
             LineStrips3D with_instance_keys(
                 ComponentBatch<rerun::components::InstanceKey> _instance_keys
             ) && {
-                instance_keys = std::move(_instance_keys);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                instance_keys =
+                    std::move(_instance_keys); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

@@ -10,6 +10,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -153,16 +154,9 @@ namespace rerun {
             ///
             /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
             Pinhole with_resolution(rerun::components::Resolution _resolution) && {
-                resolution = std::move(_resolution);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                resolution =
+                    std::move(_resolution); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Sets the view coordinates for the camera.
@@ -193,16 +187,9 @@ namespace rerun {
             /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
             /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
             Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
-                camera_xyz = std::move(_camera_xyz);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                camera_xyz =
+                    std::move(_camera_xyz); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

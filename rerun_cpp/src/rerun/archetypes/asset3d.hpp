@@ -10,6 +10,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -120,32 +121,18 @@ namespace rerun {
             /// If omitted, the viewer will try to guess from the data blob.
             /// If it cannot guess, it won't be able to render the asset.
             Asset3D with_media_type(rerun::components::MediaType _media_type) && {
-                media_type = std::move(_media_type);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                media_type =
+                    std::move(_media_type); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// An out-of-tree transform.
             ///
             /// Applies a transformation to the asset itself without impacting its children.
             Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
-                transform = std::move(_transform);
-// See: https://github.com/rerun-io/rerun/issues/4027
-#ifdef __GNUC__
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-                return std::move(*this);
-#ifdef __GNUC__
-#pragma GCC diagnostic pop
-#endif
+                transform =
+                    std::move(_transform); // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.
