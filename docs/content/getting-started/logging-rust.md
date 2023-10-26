@@ -333,45 +333,39 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 ### Spawning the Viewer from your process
 
-Instead of connecting to an external Viewer process, you can also spawn it from your own process.
-The main advantage of this is that you no longer need to open up the viewer as a separate process.
+If the Rerun Viewer is [installed](installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn?speculative-link) to automatically start a viewer in a new process and connect to it over TCP.
+If an external viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
+```rust
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
+        .spawn(rerun::default_flush_timeout())?;
+
+    // … log data to `rec` …
+
+    Ok(())
+}
+```
+
+Alternatively, you can use [`rerun::native_viewer::show`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.show.html) to start a viewer on the main thread (for platform-compatibility reasons) and feed it data from memory.
 This requires the `native_viewer` feature to be enabled in `Cargo.toml`:
 ```toml
 rerun = { version = "0.9", features = ["native_viewer"] }
 ```
 Doing so means you're building the Rerun Viewer itself as part of your project, meaning compilation will take a bit longer the first time.
 
-You can now use [`rerun::native_viewer::spawn`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.spawn.html) to spawn
-the native Rerun viewer.
-Since the Viewer's UI thread must be the main thread, this method call will take it over and spawn a new thread for you:
+Unlike `spawn` however, this expects a complete recording instead of being fed in real-time:
 ```rust
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let store_info = rerun::new_store_info("DNA Abacus");
-    rerun::native_viewer::spawn(store_info, Default::default(), |rec| {
-        run(&rec).unwrap();
-    })?;
-    Ok(())
-}
-
-fn run(rec: &rerun::RecordingStream) -> rerun::RecordingStreamResult<()> {
-    // All your code (logging and otherwise) goes in here.
-}
-```
-
-Another way to spawn the native viewer is [`rerun::native_viewer::show`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.show.html). Again, like [`rerun::native_viewer::spawn`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.spawn.html) this has to be called from the main thread and the method call will only return once the Viewer is closed.
-Unlike `spawn` however, it expects a in-memory recording and sends it to the viewer instead of being fed in real-time:
-```rust
-let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
+let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus").memory()?;
 
 // … log data to `rec` …
 
 rerun::native_viewer::show(storage.take())?;
 ```
+The viewer will block the main thread until it is closed.
 
 ### Closing
 
 This closes our whirlwind tour of Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty pointers to start experimenting.
 
 As a next step, browse through our [example gallery](/examples) for some more realistic example use-cases, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main data types.
-
