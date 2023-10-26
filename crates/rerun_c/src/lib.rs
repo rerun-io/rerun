@@ -35,6 +35,10 @@ impl CStringWithLength {
     pub fn as_str<'a>(&'a self, argument_name: &'a str) -> Result<&'a str, CError> {
         ptr::try_char_ptr_as_str(self.string, self.length, argument_name)
     }
+
+    pub fn is_null(&self) -> bool {
+        self.string.is_null()
+    }
 }
 
 type CRecordingStream = u32;
@@ -44,9 +48,9 @@ type CRecordingStream = u32;
 #[repr(C)]
 pub struct CSpawnOptions {
     pub port: u16,
-    pub memory_limit: *const c_char,
-    pub executable_name: *const c_char,
-    pub executable_path: *const c_char,
+    pub memory_limit: CStringWithLength,
+    pub executable_name: CStringWithLength,
+    pub executable_path: CStringWithLength,
 }
 
 impl CSpawnOptions {
@@ -59,18 +63,16 @@ impl CSpawnOptions {
         }
 
         if !self.memory_limit.is_null() {
-            spawn_opts.memory_limit =
-                ptr::try_char_ptr_as_str(self.memory_limit, "memory_limit")?.to_owned();
+            spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
         }
 
         if !self.executable_name.is_null() {
-            spawn_opts.executable_name =
-                ptr::try_char_ptr_as_str(self.executable_name, "executable_name")?.to_owned();
+            spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
         }
 
         if !self.executable_path.is_null() {
             spawn_opts.executable_path =
-                Some(ptr::try_char_ptr_as_str(self.executable_path, "executable_path")?.to_owned());
+                Some(self.executable_path.as_str("executable_path")?.to_owned());
         }
 
         Ok(spawn_opts)

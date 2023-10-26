@@ -144,10 +144,10 @@ namespace rerun {
         /// dropping data if progress is not being made. Passing a negative value indicates no
         /// timeout, and can cause a call to `flush` to block indefinitely.
         Error spawn(
-            uint16_t port = 9876,                  //
-            const char* memory_limit = "75%",      //
-            const char* executable_name = "rerun", //
-            const char* executable_path = nullptr, //
+            uint16_t port = 9876,                                           //
+            std::string_view memory_limit = "75%",                          //
+            std::string_view executable_name = "rerun",                     //
+            std::optional<std::string_view> executable_path = std::nullopt, //
             float flush_timeout_sec = 2.0
         );
 

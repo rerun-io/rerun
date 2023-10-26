@@ -35,7 +35,7 @@ typedef struct rr_string {
 /// Create a `rr_string` from a null-terminated string.
 ///
 /// Calling with NULL is safe.
-rr_string rr_make_string(rr_string utf8) {
+rr_string rr_make_string(const char* utf8) {
     uint32_t length_in_bytes = 0;
     if (utf8 == NULL) {
         length_in_bytes = (uint32_t)strlen(utf8);
@@ -103,20 +103,20 @@ typedef struct rr_spawn_options {
     /// Example: `16GB` or `50%` (of system total).
     ///
     /// Defaults to `75%` if null.
-    const char* memory_limit;
+    rr_string memory_limit;
 
     /// Specifies the name of the Rerun executable.
     ///
     /// You can omit the `.exe` suffix on Windows.
     ///
     /// Defaults to `rerun` if null.
-    const char* executable_name;
+    rr_string executable_name;
 
     /// Enforce a specific executable to use instead of searching though PATH
     /// for [`Self::executable_name`].
     ///
     /// Unspecified by default.
-    const char* executable_path;
+    rr_string executable_path;
 } rr_spawn_options;
 
 typedef struct rr_store_info {
