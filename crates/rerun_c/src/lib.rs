@@ -124,6 +124,7 @@ pub enum CErrorCode {
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
     RecordingStreamSaveFailure,
+    // TODO(cmc): Really this should be its own category…
     RecordingStreamSpawnFailure,
 
     _CategoryArrow = 0x0000_1000,

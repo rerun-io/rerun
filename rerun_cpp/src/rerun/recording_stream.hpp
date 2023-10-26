@@ -143,10 +143,10 @@ namespace rerun {
         /// dropping data if progress is not being made. Passing a negative value indicates no
         /// timeout, and can cause a call to `flush` to block indefinitely.
         Error spawn(
-            uint16_t port = 0,                     // defer to default value
-            const char* memory_limit = nullptr,    // defer to default value
-            const char* executable_name = nullptr, // defer to default value
-            const char* executable_path = nullptr, // defer to default value
+            uint16_t port = 9876,                  //
+            const char* memory_limit = "75%",      //
+            const char* executable_name = "rerun", //
+            const char* executable_path = nullptr, //
             float flush_timeout_sec = 2.0
         );
 

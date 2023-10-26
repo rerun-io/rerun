@@ -30,9 +30,9 @@ namespace rerun {
     /// Enforce a specific executable to use instead of searching though PATH
     /// for [`Self::executable_name`].
     Error spawn(
-        uint16_t port = 0,                     // defer to default value
-        const char* memory_limit = nullptr,    // defer to default value
-        const char* executable_name = nullptr, // defer to default value
-        const char* executable_path = nullptr  // defer to default value
+        uint16_t port = 9876,                  //
+        const char* memory_limit = "75%",      //
+        const char* executable_name = "rerun", //
+        const char* executable_path = nullptr  //
     );
 } // namespace rerun

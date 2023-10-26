@@ -154,7 +154,7 @@ enum {
     _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
     RR_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
-    RR_ERROR_CODE_RECORDING_STREAM_INVALID_TIMELINE_TYPE,
+    RR_ERROR_CODE_RECORDING_STREAM_SPAWN_FAILURE,
 
     // Arrow data processing errors.
     _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
@@ -189,8 +189,9 @@ extern const char* rr_version_string(void);
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to
 /// listen for incoming TCP connections.
 ///
-/// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
-/// that viewer instead of starting a new one.
+/// `spawn_opts` can be set to NULL to use the recommended defaults.
+///
+/// If a Rerun Viewer is already listening on this TCP port, this does nothing.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
 /// Creates a new recording stream to log to.
@@ -254,7 +255,7 @@ extern void rr_recording_stream_connect(
 /// spawn_opts:
 /// Configuration of the spawned process.
 /// Refer to `rr_spawn_options` documentation for details.
-/// Passing null is valid and will result in sane defaults.
+/// Passing null is valid and will result in the recommended defaults.
 ///
 /// flush_timeout_sec:
 /// The minimum time the SDK will wait during a flush before potentially
