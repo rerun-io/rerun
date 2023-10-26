@@ -13,7 +13,7 @@ on:
 
 jobs:
   bundle-and-upload-rerun_cpp:
-    name: C++ bundling and upload
+    name: Bundle and upload rerun_cpp_sdk.zip
 
     permissions:
       contents: "read"
@@ -57,5 +57,5 @@ jobs:
           fi
           echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: "Bundle & Upload rerun_cpp"
+      - name: "Bundle and upload rerun_cpp_sdk.zip"
         run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.short-sha.outputs.SHORT_SHA }} --platform-filter=${{ inputs.PLATFORM_FILTER }}

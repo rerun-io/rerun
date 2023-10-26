@@ -55,7 +55,7 @@ jobs:
     secrets: inherit
 
   bundle-and-upload-rerun_cpp:
-    name: "Bundle and upload rerun_cpp"
+    name: "Bundle and upload rerun_cpp_sdk.zip"
     needs: [build-rerun_c-and-upload]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
     with:
