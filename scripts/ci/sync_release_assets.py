@@ -216,6 +216,10 @@ def main() -> None:
     if args.update:
         update_release_assets(release, assets)
 
+    if release.draft:
+        print(f"Detected mistakenly drafted release, undrafting…")
+        release.update_release(release.title, release.body, draft=False)
+
 
 if __name__ == "__main__":
     main()
