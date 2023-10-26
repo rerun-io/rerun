@@ -27,8 +27,6 @@ class TextDocument(Archetype):
     -------
     ### Markdown text document:
     ```python
-    #!/usr/bin/env python3
-
     import rerun as rr
 
     rr.init("rerun_example_text_document", spawn=True)
