@@ -4,7 +4,7 @@ use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new `RecordingStream` which stores data in memory.
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs")
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal")
         .spawn(rerun::default_flush_timeout())?;
 
     // Create some data using the `grid` utility function.
