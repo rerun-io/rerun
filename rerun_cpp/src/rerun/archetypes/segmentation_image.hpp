@@ -102,8 +102,8 @@ namespace rerun {
             ///
             /// Objects with higher values are drawn on top of those with lower values.
             SegmentationImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
-                draw_order =
-                    std::move(_draw_order); // See: https://github.com/rerun-io/rerun/issues/4027
+                draw_order = std::move(_draw_order);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 

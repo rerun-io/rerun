@@ -135,25 +135,29 @@ namespace rerun {
 
             /// Optional center positions of the boxes.
             Boxes2D with_centers(ComponentBatch<rerun::components::Position2D> _centers) && {
-                centers = std::move(_centers); // See: https://github.com/rerun-io/rerun/issues/4027
+                centers = std::move(_centers);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional colors for the boxes.
             Boxes2D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
-                colors = std::move(_colors); // See: https://github.com/rerun-io/rerun/issues/4027
+                colors = std::move(_colors);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional radii for the lines that make up the boxes.
             Boxes2D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
-                radii = std::move(_radii); // See: https://github.com/rerun-io/rerun/issues/4027
+                radii = std::move(_radii);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional text labels for the boxes.
             Boxes2D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
-                labels = std::move(_labels); // See: https://github.com/rerun-io/rerun/issues/4027
+                labels = std::move(_labels);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
@@ -163,8 +167,8 @@ namespace rerun {
             ///
             /// The default for 2D boxes is 10.0.
             Boxes2D with_draw_order(rerun::components::DrawOrder _draw_order) && {
-                draw_order =
-                    std::move(_draw_order); // See: https://github.com/rerun-io/rerun/issues/4027
+                draw_order = std::move(_draw_order);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
@@ -172,16 +176,16 @@ namespace rerun {
             ///
             /// The class ID provides colors and labels if not specified explicitly.
             Boxes2D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
-                class_ids =
-                    std::move(_class_ids); // See: https://github.com/rerun-io/rerun/issues/4027
+                class_ids = std::move(_class_ids);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Unique identifiers for each individual boxes in the batch.
             Boxes2D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
             ) && {
-                instance_keys =
-                    std::move(_instance_keys); // See: https://github.com/rerun-io/rerun/issues/4027
+                instance_keys = std::move(_instance_keys);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 

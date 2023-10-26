@@ -154,8 +154,8 @@ namespace rerun {
             ///
             /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
             Pinhole with_resolution(rerun::components::Resolution _resolution) && {
-                resolution =
-                    std::move(_resolution); // See: https://github.com/rerun-io/rerun/issues/4027
+                resolution = std::move(_resolution);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
@@ -187,8 +187,8 @@ namespace rerun {
             /// The pinhole matrix (the `image_from_camera` argument) always project along the third (Z) axis,
             /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
             Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
-                camera_xyz =
-                    std::move(_camera_xyz); // See: https://github.com/rerun-io/rerun/issues/4027
+                camera_xyz = std::move(_camera_xyz);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 

@@ -416,6 +416,7 @@ impl QuotedObject {
                 },
                 definition_body: quote! {
                     #field_ident = std::move(#parameter_ident);
+                    #NEWLINE_TOKEN
                     #gcc_ignore_comment
                     WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
                 },

@@ -47,13 +47,15 @@ namespace rerun {
             ///
             /// This can be used to filter the log messages in the Rerun Viewer.
             TextLog with_level(rerun::components::TextLogLevel _level) && {
-                level = std::move(_level); // See: https://github.com/rerun-io/rerun/issues/4027
+                level = std::move(_level);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional color to use for the log line in the Rerun Viewer.
             TextLog with_color(rerun::components::Color _color) && {
-                color = std::move(_color); // See: https://github.com/rerun-io/rerun/issues/4027
+                color = std::move(_color);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 

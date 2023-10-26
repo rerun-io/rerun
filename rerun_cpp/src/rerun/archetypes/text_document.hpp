@@ -109,8 +109,8 @@ namespace rerun {
             ///
             /// If omitted, `text/plain` is assumed.
             TextDocument with_media_type(rerun::components::MediaType _media_type) && {
-                media_type =
-                    std::move(_media_type); // See: https://github.com/rerun-io/rerun/issues/4027
+                media_type = std::move(_media_type);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 

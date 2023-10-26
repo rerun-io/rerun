@@ -111,7 +111,8 @@ namespace rerun {
             /// radius, then this radius will be used as the line width too. Otherwise, the
             /// line will use the default width of `1.0`.
             TimeSeriesScalar with_radius(rerun::components::Radius _radius) && {
-                radius = std::move(_radius); // See: https://github.com/rerun-io/rerun/issues/4027
+                radius = std::move(_radius);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
@@ -127,7 +128,8 @@ namespace rerun {
             /// color, then this color will be used as the line color in the plot legend.
             /// Otherwise, the line will appear gray in the legend.
             TimeSeriesScalar with_color(rerun::components::Color _color) && {
-                color = std::move(_color); // See: https://github.com/rerun-io/rerun/issues/4027
+                color = std::move(_color);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
@@ -140,7 +142,8 @@ namespace rerun {
             /// line will be named after the entity path. The plot itself is named after
             /// the space it's in.
             TimeSeriesScalar with_label(rerun::components::Text _label) && {
-                label = std::move(_label); // See: https://github.com/rerun-io/rerun/issues/4027
+                label = std::move(_label);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
@@ -152,8 +155,8 @@ namespace rerun {
             /// the line will switch between a scattered and a continuous representation as
             /// required.
             TimeSeriesScalar with_scattered(rerun::components::ScalarScattering _scattered) && {
-                scattered =
-                    std::move(_scattered); // See: https://github.com/rerun-io/rerun/issues/4027
+                scattered = std::move(_scattered);
+                // See: https://github.com/rerun-io/rerun/issues/4027
                 WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
