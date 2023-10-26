@@ -93,7 +93,6 @@ cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_t
 ] }
 
 [dependencies]
-arrow-cpp = "10.0.1"
 attrs = ">=23.1.0"
 blackdoc = "0.3.8"
 clang-tools = ">=15,<16"
