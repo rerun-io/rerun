@@ -11,7 +11,7 @@ namespace rerun.archetypes;
 ///
 /// Supports raw text and markdown.
 ///
-/// \example text_document !api title="Markdown text document" image="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png"
+/// \example text_document title="Markdown text document" image="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png"
 table TextDocument (
   "attr.rust.derive": "PartialEq, Eq"
 ) {

@@ -875,13 +875,41 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             name, title, image, ..
         } = &example.base;
 
+        let mut example_lines = example.lines.clone();
+
+        if let Some(first_line) = example_lines.first() {
+            if first_line.starts_with("\"\"\"")
+                && first_line.ends_with("\"\"\"")
+                && first_line.len() > 6
+            {
+                // Remove one-line docstring, otherwise we can't embed this.
+                example_lines.remove(0);
+            }
+        }
+
+        // Remove leading blank lines:
+        while example_lines.first() == Some(&String::default()) {
+            example_lines.remove(0);
+        }
+
+        for line in &example_lines {
+            assert!(
+                !line.contains("```"),
+                "Example {name:?} contains ``` in it, so we can't embed it in the Python API docs."
+            );
+            assert!(
+                !line.contains("\"\"\""),
+                "Example {name:?} contains \"\"\" in it, so we can't embed it in the Python API docs."
+            );
+        }
+
         if let Some(title) = title {
             lines.push(format!("### {title}:"));
         } else {
             lines.push(format!("### `{name}`:"));
         }
         lines.push("```python".into());
-        lines.extend(example.lines.into_iter());
+        lines.extend(example_lines.into_iter());
         lines.push("```".into());
         if let Some(image) = &image {
             lines.extend(image.image_stack());
@@ -928,6 +956,13 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
 fn quote_doc_lines(lines: Vec<String>) -> String {
     if lines.is_empty() {
         return String::new();
+    }
+
+    for line in &lines {
+        assert!(
+            !line.contains("\"\"\""),
+            "Cannot put triple quotes in Python docstrings"
+        );
     }
 
     // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…

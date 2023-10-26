@@ -2068,6 +2068,10 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
                 ..
             } = &example.base;
 
+            for line in &example.lines {
+                assert!(!line.contains("```"), "Example {name:?} contains ``` in it, so we can't embed it in the C++ API docs.");
+            }
+
             if let Some(title) = title {
                 lines.push(format!("### {title}"));
             } else {

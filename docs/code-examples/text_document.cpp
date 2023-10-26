@@ -29,13 +29,6 @@ Basic formatting:
 
 ----------------------------------
 
-Some code:
-```rs
-fn main() {
-    println!("Hello, world!");
-}
-```
-
 ## Support
 - [x] [Commonmark](https://commonmark.org/help/) support
 - [x] GitHub-style strikethrough, tables, and checkboxes

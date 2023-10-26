@@ -52,6 +52,9 @@ extend-exclude = [
   "venv/",
   "target/",
 
+  # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
+  "docs/code-examples/text_document.py",
+
   # generated
   "examples/python/objectron/proto/objectron/proto.py",
 
