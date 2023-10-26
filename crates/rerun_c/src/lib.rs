@@ -283,13 +283,12 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_connect_impl(
     stream: CRecordingStream,
-    tcp_addr: *const c_char,
-    tcp_addr_length: u32,
+    tcp_addr: CStringWithLength,
     flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
-    let tcp_addr = ptr::try_char_ptr_as_str(tcp_addr, tcp_addr_length, "tcp_addr")?;
+    let tcp_addr = tcp_addr.as_str("tcp_addr")?;
     let tcp_addr = tcp_addr.parse().map_err(|err| {
         CError::new(
             CErrorCode::InvalidSocketAddress,
@@ -311,14 +310,11 @@ fn rr_recording_stream_connect_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_connect(
     id: CRecordingStream,
-    tcp_addr: *const c_char,
-    tcp_addr_length: u32,
+    tcp_addr: CStringWithLength,
     flush_timeout_sec: f32,
     error: *mut CError,
 ) {
-    if let Err(err) =
-        rr_recording_stream_connect_impl(id, tcp_addr, tcp_addr_length, flush_timeout_sec)
-    {
+    if let Err(err) = rr_recording_stream_connect_impl(id, tcp_addr, flush_timeout_sec) {
         err.write_error(error);
     }
 }
@@ -326,10 +322,9 @@ pub extern "C" fn rr_recording_stream_connect(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_save_impl(
     stream: CRecordingStream,
-    path: *const c_char,
-    path_length: u32,
+    path: CStringWithLength,
 ) -> Result<(), CError> {
-    let path = ptr::try_char_ptr_as_str(path, path_length, "path")?;
+    let path = path.as_str("path")?;
     recording_stream(stream)?.save(path).map_err(|err| {
         CError::new(
             CErrorCode::RecordingStreamSaveFailure,
@@ -342,11 +337,10 @@ fn rr_recording_stream_save_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_save(
     id: CRecordingStream,
-    path: *const c_char,
-    path_length: u32,
+    path: CStringWithLength,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_save_impl(id, path, path_length) {
+    if let Err(err) = rr_recording_stream_save_impl(id, path) {
         err.write_error(error);
     }
 }
@@ -354,11 +348,10 @@ pub extern "C" fn rr_recording_stream_save(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_sequence_impl(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
-    timeline_name_length: u32,
+    timeline_name: CStringWithLength,
     sequence: i64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, timeline_name_length, "timeline_name")?;
+    let timeline = timeline_name.as_str("timeline_name")?;
     recording_stream(stream)?.set_time_sequence(timeline, Some(sequence));
     Ok(())
 }
@@ -367,17 +360,11 @@ fn rr_recording_stream_set_time_sequence_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_sequence(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
-    timeline_name_length: u32,
+    timeline_name: CStringWithLength,
     sequence: i64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_time_sequence_impl(
-        stream,
-        timeline_name,
-        timeline_name_length,
-        sequence,
-    ) {
+    if let Err(err) = rr_recording_stream_set_time_sequence_impl(stream, timeline_name, sequence) {
         err.write_error(error);
     }
 }
@@ -385,11 +372,10 @@ pub extern "C" fn rr_recording_stream_set_time_sequence(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_seconds_impl(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
-    timeline_name_length: u32,
+    timeline_name: CStringWithLength,
     seconds: f64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, timeline_name_length, "timeline_name")?;
+    let timeline = timeline_name.as_str("timeline_name")?;
     recording_stream(stream)?.set_time_seconds(timeline, Some(seconds));
     Ok(())
 }
@@ -398,17 +384,11 @@ fn rr_recording_stream_set_time_seconds_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_seconds(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
-    timeline_name_length: u32,
+    timeline_name: CStringWithLength,
     seconds: f64,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_set_time_seconds_impl(
-        stream,
-        timeline_name,
-        timeline_name_length,
-        seconds,
-    ) {
+    if let Err(err) = rr_recording_stream_set_time_seconds_impl(stream, timeline_name, seconds) {
         err.write_error(error);
     }
 }
@@ -416,11 +396,10 @@ pub extern "C" fn rr_recording_stream_set_time_seconds(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_nanos_impl(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
-    timeline_name_length: u32,
+    timeline_name: CStringWithLength,
     nanos: i64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, timeline_name_length, "timeline_name")?;
+    let timeline = timeline_name.as_str("timeline_name")?;
     recording_stream(stream)?.set_time_nanos(timeline, Some(nanos));
     Ok(())
 }
@@ -429,14 +408,11 @@ fn rr_recording_stream_set_time_nanos_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_nanos(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
-    timeline_name_length: u32,
+    timeline_name: CStringWithLength,
     nanos: i64,
     error: *mut CError,
 ) {
-    if let Err(err) =
-        rr_recording_stream_set_time_nanos_impl(stream, timeline_name, timeline_name_length, nanos)
-    {
+    if let Err(err) = rr_recording_stream_set_time_nanos_impl(stream, timeline_name, nanos) {
         err.write_error(error);
     }
 }
@@ -445,10 +421,9 @@ pub extern "C" fn rr_recording_stream_set_time_nanos(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
-    timeline_name_length: u32,
+    timeline_name: CStringWithLength,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, timeline_name_length, "timeline_name")?;
+    let timeline = timeline_name.as_str("timeline_name")?;
     recording_stream(stream)?.set_time_sequence(timeline, None);
     Ok(())
 }
@@ -457,13 +432,10 @@ fn rr_recording_stream_disable_timeline_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_disable_timeline(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
-    timeline_name_length: u32,
+    timeline_name: CStringWithLength,
     error: *mut CError,
 ) {
-    if let Err(err) =
-        rr_recording_stream_disable_timeline_impl(stream, timeline_name, timeline_name_length)
-    {
+    if let Err(err) = rr_recording_stream_disable_timeline_impl(stream, timeline_name) {
         err.write_error(error);
     }
 }
