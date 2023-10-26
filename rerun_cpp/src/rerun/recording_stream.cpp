@@ -98,6 +98,21 @@ namespace rerun {
         return status;
     }
 
+    Error RecordingStream::spawn(
+        uint16_t port, const char* memory_limit, const char* executable_name,
+        const char* executable_path, float flush_timeout_sec
+    ) {
+        rr_error status = {};
+        rr_spawn_options spawn_opts = {
+            port = port,
+            memory_limit = memory_limit,
+            executable_name = executable_name,
+            executable_path = executable_path,
+        };
+        rr_recording_stream_spawn(_id, &spawn_opts, flush_timeout_sec, &status);
+        return status;
+    }
+
     Error RecordingStream::save(const char* path) {
         rr_error status = {};
         rr_recording_stream_save(_id, path, &status);

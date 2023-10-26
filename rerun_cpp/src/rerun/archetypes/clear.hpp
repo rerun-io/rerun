@@ -28,7 +28,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_clear_simple");
-        ///     rec.connect().throw_on_failure();
+        ///     rec.spawn().throw_on_failure();
         ///
         ///     std::vector<rerun::components::Vector3D> vectors = {
         ///         {1.0, 0.0, 0.0},

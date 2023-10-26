@@ -15,6 +15,7 @@
 #include "rerun/recording_stream.hpp"
 #include "rerun/result.hpp"
 #include "rerun/sdk_info.hpp"
+#include "rerun/spawn.hpp"
 
 // Archetypes are the quick-and-easy default way of logging data to Rerun.
 // Make them available in the rerun namespace.

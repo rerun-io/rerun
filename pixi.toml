@@ -74,6 +74,7 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
 ] }
 
 cpp-build-all = { depends_on = [
+  "cpp-prepare",
   "cpp-build-tests",
   "cpp-build-examples",
   "cpp-build-doc-examples",

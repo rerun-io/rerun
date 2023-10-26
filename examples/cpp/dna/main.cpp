@@ -9,7 +9,7 @@ static constexpr size_t NUM_POINTS = 100;
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_dna_abacus");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     std::vector<rerun::Position3D> points1, points2;
     std::vector<rerun::Color> colors1, colors2;
