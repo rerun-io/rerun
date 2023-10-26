@@ -40,6 +40,9 @@ namespace rerun {
 
     /// Check if Rerun is enabled.
     inline bool is_default_enabled() {
-        return RerunGlobalConfig::instance().default_enabled.load(std::memory_order_relaxed);
+        // We use `memory_order_seq_cst` since this is only ever called during construction of
+        // RecordingStreams. Consider changing to `memory_order_relaxed` if we need to call this
+        // in a more frequently used code-path.
+        return RerunGlobalConfig::instance().default_enabled.load(std::memory_order_seq_cst);
     }
 } // namespace rerun
