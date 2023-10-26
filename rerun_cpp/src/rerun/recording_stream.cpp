@@ -103,12 +103,11 @@ namespace rerun {
         const char* executable_path, float flush_timeout_sec
     ) {
         rr_error status = {};
-        rr_spawn_options spawn_opts = {
-            port = port,
-            memory_limit = memory_limit,
-            executable_name = executable_name,
-            executable_path = executable_path,
-        };
+        rr_spawn_options spawn_opts;
+        spawn_opts.port = port;
+        spawn_opts.memory_limit = memory_limit;
+        spawn_opts.executable_name = executable_name;
+        spawn_opts.executable_path = executable_path;
         rr_recording_stream_spawn(_id, &spawn_opts, flush_timeout_sec, &status);
         return status;
     }

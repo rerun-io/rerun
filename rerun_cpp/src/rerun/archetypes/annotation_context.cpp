@@ -3,6 +3,8 @@
 
 #include "annotation_context.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =

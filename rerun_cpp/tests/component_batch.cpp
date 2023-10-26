@@ -2,6 +2,7 @@
 
 #include <rerun/archetypes/points2d.hpp>
 #include <rerun/component_batch.hpp>
+#include <rerun/component_batch_adapter_builtins.hpp>
 #include <rerun/components/position2d.hpp>
 
 #include "archetypes/archetype_test.hpp"

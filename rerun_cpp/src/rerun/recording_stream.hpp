@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "as_components.hpp"
+#include "component_batch.hpp"
 #include "error.hpp"
 
 namespace rerun {

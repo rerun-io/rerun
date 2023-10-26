@@ -331,7 +331,8 @@ impl QuotedObject {
         let type_ident = format_ident!("{}", &obj.name); // The PascalCase name of the object type.
         let quoted_docs = quote_obj_docs(obj);
 
-        let cpp_includes = Includes::new(obj.fqname.clone());
+        let mut cpp_includes = Includes::new(obj.fqname.clone());
+        cpp_includes.insert_rerun("component_batch_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
 
