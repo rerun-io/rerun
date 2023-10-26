@@ -102,7 +102,15 @@ namespace rerun {
             /// Optional properties for the mesh as a whole (including indexed drawing).
             Mesh3D with_mesh_properties(rerun::components::MeshProperties _mesh_properties) && {
                 mesh_properties = std::move(_mesh_properties);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// An optional normal for each vertex.
@@ -111,19 +119,43 @@ namespace rerun {
             Mesh3D with_vertex_normals(ComponentBatch<rerun::components::Vector3D> _vertex_normals
             ) && {
                 vertex_normals = std::move(_vertex_normals);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// An optional color for each vertex.
             Mesh3D with_vertex_colors(ComponentBatch<rerun::components::Color> _vertex_colors) && {
                 vertex_colors = std::move(_vertex_colors);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional material properties for the mesh as a whole.
             Mesh3D with_mesh_material(rerun::components::Material _mesh_material) && {
                 mesh_material = std::move(_mesh_material);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional class Ids for the vertices.
@@ -131,14 +163,30 @@ namespace rerun {
             /// The class ID provides colors and labels if not specified explicitly.
             Mesh3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Unique identifiers for each individual vertex in the mesh.
             Mesh3D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
             ) && {
                 instance_keys = std::move(_instance_keys);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Returns the number of primary instances of this archetype.

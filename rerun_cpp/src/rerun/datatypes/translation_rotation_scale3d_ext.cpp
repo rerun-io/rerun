@@ -18,6 +18,24 @@ namespace rerun {
 
             static const TranslationRotationScale3D IDENTITY;
 
+// Need to disable the maybe-uninitialized here because the compiler gets confused by the combination
+// of union-types datatypes inside of an optional component.
+//
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+            TranslationRotationScale3D(const TranslationRotationScale3D& other)
+                : translation(other.translation),
+                rotation(other.rotation),
+                scale(other.scale),
+                from_parent(other.from_parent) {
+            };
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
             /// Creates a new 3D transform from translation/rotation/scale.
             ///
             /// @param _from_parent If true, the transform maps from the parent space to the space

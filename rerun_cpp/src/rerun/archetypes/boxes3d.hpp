@@ -152,30 +152,70 @@ namespace rerun {
             /// Optional center positions of the boxes.
             Boxes3D with_centers(ComponentBatch<rerun::components::Position3D> _centers) && {
                 centers = std::move(_centers);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             Boxes3D with_rotations(ComponentBatch<rerun::components::Rotation3D> _rotations) && {
                 rotations = std::move(_rotations);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional colors for the boxes.
             Boxes3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional radii for the lines that make up the boxes.
             Boxes3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional text labels for the boxes.
             Boxes3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional `ClassId`s for the boxes.
@@ -183,14 +223,30 @@ namespace rerun {
             /// The class ID provides colors and labels if not specified explicitly.
             Boxes3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Unique identifiers for each individual boxes in the batch.
             Boxes3D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
             ) && {
                 instance_keys = std::move(_instance_keys);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Returns the number of primary instances of this archetype.

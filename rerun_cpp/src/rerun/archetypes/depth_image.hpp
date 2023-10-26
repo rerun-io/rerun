@@ -110,7 +110,15 @@ namespace rerun {
             /// and a range of up to ~65 meters (2^16 / 1000).
             DepthImage with_meter(rerun::components::DepthMeter _meter) && {
                 meter = std::move(_meter);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// An optional floating point value that specifies the 2D drawing order.
@@ -118,7 +126,15 @@ namespace rerun {
             /// Objects with higher values are drawn on top of those with lower values.
             DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
                 draw_order = std::move(_draw_order);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Returns the number of primary instances of this archetype.

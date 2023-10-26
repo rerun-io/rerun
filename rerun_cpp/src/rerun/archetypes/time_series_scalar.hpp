@@ -111,7 +111,15 @@ namespace rerun {
             /// line will use the default width of `1.0`.
             TimeSeriesScalar with_radius(rerun::components::Radius _radius) && {
                 radius = std::move(_radius);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional color for the scalar entry.
@@ -127,7 +135,15 @@ namespace rerun {
             /// Otherwise, the line will appear gray in the legend.
             TimeSeriesScalar with_color(rerun::components::Color _color) && {
                 color = std::move(_color);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// An optional label for the point.
@@ -140,7 +156,15 @@ namespace rerun {
             /// the space it's in.
             TimeSeriesScalar with_label(rerun::components::Text _label) && {
                 label = std::move(_label);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Specifies whether a point in a scatter plot should form a continuous line.
@@ -152,7 +176,15 @@ namespace rerun {
             /// required.
             TimeSeriesScalar with_scattered(rerun::components::ScalarScattering _scattered) && {
                 scattered = std::move(_scattered);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Returns the number of primary instances of this archetype.

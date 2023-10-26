@@ -113,7 +113,15 @@ namespace rerun {
             /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
             Arrows3D with_origins(ComponentBatch<rerun::components::Position3D> _origins) && {
                 origins = std::move(_origins);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional radii for the arrows.
@@ -122,19 +130,43 @@ namespace rerun {
             /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
             Arrows3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional colors for the points.
             Arrows3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional text labels for the arrows.
             Arrows3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Optional class Ids for the points.
@@ -142,7 +174,15 @@ namespace rerun {
             /// The class ID provides colors and labels if not specified explicitly.
             Arrows3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Unique identifiers for each individual point in the batch.
@@ -150,7 +190,15 @@ namespace rerun {
                 ComponentBatch<rerun::components::InstanceKey> _instance_keys
             ) && {
                 instance_keys = std::move(_instance_keys);
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 return std::move(*this);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
             }
 
             /// Returns the number of primary instances of this archetype.

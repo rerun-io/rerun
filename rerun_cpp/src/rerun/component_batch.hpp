@@ -94,7 +94,6 @@ namespace rerun {
         /// batch: When you log an empty component batch at an entity that already has some
         /// components of the same type, it will clear out all components of that type.
         ComponentBatch() : ownership(BatchOwnership::Borrowed) {
-            memset(reinterpret_cast<void*>(&storage), 0, sizeof(storage));
             storage.borrowed.data = nullptr;
             storage.borrowed.num_instances = 0;
         }
@@ -156,7 +155,19 @@ namespace rerun {
 
         /// Move assignment
         void operator=(ComponentBatch<TComponent>&& other) {
+// Need to disable the maybe-uninitialized here.  It seems like the compiler may be confused in situations where
+// we are assigning into an unused optional from a temporary. The fact that this hits the move-assignment without
+// having called the move constructor is suspicious though and hints of an actual bug.
+//
+// See: https://github.com/rerun-io/rerun/issues/4027
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
             this->swap(other);
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
         }
 
         /// Swaps the content of this component batch with another.
@@ -275,7 +286,9 @@ namespace rerun {
 
             std::vector<T> vector_owned;
 
-            ComponentBatchStorage() {}
+            ComponentBatchStorage() {
+                memset(reinterpret_cast<void*>(this), 0, sizeof(ComponentBatchStorage));
+            }
 
             ~ComponentBatchStorage() {}
         };
