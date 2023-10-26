@@ -145,8 +145,7 @@ def serve(
     bindings.serve(open_browser, web_port, ws_port, recording=recording)
 
 
-# TODO(jleibs): Ideally this would include a quick handshake that we're not talking
-# to some other random process holding the port.
+# TODO(#4019): application-level handshake
 def _check_for_existing_viewer(port: int) -> bool:
     try:
         # Try opening a connection to the port to see if something is there

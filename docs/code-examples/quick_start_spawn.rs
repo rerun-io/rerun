@@ -4,7 +4,8 @@ use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a new `RecordingStream` which stores data in memory.
-    let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs")
+        .spawn(rerun::default_flush_timeout())?;
 
     // Create some data using the `grid` utility function.
     let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
@@ -20,7 +21,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     // Show the viewer with the recorded data.
-    rerun::native_viewer::show(storage.take())?;
 
     Ok(())
 }

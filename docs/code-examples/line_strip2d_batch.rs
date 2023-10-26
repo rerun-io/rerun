@@ -1,8 +1,8 @@
 //! Log a batch of 2d line strips.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d")
+        .spawn(rerun::default_flush_timeout())?;
 
     let strip1 = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     #[rustfmt::skip]
@@ -21,6 +21,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::Boxes2D::from_centers_and_sizes([(3.0, 1.5)], [(8.0, 9.0)]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

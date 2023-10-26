@@ -1,8 +1,8 @@
 //! Log rectangles with different colors and labels using annotation context
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_rects").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_rects")
+        .spawn(rerun::default_flush_timeout())?;
 
     // Log an annotation context to assign a label and color to each class
     rec.log_timeless(
@@ -23,6 +23,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log an extra rect to set the view bounds
     rec.log("bounds", &rerun::Boxes2D::from_half_sizes([(2.5, 2.5)]))?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

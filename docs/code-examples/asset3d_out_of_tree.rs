@@ -11,8 +11,8 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("Usage: {} <path_to_asset.[gltf|glb]>", args[0]);
     };
 
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_asset3d_out_of_tree").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_asset3d_out_of_tree")
+        .spawn(rerun::default_flush_timeout())?;
 
     rec.log_timeless("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?; // Set an up-axis
 
@@ -37,6 +37,5 @@ fn main() -> anyhow::Result<()> {
         )?;
     }
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

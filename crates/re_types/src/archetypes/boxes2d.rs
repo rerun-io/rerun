@@ -28,7 +28,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Simple 2D boxes
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_box2d")
+///         .spawn(rerun::default_flush_timeout())?;
 ///
 ///     rec.log(
 ///         "simple",
@@ -38,7 +39,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     // Log an extra rect to set the view bounds
 ///     rec.log("bounds", &rerun::Boxes2D::from_sizes([(4., 3.)]))?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```
