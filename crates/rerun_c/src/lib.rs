@@ -23,7 +23,7 @@ use re_sdk::{
 // ----------------------------------------------------------------------------
 // Types:
 
-/// `rr_string` (the name CString was already taken)
+/// `rr_string` (the name `CString` was already taken)
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct CStringWithLength {
