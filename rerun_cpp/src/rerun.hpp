@@ -1,4 +1,7 @@
 // The Rerun C++ SDK.
+//
+// For more information, read our [getting-started guide](https://www.rerun.io/docs/getting-started/cpp).
+
 #pragma once
 
 // Built-in Rerun types (largely generated from an interface definition language)
