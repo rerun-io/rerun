@@ -887,6 +887,11 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             }
         }
 
+        // Remove leading blank lines:
+        while example_lines.first() == Some(&String::default()) {
+            example_lines.remove(0);
+        }
+
         for line in &example_lines {
             assert!(
                 !line.contains("```"),
