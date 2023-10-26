@@ -47,7 +47,7 @@ jobs:
         with:
           python-version: 3.x
 
-      - name: Check links
+      - name: Check links for `?speculative-link`
         # NOTE: We allow `?speculative-link` only in alpha releases
         run: |
           if [ ${{ inputs.release-type }} != "alpha" ]; then
