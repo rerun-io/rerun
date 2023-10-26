@@ -385,7 +385,7 @@ def is_already_published(version: str, crate: Crate) -> bool:
         detail = body["errors"][0]["detail"]
         if detail == "Not Found":
             # First time we're publishing this crate
-            return None
+            return False
         else:
             raise Exception(f"failed to get crate {crate_name}: {detail}")
 
