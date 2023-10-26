@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import argparse
 import time
-from typing import cast, Dict
+from typing import Dict, cast
 
 from github import Github
 from github.GitRelease import GitRelease
@@ -28,9 +28,7 @@ Assets = Dict[str, storage.Blob]
 
 
 def get_any_release(repo: Repository, tag_name: str) -> GitRelease | None:
-    """
-    Fetch any release from a Github repository, even drafts.
-    """
+    """Fetch any release from a Github repository, even drafts."""
     # Do _not_ use `repo.get_release`, it silently ignores drafts.
     return next(rel for rel in repo.get_releases() if rel.tag_name == tag_name)
 
@@ -227,7 +225,7 @@ def main() -> None:
     #
     # See e.g. <https://github.com/ncipollo/release-action/issues/317>.
     if release.draft:
-        print(f"Detected mistakenly drafted release, undrafting…")
+        print("Detected mistakenly drafted release, undrafting…")
         release.update_release(release.title, release.body, draft=False)
 
 
