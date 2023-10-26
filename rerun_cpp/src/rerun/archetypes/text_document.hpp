@@ -33,7 +33,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_text_document");
-        ///     rec.connect().throw_on_failure();
+        ///     rec.spawn().throw_on_failure();
         ///
         ///     rec.log("text_document", rerun::archetypes::TextDocument("Hello, TextDocument!"));
         ///
