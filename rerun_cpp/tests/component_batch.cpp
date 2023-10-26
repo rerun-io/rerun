@@ -119,7 +119,7 @@ namespace rerun {
         ComponentBatch<components::Position2D> operator()(const MyVec2Container& container) {
             // Sanity check that this is binary compatible.
             static_assert(sizeof(components::Position2D) == sizeof(float) * 2);
-            static_assert(alignof(components::Position2D) <= sizeof(float));
+            static_assert(alignof(components::Position2D) <= alignof(float));
 
             return ComponentBatch<components::Position2D>::borrow(
                 reinterpret_cast<const components::Position2D*>(container.vecs.data()),
