@@ -368,6 +368,6 @@ jobs:
       # semantics, so make sure to wait for a bit before we start to sync stuff.
       #
       # 15 seconds might seem long, but the prerelease workflow takes about 40 minutes, so a drop in
-      # the ocean really... and I'd rather be on the safe side.
+      # the ocean really… and I'd rather be on the safe side.
       WAIT_TIME_SECS: 15
     secrets: inherit
