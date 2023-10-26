@@ -32,7 +32,7 @@ rerun reset
 ```
 
 ## Graphics issues
-<--! This section is linked to from `crates/re_viewer/src/native.rs` -->
+<!-- This section is linked to from `crates/re_viewer/src/native.rs` -->
 
 [Wgpu](https://github.com/gfx-rs/wgpu) (the graphics API we use) maintains a list of
 [known driver issues](https://github.com/gfx-rs/wgpu/wiki/Known-Driver-Issues) and workarounds for them.

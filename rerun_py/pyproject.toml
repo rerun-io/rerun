@@ -42,15 +42,6 @@ repository = "https://github.com/rerun-io/rerun"
 [project.scripts]
 rerun = "rerun.__main__:main"
 
-[tool.black]
-line-length = 120
-target-version = ["py38"]
-
-exclude = [
-  # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
-  "docs/code-examples/text_document.py",
-]
-
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
 
@@ -60,6 +51,9 @@ extend-exclude = [
   # Automatically generated test artifacts
   "venv/",
   "target/",
+
+  # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
+  "docs/code-examples/text_document.py",
 
   # generated
   "examples/python/objectron/proto/objectron/proto.py",
@@ -95,6 +89,8 @@ ignore = [
 
   # allow relative imports
   "TID252",
+
+  "UP007", # We need this, or `ruff format` will convert `Union[X, Y]` to `X | Y` which break on Python 3.8
 ]
 
 line-length = 120

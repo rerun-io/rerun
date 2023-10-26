@@ -332,13 +332,13 @@ jobs:
             ## CMake fetch-content for C++ SDK
             ```
             include(FetchContent)
-            FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp_sdk.zip)
+            FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp_sdk.zip)
             FetchContent_MakeAvailable(rerun_sdk)
             ```
             or
             ```
             include(FetchContent)
-            FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip)
+            FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip)
             FetchContent_MakeAvailable(rerun_sdk)
             ```
 

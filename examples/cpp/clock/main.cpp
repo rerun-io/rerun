@@ -2,7 +2,7 @@
 #include <cmath>
 #include <rerun.hpp>
 
-const float TAU = static_cast<float>(2.0 * M_PI);
+constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 void log_hand(
     rerun::RecordingStream& rec, const char* name, int step, float angle, float length, float width,

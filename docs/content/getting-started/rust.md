@@ -3,7 +3,7 @@ title: Rust Quick Start
 order: 3
 ---
 
-## Installing Rerun
+## Setup
 The Rerun SDK for Rust requires a working installation of Rust 1.72+.
 
 After you have [installed the viewer](installing-viewer.md) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.

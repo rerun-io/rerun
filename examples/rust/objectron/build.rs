@@ -12,7 +12,7 @@ fn should_run() -> bool {
 
         // No need to run this on CI (which means setting up `protoc` etc)
         // since the code is committed anyway.
-        Environment::CI => false,
+        Environment::CI | Environment::CondaBuild => false,
 
         // Sure - let's keep it up-to-date.
         Environment::DeveloperInWorkspace => true,

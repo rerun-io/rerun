@@ -49,10 +49,10 @@ namespace rerun {
         ///     const int WIDTH = 300;
         ///     std::vector<uint8_t> data(WIDTH * HEIGHT, 0);
         ///     for (auto y = 50; y <100; ++y) {
-        ///         std::fill_n(data.begin() + y * WIDTH + 50, 70, 1);
+        ///         std::fill_n(data.begin() + y * WIDTH + 50, 70, static_cast<uint8_t>(1));
         ///     }
         ///     for (auto y = 100; y <180; ++y) {
-        ///         std::fill_n(data.begin() + y * WIDTH + 130, 150, 2);
+        ///         std::fill_n(data.begin() + y * WIDTH + 130, 150, static_cast<uint8_t>(2));
         ///     }
         ///
         ///     rec.log("segmentation/image", rerun::SegmentationImage({HEIGHT, WIDTH}, std::move(data)));
