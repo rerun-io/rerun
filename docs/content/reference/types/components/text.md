@@ -2,7 +2,7 @@
 title: "Text"
 ---
 
-A string of text, e.g. for labels and text documents
+A string of text, e.g. for labels and text documents.
 
 ## Fields
 

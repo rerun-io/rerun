@@ -184,6 +184,9 @@ extern void rr_recording_stream_set_thread_local(
     rr_recording_stream stream, rr_store_kind store_kind
 );
 
+/// Check whether the recording stream is enabled.
+extern bool rr_recording_stream_is_enabled(rr_recording_stream stream, rr_error* error);
+
 /// Connect to a remote Rerun Viewer on the given ip:port.
 ///
 /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.

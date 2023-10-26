@@ -50,8 +50,8 @@ namespace rerun {
         ///     // If we log a pinhole camera model, the depth gets automatically back-projected to 3D
         ///     rec.log(
         ///         "world/camera",
-        ///         rerun::Pinhole::focal_length_and_resolution(
-        ///             {200.0f, 200.0f},
+        ///         rerun::Pinhole::from_focal_length_and_resolution(
+        ///             200.0f,
         ///             {static_cast<float>(WIDTH), static_cast<float>(HEIGHT)}
         ///         )
         ///     );

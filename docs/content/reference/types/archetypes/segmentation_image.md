@@ -2,7 +2,7 @@
 title: "SegmentationImage"
 ---
 
-An image made up of integer class-ids
+An image made up of integer class-ids.
 
 The shape of the `TensorData` must be mappable to an `HxW` tensor.
 Each pixel corresponds to a depth value in units specified by meter.

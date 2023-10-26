@@ -32,13 +32,27 @@ namespace rerun {
 
         rr_error status = {};
         this->_id = rr_recording_stream_new(&store_info, &status);
-        Error(status).handle();
+        auto err = Error(status);
+        if (err.is_ok()) {
+            this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
+            Error(status).handle();
+        } else {
+            this->_enabled = false;
+            err.handle();
+        }
     }
 
     RecordingStream::RecordingStream(RecordingStream&& other)
-        : _id(other._id), _store_kind(other._store_kind) {
+        : _id(other._id), _store_kind(other._store_kind), _enabled(other._enabled) {
         // Set to `RERUN_REC_STREAM_CURRENT_RECORDING` since it's a no-op on destruction.
         other._id = RERUN_REC_STREAM_CURRENT_RECORDING;
+    }
+
+    RecordingStream::RecordingStream(uint32_t id, StoreKind store_kind)
+        : _id(id), _store_kind(store_kind) {
+        rr_error status = {};
+        this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
+        Error(status).handle();
     }
 
     RecordingStream::~RecordingStream() {
@@ -95,12 +109,18 @@ namespace rerun {
     }
 
     void RecordingStream::set_time_sequence(const char* timeline_name, int64_t sequence_nr) {
+        if (!is_enabled()) {
+            return;
+        }
         rr_error status = {};
         rr_recording_stream_set_time_sequence(_id, timeline_name, sequence_nr, &status);
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
     void RecordingStream::set_time_seconds(const char* timeline_name, double seconds) {
+        if (!is_enabled()) {
+            return;
+        }
         rr_error status = {};
         rr_recording_stream_set_time_seconds(_id, timeline_name, seconds, &status);
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
@@ -125,6 +145,9 @@ namespace rerun {
     Error RecordingStream::try_log_serialized_batches(
         const char* entity_path, bool timeless, const std::vector<SerializedComponentBatch>& batches
     ) {
+        if (!is_enabled()) {
+            return Error::ok();
+        }
         size_t num_instances_max = 0;
         for (const auto& batch : batches) {
             num_instances_max = std::max(num_instances_max, batch.num_instances);
@@ -165,6 +188,9 @@ namespace rerun {
         const char* entity_path, size_t num_instances, size_t num_data_cells,
         const DataCell* data_cells, bool inject_time
     ) {
+        if (!is_enabled()) {
+            return Error::ok();
+        }
         // Map to C API:
         std::vector<rr_data_cell> c_data_cells(num_data_cells);
         for (size_t i = 0; i < num_data_cells; i++) {

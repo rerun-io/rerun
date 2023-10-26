@@ -68,7 +68,9 @@ namespace rerun {
 
                 std::vector<uint8_t> nv12;
 
-                TensorBufferData() {}
+                TensorBufferData() {
+                    std::memset(reinterpret_cast<void*>(this), 0, sizeof(TensorBufferData));
+                }
 
                 ~TensorBufferData() {}
 

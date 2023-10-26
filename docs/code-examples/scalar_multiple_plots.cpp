@@ -21,7 +21,7 @@ int main() {
         );
         rec.log(
             "trig/cos",
-            rerun::TimeSeriesScalar(cos(t / 100.0f))
+            rerun::TimeSeriesScalar(cos(static_cast<float>(t) / 100.0f))
                 .with_label("cos(0.01t)")
                 .with_color({0, 255, 0})
         );

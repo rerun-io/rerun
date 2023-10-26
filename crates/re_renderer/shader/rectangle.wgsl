@@ -6,14 +6,15 @@
 const SAMPLE_TYPE_FLOAT = 1u;
 const SAMPLE_TYPE_SINT  = 2u;
 const SAMPLE_TYPE_UINT  = 3u;
-const SAMPLE_TYPE_NV12 = 4u;
+const SAMPLE_TYPE_NV12  = 4u;
 
 // How do we do colormapping?
-const COLOR_MAPPER_OFF      = 1u;
-const COLOR_MAPPER_FUNCTION = 2u;
-const COLOR_MAPPER_TEXTURE  = 3u;
+const COLOR_MAPPER_OFF_GRAYSCALE = 1u;
+const COLOR_MAPPER_OFF_RGB       = 2u;
+const COLOR_MAPPER_FUNCTION      = 3u;
+const COLOR_MAPPER_TEXTURE       = 4u;
 
-const FILTER_NEAREST = 1u;
+const FILTER_NEAREST  = 1u;
 const FILTER_BILINEAR = 2u;
 
 struct UniformBuffer {

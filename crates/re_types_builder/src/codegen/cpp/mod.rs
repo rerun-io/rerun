@@ -756,16 +756,6 @@ impl QuotedObject {
             quote_constants_header_and_cpp(obj, objects, &pascal_case_ident);
         let mut methods = Vec::new();
 
-        // Add one static constructor for every field.
-        for obj_field in &obj.fields {
-            methods.push(static_constructor_for_enum_type(
-                &mut hpp_includes,
-                obj_field,
-                &pascal_case_ident,
-                &tag_typename,
-            ));
-        }
-
         if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
             if are_types_disjoint(&obj.fields) {
                 // Implicit construct from the different variant types:
@@ -778,7 +768,7 @@ impl QuotedObject {
                     methods.push(Method {
                         docs: obj_field.docs.clone().into(),
                         declaration: MethodDeclaration::constructor(
-                            quote!(#pascal_case_ident(#param_declaration)),
+                            quote!(#pascal_case_ident(#param_declaration) : #pascal_case_ident()),
                         ),
                         definition_body,
                         inline: true,
@@ -788,6 +778,16 @@ impl QuotedObject {
                 // Cannot make implicit constructors, e.g. for
                 // `enum Angle { Radians(f32), Degrees(f32) };`
             }
+        }
+
+        // Add one static constructor for every field.
+        for obj_field in &obj.fields {
+            methods.push(static_constructor_for_enum_type(
+                &mut hpp_includes,
+                obj_field,
+                &pascal_case_ident,
+                &tag_typename,
+            ));
         }
 
         // Code that allows to access the data of the union in a safe way.
@@ -986,7 +986,10 @@ impl QuotedObject {
                         union #data_typename {
                             #(#enum_data_declarations;)*
 
-                            #data_typename() { } // Required by static constructors
+                            // Required by static constructors
+                            #data_typename() {
+                                std::memset(reinterpret_cast<void*>(this), 0, sizeof(#data_typename));
+                            }
                             ~#data_typename() { }
 
                             // Note that this type is *not* copyable unless all enum fields are trivially destructable.
@@ -1821,6 +1824,9 @@ fn static_constructor_for_enum_type(
     tag_typename: &Ident,
 ) -> Method {
     let tag_ident = format_ident!("{}", obj_field.name);
+    // We don't use the `from_` prefix here, because this is instantiating an enum variant,
+    // e.g. `Scale3D::Uniform(2.0)` in Rust becomes `Scale3D::uniform(2.0)` in C++.
+    let function_name_ident = format_ident!("{}", obj_field.snake_case_name());
     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
     let docs = obj_field.docs.clone().into();
 
@@ -1828,7 +1834,7 @@ fn static_constructor_for_enum_type(
     let declaration = MethodDeclaration {
         is_static: true,
         return_type: quote!(#pascal_case_ident),
-        name_and_parameters: quote!(#snake_case_ident(#param_declaration)),
+        name_and_parameters: quote!(#function_name_ident(#param_declaration)),
     };
 
     // We need to use placement-new since the union is in an uninitialized state here:

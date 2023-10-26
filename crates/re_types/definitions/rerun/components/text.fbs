@@ -9,7 +9,7 @@ namespace rerun.components;
 
 // ---
 
-/// A string of text, e.g. for labels and text documents
+/// A string of text, e.g. for labels and text documents.
 table Text (
   "attr.arrow.transparent",
   "attr.python.aliases": "str",

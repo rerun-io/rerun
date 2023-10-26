@@ -12,12 +12,12 @@ namespace rerun {
 
             // [CODEGEN COPY TO HEADER START]
 
-            /// Construct a 1D tensor with the given buffer.
-            static TensorData one_dim(rerun::datatypes::TensorBuffer buffer) {
-                auto data = rerun::components::TensorData{};
-                data.data = rerun::datatypes::TensorData::one_dim(std::move(buffer));
-                return data;
-            }
+            /// New Tensor from dimensions and tensor buffer.
+            TensorData(
+                std::vector<rerun::datatypes::TensorDimension> shape,
+                rerun::datatypes::TensorBuffer buffer
+            )
+                : data(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
             // [CODEGEN COPY TO HEADER END]
         };

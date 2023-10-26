@@ -10,7 +10,7 @@ There are many ways to install the viewer. Please pick whatever works best for y
 
 * `cargo binstall rerun-cli` - download binaries via [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
 * `cargo install rerun-cli` - build it from source (this requires Rust 1.72+)
-* Download it from the [GitHub Release artifacts](https://github.com/rerun-io/rerun/releases/)
+* Download it from the [GitHub Release artifacts](https://github.com/rerun-io/rerun/releases/latest/)
 * Together with the Rerun [Python SDK](python.md):
   * `pip3 install rerun-sdk` - download it via pip
   * `conda install -c conda-forge rerun-sdk` - download via Conda
@@ -23,5 +23,5 @@ If you're facing any difficulties, don't hesitate to [open an issue](https://git
 
 To start getting your own data logged & visualized in the viewer check one of the respective getting started guides:
 * [Python](python.md)
-* [C++]cpp.md)
+* [C++](cpp.md)
 * [Rust](python.md)

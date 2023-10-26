@@ -69,20 +69,20 @@ def test_bad_tensors() -> None:
 
     # No buffers
     with pytest.raises(ValueError):
-        TensorData(),
+        TensorData()
 
     # Buffer with no indication of shape
     with pytest.raises(ValueError):
         TensorData(
             buffer=RANDOM_TENSOR_SOURCE,
-        ),
+        )
 
     # Both array and buffer
     with pytest.raises(ValueError):
         TensorData(
             array=RANDOM_TENSOR_SOURCE,
             buffer=RANDOM_TENSOR_SOURCE,
-        ),
+        )
 
     # Wrong size buffer for dimensions
     with pytest.raises(ValueError):
@@ -94,7 +94,7 @@ def test_bad_tensors() -> None:
                 TensorDimension(4, name="d"),
             ],
             buffer=RANDOM_TENSOR_SOURCE,
-        ),
+        )
 
     # TODO(jleibs) send_warning bottoms out in TypeError but these ought to be ValueErrors
 
@@ -103,7 +103,7 @@ def test_bad_tensors() -> None:
         TensorData(
             dim_names=["a", "b", "c"],
             array=RANDOM_TENSOR_SOURCE,
-        ),
+        )
 
     # Shape disagrees with array
     with pytest.raises(ValueError):
@@ -115,4 +115,4 @@ def test_bad_tensors() -> None:
                 TensorDimension(3, name="d"),
             ],
             array=RANDOM_TENSOR_SOURCE,
-        ),
+        )
