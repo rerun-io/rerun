@@ -7,4 +7,4 @@ Read our [getting-started guide](https://www.rerun.io/docs/getting-started/cpp?s
 Run `scripts/setup.sh`.
 
 ### Test it
-`./rerun_cpp/build_and_run_tests.sh --werror`
+`just cpp-test`

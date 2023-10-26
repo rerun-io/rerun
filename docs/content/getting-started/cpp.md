@@ -13,7 +13,7 @@ Find more information about other package managers at the official Arrow Apache 
 ## Learning by example
 If you prefer to learn by example, check out our example repository which uses the Rerun C++ SDK to log some data from Eigen and OpenCV: <https://github.com/rerun-io/cpp-example-opencv-eigen>.
 
-## Using Rerun from CMake
+## Using Rerun with CMake
 Add the following to your `CMakeLists.txt`:
 
 ```cmake
