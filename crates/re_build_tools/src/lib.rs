@@ -72,7 +72,7 @@ pub enum Environment {
     /// from the conda feed-stock and the build happens via source downloaded from the
     /// github-hosted tgz.
     ///
-    /// See: https://github.com/conda-forge/rerun-sdk-feedstock
+    /// See <https://github.com/conda-forge/rerun-sdk-feedstock>.
     CondaBuild,
 
     /// Are we a developer running inside the workspace of <https://github.com/rerun-io/rerun> ?
