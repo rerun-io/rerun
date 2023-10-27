@@ -7,8 +7,9 @@ use re_data_ui::{show_zoomed_image_region, show_zoomed_image_region_area_outline
 use re_format::format_f32;
 use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
-use re_types::components::{DepthMeter, InstanceKey, TensorData};
+use re_types::components::{DepthMeter, InstanceKey, TensorData, ViewCoordinates};
 use re_types::tensor_data::TensorDataMeaning;
+use re_types::view_coordinates::SignedAxis3;
 use re_viewer_context::{
     resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
     SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
@@ -121,11 +122,11 @@ impl SpatialSpaceViewState {
     ) {
         let re_ui = ctx.re_ui;
 
-        let view_coordinates = ctx
+        let scene_view_coordinates = ctx
             .store_db
             .store()
-            .query_latest_component(space_origin, &ctx.current_query())
-            .map_or(re_types::components::ViewCoordinates::DEFAULT, |c| c.value);
+            .query_latest_component::<ViewCoordinates>(space_origin, &ctx.current_query())
+            .map(|c| c.value);
 
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
@@ -177,7 +178,7 @@ impl SpatialSpaceViewState {
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
-                        self.state_3d.reset_camera(&self.scene_bbox_accum, view_coordinates);
+                        self.state_3d.reset_camera(&self.scene_bbox_accum, scene_view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
                     if re_ui.checkbox(ui, &mut spin, "Spin")
@@ -192,11 +193,12 @@ impl SpatialSpaceViewState {
                 ctx.re_ui.grid_left_hand_label(ui, "Coordinates")
                     .on_hover_text("The world coordinate system used for this view");
                 ui.vertical(|ui|{
-                    // TODO(#3816): This should display something else when the user is in free-roll mode :/
-                    let up_description = if let Some(up) = view_coordinates.up() {
-                        format!("Up is {up}")
+                    // TODO(#3816): We should also display the current eye's up axis.
+                    let up_description = if let Some(scene_up) = scene_view_coordinates.and_then(|vc| vc.up()) {
+                        format!("Scene up is {scene_up}")
                     } else {
-                        "Up is unspecified".to_owned()
+                        let scene_up = SignedAxis3::POSITIVE_Z; // defauls to RUF
+                        format!("Scene up is unspecified (defaulting to {scene_up})")
                     };
                     ui.label(up_description).on_hover_ui(|ui| {
                         ui.horizontal(|ui| {

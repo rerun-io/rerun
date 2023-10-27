@@ -1,6 +1,6 @@
 use egui::{emath::RectTransform, NumExt as _};
 use glam::Affine3A;
-use macaw::{vec3, BoundingBox, Quat, Vec3};
+use macaw::{BoundingBox, Quat, Vec3};
 
 use re_log_types::EntityPath;
 use re_renderer::{
@@ -81,9 +81,9 @@ impl View3DState {
     pub fn reset_camera(
         &mut self,
         scene_bbox_accum: &BoundingBox,
-        view_coordinates: ViewCoordinates,
+        scene_view_coordinates: Option<ViewCoordinates>,
     ) {
-        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, view_coordinates));
+        self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, scene_view_coordinates));
         self.tracked_camera = None;
         self.camera_before_tracked_camera = None;
     }
@@ -92,24 +92,27 @@ impl View3DState {
         &mut self,
         response: &egui::Response,
         scene_bbox_accum: &BoundingBox,
+        scene_view_coordinates: Option<ViewCoordinates>,
         space_cameras: &[SpaceCamera3D],
-        view_coordinates: ViewCoordinates,
     ) -> &mut OrbitEye {
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
         // with scenes that grow over time.
         if !self.did_interact_with_eye {
-            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, view_coordinates));
+            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, scene_view_coordinates));
         }
 
         // Detect live changes to view coordinates, and interpolate to the new up axis as needed.
-        if self.orbit_eye.map(|oe| oe.view_coordinates) != Some(view_coordinates) {
-            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, view_coordinates));
+        let scene_up = scene_view_coordinates
+            .and_then(|vc| vc.up())
+            .map(Into::into);
+        if self.orbit_eye.and_then(|oe| oe.scene_up) != scene_up {
+            self.interpolate_to_orbit_eye(default_eye(scene_bbox_accum, scene_view_coordinates));
         }
 
         let orbit_camera = self
             .orbit_eye
-            .get_or_insert_with(|| default_eye(scene_bbox_accum, view_coordinates));
+            .get_or_insert_with(|| default_eye(scene_bbox_accum, scene_view_coordinates));
 
         // Follow tracked camera if any.
         if let Some(tracking_camera) = self
@@ -326,13 +329,13 @@ pub fn view_3d(
 
     let highlights = query.highlights;
     let space_cameras = &parts.get::<CamerasPart>()?.space_cameras;
-    let view_coordinates = ctx
+    let scene_view_coordinates = ctx
         .store_db
         .store()
         // Allow logging view-coordinates to `/` and have it apply to `/world` etc.
         // See https://github.com/rerun-io/rerun/issues/3538
         .query_latest_component_at_closest_ancestor(query.space_origin, &ctx.current_query())
-        .map_or(ViewCoordinates::DEFAULT, |(_, c)| c.value);
+        .map(|(_, c)| c.value);
 
     let (rect, mut response) =
         ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
@@ -351,8 +354,8 @@ pub fn view_3d(
     let orbit_eye = state.state_3d.update_eye(
         &response,
         &state.scene_bbox_accum,
+        scene_view_coordinates,
         space_cameras,
-        view_coordinates,
     );
     let did_interact_with_eye =
         orbit_eye.update(&response, orbit_eye_drag_threshold, &state.scene_bbox_accum);
@@ -475,7 +478,7 @@ pub fn view_3d(
         else {
             state
                 .state_3d
-                .reset_camera(&state.scene_bbox_accum, view_coordinates);
+                .reset_camera(&state.scene_bbox_accum, scene_view_coordinates);
         }
     }
 
@@ -711,7 +714,18 @@ fn add_picking_ray(
         .radius(Size::new_points(0.5));
 }
 
-fn default_eye(scene_bbox: &macaw::BoundingBox, view_coordinates: ViewCoordinates) -> OrbitEye {
+fn default_eye(
+    scene_bbox: &macaw::BoundingBox,
+    scene_view_coordinates: Option<ViewCoordinates>,
+) -> OrbitEye {
+    // Defaults to RFU.
+    let scene_up = scene_view_coordinates
+        .and_then(|vc| vc.up())
+        .unwrap_or(SignedAxis3::POSITIVE_Z);
+    let scene_right = scene_view_coordinates
+        .and_then(|vc| vc.right())
+        .unwrap_or(SignedAxis3::POSITIVE_X);
+
     let mut center = scene_bbox.center();
     if !center.is_finite() {
         center = Vec3::ZERO;
@@ -722,33 +736,25 @@ fn default_eye(scene_bbox: &macaw::BoundingBox, view_coordinates: ViewCoordinate
         radius = 1.0;
     }
 
-    let look_up: glam::Vec3 = view_coordinates
-        .up()
-        .unwrap_or_else(|| ViewCoordinates::RUB.up().unwrap_or(SignedAxis3::POSITIVE_Y))
-        .into();
+    let eye_up: glam::Vec3 = scene_up.into();
 
-    let look_dir = if let Some(right) = view_coordinates.right() {
+    let eye_dir = {
         // Make sure right is to the right, and up is up:
-        let right = right.into();
-        let fwd = look_up.cross(right);
-        0.75 * fwd + 0.25 * right - 0.25 * look_up
-    } else {
-        // Look along the cardinal directions:
-        let look_dir = vec3(1.0, 1.0, 1.0);
-
-        // Make sure the eye is looking down, but just slightly:
-        look_dir + look_up * (-0.5 - look_dir.dot(look_up))
+        let right = scene_right.into();
+        let fwd = eye_up.cross(right);
+        0.75 * fwd + 0.25 * right - 0.25 * eye_up
     };
+    let eye_dir = eye_dir.normalize();
 
-    let look_dir = look_dir.normalize();
-
-    let eye_pos = center - radius * look_dir;
+    let eye_pos = center - radius * eye_dir;
 
     OrbitEye::new(
-        view_coordinates,
         center,
         radius,
-        Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, look_up).inverse()),
-        look_up,
+        Quat::from_affine3(&Affine3A::look_at_rh(eye_pos, center, eye_up).inverse()),
+        scene_view_coordinates
+            .and_then(|vc| vc.up())
+            .map(Into::into),
+        eye_up,
     )
 }

@@ -72,6 +72,7 @@ def script_setup(
         application_id=application_id,
         default_enabled=True,
         strict=True,
+        recording_id='a'
     )
 
     rec: RecordingStream = rr.get_global_data_recording()  # type: ignore[assignment]
