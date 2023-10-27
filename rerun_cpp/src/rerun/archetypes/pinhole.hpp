@@ -10,6 +10,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -32,7 +33,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
-        ///     rec.connect().throw_on_failure();
+        ///     rec.spawn().throw_on_failure();
         ///
         ///     rec.log("world/image", rerun::Pinhole::from_focal_length_and_resolution(3.0f, {3.0f, 3.0f}));
         ///
@@ -154,7 +155,8 @@ namespace rerun {
             /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
             Pinhole with_resolution(rerun::components::Resolution _resolution) && {
                 resolution = std::move(_resolution);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Sets the view coordinates for the camera.
@@ -186,7 +188,8 @@ namespace rerun {
             /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
             Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
                 camera_xyz = std::move(_camera_xyz);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

@@ -28,14 +28,8 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let default_enabled = true;
-    args.rerun.clone().run(
-        "rerun_example_minimal_options",
-        default_enabled,
-        move |rec| {
-            run(&rec, &args).unwrap();
-        },
-    )
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_minimal_options")?;
+    run(&rec, &args)
 }
 
 fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {

@@ -7,7 +7,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_clear_recursive");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     std::vector<rerun::components::Vector3D> vectors = {
         {1.0, 0.0, 0.0},
@@ -32,7 +32,7 @@ int main() {
     for (size_t i = 0; i < vectors.size(); ++i) {
         auto entity_path = "arrows/" + std::to_string(i);
         rec.log(
-            entity_path.c_str(),
+            entity_path,
             rerun::Arrows3D::from_vectors(vectors[i])
                 .with_origins(origins[i])
                 .with_colors(colors[i])

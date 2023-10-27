@@ -6,7 +6,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     std::default_random_engine gen;
     // On MSVC uint8_t distributions are not supported.

@@ -4,7 +4,7 @@
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_box3d_batch");
-    rec.connect().throw_on_failure();
+    rec.spawn().throw_on_failure();
 
     rec.log(
         "batch",

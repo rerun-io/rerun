@@ -9,6 +9,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -33,7 +34,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_text_document");
-        ///     rec.connect().throw_on_failure();
+        ///     rec.spawn().throw_on_failure();
         ///
         ///     rec.log("text_document", rerun::archetypes::TextDocument("Hello, TextDocument!"));
         ///
@@ -109,7 +110,8 @@ namespace rerun {
             /// If omitted, `text/plain` is assumed.
             TextDocument with_media_type(rerun::components::MediaType _media_type) && {
                 media_type = std::move(_media_type);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

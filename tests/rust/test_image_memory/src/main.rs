@@ -6,21 +6,18 @@ use re_memory::AccountingAllocator;
 use rerun::{
     archetypes::Image,
     datatypes::TensorData,
-    external::{image, re_memory, re_viewer},
+    external::{image, re_memory},
 };
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<MiMalloc> = AccountingAllocator::new(MiMalloc);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    re_memory::accounting_allocator::turn_on_tracking_if_env_var(
-        re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
-    );
+    re_memory::accounting_allocator::turn_on_tracking_if_env_var("RERUN_TRACK_ALLOCATIONS");
 
-    let store_info = rerun::new_store_info("test_image_memory_rs");
-    rerun::native_viewer::spawn(store_info, Default::default(), |rec| {
-        log_images(&rec).unwrap();
-    })?;
+    let rec = rerun::RecordingStreamBuilder::new("test_image_memory_rs").spawn(None)?;
+    log_images(&rec).unwrap();
+
     Ok(())
 }
 

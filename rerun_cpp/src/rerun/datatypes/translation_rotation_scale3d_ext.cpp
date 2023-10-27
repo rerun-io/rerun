@@ -1,3 +1,4 @@
+#include "../util.hpp"
 #include "translation_rotation_scale3d.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
@@ -17,6 +18,18 @@ namespace rerun {
             // [CODEGEN COPY TO HEADER START]
 
             static const TranslationRotationScale3D IDENTITY;
+
+            // Need to disable the maybe-uninitialized here because the compiler gets confused by the combination
+            // of union-types datatypes inside of an optional component.
+            //
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            DISABLE_MAYBE_UNINITIALIZED_PUSH
+            TranslationRotationScale3D(const TranslationRotationScale3D& other)
+                : translation(other.translation),
+                  rotation(other.rotation),
+                  scale(other.scale),
+                  from_parent(other.from_parent){};
+            DISABLE_MAYBE_UNINITIALIZED_POP
 
             /// Creates a new 3D transform from translation/rotation/scale.
             ///

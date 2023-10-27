@@ -40,7 +40,7 @@ cpp-build-all:
 
 # Build our C++ SDK and tests
 cpp-build:
-    pixi run cpp-build
+    pixi run cpp-build-all
 
 # Build all our C++ examples.
 cpp-build-examples:
