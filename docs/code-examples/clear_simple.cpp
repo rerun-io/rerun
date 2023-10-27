@@ -9,19 +9,19 @@ int main() {
     auto rec = rerun::RecordingStream("rerun_example_clear_simple");
     rec.spawn().throw_on_failure();
 
-    std::vector<rerun::components::Vector3D> vectors = {
+    std::vector<rerun::Vector3D> vectors = {
         {1.0, 0.0, 0.0},
         {0.0, -1.0, 0.0},
         {-1.0, 0.0, 0.0},
         {0.0, 1.0, 0.0},
     };
-    std::vector<rerun::components::Position3D> origins = {
+    std::vector<rerun::Position3D> origins = {
         {-0.5, 0.5, 0.0},
         {0.5, 0.5, 0.0},
         {0.5, -0.5, 0.0},
         {-0.5, -0.5, 0.0},
     };
-    std::vector<rerun::components::Color> colors = {
+    std::vector<rerun::Color> colors = {
         {200, 0, 0},
         {0, 200, 0},
         {0, 0, 200},

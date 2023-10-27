@@ -10,11 +10,11 @@ int main() {
     auto rec = rerun::RecordingStream("rerun_example_text_document");
     rec.spawn().throw_on_failure();
 
-    rec.log("text_document", rerun::archetypes::TextDocument("Hello, TextDocument!"));
+    rec.log("text_document", rerun::TextDocument("Hello, TextDocument!"));
 
     rec.log(
         "markdown",
-        rerun::archetypes::TextDocument(R"#(# Hello Markdown!
+        rerun::TextDocument(R"#(# Hello Markdown!
 [Click here to see the raw text](recording://markdown.Text).
 
 Basic formatting:
@@ -47,6 +47,6 @@ Of course you can also have [normal https links](https://github.com/rerun-io/rer
 
 ## Image
 ![A random image](https://picsum.photos/640/480))#")
-            .with_media_type(rerun::components::MediaType::markdown())
+            .with_media_type(rerun::MediaType::markdown())
     );
 }
