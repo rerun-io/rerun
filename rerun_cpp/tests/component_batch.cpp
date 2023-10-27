@@ -117,6 +117,10 @@ struct MyVec2Container {
 namespace rerun {
     template <>
     struct ComponentBatchAdapter<components::Position2D, MyVec2Container> {
+        // We're using the void* version of `borrow` which doesn't do these checks for us.
+        static_assert(sizeof(components::Position2D) == sizeof(float) * 2);
+        static_assert(alignof(components::Position2D) <= alignof(float));
+
         ComponentBatch<components::Position2D> operator()(const MyVec2Container& container) {
             return ComponentBatch<components::Position2D>::borrow(
                 reinterpret_cast<const void*>(container.vecs.data()),
