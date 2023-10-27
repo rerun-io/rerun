@@ -16,7 +16,7 @@ set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
 
 # Do multithreaded compiling on MSVC.
 if(MSVC)
-    target_compile_options(rerun_sdk PRIVATE /MP)
+    target_compile_options(rerun_sdk PRIVATE "/MP")
 endif()
 
 # ------------------------------------------------------------------------------
@@ -119,35 +119,55 @@ option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ON)
 # endif()
 include(ExternalProject)
 
+set(ARROW_DOWNLOAD_PATH ${CMAKE_BINARY_DIR}/arrow)
+
 if(RERUN_ARROW_LINK_SHARED)
     if(APPLE)
-        set(ARROW_LIBRARY_FILE ${CMAKE_BINARY_DIR}/externals/lib/libarrow.dylib)
+        set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.dylib)
     elseif(UNIX) # if(LINUX) # CMake 3.25
-        set(ARROW_LIBRARY_FILE ${CMAKE_BINARY_DIR}/externals/lib/libarrow.so)
+        set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.so)
     elseif(WIN32)
-        set(ARROW_LIBRARY_FILE ${CMAKE_BINARY_DIR}/externals/lib/arrow.dll)
+        set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/bin/arrow.dll)
     else()
         message(FATAL_ERROR "Unsupported platform.")
     endif()
 else()
     if(APPLE)
-        set(ARROW_LIBRARY_FILE ${CMAKE_BINARY_DIR}/externals/lib/libarrow.a)
+        set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
     elseif(UNIX) # if(LINUX) # CMake 3.25
-        set(ARROW_LIBRARY_FILE ${CMAKE_BINARY_DIR}/externals/lib/libarrow.a)
+        set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
     elseif(WIN32)
-        set(ARROW_LIBRARY_FILE ${CMAKE_BINARY_DIR}/externals/lib/arrow.dll)
+        set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/arrow_static.lib)
     else()
         message(FATAL_ERROR "Unsupported platform.")
     endif()
 endif()
 
+# Enable multithreaded compiling of Arrow on MSVC.
+if (MSVC)
+    set(DARROW_CXXFLAGS "/MP")
+else()
+    set(DARROW_CXXFLAGS "")
+endif()
+
 ExternalProject_Add(
     arrow_cpp
-    PREFIX ${CMAKE_BINARY_DIR}/externals
+    PREFIX ${ARROW_DOWNLOAD_PATH}
     GIT_REPOSITORY https://github.com/apache/arrow.git
     GIT_TAG apache-arrow-13.0.0
     GIT_SHALLOW true
-    CMAKE_ARGS --preset ninja-debug-minimal -DARROW_IPC=ON -DARROW_BUILD_STATIC=${RERUN_ARROW_LINK_SHARED} -DCMAKE_INSTALL_PREFIX=${CMAKE_BINARY_DIR}/externals -DARROW_USE_ASAN=OFF -DARROW_USE_TSAN=OFF -DARROW_USE_UBSAN=OFF -Dxsimd_SOURCE=BUNDLED
+    CMAKE_ARGS
+        --preset ninja-debug-minimal
+        -DARROW_IPC=ON
+        -DARROW_BUILD_STATIC=${RERUN_ARROW_LINK_SHARED}
+        -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
+        -DARROW_USE_ASAN=OFF
+        -DARROW_USE_TSAN=OFF
+        -DARROW_USE_UBSAN=OFF
+        -Dxsimd_SOURCE=BUNDLED
+        -DBOOST_SOURCE=BUNDLED
+        -DARROW_BOOST_USE_SHARED=OFF
+        -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
     SOURCE_SUBDIR cpp
     BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE}
 )
@@ -155,6 +175,10 @@ ExternalProject_Add(
 # arrow_cpp target is not a library. Assemble one from it.
 if(RERUN_ARROW_LINK_SHARED)
     add_library(ArrowCpp SHARED IMPORTED)
+    # For windows we need to know both the dll AND the import library.
+    if(WIN32)
+        set_target_properties(ArrowCpp PROPERTIES IMPORTED_IMPLIB ${ARROW_DOWNLOAD_PATH}/lib/arrow.lib)
+    endif()
 else()
     add_library(ArrowCpp STATIC IMPORTED)
 endif()
@@ -165,7 +189,7 @@ target_link_libraries(rerun_sdk PRIVATE ArrowCpp)
 
 # Include libarrow as system library so we don't get any warnings from it.
 # TODO: this should be a property on ArrowCpp?
-include_directories(rerun_sdk SYSTEM ${CMAKE_BINARY_DIR}/externals/include)
+include_directories(rerun_sdk SYSTEM ${ARROW_DOWNLOAD_PATH}/include)
 
 # -----------------------------------------------------------------------------
 # Other dependencies:

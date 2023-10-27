@@ -61,7 +61,7 @@ endif()
 # If using MSVC, always enable multi-process compiling for all targets.
 # Note that this setting is repeated for rerun_sdk's CMakeLists.txt since it should also work stand-alone.
 if(MSVC)
-    add_compile_options(/MP)
+    add_compile_options("/MP")
 endif()
 
 # Arrow requires a C++17 compliant compiler.
