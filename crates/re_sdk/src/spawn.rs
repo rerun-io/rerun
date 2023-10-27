@@ -187,7 +187,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
                 let sdk_version = re_build_info::build_info!().version;
                 SpawnError::ExecutableNotFoundInPath {
                     // Only recommend a specific Viewer version for non-alpha/rc/dev SDKs.
-                    message: if sdk_version.meta.is_none() {
+                    message: if sdk_version.is_release() {
                         MSG_INSTALL_HOW_TO_VERSIONED
                             .replace("__VIEWER_VERSION__", &sdk_version.to_string())
                     } else {
@@ -226,7 +226,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
 
             // Don't recommend installing stuff through registries if the user is running some
             // weird version.
-            if sdk_version.meta.is_none() {
+            if sdk_version.is_release() {
                 eprintln!(
                     "{}",
                     MSG_INSTALL_HOW_TO_VERSIONED
