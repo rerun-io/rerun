@@ -21,7 +21,7 @@ set_default_warning_settings(rerun_sdk_tests)
 # Arrow:
 
 # TODO: copy pasted from parent CMakeLists.txt
-target_include_directories(rerun_sdk_tests SYSTEM PRIVATE ${ARROW_DOWNLOAD_PATH}/include)
+# target_include_directories(rerun_sdk_tests SYSTEM PRIVATE ${ARROW_DOWNLOAD_PATH}/include)
 
 # message(STATUS "Arrow version: ${ARROW_VERSION}")
 # message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
@@ -32,6 +32,5 @@ target_include_directories(rerun_sdk_tests SYSTEM PRIVATE ${ARROW_DOWNLOAD_PATH}
 # target_link_libraries(rerun_sdk_tests PRIVATE Arrow::arrow_static)
 # endif()
 
-# Include arrow explicitly again, otherwise the arrow headers won't be declared as system headers.
-# and instead become regular headers, causing warnings to be emitted.
-target_link_libraries(rerun_sdk_tests PRIVATE loguru::loguru Catch2::Catch2 rerun_sdk)
+# Include arrow explicitly again, otherwise the arrow headers won't be found.
+target_link_libraries(rerun_sdk_tests PRIVATE loguru::loguru Catch2::Catch2 rerun_sdk RerunArrowTarget)

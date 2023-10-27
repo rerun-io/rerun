@@ -52,9 +52,6 @@ if(DEFINED RERUN_REPOSITORY)
         "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h"
         NEWLINE_STYLE LF # Specify line endings, otherwise CMake wants to change them on Windows.
     )
-
-    # Add tests!
-    add_subdirectory(tests)
 endif()
 
 # ------------------------------------------------------------------------------
@@ -155,7 +152,7 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
         arrow_cpp
         PREFIX ${ARROW_DOWNLOAD_PATH}
         GIT_REPOSITORY https://github.com/apache/arrow.git
-        GIT_TAG apache-arrow-13.0.0
+        GIT_TAG apache-arrow-10.0.1
         GIT_SHALLOW true
         CMAKE_ARGS
         --preset ninja-debug-minimal
@@ -175,31 +172,38 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
 
     # arrow_cpp target is not a library. Assemble one from it.
     if(RERUN_ARROW_LINK_SHARED)
-        add_library(ArrowCpp SHARED IMPORTED)
+        add_library(RerunArrowTarget SHARED IMPORTED)
 
         # For windows we need to know both the dll AND the import library.
         if(WIN32)
-            set_target_properties(ArrowCpp PROPERTIES IMPORTED_IMPLIB ${ARROW_DOWNLOAD_PATH}/lib/arrow.lib)
+            set_target_properties(RerunArrowTarget PROPERTIES IMPORTED_IMPLIB ${ARROW_DOWNLOAD_PATH}/lib/arrow.lib)
         endif()
     else()
-        add_library(ArrowCpp STATIC IMPORTED)
+        add_library(RerunArrowTarget STATIC IMPORTED)
     endif()
 
-    set_target_properties(ArrowCpp PROPERTIES IMPORTED_LOCATION ${ARROW_LIBRARY_FILE})
-    add_dependencies(ArrowCpp arrow_cpp)
-    target_link_libraries(rerun_sdk PRIVATE ArrowCpp)
-
-    # Include libarrow as system library so we don't get any warnings from it.
-    # TODO: this should be a property on ArrowCpp?
-    include_directories(rerun_sdk SYSTEM ${ARROW_DOWNLOAD_PATH}/include)
+    add_dependencies(RerunArrowTarget arrow_cpp)
+    set_target_properties(RerunArrowTarget PROPERTIES IMPORTED_LOCATION ${ARROW_LIBRARY_FILE})
+    set_target_properties(RerunArrowTarget PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${ARROW_DOWNLOAD_PATH}/include)
 else()
     find_package(Arrow REQUIRED)
 
     if(RERUN_ARROW_LINK_SHARED)
         message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
-        target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_shared)
+        add_library(RerunArrowTarget ALIAS Arrow::arrow_shared)
     else()
         message(STATUS "Arrow version: ${ARROW_VERSION}")
-        target_link_libraries(rerun_sdk PRIVATE Arrow::arrow_static)
+        add_library(RerunArrowTarget ALIAS Arrow::arrow_static)
     endif()
+
+    set(RERUN_ARROW_TARGET Arrow::arrow_shared)
+endif()
+
+target_link_libraries(rerun_sdk PRIVATE RerunArrowTarget)
+
+# -----------------------------------------------------------------------------
+# Add test subfolder if we're inside the Rerun repository
+# (we don't ship them in our fetch-content bundle)
+if(DEFINED RERUN_REPOSITORY)
+    add_subdirectory(tests)
 endif()
