@@ -197,6 +197,8 @@ To accommodate for this and other languages, strings on the C interface are almo
 ### Misc
 We don't add `inline` before class/struct member functions if they are inlined in the class/struct definition.
 
+Include what you use: if you use `std::vector`, then include `<vector>` - don't depend on a transitive include.
+
 
 ## Naming
 We prefer `snake_case` to `kebab-case` for most things (e.g. crate names, crate features, …). `snake_case` is a valid identifier in almost any programming language, while `kebab-case` is not. This means one can use the same `snake_case` identifier everywhere, and not think about whether it needs to be written as `snake_case` in some circumstances.

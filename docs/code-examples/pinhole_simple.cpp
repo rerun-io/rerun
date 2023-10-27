@@ -2,9 +2,9 @@
 
 #include <rerun.hpp>
 
-#include <algorithm>
-#include <cstdlib>
-#include <ctime>
+#include <algorithm> // std::generate
+#include <cstdlib>   // std::rand
+#include <vector>
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
@@ -12,7 +12,6 @@ int main() {
 
     rec.log("world/image", rerun::Pinhole::from_focal_length_and_resolution(3.0f, {3.0f, 3.0f}));
 
-    std::srand(static_cast<uint32_t>(std::time(nullptr)));
     std::vector<uint8_t> random_data(3 * 3 * 3);
     std::generate(random_data.begin(), random_data.end(), std::rand);
     std::generate(random_data.begin(), random_data.end(), [] {

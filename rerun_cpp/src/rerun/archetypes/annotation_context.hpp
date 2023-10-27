@@ -29,7 +29,8 @@ namespace rerun {
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///
-        /// #include <algorithm>
+        /// #include <algorithm> // fill_n
+        /// #include <vector>
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");

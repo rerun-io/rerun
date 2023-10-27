@@ -10,7 +10,9 @@
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -24,7 +26,9 @@ namespace rerun {
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///
+        /// #include <algorithm> // std::generate
         /// #include <random>
+        /// #include <vector>
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
