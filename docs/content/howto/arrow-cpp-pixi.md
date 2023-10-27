@@ -1,6 +1,6 @@
 ---
 title: Install arrow-cpp with pixi
-order: 7
+order: 6
 ---
 [Pixi](https://prefix.dev/docs/pixi/overview) is a convenient tool for managing cross-platform project dependencies. In
 fact, Rerun uses it for our own internal development dependency management, and you will find `pixi.toml` files in most
