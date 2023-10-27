@@ -5,7 +5,7 @@ namespace rerun {
     /// ComponentBatch.
     ///
     /// There are default implementations for standard containers of components, as well as single
-    /// components.
+    /// components. These can be found in `rerun/component_batch_adapter_builtins.hpp`.
     ///
     /// An adapter may choose to either produce a owned or borrowed component batch.
     /// Borrowed component batches required that a pointer to the passed in ("adapted") data
