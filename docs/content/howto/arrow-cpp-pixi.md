@@ -58,6 +58,6 @@ pixi run example
 ## Known Issues
 
 ⚠️ [#4050](https://github.com/rerun-io/rerun/issues/4050) `arrow-cpp` needs to be held back to 10.0.1 to avoid conflicts
-when `arrow-sdk` is installed in the same pixi environment.
+with the `rerun-sdk` package when installed in the same pixi environment.
 
 ⚠️ On Windows pixi only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes. For debug builds you have to build Arrow yourself, see [Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html).
