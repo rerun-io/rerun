@@ -3,6 +3,7 @@
 #include <rerun.hpp>
 
 #include <cmath>
+#include <vector>
 
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 

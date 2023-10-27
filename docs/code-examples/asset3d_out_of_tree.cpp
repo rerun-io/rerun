@@ -1,6 +1,7 @@
 // Log a simple 3D asset with an out-of-tree transform which will not affect its children.
 
 #include <exception>
+
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
 

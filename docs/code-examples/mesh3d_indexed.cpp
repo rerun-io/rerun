@@ -2,8 +2,7 @@
 
 #include <rerun.hpp>
 
-#include <cmath>
-#include <numeric>
+#include <vector>
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_mesh3d_indexed");

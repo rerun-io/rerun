@@ -1,11 +1,12 @@
 #include "recording_stream.hpp"
+#include "c/rerun.h"
 #include "components/instance_key.hpp"
 #include "config.hpp"
 #include "string_utils.hpp"
 
-#include "c/rerun.h"
-
 #include <arrow/buffer.h>
+
+#include <string> // to_string
 #include <vector>
 
 namespace rerun {

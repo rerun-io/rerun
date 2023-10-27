@@ -1,7 +1,8 @@
 // Log a scalar over time.
 
-#include <cmath>
 #include <rerun.hpp>
+
+#include <cmath>
 
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 

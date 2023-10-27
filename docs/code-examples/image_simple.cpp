@@ -2,6 +2,8 @@
 
 #include <rerun.hpp>
 
+#include <vector>
+
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_image_simple");
     rec.spawn().throw_on_failure();

@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <random>
+#include <vector>
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_points3d_random");

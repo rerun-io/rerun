@@ -4,6 +4,8 @@
 
 #include <cmath>
 #include <numeric>
+#include <string> // to_string
+#include <vector>
 
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_clear_recursive");
