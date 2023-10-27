@@ -10,12 +10,10 @@ if TYPE_CHECKING:
     from ..components import MediaType
 
 
-def guess_media_type(path: str) -> MediaType | None:
-    from pathlib import Path
-
+def guess_media_type(path: str | pathlib.Path) -> MediaType | None:
     from ..components import MediaType
 
-    ext = Path(path).suffix.lower()
+    ext = pathlib.Path(path).suffix.lower()
     if ext == ".glb":
         return MediaType.GLB
     elif ext == ".gltf":
