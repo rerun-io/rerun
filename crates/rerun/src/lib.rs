@@ -123,8 +123,12 @@ pub use re_sdk::*;
 pub mod external {
     pub use anyhow;
 
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
+    pub use clap;
+
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
+
     #[cfg(feature = "native_viewer")]
     pub use re_viewer::external::*;
 
