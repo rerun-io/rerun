@@ -24,9 +24,9 @@ If you prefer to learn by example, check out our example repository which uses t
 Assuming you are starting with a bare-bones `CMakeLists.txt` such as:
 ```
 cmake_minimum_required(VERSION 3.16)
-project(example LANGUAGES CXX)
+project(example_minimal LANGUAGES CXX)
 
-add_executable(example main.cpp)
+add_executable(example_minimal main.cpp)
 ```
 
 You can add Rerun to your project using `FetchContent`
@@ -39,20 +39,20 @@ This will download a bundle with pre-built Rerun C static libraries for most des
 
 Currently, Rerun SDK works with C++17 or newer, so you need to add this property to your target:
 ```cmake
-set_property(TARGET example PROPERTY CXX_STANDARD 17)
+set_property(TARGET example_minimal PROPERTY CXX_STANDARD 17)
 ```
 
 And finally, make sure you link with `rerun_sdk`:
 ```cmake
-target_link_libraries(example PRIVATE rerun_sdk)
+target_link_libraries(example_minimal PRIVATE rerun_sdk)
 ```
 
 Combining the above, a minimal self-contained `CMakeLists.txt` looks like:
 ```cmake
 cmake_minimum_required(VERSION 3.16)
-project(example LANGUAGES CXX)
+project(example_minimal LANGUAGES CXX)
 
-add_executable(example main.cpp)
+add_executable(example_minimal main.cpp)
 
 # Download the rerun_sdk
 include(FetchContent)
@@ -60,10 +60,10 @@ FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.
 FetchContent_MakeAvailable(rerun_sdk)
 
 # Rerun requires at least C++17, but it should be compatible with newer versions.
-set_property(TARGET example PROPERTY CXX_STANDARD 17)
+set_property(TARGET example_minimal PROPERTY CXX_STANDARD 17)
 
 # Link against rerun_sdk.
-target_link_libraries(example PRIVATE rerun_sdk)
+target_link_libraries(example_minimal PRIVATE rerun_sdk)
 ```
 
 ## Logging some data
@@ -97,7 +97,7 @@ You can configure cmake, build, and run you application like so:
 ```bash
 cmake -B build
 cmake --build build -j
-./build/example
+./build/example_minimal
 ```
 
 Once everything finishes compiling, the application will spawn the rerun viewer and send the data to it:
