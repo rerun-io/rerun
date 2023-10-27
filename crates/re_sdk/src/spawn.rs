@@ -130,8 +130,9 @@ impl std::fmt::Debug for SpawnError {
 pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     use std::{net::TcpStream, process::Command, time::Duration};
 
-    // NOTE: It's indented on purpose, it just looks better and reads easier.
-    const EXECUTABLE_NOT_FOUND: &str = //
+    // NOTE: These are indented on purpose, it just looks better and reads easier.
+
+    const MSG_INSTALL_HOW_TO: &str = //
     "
     You can install binary releases of the Rerun Viewer:
     * Using `cargo`: `cargo binstall rerun-cli` (see https://github.com/cargo-bins/cargo-binstall)
@@ -141,6 +142,26 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     For more information, refer to our complete install documentation over at:
     https://rerun.io/docs/getting-started/installing-viewer
     ";
+
+    const MSG_INSTALL_HOW_TO_VERSIONED: &str = //
+    "
+    You can install an appropriate version of the Rerun Viewer via binary releases:
+    * Using `cargo`: `cargo binstall --force rerun-cli@__VIEWER_VERSION__` (see https://github.com/cargo-bins/cargo-binstall)
+    * Via direct download from our release assets: https://github.com/rerun-io/rerun/releases/__VIEWER_VERSION__/
+    * Using `pip`: `pip3 install rerun-sdk==__VIEWER_VERSION__` (warning: pip version has slower start times!)
+
+    For more information, refer to our complete install documentation over at:
+    https://rerun.io/docs/getting-started/installing-viewer
+    ";
+
+    const MSG_VERSION_MISMATCH: &str = //
+        "
+    ⚠ The version of the Rerun Viewer available on your PATH does not match the version of your Rerun SDK ⚠
+
+    Rerun does not make any kind of backwards/forwards compatibility guarantee yet: this can lead to (subtle) bugs.
+
+    > Rerun Viewer: v__VIEWER_VERSION__ (executable: \"__VIEWER_PATH__\")
+    > Rerun SDK: v__SDK_VERSION__";
 
     let port = opts.port;
     let connect_addr = opts.connect_addr();
@@ -156,32 +177,67 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         return Ok(());
     }
 
-    let res = Command::new(executable_path)
+    let map_err = |err: std::io::Error| -> SpawnError {
+        if err.kind() == std::io::ErrorKind::NotFound {
+            if let Some(executable_path) = opts.executable_path.as_ref() {
+                SpawnError::ExecutableNotFound {
+                    executable_path: executable_path.clone(),
+                }
+            } else {
+                SpawnError::ExecutableNotFoundInPath {
+                    message: MSG_INSTALL_HOW_TO.to_owned(),
+                    executable_name: opts.executable_name.clone(),
+                    search_path: std::env::var("PATH").unwrap_or_else(|_| String::new()),
+                }
+            }
+        } else {
+            err.into()
+        }
+    };
+
+    let viewer_version = {
+        let output = Command::new(&executable_path)
+            .arg("--version")
+            .output()
+            .map_err(map_err)?;
+
+        let output = String::from_utf8_lossy(&output.stdout);
+        re_build_info::CrateVersion::try_parse_from_build_info_string(output).ok()
+    };
+
+    if let Some(viewer_version) = viewer_version {
+        let sdk_version = re_build_info::build_info!().version;
+
+        if !viewer_version.is_compatible_with(sdk_version) {
+            eprintln!(
+                "{}",
+                MSG_VERSION_MISMATCH
+                    .replace("__VIEWER_VERSION__", &viewer_version.to_string())
+                    .replace("__VIEWER_PATH__", &executable_path)
+                    .replace("__SDK_VERSION__", &sdk_version.to_string())
+            );
+
+            // Don't recommend installing stuff through registries if the user is running some
+            // weird version.
+            if sdk_version.meta.is_none() {
+                eprintln!(
+                    "{}",
+                    MSG_INSTALL_HOW_TO_VERSIONED
+                        .replace("__VIEWER_VERSION__", &sdk_version.to_string())
+                );
+            } else {
+                eprintln!();
+            }
+        }
+    }
+
+    let rerun_bin = Command::new(&executable_path)
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
         .arg("--skip-welcome-screen")
         .args(opts.extra_args.clone())
-        .spawn();
-
-    let rerun_bin = match res {
-        Ok(rerun_bin) => rerun_bin,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return if let Some(executable_path) = opts.executable_path.as_ref() {
-                Err(SpawnError::ExecutableNotFound {
-                    executable_path: executable_path.clone(),
-                })
-            } else {
-                Err(SpawnError::ExecutableNotFoundInPath {
-                    message: EXECUTABLE_NOT_FOUND.to_owned(),
-                    executable_name: opts.executable_name.clone(),
-                    search_path: std::env::var("PATH").unwrap_or_else(|_| String::new()),
-                })
-            }
-        }
-        Err(err) => {
-            return Err(err.into());
-        }
-    };
+        .spawn()
+        .map_err(map_err);
 
     // Simply forget about the child process, we want it to outlive the parent process if needed.
     _ = rerun_bin;

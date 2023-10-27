@@ -42,10 +42,10 @@ mod meta {
 /// - `00000000` -> none of the above
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CrateVersion {
-    major: u8,
-    minor: u8,
-    patch: u8,
-    meta: Option<Meta>,
+    pub major: u8,
+    pub minor: u8,
+    pub patch: u8,
+    pub meta: Option<Meta>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

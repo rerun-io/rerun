@@ -26,5 +26,5 @@ To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
 cmake .
 cmake --build . --target example_dna
-./examples/cpp/dna/dna
+./examples/cpp/dna/example_dna
 ```

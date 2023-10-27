@@ -10,6 +10,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -121,7 +122,8 @@ namespace rerun {
             /// If it cannot guess, it won't be able to render the asset.
             Asset3D with_media_type(rerun::components::MediaType _media_type) && {
                 media_type = std::move(_media_type);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// An out-of-tree transform.
@@ -129,7 +131,8 @@ namespace rerun {
             /// Applies a transformation to the asset itself without impacting its children.
             Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
                 transform = std::move(_transform);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

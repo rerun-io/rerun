@@ -11,6 +11,8 @@ namespace rerun {
             std::string value;
 #define Utf8 Utf8Ext
 
+            // Don't provide a string_view constructor, std::string constructor exists and covers this.
+
             // [CODEGEN COPY TO HEADER START]
 
             /// Construct a `Utf8` from null-terminated UTF-8.

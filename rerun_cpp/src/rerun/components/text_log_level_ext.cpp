@@ -11,6 +11,8 @@ namespace rerun {
             std::string value;
 #define TextLogLevel TextLogLevelExt
 
+            // Don't provide a string_view constructor, std::string constructor exists and covers this.
+
             // [CODEGEN COPY TO HEADER START]
 
             /// Designates catastrophic failures.
@@ -31,7 +33,7 @@ namespace rerun {
             /// Designates very low priority, often extremely verbose, information.
             static const TextLogLevel TRACE;
 
-            /// Construct `TextLogLevel` from a zero-terminated UTF8 string.
+            /// Construct `TextLogLevel` from a null-terminated UTF8 string.
             TextLogLevel(const char* str) : value(str) {}
 
             const char* c_str() const {
