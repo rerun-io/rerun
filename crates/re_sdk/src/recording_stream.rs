@@ -4,6 +4,7 @@ use std::sync::{atomic::AtomicI64, Arc};
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 
+use parking_lot::Mutex;
 use re_log_types::{
     ApplicationId, DataCell, DataCellError, DataRow, DataTable, DataTableBatcher,
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
@@ -469,6 +470,28 @@ impl RecordingStreamBuilder {
 /// You can construct a new [`RecordingStream`] using [`RecordingStreamBuilder`] or
 /// [`RecordingStream::new`].
 ///
+/// ## Time
+///
+/// Each instance of a [`RecordingStream`] maintains its own independent clock (i.e., a [`TimePoint`]).
+/// This clock keeps track of time on an arbitrary number of [`Timeline`]s.
+///
+/// Anytime you [log] something, the data will automatically be stamped using the values from the
+/// [`RecordingStream`]'s clock.
+///
+/// You can use the `RecordingStream::set_time` family of methods to update the clock with extra
+/// time information:
+/// - [`RecordingStream::set_timepoint`]
+/// - [`RecordingStream::set_time_sequence`]
+/// - [`RecordingStream::set_time_seconds`]
+/// - [`RecordingStream::set_time_nanos`]
+/// - [`RecordingStream::reset_time`]
+///
+/// The `log_time` (wall time) and `log_tick` timelines are automatically tracked by the clock.
+///
+/// When you clone a [`RecordingStream`] (e.g. to send a handle to another thread), you also clone its
+/// clock. Once cloned, these two clocks are completely independent of each other: updating one
+/// won't affect the other (fork model).
+///
 /// ## Sinks
 ///
 /// Data is logged into Rerun via [`LogSink`]s.
@@ -499,8 +522,11 @@ impl RecordingStreamBuilder {
 /// it will automatically take care of flushing any pending data that might remain in the pipeline.
 ///
 /// Shutting down cannot ever block.
+///
+/// [log]: [`RecordingStream::log`]
 #[derive(Clone)]
 pub struct RecordingStream {
+    clock: TimePoint,
     inner: Arc<Option<RecordingStreamInner>>,
 }
 
@@ -628,6 +654,7 @@ impl RecordingStream {
             Box::new(crate::sink::FileSink::new(path).unwrap()) as Box<dyn LogSink>
         });
         RecordingStreamInner::new(info, batcher_config, sink).map(|inner| Self {
+            clock: Default::default(),
             inner: Arc::new(Some(inner)),
         })
     }
@@ -638,6 +665,7 @@ impl RecordingStream {
     /// [`Self::is_enabled`] will return `false`.
     pub fn disabled() -> Self {
         Self {
+            clock: Default::default(),
             inner: Arc::new(None),
         }
     }
@@ -1327,102 +1355,41 @@ fn spawn(opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
 
 // --- Stateful time ---
 
-/// Thread-local data.
-#[derive(Default)]
-struct ThreadInfo {
-    /// The current time per-thread per-recording, which can be set by users.
-    timepoints: HashMap<StoreId, TimePoint>,
-}
-
-impl ThreadInfo {
-    fn thread_now(rid: &StoreId) -> TimePoint {
-        Self::with(|ti| ti.now(rid))
-    }
-
-    fn set_thread_time(rid: &StoreId, timeline: Timeline, time_int: Option<TimeInt>) {
-        Self::with(|ti| ti.set_time(rid, timeline, time_int));
-    }
-
-    fn reset_thread_time(rid: &StoreId) {
-        Self::with(|ti| ti.reset_time(rid));
-    }
-
-    /// Get access to the thread-local [`ThreadInfo`].
-    fn with<R>(f: impl FnOnce(&mut ThreadInfo) -> R) -> R {
-        use std::cell::RefCell;
-        thread_local! {
-            static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None);
-        }
-
-        THREAD_INFO.with(|thread_info| {
-            let mut thread_info = thread_info.borrow_mut();
-            let thread_info = thread_info.get_or_insert_with(ThreadInfo::default);
-            f(thread_info)
-        })
-    }
-
-    fn now(&self, rid: &StoreId) -> TimePoint {
-        let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
-        timepoint.insert(Timeline::log_time(), Time::now().into());
-        timepoint
-    }
-
-    fn set_time(&mut self, rid: &StoreId, timeline: Timeline, time_int: Option<TimeInt>) {
-        if let Some(time_int) = time_int {
-            self.timepoints
-                .entry(rid.clone())
-                .or_default()
-                .insert(timeline, time_int);
-        } else if let Some(timepoint) = self.timepoints.get_mut(rid) {
-            timepoint.remove(&timeline);
-        }
-    }
-
-    fn reset_time(&mut self, rid: &StoreId) {
-        if let Some(timepoint) = self.timepoints.get_mut(rid) {
-            *timepoint = TimePoint::default();
-        }
-    }
-}
-
 impl RecordingStream {
-    /// Returns the current time of the recording on the current thread.
+    /// Returns the current time of the recording.
+    #[inline]
     pub fn now(&self) -> TimePoint {
-        let Some(this) = &*self.inner else {
+        if self.inner.is_none() {
             re_log::warn_once!("Recording disabled - call to now() ignored");
             return TimePoint::default();
         };
 
-        ThreadInfo::thread_now(&this.info.store_id)
+        let mut timepoint = self.clock.clone();
+        timepoint.insert(Timeline::log_time(), Time::now().into());
+        timepoint
     }
 
-    /// Set the current time of the recording, for the current calling thread.
+    /// Set the current time of the recording.
     ///
-    /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// Used for all subsequent logging, until the next call to one of the time setting methods.
     ///
     /// See also:
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::set_time_nanos`]
     /// - [`Self::reset_time`]
-    pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
-        let Some(this) = &*self.inner else {
+    pub fn set_timepoint(&mut self, timepoint: impl Into<TimePoint>) {
+        if self.inner.is_none() {
             re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
             return;
         };
 
-        let timepoint = timepoint.into();
-
-        for (timeline, time) in timepoint {
-            ThreadInfo::set_thread_time(&this.info.store_id, timeline, Some(time));
-        }
+        self.clock = timepoint.into();
     }
 
-    /// Set the current time of the recording, for the current calling thread.
+    /// Set the current time of the recording.
     ///
-    /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// Used for all subsequent logging, until the next call to one of the time setting methods.
     ///
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
     ///
@@ -1434,26 +1401,26 @@ impl RecordingStream {
     /// - [`Self::set_time_nanos`]
     /// - [`Self::reset_time`]
     pub fn set_time_sequence(
-        &self,
+        &mut self,
         timeline: impl Into<TimelineName>,
         sequence: impl Into<Option<i64>>,
     ) {
-        let Some(this) = &*self.inner else {
+        if self.inner.is_none() {
             re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
             return;
         };
 
-        ThreadInfo::set_thread_time(
-            &this.info.store_id,
-            Timeline::new(timeline, TimeType::Sequence),
-            sequence.into().map(TimeInt::from),
-        );
+        let timeline = Timeline::new(timeline, TimeType::Sequence);
+        if let Some(sequence) = sequence.into().map(TimeInt::from) {
+            self.clock.insert(timeline, sequence);
+        } else {
+            self.clock.remove(&timeline);
+        }
     }
 
-    /// Set the current time of the recording, for the current calling thread.
+    /// Set the current time of the recording.
     ///
-    /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// Used for all subsequent logging, until the next call to one of the time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
     ///
@@ -1464,25 +1431,26 @@ impl RecordingStream {
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_nanos`]
     /// - [`Self::reset_time`]
-    pub fn set_time_seconds(&self, timeline: &str, seconds: impl Into<Option<f64>>) {
-        let Some(this) = &*self.inner else {
+    pub fn set_time_seconds(&mut self, timeline: &str, seconds: impl Into<Option<f64>>) {
+        if self.inner.is_none() {
             re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
             return;
         };
 
-        ThreadInfo::set_thread_time(
-            &this.info.store_id,
-            Timeline::new(timeline, TimeType::Time),
-            seconds
-                .into()
-                .map(|secs| Time::from_seconds_since_epoch(secs).into()),
-        );
+        let time = seconds
+            .into()
+            .map(|secs| Time::from_seconds_since_epoch(secs).into());
+        let timeline = Timeline::new(timeline, TimeType::Time);
+        if let Some(time) = time {
+            self.clock.insert(timeline, time);
+        } else {
+            self.clock.remove(&timeline);
+        }
     }
 
-    /// Set the current time of the recording, for the current calling thread.
+    /// Set the current time of the recording.
     ///
-    /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// Used for all subsequent logging, until the next call to one of the time setting methods.
     ///
     /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
     ///
@@ -1493,23 +1461,24 @@ impl RecordingStream {
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::reset_time`]
-    pub fn set_time_nanos(&self, timeline: &str, ns: impl Into<Option<i64>>) {
-        let Some(this) = &*self.inner else {
+    pub fn set_time_nanos(&mut self, timeline: &str, ns: impl Into<Option<i64>>) {
+        if self.inner.is_none() {
             re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
             return;
         };
 
-        ThreadInfo::set_thread_time(
-            &this.info.store_id,
-            Timeline::new(timeline, TimeType::Time),
-            ns.into().map(|ns| Time::from_ns_since_epoch(ns).into()),
-        );
+        let time = ns.into().map(|ns| Time::from_ns_since_epoch(ns).into());
+        let timeline = Timeline::new(timeline, TimeType::Time);
+        if let Some(time) = time {
+            self.clock.insert(timeline, time);
+        } else {
+            self.clock.remove(&timeline);
+        }
     }
 
-    /// Clears out the current time of the recording, for the current calling thread.
+    /// Clears out the current time of the recording.
     ///
-    /// Used for all subsequent logging performed from this same thread, until the next call
-    /// to one of the time setting methods.
+    /// Used for all subsequent logging, until the next call to one of the time setting methods.
     ///
     /// For example: `rec.reset_time()`.
     ///
@@ -1518,13 +1487,13 @@ impl RecordingStream {
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::set_time_nanos`]
-    pub fn reset_time(&self) {
-        let Some(this) = &*self.inner else {
+    pub fn reset_time(&mut self) {
+        if self.inner.is_none() {
             re_log::warn_once!("Recording disabled - call to reset_time() ignored");
             return;
         };
 
-        ThreadInfo::reset_thread_time(&this.info.store_id);
+        self.clock = Default::default();
     }
 }
 
