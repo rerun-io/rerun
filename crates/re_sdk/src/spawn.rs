@@ -177,31 +177,29 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         return Ok(());
     }
 
-    fn check<T>(opts: &SpawnOptions, res: Result<T, std::io::Error>) -> Result<T, SpawnError> {
-        match res {
-            output @ Ok(_) => output.map_err(Into::into),
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                if let Some(executable_path) = opts.executable_path.as_ref() {
-                    Err(SpawnError::ExecutableNotFound {
-                        executable_path: executable_path.clone(),
-                    })
-                } else {
-                    Err(SpawnError::ExecutableNotFoundInPath {
-                        message: MSG_INSTALL_HOW_TO.to_owned(),
-                        executable_name: opts.executable_name.clone(),
-                        search_path: std::env::var("PATH").unwrap_or_else(|_| String::new()),
-                    })
+    let map_err = |err: std::io::Error| -> SpawnError {
+        if err.kind() == std::io::ErrorKind::NotFound {
+            if let Some(executable_path) = opts.executable_path.as_ref() {
+                SpawnError::ExecutableNotFound {
+                    executable_path: executable_path.clone(),
+                }
+            } else {
+                SpawnError::ExecutableNotFoundInPath {
+                    message: MSG_INSTALL_HOW_TO.to_owned(),
+                    executable_name: opts.executable_name.clone(),
+                    search_path: std::env::var("PATH").unwrap_or_else(|_| String::new()),
                 }
             }
-            Err(err) => Err(err.into()),
+        } else {
+            err.into()
         }
-    }
+    };
 
     let viewer_version = {
-        let output = check(
-            opts,
-            Command::new(&executable_path).arg("--version").output(),
-        )?;
+        let output = Command::new(&executable_path)
+            .arg("--version")
+            .output()
+            .map_err(map_err)?;
 
         // <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
         let output = String::from_utf8_lossy(&output.stdout);
@@ -238,15 +236,15 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
         }
     }
 
-    let res = Command::new(&executable_path)
+    let rerun_bin = Command::new(&executable_path)
         .arg(format!("--port={port}"))
         .arg(format!("--memory-limit={memory_limit}"))
         .arg("--skip-welcome-screen")
         .args(opts.extra_args.clone())
-        .spawn();
+        .spawn()
+        .map_err(map_err);
 
     // Simply forget about the child process, we want it to outlive the parent process if needed.
-    let rerun_bin = check(opts, res)?;
     _ = rerun_bin;
 
     Ok(())
