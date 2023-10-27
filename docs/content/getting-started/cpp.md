@@ -9,25 +9,9 @@ Before adding Rerun to your application, start by [installing the viewer](instal
 The Rerun C++ SDK depends on an install of the `arrow-cpp` library on your system using.
 
 🚧 In the future we want to make this part of the setup easier.
+
 ### Installing arrow-cpp with pixi
-[Pixi](https://prefix.dev/docs/pixi/overview) is a convenient tool for managing cross-platform project dependencies. In
-fact, Rerun uses it for our own internal development dependency management, and you will find `pixi.toml` files in most
-of our external examples.
-
-If you want to use `pixi` to manage dependencies in your own project, you can simply run `pixi init` in the root of your
-project folder. After that you can run `pixi add arrow-cpp` to add arrow-cpp to your project.
-
-Now, any pixi tasks added to your project will have access to the arrow-cpp library. For the purposes of this example
-you can just run `pixi shell` to create an environment where all your project dependencies (including `arrow-cpp`) will
-be available.
-
-If you're not ready to use pixi for your project, you can still use it to install `arrow-cpp` globally by running
-`pixi global install arrow-cpp`. However, in this case you will need to also tell `cmake` how to find the packages:
-```bash
-export CMAKE_PREFIX_PATH=$HOME/.pixi/envs/arrow-cpp:$CMAKE_PREFIX_PATH
-```
-
-⚠️ On Windows this only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes. For debug builds you have to build Arrow yourself, see [Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html).
+See our [how-to guide](../howto/arrow-cpp-pixi.md) on using pixi to install `arrow-cpp`.
 
 ### Installing arrow-cpp manually
 Find more information about other package managers at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
