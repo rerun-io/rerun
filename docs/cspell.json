@@ -6,6 +6,7 @@
     "node_modules/**"
   ],
   "ignoreWords": [
+    "-useb",
     "aarch",
     "abey",
     "adrr",
