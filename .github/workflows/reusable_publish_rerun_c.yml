@@ -62,5 +62,7 @@ jobs:
         windows,
       ]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
+    with:
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 

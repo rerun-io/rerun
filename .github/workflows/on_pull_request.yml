@@ -41,7 +41,6 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PLATFORM: linux
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   build-rerun-cli-and-upload:
@@ -51,7 +50,6 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PLATFORM: linux
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   bundle-and-upload-rerun_cpp:
@@ -60,7 +58,6 @@ jobs:
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
     with:
       PLATFORM_FILTER: "linux"
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   build-web:

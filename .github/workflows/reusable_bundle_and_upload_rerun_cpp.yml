@@ -6,7 +6,7 @@ on:
       PLATFORM_FILTER:
         required: false
         type: string
-      UPLOAD_COMMIT_OVERRIDE:
+      RELEASE_COMMIT:
         required: false
         type: string
         default: ""
@@ -45,16 +45,11 @@ jobs:
         run: |
           python3 -m pip install google-cloud-storage
 
-      - name: Add SHORT_SHA env property with commit short sha
+      - name: Get sha
+        id: get-sha
         shell: bash
-        id: "short-sha"
         run: |
-          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
-            USED_SHA=${{ github.sha }}
-          else
-            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
-          fi
-          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "sha=$(echo ${{ inputs.RELEASE_COMMIT || github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Bundle and upload rerun_cpp_sdk.zip"
-        run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.short-sha.outputs.SHORT_SHA }} --platform-filter=${{ inputs.PLATFORM_FILTER }}
+        run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.get-sha.outputs.sha }} --platform-filter=${{ inputs.PLATFORM_FILTER }}
