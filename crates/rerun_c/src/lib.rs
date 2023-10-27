@@ -370,7 +370,7 @@ fn rr_recording_stream_connect_impl(
     } else {
         None
     };
-    stream.connect(tcp_addr, flush_timeout);
+    stream.connect_opts(tcp_addr, flush_timeout);
 
     Ok(())
 }

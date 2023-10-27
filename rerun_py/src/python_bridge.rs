@@ -486,14 +486,14 @@ fn connect(
     py.allow_threads(|| {
         if let Some(recording) = recording {
             // If the user passed in a recording, use it
-            recording.connect(addr, flush_timeout);
+            recording.connect_opts(addr, flush_timeout);
         } else {
             // Otherwise, connect both global defaults
             if let Some(recording) = get_data_recording(None) {
-                recording.connect(addr, flush_timeout);
+                recording.connect_opts(addr, flush_timeout);
             };
             if let Some(blueprint) = get_blueprint_recording(None) {
-                blueprint.connect(addr, flush_timeout);
+                blueprint.connect_opts(addr, flush_timeout);
             };
         }
     });
