@@ -2,40 +2,39 @@
 
 // A very simple custom container type.
 template <typename T>
-struct CustomContainer {
+struct MyContainer {
     T* data;
     size_t size;
 
-    CustomContainer(size_t size_) : data(new T[size_]), size(size_) {}
+    MyContainer(size_t size_) : data(new T[size_]), size(size_) {}
 
     // For demonstration purposes: This container can't be copied.
-    CustomContainer(const CustomContainer&) = delete;
+    MyContainer(const MyContainer&) = delete;
 
-    ~CustomContainer() {
+    ~MyContainer() {
         delete[] data;
     }
 };
 
 // A custom vector type.
-struct CustomVectorType {
+struct MyVec3 {
     float x, y, z;
 };
 
-/// Adapts `CustomContainer<CustomVectorType>` to a `ComponentBatch<Position3D>`.
+/// Adapts `MyContainer<MyVec3>` to a `ComponentBatch<Position3D>`.
 ///
-/// With this in place, `ComponentBatch<Position3D>` can be constructed from a `CustomContainer<CustomVectorType>`!
+/// With this in place, `ComponentBatch<Position3D>` can be constructed from a `MyContainer<MyVec3>`!
 template <>
-struct rerun::ComponentBatchAdapter<rerun::Position3D, CustomContainer<CustomVectorType>> {
+struct rerun::ComponentBatchAdapter<rerun::Position3D, MyContainer<MyVec3>> {
     // Creating a ComponentBatch from a non-temporary is done by casting & borrowing binary compatible data.
-    ComponentBatch<rerun::Position3D> operator()(const CustomContainer<CustomVectorType>& container
-    ) {
+    ComponentBatch<rerun::Position3D> operator()(const MyContainer<MyVec3>& container) {
         return ComponentBatch<rerun::Position3D>::borrow(container.data, container.size);
     }
 
     // For temporaries we have to do a copy since the pointer doesn't live long enough.
     // If you don't implement this, the other overload may be used for temporaries and cause
     // undefined behavior.
-    ComponentBatch<rerun::Position3D> operator()(CustomContainer<CustomVectorType>&& container) {
+    ComponentBatch<rerun::Position3D> operator()(MyContainer<MyVec3>&& container) {
         std::vector<rerun::Position3D> components(container.size);
         for (size_t i = 0; i < container.size; ++i) {
             components[i] =
@@ -51,10 +50,10 @@ int main() {
     rec.spawn().throw_on_failure();
 
     // Construct some data in a custom format.
-    CustomContainer<CustomVectorType> points(3);
-    points.data[0] = CustomVectorType{0.0f, 0.0f, 0.0f};
-    points.data[1] = CustomVectorType{1.0f, 0.0f, 0.0f};
-    points.data[2] = CustomVectorType{0.0f, 1.0f, 0.0f};
+    MyContainer<MyVec3> points(3);
+    points.data[0] = MyVec3{0.0f, 0.0f, 0.0f};
+    points.data[1] = MyVec3{1.0f, 0.0f, 0.0f};
+    points.data[2] = MyVec3{0.0f, 1.0f, 0.0f};
 
     // Log the "my_points" entity with our data, using the `Points3D` archetype.
     // Of course you can mix and match built-in types and custom types on the same archetype.
