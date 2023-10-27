@@ -1,8 +1,8 @@
 //! Log rectangles with different colors and labels using annotation context
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_rects")
-        .spawn(rerun::default_flush_timeout())?;
+    let rec =
+        rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_rects").spawn()?;
 
     // Log an annotation context to assign a label and color to each class
     rec.log_timeless(

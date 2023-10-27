@@ -28,8 +28,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Simple 2D boxes
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_box2d")
-///         .spawn(rerun::default_flush_timeout())?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_box2d").spawn()?;
 ///
 ///     rec.log(
 ///         "simple",

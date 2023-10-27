@@ -1,8 +1,7 @@
 //! Log a single 3D box.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_box3d")
-        .spawn(rerun::default_flush_timeout())?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_box3d").spawn()?;
 
     rec.log(
         "simple",
