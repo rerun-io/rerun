@@ -11,6 +11,9 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
 
 add_library(rerun_sdk ${rerun_sdk_SRC})
 
+# Make sure the compiler can find include files for rerun when other libraries or executables link to rerun:
+target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
 # Rerun needs at least C++17.
 set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
 
@@ -53,13 +56,6 @@ if(DEFINED RERUN_REPOSITORY)
         NEWLINE_STYLE LF # Specify line endings, otherwise CMake wants to change them on Windows.
     )
 endif()
-
-# ------------------------------------------------------------------------------
-
-# Make sure the compiler can find include files for rerun
-# when other libraries or executables link to rerun:
-# Note that we have to use different path for within the repo and exporting the project:
-target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # ------------------------------------------------------------------------------
 # Setup rerun_c dependency:
