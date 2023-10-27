@@ -1,6 +1,11 @@
 #include "../error.hpp"
 #include "tensor.hpp"
 
+#include <algorithm> // std::min
+#include <string>    // std::to_string
+#include <utility>   // std::move
+#include <vector>
+
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
 
