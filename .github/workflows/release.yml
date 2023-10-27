@@ -326,7 +326,7 @@ jobs:
           | [rs docs]($rs_docs_link)    |                |
           EOF
 
-          gh pr comment $pr_number --body-file comment-body.txt --edit-last
+          gh pr comment $pr_number --body-file comment-body.txt
 
   # -----------------------------------------------------------------------------------
   # Build rerun_c library binaries:
