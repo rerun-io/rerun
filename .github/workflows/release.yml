@@ -295,6 +295,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
         run: |
           pr_number=$(gh pr view --json number | jq '.number')
+          echo "pr_number: $pr_number"
 
           if [ ${{ inputs.release-type }} = "final" ]; then
             web_app_link="https://app.rerun.io/version/${{ needs.version.outputs.final }}"
