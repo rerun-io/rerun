@@ -201,10 +201,10 @@ jobs:
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
-  build-and-publish-wheels:
+  publish-wheels:
     name: "Build and Publish Wheels"
     needs: [version]
-    uses: ./.github/workflows/reusable_build_and_publish_wheels.yml
+    uses: ./.github/workflows/reusable_publish_wheels.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
       concurrency: ${{ github.ref_name }}
@@ -213,10 +213,10 @@ jobs:
       release-commit: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
-  build-and-publish-web:
+  publish-web:
     name: "Build and Publish Web"
-    needs: [version, build-and-publish-wheels]
-    uses: ./.github/workflows/reusable_build_and_publish_web.yml
+    needs: [version, publish-wheels]
+    uses: ./.github/workflows/reusable_publish_web.yml
     with:
       release-version: ${{ needs.version.outputs.current }}
       release-commit: ${{ needs.version.outputs.release-commit }}
@@ -226,10 +226,38 @@ jobs:
       update-latest: ${{ inputs.release-type == 'final' }}
     secrets: inherit
 
+  publish-rerun_c:
+    name: "Build and Publish rerun_c"
+    needs: [version]
+    uses: ./.github/workflows/reusable_publish_rerun_c.yml
+    with:
+      release-version: ${{ needs.version.outputs.current }}
+      release-commit: ${{ needs.version.outputs.release-commit }}
+      concurrency: ${{ github.ref_name }}
+    secrets: inherit
+
+  publish-rerun-cli:
+    name: "Publish rerun-cli"
+    needs: [version]
+    uses: ./.github/workflows/reusable_publish_rerun_cli.yml
+    with:
+      release-version: ${{ needs.version.outputs.current }}
+      release-commit: ${{ needs.version.outputs.release-commit }}
+      concurrency: ${{ github.ref_name }}
+    secrets: inherit
+
   update-latest-branch:
     name: "Update Latest Branch"
     if: inputs.release-type == 'final'
-    needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
+    needs:
+      [
+        version, update-docs,
+        publish-crates,
+        publish-wheels,
+        publish-web,
+        publish-rerun_c,
+        publish-rerun-cli,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -246,7 +274,15 @@ jobs:
   post-release-version-bump:
     name: "Post-Release Version Bump"
     if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
-    needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web, bundle-and-upload-rerun_cpp]
+    needs:
+      [
+        version, update-docs,
+        publish-crates,
+        publish-wheels,
+        publish-web,
+        publish-rerun_c,
+        publish-rerun-cli,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -281,7 +317,15 @@ jobs:
 
   comment-artifact-links:
     name: "Link to artifacts"
-    needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
+    needs:
+      [
+        version, update-docs,
+        publish-crates,
+        publish-wheels,
+        publish-web,
+        publish-rerun_c,
+        publish-rerun-cli,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -327,95 +371,3 @@ jobs:
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
-
-  # -----------------------------------------------------------------------------------
-  # Build rerun_c library binaries:
-
-  build-rerun_c-and-upload-linux:
-    needs: [checks, "version"]
-    name: "Linux-x64: Build & Upload rerun_c"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-    secrets: inherit
-
-  build-rerun_c-and-upload-macos-intel:
-    needs: [checks, "version"]
-    name: "Mac-Intel: Build & Upload rerun_c"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
-    secrets: inherit
-
-  build-rerun_c-and-upload-macos-arm:
-    needs: [checks, "version"]
-    name: "Mac-Arm: Build & Upload rerun_c"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
-    secrets: inherit
-
-  build-rerun_c-and-upload-windows:
-    needs: [checks, "version"]
-    name: "Windows-x64: Build & Upload rerun_c"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-    with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
-    secrets: inherit
-
-  # -----------------------------------------------------------------------------------
-  # Build rerun-cli (rerun binaries):
-
-  build-rerun-cli-and-upload-linux:
-    needs: [checks, "version"]
-    name: "Linux-x64: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-    secrets: inherit
-
-  build-rerun-cli-and-upload-macos-intel:
-    needs: [checks, "version"]
-    name: "Mac-Intel: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      PLATFORM: macos-intel
-    secrets: inherit
-
-  build-rerun-cli-and-upload-macos-arm:
-    needs: [checks, "version"]
-    name: "Mac-Arm: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      PLATFORM: macos-arm
-    secrets: inherit
-
-  build-rerun-cli-and-upload-windows:
-    needs: [checks, "version"]
-    name: "Windows-x64: Build & Upload rerun-cli"
-    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-    with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      PLATFORM: windows
-    secrets: inherit
-
-  # -----------------------------------------------------------------------------------
-
-  bundle-and-upload-rerun_cpp:
-    name: "Bundle and upload rerun_cpp_sdk.zip"
-    needs:
-      [
-        build-rerun_c-and-upload-linux,
-        build-rerun_c-and-upload-macos-intel,
-        build-rerun_c-and-upload-macos-arm,
-        build-rerun_c-and-upload-windows,
-      ]
-    uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
-    secrets: inherit

@@ -9,19 +9,11 @@ on:
       PLATFORM:
         required: true
         type: string
-      RELEASE_VERSION:
-        required: false
-        type: string
-        default: "prerelease"
-      UPLOAD_COMMIT_OVERRIDE:
+      ADHOC_NAME:
         required: false
         type: string
         default: ""
-      UPLOAD_COMMIT:
-        required: false
-        type: boolean
-        default: true
-      ADHOC_NAME:
+      RELEASE_COMMIT:
         required: false
         type: string
         default: ""
@@ -45,18 +37,6 @@ on:
         required: false
         type: string
         default: "adhoc"
-      RELEASE_VERSION:
-        required: false
-        type: string
-        default: "prerelease"
-      UPLOAD_COMMIT_OVERRIDE:
-        required: false
-        type: string
-        default: ""
-      UPLOAD_COMMIT:
-        required: false
-        type: boolean
-        default: true
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-rerun-cli
@@ -144,7 +124,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
+          ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -212,23 +192,17 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Add SHORT_SHA env property with commit short sha
+      - name: Get sha
+        id: get-sha
         shell: bash
-        id: "short-sha"
         run: |
-          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
-            USED_SHA=${{ github.sha }}
-          else
-            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
-          fi
-          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "sha=$(echo ${{ inputs.RELEASE_COMMIT || github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Upload rerun-cli (commit)"
-        if: ${{ inputs.UPLOAD_COMMIT }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
-          destination: "rerun-builds/commit/${{ steps.short-sha.outputs.SHORT_SHA }}/rerun-cli/${{ inputs.PLATFORM }}"
+          destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
 
       - name: "Upload rerun-cli (adhoc)"
