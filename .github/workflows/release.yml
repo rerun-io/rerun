@@ -246,7 +246,7 @@ jobs:
   post-release-version-bump:
     name: "Post-Release Version Bump"
     if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
-    needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web]
+    needs: [version, update-docs, publish-crates, build-and-publish-wheels, build-and-publish-web, bundle-and-upload-rerun_cpp]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
