@@ -27,6 +27,7 @@ opt_out_run = {
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "quick_start_spawn": ["cpp"], # TODO(#3870): Not yet implemented in C++
     "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "timelines_example": ["py", "cpp", "rust"], # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
