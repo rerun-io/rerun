@@ -49,6 +49,7 @@ export CMAKE_PREFIX_PATH=$HOME/.pixi/envs/arrow-cpp:$CMAKE_PREFIX_PATH
 The rerun-cpp example: <https://github.com/rerun-io/cpp-example-opencv-eigen> ships with a `pixi.toml` file to manage
 its dependencies, as well as a set of tasks to simplify running it.
 
+If you have pixi installed, all you need to do to run the example is:
 ```
 git clone https://github.com/rerun-io/cpp-example-opencv-eigen
 cd cpp-example-opencv-eigen
