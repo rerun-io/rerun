@@ -36,7 +36,7 @@ Even without tasks, you can run `pixi shell` to create a shell environment where
 
 Check out the [pixi docs](https://prefix.dev/docs/pixi/basic_usage) for more information on what you can do with pixi.
 
-## Using
+## Using a global install of arrow-cpp
 
 If you're not ready to use pixi for your project, you can still use it to install `arrow-cpp` globally by running
 `pixi global install arrow-cpp`. However, in this case you will need to also tell `cmake` how to find the packages:
