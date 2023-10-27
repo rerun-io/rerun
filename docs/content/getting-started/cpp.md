@@ -7,41 +7,52 @@ order: 2
 Before adding Rerun to your application, start by [installing the viewer](installing-viewer.md).
 
 The Rerun C++ SDK depends on an install of the `arrow-cpp` library on your system using.
-If you are using [Pixi](https://prefix.dev/docs/pixi/overview), you can simply type `pixi global install arrow-cpp`.
-Find more information about other package managers at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
-⚠️ On Windows this only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes. For debug builds you have to build Arrow yourself, see [Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html).
+
 🚧 In the future we want to make this part of the setup easier.
+
+### Installing arrow-cpp with pixi
+See our [how-to guide](../howto/arrow-cpp-pixi.md) on using pixi to install `arrow-cpp`.
+
+### Installing arrow-cpp manually
+Find more information about other package managers at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
 
 ## Learning by example
 If you prefer to learn by example, check out our example repository which uses the Rerun C++ SDK to log some data from Eigen and OpenCV: <https://github.com/rerun-io/cpp-example-opencv-eigen>.
 
 ## Using Rerun with CMake
-Add the following to your `CMakeLists.txt`:
 
+Assuming you are starting with a bare-bones `CMakeLists.txt` such as:
+```
+cmake_minimum_required(VERSION 3.16)
+project(example_minimal LANGUAGES CXX)
+
+add_executable(example_minimal main.cpp)
+```
+
+You can add Rerun to your project using `FetchContent`
 ```cmake
 include(FetchContent)
 FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
 FetchContent_MakeAvailable(rerun_sdk)
 ```
-
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms, all Rerun C++ sources and headers, as well as CMake build instructions for them.
 
-Currently, Rerun SDK works with C++17 or newer:
+Currently, Rerun SDK works with C++17 or newer, so you need to add this property to your target:
 ```cmake
-set_property(TARGET example PROPERTY CXX_STANDARD 17)
+set_property(TARGET example_minimal PROPERTY CXX_STANDARD 17)
 ```
 
-Make sure you link with `rerun_sdk`:
+And finally, make sure you link with `rerun_sdk`:
 ```cmake
-target_link_libraries(example PRIVATE rerun_sdk)
+target_link_libraries(example_minimal PRIVATE rerun_sdk)
 ```
 
 Combining the above, a minimal self-contained `CMakeLists.txt` looks like:
 ```cmake
 cmake_minimum_required(VERSION 3.16)
-project(example LANGUAGES CXX)
+project(example_minimal LANGUAGES CXX)
 
-add_executable(example main.cpp)
+add_executable(example_minimal main.cpp)
 
 # Download the rerun_sdk
 include(FetchContent)
@@ -49,10 +60,10 @@ FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.
 FetchContent_MakeAvailable(rerun_sdk)
 
 # Rerun requires at least C++17, but it should be compatible with newer versions.
-set_property(TARGET example PROPERTY CXX_STANDARD 17)
+set_property(TARGET example_minimal PROPERTY CXX_STANDARD 17)
 
 # Link against rerun_sdk.
-target_link_libraries(example PRIVATE rerun_sdk)
+target_link_libraries(example_minimal PRIVATE rerun_sdk)
 ```
 
 ## Logging some data
@@ -68,7 +79,8 @@ using namespace rerun::demo;
 int main() {
     // Create a new `RecordingStream` which sends data over TCP to the viewer process.
     auto rec = rerun::RecordingStream("rerun_example_cpp");
-    rec.connect().throw_on_failure();
+    // Try to spawn a new viewer instance.
+    rec.spawn().throw_on_failure();
 
     // Create some data using the `grid` utility function.
     auto points = grid<rerun::Position3D, float>({-10.f, -10.f, -10.f}, {10.f, 10.f, 10.f}, 10);
@@ -79,17 +91,16 @@ int main() {
 }
 ```
 
-Now start the viewer, build your application and run it:
+## Building and running
 
-You can configure cmake and build, for example like so:
+You can configure cmake, build, and run you application like so:
 ```bash
-cmake .
-cmake --build . -j 8
-rerun
-./example
+cmake -B build
+cmake --build build -j
+./build/example_minimal
 ```
 
-Once everything finishes compiling, you will see the points in the Rerun Viewer:
+Once everything finishes compiling, the application will spawn the rerun viewer and send the data to it:
 
 <picture>
   <img src="https://static.rerun.io/intro_cpp_result/398c8fb79766e370a65b051b38eac680671c348a/full.png" alt="">
