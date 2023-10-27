@@ -30,8 +30,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ### Markdown text document
 /// ```ignore
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_text_document").memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_text_document")
+///         .spawn(rerun::default_flush_timeout())?;
 ///
 ///     rec.log(
 ///         "text_document",
@@ -80,7 +80,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .with_media_type(rerun::MediaType::markdown()),
 ///     )?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```

@@ -39,7 +39,7 @@ namespace rerun {
         ///
         ///     rec.log(
         ///         "tensor",
-        ///         rerun::Tensor({8, 6, 3, 5}, data).with_dim_names({"batch", "channel", "height", "width"})
+        ///         rerun::Tensor({8, 6, 3, 5}, data).with_dim_names({"width", "height", "channel", "batch"})
         ///     );
         /// }
         /// ```
