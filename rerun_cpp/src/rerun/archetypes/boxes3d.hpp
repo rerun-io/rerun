@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../component_batch.hpp"
+#include "../component_batch_adapter_builtins.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/half_sizes3d.hpp"
