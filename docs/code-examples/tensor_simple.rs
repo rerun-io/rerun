@@ -10,7 +10,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     data.map_inplace(|x| *x = rand::random());
 
     let tensor =
-        rerun::Tensor::try_from(data)?.with_dim_names(["batch", "channel", "height", "width"]);
+        rerun::Tensor::try_from(data)?.with_dim_names(["width", "height", "channel", "batch"]);
     rec.log("tensor", &tensor)?;
 
     Ok(())
