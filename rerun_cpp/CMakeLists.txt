@@ -183,6 +183,10 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
         IMPORTED_LOCATION ${ARROW_LIBRARY_FILE}
         INTERFACE_INCLUDE_DIRECTORIES ${ARROW_DOWNLOAD_PATH}/include
     )
+
+    # Hack to propagate INTERFACE_INCLUDE_DIRECTORIES.
+    # via https://stackoverflow.com/a/47358004
+    file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/include)
 else()
     find_package(Arrow REQUIRED)
 
