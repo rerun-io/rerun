@@ -108,7 +108,7 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 # -----------------------------------------------------------------------------
 # Arrow:
 # Using the static arrow library by default.
-# This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the exectuable.
+# This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
 option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" OFF)
 option(RERUN_ARROW_EXTERNAL_PROJECT "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
