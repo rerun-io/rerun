@@ -23,7 +23,7 @@ class RecordingStream:
     current thread, e.g.:
     ```
     with rec:
-        rr.log_points(...)
+        rr.log(...)
     ```
 
     See also: [`rerun.get_data_recording`][], [`rerun.get_global_data_recording`][],
@@ -44,7 +44,7 @@ class RecordingStream:
     - Time-related functions:
         [`rerun.set_time_seconds`][], [`rerun.set_time_sequence`][], …
     - Log-related functions:
-        [`rerun.log_points`][], [`rerun.log_mesh_file`][], …
+        [`rerun.log`][], [`rerun.log_components`][], …
 
     For an exhaustive list, see `help(rerun.RecordingStream)`.
 
