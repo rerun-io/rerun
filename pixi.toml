@@ -57,7 +57,7 @@ codegen = "cargo run --package re_types_builder -- "
 fast-lint = "python scripts/fast_lint.py"
 lint-codegen = "cargo run --package re_types_builder -- --check"
 # TODO(jleibs): implement lint-cpp-all
-lint-cpp-files = "clang-format --dry-run"
+lint-cpp-files = "clang-format --dry-run -Werror"
 lint-rerun = "python scripts/lint.py"
 lint-rs-files = "rustfmt --check"
 lint-rs-all = "cargo fmt --check"

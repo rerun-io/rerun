@@ -11,6 +11,7 @@
 #include "../error.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -30,7 +31,8 @@ namespace rerun {
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///
-        /// #include <algorithm>
+        /// #include <algorithm> // fill_n
+        /// #include <vector>
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_depth_image");
@@ -110,7 +112,8 @@ namespace rerun {
             /// and a range of up to ~65 meters (2^16 / 1000).
             DepthImage with_meter(rerun::components::DepthMeter _meter) && {
                 meter = std::move(_meter);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// An optional floating point value that specifies the 2D drawing order.
@@ -118,7 +121,8 @@ namespace rerun {
             /// Objects with higher values are drawn on top of those with lower values.
             DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
                 draw_order = std::move(_draw_order);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

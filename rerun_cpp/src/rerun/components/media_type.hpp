@@ -33,6 +33,7 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'media_type_ext.cpp'
 
+            /// Construct media type from a null-terminated UTF8 string.
             MediaType(const char* media_type) : value(media_type) {}
 
             // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can

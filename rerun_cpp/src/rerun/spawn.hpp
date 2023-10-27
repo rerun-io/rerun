@@ -2,6 +2,8 @@
 #pragma once
 
 #include <cstdint> // uint32_t etc.
+#include <optional>
+#include <string_view>
 
 #include "error.hpp"
 
@@ -30,9 +32,9 @@ namespace rerun {
     /// Enforce a specific executable to use instead of searching though PATH
     /// for [`Self::executable_name`].
     Error spawn(
-        uint16_t port = 9876,                  //
-        const char* memory_limit = "75%",      //
-        const char* executable_name = "rerun", //
-        const char* executable_path = nullptr  //
+        uint16_t port = 9876,                                                //
+        const std::string_view memory_limit = "75%",                         //
+        const std::string_view executable_name = "rerun",                    //
+        const std::optional<std::string_view> executable_path = std::nullopt //
     );
 } // namespace rerun

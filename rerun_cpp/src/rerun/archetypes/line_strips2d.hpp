@@ -14,6 +14,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -30,12 +31,14 @@ namespace rerun {
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///
+        /// #include <vector>
+        ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_line_strip2d");
         ///     rec.spawn().throw_on_failure();
         ///
-        ///     std::vector<rerun::datatypes::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f}, {6.f, 0.f}};
-        ///     std::vector<rerun::datatypes::Vec2D> strip2 =
+        ///     std::vector<rerun::Vec2D> strip1 = {{0.f, 0.f}, {2.f, 1.f}, {4.f, -1.f}, {6.f, 0.f}};
+        ///     std::vector<rerun::Vec2D> strip2 =
         ///         {{0.f, 3.f}, {1.f, 4.f}, {2.f, 2.f}, {3.f, 4.f}, {4.f, 2.f}, {5.f, 4.f}, {6.f, 3.f}};
         ///     rec.log(
         ///         "strips",
@@ -90,19 +93,22 @@ namespace rerun {
             /// Optional radii for the line strips.
             LineStrips2D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional colors for the line strips.
             LineStrips2D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional text labels for the line strips.
             LineStrips2D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// An optional floating point value that specifies the 2D drawing order of each line strip.
@@ -110,7 +116,8 @@ namespace rerun {
             /// Objects with higher values are drawn on top of those with lower values.
             LineStrips2D with_draw_order(rerun::components::DrawOrder _draw_order) && {
                 draw_order = std::move(_draw_order);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional `ClassId`s for the lines.
@@ -118,7 +125,8 @@ namespace rerun {
             /// The class ID provides colors and labels if not specified explicitly.
             LineStrips2D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Unique identifiers for each individual line strip in the batch.
@@ -126,7 +134,8 @@ namespace rerun {
                 ComponentBatch<rerun::components::InstanceKey> _instance_keys
             ) && {
                 instance_keys = std::move(_instance_keys);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

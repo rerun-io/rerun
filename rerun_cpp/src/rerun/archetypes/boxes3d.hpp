@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../component_batch.hpp"
+#include "../component_batch_adapter_builtins.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/half_sizes3d.hpp"
@@ -15,6 +16,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -42,19 +44,16 @@ namespace rerun {
         ///             {{2.0f, 2.0f, 1.0f}, {1.0f, 1.0f, 0.5f}, {2.0f, 0.5f, 1.0f}}
         ///         )
         ///             .with_rotations({
-        ///                 rerun::datatypes::Quaternion::IDENTITY,
+        ///                 rerun::Quaternion::IDENTITY,
         ///                 // 45 degrees around Z
-        ///                 rerun::datatypes::Quaternion::from_xyzw(0.0f, 0.0f, 0.382683f, 0.923880f),
-        ///                 rerun::datatypes::RotationAxisAngle(
-        ///                     {0.0f, 1.0f, 0.0f},
-        ///                     rerun::datatypes::Angle::degrees(30.0f)
-        ///                 ),
+        ///                 rerun::Quaternion::from_xyzw(0.0f, 0.0f, 0.382683f, 0.923880f),
+        ///                 rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::degrees(30.0f)),
         ///             })
         ///             .with_radii({0.025f})
         ///             .with_colors({
-        ///                 rerun::datatypes::Rgba32(255, 0, 0),
-        ///                 rerun::datatypes::Rgba32(0, 255, 0),
-        ///                 rerun::datatypes::Rgba32(0, 0, 255),
+        ///                 rerun::Rgba32(255, 0, 0),
+        ///                 rerun::Rgba32(0, 255, 0),
+        ///                 rerun::Rgba32(0, 0, 255),
         ///             })
         ///             .with_labels({"red", "green", "blue"})
         ///     );
@@ -152,30 +151,35 @@ namespace rerun {
             /// Optional center positions of the boxes.
             Boxes3D with_centers(ComponentBatch<rerun::components::Position3D> _centers) && {
                 centers = std::move(_centers);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             Boxes3D with_rotations(ComponentBatch<rerun::components::Rotation3D> _rotations) && {
                 rotations = std::move(_rotations);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional colors for the boxes.
             Boxes3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional radii for the lines that make up the boxes.
             Boxes3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional text labels for the boxes.
             Boxes3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional `ClassId`s for the boxes.
@@ -183,14 +187,16 @@ namespace rerun {
             /// The class ID provides colors and labels if not specified explicitly.
             Boxes3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Unique identifiers for each individual boxes in the batch.
             Boxes3D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
             ) && {
                 instance_keys = std::move(_instance_keys);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

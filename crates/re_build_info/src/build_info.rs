@@ -104,3 +104,54 @@ impl std::fmt::Display for BuildInfo {
         Ok(())
     }
 }
+
+// ---
+
+use crate::CrateVersion;
+
+impl CrateVersion {
+    /// Attempts to parse a [`CrateVersion`] from a [`BuildInfo`]'s string representation (`rerun --version`).
+    ///
+    /// Refer to `BuildInfo as std::fmt::Display>::fmt` to see what the string representation is
+    /// expected to look like. Roughly:
+    /// ```ignore
+    /// <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
+    /// ```
+    pub fn try_parse_from_build_info_string(s: impl AsRef<str>) -> Result<CrateVersion, String> {
+        let s = s.as_ref();
+        let parts = s.split_whitespace().collect::<Vec<_>>();
+        if parts.len() < 2 {
+            return Err(format!("{s:?} is not a valid BuildInfo string"));
+        }
+        CrateVersion::try_parse(parts[1]).map_err(ToOwned::to_owned)
+    }
+}
+
+#[test]
+fn crate_version_from_build_info_string() {
+    let build_info = BuildInfo {
+        crate_name: "re_build_info",
+        version: CrateVersion {
+            major: 0,
+            minor: 10,
+            patch: 0,
+            meta: Some(crate::crate_version::Meta::DevAlpha(7)),
+        },
+        rustc_version: "1.72.1 (d5c2e9c34 2023-09-13)",
+        llvm_version: "16.0.5",
+        git_hash: "",
+        git_branch: "",
+        is_in_rerun_workspace: true,
+        target_triple: "x86_64-unknown-linux-gnu",
+        datetime: "",
+    };
+
+    let build_info_str = build_info.to_string();
+
+    {
+        let expected_crate_version = build_info.version;
+        let crate_version = CrateVersion::try_parse_from_build_info_string(build_info_str).unwrap();
+
+        assert_eq!(expected_crate_version, crate_version);
+    }
+}

@@ -3,6 +3,8 @@
 
 #include "affix_fuzzer2.hpp"
 
+#include <rerun/component_batch_adapter_builtins.hpp>
+
 namespace rerun {
     namespace archetypes {
         const char AffixFuzzer2::INDICATOR_COMPONENT_NAME[] =

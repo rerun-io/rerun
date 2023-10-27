@@ -3,6 +3,8 @@
 
 #include "points2d.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char Points2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points2DIndicator";

@@ -4,12 +4,12 @@ ${SAFARI_WARNING}
 
 ### Installing Rerun
 
-To use the Rerun SDK in your project, you need the [rerun crate](https://crates.io/crates/rerun) which you can add with `cargo add rerun`.
+After you have [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer?speculative-link) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand-new Rust project:
 
 ```sh
-cargo init cube && cd cube && cargo add rerun --features native_viewer
+cargo init cube && cd cube && cargo add rerun
 ```
 
 Note that the Rerun SDK requires a working installation of Rust 1.72+.

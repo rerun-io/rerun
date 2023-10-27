@@ -7,7 +7,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-rerun = { path = "../../../../crates/rerun", features = ["native_viewer"] }
+rerun = { path = "../../../../crates/rerun" }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }

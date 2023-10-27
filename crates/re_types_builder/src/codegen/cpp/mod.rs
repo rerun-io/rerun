@@ -331,7 +331,8 @@ impl QuotedObject {
         let type_ident = format_ident!("{}", &obj.name); // The PascalCase name of the object type.
         let quoted_docs = quote_obj_docs(obj);
 
-        let cpp_includes = Includes::new(obj.fqname.clone());
+        let mut cpp_includes = Includes::new(obj.fqname.clone());
+        cpp_includes.insert_rerun("component_batch_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
 
@@ -400,6 +401,11 @@ impl QuotedObject {
             let parameter_ident = format_ident!("_{}", obj_field.name);
             let method_ident = format_ident!("with_{}", obj_field.name);
             let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
+
+            hpp_includes.insert_rerun("util.hpp");
+            let gcc_ignore_comment =
+                quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
+
             methods.push(Method {
                 docs: obj_field.docs.clone().into(),
                 declaration: MethodDeclaration {
@@ -411,7 +417,9 @@ impl QuotedObject {
                 },
                 definition_body: quote! {
                     #field_ident = std::move(#parameter_ident);
-                    return std::move(*this);
+                    #NEWLINE_TOKEN
+                    #gcc_ignore_comment
+                    WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
                 },
                 inline: true,
             });

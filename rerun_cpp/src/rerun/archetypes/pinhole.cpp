@@ -3,6 +3,8 @@
 
 #include "pinhole.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";

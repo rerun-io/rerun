@@ -1,6 +1,7 @@
 // Log a simple 3D asset with an out-of-tree transform which will not affect its children.
 
 #include <exception>
+
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
 
@@ -8,7 +9,7 @@ int main(int argc, char** argv) {
     if (argc < 2) {
         throw std::runtime_error("Usage: <path_to_asset.[gltf|glb]>");
     }
-    auto path = argv[1];
+    const auto path = argv[1];
 
     auto rec = rerun::RecordingStream("rerun_example_asset3d_out_of_tree");
     rec.spawn().throw_on_failure();
@@ -31,7 +32,7 @@ int main(int argc, char** argv) {
         rec.set_time_sequence("frame", i);
 
         // Modify the asset's out-of-tree transform: this will not affect its children (i.e. the points)!
-        auto translation =
+        const auto translation =
             rerun::TranslationRotationScale3D({0.0, 0.0, static_cast<float>(i) - 10.0f});
         rec.log(
             "world/asset",

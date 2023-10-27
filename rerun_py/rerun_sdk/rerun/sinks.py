@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import pathlib
 import socket
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
@@ -42,7 +43,7 @@ def connect(
 _connect = connect  # we need this because Python scoping is horrible
 
 
-def save(path: str, recording: RecordingStream | None = None) -> None:
+def save(path: str | pathlib.Path, recording: RecordingStream | None = None) -> None:
     """
     Stream all log-data to a file.
 
@@ -64,7 +65,7 @@ def save(path: str, recording: RecordingStream | None = None) -> None:
         return
 
     recording = RecordingStream.to_native(recording)
-    bindings.save(path=path, recording=recording)
+    bindings.save(path=str(path), recording=recording)
 
 
 def disconnect(recording: RecordingStream | None = None) -> None:
