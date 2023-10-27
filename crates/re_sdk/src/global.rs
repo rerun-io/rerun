@@ -42,6 +42,10 @@ impl ThreadLocalRecording {
     fn get(&self) -> Option<RecordingStream> {
         self.stream.clone()
     }
+
+    fn get_mut(&mut self) -> Option<&mut RecordingStream> {
+        self.stream.as_mut()
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -130,6 +134,18 @@ impl RecordingStream {
         }
 
         rec
+    }
+
+    /// Returns `overrides` if it exists, otherwise returns the most appropriate active recording
+    /// of the specified type (i.e. thread-local first, then global scope), if any.
+    #[inline]
+    pub fn apply<F, T>(kind: StoreKind, mut f: F) -> Option<T>
+    where
+        F: FnMut(&mut RecordingStream) -> T,
+    {
+        // TODO: warn if missing
+        Self::apply_any(RecordingScope::ThreadLocal, kind, &mut f)
+            .or_else(|| Self::apply_any(RecordingScope::Global, kind, &mut f))
     }
 
     // Internal implementation of `get()` that doesn't print a warning if no recording is found.
@@ -231,6 +247,34 @@ impl RecordingStream {
                     .clone(),
                 RecordingScope::ThreadLocal => {
                     LOCAL_BLUEPRINT_RECORDING.with(|rec| rec.borrow().get())
+                }
+            },
+        }
+    }
+
+    fn apply_any<F, T>(scope: RecordingScope, kind: StoreKind, f: F) -> Option<T>
+    where
+        F: FnMut(&mut RecordingStream) -> T,
+    {
+        match kind {
+            StoreKind::Recording => match scope {
+                RecordingScope::Global => {
+                    let mut opt = GLOBAL_DATA_RECORDING.get_or_init(Default::default).write();
+                    opt.as_mut().map(f)
+                }
+                RecordingScope::ThreadLocal => {
+                    LOCAL_DATA_RECORDING.with(|rec| rec.borrow_mut().get_mut().map(f))
+                }
+            },
+            StoreKind::Blueprint => match scope {
+                RecordingScope::Global => {
+                    let mut opt = GLOBAL_BLUEPRINT_RECORDING
+                        .get_or_init(Default::default)
+                        .write();
+                    opt.as_mut().map(f)
+                }
+                RecordingScope::ThreadLocal => {
+                    LOCAL_BLUEPRINT_RECORDING.with(|rec| rec.borrow_mut().get_mut().map(f))
                 }
             },
         }

@@ -296,6 +296,12 @@ impl std::ops::Deref for PyRecordingStream {
     }
 }
 
+impl std::ops::DerefMut for PyRecordingStream {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
 #[pyfunction]
 fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
