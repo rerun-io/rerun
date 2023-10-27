@@ -118,7 +118,7 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
     set(ARROW_DOWNLOAD_PATH ${CMAKE_BINARY_DIR}/arrow)
 
     if(RERUN_ARROW_LINK_SHARED)
-        set(ARROW_BUILD_DYNAMIC ON)
+        set(ARROW_BUILD_SHARED ON)
         set(ARROW_BUILD_STATIC OFF)
 
         if(APPLE)
@@ -131,7 +131,7 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
             message(FATAL_ERROR "Unsupported platform.")
         endif()
     else()
-        set(ARROW_BUILD_DYNAMIC OFF)
+        set(ARROW_BUILD_SHARED OFF)
         set(ARROW_BUILD_STATIC ON)
 
         if(APPLE)
@@ -161,7 +161,7 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
         CMAKE_ARGS
         --preset ninja-debug-minimal
         -DARROW_IPC=ON
-        -DARROW_BUILD_DYNAMIC=${ARROW_BUILD_DYNAMIC}
+        -DARROW_BUILD_SHARED=${ARROW_BUILD_SHARED}
         -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
         -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
         -DARROW_USE_ASAN=OFF
