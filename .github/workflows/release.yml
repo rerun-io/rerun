@@ -331,7 +331,7 @@ jobs:
   # Build rerun_c library binaries:
 
   build-rerun_c-and-upload-linux:
-    needs: [checks]
+    needs: [checks, "version"]
     name: "Linux-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
@@ -340,7 +340,7 @@ jobs:
     secrets: inherit
 
   build-rerun_c-and-upload-macos-intel:
-    needs: [checks]
+    needs: [checks, "version"]
     name: "Mac-Intel: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
@@ -349,7 +349,7 @@ jobs:
     secrets: inherit
 
   build-rerun_c-and-upload-macos-arm:
-    needs: [checks]
+    needs: [checks, "version"]
     name: "Mac-Arm: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
@@ -358,7 +358,7 @@ jobs:
     secrets: inherit
 
   build-rerun_c-and-upload-windows:
-    needs: [checks]
+    needs: [checks, "version"]
     name: "Windows-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
@@ -370,7 +370,7 @@ jobs:
   # Build rerun-cli (rerun binaries):
 
   build-rerun-cli-and-upload-linux:
-    needs: [checks]
+    needs: [checks, "version"]
     name: "Linux-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
@@ -379,7 +379,7 @@ jobs:
     secrets: inherit
 
   build-rerun-cli-and-upload-macos-intel:
-    needs: [checks]
+    needs: [checks, "version"]
     name: "Mac-Intel: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
@@ -388,7 +388,7 @@ jobs:
     secrets: inherit
 
   build-rerun-cli-and-upload-macos-arm:
-    needs: [checks]
+    needs: [checks, "version"]
     name: "Mac-Arm: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
@@ -397,7 +397,7 @@ jobs:
     secrets: inherit
 
   build-rerun-cli-and-upload-windows:
-    needs: [checks]
+    needs: [checks, "version"]
     name: "Windows-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
