@@ -107,7 +107,9 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 
 # -----------------------------------------------------------------------------
 # Arrow:
-option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ON)
+# Using the static arrow library by default.
+# This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the exectuable.
+option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" OFF)
 option(RERUN_ARROW_EXTERNAL_PROJECT "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
 if(RERUN_ARROW_EXTERNAL_PROJECT)
@@ -116,6 +118,9 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
     set(ARROW_DOWNLOAD_PATH ${CMAKE_BINARY_DIR}/arrow)
 
     if(RERUN_ARROW_LINK_SHARED)
+        set(ARROW_BUILD_DYNAMIC ON)
+        set(ARROW_BUILD_STATIC OFF)
+
         if(APPLE)
             set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.dylib)
         elseif(UNIX) # if(LINUX) # CMake 3.25
@@ -126,6 +131,9 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
             message(FATAL_ERROR "Unsupported platform.")
         endif()
     else()
+        set(ARROW_BUILD_DYNAMIC OFF)
+        set(ARROW_BUILD_STATIC ON)
+
         if(APPLE)
             set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
         elseif(UNIX) # if(LINUX) # CMake 3.25
@@ -153,7 +161,8 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
         CMAKE_ARGS
         --preset ninja-debug-minimal
         -DARROW_IPC=ON
-        -DARROW_BUILD_STATIC=${RERUN_ARROW_LINK_SHARED}
+        -DARROW_BUILD_DYNAMIC=${ARROW_BUILD_DYNAMIC}
+        -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
         -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
         -DARROW_USE_ASAN=OFF
         -DARROW_USE_TSAN=OFF
@@ -176,6 +185,7 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
         endif()
     else()
         add_library(RerunArrowTarget STATIC IMPORTED)
+        target_compile_definitions(RerunArrowTarget INTERFACE ARROW_STATIC)
     endif()
 
     add_dependencies(RerunArrowTarget arrow_cpp)
