@@ -246,7 +246,10 @@ pub extern "C" fn rr_spawn(spawn_opts: *const CSpawnOptions, error: *mut CError)
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecordingStream, CError> {
+fn rr_recording_stream_new_impl(
+    store_info: *const CStoreInfo,
+    default_enabled: bool,
+) -> Result<CRecordingStream, CError> {
     initialize_logging();
 
     let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
@@ -261,7 +264,8 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
-        .store_source(re_log_types::StoreSource::CSdk);
+        .store_source(re_log_types::StoreSource::CSdk)
+        .default_enabled(default_enabled);
 
     if store_kind == CStoreKind::Blueprint {
         rec_builder = rec_builder.blueprint();
@@ -280,9 +284,10 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_new(
     store_info: *const CStoreInfo,
+    default_enabled: bool,
     error: *mut CError,
 ) -> CRecordingStream {
-    match rr_recording_stream_new_impl(store_info) {
+    match rr_recording_stream_new_impl(store_info, default_enabled) {
         Err(err) => {
             err.write_error(error);
             0

@@ -1,5 +1,6 @@
 #include "recording_stream.hpp"
 #include "components/instance_key.hpp"
+#include "config.hpp"
 #include "string_utils.hpp"
 
 #include "c/rerun.h"
@@ -32,7 +33,7 @@ namespace rerun {
         store_info.store_kind = store_kind_to_c(store_kind);
 
         rr_error status = {};
-        this->_id = rr_recording_stream_new(&store_info, &status);
+        this->_id = rr_recording_stream_new(&store_info, is_default_enabled(), &status);
         auto err = Error(status);
         if (err.is_ok()) {
             this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);

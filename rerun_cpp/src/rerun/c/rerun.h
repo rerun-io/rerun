@@ -234,7 +234,7 @@ extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 ///
 /// @return A handle to the recording stream, or null if an error occurred.
 extern rr_recording_stream rr_recording_stream_new(
-    const rr_store_info* store_info, rr_error* error
+    const rr_store_info* store_info, bool default_enabled, rr_error* error
 );
 
 /// Free the given recording stream. The handle will be invalid after this.
