@@ -12,7 +12,6 @@ import numpy as np
 
 __all__ = [
     "AnnotationContext",
-    "AnnotationInfo",
     "AnyValues",
     "Arrows3D",
     "AsComponents",
@@ -21,7 +20,6 @@ __all__ = [
     "Box2DFormat",
     "Boxes2D",
     "Boxes3D",
-    "ClassDescription",
     "Clear",
     "ComponentBatchLike",
     "DepthImage",
@@ -37,7 +35,6 @@ __all__ = [
     "MediaType",
     "MemoryRecording",
     "Mesh3D",
-    "MeshFormat",
     "MeshProperties",
     "OutOfTreeTransform3D",
     "OutOfTreeTransform3DBatch",
@@ -46,8 +43,6 @@ __all__ = [
     "Points3D",
     "Quaternion",
     "RecordingStream",
-    "RectFormat",
-    "Rigid3D",
     "RotationAxisAngle",
     "Scale3D",
     "SegmentationImage",
@@ -58,8 +53,6 @@ __all__ = [
     "TextLogLevel",
     "TimeSeriesScalar",
     "Transform3D",
-    "Translation3D",
-    "TranslationAndMat3",
     "TranslationAndMat3x3",
     "TranslationRotationScale3D",
     "ViewCoordinates",
@@ -78,35 +71,7 @@ __all__ = [
     "get_thread_local_data_recording",
     "is_enabled",
     "log",
-    "log_annotation_context",
-    "log_arrow",
-    "log_cleared",
     "log_components",
-    "log_depth_image",
-    "log_disconnected_space",
-    "log_extension_components",
-    "log_image",
-    "log_image_file",
-    "log_line_segments",
-    "log_line_strip",
-    "log_line_strips_2d",
-    "log_line_strips_3d",
-    "log_mesh",
-    "log_mesh_file",
-    "log_meshes",
-    "log_obb",
-    "log_obbs",
-    "log_pinhole",
-    "log_point",
-    "log_points",
-    "log_rect",
-    "log_rects",
-    "log_scalar",
-    "log_segmentation_image",
-    "log_tensor",
-    "log_text_entry",
-    "log_transform3d",
-    "log_view_coordinates",
     "memory_recording",
     "reset_time",
     "save",
@@ -170,29 +135,6 @@ from .datatypes import (
     TranslationRotationScale3D,
 )
 from .error_utils import set_strict_mode
-from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
-from .log_deprecated.arrow import log_arrow
-from .log_deprecated.bounding_box import log_obb, log_obbs
-from .log_deprecated.camera import log_pinhole
-from .log_deprecated.clear import log_cleared
-from .log_deprecated.extension_components import log_extension_components
-from .log_deprecated.file import MeshFormat, log_image_file, log_mesh_file
-from .log_deprecated.image import log_depth_image, log_image, log_segmentation_image
-from .log_deprecated.lines import log_line_segments, log_line_strip, log_line_strips_2d, log_line_strips_3d
-from .log_deprecated.mesh import log_mesh, log_meshes
-from .log_deprecated.points import log_point, log_points
-from .log_deprecated.rects import RectFormat, log_rect, log_rects
-from .log_deprecated.scalar import log_scalar
-from .log_deprecated.tensor import log_tensor
-from .log_deprecated.text import log_text_entry
-from .log_deprecated.transform import (
-    Rigid3D,
-    Translation3D,
-    TranslationAndMat3,
-    log_disconnected_space,
-    log_transform3d,
-    log_view_coordinates,
-)
 from .logging_handler import LoggingHandler
 from .recording import MemoryRecording
 from .recording_stream import (
