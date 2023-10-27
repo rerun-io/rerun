@@ -1,3 +1,5 @@
+#pragma once
+
 // Utilities used in examples.
 
 #include <algorithm>
