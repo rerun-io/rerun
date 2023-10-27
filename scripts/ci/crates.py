@@ -512,7 +512,7 @@ def get_latest_published_version(crate_name: str) -> str | None:
         return None
 
     # response orders versions by semver
-    return body["versions"][0]["num"]
+    return body["versions"][0]["num"]  # type: ignore [no-any-return]
 
 
 class Target(Enum):
