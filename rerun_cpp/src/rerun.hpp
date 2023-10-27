@@ -11,6 +11,9 @@
 #include "rerun/datatypes.hpp"
 
 // Rerun API.
+#include "rerun/component_batch.hpp"
+#include "rerun/component_batch_adapter.hpp"
+#include "rerun/component_batch_adapter_builtins.hpp"
 #include "rerun/config.hpp"
 #include "rerun/error.hpp"
 #include "rerun/recording_stream.hpp"

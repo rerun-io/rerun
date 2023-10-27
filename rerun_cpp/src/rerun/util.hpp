@@ -7,15 +7,15 @@
     DISABLE_MAYBE_UNINITIALIZED_PUSH            \
     expr DISABLE_MAYBE_UNINITIALIZED_POP
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 #define DISABLE_MAYBE_UNINITIALIZED_PUSH \
     _Pragma("GCC diagnostic push") _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
 #else
-#define DISABLE_MAYBE_UNINITIALIZED_WARNING
+#define DISABLE_MAYBE_UNINITIALIZED_PUSH
 #endif
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 #define DISABLE_MAYBE_UNINITIALIZED_POP _Pragma("GCC diagnostic pop")
 #else
-#define DISABLE_MAYBE_UNINITIALIZED_WARNING
+#define DISABLE_MAYBE_UNINITIALIZED_POP
 #endif

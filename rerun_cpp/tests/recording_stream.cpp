@@ -6,6 +6,7 @@
 #include "error_check.hpp"
 
 #include <rerun/archetypes/points2d.hpp>
+#include <rerun/component_batch_adapter_builtins.hpp>
 #include <rerun/datatypes/vec2d.hpp>
 #include <rerun/recording_stream.hpp>
 

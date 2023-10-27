@@ -3,6 +3,8 @@
 
 #include "boxes2d.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char Boxes2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Boxes2DIndicator";

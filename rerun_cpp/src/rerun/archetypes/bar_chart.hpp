@@ -9,7 +9,6 @@
 #include "../half.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../util.hpp"
 
 #include <cstdint>
 #include <utility>

@@ -3,6 +3,8 @@
 
 #include "asset3d.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";

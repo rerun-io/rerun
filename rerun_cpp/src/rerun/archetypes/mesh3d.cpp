@@ -3,6 +3,8 @@
 
 #include "mesh3d.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char Mesh3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Mesh3DIndicator";

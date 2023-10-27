@@ -7,49 +7,12 @@
 #include <utility>
 #include <vector>
 
+#include "component_batch_adapter.hpp"
 #include "result.hpp"
 #include "serialized_component_batch.hpp"
 #include "util.hpp"
 
 namespace rerun {
-    /// The ComponentBatchAdaptor trait is responsible for mapping an input argument to a
-    /// ComponentBatch.
-    ///
-    /// There are default implementations for standard containers of components, as well as single
-    /// components.
-    ///
-    /// An adapter may choose to either produce a owned or borrowed component batch.
-    /// Borrowed component batches required that a pointer to the passed in ("adapted") data
-    /// outlives the component batch. Owned component batches on the other hand take ownership by
-    /// allocating a std::vector and moving the data into it. This is typically only required when
-    /// passing in temporary objects into an adapter or non-trivial data conversion is necessary.
-    ///
-    /// By implementing your own adapters for certain component types, you can map your data to
-    /// Rerun types which then can be logged.
-    ///
-    /// To implement an adapter for a type T, specialize `ComponentBatchAdapter<TComponent, T>` and
-    /// define `ComponentBatch<TComponent> operator()(const T& input)`.
-    /// It is *highly recommended* to also specify `ComponentBatch<TComponent> operator()(T&&
-    /// input)` in order to to accidentally borrow data that is passed in as a temporary!
-    ///
-    /// TODO(andreas): Point to an example here and in the assert.
-    template <typename TComponent, typename TInput, typename Enable = std::enable_if_t<true>>
-    struct ComponentBatchAdapter {
-        template <typename... Ts>
-        struct NoAdapterFor : std::false_type {};
-
-        // `NoAdapterFor` always evaluates to false, but in a way that requires template instantiation.
-        static_assert(
-            NoAdapterFor<TComponent, TInput>::value,
-            "ComponentBatchAdapter is not implemented for this type. "
-            "It is implemented for for single components as well as std::vector, std::array, and "
-            "c-arrays of components. "
-            "You can add your own implementation by specializing "
-            "ComponentBatchAdapter<TComponent, T> for a given "
-            "component and your input type T."
-        );
-    };
-
     /// Type of ownership of the batch's data.
     ///
     /// User access to this is typically only needed for debugging and testing.
@@ -117,17 +80,39 @@ namespace rerun {
             new (&storage.vector_owned) std::vector<TComponent>(data);
         }
 
-        /// Borrows data into the component batch.
+        /// Borrows binary compatible data into the component batch.
         ///
         /// Borrowed data must outlive the component batch!
         /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
         /// resized.)
-        static ComponentBatch<TComponent> borrow(const TComponent* data, size_t num_instances) {
+        /// The passed type must be binary compatible with the component type.
+        template <typename T>
+        static ComponentBatch<TComponent> borrow(const T* data, size_t num_instances) {
+            static_assert(
+                sizeof(T) == sizeof(TComponent),
+                "T & TComponent are not binary compatible: Size mismatch."
+            );
+            static_assert(
+                alignof(T) <= alignof(TComponent),
+                "T & TComponent are not binary compatible: TComponent has a higher alignment requirement than T. This implies that pointers to T may not have the alignment needed to access TComponent."
+            );
+
             ComponentBatch<TComponent> batch;
             batch.ownership = BatchOwnership::Borrowed;
-            batch.storage.borrowed.data = data;
+            batch.storage.borrowed.data = reinterpret_cast<const TComponent*>(data);
             batch.storage.borrowed.num_instances = num_instances;
             return batch;
+        }
+
+        /// Borrows binary compatible data into the component batch.
+        ///
+        /// Version of `borrow` that takes a void pointer, omitting any checks.
+        ///
+        /// Borrowed data must outlive the component batch!
+        /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
+        /// resized.)
+        static ComponentBatch borrow(const void* data, size_t num_instances) {
+            return borrow(reinterpret_cast<const TComponent*>(data), num_instances);
         }
 
         /// Takes ownership of a temporary std::vector, moving it into the component batch.
@@ -289,99 +274,5 @@ namespace rerun {
 
         BatchOwnership ownership;
         ComponentBatchStorage<TComponent> storage;
-    };
-
-    /// Adapter from std::vector of components.
-    ///
-    /// Only takes ownership if a temporary is passed.
-    template <typename TComponent>
-    struct ComponentBatchAdapter<TComponent, std::vector<TComponent>> {
-        ComponentBatch<TComponent> operator()(const std::vector<TComponent>& input) {
-            return ComponentBatch<TComponent>::borrow(input.data(), input.size());
-        }
-
-        ComponentBatch<TComponent> operator()(std::vector<TComponent>&& input) {
-            return ComponentBatch<TComponent>::take_ownership(std::move(input));
-        }
-    };
-
-    /// Adapter from std::vector<T> where T can be converted to TComponent
-    template <typename TComponent, typename T>
-    struct ComponentBatchAdapter<
-        TComponent, std::vector<T>,
-        std::enable_if_t<
-            !std::is_same_v<TComponent, T> && std::is_constructible_v<TComponent, const T&>>> {
-        ComponentBatch<TComponent> operator()(const std::vector<T>& input) {
-            std::vector<TComponent> transformed(input.size());
-
-            std::transform(input.begin(), input.end(), transformed.begin(), [](const T& datum) {
-                return TComponent(datum);
-            });
-
-            return ComponentBatch<TComponent>::take_ownership(std::move(transformed));
-        }
-
-        ComponentBatch<TComponent> operator()(std::vector<T>&& input) {
-            std::vector<TComponent> transformed(input.size());
-
-            std::transform(
-                std::make_move_iterator(input.begin()),
-                std::make_move_iterator(input.end()),
-                transformed.begin(),
-                [](T&& datum) { return TComponent(std::move(datum)); }
-            );
-
-            return ComponentBatch<TComponent>::take_ownership(std::move(transformed));
-        }
-    };
-
-    /// Adapter from std::array of components.
-    ///
-    /// Only takes ownership if a temporary is passed.
-    template <typename TComponent, size_t NumInstances>
-    struct ComponentBatchAdapter<TComponent, std::array<TComponent, NumInstances>> {
-        ComponentBatch<TComponent> operator()(const std::array<TComponent, NumInstances>& array) {
-            return ComponentBatch<TComponent>::borrow(array.data(), NumInstances);
-        }
-
-        ComponentBatch<TComponent> operator()(std::array<TComponent, NumInstances>&& array) {
-            return ComponentBatch<TComponent>::take_ownership(
-                std::vector<TComponent>(array.begin(), array.end())
-            );
-        }
-    };
-
-    /// Adaptor from a C-Array reference.
-    ///
-    /// *Attention*: Does *not* take ownership of the data,
-    /// you need to ensure that the data outlives the component batch.
-    template <typename TComponent, size_t NumInstances>
-    struct ComponentBatchAdapter<TComponent, TComponent[NumInstances]> {
-        ComponentBatch<TComponent> operator()(const TComponent (&array)[NumInstances]) {
-            return ComponentBatch<TComponent>::borrow(array, NumInstances);
-        }
-
-        ComponentBatch<TComponent> operator()(TComponent (&&array)[NumInstances]) {
-            std::vector<TComponent> components;
-            components.reserve(NumInstances);
-            components.insert(
-                components.end(),
-                std::make_move_iterator(array),
-                std::make_move_iterator(array + NumInstances)
-            );
-            return ComponentBatch<TComponent>::take_ownership(std::move(components));
-        }
-    };
-
-    /// Adapter for a single component, temporary or reference.
-    template <typename TComponent>
-    struct ComponentBatchAdapter<TComponent, TComponent> {
-        ComponentBatch<TComponent> operator()(const TComponent& one_and_only) {
-            return ComponentBatch<TComponent>::borrow(&one_and_only, 1);
-        }
-
-        ComponentBatch<TComponent> operator()(TComponent&& one_and_only) {
-            return ComponentBatch<TComponent>::take_ownership(std::move(one_and_only));
-        }
     };
 } // namespace rerun
