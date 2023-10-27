@@ -2,6 +2,9 @@
 
 #include <rerun.hpp>
 
+#include <array>
+#include <vector>
+
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_line_segments3d");
     rec.spawn().throw_on_failure();

@@ -55,8 +55,7 @@
 //! # fn positions() -> Vec<rerun::Position3D> { Default::default() }
 //! # fn colors() -> Vec<rerun::Color> { Default::default() }
 //! // Stream log data to an awaiting `rerun` process.
-//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app")
-//!     .connect(rerun::default_server_addr(), rerun::default_flush_timeout())?;
+//! let rec = rerun::RecordingStreamBuilder::new("rerun_example_app").connect()?;
 //!
 //! let points: Vec<rerun::Position3D> = positions();
 //! let colors: Vec<rerun::Color> = colors();
@@ -123,8 +122,12 @@ pub use re_sdk::*;
 pub mod external {
     pub use anyhow;
 
+    #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
+    pub use clap;
+
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
+
     #[cfg(feature = "native_viewer")]
     pub use re_viewer::external::*;
 

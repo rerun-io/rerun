@@ -6,19 +6,18 @@ on:
       PLATFORM_FILTER:
         required: false
         type: string
-      UPLOAD_COMMIT_OVERRIDE:
+      RELEASE_COMMIT:
         required: false
         type: string
         default: ""
 
 jobs:
   bundle-and-upload-rerun_cpp:
-    name: C++ bundling and upload
+    name: Bundle and upload rerun_cpp_sdk.zip
 
     permissions:
       contents: "read"
       id-token: "write"
-      pull-requests: "write"
 
     runs-on: ubuntu-latest
     # Need container for arrow dependency.
@@ -29,7 +28,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.sha }}
+          ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
       - id: "auth"
         uses: google-github-actions/auth@v1
@@ -46,16 +45,11 @@ jobs:
         run: |
           python3 -m pip install google-cloud-storage
 
-      - name: Add SHORT_SHA env property with commit short sha
+      - name: Get sha
+        id: get-sha
         shell: bash
-        id: "short-sha"
         run: |
-          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
-            USED_SHA=${{ github.sha }}
-          else
-            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
-          fi
-          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "sha=$(echo ${{ inputs.RELEASE_COMMIT || github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-      - name: "Bundle & Upload rerun_cpp"
-        run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.short-sha.outputs.SHORT_SHA }} --platform-filter=${{ inputs.PLATFORM_FILTER }}
+      - name: "Bundle and upload rerun_cpp_sdk.zip"
+        run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.get-sha.outputs.sha }} --platform-filter=${{ inputs.PLATFORM_FILTER }}

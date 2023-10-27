@@ -600,6 +600,11 @@ def lint_file(filepath: str, args: Any) -> int:
             num_errors += 1
             print(source.error(error, line_nr=line_nr))
 
+    if filepath.endswith(".hpp"):
+        if not any(line.startswith("#pragma once") for line in source.lines):
+            print(source.error("Missing `#pragma once` in C++ header file"))
+            num_errors += 1
+
     if filepath.endswith(".rs") or filepath.endswith(".fbs"):
         if filepath.endswith(".rs"):
             for error, start_idx, end_idx in lint_forbidden_widgets(source.content):

@@ -1,7 +1,9 @@
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
 
+#include <algorithm> // std::generate
 #include <random>
+#include <vector>
 
 using namespace rerun::demo;
 

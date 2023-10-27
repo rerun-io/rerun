@@ -2,9 +2,6 @@
 
 #include <rerun.hpp>
 
-#include <cmath>
-#include <numeric>
-
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_view_coordinates");
     rec.spawn().throw_on_failure();

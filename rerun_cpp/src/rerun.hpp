@@ -11,6 +11,9 @@
 #include "rerun/datatypes.hpp"
 
 // Rerun API.
+#include "rerun/component_batch.hpp"
+#include "rerun/component_batch_adapter.hpp"
+#include "rerun/component_batch_adapter_builtins.hpp"
 #include "rerun/config.hpp"
 #include "rerun/error.hpp"
 #include "rerun/recording_stream.hpp"
@@ -23,18 +26,21 @@
 namespace rerun {
     using namespace archetypes;
 
-    // Also import some select, often-used, datatypes and components:
+    // Also import any component or datatype that has a unique name:
     using components::Color;
     using components::HalfSizes2D;
     using components::HalfSizes3D;
     using components::InstanceKey;
+    using components::LineStrip2D;
     using components::LineStrip3D;
     using components::Material;
     using components::MediaType;
     using components::MeshProperties;
     using components::OutOfTreeTransform3D;
+    using components::Position2D;
     using components::Position3D;
     using components::Radius;
+    using components::Text;
     using components::TextLogLevel;
     using components::Vector3D;
 
@@ -52,4 +58,7 @@ namespace rerun {
     using datatypes::TensorData;
     using datatypes::TranslationAndMat3x3;
     using datatypes::TranslationRotationScale3D;
+    using datatypes::Vec2D;
+    using datatypes::Vec3D;
+    using datatypes::Vec4D;
 } // namespace rerun

@@ -1,6 +1,5 @@
 // Log different transforms between three arrows.
 
-#include <cmath>
 #include <rerun.hpp>
 
 constexpr float TAU = 6.28318530717958647692528676655900577f;

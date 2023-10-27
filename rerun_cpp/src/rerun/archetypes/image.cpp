@@ -3,6 +3,8 @@
 
 #include "image.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char Image::INDICATOR_COMPONENT_NAME[] = "rerun.components.ImageIndicator";

@@ -3,6 +3,8 @@
 
 #include "disconnected_space.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char DisconnectedSpace::INDICATOR_COMPONENT_NAME[] =

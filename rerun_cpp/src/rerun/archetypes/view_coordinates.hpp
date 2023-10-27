@@ -8,7 +8,6 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../util.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -30,9 +29,6 @@ namespace rerun {
         /// ### View coordinates for adjusting the eye camera
         /// ```cpp,ignore
         /// #include <rerun.hpp>
-        ///
-        /// #include <cmath>
-        /// #include <numeric>
         ///
         /// int main() {
         ///     auto rec = rerun::RecordingStream("rerun_example_view_coordinates");

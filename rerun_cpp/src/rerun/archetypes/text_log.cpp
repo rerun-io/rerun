@@ -3,6 +3,8 @@
 
 #include "text_log.hpp"
 
+#include "../component_batch_adapter_builtins.hpp"
+
 namespace rerun {
     namespace archetypes {
         const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";

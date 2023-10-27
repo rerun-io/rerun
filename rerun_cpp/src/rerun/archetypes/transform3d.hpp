@@ -8,7 +8,6 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../util.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -22,7 +21,6 @@ namespace rerun {
         ///
         /// ### Variety of 3D transforms
         /// ```cpp,ignore
-        /// #include <cmath>
         /// #include <rerun.hpp>
         ///
         /// constexpr float TAU = 6.28318530717958647692528676655900577f;

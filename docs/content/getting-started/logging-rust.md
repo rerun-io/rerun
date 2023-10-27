@@ -339,7 +339,7 @@ If an external viewer was already running, `spawn` will connect to that one inst
 ```rust
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rec = rerun::RecordingStreamBuilder::new("rerun_example_dna_abacus")
-        .spawn(rerun::default_flush_timeout())?;
+        .spawn()?;
 
     // … log data to `rec` …
 
