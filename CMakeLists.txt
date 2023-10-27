@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.27)
 
 project(rerun_cpp_proj LANGUAGES CXX)
 

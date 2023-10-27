@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.27)
 
 # NOTE: CMake docs strongly discourages using GLOB, and instead suggests
 # manually listing all the files, like it's 1972.

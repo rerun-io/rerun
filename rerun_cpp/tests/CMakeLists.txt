@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.27)
 
 # Catch2:
 Include(FetchContent)
@@ -21,7 +21,7 @@ set_default_warning_settings(rerun_sdk_tests)
 # Arrow:
 
 # TODO: copy pasted from parent CMakeLists.txt
-include_directories(rerun_sdk SYSTEM ${CMAKE_BINARY_DIR}/externals/include)
+target_include_directories(rerun_sdk_tests SYSTEM PRIVATE ${ARROW_DOWNLOAD_PATH}/include)
 
 # message(STATUS "Arrow version: ${ARROW_VERSION}")
 # message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")

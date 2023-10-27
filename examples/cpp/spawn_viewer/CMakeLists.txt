@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.27)
 
 # If you use the example outside of the Rerun SDK you need to specify
 # where the rerun_c build is to be found by setting the `RERUN_CPP_URL` variable.
@@ -16,7 +16,7 @@ else()
 
     # Download the rerun_sdk
     include(FetchContent)
-    FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP YES URL ${RERUN_CPP_URL})
+    FetchContent_Declare(rerun_sdk URL ${RERUN_CPP_URL})
     FetchContent_MakeAvailable(rerun_sdk)
 
     # Rerun requires at least C++17, but it should be compatible with newer versions.

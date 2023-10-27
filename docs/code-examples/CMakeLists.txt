@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.27)
 
 # Setup builds for examples
 file(GLOB sources_list true ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
