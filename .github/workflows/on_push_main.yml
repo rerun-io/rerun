@@ -93,6 +93,9 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}
     secrets: inherit
 
+  # -----------------------------------------------------------------------------------
+  # Build rerun_c library binaries:
+
   build-rerun_c-and-upload-linux:
     needs: [checks]
     name: "Linux-x64: Build & Upload rerun_c"
@@ -129,6 +132,9 @@ jobs:
       PLATFORM: windows
     secrets: inherit
 
+  # -----------------------------------------------------------------------------------
+  # Build rerun-cli (rerun binaries):
+
   build-rerun-cli-and-upload-linux:
     needs: [checks]
     name: "Linux-x64: Build & Upload rerun-cli"
@@ -164,6 +170,8 @@ jobs:
       CONCURRENCY: push-windows-${{ github.ref_name }}
       PLATFORM: windows
     secrets: inherit
+
+  # -----------------------------------------------------------------------------------
 
   build-linux:
     needs: [checks]
@@ -264,7 +272,7 @@ jobs:
     secrets: inherit
 
   bundle-and-upload-rerun_cpp:
-    name: "Bundle and upload rerun_cpp"
+    name: "Bundle and upload rerun_cpp_sdk.zip"
     needs:
       [
         build-rerun_c-and-upload-linux,

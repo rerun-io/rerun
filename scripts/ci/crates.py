@@ -373,16 +373,21 @@ def bump_version(dry_run: bool, bump: Bump | str | None, pre_id: str, dev: bool)
 
 
 def is_already_published(version: str, crate: Crate) -> bool:
-    name = crate.manifest["package"]["name"]
+    crate_name = crate.manifest["package"]["name"]
     resp = requests.get(
-        f"https://crates.io/api/v1/crates/{name}",
+        f"https://crates.io/api/v1/crates/{crate_name}",
         headers={"user-agent": "rerun-publishing-script (rerun.io)"},
     )
     body = resp.json()
 
     # the request failed
     if not resp.ok:
-        raise Exception(f"failed to get crate {name}: {body['errors'][0]['detail']}")
+        detail = body["errors"][0]["detail"]
+        if detail == "Not Found":
+            # First time we're publishing this crate
+            return False
+        else:
+            raise Exception(f"failed to get crate {crate_name}: {detail}")
 
     # crate has not been uploaded yet
     if "versions" not in body:
@@ -496,13 +501,18 @@ def get_latest_published_version(crate_name: str) -> str | None:
     body = resp.json()
 
     if not resp.ok:
-        raise Exception(f"failed to get crate {crate_name}: {body['errors'][0]['detail']}")
+        detail = body["errors"][0]["detail"]
+        if detail == "Not Found":
+            # First time we're publishing this crate
+            return None
+        else:
+            raise Exception(f"failed to get crate {crate_name}: {detail}")
 
     if "versions" not in body:
         return None
 
     # response orders versions by semver
-    return body["versions"][0]["num"]
+    return body["versions"][0]["num"]  # type: ignore [no-any-return]
 
 
 class Target(Enum):
