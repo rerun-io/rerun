@@ -1170,7 +1170,7 @@ impl RecordingStream {
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
     pub fn connect(&self) {
-        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout())
+        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout());
     }
 
     /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
