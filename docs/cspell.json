@@ -59,6 +59,7 @@
     "colormaps",
     "colorrgba",
     "comms",
+    "constexpr",
     "consts",
     "controlnet",
     "CSRT",
