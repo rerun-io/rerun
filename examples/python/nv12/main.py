@@ -39,7 +39,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    rr.script_setup(args, "NV12 image example")
+    rr.script_setup(args, "rerun_example_nv12")
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
