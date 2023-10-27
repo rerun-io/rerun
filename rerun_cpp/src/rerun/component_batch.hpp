@@ -88,10 +88,13 @@ namespace rerun {
         /// The passed type must be binary compatible with the component type.
         template <typename T>
         static ComponentBatch<TComponent> borrow(const T* data, size_t num_instances) {
-            static_assert(sizeof(T) == sizeof(TComponent), "Size of T and TComponent must match");
+            static_assert(
+                sizeof(T) == sizeof(TComponent),
+                "T & TComponent are not binary compatible: Size mismatch."
+            );
             static_assert(
                 alignof(T) <= alignof(TComponent),
-                "Alignment of T musn't be smaller than TComponent"
+                "T & TComponent are not binary compatible: TComponent has a higher alignment requirement than T. This implies that pointers to T may not have the alignment needed to access TComponent."
             );
 
             ComponentBatch<TComponent> batch;
