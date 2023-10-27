@@ -1,6 +1,8 @@
-#include <algorithm>
-#include <cmath>
 #include <rerun.hpp>
+
+#include <algorithm> // std::max
+#include <cmath>
+#include <string>
 
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
@@ -8,23 +10,20 @@ void log_hand(
     rerun::RecordingStream& rec, const char* name, int step, float angle, float length, float width,
     uint8_t blue
 ) {
-    rerun::datatypes::Vec3D tip{length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f};
-    uint8_t c = static_cast<uint8_t>(angle * 255.0f);
-    rerun::components::Color color{
-        static_cast<uint8_t>(255 - c),
-        c,
-        blue,
-        std::max<uint8_t>(128, blue)};
+    const auto tip = rerun::Vec3D{length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f};
+    const auto c = static_cast<uint8_t>(angle * 255.0f);
+    const auto color =
+        rerun::Color{static_cast<uint8_t>(255 - c), c, blue, std::max<uint8_t>(128, blue)};
 
     rec.set_time_seconds("sim_time", step);
 
     rec.log(
         std::string("world/") + name + "_pt",
-        rerun::Points3D(rerun::components::Position3D(tip)).with_colors(color)
+        rerun::Points3D(rerun::Position3D(tip)).with_colors(color)
     );
     rec.log(
         std::string("world/") + name + "hand",
-        rerun::Arrows3D::from_vectors(rerun::components::Vector3D(tip))
+        rerun::Arrows3D::from_vectors(rerun::Vector3D(tip))
             .with_origins({{0.0f, 0.0f, 0.0f}})
             .with_colors(color)
             .with_radii({width * 0.5f})
