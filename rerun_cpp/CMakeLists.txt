@@ -15,7 +15,7 @@ add_library(rerun_sdk ${rerun_sdk_SRC})
 target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Rerun needs at least C++17.
-set_property(TARGET rerun_sdk PROPERTY CXX_STANDARD 17)
+set_target_properties(rerun_sdk PROPERTIES CXX_STANDARD 17)
 
 # Do multithreaded compiling on MSVC.
 if(MSVC)
@@ -179,8 +179,10 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
     endif()
 
     add_dependencies(RerunArrowTarget arrow_cpp)
-    set_target_properties(RerunArrowTarget PROPERTIES IMPORTED_LOCATION ${ARROW_LIBRARY_FILE})
-    set_target_properties(RerunArrowTarget PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${ARROW_DOWNLOAD_PATH}/include)
+    set_target_properties(RerunArrowTarget PROPERTIES
+        IMPORTED_LOCATION ${ARROW_LIBRARY_FILE}
+        INTERFACE_INCLUDE_DIRECTORIES ${ARROW_DOWNLOAD_PATH}/include
+    )
 else()
     find_package(Arrow REQUIRED)
 
