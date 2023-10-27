@@ -201,13 +201,8 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
             .output()
             .map_err(map_err)?;
 
-        // <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
         let output = String::from_utf8_lossy(&output.stdout);
-        let output = output.split_whitespace().collect::<Vec<_>>();
-
-        (output.len() >= 2)
-            .then(|| re_build_info::CrateVersion::try_parse(output[1]).ok())
-            .flatten()
+        re_build_info::CrateVersion::try_parse_from_build_info_string(output).ok()
     };
 
     if let Some(viewer_version) = viewer_version {
