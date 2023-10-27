@@ -15,6 +15,7 @@ thumbnail_dimensions: [480, 322]
 </picture>
 
 The simplest example of how to use Rerun, showing how to log a point cloud.
+This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/python).
 
 ```bash
 python examples/python/minimal/main.py

@@ -21,6 +21,6 @@ An example visualizing an analog clock with hour, minute and seconds hands using
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
 cmake .
-cmake --build . --target clock_example
-./examples/cpp/clock/clock_example
+cmake --build . --target example_clock
+./examples/cpp/clock/example_clock
 ```
