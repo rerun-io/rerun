@@ -156,6 +156,13 @@ impl CrateVersion {
         }
     }
 
+    /// True is this version has no metadata at all (rc, dev, alpha, etc).
+    ///
+    /// I.e. it's an actual, final release.
+    pub fn is_release(&self) -> bool {
+        self.meta.is_none()
+    }
+
     /// Whether or not this build has a `+dev` suffix.
     ///
     /// This is used to identify builds which are not explicit releases,
