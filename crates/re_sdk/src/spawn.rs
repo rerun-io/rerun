@@ -184,8 +184,15 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
                     executable_path: executable_path.clone(),
                 }
             } else {
+                let sdk_version = re_build_info::build_info!().version;
                 SpawnError::ExecutableNotFoundInPath {
-                    message: MSG_INSTALL_HOW_TO.to_owned(),
+                    // Only recommend a specific Viewer version for non-alpha/rc/dev SDKs.
+                    message: if sdk_version.meta.is_none() {
+                        MSG_INSTALL_HOW_TO_VERSIONED
+                            .replace("__VIEWER_VERSION__", &sdk_version.to_string())
+                    } else {
+                        MSG_INSTALL_HOW_TO.to_owned()
+                    },
                     executable_name: opts.executable_name.clone(),
                     search_path: std::env::var("PATH").unwrap_or_else(|_| String::new()),
                 }
