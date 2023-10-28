@@ -59,7 +59,10 @@ fn global_web_viewer_server(
 }
 
 #[pyfunction]
-fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
+fn main(py: Python<'_>) -> PyResult<u8> {
+    let sys = py.import("sys")?;
+    let argv: Vec<String> = sys.getattr("argv")?.extract()?;
+
     let build_info = re_build_info::build_info!();
     let call_src = rerun::CallSource::Python(python_version(py));
     tokio::runtime::Builder::new_multi_thread()

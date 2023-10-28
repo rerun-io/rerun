@@ -40,7 +40,7 @@ homepage = "https://www.rerun.io"
 repository = "https://github.com/rerun-io/rerun"
 
 [project.scripts]
-rerun = "rerun.__main__:main"
+rerun = "rerun_bindings:main"
 
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
