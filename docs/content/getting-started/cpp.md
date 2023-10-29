@@ -32,7 +32,7 @@ add_executable(example_minimal main.cpp)
 You can add Rerun to your project using `FetchContent`
 ```cmake
 include(FetchContent)
-FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
 FetchContent_MakeAvailable(rerun_sdk)
 ```
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms, all Rerun C++ sources and headers, as well as CMake build instructions for them.
@@ -49,14 +49,14 @@ target_link_libraries(example_minimal PRIVATE rerun_sdk)
 
 Combining the above, a minimal self-contained `CMakeLists.txt` looks like:
 ```cmake
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.27)
 project(example_minimal LANGUAGES CXX)
 
 add_executable(example_minimal main.cpp)
 
 # Download the rerun_sdk
 include(FetchContent)
-FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
 FetchContent_MakeAvailable(rerun_sdk)
 
 # Rerun requires at least C++17, but it should be compatible with newer versions.
