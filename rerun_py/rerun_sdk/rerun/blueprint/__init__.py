@@ -2,60 +2,73 @@
 
 from __future__ import annotations
 
-from .auto_space_views import (
-    AutoSpaceViews,
-    AutoSpaceViewsArrayLike,
-    AutoSpaceViewsBatch,
-    AutoSpaceViewsLike,
-    AutoSpaceViewsType,
-)
-from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
-from .space_view_component import (
-    SpaceViewComponent,
-    SpaceViewComponentArrayLike,
-    SpaceViewComponentBatch,
-    SpaceViewComponentLike,
-    SpaceViewComponentType,
-)
-from .space_view_maximized import (
-    SpaceViewMaximized,
-    SpaceViewMaximizedArrayLike,
-    SpaceViewMaximizedBatch,
-    SpaceViewMaximizedLike,
-    SpaceViewMaximizedType,
-)
-from .viewport_layout import (
-    ViewportLayout,
-    ViewportLayoutArrayLike,
-    ViewportLayoutBatch,
-    ViewportLayoutLike,
-    ViewportLayoutType,
-)
+from typing import TYPE_CHECKING, Any
 
-__all__ = [
-    "AutoSpaceViews",
-    "AutoSpaceViewsArrayLike",
-    "AutoSpaceViewsBatch",
-    "AutoSpaceViewsLike",
-    "AutoSpaceViewsType",
-    "PanelView",
-    "PanelViewArrayLike",
-    "PanelViewBatch",
-    "PanelViewLike",
-    "PanelViewType",
-    "SpaceViewComponent",
-    "SpaceViewComponentArrayLike",
-    "SpaceViewComponentBatch",
-    "SpaceViewComponentLike",
-    "SpaceViewComponentType",
-    "SpaceViewMaximized",
-    "SpaceViewMaximizedArrayLike",
-    "SpaceViewMaximizedBatch",
-    "SpaceViewMaximizedLike",
-    "SpaceViewMaximizedType",
-    "ViewportLayout",
-    "ViewportLayoutArrayLike",
-    "ViewportLayoutBatch",
-    "ViewportLayoutLike",
-    "ViewportLayoutType",
-]
+if TYPE_CHECKING:
+    from .auto_space_views import (
+        AutoSpaceViews,
+        AutoSpaceViewsArrayLike,
+        AutoSpaceViewsBatch,
+        AutoSpaceViewsLike,
+        AutoSpaceViewsType,
+    )
+    from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
+    from .space_view_component import (
+        SpaceViewComponent,
+        SpaceViewComponentArrayLike,
+        SpaceViewComponentBatch,
+        SpaceViewComponentLike,
+        SpaceViewComponentType,
+    )
+    from .space_view_maximized import (
+        SpaceViewMaximized,
+        SpaceViewMaximizedArrayLike,
+        SpaceViewMaximizedBatch,
+        SpaceViewMaximizedLike,
+        SpaceViewMaximizedType,
+    )
+    from .viewport_layout import (
+        ViewportLayout,
+        ViewportLayoutArrayLike,
+        ViewportLayoutBatch,
+        ViewportLayoutLike,
+        ViewportLayoutType,
+    )
+
+
+module_content: dict[str, str] = {
+    "AutoSpaceViews": "auto_space_views",
+    "AutoSpaceViewsArrayLike": "auto_space_views",
+    "AutoSpaceViewsBatch": "auto_space_views",
+    "AutoSpaceViewsLike": "auto_space_views",
+    "AutoSpaceViewsType": "auto_space_views",
+    "PanelView": "panel_view",
+    "PanelViewArrayLike": "panel_view",
+    "PanelViewBatch": "panel_view",
+    "PanelViewLike": "panel_view",
+    "PanelViewType": "panel_view",
+    "SpaceViewComponent": "space_view_component",
+    "SpaceViewComponentArrayLike": "space_view_component",
+    "SpaceViewComponentBatch": "space_view_component",
+    "SpaceViewComponentLike": "space_view_component",
+    "SpaceViewComponentType": "space_view_component",
+    "SpaceViewMaximized": "space_view_maximized",
+    "SpaceViewMaximizedArrayLike": "space_view_maximized",
+    "SpaceViewMaximizedBatch": "space_view_maximized",
+    "SpaceViewMaximizedLike": "space_view_maximized",
+    "SpaceViewMaximizedType": "space_view_maximized",
+    "ViewportLayout": "viewport_layout",
+    "ViewportLayoutArrayLike": "viewport_layout",
+    "ViewportLayoutBatch": "viewport_layout",
+    "ViewportLayoutLike": "viewport_layout",
+    "ViewportLayoutType": "viewport_layout",
+}
+
+
+def __getattr__(name: str) -> Any:
+    from importlib import import_module
+
+    if name in module_content:
+        module = import_module(f".{module_content[name]}", __name__)
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

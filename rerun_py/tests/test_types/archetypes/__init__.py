@@ -2,9 +2,27 @@
 
 from __future__ import annotations
 
-from .affix_fuzzer1 import AffixFuzzer1
-from .affix_fuzzer2 import AffixFuzzer2
-from .affix_fuzzer3 import AffixFuzzer3
-from .affix_fuzzer4 import AffixFuzzer4
+from typing import TYPE_CHECKING, Any
 
-__all__ = ["AffixFuzzer1", "AffixFuzzer2", "AffixFuzzer3", "AffixFuzzer4"]
+if TYPE_CHECKING:
+    from .affix_fuzzer1 import AffixFuzzer1
+    from .affix_fuzzer2 import AffixFuzzer2
+    from .affix_fuzzer3 import AffixFuzzer3
+    from .affix_fuzzer4 import AffixFuzzer4
+
+
+module_content: dict[str, str] = {
+    "AffixFuzzer1": "affix_fuzzer1",
+    "AffixFuzzer2": "affix_fuzzer2",
+    "AffixFuzzer3": "affix_fuzzer3",
+    "AffixFuzzer4": "affix_fuzzer4",
+}
+
+
+def __getattr__(name: str) -> Any:
+    from importlib import import_module
+
+    if name in module_content:
+        module = import_module(f".{module_content[name]}", __name__)
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

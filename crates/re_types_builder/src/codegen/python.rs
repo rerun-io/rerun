@@ -436,22 +436,44 @@ fn write_init_file(
 ) {
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
-    let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
     code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
     code.push_unindented_text(
         "
             from __future__ import annotations
 
+            from typing import TYPE_CHECKING, Any
             ",
+        1,
+    );
+
+    if !mods.is_empty() {
+        code.push_unindented_text("if TYPE_CHECKING:", 1);
+        for (module, names) in mods {
+            let names = names.join(", ");
+            code.push_text(&format!("from .{module} import {names}"), 1, 4);
+        }
+    }
+
+    code.push_text("\n\nmodule_content: dict[str, str] = {", 1, 0);
+    for (module, names) in mods {
+        for name in names {
+            code.push_text(&format!("{name:?}: {module:?},"), 1, 4);
+        }
+    }
+    code.push_unindented_text("}", 1);
+
+    code.push_unindented_text(
+        r#"
+            def __getattr__(name: str) -> Any:
+                from importlib import import_module
+                if name in module_content:
+                    module = import_module(f".{module_content[name]}", __name__)
+                    return getattr(module, name)
+                raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+            "#,
         0,
     );
-    for (module, names) in mods {
-        let names = names.join(", ");
-        code.push_text(&format!("from .{module} import {names}"), 1, 0);
-    }
-    if !manifest.is_empty() {
-        code.push_unindented_text(format!("\n__all__ = [{manifest}]"), 0);
-    }
+
     files_to_write.insert(path, code);
 }
 

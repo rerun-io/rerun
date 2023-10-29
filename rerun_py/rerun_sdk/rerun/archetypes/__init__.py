@@ -2,52 +2,65 @@
 
 from __future__ import annotations
 
-from .annotation_context import AnnotationContext
-from .arrows3d import Arrows3D
-from .asset3d import Asset3D
-from .bar_chart import BarChart
-from .boxes2d import Boxes2D
-from .boxes3d import Boxes3D
-from .clear import Clear
-from .depth_image import DepthImage
-from .disconnected_space import DisconnectedSpace
-from .image import Image
-from .line_strips2d import LineStrips2D
-from .line_strips3d import LineStrips3D
-from .mesh3d import Mesh3D
-from .pinhole import Pinhole
-from .points2d import Points2D
-from .points3d import Points3D
-from .segmentation_image import SegmentationImage
-from .tensor import Tensor
-from .text_document import TextDocument
-from .text_log import TextLog
-from .time_series_scalar import TimeSeriesScalar
-from .transform3d import Transform3D
-from .view_coordinates import ViewCoordinates
+from typing import TYPE_CHECKING, Any
 
-__all__ = [
-    "AnnotationContext",
-    "Arrows3D",
-    "Asset3D",
-    "BarChart",
-    "Boxes2D",
-    "Boxes3D",
-    "Clear",
-    "DepthImage",
-    "DisconnectedSpace",
-    "Image",
-    "LineStrips2D",
-    "LineStrips3D",
-    "Mesh3D",
-    "Pinhole",
-    "Points2D",
-    "Points3D",
-    "SegmentationImage",
-    "Tensor",
-    "TextDocument",
-    "TextLog",
-    "TimeSeriesScalar",
-    "Transform3D",
-    "ViewCoordinates",
-]
+if TYPE_CHECKING:
+    from .annotation_context import AnnotationContext
+    from .arrows3d import Arrows3D
+    from .asset3d import Asset3D
+    from .bar_chart import BarChart
+    from .boxes2d import Boxes2D
+    from .boxes3d import Boxes3D
+    from .clear import Clear
+    from .depth_image import DepthImage
+    from .disconnected_space import DisconnectedSpace
+    from .image import Image
+    from .line_strips2d import LineStrips2D
+    from .line_strips3d import LineStrips3D
+    from .mesh3d import Mesh3D
+    from .pinhole import Pinhole
+    from .points2d import Points2D
+    from .points3d import Points3D
+    from .segmentation_image import SegmentationImage
+    from .tensor import Tensor
+    from .text_document import TextDocument
+    from .text_log import TextLog
+    from .time_series_scalar import TimeSeriesScalar
+    from .transform3d import Transform3D
+    from .view_coordinates import ViewCoordinates
+
+
+module_content: dict[str, str] = {
+    "AnnotationContext": "annotation_context",
+    "Arrows3D": "arrows3d",
+    "Asset3D": "asset3d",
+    "BarChart": "bar_chart",
+    "Boxes2D": "boxes2d",
+    "Boxes3D": "boxes3d",
+    "Clear": "clear",
+    "DepthImage": "depth_image",
+    "DisconnectedSpace": "disconnected_space",
+    "Image": "image",
+    "LineStrips2D": "line_strips2d",
+    "LineStrips3D": "line_strips3d",
+    "Mesh3D": "mesh3d",
+    "Pinhole": "pinhole",
+    "Points2D": "points2d",
+    "Points3D": "points3d",
+    "SegmentationImage": "segmentation_image",
+    "Tensor": "tensor",
+    "TextDocument": "text_document",
+    "TextLog": "text_log",
+    "TimeSeriesScalar": "time_series_scalar",
+    "Transform3D": "transform3d",
+    "ViewCoordinates": "view_coordinates",
+}
+
+
+def __getattr__(name: str) -> Any:
+    from importlib import import_module
+
+    if name in module_content:
+        module = import_module(f".{module_content[name]}", __name__)
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

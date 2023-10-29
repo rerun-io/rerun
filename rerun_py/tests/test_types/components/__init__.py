@@ -2,152 +2,183 @@
 
 from __future__ import annotations
 
-from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1Batch, AffixFuzzer1Type
-from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2Batch, AffixFuzzer2Type
-from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3Batch, AffixFuzzer3Type
-from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4Batch, AffixFuzzer4Type
-from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5Batch, AffixFuzzer5Type
-from .affix_fuzzer6 import AffixFuzzer6, AffixFuzzer6Batch, AffixFuzzer6Type
-from .affix_fuzzer7 import AffixFuzzer7, AffixFuzzer7ArrayLike, AffixFuzzer7Batch, AffixFuzzer7Like, AffixFuzzer7Type
-from .affix_fuzzer8 import AffixFuzzer8, AffixFuzzer8ArrayLike, AffixFuzzer8Batch, AffixFuzzer8Like, AffixFuzzer8Type
-from .affix_fuzzer9 import AffixFuzzer9, AffixFuzzer9ArrayLike, AffixFuzzer9Batch, AffixFuzzer9Like, AffixFuzzer9Type
-from .affix_fuzzer10 import (
-    AffixFuzzer10,
-    AffixFuzzer10ArrayLike,
-    AffixFuzzer10Batch,
-    AffixFuzzer10Like,
-    AffixFuzzer10Type,
-)
-from .affix_fuzzer11 import (
-    AffixFuzzer11,
-    AffixFuzzer11ArrayLike,
-    AffixFuzzer11Batch,
-    AffixFuzzer11Like,
-    AffixFuzzer11Type,
-)
-from .affix_fuzzer12 import (
-    AffixFuzzer12,
-    AffixFuzzer12ArrayLike,
-    AffixFuzzer12Batch,
-    AffixFuzzer12Like,
-    AffixFuzzer12Type,
-)
-from .affix_fuzzer13 import (
-    AffixFuzzer13,
-    AffixFuzzer13ArrayLike,
-    AffixFuzzer13Batch,
-    AffixFuzzer13Like,
-    AffixFuzzer13Type,
-)
-from .affix_fuzzer14 import AffixFuzzer14, AffixFuzzer14Batch, AffixFuzzer14Type
-from .affix_fuzzer15 import AffixFuzzer15, AffixFuzzer15Batch, AffixFuzzer15Type
-from .affix_fuzzer16 import (
-    AffixFuzzer16,
-    AffixFuzzer16ArrayLike,
-    AffixFuzzer16Batch,
-    AffixFuzzer16Like,
-    AffixFuzzer16Type,
-)
-from .affix_fuzzer17 import (
-    AffixFuzzer17,
-    AffixFuzzer17ArrayLike,
-    AffixFuzzer17Batch,
-    AffixFuzzer17Like,
-    AffixFuzzer17Type,
-)
-from .affix_fuzzer18 import (
-    AffixFuzzer18,
-    AffixFuzzer18ArrayLike,
-    AffixFuzzer18Batch,
-    AffixFuzzer18Like,
-    AffixFuzzer18Type,
-)
-from .affix_fuzzer19 import AffixFuzzer19, AffixFuzzer19Batch, AffixFuzzer19Type
-from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Batch, AffixFuzzer20Type
-from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21Batch, AffixFuzzer21Type
+from typing import TYPE_CHECKING, Any
 
-__all__ = [
-    "AffixFuzzer1",
-    "AffixFuzzer10",
-    "AffixFuzzer10ArrayLike",
-    "AffixFuzzer10Batch",
-    "AffixFuzzer10Like",
-    "AffixFuzzer10Type",
-    "AffixFuzzer11",
-    "AffixFuzzer11ArrayLike",
-    "AffixFuzzer11Batch",
-    "AffixFuzzer11Like",
-    "AffixFuzzer11Type",
-    "AffixFuzzer12",
-    "AffixFuzzer12ArrayLike",
-    "AffixFuzzer12Batch",
-    "AffixFuzzer12Like",
-    "AffixFuzzer12Type",
-    "AffixFuzzer13",
-    "AffixFuzzer13ArrayLike",
-    "AffixFuzzer13Batch",
-    "AffixFuzzer13Like",
-    "AffixFuzzer13Type",
-    "AffixFuzzer14",
-    "AffixFuzzer14Batch",
-    "AffixFuzzer14Type",
-    "AffixFuzzer15",
-    "AffixFuzzer15Batch",
-    "AffixFuzzer15Type",
-    "AffixFuzzer16",
-    "AffixFuzzer16ArrayLike",
-    "AffixFuzzer16Batch",
-    "AffixFuzzer16Like",
-    "AffixFuzzer16Type",
-    "AffixFuzzer17",
-    "AffixFuzzer17ArrayLike",
-    "AffixFuzzer17Batch",
-    "AffixFuzzer17Like",
-    "AffixFuzzer17Type",
-    "AffixFuzzer18",
-    "AffixFuzzer18ArrayLike",
-    "AffixFuzzer18Batch",
-    "AffixFuzzer18Like",
-    "AffixFuzzer18Type",
-    "AffixFuzzer19",
-    "AffixFuzzer19Batch",
-    "AffixFuzzer19Type",
-    "AffixFuzzer1Batch",
-    "AffixFuzzer1Type",
-    "AffixFuzzer2",
-    "AffixFuzzer20",
-    "AffixFuzzer20Batch",
-    "AffixFuzzer20Type",
-    "AffixFuzzer21",
-    "AffixFuzzer21Batch",
-    "AffixFuzzer21Type",
-    "AffixFuzzer2Batch",
-    "AffixFuzzer2Type",
-    "AffixFuzzer3",
-    "AffixFuzzer3Batch",
-    "AffixFuzzer3Type",
-    "AffixFuzzer4",
-    "AffixFuzzer4Batch",
-    "AffixFuzzer4Type",
-    "AffixFuzzer5",
-    "AffixFuzzer5Batch",
-    "AffixFuzzer5Type",
-    "AffixFuzzer6",
-    "AffixFuzzer6Batch",
-    "AffixFuzzer6Type",
-    "AffixFuzzer7",
-    "AffixFuzzer7ArrayLike",
-    "AffixFuzzer7Batch",
-    "AffixFuzzer7Like",
-    "AffixFuzzer7Type",
-    "AffixFuzzer8",
-    "AffixFuzzer8ArrayLike",
-    "AffixFuzzer8Batch",
-    "AffixFuzzer8Like",
-    "AffixFuzzer8Type",
-    "AffixFuzzer9",
-    "AffixFuzzer9ArrayLike",
-    "AffixFuzzer9Batch",
-    "AffixFuzzer9Like",
-    "AffixFuzzer9Type",
-]
+if TYPE_CHECKING:
+    from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1Batch, AffixFuzzer1Type
+    from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2Batch, AffixFuzzer2Type
+    from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3Batch, AffixFuzzer3Type
+    from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4Batch, AffixFuzzer4Type
+    from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5Batch, AffixFuzzer5Type
+    from .affix_fuzzer6 import AffixFuzzer6, AffixFuzzer6Batch, AffixFuzzer6Type
+    from .affix_fuzzer7 import (
+        AffixFuzzer7,
+        AffixFuzzer7ArrayLike,
+        AffixFuzzer7Batch,
+        AffixFuzzer7Like,
+        AffixFuzzer7Type,
+    )
+    from .affix_fuzzer8 import (
+        AffixFuzzer8,
+        AffixFuzzer8ArrayLike,
+        AffixFuzzer8Batch,
+        AffixFuzzer8Like,
+        AffixFuzzer8Type,
+    )
+    from .affix_fuzzer9 import (
+        AffixFuzzer9,
+        AffixFuzzer9ArrayLike,
+        AffixFuzzer9Batch,
+        AffixFuzzer9Like,
+        AffixFuzzer9Type,
+    )
+    from .affix_fuzzer10 import (
+        AffixFuzzer10,
+        AffixFuzzer10ArrayLike,
+        AffixFuzzer10Batch,
+        AffixFuzzer10Like,
+        AffixFuzzer10Type,
+    )
+    from .affix_fuzzer11 import (
+        AffixFuzzer11,
+        AffixFuzzer11ArrayLike,
+        AffixFuzzer11Batch,
+        AffixFuzzer11Like,
+        AffixFuzzer11Type,
+    )
+    from .affix_fuzzer12 import (
+        AffixFuzzer12,
+        AffixFuzzer12ArrayLike,
+        AffixFuzzer12Batch,
+        AffixFuzzer12Like,
+        AffixFuzzer12Type,
+    )
+    from .affix_fuzzer13 import (
+        AffixFuzzer13,
+        AffixFuzzer13ArrayLike,
+        AffixFuzzer13Batch,
+        AffixFuzzer13Like,
+        AffixFuzzer13Type,
+    )
+    from .affix_fuzzer14 import AffixFuzzer14, AffixFuzzer14Batch, AffixFuzzer14Type
+    from .affix_fuzzer15 import AffixFuzzer15, AffixFuzzer15Batch, AffixFuzzer15Type
+    from .affix_fuzzer16 import (
+        AffixFuzzer16,
+        AffixFuzzer16ArrayLike,
+        AffixFuzzer16Batch,
+        AffixFuzzer16Like,
+        AffixFuzzer16Type,
+    )
+    from .affix_fuzzer17 import (
+        AffixFuzzer17,
+        AffixFuzzer17ArrayLike,
+        AffixFuzzer17Batch,
+        AffixFuzzer17Like,
+        AffixFuzzer17Type,
+    )
+    from .affix_fuzzer18 import (
+        AffixFuzzer18,
+        AffixFuzzer18ArrayLike,
+        AffixFuzzer18Batch,
+        AffixFuzzer18Like,
+        AffixFuzzer18Type,
+    )
+    from .affix_fuzzer19 import AffixFuzzer19, AffixFuzzer19Batch, AffixFuzzer19Type
+    from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Batch, AffixFuzzer20Type
+    from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21Batch, AffixFuzzer21Type
+
+
+module_content: dict[str, str] = {
+    "AffixFuzzer1": "affix_fuzzer1",
+    "AffixFuzzer1Batch": "affix_fuzzer1",
+    "AffixFuzzer1Type": "affix_fuzzer1",
+    "AffixFuzzer10": "affix_fuzzer10",
+    "AffixFuzzer10ArrayLike": "affix_fuzzer10",
+    "AffixFuzzer10Batch": "affix_fuzzer10",
+    "AffixFuzzer10Like": "affix_fuzzer10",
+    "AffixFuzzer10Type": "affix_fuzzer10",
+    "AffixFuzzer11": "affix_fuzzer11",
+    "AffixFuzzer11ArrayLike": "affix_fuzzer11",
+    "AffixFuzzer11Batch": "affix_fuzzer11",
+    "AffixFuzzer11Like": "affix_fuzzer11",
+    "AffixFuzzer11Type": "affix_fuzzer11",
+    "AffixFuzzer12": "affix_fuzzer12",
+    "AffixFuzzer12ArrayLike": "affix_fuzzer12",
+    "AffixFuzzer12Batch": "affix_fuzzer12",
+    "AffixFuzzer12Like": "affix_fuzzer12",
+    "AffixFuzzer12Type": "affix_fuzzer12",
+    "AffixFuzzer13": "affix_fuzzer13",
+    "AffixFuzzer13ArrayLike": "affix_fuzzer13",
+    "AffixFuzzer13Batch": "affix_fuzzer13",
+    "AffixFuzzer13Like": "affix_fuzzer13",
+    "AffixFuzzer13Type": "affix_fuzzer13",
+    "AffixFuzzer14": "affix_fuzzer14",
+    "AffixFuzzer14Batch": "affix_fuzzer14",
+    "AffixFuzzer14Type": "affix_fuzzer14",
+    "AffixFuzzer15": "affix_fuzzer15",
+    "AffixFuzzer15Batch": "affix_fuzzer15",
+    "AffixFuzzer15Type": "affix_fuzzer15",
+    "AffixFuzzer16": "affix_fuzzer16",
+    "AffixFuzzer16ArrayLike": "affix_fuzzer16",
+    "AffixFuzzer16Batch": "affix_fuzzer16",
+    "AffixFuzzer16Like": "affix_fuzzer16",
+    "AffixFuzzer16Type": "affix_fuzzer16",
+    "AffixFuzzer17": "affix_fuzzer17",
+    "AffixFuzzer17ArrayLike": "affix_fuzzer17",
+    "AffixFuzzer17Batch": "affix_fuzzer17",
+    "AffixFuzzer17Like": "affix_fuzzer17",
+    "AffixFuzzer17Type": "affix_fuzzer17",
+    "AffixFuzzer18": "affix_fuzzer18",
+    "AffixFuzzer18ArrayLike": "affix_fuzzer18",
+    "AffixFuzzer18Batch": "affix_fuzzer18",
+    "AffixFuzzer18Like": "affix_fuzzer18",
+    "AffixFuzzer18Type": "affix_fuzzer18",
+    "AffixFuzzer19": "affix_fuzzer19",
+    "AffixFuzzer19Batch": "affix_fuzzer19",
+    "AffixFuzzer19Type": "affix_fuzzer19",
+    "AffixFuzzer2": "affix_fuzzer2",
+    "AffixFuzzer2Batch": "affix_fuzzer2",
+    "AffixFuzzer2Type": "affix_fuzzer2",
+    "AffixFuzzer20": "affix_fuzzer20",
+    "AffixFuzzer20Batch": "affix_fuzzer20",
+    "AffixFuzzer20Type": "affix_fuzzer20",
+    "AffixFuzzer21": "affix_fuzzer21",
+    "AffixFuzzer21Batch": "affix_fuzzer21",
+    "AffixFuzzer21Type": "affix_fuzzer21",
+    "AffixFuzzer3": "affix_fuzzer3",
+    "AffixFuzzer3Batch": "affix_fuzzer3",
+    "AffixFuzzer3Type": "affix_fuzzer3",
+    "AffixFuzzer4": "affix_fuzzer4",
+    "AffixFuzzer4Batch": "affix_fuzzer4",
+    "AffixFuzzer4Type": "affix_fuzzer4",
+    "AffixFuzzer5": "affix_fuzzer5",
+    "AffixFuzzer5Batch": "affix_fuzzer5",
+    "AffixFuzzer5Type": "affix_fuzzer5",
+    "AffixFuzzer6": "affix_fuzzer6",
+    "AffixFuzzer6Batch": "affix_fuzzer6",
+    "AffixFuzzer6Type": "affix_fuzzer6",
+    "AffixFuzzer7": "affix_fuzzer7",
+    "AffixFuzzer7ArrayLike": "affix_fuzzer7",
+    "AffixFuzzer7Batch": "affix_fuzzer7",
+    "AffixFuzzer7Like": "affix_fuzzer7",
+    "AffixFuzzer7Type": "affix_fuzzer7",
+    "AffixFuzzer8": "affix_fuzzer8",
+    "AffixFuzzer8ArrayLike": "affix_fuzzer8",
+    "AffixFuzzer8Batch": "affix_fuzzer8",
+    "AffixFuzzer8Like": "affix_fuzzer8",
+    "AffixFuzzer8Type": "affix_fuzzer8",
+    "AffixFuzzer9": "affix_fuzzer9",
+    "AffixFuzzer9ArrayLike": "affix_fuzzer9",
+    "AffixFuzzer9Batch": "affix_fuzzer9",
+    "AffixFuzzer9Like": "affix_fuzzer9",
+    "AffixFuzzer9Type": "affix_fuzzer9",
+}
+
+
+def __getattr__(name: str) -> Any:
+    from importlib import import_module
+
+    if name in module_content:
+        module = import_module(f".{module_content[name]}", __name__)
+        return getattr(module, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

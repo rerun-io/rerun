@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import functools
 import random
-from typing import Any, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, cast
 from uuid import UUID
 
 import numpy as np
@@ -126,48 +126,51 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 from ._image import ImageEncoded, ImageFormat
 from ._log import AsComponents, ComponentBatchLike, IndicatorComponentBatch, log, log_components
 from .any_value import AnyValues
-from .archetypes import (
-    AnnotationContext,
-    Arrows3D,
-    Asset3D,
-    BarChart,
-    Boxes2D,
-    Boxes3D,
-    Clear,
-    DepthImage,
-    DisconnectedSpace,
-    Image,
-    LineStrips2D,
-    LineStrips3D,
-    Mesh3D,
-    Pinhole,
-    Points2D,
-    Points3D,
-    SegmentationImage,
-    Tensor,
-    TextDocument,
-    TextLog,
-    TimeSeriesScalar,
-    Transform3D,
-    ViewCoordinates,
-)
+
+if TYPE_CHECKING:
+    from .archetypes import (
+        AnnotationContext,
+        Arrows3D,
+        Asset3D,
+        BarChart,
+        Boxes2D,
+        Boxes3D,
+        Clear,
+        DepthImage,
+        DisconnectedSpace,
+        Image,
+        LineStrips2D,
+        LineStrips3D,
+        Mesh3D,
+        Pinhole,
+        Points2D,
+        Points3D,
+        SegmentationImage,
+        Tensor,
+        TextDocument,
+        TextLog,
+        TimeSeriesScalar,
+        Transform3D,
+        ViewCoordinates,
+    )
+    from .components import (
+        Material,
+        MediaType,
+        MeshProperties,
+        OutOfTreeTransform3D,
+        OutOfTreeTransform3DBatch,
+        TextLogLevel,
+    )
+    from .datatypes import (
+        Quaternion,
+        RotationAxisAngle,
+        Scale3D,
+        TensorData,
+        TranslationAndMat3x3,
+        TranslationRotationScale3D,
+    )
+
 from .archetypes.boxes2d_ext import Box2DFormat
-from .components import (
-    Material,
-    MediaType,
-    MeshProperties,
-    OutOfTreeTransform3D,
-    OutOfTreeTransform3DBatch,
-    TextLogLevel,
-)
-from .datatypes import (
-    Quaternion,
-    RotationAxisAngle,
-    Scale3D,
-    TensorData,
-    TranslationAndMat3x3,
-    TranslationRotationScale3D,
-)
 from .error_utils import set_strict_mode
 from .log_deprecated.annotation import AnnotationInfo, ClassDescription, log_annotation_context
 from .log_deprecated.arrow import log_arrow
@@ -211,6 +214,21 @@ from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequenc
 
 # Import experimental last
 from . import experimental  # isort: skip
+
+
+def __getattr__(name: str) -> Any:
+    from . import archetypes, components, datatypes
+
+    if name in archetypes.module_content:
+        return getattr(archetypes, name)
+
+    if name in components.module_content:
+        return getattr(components, name)
+
+    if name in datatypes.module_content:
+        return getattr(datatypes, name)
+
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 # =====================================
