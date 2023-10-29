@@ -115,9 +115,9 @@ else()
     set(RERUN_ARROW_LINK_SHARED_DEFAULT ON)
 endif()
 option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_LINK_SHARED_DEFAULT})
-option(RERUN_ARROW_EXTERNAL_PROJECT "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
+option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
-if(RERUN_ARROW_EXTERNAL_PROJECT)
+if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
     include(ExternalProject)
 
     set(ARROW_DOWNLOAD_PATH ${CMAKE_BINARY_DIR}/arrow)
@@ -172,10 +172,10 @@ if(RERUN_ARROW_EXTERNAL_PROJECT)
         -DARROW_USE_ASAN=OFF
         -DARROW_USE_TSAN=OFF
         -DARROW_USE_UBSAN=OFF
+        -DARROW_JEMALLOC=OFF
         -Dxsimd_SOURCE=BUNDLED
         -DBOOST_SOURCE=BUNDLED
         -DARROW_BOOST_USE_SHARED=OFF
-        -DARROW_JEMALLOC=OFF
         -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
         SOURCE_SUBDIR cpp
         BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE}
@@ -213,8 +213,6 @@ else()
         message(STATUS "Arrow version: ${ARROW_VERSION}")
         add_library(RerunArrowTarget ALIAS Arrow::arrow_static)
     endif()
-
-    set(RERUN_ARROW_TARGET Arrow::arrow_shared)
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE RerunArrowTarget)
