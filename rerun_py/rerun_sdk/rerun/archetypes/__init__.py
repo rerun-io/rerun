@@ -29,6 +29,31 @@ if TYPE_CHECKING:
     from .transform3d import Transform3D
     from .view_coordinates import ViewCoordinates
 
+__all__ = [
+    "AnnotationContext",
+    "Arrows3D",
+    "Asset3D",
+    "BarChart",
+    "Boxes2D",
+    "Boxes3D",
+    "Clear",
+    "DepthImage",
+    "DisconnectedSpace",
+    "Image",
+    "LineStrips2D",
+    "LineStrips3D",
+    "Mesh3D",
+    "Pinhole",
+    "Points2D",
+    "Points3D",
+    "SegmentationImage",
+    "Tensor",
+    "TextDocument",
+    "TextLog",
+    "TimeSeriesScalar",
+    "Transform3D",
+    "ViewCoordinates",
+]
 
 module_content: dict[str, str] = {
     "AnnotationContext": "annotation_context",

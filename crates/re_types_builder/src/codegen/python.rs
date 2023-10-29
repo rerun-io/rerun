@@ -436,6 +436,7 @@ fn write_init_file(
 ) {
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
+    let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
     code.push_text(&format!("# {}", autogen_warning!()), 2, 0);
     code.push_unindented_text(
         "
@@ -446,15 +447,17 @@ fn write_init_file(
         1,
     );
 
-    if !mods.is_empty() {
+    if !manifest.is_empty() {
         code.push_unindented_text("if TYPE_CHECKING:", 1);
         for (module, names) in mods {
             let names = names.join(", ");
             code.push_text(&format!("from .{module} import {names}"), 1, 4);
         }
+
+        code.push_unindented_text(format!("\n\n__all__ = [{manifest}]"), 1);
     }
 
-    code.push_text("\n\nmodule_content: dict[str, str] = {", 1, 0);
+    code.push_text("\nmodule_content: dict[str, str] = {", 1, 0);
     for (module, names) in mods {
         for name in names {
             code.push_text(&format!("{name:?}: {module:?},"), 1, 4);

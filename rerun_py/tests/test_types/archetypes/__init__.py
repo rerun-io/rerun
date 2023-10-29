@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from .affix_fuzzer3 import AffixFuzzer3
     from .affix_fuzzer4 import AffixFuzzer4
 
+__all__ = ["AffixFuzzer1", "AffixFuzzer2", "AffixFuzzer3", "AffixFuzzer4"]
 
 module_content: dict[str, str] = {
     "AffixFuzzer1": "affix_fuzzer1",
