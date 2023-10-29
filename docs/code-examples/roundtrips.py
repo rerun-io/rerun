@@ -167,7 +167,7 @@ def main() -> None:
         for example in examples:
             example_opt_out_entirely = opt_out_run.get(example, [])
             for language in active_languages:
-                if language in example_opt_out_entirely or language == "cpp": # cpp already processed in series.
+                if language in example_opt_out_entirely or language == "cpp":  # cpp already processed in series.
                     continue
                 job = pool.apply_async(run_example, (example, language, args))
                 jobs.append(job)
