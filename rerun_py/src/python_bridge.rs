@@ -60,6 +60,8 @@ fn global_web_viewer_server(
 
 #[pyfunction]
 fn main(py: Python<'_>) -> PyResult<u8> {
+    // We access argv ourselves instead of accepting as parameter, so that `main`'s signature is
+    // compatible with `[project.scripts]` in `pyproject.toml`.
     let sys = py.import("sys")?;
     let argv: Vec<String> = sys.getattr("argv")?.extract()?;
 
@@ -70,7 +72,7 @@ fn main(py: Python<'_>) -> PyResult<u8> {
         .build()
         .unwrap()
         .block_on(async {
-            // Python catches SIGINT and waits for us to release the GIL before shtting down.
+            // Python catches SIGINT and waits for us to release the GIL before shutting down.
             // That's no good, so we need to catch SIGINT ourselves and shut down:
             tokio::spawn(async move {
                 tokio::signal::ctrl_c().await.unwrap();

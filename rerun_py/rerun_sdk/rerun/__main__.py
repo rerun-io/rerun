@@ -7,10 +7,12 @@ from rerun import unregister_shutdown
 
 
 def main() -> None:
-    # We don't need to call shutdown in this case. Rust should be handling everything
-    # TODO(ab): we only do that because __init__.py was loaded and register_shutdown() was called.
-    # Ideally, nothing should be loaded at all but `rerun_bindings` when we run `python3 -m rerun`.
+    # When running `python -m rerun` (i.e. executing this file), the `rerun` package and its `__init__.py` are still
+    # loaded. This has the side effect of executing `register_shutdown()` (schedule `bindings.shutdown()` to be called
+    # at exit. We don't need this here, so we unregister that call.
+    # TODO(ab): figure out a way to skip loading `__init__.py` entirely (to avoid doing this and save on loading time)
     unregister_shutdown()
+
     exit(bindings.main())
 
 
