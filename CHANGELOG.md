@@ -14,6 +14,17 @@
 
 ### Overview & Highlights
 * The C++ SDK is finally here!
+  ```cpp
+  #include <rerun.hpp>
+
+  int main() {
+      const auto rec = rerun::RecordingStream("rerun_example_points3d_simple");
+      rec.spawn().exit_on_failure();
+
+      rec.log("points", rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
+  }
+  ```
+
 * Add an integrated getting-started guide into the viewer splash screen
 * Add a new and improved `spawn` method in the Rust SDK
 * Add support for NV12-encoded images [#3541](https://github.com/rerun-io/rerun/pull/3541) (thanks [@zrezke](https://github.com/zrezke)!)
