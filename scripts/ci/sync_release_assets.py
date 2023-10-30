@@ -58,7 +58,11 @@ def fetch_binary_assets(
     # Python wheels
     if do_wheels:
         wheel_blobs = list(bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
-        for blob in [bucket.get_blob(blob.name) for blob in wheel_blobs if blob.name.endswith(".whl")]:
+        for blob in [
+            bucket.get_blob(blob.name)
+            for blob in wheel_blobs
+            if blob.name.endswith(".whl")
+        ]:
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
 
@@ -91,11 +95,15 @@ def fetch_binary_assets(
             ),
             (
                 f"librerun_c-{tag}-aarch64-apple-darwin.a",
-                bucket.get_blob(f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a"),
+                bucket.get_blob(
+                    f"commit/{commit_short}/rerun_c/macos-arm/librerun_c.a"
+                ),
             ),
             (
                 f"librerun_c-{tag}-x86_64-apple-darwin.a",
-                bucket.get_blob(f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a"),
+                bucket.get_blob(
+                    f"commit/{commit_short}/rerun_c/macos-intel/librerun_c.a"
+                ),
             ),
         ]
         for name, blob in rerun_c_blobs:
@@ -170,19 +178,41 @@ def update_release_assets(release: GitRelease, assets: Assets):
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--github-token", required=True, help="GitHub token")
-    parser.add_argument("--github-repository", default="rerun-io/rerun", help="GitHub repository")
-    parser.add_argument(
-        "--github-release", required=True, help="ID of the Github (pre)release (e.g. `prerelease` or `0.9.0`)"
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--github-timeout", default=120, help="Timeout for Github related operations")
+    parser.add_argument("--github-token", required=True, help="GitHub token")
+    parser.add_argument(
+        "--github-repository", default="rerun-io/rerun", help="GitHub repository"
+    )
+    parser.add_argument(
+        "--github-release",
+        required=True,
+        help="ID of the Github (pre)release (e.g. `prerelease` or `0.9.0`)",
+    )
+    parser.add_argument(
+        "--github-timeout", default=120, help="Timeout for Github related operations"
+    )
     parser.add_argument("--wait", default=0, help="Sleep a bit before doing anything")
-    parser.add_argument("--remove", action="store_true", help="Remove existing assets from the specified release")
-    parser.add_argument("--update", action="store_true", help="Update new assets to the specified release")
-    parser.add_argument("--no-wheels", action="store_true", help="Don't upload Python wheels")
-    parser.add_argument("--no-rerun-c", action="store_true", help="Don't upload C libraries")
-    parser.add_argument("--no-rerun-cpp-sdk", action="store_true", help="Don't upload C++ uber SDK")
+    parser.add_argument(
+        "--remove",
+        action="store_true",
+        help="Remove existing assets from the specified release",
+    )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Update new assets to the specified release",
+    )
+    parser.add_argument(
+        "--no-wheels", action="store_true", help="Don't upload Python wheels"
+    )
+    parser.add_argument(
+        "--no-rerun-c", action="store_true", help="Don't upload C libraries"
+    )
+    parser.add_argument(
+        "--no-rerun-cpp-sdk", action="store_true", help="Don't upload C++ uber SDK"
+    )
     parser.add_argument("--no-rerun-cli", action="store_true", help="Don't upload CLI")
     args = parser.parse_args()
 
@@ -196,7 +226,9 @@ def main() -> None:
     gh = Github(args.github_token, timeout=args.github_timeout)
     repo = gh.get_repo(args.github_repository)
     release = cast(GitRelease, get_any_release(repo, args.github_release))
-    commit = dict([(tag.name, tag.commit) for tag in repo.get_tags()])[args.github_release]
+    commit = dict([(tag.name, tag.commit) for tag in repo.get_tags()])[
+        args.github_release
+    ]
 
     print(
         f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…'
@@ -226,7 +258,9 @@ def main() -> None:
     # See e.g. <https://github.com/ncipollo/release-action/issues/317>.
     if release.draft:
         print("Detected mistakenly drafted release, undrafting…")
-        release.update_release(release.title, release.body, draft=False, prerelease=release.prerelease)
+        release.update_release(
+            release.title, release.body, draft=False, prerelease=release.prerelease
+        )
 
 
 if __name__ == "__main__":
