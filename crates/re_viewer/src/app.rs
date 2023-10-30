@@ -925,7 +925,7 @@ impl App {
         // being used in.
         for source in sources {
             match &*source {
-                // No need for a welome screen - data is coming soon!
+                // No need for a welcome screen - data is coming soon!
                 SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
                     return false;
                 }
