@@ -4,7 +4,7 @@
 #include <arrow/status.h>
 
 #include <algorithm> // For std::transform
-#include <cstdlib>   // For getenv
+#include <cstdlib>   // For getenv & std::exit
 #include <string>
 
 namespace rerun {
@@ -29,12 +29,12 @@ namespace rerun {
 
         if (v == "1" || v == "true" || v == "yes" || v == "on") {
             return true;
-        } else if (v == "0" || v == "false" || v == "no" || v == "off") {
+        } else if (v == "0" || v == "false" || v == "no" || v == "off" || v == "") {
             return false;
         } else {
             fprintf(
                 stderr,
-                "Expected env-var RERUN_STRICT to be 0/1 true/false yes/no on/off, found '%s'",
+                "Expected env-var RERUN_STRICT to be 0/1 true/false yes/no on/off, found '%s'\n",
                 env
             );
             return false;
@@ -110,6 +110,13 @@ namespace rerun {
     void Error::set_log_handler(StatusLogHandler handler, void* userdata) {
         global_log_handler = handler;
         global_log_handler_user_data = userdata;
+    }
+
+    void Error::exit_on_failure() const {
+        if (is_err()) {
+            handle();
+            std::exit(1);
+        }
     }
 
     void Error::handle() const {

@@ -1,5 +1,5 @@
 #include <rerun.hpp>
 
 int main() {
-    rerun::spawn().throw_on_failure();
+    rerun::spawn().exit_on_failure();
 }

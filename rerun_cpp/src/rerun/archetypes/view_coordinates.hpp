@@ -32,7 +32,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     const auto rec = rerun::RecordingStream("rerun_example_view_coordinates");
-        ///     rec.spawn().throw_on_failure();
+        ///     rec.spawn().exit_on_failure();
         ///
         ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
         ///     rec.log(

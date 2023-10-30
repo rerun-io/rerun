@@ -4,7 +4,7 @@
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_points3d_simple");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 
     rec.log("points", rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
 }
