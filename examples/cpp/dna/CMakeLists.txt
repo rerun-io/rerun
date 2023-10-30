@@ -12,7 +12,8 @@ else()
     add_executable(example_dna main.cpp)
 
     # Set the path to the rerun_c build.
-    set(RERUN_CPP_URL CACHE STRING "URL to the rerun_cpp zip.")
+    #TODO(#3962): Update URL
+    set(RERUN_CPP_URL "https://build.rerun.io/commit/c6c50d2/rerun_cpp_sdk.zip" CACHE STRING "URL to the rerun_cpp zip.")
 
     # Download the rerun_sdk
     include(FetchContent)
