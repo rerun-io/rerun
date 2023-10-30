@@ -22,7 +22,7 @@ If you prefer to learn by example, check out our example repository which uses t
 ## Using Rerun with CMake
 
 Assuming you are starting with a bare-bones `CMakeLists.txt` such as:
-```
+```cmake
 cmake_minimum_required(VERSION 3.16)
 project(example_minimal LANGUAGES CXX)
 
@@ -32,7 +32,8 @@ add_executable(example_minimal main.cpp)
 You can add Rerun to your project using `FetchContent`
 ```cmake
 include(FetchContent)
-FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_Declare(rerun_sdk URL
+    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
 FetchContent_MakeAvailable(rerun_sdk)
 ```
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms, all Rerun C++ sources and headers, as well as CMake build instructions for them.
@@ -56,7 +57,8 @@ add_executable(example_minimal main.cpp)
 
 # Download the rerun_sdk
 include(FetchContent)
-FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_Declare(rerun_sdk URL
+    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
 FetchContent_MakeAvailable(rerun_sdk)
 
 # Rerun requires at least C++17, but it should be compatible with newer versions.
