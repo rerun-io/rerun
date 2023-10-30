@@ -1,18 +1,11 @@
 # Rerun C++ Examples
-The simplest example is [`minimal`](minimal/main.cpp). You may want to start there!
+The simplest example is [`minimal`](minimal/main.cpp). You may want to start there
+using the accompanying [`C++ Quick Start`](https://www.rerun.io/docs/getting-started/cpp?speculative-link) guide.
 
-TODO(#2919): This example is not ready yet.
+## Build all examples
+The CMake target `examples` is a convenient alias for building all CMake examples in one go.
 
-Read more about our examples at <https://www.rerun.io/examples>.
-
-## Setup
-TODO(#2919): Document.
-
-## Dependencies
-TODO(#2919): Document.
-
-## Running the examples
-TODO(#2919): Document.
+You can use `pixi run cpp-build-examples` to invoke it within the repository's Pixi environment.
 
 ## Contributions welcome
 Feel free to open a PR to add a new example!
