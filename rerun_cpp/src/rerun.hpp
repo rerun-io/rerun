@@ -1,6 +1,6 @@
 // The Rerun C++ SDK.
 //
-// For more information, read our [getting-started guide](https://www.rerun.io/docs/getting-started/cpp?speculative-link)
+// For more information, read our [getting-started guide](https://www.rerun.io/docs/getting-started/cpp)
 // or visit <https://www.rerun.io/>.
 
 #pragma once

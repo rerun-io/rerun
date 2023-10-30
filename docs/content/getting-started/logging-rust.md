@@ -333,7 +333,7 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 ### Spawning the Viewer from your process
 
-If the Rerun Viewer is [installed](installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn?speculative-link) to automatically start a viewer in a new process and connect to it over TCP.
+If the Rerun Viewer is [installed](installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a viewer in a new process and connect to it over TCP.
 If an external viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 ```rust
