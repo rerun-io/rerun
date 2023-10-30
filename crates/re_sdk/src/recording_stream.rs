@@ -1563,28 +1563,6 @@ impl RecordingStream {
         ThreadInfo::unset_thread_time(&this.info.store_id, Timeline::new_temporal(timeline));
     }
 
-    /// Clears out the current time of the recording for the specified timeline of a specific
-    /// kind (see [`TimeType`]), for the current calling thread.
-    ///
-    /// For example: `rec.disable_timeline(Timeline::new_sequence("frame"))`.
-    ///
-    /// See also:
-    /// - [`Self::set_timepoint`]
-    /// - [`Self::set_time_sequence`]
-    /// - [`Self::set_time_seconds`]
-    /// - [`Self::set_time_nanos`]
-    /// - [`Self::disable_timeline`]
-    /// - [`Self::reset_time`]
-    #[doc(hidden)]
-    pub fn disable_timeline_specific(&self, timeline: impl Into<Timeline>) {
-        let Some(this) = &*self.inner else {
-            re_log::warn_once!("Recording disabled - call to disable_timeline_specific() ignored");
-            return;
-        };
-
-        ThreadInfo::unset_thread_time(&this.info.store_id, timeline.into());
-    }
-
     /// Clears out the current time of the recording, for the current calling thread.
     ///
     /// Used for all subsequent logging performed from this same thread, until the next call
