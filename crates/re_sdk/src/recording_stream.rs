@@ -1365,8 +1365,12 @@ impl ThreadInfo {
         Self::with(|ti| ti.now(rid))
     }
 
-    fn set_thread_time(rid: &StoreId, timeline: Timeline, time_int: Option<TimeInt>) {
+    fn set_thread_time(rid: &StoreId, timeline: Timeline, time_int: TimeInt) {
         Self::with(|ti| ti.set_time(rid, timeline, time_int));
+    }
+
+    fn unset_thread_time(rid: &StoreId, timeline: Timeline) {
+        Self::with(|ti| ti.unset_time(rid, timeline));
     }
 
     fn reset_thread_time(rid: &StoreId) {
@@ -1393,13 +1397,15 @@ impl ThreadInfo {
         timepoint
     }
 
-    fn set_time(&mut self, rid: &StoreId, timeline: Timeline, time_int: Option<TimeInt>) {
-        if let Some(time_int) = time_int {
-            self.timepoints
-                .entry(rid.clone())
-                .or_default()
-                .insert(timeline, time_int);
-        } else if let Some(timepoint) = self.timepoints.get_mut(rid) {
+    fn set_time(&mut self, rid: &StoreId, timeline: Timeline, time_int: TimeInt) {
+        self.timepoints
+            .entry(rid.clone())
+            .or_default()
+            .insert(timeline, time_int);
+    }
+
+    fn unset_time(&mut self, rid: &StoreId, timeline: Timeline) {
+        if let Some(timepoint) = self.timepoints.get_mut(rid) {
             timepoint.remove(&timeline);
         }
     }
@@ -1427,10 +1433,14 @@ impl RecordingStream {
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the time setting methods.
     ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
     /// See also:
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::disable_timeline_specific`]
     /// - [`Self::reset_time`]
     pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
         let Some(this) = &*self.inner else {
@@ -1441,7 +1451,7 @@ impl RecordingStream {
         let timepoint = timepoint.into();
 
         for (timeline, time) in timepoint {
-            ThreadInfo::set_thread_time(&this.info.store_id, timeline, Some(time));
+            ThreadInfo::set_thread_time(&this.info.store_id, timeline, time);
         }
     }
 
@@ -1451,19 +1461,18 @@ impl RecordingStream {
     /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+    /// You can remove a timeline again using `rec.disable_timeline("frame_nr")`.
     ///
-    /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::disable_timeline_specific`]
     /// - [`Self::reset_time`]
-    pub fn set_time_sequence(
-        &self,
-        timeline: impl Into<TimelineName>,
-        sequence: impl Into<Option<i64>>,
-    ) {
+    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
             return;
@@ -1472,7 +1481,7 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Sequence),
-            sequence.into().map(TimeInt::from),
+            sequence.into().into(),
         );
     }
 
@@ -1482,15 +1491,18 @@ impl RecordingStream {
     /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
+    /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
     ///
-    /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::disable_timeline_specific`]
     /// - [`Self::reset_time`]
-    pub fn set_time_seconds(&self, timeline: &str, seconds: impl Into<Option<f64>>) {
+    pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
             return;
@@ -1499,9 +1511,7 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
-            seconds
-                .into()
-                .map(|secs| Time::from_seconds_since_epoch(secs).into()),
+            Time::from_seconds_since_epoch(seconds.into()).into(),
         );
     }
 
@@ -1511,15 +1521,18 @@ impl RecordingStream {
     /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
+    /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
     ///
-    /// You can remove a timeline again using `rec.set_time_nanos("sim_time", None)`.
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::disable_timeline_specific`]
     /// - [`Self::reset_time`]
-    pub fn set_time_nanos(&self, timeline: &str, ns: impl Into<Option<i64>>) {
+    pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
             return;
@@ -1528,8 +1541,55 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
-            ns.into().map(|ns| Time::from_ns_since_epoch(ns).into()),
+            Time::from_ns_since_epoch(ns.into()).into(),
         );
+    }
+
+    /// Clears out the current time of the recording for the specified timeline, for the
+    /// current calling thread.
+    ///
+    /// This will clear out _both sequential and temporal_ timelines of the specified name.
+    /// Refer to [`Self::disable_timeline_specific`] if you need more fine-grained control.
+    ///
+    /// For example: `rec.disable_timeline("frame")`, `rec.disable_timeline("sim_time")`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline_specific`]
+    /// - [`Self::reset_time`]
+    pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
+        let Some(this) = &*self.inner else {
+            re_log::warn_once!("Recording disabled - call to reset_time() ignored");
+            return;
+        };
+
+        let timeline = timeline.into();
+        ThreadInfo::unset_thread_time(&this.info.store_id, Timeline::new_sequence(timeline));
+        ThreadInfo::unset_thread_time(&this.info.store_id, Timeline::new_temporal(timeline));
+    }
+
+    /// Clears out the current time of the recording for the specified timeline of a specific
+    /// kind (see [`TimeType`]), for the current calling thread.
+    ///
+    /// For example: `rec.disable_timeline(Timeline::new_sequence("frame"))`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::reset_time`]
+    pub fn disable_timeline_specific(&self, timeline: impl Into<Timeline>) {
+        let Some(this) = &*self.inner else {
+            re_log::warn_once!("Recording disabled - call to reset_time() ignored");
+            return;
+        };
+
+        ThreadInfo::unset_thread_time(&this.info.store_id, timeline.into());
     }
 
     /// Clears out the current time of the recording, for the current calling thread.
@@ -1544,6 +1604,8 @@ impl RecordingStream {
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
+    /// - [`Self::disable_timeline_specific`]
     pub fn reset_time(&self) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to reset_time() ignored");
