@@ -178,6 +178,18 @@ namespace rerun {
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
+    void RecordingStream::disable_timeline_sequential(std::string_view timeline_name) const {
+        rr_error status = {};
+        rr_recording_stream_disable_timeline(_id, detail::to_rr_string(timeline_name), &status);
+        Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
+    }
+
+    void RecordingStream::disable_timeline_temporal(std::string_view timeline_name) const {
+        rr_error status = {};
+        rr_recording_stream_disable_timeline(_id, detail::to_rr_string(timeline_name), &status);
+        Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
+    }
+
     void RecordingStream::reset_time() const {
         rr_recording_stream_reset_time(_id);
     }
