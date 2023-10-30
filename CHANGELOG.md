@@ -10,7 +10,7 @@
 
 * Python: `pip install rerun-sdk`
 * Rust: `cargo add rerun` and `cargo install rerun-cli`
-* Online demo: <https://app.rerun.io/version/0.9.1/>
+* Online demo: <https://app.rerun.io/version/0.10.0/>
 
 ### Overview & Highlights
 * The C++ SDK is finally here!
