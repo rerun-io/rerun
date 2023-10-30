@@ -23,24 +23,23 @@ class Tensor(TensorExt, Archetype):
     -------
     ### Simple Tensor:
     ```python
+    import numpy as np
     import rerun as rr
-    from numpy.random import default_rng
 
-    rng = default_rng(12345)
-    tensor = rng.uniform(0.0, 1.0, (8, 6, 3, 5))  # 4-dimensional tensor
+    tensor = np.random.randint(0, 256, (8, 6, 3, 5), dtype=np.uint8)  # 4-dimensional tensor
 
-    rr.init("rerun_example_tensors", spawn=True)
+    rr.init("rerun_example_tensor_simple", spawn=True)
 
     # Log the tensor, assigning names to each dimension
     rr.log("tensor", rr.Tensor(tensor, dim_names=("width", "height", "channel", "batch")))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png">
-      <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png">
+      <img src="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png" width="640">
     </picture>
     </center>
     """
