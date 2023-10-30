@@ -27,14 +27,17 @@ Alternatively, you can add the source of `https://github.com/rerun-io/rerun/blob
 project and then use `add_subdirectory`.
 
 In this case you will also need to make sure the Rerun C static libraries are available for your target platforms.
-Pre-built libraries can be downloaded from [the release pages](https://github.com/rerun-io/rerun/releases/latest). The
-libraries will need to be renamed as:
+
+Pre-built libraries can be downloaded from [the release pages](https://github.com/rerun-io/rerun/releases/latest).
+
+If you want to match the behavior of `rerun_cpp_sdk.zip`, these libraries should be placed in the folder `rerun_cpp/lib`, renamed as:
  - Linux: `librerun_c__linux_x64.a`
  - Windows: `rerun_c__win_x64.lib`
  - Mac: `librerun_c__macos_x64.a`
  - Mac Arm: `librerun_c__macos_arm64.a`
 
-You can either download these to the folder `rerun_cpp/lib` or set the path to a different location using `-DRERUN_C_LIB`.
+Or if you have a different build/download mechanism, you can point directly to the library by setting `RERUN_C_LIB`
+before adding the subdirectory.
 
 ⚠️ Make sure **not** to add the root of the Rerun repository, as this will not only add many examples and tests
 but also make additional assumptions about your build environment. For example it will always try to build
