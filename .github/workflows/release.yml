@@ -136,6 +136,7 @@ jobs:
         id: commit
         if: steps.versioning.outputs.previous != steps.versioning.outputs.current
         run: |
+          git pull
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
           git commit -am "Bump versions to ${{ steps.versioning.outputs.current }}"
@@ -310,6 +311,7 @@ jobs:
 
       - name: Commit new version
         run: |
+          git pull
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
           git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
