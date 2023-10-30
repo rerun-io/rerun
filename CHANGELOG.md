@@ -30,6 +30,7 @@
 - Python: remove unconditional sleep on `spawn` [#4010](https://github.com/rerun-io/rerun/pull/4010)
 - Support `pathlib.Path` for `rr.save` [#4036](https://github.com/rerun-io/rerun/pull/4036)
 - Add `disable_timeline` function [#4068](https://github.com/rerun-io/rerun/pull/4068)
+- Support fast install of the rerun viewer with `cargo binstall rerun-cli` thanks to [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall)
 
 #### 🦀 Rust SDK
 - Introduce `re_types_core` [#3878](https://github.com/rerun-io/rerun/pull/3878)
