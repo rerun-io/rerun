@@ -32,16 +32,36 @@ namespace rerun {
         ///     // NOTE: `rerun::RecordingStream` is thread-safe.
         ///     const rerun::RecordingStream* rec = reinterpret_cast<const rerun::RecordingStream*>(user_data);
         ///
-        ///     rec->log("loguru", rerun::TextLog(message.message));
+        ///     rerun::TextLogLevel level;
+        ///     if (message.verbosity == loguru::Verbosity_FATAL) {
+        ///         level = rerun::TextLogLevel::CRITICAL;
+        ///     } else if (message.verbosity == loguru::Verbosity_ERROR) {
+        ///         level = rerun::TextLogLevel::ERROR;
+        ///     } else if (message.verbosity == loguru::Verbosity_WARNING) {
+        ///         level = rerun::TextLogLevel::WARN;
+        ///     } else if (message.verbosity == loguru::Verbosity_INFO) {
+        ///         level = rerun::TextLogLevel::INFO;
+        ///     } else if (message.verbosity == loguru::Verbosity_1) {
+        ///         level = rerun::TextLogLevel::DEBUG;
+        ///     } else if (message.verbosity == loguru::Verbosity_2) {
+        ///         level = rerun::TextLogLevel::TRACE;
+        ///     } else {
+        ///         level = rerun::TextLogLevel(std::to_string(message.verbosity));
+        ///     }
+        ///
+        ///     rec->log(
+        ///         "logs/handler/text_log_integration",
+        ///         rerun::TextLog(message.message).with_level(level)
+        ///     );
         /// }
         ///
         /// int main() {
-        ///     const auto rec = rerun::RecordingStream("rerun_example_text_log");
+        ///     const auto rec = rerun::RecordingStream("rerun_example_text_log_integration");
         ///     rec.spawn().throw_on_failure();
         ///
         ///     // Log a text entry directly:
         ///     rec.log(
-        ///         "log",
+        ///         "logs",
         ///         rerun::TextLog("this entry has loglevel TRACE").with_level(rerun::TextLogLevel::TRACE)
         ///     );
         ///
