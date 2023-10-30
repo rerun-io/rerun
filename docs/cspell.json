@@ -202,10 +202,12 @@
     "Objectron",
     "odometry",
     "Odometry",
+    "omahs",
     "Optimus",
     "pablovela",
     "pacman",
     "parametrizations",
+    "pathlib",
     "Pautrat",
     "Pavlakos",
     "PHALP",
@@ -225,6 +227,7 @@
     "pyopf",
     "pypi",
     "pyright",
+    "pytest",
     "Pythonic",
     "quickstart",
     "randn",
@@ -358,6 +361,7 @@
     "YXYX",
     "zipfile",
     "Zisserman",
+    "zrezke",
     "zstd",
     "zune"
   ]
