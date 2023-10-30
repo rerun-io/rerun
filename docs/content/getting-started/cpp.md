@@ -29,7 +29,7 @@ FetchContent_MakeAvailable(rerun_sdk)
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
 all Rerun C++ sources and headers, as well as CMake build instructions for them.
 By default this will in turn download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++.
-See [Install arrow-cpp](../howto/arrow-cpp-install) to learn more about this step and how to use an existing install.
+See [Install arrow-cpp](../howto/arrow-cpp-install.md) to learn more about this step and how to use an existing install.
 
 Currently, Rerun SDK works with C++17 or newer, so you need to add this property to your target:
 ```cmake
