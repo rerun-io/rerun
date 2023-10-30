@@ -1,4 +1,4 @@
-name: Publish the CLI from a specific commit
+name: Manually publish the CLI from a specific commit
 
 on:
   workflow_dispatch:
@@ -23,5 +23,5 @@ jobs:
     with:
       release-version: ${{ inputs.RELEASE_VERSION }}
       release-commit: ${{ inputs.RELEASE_COMMIT }}
-      concurrency: ${{ github.ref_name }}
+      concurrency: manual-publish-cli-${{ github.ref_name }}
     secrets: inherit
