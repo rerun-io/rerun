@@ -550,52 +550,6 @@ pub extern "C" fn rr_recording_stream_disable_timeline(
 }
 
 #[allow(unsafe_code)]
-#[allow(clippy::result_large_err)]
-fn rr_recording_stream_disable_timeline_sequential_impl(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-) -> Result<(), CError> {
-    let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.disable_timeline_specific(re_sdk::Timeline::new_sequence(timeline));
-    Ok(())
-}
-
-#[allow(unsafe_code)]
-#[no_mangle]
-pub extern "C" fn rr_recording_stream_disable_timeline_sequential(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    error: *mut CError,
-) {
-    if let Err(err) = rr_recording_stream_disable_timeline_sequential_impl(stream, timeline_name) {
-        err.write_error(error);
-    }
-}
-
-#[allow(unsafe_code)]
-#[allow(clippy::result_large_err)]
-fn rr_recording_stream_disable_timeline_temporal_impl(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-) -> Result<(), CError> {
-    let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.disable_timeline_specific(re_sdk::Timeline::new_temporal(timeline));
-    Ok(())
-}
-
-#[allow(unsafe_code)]
-#[no_mangle]
-pub extern "C" fn rr_recording_stream_disable_timeline_temporal(
-    stream: CRecordingStream,
-    timeline_name: CStringView,
-    error: *mut CError,
-) {
-    if let Err(err) = rr_recording_stream_disable_timeline_temporal_impl(stream, timeline_name) {
-        err.write_error(error);
-    }
-}
-
-#[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().remove(stream) {

@@ -345,32 +345,10 @@ extern void rr_recording_stream_set_time_nanos(
 
 /// Stops logging to the specified timeline for subsequent log calls.
 ///
-/// Clears out _both sequential and temporal_ timelines of the specified name.
-/// Refer to `disable_timeline_sequential`/`disable_timeline_temporal` if you need
-/// more fine-grained control.
+/// The timeline is still there, but will not be updated with any new data.
 ///
-/// The timelines are still there, but will not be updated with any new data.
-///
-/// No-op if the timelines don't exist.
+/// No-op if the timeline doesn't exist.
 void rr_recording_stream_disable_timeline(
-    rr_recording_stream stream, rr_string timeline_name, rr_error* error
-);
-
-/// Stops logging to the specified sequential timeline for subsequent log calls.
-///
-/// The timeline is still there, but will not be updated with any new data.
-///
-/// No-op if the timeline doesn't exist.
-void rr_recording_stream_disable_timeline_sequential(
-    rr_recording_stream stream, rr_string timeline_name, rr_error* error
-);
-
-/// Stops logging to the specified temporal timeline for subsequent log calls.
-///
-/// The timeline is still there, but will not be updated with any new data.
-///
-/// No-op if the timeline doesn't exist.
-void rr_recording_stream_disable_timeline_temporal(
     rr_recording_stream stream, rr_string timeline_name, rr_error* error
 );
 
