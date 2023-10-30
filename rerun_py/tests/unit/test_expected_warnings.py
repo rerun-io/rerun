@@ -4,7 +4,7 @@ import pytest
 import rerun as rr
 from rerun.error_utils import RerunWarning
 
-rr.init("exceptions", spawn=False)
+rr.init("rerun_example_exceptions", spawn=False)
 # Make sure strict mode isn't leaking in from another context
 mem = rr.memory_recording()
 

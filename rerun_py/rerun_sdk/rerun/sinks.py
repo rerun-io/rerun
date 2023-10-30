@@ -224,8 +224,8 @@ def spawn(
         subprocess.Popen(
             [
                 python_executable,
-                "-m",
-                "rerun",
+                "-c",
+                "import rerun_bindings; rerun_bindings.main()",
                 f"--port={port}",
                 f"--memory-limit={memory_limit}",
                 "--skip-welcome-screen",

@@ -107,11 +107,20 @@ def main() -> None:
     print("----------------------------------------------------------")
     print(f"Building {len(archetypes)} archetypes…")
 
+    # Running CMake in parallel causes failures during rerun_sdk & arrow build.
+    # TODO(andreas): Tell cmake in a single command to build everything at once.
+    if not args.no_cpp_build:
+        for arch in archetypes:
+            arch_opt_out = opt_out.get(arch, [])
+            if "cpp" in arch_opt_out:
+                continue
+            build(arch, "cpp", args)
+
     with multiprocessing.Pool() as pool:
         jobs = []
         for arch in archetypes:
             arch_opt_out = opt_out.get(arch, [])
-            for language in ["cpp", "py", "rust"]:
+            for language in ["py", "rust"]:
                 if language in arch_opt_out:
                     continue
                 job = pool.apply_async(build, (arch, language, args))

@@ -296,6 +296,10 @@ jobs:
         build-rerun_c-and-upload-macos-intel,
         build-rerun_c-and-upload-macos-arm,
         build-rerun_c-and-upload-windows,
+        build-rerun-cli-and-upload-linux,
+        build-rerun-cli-and-upload-macos-intel,
+        build-rerun-cli-and-upload-macos-arm,
+        build-rerun-cli-and-upload-windows,
         bundle-and-upload-rerun_cpp,
       ]
     runs-on: "ubuntu-latest"
@@ -340,13 +344,13 @@ jobs:
             ## CMake fetch-content for C++ SDK
             ```
             include(FetchContent)
-            FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp_sdk.zip)
+            FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_cpp_sdk.zip)
             FetchContent_MakeAvailable(rerun_sdk)
             ```
             or
             ```
             include(FetchContent)
-            FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip)
+            FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip)
             FetchContent_MakeAvailable(rerun_sdk)
             ```
 
@@ -372,10 +376,4 @@ jobs:
     with:
       CONCURRENCY: push-${{ github.ref_name }}
       RELEASE_VERSION: prerelease
-      # The google-cloud-storage update action doesn't seem to have any kind of read-your-writes
-      # semantics, so make sure to wait for a bit before we start to sync stuff.
-      #
-      # 15 seconds might seem long, but the prerelease workflow takes about 40 minutes, so a drop in
-      # the ocean really… and I'd rather be on the safe side.
-      WAIT_TIME_SECS: 15
     secrets: inherit

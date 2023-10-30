@@ -56,7 +56,7 @@ def expected_warnings(warnings: Any, mem: Any, starting_msgs: int, count: int, e
 def test_stack_tracking() -> None:
     # Force flushing so we can count the messages
     os.environ["RERUN_FLUSH_NUM_ROWS"] = "0"
-    rr.init("test_enable_strict_mode", spawn=False)
+    rr.init("rerun_example_strict_mode", spawn=False)
 
     mem = rr.memory_recording()
     with pytest.warns(RerunWarning) as warnings:

@@ -40,7 +40,7 @@ homepage = "https://www.rerun.io"
 repository = "https://github.com/rerun-io/rerun"
 
 [project.scripts]
-rerun = "rerun.__main__:main"
+rerun = "rerun_bindings:main"
 
 [tool.ruff]
 # https://beta.ruff.rs/docs/configuration/
@@ -54,6 +54,9 @@ extend-exclude = [
 
   # Intentionally uses ''' instead of """ so we can embed it in a docstring in the Python API docs.
   "docs/code-examples/text_document.py",
+
+  # TODO(#4047): incomplete example snippet
+  "docs/code-examples/timelines_example.py",
 
   # generated
   "examples/python/objectron/proto/objectron/proto.py",

@@ -50,7 +50,8 @@ def run_structure_from_motion(args):
         print(f"No demo file found at {rrd_file}. Package was built without demo support", file=sys.stderr)
         exit(1)
     else:
-        exit(bindings.main([sys.argv[0], str(rrd_file)] + serve_opts))
+        sys.argv = [sys.argv[0], str(rrd_file)] + serve_opts
+        exit(bindings.main())
 
 
 def main() -> None:
