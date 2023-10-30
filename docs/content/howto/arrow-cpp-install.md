@@ -3,7 +3,7 @@ title: Install arrow-cpp
 order: 6
 ---
 
-# Automatically download & build arrow from source (default)
+## Automatically download & build arrow from source (default)
 
 By default, the Rerun C++ SDK's CMake script (which is part of the SDK's zip artifact that can be fetched via `FetchContent`)
 will download a known compatible version of Arrow from GitHub and add it to the build.
@@ -15,7 +15,7 @@ This will cause Rerun to instead use CMake's `find_package` to look for a ready-
 
 For more information about CMake config options see [C++ SDK CMake](../reference/cpp-sdk-cmake.md).
 
-# Install arrow-cpp with Pixi
+## Install arrow-cpp with Pixi
 
 [Pixi](https://prefix.dev/docs/pixi/overview) is a convenient tool for managing cross-platform project dependencies. In
 fact, Rerun uses it for our own internal development dependency management, and you will find `pixi.toml` files in most
@@ -27,7 +27,7 @@ The advantage of using Pixi is that you can rely on pre-built artifacts rather t
 Also, Pixi is of course also useful for managing other dependencies like Eigen or OpenCV,
 as well as fr pinning the version of your build tooling.
 
-## Installing Pixi
+### Installing Pixi
 On Mac or Linux you can just run:
 ```
 curl -fsSL https://pixi.sh/install.sh | bash
@@ -44,7 +44,7 @@ cargo install pixi
 
 See the [Pixi installation guide](https://prefix.dev/docs/pixi/overview#installation) for other installation options.
 
-## Adding Pixi to your own project
+### Adding Pixi to your own project
 
 If you want to use `pixi` to manage dependencies in your own project, you can simply run `pixi init` in the root of your
 project folder. This will create a `pixi.toml` file that manages the project. After that you can run
@@ -57,15 +57,7 @@ Even without tasks, you can run `pixi shell` to create a shell environment where
 
 Check out the [pixi docs](https://prefix.dev/docs/pixi/basic_usage) for more information on what you can do with pixi.
 
-## Using a global install of arrow-cpp
-
-If you're not ready to use pixi for your project, you can still use it to install `arrow-cpp` globally by running
-`pixi global install arrow-cpp`. However, in this case you will need to also tell `cmake` how to find the packages:
-```bash
-export CMAKE_PREFIX_PATH=$HOME/.pixi/envs/arrow-cpp:$CMAKE_PREFIX_PATH
-```
-
-## Pixi in action
+### Pixi in action
 
 The rerun-cpp example: <https://github.com/rerun-io/cpp-example-opencv-eigen> ships with a `pixi.toml` file to manage
 its dependencies, as well as a set of tasks to simplify running it.
@@ -77,7 +69,7 @@ cd cpp-example-opencv-eigen
 pixi run example
 ```
 
-## Known Issues
+### Known Issues
 
 ⚠️ [#4050](https://github.com/rerun-io/rerun/issues/4050) `arrow-cpp` needs to be held back to 10.0.1 to avoid conflicts
 with the `rerun-sdk` package when installed in the same pixi environment.
