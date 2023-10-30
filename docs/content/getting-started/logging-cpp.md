@@ -14,14 +14,23 @@ This guide aims to go wide instead of deep.
 There are links to other doc pages where you can learn more about specific topics.
 
 At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/dna/main.cpp?speculative-link) to better keep track of the overall picture.
-To run the example from the repository, run:
+To build the example from the repository, run:
 
 ```bash
-cd main/examples/cpp/dna
+cd examples/cpp/dna
 cmake -B build
 cmake --build build -j
+```
+
+And then to run it on Linux/Mac:
+```
 ./build/example_dna
 ```
+and windows respectively:
+```
+build\Debug\example_dna.exe
+```
+
 
 ## Prerequisites
 
