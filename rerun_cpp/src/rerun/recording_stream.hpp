@@ -204,37 +204,13 @@ namespace rerun {
 
         /// Stops logging to the specified timeline for subsequent log calls.
         ///
-        /// Clears out _both sequential and temporal_ timelines of the specified name.
-        /// Refer to `disable_timeline_sequential`/`disable_timeline_temporal` if you need
-        /// more fine-grained control.
+        /// The timeline is still there, but will not be updated with any new data.
         ///
-        /// The timelines are still there, but will not be updated with any new data.
-        ///
-        /// No-op if the timelines don't exist.
+        /// No-op if the timeline doesn't exist.
         ///
         /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, disable_timeline_sequential,
         /// disable_timeline_temporal
         void disable_timeline(std::string_view timeline_name) const;
-
-        /// Stops logging to the specified sequential timeline for subsequent log calls.
-        ///
-        /// The timeline is still there, but will not be updated with any new data.
-        ///
-        /// No-op if the timeline doesn't exist.
-        ///
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, disable_timeline,
-        /// disable_timeline_temporal
-        void disable_timeline_sequential(std::string_view timeline_name) const;
-
-        /// Stops logging to the specified temporal timeline for subsequent log calls.
-        ///
-        /// The timeline is still there, but will not be updated with any new data.
-        ///
-        /// No-op if the timeline doesn't exist.
-        ///
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, disable_timeline,
-        /// disable_timeline_temporal
-        void disable_timeline_temporal(std::string_view timeline_name) const;
 
         /// Clears out the current time of the recording, for the current calling thread.
         ///

@@ -115,10 +115,6 @@ def disable_timeline(timeline: str, recording: RecordingStream | None = None) ->
     """
     Clear time information for the specified timeline on this thread.
 
-    This will clear out _both sequential and temporal_ timelines of the specified name.
-    Refer to [`disable_timeline_sequential`][]/[`disable_timeline_temporal`][] if you need
-    more fine-grained control.
-
     Parameters
     ----------
     timeline : str
@@ -133,46 +129,6 @@ def disable_timeline(timeline: str, recording: RecordingStream | None = None) ->
     recording = RecordingStream.to_native(recording)
 
     bindings.disable_timeline(timeline, recording=recording)
-
-
-def disable_timeline_sequential(timeline: str, recording: RecordingStream | None = None) -> None:
-    """
-    Clear time information for the specified sequential timeline on this thread.
-
-    Parameters
-    ----------
-    timeline : str
-        The name of the timeline to clear the time for.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-
-    recording = RecordingStream.to_native(recording)
-
-    bindings.disable_timeline_sequential(timeline, recording=recording)
-
-
-def disable_timeline_temporal(timeline: str, recording: RecordingStream | None = None) -> None:
-    """
-    Clear time information for the specified temporal timeline on this thread.
-
-    Parameters
-    ----------
-    timeline : str
-        The name of the timeline to clear the time for.
-    recording:
-        Specifies the [`rerun.RecordingStream`][] to use.
-        If left unspecified, defaults to the current active data recording, if there is one.
-        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
-
-    """
-
-    recording = RecordingStream.to_native(recording)
-
-    bindings.disable_timeline_temporal(timeline, recording=recording)
 
 
 def reset_time(recording: RecordingStream | None = None) -> None:

@@ -69,8 +69,6 @@ __all__ = [
     "connect",
     "datatypes",
     "disable_timeline",
-    "disable_timeline_sequential",
-    "disable_timeline_temporal",
     "disconnect",
     "experimental",
     "get_application_id",
@@ -212,8 +210,6 @@ from .script_helpers import script_add_args, script_setup, script_teardown
 from .sinks import connect, disconnect, memory_recording, save, serve, spawn
 from .time import (
     disable_timeline,
-    disable_timeline_sequential,
-    disable_timeline_temporal,
     reset_time,
     set_time_nanos,
     set_time_seconds,
@@ -256,8 +252,6 @@ def _init_recording_stream() -> None:
             set_time_seconds,
             set_time_nanos,
             disable_timeline,
-            disable_timeline_temporal,
-            disable_timeline_sequential,
             reset_time,
         ]
         + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]

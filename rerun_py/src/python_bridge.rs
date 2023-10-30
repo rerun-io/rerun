@@ -141,8 +141,6 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
     m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
-    m.add_function(wrap_pyfunction!(disable_timeline_sequential, m)?)?;
-    m.add_function(wrap_pyfunction!(disable_timeline_temporal, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
 
     // log any
@@ -697,23 +695,10 @@ fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStre
 
 #[pyfunction]
 fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
-    disable_timeline_temporal(timeline, recording);
-    disable_timeline_sequential(timeline, recording);
-}
-
-#[pyfunction]
-fn disable_timeline_sequential(timeline: &str, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
     recording.disable_timeline_specific(re_log_types::Timeline::new_sequence(timeline));
-}
-
-#[pyfunction]
-fn disable_timeline_temporal(timeline: &str, recording: Option<&PyRecordingStream>) {
-    let Some(recording) = get_data_recording(recording) else {
-        return;
-    };
     recording.disable_timeline_specific(re_log_types::Timeline::new_temporal(timeline));
 }
 
