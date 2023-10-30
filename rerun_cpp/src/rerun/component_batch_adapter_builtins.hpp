@@ -64,7 +64,7 @@ namespace rerun {
         }
     };
 
-    /// Adaptor from a C-Array reference.
+    /// Adapter from a C-Array reference.
     ///
     /// *Attention*: Does *not* take ownership of the data,
     /// you need to ensure that the data outlives the component batch.
