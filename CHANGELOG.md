@@ -4,6 +4,82 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
+## [0.10.0](https://github.com/rerun-io/rerun/compare/0.9.1...0.10.0) - C++ SDK - 2023-10-30
+
+[Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
+
+* Python: `pip install rerun-sdk`
+* Rust: `cargo add rerun` and `cargo install rerun-cli`
+* Online demo: <https://app.rerun.io/version/0.9.1/>
+
+### Overview & Highlights
+* The C++ SDK is finally here!
+* Add an integrated getting-started guide into the viewer splash screen
+* Add a new and improved `spawn` method in the C++ SDK
+* Add support for NV12-encoded images
+
+### Details
+#### 🌊 C++ SDK
+- Add `RERUN_STRICT` environment variable [#3861](https://github.com/rerun-io/rerun/pull/3861)
+- Fix crash when using `RecordingStream::set_thread_local` on macOS [#3929](https://github.com/rerun-io/rerun/pull/3929)
+- Add `spawn` function [#3998](https://github.com/rerun-io/rerun/pull/3998) [#4031](https://github.com/rerun-io/rerun/pull/4031)
+- Add `disable_timeline` function [#4068](https://github.com/rerun-io/rerun/pull/4068)
+
+#### 🐍 Python SDK
+- Add `RERUN_STRICT` environment variable [#3861](https://github.com/rerun-io/rerun/pull/3861)
+- Fix potential deadlock when saving to file after logging at the end of a Python program [#3920](https://github.com/rerun-io/rerun/pull/3920)
+- Warn if no resolution provided to Pinhole [#3923](https://github.com/rerun-io/rerun/pull/3923)
+- Python: remove unconditional sleep on `spawn` [#4010](https://github.com/rerun-io/rerun/pull/4010)
+- Support `pathlib.Path` for `rr.save` [#4036](https://github.com/rerun-io/rerun/pull/4036)
+- Add `disable_timeline` function [#4068](https://github.com/rerun-io/rerun/pull/4068)
+
+#### 🦀 Rust SDK
+- Introduce `re_types_core` [#3878](https://github.com/rerun-io/rerun/pull/3878)
+- Fix crash when using `RecordingStream::set_thread_local` on macOS [#3929](https://github.com/rerun-io/rerun/pull/3929)
+- Add improved `spawn` function [#3996](https://github.com/rerun-io/rerun/pull/3996) [#4031](https://github.com/rerun-io/rerun/pull/4031)
+- Redesign `clap` integration [#3997](https://github.com/rerun-io/rerun/pull/3997) [#4040](https://github.com/rerun-io/rerun/pull/4040)
+- `RecordingStream`: introduce `connect_opts` [#4042](https://github.com/rerun-io/rerun/pull/4042)
+- Add `disable_timeline` function [#4068](https://github.com/rerun-io/rerun/pull/4068)
+
+#### 🪳 Bug Fixes
+- Fix grayscale images being too dark [#3999](https://github.com/rerun-io/rerun/pull/3999)
+- Prevent badly sized tensors from crashing the viewer [#4005](https://github.com/rerun-io/rerun/pull/4005)
+- Fix selection history right-click menu not working [#3819](https://github.com/rerun-io/rerun/pull/3819)
+
+#### 🌁 Viewer Improvements
+- Replace `--strict` flag with `RERUN_PANIC_ON_WARN` env-var [#3872](https://github.com/rerun-io/rerun/pull/3872)
+- Support NV12-encoded images [#3541](https://github.com/rerun-io/rerun/pull/3541) (thanks [@zrezke](https://github.com/zrezke)!)
+
+#### 🧑‍🏫 Examples
+- `--max-frame` support for tracking examples [#3835](https://github.com/rerun-io/rerun/pull/3835)
+
+#### 📚 Docs
+- Synchronize code examples and their screenshots [#3954](https://github.com/rerun-io/rerun/pull/3954)
+- Improve docs for `TextDocument` example [#4008](https://github.com/rerun-io/rerun/pull/4008)
+- Fix typos in documentation and code comments [#4061](https://github.com/rerun-io/rerun/pull/4061) (thanks [@omahs](https://github.com/omahs)!)
+
+#### 🖼 UI Improvements
+- Add basic support for in-app "Quick Start" guides [#3813](https://github.com/rerun-io/rerun/pull/3813) [#3912](https://github.com/rerun-io/rerun/pull/3912)
+- Add copy-button to markdown code blocks [#3882](https://github.com/rerun-io/rerun/pull/3882)
+- Add warning in the Quick Start guides about Safari breaking Copy to Clipboard [#3898](https://github.com/rerun-io/rerun/pull/3898)
+
+#### 🎨 Renderer Improvements
+- Add easy way to dump out final wgsl shader [#3947](https://github.com/rerun-io/rerun/pull/3947)
+
+#### 🧑‍💻 Dev-experience
+- Approve all workflow runs for a specific contributor PR [#3876](https://github.com/rerun-io/rerun/pull/3876)
+- Make codegen I/O-free and agnostic to output location [#3888](https://github.com/rerun-io/rerun/pull/3888)
+- Configure pytest to fail on warnings [#3903](https://github.com/rerun-io/rerun/pull/3903)
+- Improve `taplo` output on failure [#3909](https://github.com/rerun-io/rerun/pull/3909)
+- Automatically synchronize build.rerun.io & release assets [#3945](https://github.com/rerun-io/rerun/pull/3945)
+- New helper script to run fast lints and pre-push hook that runs it [#3949](https://github.com/rerun-io/rerun/pull/3949)
+- CI: Rerun CLI as a release asset [#3959](https://github.com/rerun-io/rerun/pull/3959)
+- Add script to generate RRD vs. screenshots comparisons [#3946](https://github.com/rerun-io/rerun/pull/3946)
+- Add a new build Environment option for CondaBuild to improve conda-built artifacts [#4015](https://github.com/rerun-io/rerun/pull/4015)
+- Lock python in CI to 3.11 [#4033](https://github.com/rerun-io/rerun/pull/4033)
+- Changed `spawn()` and the `rerun` script to call into `rerun_bindings` (12x startup time improvement) [#4053](https://github.com/rerun-io/rerun/pull/4053)
+
+
 ## [0.9.1](https://github.com/rerun-io/rerun/compare/0.9.0...0.9.1) - Bug fixes and performance improvements - 2023-10-12
 
 [Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
@@ -138,7 +214,7 @@ Other highlights:
 - Show picking position when hovering something in the spatial view [#3227](https://github.com/rerun-io/rerun/pull/3227)
 - Rethink view selection & filtering + make all views opt-in [#3323](https://github.com/rerun-io/rerun/pull/3323)
 - Markdown support in `TextDocument` [#3343](https://github.com/rerun-io/rerun/pull/3343)
-- Click `recording://entity/path` links in markdown  [#3442](https://github.com/rerun-io/rerun/pull/3442)
+- Click `recording://entity/path` links in markdown [#3442](https://github.com/rerun-io/rerun/pull/3442)
 - Allow showing image shaped tensors in the tensor view [#3583](https://github.com/rerun-io/rerun/pull/3583)
 - Add option to display timestamps in the local system timezone [#3530](https://github.com/rerun-io/rerun/pull/3530) (thanks [@jparismorgan](https://github.com/jparismorgan)!)
 - Add obj mesh support to viewer [#3670](https://github.com/rerun-io/rerun/pull/3670)
@@ -342,7 +418,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 
 ### Known Regressions
 - Due to the Blueprint storage migration, blueprint persistence on web is currently broken. Will be resolved in:
-  [#2579](https://github.com/rerun-io/rerun/issues/2579)
+ [#2579](https://github.com/rerun-io/rerun/issues/2579)
 
 ### In Detail
 #### 🐍 Python SDK
@@ -485,7 +561,7 @@ for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/re
 #### 🏭 New Codegen Framework
 - Codegen/IDL 1: add more build tools [#2362](https://github.com/rerun-io/rerun/pull/2362)
 - Codegen/IDL 2: introduce `re_types_builder` [#2363](https://github.com/rerun-io/rerun/pull/2363)
-- Codegen/IDL 3: introduce `re_types`  [#2369](https://github.com/rerun-io/rerun/pull/2369)
+- Codegen/IDL 3: introduce `re_types` [#2369](https://github.com/rerun-io/rerun/pull/2369)
 - Codegen/IDL 4: definitions for a `Points2D` archetype [#2370](https://github.com/rerun-io/rerun/pull/2370)
 - Codegen/IDL 5: auto-generated Python code for `Points2D` [#2374](https://github.com/rerun-io/rerun/pull/2374)
 - Codegen/IDL 7: handwritten Python tests and extensions for `Points2D` [#2410](https://github.com/rerun-io/rerun/pull/2410)
@@ -985,7 +1061,7 @@ This new release adds MVP support for embedding Rerun in Jupyter notebooks, and 
 - Incremental metadata registry stats [#1833](https://github.com/rerun-io/rerun/pull/1833)
 
 #### 🗣 Merged RFCs
-- RFC: datastore state of the union & end-to-end batching  [#1610](https://github.com/rerun-io/rerun/pull/1610)
+- RFC: datastore state of the union & end-to-end batching [#1610](https://github.com/rerun-io/rerun/pull/1610)
 
 #### 🧑‍💻 Dev-experience
 - Post-release cleanup [#1726](https://github.com/rerun-io/rerun/pull/1726)
@@ -1024,7 +1100,7 @@ https://user-images.githubusercontent.com/1220815/228241887-03b311e2-80e9-4541-9
 * Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
 * Lower memory use [#1535](https://github.com/rerun-io/rerun/pull/1535)
 * Improve garbage collection [#1560](https://github.com/rerun-io/rerun/pull/1560)
-* Improve the web viewer [#1596](https://github.com/rerun-io/rerun/pull/1596) [#1594](https://github.com/rerun-io/rerun/pull/1594) [#1682](https://github.com/rerun-io/rerun/pull/1682)  [#1716](https://github.com/rerun-io/rerun/pull/1716) …
+* Improve the web viewer [#1596](https://github.com/rerun-io/rerun/pull/1596) [#1594](https://github.com/rerun-io/rerun/pull/1594) [#1682](https://github.com/rerun-io/rerun/pull/1682) [#1716](https://github.com/rerun-io/rerun/pull/1716) …
 * Nice outlines when hovering/selecting
 * Add an example of forever-streaming a web-camera image to Rerun [#1502](https://github.com/rerun-io/rerun/pull/1502)
 * Fix crash-on-save on some versions of Linux [#1402](https://github.com/rerun-io/rerun/pull/1402)
@@ -1043,9 +1119,9 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 #### 🦀 Rust SDK
 - ⚠️ `Session::new` has been replaced with `SessionBuilder` [#1528](https://github.com/rerun-io/rerun/pull/1528)
 - ⚠️ `session.spawn(…)` -> `rerun::native_viewer::spawn(session, …)` [#1507](https://github.com/rerun-io/rerun/pull/1507)
-- ⚠️ `session.show()` -> `rerun::native_viewer::show(session)`  [#1507](https://github.com/rerun-io/rerun/pull/1507)
-- ⚠️ `session.serve(…)` -> `rerun::serve_web_viewer(session, …);`  [#1507](https://github.com/rerun-io/rerun/pull/1507)
-- ⚠️ `rerun::global_session` is now hidden behind the `global_session` feature flag  [#1507](https://github.com/rerun-io/rerun/pull/1507)
+- ⚠️ `session.show()` -> `rerun::native_viewer::show(session)` [#1507](https://github.com/rerun-io/rerun/pull/1507)
+- ⚠️ `session.serve(…)` -> `rerun::serve_web_viewer(session, …);` [#1507](https://github.com/rerun-io/rerun/pull/1507)
+- ⚠️ `rerun::global_session` is now hidden behind the `global_session` feature flag [#1507](https://github.com/rerun-io/rerun/pull/1507)
 - Add support for mesh vertex colors [#1671](https://github.com/rerun-io/rerun/pull/1671)
 
 #### 🪳 Bug Fixes
@@ -1086,7 +1162,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - datastore: early exit missing components at table level [#1554](https://github.com/rerun-io/rerun/pull/1554)
 - datastore: track bucket count in store stats & mem panel [#1555](https://github.com/rerun-io/rerun/pull/1555)
 - LogDb: dont split on index bucket size [#1558](https://github.com/rerun-io/rerun/pull/1558)
-- Introduce a simpler cache dedicated to just decode JPEGs  [#1550](https://github.com/rerun-io/rerun/pull/1550)
+- Introduce a simpler cache dedicated to just decode JPEGs [#1550](https://github.com/rerun-io/rerun/pull/1550)
 - Implement outlines for points 2d/3d/depth & use them for select & hover in Viewer [#1568](https://github.com/rerun-io/rerun/pull/1568)
 - Simplify ImageCache [#1551](https://github.com/rerun-io/rerun/pull/1551)
 - New time panel density graph [#1557](https://github.com/rerun-io/rerun/pull/1557)
@@ -1238,7 +1314,7 @@ Meanwhile, we did a bunch of improvements to our manual. If you had trouble runn
   * re_renderer: implement depth cloud renderer [#1415](https://github.com/rerun-io/rerun/pull/1415)
   * Integrate depth clouds into Rerun [#1421](https://github.com/rerun-io/rerun/pull/1421)
   * CPU & GPU color maps [#1484](https://github.com/rerun-io/rerun/pull/1484)
-  * Integrate GPU color maps into depth clouds  [#1486](https://github.com/rerun-io/rerun/pull/1486)
+  * Integrate GPU color maps into depth clouds [#1486](https://github.com/rerun-io/rerun/pull/1486)
 * Python SDK: Add strict mode [#1477](https://github.com/rerun-io/rerun/pull/1477)
 * OS independent Zoom factor & serialization thereof [#1448](https://github.com/rerun-io/rerun/pull/1448)
 * Labels for 3D objects have now a color can now be selected & hovered [#1438](https://github.com/rerun-io/rerun/pull/1438)
