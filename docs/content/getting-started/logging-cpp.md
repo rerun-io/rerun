@@ -16,23 +16,27 @@ There are links to other doc pages where you can learn more about specific topic
 
 <!-- TODO(#3962): Fix link -->
 At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/main/examples/cpp/dna/main.cpp) to better keep track of the overall picture.
-To run the example from the repository, run `cargo run -p dna`.
+To run the example from the repository, run:
+```
+cd main/examples/cpp/dna
+cmake -B build
+cmake --build build -j
+./build/example_dna
+```
 
 ## Prerequisites
 
 You should have already [installed the viewer](installing-viewer.md).
 
-We assume you have a working C++ toolchain and are using `CMake` to build your project.
-
-Rerun also has a dependency on `arrow-cpp`. So you should have either:
- - Followed our [how-to guide](../howto/arrow-cpp-pixi.md) on using pixi to install `arrow-cpp`.
- - Installed manually via your package manager as described in the official Arrow Apache [install guide](https://arrow.apache.org/install/).
+We assume you have a working C++ toolchain and are using `CMake` to build your project. For this example
+we will let Rerun download build [Apache Arrow](https://arrow.apache.org/)'s C++ library itself.
+See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install?speculative-link) to learn more about this step and how to use an existing install.
 
 ## Setting up your CMakeLists.txt
 
 A minimal CMakeLists.txt for this example looks like this:
 ```cmake
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.27)
 project(example_dna LANGUAGES CXX)
 
 add_executable(example_dna main.cpp)
@@ -85,7 +89,7 @@ int main() {
 }
 ```
 
-Among other things, a stable [`ApplicationId`] will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
+Among other things, a stable `ApplicationId` will make it so the [Rerun Viewer](../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
 Check out the reference to learn more about how Rerun deals with [applications and recordings](../concepts/apps-and-recordings.md).
 
@@ -154,11 +158,11 @@ _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference]
 
 This tiny snippet of code actually holds much more than meets the eye…
 
-`Archetypes`
+#### Archetypes
 
 The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/recording_stream.hpp#L223-L233) method with one of the built-in archetype class, such as [`Points3D`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/archetypes/points3d.hpp#L26-L66). Archetypes take care of building batches of components that are recognized and correctly displayed by the Rerun viewer.
 
-`Components`
+#### Components
 
 Under the hood, the Rerun C++ SDK logs individual *components* like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
@@ -170,7 +174,7 @@ Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/mai
 will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
 
-`Entities & hierarchies`
+#### Entities & hierarchies
 
 Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structure/right"`.
 
