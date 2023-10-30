@@ -41,3 +41,13 @@ It provides a minimalistic C interface that encapsulates the shared building blo
 
 By default points to where a pre-built library for the currently active platform
 is expected to be found in the Rerun C++ SDK distribution zip.
+
+
+## Tested compilers
+
+The Rerun C++ SDK requires a C++17 compliant compiler.
+
+As of writing it was tested against:
+* Apple Clang 14, 15
+* GCC 9
+* Visual Studio 2022
