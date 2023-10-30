@@ -47,12 +47,13 @@ jobs:
         with:
           python-version: 3.11
 
-      - name: Check links for `?speculative-link`
-        # NOTE: We allow `?speculative-link` only in alpha releases
-        run: |
-          if [ ${{ inputs.release-type }} != "alpha" ]; then
-            python3 scripts/ci/check_links.py
-          fi
+      # TODO(emilk): We want to forbid `?speculative-link` just _after_ a release…
+      # - name: Check links for `?speculative-link`
+      #   # NOTE: We allow `?speculative-link` only in alpha releases
+      #   run: |
+      #     if [ ${{ inputs.release-type }} != "alpha" ]; then
+      #       python3 scripts/ci/check_links.py
+      #     fi
 
   version:
     name: "Versioning"
