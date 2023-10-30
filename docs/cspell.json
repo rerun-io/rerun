@@ -151,6 +151,7 @@
     "lerp",
     "libclang",
     "libgtk",
+    "librerun",
     "libvulkan",
     "libxcb",
     "libxkbcommon",

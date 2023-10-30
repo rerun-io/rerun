@@ -68,6 +68,7 @@ __all__ = [
     "components",
     "connect",
     "datatypes",
+    "disable_timeline",
     "disconnect",
     "experimental",
     "get_application_id",
@@ -207,7 +208,13 @@ from .recording_stream import (
 )
 from .script_helpers import script_add_args, script_setup, script_teardown
 from .sinks import connect, disconnect, memory_recording, save, serve, spawn
-from .time import reset_time, set_time_nanos, set_time_seconds, set_time_sequence
+from .time import (
+    disable_timeline,
+    reset_time,
+    set_time_nanos,
+    set_time_seconds,
+    set_time_sequence,
+)
 
 # Import experimental last
 from . import experimental  # isort: skip
@@ -217,15 +224,15 @@ from . import experimental  # isort: skip
 # UTILITIES
 
 __all__ += [
+    "cleanup_if_forked_child",
     "init",
     "new_recording",
-    "version",
     "rerun_shutdown",
-    "unregister_shutdown",
-    "cleanup_if_forked_child",
-    "shutdown_at_exit",
     "set_strict_mode",
+    "shutdown_at_exit",
     "start_web_viewer_server",
+    "unregister_shutdown",
+    "version",
 ]
 
 
@@ -240,7 +247,13 @@ def _init_recording_stream() -> None:
 
     recording_stream_patch(
         [connect, save, disconnect, memory_recording, serve, spawn]
-        + [set_time_sequence, set_time_seconds, set_time_nanos, reset_time]
+        + [
+            set_time_sequence,
+            set_time_seconds,
+            set_time_nanos,
+            disable_timeline,
+            reset_time,
+        ]
         + [fn for name, fn in getmembers(sys.modules[__name__], isfunction) if name.startswith("log_")]
     )
 

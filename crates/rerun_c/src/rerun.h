@@ -1,12 +1,11 @@
 // ----------------------------------------------------------------------------
-// The Rerun C SDK for Rerun version @RERUN_VERSION@
-// ----------------------------------------------------------------------------
+// The Rerun C SDK for Rerun.
 // This file is part of the rerun_c Rust crate.
-// EDITS TO COPIES OUTSIDE OF RERUN_C WILL BE OVERWRITTEN.
 // ----------------------------------------------------------------------------
 //
 // All Rerun functions and types are thread-safe,
 // which means you can share a `rr_recording_stream` across threads.
+// ----------------------------------------------------------------------------
 
 #ifndef RERUN_H
 #define RERUN_H
@@ -345,7 +344,7 @@ extern void rr_recording_stream_set_time_nanos(
 
 /// Stops logging to the specified timeline for subsequent log calls.
 ///
-/// The timeline is still there, but it will not be updated with any new data.
+/// The timeline is still there, but will not be updated with any new data.
 ///
 /// No-op if the timeline doesn't exist.
 void rr_recording_stream_disable_timeline(

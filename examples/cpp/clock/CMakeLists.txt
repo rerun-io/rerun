@@ -12,7 +12,7 @@ else()
     add_executable(example_clock main.cpp)
 
     # Set the path to the rerun_c build.
-    set(RERUN_CPP_URL CACHE STRING "URL to the rerun_cpp zip.")
+    set(RERUN_CPP_URL "https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip" CACHE STRING "URL to the rerun_cpp zip.")
 
     # Download the rerun_sdk
     include(FetchContent)
