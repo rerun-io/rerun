@@ -495,7 +495,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     for i in 0..6 * 120 {
         let time = i as f32 / 120.0;
 
-        rec.set_time_seconds("sim_time", Some(time as f64));
+        rec.set_time_seconds("sim_time", time as f64);
 
         rec.log(
             "transforms3d/sun/planet",
