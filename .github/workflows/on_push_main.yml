@@ -296,6 +296,10 @@ jobs:
         build-rerun_c-and-upload-macos-intel,
         build-rerun_c-and-upload-macos-arm,
         build-rerun_c-and-upload-windows,
+        build-rerun-cli-and-upload-linux,
+        build-rerun-cli-and-upload-macos-intel,
+        build-rerun-cli-and-upload-macos-arm,
+        build-rerun-cli-and-upload-windows,
         bundle-and-upload-rerun_cpp,
       ]
     runs-on: "ubuntu-latest"
