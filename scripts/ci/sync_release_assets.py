@@ -66,18 +66,20 @@ def fetch_binary_assets(
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
 
-                if "macosx" in name:
-                    if "x86_64" in name:
-                        name = f"rerun_sdk-{tag}-aarch64-apple-darwin.whl"
-                    if "arm64" in name:
-                        name = f"rerun_sdk-{tag}-x86_64-apple-darwin.whl"
-
-                if "manylinux_2_31_x86_64" in name:
-                    if "x86_64" in name:
-                        name = f"rerun_sdk-{tag}-x86_64-unknown-linux-gnu.whl"
-
-                if "win_amd64" in name:
-                    name = f"rerun_sdk-{tag}-x86_64-pc-windows-msvc.whl"
+                # NOTE(cmc): I would love to rename those so they match the versioning of our
+                # other assets, but that breaks `pip install`…
+                # if "macosx" in name:
+                #     if "x86_64" in name:
+                #         name = f"rerun_sdk-{tag}-aarch64-apple-darwin.whl"
+                #     if "arm64" in name:
+                #         name = f"rerun_sdk-{tag}-x86_64-apple-darwin.whl"
+                #
+                # if "manylinux_2_31_x86_64" in name:
+                #     if "x86_64" in name:
+                #         name = f"rerun_sdk-{tag}-x86_64-unknown-linux-gnu.whl"
+                #
+                # if "win_amd64" in name:
+                #     name = f"rerun_sdk-{tag}-x86_64-pc-windows-msvc.whl"
 
                 print(f"    Found Python wheel: {name} ")
                 assets[name] = blob
