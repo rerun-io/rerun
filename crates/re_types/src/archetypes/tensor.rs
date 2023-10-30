@@ -44,11 +44,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/1200w.png">
-///   <img src="https://static.rerun.io/tensor_simple/1aead2554496737e9267a5ab5220dbc89da851ee/full.png" width="640">
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png">
+///   <img src="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]

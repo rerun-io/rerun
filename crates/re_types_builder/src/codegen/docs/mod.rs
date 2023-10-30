@@ -163,7 +163,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         };
         putln!(page);
         putln!(page, "## Links");
-        // TODO(#2919): link to C++ docs
+        // TODO(#3974): link to C++ docs
         putln!(
             page,
             " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
