@@ -15,15 +15,13 @@
 ### Overview & Highlights
 * The C++ SDK is finally here!
 * Add an integrated getting-started guide into the viewer splash screen
-* Add a new and improved `spawn` method in the C++ SDK
-* Add support for NV12-encoded images
+* Add a new and improved `spawn` method in the Rust SDK
+* Add support for NV12-encoded images [#3541](https://github.com/rerun-io/rerun/pull/3541) (thanks [@zrezke](https://github.com/zrezke)!)
+* We now publish pre-built binaries for each release at <https://github.com/rerun-io/rerun/releases>
 
 ### Details
 #### 🌊 C++ SDK
-- Add `RERUN_STRICT` environment variable [#3861](https://github.com/rerun-io/rerun/pull/3861)
-- Fix crash when using `RecordingStream::set_thread_local` on macOS [#3929](https://github.com/rerun-io/rerun/pull/3929)
-- Add `spawn` function [#3998](https://github.com/rerun-io/rerun/pull/3998) [#4031](https://github.com/rerun-io/rerun/pull/4031)
-- Add `disable_timeline` function [#4068](https://github.com/rerun-io/rerun/pull/4068)
+- Has all the features of the Python and C++ SDK:s
 
 #### 🐍 Python SDK
 - Add `RERUN_STRICT` environment variable [#3861](https://github.com/rerun-io/rerun/pull/3861)
