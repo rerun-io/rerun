@@ -30,7 +30,7 @@ You should have already [installed the viewer](installing-viewer.md).
 
 We assume you have a working C++ toolchain and are using `CMake` to build your project. For this example
 we will let Rerun download build [Apache Arrow](https://arrow.apache.org/)'s C++ library itself.
-See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install?speculative-link) to learn more about this step and how to use an existing install.
+See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install) to learn more about this step and how to use an existing install.
 
 ## Setting up your CMakeLists.txt
 
