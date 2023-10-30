@@ -218,8 +218,7 @@ def main() -> None:
     parser.add_argument("--no-rerun-cli", action="store_true", help="Don't upload CLI")
     args = parser.parse_args()
 
-    # Wait for a bit before doing anything.
-    # Useful on CI because the google-cloud-storage upload action doesn't guarantee to read-your-writes.
+    # Wait for a bit before doing anything, if you must.
     wait_time_secs = float(args.wait)
     if wait_time_secs > 0.0:
         print(f"Waiting for {wait_time_secs}s…")
