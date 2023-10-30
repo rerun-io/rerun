@@ -6,24 +6,14 @@ order: 2
 ## Setup
 Before adding Rerun to your application, start by [installing the viewer](installing-viewer.md).
 
-The Rerun C++ SDK depends on an install of the `arrow-cpp` library on your system using.
-
-🚧 In the future we want to make this part of the setup easier.
-
-### Installing arrow-cpp with pixi
-See our [how-to guide](../howto/arrow-cpp-pixi.md) on using pixi to install `arrow-cpp`.
-
-### Installing arrow-cpp manually
-Find more information about other package managers at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
-
 ## Learning by example
 If you prefer to learn by example, check out our example repository which uses the Rerun C++ SDK to log some data from Eigen and OpenCV: <https://github.com/rerun-io/cpp-example-opencv-eigen>.
 
 ## Using Rerun with CMake
 
 Assuming you are starting with a bare-bones `CMakeLists.txt` such as:
-```
-cmake_minimum_required(VERSION 3.16)
+```cmake
+cmake_minimum_required(VERSION 3.16...3.27)
 project(example_minimal LANGUAGES CXX)
 
 add_executable(example_minimal main.cpp)
@@ -35,7 +25,10 @@ include(FetchContent)
 FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
 FetchContent_MakeAvailable(rerun_sdk)
 ```
-This will download a bundle with pre-built Rerun C static libraries for most desktop platforms, all Rerun C++ sources and headers, as well as CMake build instructions for them.
+This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
+all Rerun C++ sources and headers, as well as CMake build instructions for them.
+By default this will in turn download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++.
+See [Install arrow-cpp](../howto/arrow-cpp-install) to learn more about this step and how to use an existing install.
 
 Currently, Rerun SDK works with C++17 or newer, so you need to add this property to your target:
 ```cmake
