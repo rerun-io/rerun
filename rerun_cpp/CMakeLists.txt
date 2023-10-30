@@ -163,6 +163,7 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         GIT_REPOSITORY https://github.com/apache/arrow.git
         GIT_TAG apache-arrow-10.0.1
         GIT_SHALLOW true
+        GIT_PROGRESS true
         CMAKE_ARGS
         --preset ninja-debug-minimal
         -DARROW_IPC=ON
