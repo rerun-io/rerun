@@ -33,7 +33,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
-        ///     rec.spawn().exit_on_failure()
+        ///     rec.spawn().exit_on_failure();
         ///
         ///     rec.log("world/image", rerun::Pinhole::from_focal_length_and_resolution(3.0f, {3.0f, 3.0f}));
         ///
