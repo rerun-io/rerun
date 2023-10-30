@@ -13,6 +13,8 @@ To instead use an existing install of Arrow, disable the CMake build option `RER
 (by passing `-DRERUN_DOWNLOAD_AND_BUILD_ARROW=OFF` to your CMake configure step).
 This will cause Rerun to instead use CMake's `find_package` to look for a ready-to-use install of the Arrow C++ library.
 
+For more information about CMake config options see [C++ SDK CMake](../reference/cpp-sdk-cmake.md).
+
 # Install arrow-cpp with Pixi
 
 [Pixi](https://prefix.dev/docs/pixi/overview) is a convenient tool for managing cross-platform project dependencies. In

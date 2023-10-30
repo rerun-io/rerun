@@ -1,5 +1,5 @@
 ---
-title: C++ SDK CMake setup
+title: C++ SDK CMake
 order: 8
 ---
 
