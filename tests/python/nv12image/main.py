@@ -24,7 +24,7 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_test_nv12image")
+    rr.script_setup(args, "rerun_example_nv12image")
 
     # Make sure you use a colorful image!
     dir_path = os.path.dirname(os.path.realpath(__file__))
