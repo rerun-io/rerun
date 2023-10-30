@@ -137,7 +137,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     You can install binary releases of the Rerun Viewer:
     * Using `cargo`: `cargo binstall rerun-cli` (see https://github.com/cargo-bins/cargo-binstall)
     * Via direct download from our release assets: https://github.com/rerun-io/rerun/releases/latest/
-    * Using `pip`: `pip3 install rerun-sdk` (warning: pip version has slower start times!)
+    * Using `pip`: `pip3 install rerun-sdk`
 
     For more information, refer to our complete install documentation over at:
     https://rerun.io/docs/getting-started/installing-viewer
@@ -148,7 +148,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<(), SpawnError> {
     You can install an appropriate version of the Rerun Viewer via binary releases:
     * Using `cargo`: `cargo binstall --force rerun-cli@__VIEWER_VERSION__` (see https://github.com/cargo-bins/cargo-binstall)
     * Via direct download from our release assets: https://github.com/rerun-io/rerun/releases/__VIEWER_VERSION__/
-    * Using `pip`: `pip3 install rerun-sdk==__VIEWER_VERSION__` (warning: pip version has slower start times!)
+    * Using `pip`: `pip3 install rerun-sdk==__VIEWER_VERSION__`
 
     For more information, refer to our complete install documentation over at:
     https://rerun.io/docs/getting-started/installing-viewer
