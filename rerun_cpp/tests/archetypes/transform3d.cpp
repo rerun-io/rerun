@@ -18,9 +18,11 @@ SCENARIO(
 
     SECTION("TranslationAndMat3x3") {
 // Do NOT write this as rrd::Mat3x3 as this actually caught an overload resolution  bug.
-#define MATRIX_ILIST                                                 \
-    {                                                                \
-        {1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, { 7.0f, 8.0f, 9.0f } \
+#define MATRIX_ILIST                              \
+    {                                             \
+        {1.0f, 2.0f, 3.0f}, {4.0f, 5.0f, 6.0f}, { \
+            7.0f, 8.0f, 9.0f                      \
+        }                                         \
     }
 
         rrd::Vec3D columns[3] = MATRIX_ILIST;
