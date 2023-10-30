@@ -35,7 +35,7 @@ namespace rerun {
         /// #include <vector>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_depth_image");
+        ///     const auto rec = rerun::RecordingStream("rerun_example_depth_image");
         ///     rec.spawn().throw_on_failure();
         ///
         ///     // Create a synthetic depth image.

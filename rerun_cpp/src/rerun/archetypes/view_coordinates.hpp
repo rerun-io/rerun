@@ -31,7 +31,7 @@ namespace rerun {
         /// #include <rerun.hpp>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_view_coordinates");
+        ///     const auto rec = rerun::RecordingStream("rerun_example_view_coordinates");
         ///     rec.spawn().throw_on_failure();
         ///
         ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis

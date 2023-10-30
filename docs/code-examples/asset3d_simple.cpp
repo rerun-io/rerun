@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
 
     const auto path = argv[1];
 
-    auto rec = rerun::RecordingStream("rerun_example_asset3d_simple");
+    const auto rec = rerun::RecordingStream("rerun_example_asset3d_simple");
     rec.spawn().throw_on_failure();
 
     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis

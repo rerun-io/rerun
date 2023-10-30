@@ -7,7 +7,7 @@
 #include <vector>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
+    const auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
     rec.spawn().throw_on_failure();
 
     rec.log("world/image", rerun::Pinhole::from_focal_length_and_resolution(3.0f, {3.0f, 3.0f}));

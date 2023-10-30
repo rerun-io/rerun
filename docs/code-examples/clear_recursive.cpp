@@ -8,7 +8,7 @@
 #include <vector>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_clear_recursive");
+    const auto rec = rerun::RecordingStream("rerun_example_clear_recursive");
     rec.spawn().throw_on_failure();
 
     std::vector<rerun::Vector3D> vectors = {

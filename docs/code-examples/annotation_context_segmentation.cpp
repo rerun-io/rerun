@@ -6,7 +6,7 @@
 #include <vector>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
+    const auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
     rec.spawn().throw_on_failure();
 
     // create an annotation context to describe the classes

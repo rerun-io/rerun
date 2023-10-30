@@ -3,7 +3,7 @@
 #include <rerun.hpp>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_line_segments2d");
+    const auto rec = rerun::RecordingStream("rerun_example_line_segments2d");
     rec.spawn().throw_on_failure();
 
     std::vector<std::vector<std::array<float, 2>>> points = {

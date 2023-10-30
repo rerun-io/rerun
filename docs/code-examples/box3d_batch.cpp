@@ -3,7 +3,7 @@
 #include <rerun.hpp>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_box3d_batch");
+    const auto rec = rerun::RecordingStream("rerun_example_box3d_batch");
     rec.spawn().throw_on_failure();
 
     rec.log(

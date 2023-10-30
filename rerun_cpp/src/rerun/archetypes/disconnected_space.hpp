@@ -29,7 +29,7 @@ namespace rerun {
         /// #include <rerun.hpp>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
+        ///     const auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
         ///     rec.spawn().throw_on_failure();
         ///
         ///     // These two points can be projected into the same space..

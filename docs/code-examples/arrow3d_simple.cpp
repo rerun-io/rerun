@@ -8,7 +8,7 @@
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_arrow3d");
+    const auto rec = rerun::RecordingStream("rerun_example_arrow3d");
     rec.spawn().throw_on_failure();
 
     std::vector<rerun::Position3D> origins;

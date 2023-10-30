@@ -10,7 +10,7 @@ rerun::Position3D mul_pos(float factor, rerun::Position3D vec) {
 }
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_mesh3d_partial_updates");
+    const auto rec = rerun::RecordingStream("rerun_example_mesh3d_partial_updates");
     rec.spawn().throw_on_failure();
 
     rerun::Position3D vertex_positions[3] = {
