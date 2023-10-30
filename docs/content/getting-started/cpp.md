@@ -125,3 +125,5 @@ If you'd rather learn from examples, check out the [example gallery](/examples) 
 There's also a stand-alone example that shows [interop with Eigen and OpenCV](https://github.com/rerun-io/cpp-example-opencv-eigen).
 
 TODO(#3977): Note that this is still an area of active development and there's going to be major improvements for library interop in upcoming versions.
+
+To learn more about how to configure the C++ SDK's CMake file, check [C++ SDK CMake](../reference/cpp-sdk-cmake.md).
