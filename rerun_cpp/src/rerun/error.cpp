@@ -29,12 +29,12 @@ namespace rerun {
 
         if (v == "1" || v == "true" || v == "yes" || v == "on") {
             return true;
-        } else if (v == "0" || v == "false" || v == "no" || v == "off") {
+        } else if (v == "0" || v == "false" || v == "no" || v == "off" || v == "") {
             return false;
         } else {
             fprintf(
                 stderr,
-                "Expected env-var RERUN_STRICT to be 0/1 true/false yes/no on/off, found '%s'",
+                "Expected env-var RERUN_STRICT to be 0/1 true/false yes/no on/off, found '%s'\n",
                 env
             );
             return false;
