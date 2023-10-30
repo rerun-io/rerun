@@ -354,12 +354,6 @@ jobs:
             FetchContent_MakeAvailable(rerun_sdk)
             ```
 
-            ## Static libraries for rerun_c
-            * [Windows x64](https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_c/windows/rerun_c.lib)
-            * [Linux x64](https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_c/linux/librerun_c.a)
-            * [Mac Arm64](https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_c/macos-arm/librerun_c.a)
-            * [Mac Intel](https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_c/macos-intel/librerun_c.a)
-
           prerelease: true
           name: "Development Build"
           tag: "prerelease"

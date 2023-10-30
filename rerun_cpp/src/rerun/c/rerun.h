@@ -1,12 +1,11 @@
 // ----------------------------------------------------------------------------
-// The Rerun C SDK for Rerun version 0.10.0-alpha.9+dev
-// ----------------------------------------------------------------------------
+// The Rerun C SDK for Rerun.
 // This file is part of the rerun_c Rust crate.
-// EDITS TO COPIES OUTSIDE OF RERUN_C WILL BE OVERWRITTEN.
 // ----------------------------------------------------------------------------
 //
 // All Rerun functions and types are thread-safe,
 // which means you can share a `rr_recording_stream` across threads.
+// ----------------------------------------------------------------------------
 
 #ifndef RERUN_H
 #define RERUN_H
