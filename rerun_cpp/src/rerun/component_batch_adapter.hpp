@@ -1,7 +1,7 @@
 #pragma once
 
 namespace rerun {
-    /// The ComponentBatchAdaptor trait is responsible for mapping an input argument to a
+    /// The `ComponentBatchAdapter` trait is responsible for mapping an input argument to a
     /// ComponentBatch.
     ///
     /// There are default implementations for standard containers of components, as well as single

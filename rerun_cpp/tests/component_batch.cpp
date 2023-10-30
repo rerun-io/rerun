@@ -11,7 +11,7 @@
 
 using namespace rerun::components;
 
-SCENARIO("ComponentBatch creation via common adaptors", TEST_TAG) {
+SCENARIO("ComponentBatch creation via common adapters", TEST_TAG) {
     GIVEN("a vector of components") {
         std::vector<Position2D> components = {
             Position2D(0.0f, 1.0f),

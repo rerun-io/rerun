@@ -16,6 +16,10 @@ ND = "ND"       # np.NDArray
 somes = "somes" # many `Some`
 teh = "teh"     # part of @teh-cmc
 
+# Use the more common spelling
+adaptor = "adapter"
+adaptors = "adapters"
+
 # For consistency we prefer American English:
 aeroplane = "airplane"
 analogue = "analog"
