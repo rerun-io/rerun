@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16...3.27)
 
+message("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
+
 # NOTE: CMake docs strongly discourages using GLOB, and instead suggests
 # manually listing all the files, like it's 1972.
 # However, that won't work for use since we auto-generate the source tree.
