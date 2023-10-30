@@ -110,17 +110,17 @@ Run your program with `cargo run` and you should now see this scene in the viewe
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
 _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
-### Under the hood
+## Under the hood
 
 This tiny snippet of code actually holds much more than meets the eye…
 
-#### Archetypes
+### Archetypes
 
 <!-- TODO(andreas): UPDATE DOC LINKS -->
 The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.10/struct.Points3D.html). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
-#### Components
+### Components
 
 Under the hood, the Rerun [Rust SDK](https://ref.rerun.io/docs/rust) logs individual *components* like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
@@ -134,7 +134,7 @@ will handle any data type that implements the [`AsComponents`](https://docs.rs/r
 For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
 
 
-#### Entities & hierarchies
+### Entities & hierarchies
 
 Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structure/right"`.
 

@@ -154,15 +154,15 @@ and now you should now see this scene in the viewer:
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
 _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
-### Under the hood
+## Under the hood
 
 This tiny snippet of code actually holds much more than meets the eye…
 
-#### Archetypes
+### Archetypes
 
 The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/recording_stream.hpp#L223-L233) method with one of the built-in archetype class, such as [`Points3D`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/archetypes/points3d.hpp#L26-L66). Archetypes take care of building batches of components that are recognized and correctly displayed by the Rerun viewer.
 
-#### Components
+### Components
 
 Under the hood, the Rerun C++ SDK logs individual *components* like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
@@ -174,7 +174,7 @@ Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/mai
 will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
 
-#### Entities & hierarchies
+### Entities & hierarchies
 
 Note the two strings we're passing in: `"dna/structure/left"` and `"dna/structure/right"`.
 

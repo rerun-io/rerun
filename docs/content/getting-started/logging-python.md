@@ -110,16 +110,16 @@ Note that if the viewer was still running, Rerun will simply connect to this exi
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
 _Checkout the [Viewer Walkthrough](viewer-walkthrough.md) and [viewer reference](../reference/viewer/overview.md) for a complete tour of the viewer's capabilities._
 
-### Under the hood
+## Under the hood
 
 This tiny snippet of code actually holds much more than meets the eye…
 
-#### Archetypes
+### Archetypes
 
 The easiest way to log geometric primitives is the use the [`rr.log`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function with one of the built-in archetype class, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
-#### Components
+### Components
 
 Under the hood, the Rerun [Python SDK](https://ref.rerun.io/docs/python) logs individual *components* like positions, colors,
 and radii. Archetypes are just one high-level, convenient way of building such collections of components. For advanced use
@@ -131,7 +131,7 @@ For more information on how the rerun data model works, refer to our section on 
 Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun_demo.data.build_color_spiral) in this example are vanilla `numpy` arrays.
 Rerun takes care of mapping those arrays to actual Rerun components depending on the context (e.g. we're calling [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D) in this case).
 
-#### Entities & hierarchies
+### Entities & hierarchies
 
 Note the two strings we're passing in: `"dna/structure/left"` & `"dna/structure/right"`.
 
