@@ -2056,7 +2056,7 @@ fn quote_field_docs(field: &ObjectField) -> TokenStream {
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
-    let required = false; // TODO(#2919): `cpp` examples are not required for now
+    let required = true;
     let examples = collect_examples_for_api_docs(docs, "cpp", required).unwrap_or_default();
     if !examples.is_empty() {
         lines.push(String::new());
