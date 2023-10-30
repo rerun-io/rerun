@@ -39,7 +39,8 @@ add_executable(example_dna main.cpp)
 
 # Download the rerun_sdk
 include(FetchContent)
-FetchContent_Declare(rerun_sdk DOWNLOAD_EXTRACT_TIMESTAMP ON URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_Declare(rerun_sdk URL
+    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
 FetchContent_MakeAvailable(rerun_sdk)
 
 # Rerun requires at least C++17, but it should be compatible with newer versions.
