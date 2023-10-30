@@ -21,7 +21,7 @@ from os.path import isfile, join
 # for one or more specific SDKs.
 opt_out_run = {
     "any_values": ["cpp", "rust"], # Not yet implemented
-    "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "custom_data": ["cpp"], # TODO(emilk): Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
