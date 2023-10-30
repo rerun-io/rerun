@@ -93,7 +93,7 @@ int main() {
 
 ## Building and running
 
-You can configure cmake, build, and run you application like so:
+You can configure cmake, build, and run your application like so:
 ```bash
 cmake -B build
 cmake --build build -j
