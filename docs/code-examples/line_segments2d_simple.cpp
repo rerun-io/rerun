@@ -4,7 +4,7 @@
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_line_segments2d");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 
     std::vector<std::vector<std::array<float, 2>>> points = {
         {{0.f, 0.f}, {2.f, 1.f}},

@@ -4,7 +4,7 @@
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 
     // These two points can be projected into the same space..
     rec.log("world/room1/point", rerun::Points3D({{0.0f, 0.0f, 0.0f}}));

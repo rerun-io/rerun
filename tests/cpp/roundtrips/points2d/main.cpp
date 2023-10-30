@@ -4,7 +4,7 @@
 
 int main(int, char** argv) {
     const auto rec = rerun::RecordingStream("rerun_example_roundtrip_points2d");
-    rec.save(argv[1]).throw_on_failure();
+    rec.save(argv[1]).exit_on_failure();
 
     rec.log(
         "points2d",

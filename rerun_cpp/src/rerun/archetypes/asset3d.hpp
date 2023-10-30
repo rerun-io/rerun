@@ -44,7 +44,7 @@ namespace rerun {
         ///     const auto path = argv[1];
         ///
         ///     const auto rec = rerun::RecordingStream("rerun_example_asset3d_simple");
-        ///     rec.spawn().throw_on_failure();
+        ///     rec.spawn().exit_on_failure()
         ///
         ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
         ///     rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw());

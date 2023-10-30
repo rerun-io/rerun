@@ -35,7 +35,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     const auto rec = rerun::RecordingStream("rerun_example_mesh3d_indexed");
-        ///     rec.spawn().throw_on_failure();
+        ///     rec.spawn().exit_on_failure()
         ///
         ///     const rerun::Position3D vertex_positions[3] = {
         ///         {0.0f, 1.0f, 0.0f},

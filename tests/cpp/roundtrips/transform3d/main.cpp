@@ -7,7 +7,7 @@ constexpr float PI = 3.14159265358979323846264338327950288f;
 
 int main(int, char** argv) {
     const auto rec = rerun::RecordingStream("rerun_example_roundtrip_transform3d");
-    rec.save(argv[1]).throw_on_failure();
+    rec.save(argv[1]).exit_on_failure();
 
     rec.log(
         "translation_and_mat3x3/identity",

@@ -8,7 +8,7 @@ constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_points3d_simple");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 
     int64_t lcg_state = 0;
 

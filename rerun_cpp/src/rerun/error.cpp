@@ -4,7 +4,7 @@
 #include <arrow/status.h>
 
 #include <algorithm> // For std::transform
-#include <cstdlib>   // For getenv
+#include <cstdlib>   // For getenv & std::exit
 #include <string>
 
 namespace rerun {
@@ -110,6 +110,13 @@ namespace rerun {
     void Error::set_log_handler(StatusLogHandler handler, void* userdata) {
         global_log_handler = handler;
         global_log_handler_user_data = userdata;
+    }
+
+    void Error::exit_on_failure() const {
+        if (is_err()) {
+            handle();
+            std::exit(1);
+        }
     }
 
     void Error::handle() const {

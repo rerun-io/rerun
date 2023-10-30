@@ -83,7 +83,7 @@ Add our initial `main` to `main.cpp`:
 ```cpp
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_dna_abacus");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 }
 ```
 

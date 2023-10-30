@@ -39,7 +39,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     const auto rec = rerun::RecordingStream("rerun_example_image_simple");
-        ///     rec.spawn().throw_on_failure();
+        ///     rec.spawn().exit_on_failure()
         ///
         ///     // Create a synthetic image.
         ///     const int HEIGHT = 200;
