@@ -2,8 +2,7 @@
 title: Minimal example
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/minimal/main.py
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/minimal/src/main.rs
-# TODO(#3962): Update Link
-cpp: https://github.com/rerun-io/rerun/tree/main/examples/cpp/minimal/main.cpp
+cpp: https://github.com/rerun-io/rerun/tree/latest/examples/cpp/minimal/main.cpp
 thumbnail: https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png
 ---
 
