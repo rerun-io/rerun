@@ -66,9 +66,7 @@ def get_github_token() -> str:
     except Exception:
         pass
 
-    print(
-        "ERROR: expected a GitHub token in the environment variable GH_ACCESS_TOKEN or in ~/.githubtoken"
-    )
+    print("ERROR: expected a GitHub token in the environment variable GH_ACCESS_TOKEN or in ~/.githubtoken")
     sys.exit(1)
 
 
@@ -120,9 +118,7 @@ def print_section(title: str, items: list[str]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a changelog.")
-    parser.add_argument(
-        "--commit-range", default="latest..HEAD", help="e.g. 0.8.0..HEAD"
-    )
+    parser.add_argument("--commit-range", default="latest..HEAD", help="e.g. 0.8.0..HEAD")
     args = parser.parse_args()
 
     # Because how we branch, we sometimes get duplicate commits in the changelog unless we check for it
@@ -171,9 +167,7 @@ def main() -> None:
 
         if pr_number is None:
             # Someone committed straight to main:
-            summary = (
-                f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
-            )
+            summary = f"{title} [{hexsha}](https://github.com/{OWNER}/{REPO}/commit/{hexsha})"
             if f"[{hexsha}]" in previous_changelog:
                 print(f"Ignoring dup: {summary}")
                 continue
@@ -181,9 +175,7 @@ def main() -> None:
             chronological.append(summary)
             misc.append(summary)
         else:
-            title = (
-                pr_info.pr_title if pr_info else title
-            )  # We prefer the PR title if available
+            title = pr_info.pr_title if pr_info else title  # We prefer the PR title if available
             title = title.rstrip(".").strip()  # Some PR end with an unnecessary period
 
             labels = pr_info.labels if pr_info else []
@@ -229,9 +221,7 @@ def main() -> None:
             if not added:
                 if "examples" in labels:
                     examples.append(summary)
-                elif (
-                    "🪳 bug" in labels or "💣 crash" in labels or "🦟 regression" in labels
-                ):
+                elif "🪳 bug" in labels or "💣 crash" in labels or "🦟 regression" in labels:
                     bugs.append(summary)
                 elif "📉 performance" in labels:
                     performance.append(summary)
