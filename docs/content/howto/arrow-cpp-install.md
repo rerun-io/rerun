@@ -77,3 +77,9 @@ with the `rerun-sdk` package when installed in the same pixi environment.
 ⚠️ On Windows pixi only downloads release binaries which are **not** compatible with debug builds, causing runtime crashes.
 For debug builds you have to build Arrow yourself, see [Building Arrow C++](https://arrow.apache.org/docs/developers/cpp/building.html)
 or stick with `RERUN_DOWNLOAD_AND_BUILD_ARROW=ON`.
+
+## Other ways to install arrow-cpp
+
+Rerun will also work with any existing environment install of Arrow that works with `find_package`.
+ - Arrow provides pre-built packages for many platforms. See the list at: <https://arrow.apache.org/install/>
+ - Conda-forge contains a package for Arrow: <https://anaconda.org/conda-forge/arrow-cpp>
