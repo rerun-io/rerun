@@ -361,7 +361,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     }
 }
 
-void test_logging_to_connection(const char* address, rerun::RecordingStream& stream) {
+void test_logging_to_connection(const char* address, const rerun::RecordingStream& stream) {
     // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
     // at least on some C++ implementations.
     // If we'd want to support this in earnest we'd have to create out own string_view type.
