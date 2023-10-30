@@ -46,7 +46,7 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 ## Getting started
 * **Python**: `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
 * **Rust**: `cargo add rerun`
-* **C / C++**: [Guide](https://www.rerun.io/docs/getting-started/cpp)
+* **C++**: [Guide](https://www.rerun.io/docs/getting-started/cpp)
 
 ### Rerun Viewer binary
 Both the Python and Rust library can start the Rerun Viewer, but to stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
