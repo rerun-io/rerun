@@ -10,7 +10,7 @@ using namespace rerun::demo;
 static constexpr size_t NUM_POINTS = 100;
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_dna_abacus");
+    const auto rec = rerun::RecordingStream("rerun_example_dna_abacus");
     rec.spawn().throw_on_failure();
 
     std::vector<rerun::Position3D> points1, points2;

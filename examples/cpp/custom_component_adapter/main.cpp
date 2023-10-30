@@ -46,7 +46,7 @@ struct rerun::ComponentBatchAdapter<rerun::Position3D, MyContainer<MyVec3>> {
 
 int main() {
     // Create a new `RecordingStream` which sends data over TCP to the viewer process.
-    auto rec = rerun::RecordingStream("rerun_example_custom_component_adapter");
+    const auto rec = rerun::RecordingStream("rerun_example_custom_component_adapter");
     rec.spawn().throw_on_failure();
 
     // Construct some data in a custom format.

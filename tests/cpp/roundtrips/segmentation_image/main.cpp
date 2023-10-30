@@ -4,7 +4,7 @@
 #include <rerun/recording_stream.hpp>
 
 int main(int, char** argv) {
-    auto rec = rerun::RecordingStream("rerun_example_roundtrip_segmentation_image");
+    const auto rec = rerun::RecordingStream("rerun_example_roundtrip_segmentation_image");
     rec.save(argv[1]).throw_on_failure();
 
     // 3x2 image. Each pixel is incremented down each row

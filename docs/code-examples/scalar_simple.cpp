@@ -5,7 +5,7 @@
 #include <cmath>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_scalar");
+    const auto rec = rerun::RecordingStream("rerun_example_scalar");
     rec.spawn().throw_on_failure();
 
     for (int step = 0; step < 64; ++step) {

@@ -67,11 +67,11 @@ namespace rerun {
         }
     }
 
-    void RecordingStream::set_global() {
+    void RecordingStream::set_global() const {
         rr_recording_stream_set_global(_id, store_kind_to_c(_store_kind));
     }
 
-    void RecordingStream::set_thread_local() {
+    void RecordingStream::set_thread_local() const {
         rr_recording_stream_set_thread_local(_id, store_kind_to_c(_store_kind));
     }
 
@@ -95,7 +95,7 @@ namespace rerun {
         }
     }
 
-    Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) {
+    Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) const {
         rr_error status = {};
         rr_recording_stream_connect(
             _id,
@@ -109,7 +109,7 @@ namespace rerun {
     Error RecordingStream::spawn(
         uint16_t port, std::string_view memory_limit, std::string_view executable_name,
         std::optional<std::string_view> executable_path, float flush_timeout_sec
-    ) {
+    ) const {
         rr_spawn_options spawn_opts;
         spawn_opts.port = port;
         spawn_opts.memory_limit = detail::to_rr_string(memory_limit);
@@ -122,17 +122,18 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::save(std::string_view path) {
+    Error RecordingStream::save(std::string_view path) const {
         rr_error status = {};
         rr_recording_stream_save(_id, detail::to_rr_string(path), &status);
         return status;
     }
 
-    void RecordingStream::flush_blocking() {
+    void RecordingStream::flush_blocking() const {
         rr_recording_stream_flush_blocking(_id);
     }
 
-    void RecordingStream::set_time_sequence(std::string_view timeline_name, int64_t sequence_nr) {
+    void RecordingStream::set_time_sequence(std::string_view timeline_name, int64_t sequence_nr)
+        const {
         if (!is_enabled()) {
             return;
         }
@@ -146,7 +147,7 @@ namespace rerun {
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_seconds(std::string_view timeline_name, double seconds) {
+    void RecordingStream::set_time_seconds(std::string_view timeline_name, double seconds) const {
         if (!is_enabled()) {
             return;
         }
@@ -160,7 +161,7 @@ namespace rerun {
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::set_time_nanos(std::string_view timeline_name, int64_t nanos) {
+    void RecordingStream::set_time_nanos(std::string_view timeline_name, int64_t nanos) const {
         rr_error status = {};
         rr_recording_stream_set_time_nanos(
             _id,
@@ -171,20 +172,20 @@ namespace rerun {
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::disable_timeline(std::string_view timeline_name) {
+    void RecordingStream::disable_timeline(std::string_view timeline_name) const {
         rr_error status = {};
         rr_recording_stream_disable_timeline(_id, detail::to_rr_string(timeline_name), &status);
         Error(status).handle(); // Too unlikely to fail to make it worth forwarding.
     }
 
-    void RecordingStream::reset_time() {
+    void RecordingStream::reset_time() const {
         rr_recording_stream_reset_time(_id);
     }
 
     Error RecordingStream::try_log_serialized_batches(
         std::string_view entity_path, bool timeless,
         const std::vector<SerializedComponentBatch>& batches
-    ) {
+    ) const {
         if (!is_enabled()) {
             return Error::ok();
         }
@@ -227,7 +228,7 @@ namespace rerun {
     Error RecordingStream::try_log_data_row(
         std::string_view entity_path, size_t num_instances, size_t num_data_cells,
         const DataCell* data_cells, bool inject_time
-    ) {
+    ) const {
         if (!is_enabled()) {
             return Error::ok();
         }

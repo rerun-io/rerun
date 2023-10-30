@@ -73,7 +73,7 @@ using namespace rerun::demo;
 
 int main() {
     // Create a new `RecordingStream` which sends data over TCP to the viewer process.
-    auto rec = rerun::RecordingStream("rerun_example_cpp");
+    const auto rec = rerun::RecordingStream("rerun_example_cpp");
     // Try to spawn a new viewer instance.
     rec.spawn().throw_on_failure();
 

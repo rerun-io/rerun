@@ -5,7 +5,7 @@
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_transform3d");
+    const auto rec = rerun::RecordingStream("rerun_example_transform3d");
     rec.spawn().throw_on_failure();
 
     auto arrow =

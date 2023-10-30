@@ -7,7 +7,7 @@
 #include <vector>
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_points3d_random");
+    const auto rec = rerun::RecordingStream("rerun_example_points3d_random");
     rec.spawn().throw_on_failure();
 
     std::default_random_engine gen;

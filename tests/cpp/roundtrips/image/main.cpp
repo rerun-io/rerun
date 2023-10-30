@@ -27,7 +27,7 @@ rerun::half half_from_float(const float x) {
 }
 
 int main(int, char** argv) {
-    auto rec = rerun::RecordingStream("rerun_example_roundtrip_image");
+    const auto rec = rerun::RecordingStream("rerun_example_roundtrip_image");
     rec.save(argv[1]).throw_on_failure();
 
     // h=2 w=3 c=3 image. Red channel = x. Green channel = y. Blue channel = 128.

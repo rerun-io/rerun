@@ -7,8 +7,8 @@
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 void log_hand(
-    rerun::RecordingStream& rec, const char* name, int step, float angle, float length, float width,
-    uint8_t blue
+    const rerun::RecordingStream& rec, const char* name, int step, float angle, float length,
+    float width, uint8_t blue
 ) {
     const auto tip = rerun::Vec3D{length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f};
     const auto c = static_cast<uint8_t>(angle * 255.0f);
@@ -40,7 +40,7 @@ int main() {
 
     const int num_steps = 10000;
 
-    auto rec = rerun::RecordingStream("rerun_example_clock");
+    const auto rec = rerun::RecordingStream("rerun_example_clock");
     rec.spawn().throw_on_failure();
 
     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Y_UP);

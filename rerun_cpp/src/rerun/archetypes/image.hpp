@@ -38,7 +38,7 @@ namespace rerun {
         /// #include <vector>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_image_simple");
+        ///     const auto rec = rerun::RecordingStream("rerun_example_image_simple");
         ///     rec.spawn().throw_on_failure();
         ///
         ///     // Create a synthetic image.

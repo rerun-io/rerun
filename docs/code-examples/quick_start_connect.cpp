@@ -5,7 +5,7 @@ using namespace rerun::demo;
 
 int main() {
     // Create a new `RecordingStream` which sends data over TCP to the viewer process.
-    auto rec = rerun::RecordingStream("rerun_example_demo");
+    const auto rec = rerun::RecordingStream("rerun_example_demo");
     rec.spawn().throw_on_failure();
 
     // Create some data using the `grid` utility function.

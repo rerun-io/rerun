@@ -21,6 +21,8 @@ namespace rerun {
     ///
     /// ## Multithreading and ordering
     ///
+    /// A `RecordingStream` is thread-safe.
+    ///
     /// Internally, all operations are linearized into a pipeline:
     /// - All operations sent by a given thread will take effect in the same exact order as that
     ///   thread originally sent them in, from its point of view.
@@ -86,14 +88,14 @@ namespace rerun {
         ///
         /// Afterwards, destroying this recording stream will *not* change the global recording
         /// stream, as it increases an internal ref-count.
-        void set_global();
+        void set_global() const;
 
         /// Replaces the currently active recording for this stream's store kind in the thread-local
         /// scope with this one
         ///
         /// Afterwards, destroying this recording stream will *not* change the thread local
         /// recording stream, as it increases an internal ref-count.
-        void set_thread_local();
+        void set_thread_local() const;
 
         /// Retrieves the most appropriate globally available recording stream for the given kind.
         ///
@@ -115,7 +117,8 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        Error connect(std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0);
+        Error connect(std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0)
+            const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over TCP.
@@ -151,17 +154,17 @@ namespace rerun {
             std::string_view executable_name = "rerun",                     //
             std::optional<std::string_view> executable_path = std::nullopt, //
             float flush_timeout_sec = 2.0
-        );
+        ) const;
 
         /// Stream all log-data to a given file.
         ///
         /// This function returns immediately.
-        Error save(std::string_view path);
+        Error save(std::string_view path) const;
 
         /// Initiates a flush the batching pipeline and waits for it to propagate.
         ///
         /// See `RecordingStream` docs for ordering semantics and multithreading guarantees.
-        void flush_blocking();
+        void flush_blocking() const;
 
         // -----------------------------------------------------------------------------------------
         // Methods for controlling time.
@@ -175,7 +178,7 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
         /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time, remove_timeline
-        void set_time_sequence(std::string_view timeline_name, int64_t sequence_nr);
+        void set_time_sequence(std::string_view timeline_name, int64_t sequence_nr) const;
 
         /// Set the current time of the recording, for the current calling thread.
         ///
@@ -186,7 +189,7 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
         /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time, remove_timeline
-        void set_time_seconds(std::string_view timeline_name, double seconds);
+        void set_time_seconds(std::string_view timeline_name, double seconds) const;
 
         /// Set the current time of the recording, for the current calling thread.
         ///
@@ -197,7 +200,7 @@ namespace rerun {
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
         /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, remove_timeline
-        void set_time_nanos(std::string_view timeline_name, int64_t nanos);
+        void set_time_nanos(std::string_view timeline_name, int64_t nanos) const;
 
         /// Stops logging to the specified timeline for subsequent log calls.
         ///
@@ -206,7 +209,7 @@ namespace rerun {
         /// No-op if the timeline doesn't exist.
         ///
         /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, remove_timeline
-        void disable_timeline(std::string_view timeline_name);
+        void disable_timeline(std::string_view timeline_name) const;
 
         /// Clears out the current time of the recording, for the current calling thread.
         ///
@@ -215,7 +218,7 @@ namespace rerun {
         ///
         /// For example: `rec.reset_time()`.
         /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, remove_timeline
-        void reset_time();
+        void reset_time() const;
 
         // -----------------------------------------------------------------------------------------
         // Methods for logging.
@@ -230,7 +233,7 @@ namespace rerun {
         ///
         /// @see try_log
         template <typename... Ts>
-        void log(std::string_view entity_path, const Ts&... archetypes_or_component_batches) {
+        void log(std::string_view entity_path, const Ts&... archetypes_or_component_batches) const {
             if (!is_enabled()) {
                 return;
             }
@@ -253,7 +256,7 @@ namespace rerun {
         template <typename... Ts>
         void log_timeless(
             std::string_view entity_path, const Ts&... archetypes_or_component_batches
-        ) {
+        ) const {
             if (!is_enabled()) {
                 return;
             }
@@ -270,7 +273,8 @@ namespace rerun {
         ///
         /// @see try_log
         template <typename... Ts>
-        Error try_log(std::string_view entity_path, const Ts&... archetypes_or_component_batches) {
+        Error try_log(std::string_view entity_path, const Ts&... archetypes_or_component_batches)
+            const {
             if (!is_enabled()) {
                 return Error::ok();
             }
@@ -293,7 +297,7 @@ namespace rerun {
         template <typename... Ts>
         Error try_log_timeless(
             std::string_view entity_path, const Ts&... archetypes_or_component_batches
-        ) {
+        ) const {
             if (!is_enabled()) {
                 return Error::ok();
             }
@@ -313,7 +317,7 @@ namespace rerun {
         Error try_log_with_timeless(
             std::string_view entity_path, bool timeless,
             const Ts&... archetypes_or_component_batches
-        ) {
+        ) const {
             if (!is_enabled()) {
                 return Error::ok();
             }
@@ -358,7 +362,7 @@ namespace rerun {
         Error try_log_serialized_batches(
             std::string_view entity_path, bool timeless,
             const std::vector<SerializedComponentBatch>& batches
-        );
+        ) const;
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
@@ -371,7 +375,7 @@ namespace rerun {
         Error try_log_data_row(
             std::string_view entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells, bool inject_time
-        );
+        ) const;
 
       private:
         RecordingStream(uint32_t id, StoreKind store_kind);

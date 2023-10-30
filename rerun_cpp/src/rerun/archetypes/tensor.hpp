@@ -31,7 +31,7 @@ namespace rerun {
         /// #include <vector>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
+        ///     const auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
         ///     rec.spawn().throw_on_failure();
         ///
         ///     std::default_random_engine gen;
