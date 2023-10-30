@@ -81,5 +81,7 @@ or stick with `RERUN_DOWNLOAD_AND_BUILD_ARROW=ON`.
 ## Other ways to install arrow-cpp
 
 Rerun will also work with any existing environment install of Arrow that works with `find_package`.
- - Arrow provides pre-built packages for many platforms. See the list at: <https://arrow.apache.org/install/>
- - Conda-forge contains a package for Arrow: <https://anaconda.org/conda-forge/arrow-cpp>
+ - Arrow provides pre-built packages for many platforms.
+   - See the list at: <https://arrow.apache.org/install/>
+ - Conda-forge contains a package for Arrow:
+   - <https://anaconda.org/conda-forge/arrow-cpp>
