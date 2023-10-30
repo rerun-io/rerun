@@ -13,7 +13,7 @@ In a few lines of code, we'll go from a blank sheet to something you don't see e
 This guide aims to go wide instead of deep.
 There are links to other doc pages where you can learn more about specific topics.
 
-At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/dna/main.cpp?speculative-link) to better keep track of the overall picture.
+At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/dna/main.cpp) to better keep track of the overall picture.
 To build the example from the repository, run:
 
 ```bash

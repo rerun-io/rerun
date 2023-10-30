@@ -24,7 +24,7 @@ Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_
 
 #### Rust
 
-[`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn?speculative-link) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via TCP. If an external viewer was already running, `spawn` will connect to that one instead of spawning a new one.
+[`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via TCP. If an external viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 #### C++
 

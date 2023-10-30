@@ -11,8 +11,7 @@ struct UInt32 (
   "attr.arrow.transparent",
   "attr.rust.derive": "Copy, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.override_crate": "re_types_core",
-  "attr.rust.tuple_struct",
-  "attr.docs.unreleased"
+  "attr.rust.tuple_struct"
 ) {
   value: uint32 (order: 100);
 }

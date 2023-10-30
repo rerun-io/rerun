@@ -15,8 +15,7 @@ thumbnail: https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e
 </picture>
 
 The simplest example of how to use Rerun, showing how to log a point cloud.
-# TODO(#3962): Update Link to C++
-This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/rust).
+This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/cpp).
 
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
