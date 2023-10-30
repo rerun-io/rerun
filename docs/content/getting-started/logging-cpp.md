@@ -126,8 +126,6 @@ Now let's add some data to the viewer.
 The core structure of our DNA looking shape can easily be described using two point clouds shaped like spirals.
 Add the following to your `main` function:
 ```cpp
-static constexpr size_t NUM_POINTS = 100;
-
 std::vector<rerun::Position3D> points1, points2;
 std::vector<rerun::Color> colors1, colors2;
 color_spiral(NUM_POINTS, 2.0f, 0.02f, 0.0f, 0.1f, points1, colors1);
