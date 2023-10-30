@@ -22,6 +22,7 @@ jobs:
     with:
       CONCURRENCY: push-linux-${{ github.ref_name }}
       PLATFORM: linux
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   macos-intel:
@@ -30,6 +31,7 @@ jobs:
     with:
       CONCURRENCY: push-macos-intel-${{ github.ref_name }}
       PLATFORM: macos-intel
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   macos-arm:
@@ -38,6 +40,7 @@ jobs:
     with:
       CONCURRENCY: push-macos-arm-${{ github.ref_name }}
       PLATFORM: macos-arm
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
   windows:
@@ -46,5 +49,6 @@ jobs:
     with:
       CONCURRENCY: push-windows-${{ github.ref_name }}
       PLATFORM: windows
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
