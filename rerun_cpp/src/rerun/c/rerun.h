@@ -344,7 +344,7 @@ extern void rr_recording_stream_set_time_nanos(
 
 /// Stops logging to the specified timeline for subsequent log calls.
 ///
-/// The timeline is still there, but it will not be updated with any new data.
+/// The timeline is still there, but will not be updated with any new data.
 ///
 /// No-op if the timeline doesn't exist.
 void rr_recording_stream_disable_timeline(

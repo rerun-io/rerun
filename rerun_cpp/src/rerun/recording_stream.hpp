@@ -176,8 +176,8 @@ namespace rerun {
         ///
         /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
         ///
-        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
-        /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time, remove_timeline
+        /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
+        /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time, disable_timeline
         void set_time_sequence(std::string_view timeline_name, int64_t sequence_nr) const;
 
         /// Set the current time of the recording, for the current calling thread.
@@ -187,8 +187,8 @@ namespace rerun {
         ///
         /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
         ///
-        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
-        /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time, remove_timeline
+        /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
+        /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time, disable_timeline
         void set_time_seconds(std::string_view timeline_name, double seconds) const;
 
         /// Set the current time of the recording, for the current calling thread.
@@ -198,17 +198,17 @@ namespace rerun {
         ///
         /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
         ///
-        /// You can remove a timeline from subsequent log calls again using `rec.remove_timeline`.
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, remove_timeline
+        /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, disable_timeline
         void set_time_nanos(std::string_view timeline_name, int64_t nanos) const;
 
         /// Stops logging to the specified timeline for subsequent log calls.
         ///
-        /// The timeline is still there, but it will not be updated with any new data.
+        /// The timeline is still there, but will not be updated with any new data.
         ///
         /// No-op if the timeline doesn't exist.
         ///
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, remove_timeline
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time
         void disable_timeline(std::string_view timeline_name) const;
 
         /// Clears out the current time of the recording, for the current calling thread.
@@ -217,7 +217,7 @@ namespace rerun {
         /// to one of the time setting methods.
         ///
         /// For example: `rec.reset_time()`.
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, remove_timeline
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, disable_timeline
         void reset_time() const;
 
         // -----------------------------------------------------------------------------------------

@@ -461,7 +461,7 @@ fn rr_recording_stream_set_time_sequence_impl(
     sequence: i64,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_sequence(timeline, Some(sequence));
+    recording_stream(stream)?.set_time_sequence(timeline, sequence);
     Ok(())
 }
 
@@ -485,7 +485,7 @@ fn rr_recording_stream_set_time_seconds_impl(
     seconds: f64,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_seconds(timeline, Some(seconds));
+    recording_stream(stream)?.set_time_seconds(timeline, seconds);
     Ok(())
 }
 
@@ -509,7 +509,7 @@ fn rr_recording_stream_set_time_nanos_impl(
     nanos: i64,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_nanos(timeline, Some(nanos));
+    recording_stream(stream)?.set_time_nanos(timeline, nanos);
     Ok(())
 }
 
@@ -533,7 +533,7 @@ fn rr_recording_stream_disable_timeline_impl(
     timeline_name: CStringView,
 ) -> Result<(), CError> {
     let timeline = timeline_name.as_str("timeline_name")?;
-    recording_stream(stream)?.set_time_sequence(timeline, None);
+    recording_stream(stream)?.disable_timeline(timeline);
     Ok(())
 }
 

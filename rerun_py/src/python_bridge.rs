@@ -140,6 +140,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
+    m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
 
     // log any
@@ -669,7 +670,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 // --- Time ---
 
 #[pyfunction]
-fn set_time_sequence(timeline: &str, sequence: Option<i64>, recording: Option<&PyRecordingStream>) {
+fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
@@ -677,7 +678,7 @@ fn set_time_sequence(timeline: &str, sequence: Option<i64>, recording: Option<&P
 }
 
 #[pyfunction]
-fn set_time_seconds(timeline: &str, seconds: Option<f64>, recording: Option<&PyRecordingStream>) {
+fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
@@ -685,11 +686,19 @@ fn set_time_seconds(timeline: &str, seconds: Option<f64>, recording: Option<&PyR
 }
 
 #[pyfunction]
-fn set_time_nanos(timeline: &str, nanos: Option<i64>, recording: Option<&PyRecordingStream>) {
+fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
     recording.set_time_nanos(timeline, nanos);
+}
+
+#[pyfunction]
+fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.disable_timeline(timeline);
 }
 
 #[pyfunction]
