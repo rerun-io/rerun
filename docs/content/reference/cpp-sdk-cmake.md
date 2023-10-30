@@ -5,13 +5,40 @@ order: 8
 
 The Rerun C++ SDK is meant to be built from source.
 Its [CMake build script](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/CMakeLists.txt)
-is ready to be used from outside of the Rerun repo: just add `https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/`
-to your project via `add_subdirectory` or use `FetchContent` to use a pre-packed bundle that we provide with every release.
+is ready to be used from outside of the Rerun repo.
+
+## Adding with FetchContent
+
+The easiest way to add Rerun to your project is using `FetchContent`:
+```cmake
+include(FetchContent)
+FetchContent_Declare(rerun_sdk URL
+    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+FetchContent_MakeAvailable(rerun_sdk)
+```
+
+This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
+all Rerun C++ sources and headers, as well as CMake build instructions for them.
+By default this will also download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++.  See [Install arrow-cpp](../howto/arrow-cpp-install.md) to learn more about this step and how to use an existing install.
+
+## Adding via subdirectory
+
+Alternatively, you can add the source of `https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/` directly to your own
+project and then use `add_subdirectory`.
+
+In this case you will also need to make sure the Rerun C static libraries are available for your target platforms.
+Pre-built libraries can be downloaded from [the release pages](https://github.com/rerun-io/rerun/releases/latest). The
+libraries will need to be renamed as:
+ - Linux: `librerun_c__linux_x64.a`
+ - Windows: `rerun_c__win_x64.lib`
+ - Mac: `librerun_c__macos_x64.a`
+ - Mac Arm: `librerun_c__macos_arm64.a`
+
+You can either download these to the folder `rerun_cpp/lib` or set the path to a different location using `-DRERUN_C_LIB`.
 
 ⚠️ Make sure **not** to add the root of the Rerun repository, as this will not only add many examples and tests
 but also make additional assumptions about your build environment. For example it will always try to build
 `rerun_c` (which the C++ SDK depends on) from its Rust source.
-
 
 ## CMake configuration options
 
