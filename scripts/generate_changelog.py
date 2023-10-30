@@ -99,7 +99,11 @@ def fetch_pr_info(pr_number: int) -> PrInfo | None:
 def get_commit_info(commit: Any) -> CommitInfo:
     match = re.match(r"(.*) \(#(\d+)\)", commit.summary)
     if match:
-        return CommitInfo(hexsha=commit.hexsha, title=str(match.group(1)), pr_number=int(match.group(2)))
+        return CommitInfo(
+            hexsha=commit.hexsha,
+            title=str(match.group(1)),
+            pr_number=int(match.group(2)),
+        )
     else:
         return CommitInfo(hexsha=commit.hexsha, title=commit.summary, pr_number=None)
 
@@ -172,7 +176,7 @@ def main() -> None:
             misc.append(summary)
         else:
             title = pr_info.pr_title if pr_info else title  # We prefer the PR title if available
-            title = title.rstrip(".")  # Some people enjoy ending their titles with an unnecessary period
+            title = title.rstrip(".").strip()  # Some PR end with an unnecessary period
 
             labels = pr_info.labels if pr_info else []
 
@@ -247,9 +251,9 @@ def main() -> None:
     print()
 
     # Most interesting first:
+    print_section("🌊 C++ SDK", cpp)
     print_section("🐍 Python SDK", python)
     print_section("🦀 Rust SDK", rust)
-    print_section("🌊 C++ SDK (experimental!)", cpp)
     print_section("🪳 Bug Fixes", bugs)
     print_section("🌁 Viewer Improvements", viewer)
     print_section("🚀 Performance Improvements", performance)

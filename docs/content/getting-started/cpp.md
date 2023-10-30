@@ -12,6 +12,7 @@ If you prefer to learn by example, check out our example repository which uses t
 ## Using Rerun with CMake
 
 Assuming you are starting with a bare-bones `CMakeLists.txt` such as:
+
 ```cmake
 cmake_minimum_required(VERSION 3.16...3.27)
 project(example_minimal LANGUAGES CXX)
@@ -20,6 +21,7 @@ add_executable(example_minimal main.cpp)
 ```
 
 You can add Rerun to your project using `FetchContent`
+
 ```cmake
 include(FetchContent)
 FetchContent_Declare(rerun_sdk URL
@@ -32,16 +34,19 @@ By default this will in turn download & build [Apache Arrow](https://arrow.apach
 See [Install arrow-cpp](../howto/arrow-cpp-install.md) to learn more about this step and how to use an existing install.
 
 Currently, Rerun SDK works with C++17 or newer, so you need to add this property to your target:
+
 ```cmake
 set_property(TARGET example_minimal PROPERTY CXX_STANDARD 17)
 ```
 
 And finally, make sure you link with `rerun_sdk`:
+
 ```cmake
 target_link_libraries(example_minimal PRIVATE rerun_sdk)
 ```
 
 Combining the above, a minimal self-contained `CMakeLists.txt` looks like:
+
 ```cmake
 cmake_minimum_required(VERSION 3.16...3.27)
 project(example_minimal LANGUAGES CXX)

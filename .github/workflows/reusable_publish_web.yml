@@ -132,11 +132,18 @@ jobs:
           destination: "rerun-example-rrd/version/${{ inputs.release-version }}"
           parent: false
 
-      - name: Upload app.rerun.io
+      - name: Upload app.rerun.io (versioned)
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_viewer"
           destination: "rerun-web-viewer/version/${{ inputs.release-version }}"
+          parent: false
+
+      - name: Upload app.rerun.io (commit)
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
           parent: false
 
       - name: Upload demo.rerun.io

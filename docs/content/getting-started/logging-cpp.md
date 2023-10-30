@@ -43,6 +43,7 @@ See [Install arrow-cpp](../howto/arrow-cpp-install.md) to learn more about this 
 ## Setting up your CMakeLists.txt
 
 A minimal CMakeLists.txt for this example looks like this:
+
 ```cmake
 cmake_minimum_required(VERSION 3.16...3.27)
 project(example_dna LANGUAGES CXX)
