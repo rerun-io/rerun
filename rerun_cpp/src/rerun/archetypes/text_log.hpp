@@ -57,7 +57,7 @@ namespace rerun {
         ///
         /// int main() {
         ///     const auto rec = rerun::RecordingStream("rerun_example_text_log_integration");
-        ///     rec.spawn().throw_on_failure();
+        ///     rec.spawn().exit_on_failure();
         ///
         ///     // Log a text entry directly:
         ///     rec.log(

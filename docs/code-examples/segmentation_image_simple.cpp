@@ -7,7 +7,7 @@
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 
     // Create a segmentation image
     const int HEIGHT = 8;
