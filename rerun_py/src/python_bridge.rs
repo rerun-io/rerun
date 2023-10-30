@@ -698,8 +698,7 @@ fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
-    recording.disable_timeline_specific(re_log_types::Timeline::new_sequence(timeline));
-    recording.disable_timeline_specific(re_log_types::Timeline::new_temporal(timeline));
+    recording.disable_timeline(timeline);
 }
 
 #[pyfunction]

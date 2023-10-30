@@ -208,8 +208,7 @@ namespace rerun {
         ///
         /// No-op if the timeline doesn't exist.
         ///
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, disable_timeline_sequential,
-        /// disable_timeline_temporal
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time
         void disable_timeline(std::string_view timeline_name) const;
 
         /// Clears out the current time of the recording, for the current calling thread.
