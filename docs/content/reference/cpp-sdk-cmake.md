@@ -15,9 +15,9 @@ but also make additional assumptions about your build environment. For example i
 
 ## CMake configuration options
 
-The C++ SDK provides a hand full of configuration options.
-All of them come with meaningful defaults, so typically you don't have to change them,
-but they provide important hooks for more custom build setups.
+The C++ SDK provides a handful of configuration options.
+All of them come with meaningful defaults, so typically you don't have to change any of them,
+but they provide important hooks for more complex build setups.
 
 ### `RERUN_DOWNLOAD_AND_BUILD_ARROW`
 If enabled, will download a pinned version of the Apache Arrow C++ library and add it to the build.
@@ -30,7 +30,7 @@ Defaults to `ON`.
 If enabled, will use a dynamically linked version of Arrow, otherwise links statically with it.
 
 Defaults to `OFF` on Windows and to `ON` on Linux and Mac.
-This makes it a lot easier to relocate windows executable (don't need to copy Arrow.dll around!) which is less of a concern on Linux & Mac where .so/.dylib files are more easily found.
+This makes it a lot easier to relocate windows executable (don't need to copy Arrow.dll around!) which is less of a concern on Linux & Mac where .so/.dylib files found more easily.
 
 
 ### `RERUN_C_LIB`
