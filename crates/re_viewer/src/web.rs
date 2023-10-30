@@ -194,7 +194,7 @@ fn categorize_uri(uri: &str) -> EndpointCategory {
     } else if uri.starts_with("web_event:") {
         EndpointCategory::WebEventListener
     } else {
-        // If this is sometyhing like `foo.com` we can't know what it is until we connect to it.
+        // If this is something like `foo.com` we can't know what it is until we connect to it.
         // We could/should connect and see what it is, but for now we just take a wild guess instead:
         re_log::info!("Assuming WebSocket endpoint");
         if uri.contains("://") {
