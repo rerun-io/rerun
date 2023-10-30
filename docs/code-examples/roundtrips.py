@@ -311,7 +311,7 @@ def cmake_build(target: str, release: bool) -> None:
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
-    cmd = ["just", "rerun", "compare"]
+    cmd = ["rerun", "compare"]
     if full_dump:
         cmd += ["--full-dump"]
     cmd += [rrd0_path, rrd1_path]
