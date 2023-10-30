@@ -47,7 +47,7 @@ is expected to be found in the Rerun C++ SDK distribution zip.
 
 The Rerun C++ SDK requires a C++17 compliant compiler.
 
-As of writing it was tested against:
+As of writing we tested the SDK against:
 * Apple Clang 14, 15
-* GCC 9
+* GCC 9, 10, 12
 * Visual Studio 2022
