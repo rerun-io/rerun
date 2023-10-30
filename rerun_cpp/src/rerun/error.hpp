@@ -144,6 +144,9 @@ namespace rerun {
         /// the error will be logged to stderr.
         void handle() const;
 
+        /// Calls the `handle` method and then exits the application with code 1 if the error is not `Ok`.
+        void exit_on_failure() const;
+
 #ifdef __cpp_exceptions
         /// Throws a `std::runtime_error` if the status is not `Ok`.
         void throw_on_failure() const {

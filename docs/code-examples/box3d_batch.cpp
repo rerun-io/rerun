@@ -4,7 +4,7 @@
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_box3d_batch");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 
     rec.log(
         "batch",

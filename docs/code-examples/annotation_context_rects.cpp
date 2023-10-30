@@ -4,7 +4,7 @@
 
 int main() {
     const auto rec = rerun::RecordingStream("rerun_example_annotation_context_rects");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 
     // Log an annotation context to assign a label and color to each class
     rec.log_timeless(

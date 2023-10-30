@@ -2,7 +2,7 @@
 
 int main(int, char** argv) {
     const auto rec = rerun::RecordingStream("rerun_example_text_document");
-    rec.save(argv[1]).throw_on_failure();
+    rec.save(argv[1]).exit_on_failure();
     rec.log("text_document", rerun::archetypes::TextDocument("Hello, TextDocument!"));
     rec.log(
         "markdown",

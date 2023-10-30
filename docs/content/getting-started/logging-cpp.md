@@ -14,14 +14,23 @@ This guide aims to go wide instead of deep.
 There are links to other doc pages where you can learn more about specific topics.
 
 At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/dna/main.cpp?speculative-link) to better keep track of the overall picture.
-To run the example from the repository, run:
+To build the example from the repository, run:
 
 ```bash
-cd main/examples/cpp/dna
+cd examples/cpp/dna
 cmake -B build
 cmake --build build -j
+```
+
+And then to run it on Linux/Mac:
+```
 ./build/example_dna
 ```
+and windows respectively:
+```
+build\Debug\example_dna.exe
+```
+
 
 ## Prerequisites
 
@@ -34,6 +43,7 @@ See [Install arrow-cpp](../howto/arrow-cpp-install.md) to learn more about this 
 ## Setting up your CMakeLists.txt
 
 A minimal CMakeLists.txt for this example looks like this:
+
 ```cmake
 cmake_minimum_required(VERSION 3.16...3.27)
 project(example_dna LANGUAGES CXX)
@@ -83,7 +93,7 @@ Add our initial `main` to `main.cpp`:
 ```cpp
 int main() {
     auto rec = rerun::RecordingStream("rerun_example_dna_abacus");
-    rec.spawn().throw_on_failure();
+    rec.spawn().exit_on_failure();
 }
 ```
 
@@ -117,8 +127,6 @@ Now let's add some data to the viewer.
 The core structure of our DNA looking shape can easily be described using two point clouds shaped like spirals.
 Add the following to your `main` function:
 ```cpp
-static constexpr size_t NUM_POINTS = 100;
-
 std::vector<rerun::Position3D> points1, points2;
 std::vector<rerun::Color> colors1, colors2;
 color_spiral(NUM_POINTS, 2.0f, 0.02f, 0.0f, 0.1f, points1, colors1);
