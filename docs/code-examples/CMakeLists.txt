@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.16)
 # Setup builds for examples
 file(GLOB sources_list true ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 
+# TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
+list(REMOVE_ITEM sources_list ${CMAKE_CURRENT_SOURCE_DIR}/timelines_example.cpp)
+
 add_custom_target(doc_examples)
 
 foreach(SOURCE_PATH ${sources_list})
