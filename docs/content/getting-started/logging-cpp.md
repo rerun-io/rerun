@@ -2,7 +2,6 @@
 title: Logging Data in C++
 order: 6
 ---
-<!--TODO(#3962):All doc-links through this whole file-->
 
 In this section we'll log and visualize our first non-trivial dataset, putting many of Rerun's core concepts and features to use.
 
@@ -14,10 +13,10 @@ In a few lines of code, we'll go from a blank sheet to something you don't see e
 This guide aims to go wide instead of deep.
 There are links to other doc pages where you can learn more about specific topics.
 
-<!-- TODO(#3962): Fix link -->
-At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/main/examples/cpp/dna/main.cpp) to better keep track of the overall picture.
+At any time, you can checkout the complete code listing for this tutorial [here](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/dna/main.cpp?speculative-link) to better keep track of the overall picture.
 To run the example from the repository, run:
-```
+
+```bash
 cd main/examples/cpp/dna
 cmake -B build
 cmake --build build -j
@@ -30,7 +29,7 @@ You should have already [installed the viewer](installing-viewer.md).
 
 We assume you have a working C++ toolchain and are using `CMake` to build your project. For this example
 we will let Rerun download build [Apache Arrow](https://arrow.apache.org/)'s C++ library itself.
-See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install?speculative-link) to learn more about this step and how to use an existing install.
+See [Install arrow-cpp](../howto/arrow-cpp-install.md) to learn more about this step and how to use an existing install.
 
 ## Setting up your CMakeLists.txt
 
@@ -74,12 +73,11 @@ static constexpr size_t NUM_POINTS = 100;
 
 ## Initializing the SDK
 
-<!--TODO(#3962):All doc-links-->
-To get going we want to create a [`RecordingStream`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/recording_stream.hpp#L20-L53), which is the main interface for sending data to Rerun.
+To get going we want to create a [`RecordingStream`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/recording_stream.hpp), which is the main interface for sending data to Rerun.
 When creating the `RecordingStream` we also need to specify the name of the application we're working on
 by setting it's `ApplicationId`.
 
-We then use the stream to spawn a new rerun viewer via [`spawn`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/recording_stream.hpp#L120-L154).
+We then use the stream to spawn a new rerun viewer via [`spawn`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L151).
 
 Add our initial `main` to `main.cpp`:
 ```cpp
@@ -160,7 +158,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 ### Archetypes
 
-The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/recording_stream.hpp#L223-L233) method with one of the built-in archetype class, such as [`Points3D`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/archetypes/points3d.hpp#L26-L66). Archetypes take care of building batches of components that are recognized and correctly displayed by the Rerun viewer.
+The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method with one of the built-in archetype class, such as [`Points3D`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/archetypes/points3d.hpp). Archetypes take care of building batches of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
 
@@ -170,8 +168,8 @@ cases, it's possible to add custom components to archetypes, or even log entirel
 archetypes altogether.
 For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
 
-Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/recording_stream.hpp#L223-L233) method
-will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.
+Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method
+will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../howto/extend/custom-data.md).
 
 ### Entities & hierarchies
@@ -295,7 +293,7 @@ for (int t = 0; t < 400; t++) {
 }
 ```
 
-First we use [`RecordingStream::set_time_seconds`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/recording_stream.hpp#L180-L189) to declare our own custom `Timeline` and set the current timestamp.
+First we use [`RecordingStream::set_time_seconds`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L192) to declare our own custom `Timeline` and set the current timestamp.
 You can add as many timelines and timestamps as you want when logging data.
 
 ⚠️  If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
@@ -371,7 +369,7 @@ Voila!
 Sometimes, sending the data over the network is not an option. Maybe you'd like to share the data, attach it to a bug report, etc.
 
 Rerun has you covered:
-- Use [`RecordingStream::save`](https://github.com/rerun-io/rerun/blob/main/rerun_cpp/src/rerun/recording_stream.hpp#L156-L159) to stream all logging data to disk.
+- Use [`RecordingStream::save`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L162) to stream all logging data to disk.
 - Visualize it via `rerun path/to/recording.rrd`
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
