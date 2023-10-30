@@ -9,7 +9,7 @@ By default, the Rerun C++ SDK's CMake script (which is part of the SDK's zip art
 will download a known compatible version of Arrow from Github and add it to the build.
 The build configuration is kept to the minimum required by the Rerun C++ SDK.
 
-To instead use an existing install of Rerun, set the CMake build option `RERUN_DOWNLOAD_AND_BUILD_ARROW` to false.
+To instead use an existing install of Arrow, disable the CMake build option `RERUN_DOWNLOAD_AND_BUILD_ARROW`.
 (by passing `-DRERUN_DOWNLOAD_AND_BUILD_ARROW=OFF` to your CMake configure step).
 This will cause Rerun to instead use CMake's `find_package` to look for a ready-to-use install of the Arrow C++ library.
 
