@@ -8,6 +8,10 @@
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
     "files.autoGuessEncoding": true,
+    "cSpell.ignorePaths": [
+        ".vscode",
+        "pixi.lock"
+    ],
     "cSpell.words": [
         "andreas",
         "bbox",
