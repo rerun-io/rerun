@@ -34,7 +34,7 @@ jobs:
           paths: "**/*.c, **/*.cpp, **/*.fbs, **/*.h, **/*.hpp, **/*.js, **/*.md, **/*.py, **/*.rs, **/*.sh, **/*.toml, **/*.txt, **/*.wgsl, **/*.yml"
 
           # Avoid crates.io rate-limiting, skip changelog PR links (so many), and skip speculative links
-          linksToSkip: "https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*, .*?speculative-link"
+          linksToSkip: "https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*, .*?speculative-link, https://www.rerun.io/docs/getting-started/installing-viewer, https://www.rerun.io/docs/howto/arrow-cpp-install"
           retry: true
           retryErrors: true
           retryErrorsCount: 5
