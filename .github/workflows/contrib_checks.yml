@@ -292,13 +292,13 @@ jobs:
       - name: Build and run C++ tests with clang++
         shell: bash
         run: |
-          pixi cpp-clean
-          WARNINGS_AS_ERRORS=ON CXX=clang++ pixi cpp-build-all
-          WARNINGS_AS_ERRORS=ON CXX=clang++ pixi cpp-test
+          pixi run cpp-clean
+          WARNINGS_AS_ERRORS=ON CXX=clang++ pixi run cpp-build-all
+          WARNINGS_AS_ERRORS=ON CXX=clang++ pixi run cpp-test
 
       - name: Build and run C++ tests with g++
         shell: bash
         run: |
-          pixi cpp-clean
-          WARNINGS_AS_ERRORS=ON CXX=g++ pixi cpp-build-all
-          WARNINGS_AS_ERRORS=ON CXX=g++ pixi cpp-test
+          pixi run cpp-clean
+          WARNINGS_AS_ERRORS=ON CXX=g++ pixi run cpp-build-all
+          WARNINGS_AS_ERRORS=ON CXX=g++ pixi run cpp-test
