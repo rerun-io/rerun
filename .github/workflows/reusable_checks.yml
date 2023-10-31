@@ -396,8 +396,14 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Build and run C++ tests
+      - name: Build and run C++ tests with g++
         shell: bash
         run: |
            just cpp-clean
-           just cpp-build-and-test-all -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+           CXX=g++ just cpp-build-and-test-all -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+
+      - name: Build and run C++ tests with clang++
+        shell: bash
+        run: |
+           just cpp-clean
+           CXX=clang++ just cpp-build-and-test-all -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
