@@ -82,13 +82,13 @@ jobs:
               lib_name="rerun_c.lib"
               ;;
             macos-arm)
-              runner="macos-latest"
+              runner="macos-latest" # Small runners, because building rerun_c is fast
               target="aarch64-apple-darwin"
               container="null"
               lib_name="librerun_c.a"
               ;;
             macos-intel)
-              runner="macos-latest"
+              runner="macos-latest" # Small runners, because building rerun_c is fast
               target="x86_64-apple-darwin"
               container="null"
               lib_name="librerun_c.a"
