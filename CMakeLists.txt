@@ -50,6 +50,7 @@ function(set_default_warning_settings target)
         endif()
 
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            # Improve stack traces:
             target_compile_options(${target} PRIVATE -g -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fno-optimize-sibling-calls)
         endif()
 
