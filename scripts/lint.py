@@ -57,7 +57,7 @@ def lint_line(line: str, file_extension: str = "rs", is_in_docstring: bool = Fal
     if "NOLINT" in line:
         return None  # NOLINT ignores the linter
 
-    if file_extension not in ("py", "txt", "yml"):
+    if file_extension not in ("py", "txt", "yaml", "yml"):
         if "Github" in line:
             return "It's 'GitHub', not 'Github'"
 
@@ -706,6 +706,7 @@ def main() -> None:
         "toml",
         "txt",
         "wgsl",
+        "yaml",
         "yml",
     ]
 
