@@ -11,7 +11,7 @@ You can run each example individually using the following:
 - **Python**: `python <example_name>.py`, e.g. `python point3d_random.py`.
 - **Rust**: `cargo r -p code_examples --bin <example_name`, e.g. `cargo r -p code_examples --bin point3d_random`.
 - **C++**:
-  - `./docs/code-examples/build_all.sh` to compile all examples
+  - `pixi run cpp-build-examples` to compile all examples
   - start a Rerun Viewer listening on the default port: `rerun`
   - `./build/docs/code-examples/<example_name>` to run, e.g.  `./build/docs/code-examples/point3d_random`
 
