@@ -382,6 +382,11 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
+      - uses: prefix-dev/setup-pixi@v0.3.0
+        with:
+          pixi-version: v0.6.0
+          cache: true
+
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -391,15 +396,8 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Build and run rerun_cpp tests
+      - name: Build and run C++ tests
         shell: bash
-        run: ./rerun_cpp/build_and_run_tests.sh -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-
-      - name: Build examples
-        shell: bash
-        run: ./examples/cpp/build_all.sh -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-
-      - name: Build doc-code examples
-        shell: bash
-        run: ./docs/code-examples/cpp_build_all.sh -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-
+        run: |
+           just cpp-clean
+           just cpp-build-and-test-all -DCMAKE_COMPILE_WARNING_AS_ERROR=ON

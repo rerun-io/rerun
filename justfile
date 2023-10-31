@@ -54,6 +54,19 @@ cpp-build-doc-examples:
 cpp-test:
     pixi run cpp-test
 
+# Used by CI:
+cpp-build-and-test-all *ARGS:
+    #!/usr/bin/env bash
+    echo "Build and run rerun_cpp tests"
+    ./rerun_cpp/build_and_run_tests.sh {{ARGS}}
+
+    echo "Build examples"
+    ./examples/cpp/build_all.sh {{ARGS}}
+
+    echo "Build doc-code examples"
+    ./docs/code-examples/cpp_build_all.sh {{ARGS}}
+
+
 ### Python
 
 py_folders := "docs/code-examples examples rerun_py scripts tests"
