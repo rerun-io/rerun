@@ -160,7 +160,7 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         set(DARROW_CXXFLAGS "")
     endif()
 
-    # Workaround for https://stackoverflow.com/questions/35519538/visual-studio-code-tab-key-does-not-insert-a-tab
+    # Workaround for https://github.com/apache/arrow/issues/36117
     # This works around linking issues on Windows we got after enabling mimalloc.
     if(MSVC)
         file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/debug/)
