@@ -21,11 +21,7 @@ def changed_files() -> list[str]:
     current_branch = repo.active_branch
     common_ancestor = repo.merge_base(current_branch, "main")[0]
 
-    return [
-        item.b_path
-        for item in repo.index.diff(common_ancestor)
-        if os.path.exists(item.b_path)
-    ]
+    return [item.b_path for item in repo.index.diff(common_ancestor) if os.path.exists(item.b_path)]
 
 
 @dataclass
