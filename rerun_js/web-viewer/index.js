@@ -1,5 +1,6 @@
 /** @type {(typeof import("./re_viewer").WebHandle) | null} */
 let WebHandle = null;
+
 /** @returns {Promise<(typeof import("./re_viewer").WebHandle)>} */
 async function load() {
   if (WebHandle) {
