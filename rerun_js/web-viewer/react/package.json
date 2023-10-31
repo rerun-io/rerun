@@ -1,0 +1,38 @@
+{
+  "name": "@rerun-io/web-viewer-react",
+  "version": "0.0.5",
+  "description": "Embed the Rerun web viewer in your React app",
+  "private": false,
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rerun-io/rerun.git"
+  },
+  "author": "rerun-io",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rerun-io/rerun/issues"
+  },
+  "homepage": "https://rerun.io",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./index.js"
+    }
+  },
+  "files": [
+    "index.d.ts",
+    "index.d.ts.map",
+    "index.js",
+    "package.json",
+    "tsconfig.json"
+  ],
+  "dependencies": {
+    "@rerun-io/web-viewer": "^0.0.5",
+    "@types/react": "^18.2.33",
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "dts-buddy": "^0.3.0"
+  }
+}
