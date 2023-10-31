@@ -17,7 +17,7 @@ typos
 cargo fmt --all -- --check
 ./scripts/lint.py
 ./scripts/ci/cargo_deny.sh
-WARNINGS_AS_ERRORS=ON pixi run cpp-test
+RERUN_WERROR=ON pixi run cpp-test
 just py-lint
 
 cargo check --all-targets --all-features

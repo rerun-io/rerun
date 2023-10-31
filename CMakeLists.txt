@@ -48,8 +48,8 @@ function(set_default_warning_settings target)
     endif()
 endfunction()
 
-if(DEFINED ENV{WARNINGS_AS_ERRORS})
-    message(STATUS "Compiling with warnings as errors since WARNINGS_AS_ERRORS is set.")
+if(DEFINED ENV{RERUN_WERROR})
+    message(STATUS "Compiling with warnings as errors since RERUN_WERROR is set.")
     set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
 endif()
 
