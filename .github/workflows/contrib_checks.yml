@@ -289,18 +289,16 @@ jobs:
           pixi-version: v0.6.0
           cache: true
 
-      - uses: extractions/setup-just@v1
-        with:
-          just-version: 1.5
+      - name: Build and run C++ tests with clang++
+        shell: bash
+        run: |
+          pixi cpp-clean
+          WARNINGS_AS_ERRORS=ON CXX=clang++ pixi cpp-build-all
+          WARNINGS_AS_ERRORS=ON CXX=clang++ pixi cpp-test
 
       - name: Build and run C++ tests with g++
         shell: bash
         run: |
-           just cpp-clean
-           CXX=g++ just cpp-build-and-test-all -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-
-      - name: Build and run C++ tests with clang++
-        shell: bash
-        run: |
-           just cpp-clean
-           CXX=clang++ just cpp-build-and-test-all -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          pixi cpp-clean
+          WARNINGS_AS_ERRORS=ON CXX=g++ pixi cpp-build-all
+          WARNINGS_AS_ERRORS=ON CXX=g++ pixi cpp-test

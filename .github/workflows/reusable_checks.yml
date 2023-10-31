@@ -396,18 +396,16 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: extractions/setup-just@v1
-        with:
-          just-version: 1.5
+      - name: Build and run C++ tests with clang++
+        shell: bash
+        run: |
+          just cpp-clean
+          WARNINGS_AS_ERRORS=ON CXX=clang++ just cpp-build-all
+          WARNINGS_AS_ERRORS=ON CXX=clang++ just cpp-test
 
       - name: Build and run C++ tests with g++
         shell: bash
         run: |
-           just cpp-clean
-           CXX=g++ just cpp-build-and-test-all -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-
-      - name: Build and run C++ tests with clang++
-        shell: bash
-        run: |
-           just cpp-clean
-           CXX=clang++ just cpp-build-and-test-all -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          just cpp-clean
+          WARNINGS_AS_ERRORS=ON CXX=g++ just cpp-build-all
+          WARNINGS_AS_ERRORS=ON CXX=g++ just cpp-test
