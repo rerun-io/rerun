@@ -27,6 +27,7 @@ function(set_default_warning_settings target)
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
                 -Wc++20-compat-pedantic
+                -Wpre-c2x-compat-pedantic
                 -Wc99-extensions
                 -Wgnu
                 -Wnon-gcc
