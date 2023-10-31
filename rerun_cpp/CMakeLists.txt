@@ -109,13 +109,14 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 
 # -----------------------------------------------------------------------------
 # Arrow:
-if (WIN32)
+if(WIN32)
     # This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
     set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
 else()
     # On non-windows platforms ld search path settings alleviate this concern and this makes linking faster!
     set(RERUN_ARROW_LINK_SHARED_DEFAULT ON)
 endif()
+
 option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_LINK_SHARED_DEFAULT})
 option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
@@ -159,10 +160,18 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         set(DARROW_CXXFLAGS "")
     endif()
 
-    if(NOT CMAKE_BUILD_TYPE)
-        set(ARROW_CMAKE_BUILD_TYPE Release)
+    # Workaround for https://stackoverflow.com/questions/35519538/visual-studio-code-tab-key-does-not-insert-a-tab
+    # This works around linking issues on Windows we got after enabling mimalloc.
+    if(MSVC)
+        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/debug/)
+        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/relwithdebinfo/)
+        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/release/)
+    endif()
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(ARROW_CMAKE_PRESET ninja-debug-minimal)
     else()
-        set(ARROW_CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE})
+        set(ARROW_CMAKE_PRESET ninja-release-minimal)
     endif()
 
     ExternalProject_Add(
@@ -173,19 +182,18 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         GIT_SHALLOW true
         GIT_PROGRESS true
         CMAKE_ARGS
-        --preset ninja-debug-minimal
+        --preset ${ARROW_CMAKE_PRESET}
         -DARROW_BOOST_USE_SHARED=OFF
         -DARROW_BUILD_SHARED=${ARROW_BUILD_SHARED}
         -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
         -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
         -DARROW_IPC=ON
-        -DARROW_JEMALLOC=OFF
+        -DARROW_JEMALLOC=OFF # We encountered some build issues with jemalloc, use mimalloc instead.
         -DARROW_MIMALLOC=ON
         -DARROW_USE_ASAN=OFF
         -DARROW_USE_TSAN=OFF
         -DARROW_USE_UBSAN=OFF
         -DBOOST_SOURCE=BUNDLED
-        -DCMAKE_BUILD_TYPE=${ARROW_CMAKE_BUILD_TYPE}
         -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
         -Dxsimd_SOURCE=BUNDLED
         SOURCE_SUBDIR cpp
@@ -202,7 +210,20 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         endif()
     else()
         add_library(RerunArrowTarget STATIC IMPORTED)
+
+        # Need to set the ARROW_STATIC define, otherwise arrow functions are dllimport decorated on Windows.
         target_compile_definitions(RerunArrowTarget INTERFACE ARROW_STATIC)
+
+        # Unclear why this is only an issue on Windows, but we have to explicitely opt in the arrow bundled dependencies,
+        # otherwise're missing the symbols for mimalloc.
+        if(WIN32)
+            add_library(RerunArrowTargetBundledDeps STATIC IMPORTED)
+            add_dependencies(RerunArrowTargetBundledDeps arrow_cpp)
+            set_target_properties(RerunArrowTargetBundledDeps PROPERTIES
+                IMPORTED_LOCATION ${ARROW_DOWNLOAD_PATH}/lib/arrow_bundled_dependencies.lib
+            )
+            target_link_libraries(RerunArrowTarget INTERFACE RerunArrowTargetBundledDeps)
+        endif()
     endif()
 
     add_dependencies(RerunArrowTarget arrow_cpp)
