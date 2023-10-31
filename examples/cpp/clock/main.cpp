@@ -50,5 +50,5 @@ int main() {
         log_hand(rec, "seconds", step, (step % 60) / 60.0f, LENGTH_S, WIDTH_S, 0);
         log_hand(rec, "minutes", step, (step % 3600) / 3600.0f, LENGTH_M, WIDTH_M, 128);
         log_hand(rec, "hours", step, (step % 43200) / 43200.0f, LENGTH_H, WIDTH_H, 255);
-    };
+    }
 }
