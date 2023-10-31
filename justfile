@@ -54,6 +54,7 @@ cpp-build-doc-examples:
 cpp-test:
     pixi run cpp-test
 
+
 ### Python
 
 py_folders := "docs/code-examples examples rerun_py scripts tests"
