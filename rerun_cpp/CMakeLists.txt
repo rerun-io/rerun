@@ -139,10 +139,13 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
 
         if(APPLE)
             set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
+            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow_bundled_dependencies.a)
         elseif(UNIX) # if(LINUX) # CMake 3.25
             set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
+            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow_bundled_dependencies.a)
         elseif(WIN32)
             set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/arrow_static.lib)
+            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/arrow_bundled_dependencies.lib)
         else()
             message(FATAL_ERROR "Unsupported platform.")
         endif()
@@ -209,16 +212,13 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         # Need to set the ARROW_STATIC define, otherwise arrow functions are dllimport decorated on Windows.
         target_compile_definitions(RerunArrowTarget INTERFACE ARROW_STATIC)
 
-        # Unclear why this is only an issue on Windows, but we have to explicitly opt in the arrow bundled dependencies,
-        # otherwise're missing the symbols for mimalloc.
-        if(WIN32)
-            add_library(RerunArrowTargetBundledDeps STATIC IMPORTED)
-            add_dependencies(RerunArrowTargetBundledDeps arrow_cpp)
-            set_target_properties(RerunArrowTargetBundledDeps PROPERTIES
-                IMPORTED_LOCATION ${ARROW_DOWNLOAD_PATH}/lib/arrow_bundled_dependencies.lib
-            )
-            target_link_libraries(RerunArrowTarget INTERFACE RerunArrowTargetBundledDeps)
-        endif()
+        # We have to explicitly opt in the arrow bundled dependencies, otherwise we're missing the symbols for mimalloc.
+        add_library(RerunArrowTargetBundledDeps STATIC IMPORTED)
+        add_dependencies(RerunArrowTargetBundledDeps arrow_cpp)
+        set_target_properties(RerunArrowTargetBundledDeps PROPERTIES
+            IMPORTED_LOCATION ${ARROW_BUNDLED_DEPENDENCIES_FILE}
+        )
+        target_link_libraries(RerunArrowTarget INTERFACE RerunArrowTargetBundledDeps)
     endif()
 
     add_dependencies(RerunArrowTarget arrow_cpp)
