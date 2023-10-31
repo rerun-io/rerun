@@ -1,37 +1,19 @@
 #!/usr/bin/env bash
 
+# You can pass in extra cmake flags, like:
+# -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+
 set -eu
 script_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$script_path/.."
 set -x
 
-WERROR=false
-
-while test $# -gt 0; do
-  case "$1" in
-    --werror)
-      shift
-      WERROR=true
-      ;;
-
-    *)
-      echo "Unknown option: $1"
-      exit 1
-      ;;
-  esac
-done
-
-
 num_threads=$(getconf _NPROCESSORS_ONLN)
 
 mkdir -p build
 pushd build
-    if [ ${WERROR} = true ]; then
-        cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_COMPILE_WARNING_AS_ERROR=ON ..
-    else
-        cmake -DCMAKE_BUILD_TYPE=Debug ..
-    fi
-    cmake --build . --config Debug --target rerun_sdk_tests -j ${num_threads}
+  cmake -DCMAKE_BUILD_TYPE=Debug $@ ..
+  cmake --build . --config Debug --target rerun_sdk_tests -j ${num_threads}
 popd
 
 ./build/rerun_cpp/tests/rerun_sdk_tests

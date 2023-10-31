@@ -17,7 +17,7 @@ typos
 cargo fmt --all -- --check
 ./scripts/lint.py
 ./scripts/ci/cargo_deny.sh
-./rerun_cpp/build_and_run_tests.sh --werror
+./rerun_cpp/build_and_run_tests.sh -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
 just py-lint
 
 cargo check --all-targets --all-features
