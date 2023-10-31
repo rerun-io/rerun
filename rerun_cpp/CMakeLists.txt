@@ -164,8 +164,17 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         PREFIX ${ARROW_DOWNLOAD_PATH}
         GIT_REPOSITORY https://github.com/apache/arrow.git
         GIT_TAG apache-arrow-10.0.1
-        GIT_SHALLOW true
-        GIT_PROGRESS true
+        GIT_SHALLOW ON
+
+        # Git progress sounds like a nice idea but is in practive very spammy.
+        # GIT_PROGRESS ON
+
+        # LOG_X ON means that the output of the command will *not* be printed to the console,
+        # but instead be directed to a file (it logs where the file goes).
+        LOG_CONFIGURE ON
+        LOG_BUILD ON
+        LOG_INSTALL ON
+
         CMAKE_ARGS
         --preset ninja-debug-minimal
         -DARROW_IPC=ON
@@ -180,6 +189,7 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         -DBOOST_SOURCE=BUNDLED
         -DARROW_BOOST_USE_SHARED=OFF
         -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
+
         SOURCE_SUBDIR cpp
         BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE}
     )
