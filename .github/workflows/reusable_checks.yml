@@ -396,12 +396,15 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Build and run C++ tests with clang++
-        shell: bash
-        run: |
-          pixi run cpp-clean
-          WARNINGS_AS_ERRORS=ON CXX=clang++ pixi run cpp-build-all
-          WARNINGS_AS_ERRORS=ON CXX=clang++ pixi run cpp-test
+      # TODO(emilk): make this work somehow. Right now this just results in
+      # > Compiler: GNU 12.3.0 (/__w/rerun/rerun/.pixi/env/bin/x86_64-conda-linux-gnu-c++)
+      # 😭
+      # - name: Build and run C++ tests with clang++
+      #   shell: bash
+      #   run: |
+      #     pixi run cpp-clean
+      #     WARNINGS_AS_ERRORS=ON CXX=clang++ pixi run cpp-build-all
+      #     WARNINGS_AS_ERRORS=ON CXX=clang++ pixi run cpp-test
 
       - name: Build and run C++ tests with g++
         shell: bash
