@@ -30,7 +30,9 @@ namespace rerun {
         inline std::vector<T> linspace(T start, T end, size_t num) {
             std::vector<T> linspaced(num);
             std::generate(linspaced.begin(), linspaced.end(), [&, i = 0]() mutable {
-                return static_cast<T>(start + static_cast<T>(i++) * (end - start) / static_cast<T>(num - 1));
+                return static_cast<T>(
+                    start + static_cast<T>(i++) * (end - start) / static_cast<T>(num - 1)
+                );
             });
             return linspaced;
         }

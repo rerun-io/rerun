@@ -109,14 +109,9 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 
 # -----------------------------------------------------------------------------
 # Arrow:
-if(WIN32)
-    # This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
-    set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
-else()
-    # On non-windows platforms ld search path settings alleviate this concern and this makes linking faster!
-    set(RERUN_ARROW_LINK_SHARED_DEFAULT ON)
-endif()
-
+# This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
+# Additionally reduces risk of picking up system libraries on Mac / Linux.
+set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
 option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_LINK_SHARED_DEFAULT})
 option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
@@ -190,7 +185,7 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         -DARROW_IPC=ON
         -DARROW_JEMALLOC=OFF # We encountered some build issues with jemalloc, use mimalloc instead.
         -DARROW_MIMALLOC=ON
-        -DARROW_USE_ASAN=OFF
+        -DARROW_USE_ASAN=${RERUN_USE_ASAN}
         -DARROW_USE_TSAN=OFF
         -DARROW_USE_UBSAN=OFF
         -DBOOST_SOURCE=BUNDLED
@@ -214,7 +209,7 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         # Need to set the ARROW_STATIC define, otherwise arrow functions are dllimport decorated on Windows.
         target_compile_definitions(RerunArrowTarget INTERFACE ARROW_STATIC)
 
-        # Unclear why this is only an issue on Windows, but we have to explicitely opt in the arrow bundled dependencies,
+        # Unclear why this is only an issue on Windows, but we have to explicitly opt in the arrow bundled dependencies,
         # otherwise're missing the symbols for mimalloc.
         if(WIN32)
             add_library(RerunArrowTargetBundledDeps STATIC IMPORTED)

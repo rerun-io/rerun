@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.16...3.27)
 
 project(rerun_cpp_proj LANGUAGES CXX)
 
+if(DEFINED ENV{RERUN_WERROR})
+    message(STATUS "Compiling with warnings as errors since RERUN_WERROR is set.")
+    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+endif()
+
+if(DEFINED ENV{RERUN_USE_ASAN})
+    message(STATUS "Compiling with with address sanatizer ('asan') since RERUN_USE_ASAN is set.")
+    set(RERUN_USE_ASAN ON)
+endif()
+
 function(set_default_warning_settings target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4)
@@ -26,6 +36,8 @@ function(set_default_warning_settings target)
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
+                -Wc++20-compat-pedantic
+                -Wpre-c2x-compat-pedantic
                 -Wc99-extensions
                 -Wgnu
                 -Wnon-gcc
@@ -40,18 +52,17 @@ function(set_default_warning_settings target)
         endif()
 
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            # Debug build with fsanatize:
+            # Improve stack traces:
             target_compile_options(${target} PRIVATE -g -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fno-optimize-sibling-calls)
+        endif()
+
+        if(RERUN_USE_ASAN)
+            # Turn on the address sanatizer ("asan"):
             target_compile_options(${target} PRIVATE -fsanitize=address)
             target_link_options(${target} PRIVATE -fsanitize=address)
         endif()
     endif()
 endfunction()
-
-if(DEFINED ENV{WARNINGS_AS_ERRORS})
-    message(STATUS "Compiling with warnings as errors since WARNINGS_AS_ERRORS is set.")
-    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
-endif()
 
 # Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.
 if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
