@@ -19,6 +19,7 @@ DerivePointerAlignment: false
 EmptyLineBeforeAccessModifier: LogicalBlock
 IndentWidth: 4
 IndentWrappedFunctionNames: true
+InsertBraces: true
 InsertTrailingCommas: Wrapped
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: All

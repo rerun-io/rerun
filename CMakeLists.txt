@@ -30,6 +30,7 @@ function(set_default_warning_settings target)
             -Wpointer-arith
             -Wshadow
             -Wswitch-enum
+            -Wunreachable-code
             -Wvla
         )
 
@@ -37,11 +38,32 @@ function(set_default_warning_settings target)
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
                 -Wc++20-compat-pedantic
-                -Wpre-c2x-compat-pedantic
                 -Wc99-extensions
+                -Weverything
                 -Wgnu
                 -Wnon-gcc
+                -Wpre-c2x-compat-pedantic
                 -Wshadow-all
+
+                # Turn off some warning that -Weverything turns on:
+                -Wno-c++98-compat
+                -Wno-c++98-compat-pedantic
+                -Wno-covered-switch-default # We often add a `default:` case out of paranoia
+                -Wno-ctad-maybe-unsupported
+                -Wno-disabled-macro-expansion
+                -Wno-documentation
+                -Wno-documentation-unknown-command
+                -Wno-double-promotion # float->double is nothing to whine about
+                -Wno-exit-time-destructors
+                -Wno-float-equal # comparing floats is fine
+                -Wno-global-constructors
+                -Wno-missing-prototypes
+                -Wno-padded
+                -Wno-reserved-id-macro
+                -Wno-reserved-identifier
+                -Wno-unreachable-code-break # TODO(emilk): remove this exception - we only need this because of codegen
+                -Wno-unreachable-code-return # TODO(emilk): remove this exception - we only need this because of codegen
+                -Wno-unused-macros
             )
         endif()
 

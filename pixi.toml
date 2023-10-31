@@ -98,7 +98,7 @@ cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 [dependencies]
 attrs = ">=23.1.0"
 blackdoc = "0.3.8"
-clang-tools = ">=15,<16"
+clang-tools = ">=15,<16"       # clang-format
 cmake = "3.27.6"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"

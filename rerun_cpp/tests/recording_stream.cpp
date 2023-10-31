@@ -282,8 +282,8 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
     std::string test_rrd0 = std::string(test_path) + "test-file-0.rrd";
     std::string test_rrd1 = std::string(test_path) + "test-file-1.rrd";
 
-    fs::remove(test_rrd0.c_str());
-    fs::remove(test_rrd1.c_str());
+    fs::remove(test_rrd0);
+    fs::remove(test_rrd1);
 
     GIVEN("a new RecordingStream") {
         auto stream0 = std::make_unique<rerun::RecordingStream>("test");
@@ -299,16 +299,16 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
         // }
         AND_GIVEN("valid save path " << test_rrd0) {
             AND_GIVEN("a directory already existing at this path") {
-                fs::create_directory(test_rrd0.c_str());
+                fs::create_directory(test_rrd0);
                 THEN("then the save call fails") {
                     CHECK(
-                        stream0->save(test_rrd0.c_str()).code ==
+                        stream0->save(test_rrd0).code ==
                         rerun::ErrorCode::RecordingStreamSaveFailure
                     );
                 }
             }
             THEN("save call returns no error") {
-                REQUIRE(stream0->save(test_rrd0.c_str()).is_ok());
+                REQUIRE(stream0->save(test_rrd0).is_ok());
 
                 THEN("a new file got immediately created") {
                     CHECK(fs::exists(test_rrd0));
@@ -318,7 +318,7 @@ SCENARIO("RecordingStream can log to file", TEST_TAG) {
                     auto stream1 = std::make_unique<rerun::RecordingStream>("test2");
 
                     WHEN("saving that one to a different file " << test_rrd1) {
-                        REQUIRE(stream1->save(test_rrd1.c_str()).is_ok());
+                        REQUIRE(stream1->save(test_rrd1).is_ok());
 
                         WHEN("logging a component to the second stream") {
                             check_logged_error([&] {
