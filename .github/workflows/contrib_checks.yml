@@ -289,6 +289,10 @@ jobs:
           pixi-version: v0.6.0
           cache: true
 
+      - uses: extractions/setup-just@v1
+        with:
+          just-version: 1.5
+
       - name: Build and run C++ tests with g++
         shell: bash
         run: |

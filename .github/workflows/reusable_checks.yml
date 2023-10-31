@@ -396,6 +396,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - uses: extractions/setup-just@v1
+        with:
+          just-version: 1.5
+
       - name: Build and run C++ tests with g++
         shell: bash
         run: |
