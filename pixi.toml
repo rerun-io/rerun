@@ -73,6 +73,7 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
 
+cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
 cpp-build-all = { depends_on = [
   "cpp-prepare",
   "cpp-build-tests",
