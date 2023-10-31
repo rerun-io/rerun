@@ -39,7 +39,7 @@ export default function WebViewer(props) {
       if (parent.current) {
         // Start the web viewer when the parent div is mounted to the DOM.
         const w = new rerun.WebViewer();
-        w.start(rrd);
+        w.start(rrd, parent.current);
         viewer.current = w;
         return () => {
           // Stop the web viewer when the component is unmounted.
