@@ -109,13 +109,14 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 
 # -----------------------------------------------------------------------------
 # Arrow:
-if (WIN32)
+if(WIN32)
     # This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
     set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
 else()
     # On non-windows platforms ld search path settings alleviate this concern and this makes linking faster!
     set(RERUN_ARROW_LINK_SHARED_DEFAULT ON)
 endif()
+
 option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_LINK_SHARED_DEFAULT})
 option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
@@ -165,12 +166,10 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         GIT_REPOSITORY https://github.com/apache/arrow.git
         GIT_TAG apache-arrow-10.0.1
         GIT_SHALLOW ON
+        GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practive very spammy.
 
-        # Git progress sounds like a nice idea but is in practive very spammy.
-        # GIT_PROGRESS ON
-
-        # LOG_X ON means that the output of the command will *not* be printed to the console,
-        # but instead be directed to a file (it logs where the file goes).
+        # LOG_X ON means that the output of the command will
+        # be logged to a file _instead_ of printed to the console.
         LOG_CONFIGURE ON
         LOG_BUILD ON
         LOG_INSTALL ON
