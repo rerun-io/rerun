@@ -109,13 +109,9 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 
 # -----------------------------------------------------------------------------
 # Arrow:
-if (WIN32)
-    # This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
-    set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
-else()
-    # On non-windows platforms ld search path settings alleviate this concern and this makes linking faster!
-    set(RERUN_ARROW_LINK_SHARED_DEFAULT ON)
-endif()
+# This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
+# Additionally reduces risk of picking up system libraries on Mac / Linux.
+set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
 option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_LINK_SHARED_DEFAULT})
 option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
@@ -172,7 +168,7 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         -DARROW_BUILD_SHARED=${ARROW_BUILD_SHARED}
         -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
         -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
-        -DARROW_USE_ASAN=OFF
+        -DARROW_USE_ASAN=${RERUN_USE_ASAN}
         -DARROW_USE_TSAN=OFF
         -DARROW_USE_UBSAN=OFF
         -DARROW_JEMALLOC=OFF
