@@ -31,7 +31,7 @@ jobs:
       - uses: jprochazk/linkinator-action@main
         with:
           # This list of file extensions matches the one in `scripts/lint.py`, except .html is omitted due to relative links.
-          paths: "**/*.c, **/*.cpp, **/*.fbs, **/*.h, **/*.hpp, **/*.js, **/*.md, **/*.py, **/*.rs, **/*.sh, **/*.toml, **/*.txt, **/*.wgsl, **/*.yaml, **/*.yml"
+          paths: "**/*.c, **/*.cpp, **/*.fbs, **/*.h, **/*.hpp, **/*.js, **/*.md, **/*.py, **/*.rs, **/*.sh, **/*.toml, **/*.txt, **/*.wgsl, **/*.yml"
 
           # Avoid crates.io rate-limiting, skip changelog PR links (so many), and skip speculative links
           # TODO(#4085): https://rerun-io.github.io/rerun/dev/bench/ often 404:s for unknown reasons
