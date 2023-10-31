@@ -10,7 +10,9 @@
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
+#include <algorithm>
 #include <cstdint>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -24,21 +26,24 @@ namespace rerun {
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///
+        /// #include <algorithm> // std::generate
         /// #include <random>
+        /// #include <vector>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
-        ///     rec.connect().throw_on_failure();
+        ///     const auto rec = rerun::RecordingStream("rerun_example_tensor_simple");
+        ///     rec.spawn().exit_on_failure();
         ///
         ///     std::default_random_engine gen;
-        ///     std::uniform_int_distribution<uint8_t> dist(0, 255);
+        ///     // On MSVC uint8_t distributions are not supported.
+        ///     std::uniform_int_distribution<int> dist(0, 255);
         ///
         ///     std::vector<uint8_t> data(8 * 6 * 3 * 5);
-        ///     std::generate(data.begin(), data.end(), [&] { return dist(gen); });
+        ///     std::generate(data.begin(), data.end(), [&] { return static_cast<uint8_t>(dist(gen)); });
         ///
         ///     rec.log(
         ///         "tensor",
-        ///         rerun::Tensor({8, 6, 3, 5}, data).with_dim_names({"batch", "channel", "height", "width"})
+        ///         rerun::Tensor({8, 6, 3, 5}, data).with_dim_names({"width", "height", "channel", "batch"})
         ///     );
         /// }
         /// ```

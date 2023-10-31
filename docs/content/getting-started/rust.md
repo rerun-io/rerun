@@ -3,14 +3,14 @@ title: Rust Quick Start
 order: 3
 ---
 
-## Installing Rerun
+## Setup
 The Rerun SDK for Rust requires a working installation of Rust 1.72+.
 
 After you have [installed the viewer](installing-viewer.md) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
 Let's try it out in a brand new Rust project:
 ```bash
-$ cargo init cube && cd cube && cargo add rerun --features native_viewer
+$ cargo init cube && cd cube && cargo add rerun
 ```
 
 ## Logging some data
@@ -20,7 +20,7 @@ Add the following code to your `main.rs`
 use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_minimal_rs").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal").spawn(None)?;
 
     let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
     let colors = grid(glam::Vec3::ZERO, glam::Vec3::splat(255.0), 10)
@@ -33,7 +33,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_radii([0.5]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }
 ```

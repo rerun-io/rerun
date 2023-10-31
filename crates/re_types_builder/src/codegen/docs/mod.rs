@@ -163,7 +163,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         };
         putln!(page);
         putln!(page, "## Links");
-        // TODO(#2919): link to C++ docs
+        // TODO(#3974): link to C++ docs
         putln!(
             page,
             " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
@@ -192,7 +192,11 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             putln!(page);
             write_used_by(&mut page, reporter, object, object_map);
         }
-        ObjectKind::Blueprint | ObjectKind::Archetype => {}
+        ObjectKind::Blueprint | ObjectKind::Archetype => {
+            if examples.is_empty() {
+                reporter.warn(&object.virtpath, &object.fqname, "No examples");
+            }
+        }
     }
 
     page
@@ -259,7 +263,9 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
         // reference other tables, but they are unwrapped in the codegen.
         // So for instance: `union Angle` uses `rerun.datatypes.Float32` in
         // `angle.fbs`, but in the generated code that datatype is unused.
-        reporter.warn(&object.virtpath, &object.fqname, "Unused object");
+        if false {
+            reporter.warn(&object.virtpath, &object.fqname, "Unused object");
+        }
     } else {
         putln!(o, "## Used by");
         putln!(o);

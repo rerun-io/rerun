@@ -2,6 +2,7 @@
 title: Minimal example
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/minimal/main.py
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/minimal/src/main.rs
+cpp: https://github.com/rerun-io/rerun/tree/latest/examples/cpp/minimal/main.cpp
 thumbnail: https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e5e8/480w.png
 ---
 
@@ -14,6 +15,7 @@ thumbnail: https://static.rerun.io/minimal/0e47ac513ab25d56cf2b493128097d499a07e
 </picture>
 
 The simplest example of how to use Rerun, showing how to log a point cloud.
+This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/rust).
 
 ```bash
 cargo run --release

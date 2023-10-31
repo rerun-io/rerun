@@ -1,8 +1,7 @@
 //! Log a simple colored triangle.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_simple").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_simple").spawn()?;
 
     rec.log(
         "triangle",
@@ -11,6 +10,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_vertex_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

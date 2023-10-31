@@ -1,7 +1,7 @@
 //! Log some very simple 2D boxes.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_box2d").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_box2d").spawn()?;
 
     rec.log(
         "simple",
@@ -11,6 +11,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Log an extra rect to set the view bounds
     rec.log("bounds", &rerun::Boxes2D::from_sizes([(4., 3.)]))?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

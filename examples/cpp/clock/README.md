@@ -2,8 +2,7 @@
 title: Clock
 python: https://github.com/rerun-io/rerun/tree/latest/examples/python/clock/main.py
 rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/clock/src/main.rs
-# TODO(#3962): Update Link
-cpp: https://github.com/rerun-io/rerun/tree/main/examples/cpp/clock/main.cpp
+cpp: https://github.com/rerun-io/rerun/tree/latest/examples/cpp/clock/main.cpp
 thumbnail: https://static.rerun.io/clock/ae4b8970edba8480431cb71e57b8cddd9e1769c7/480w.png
 ---
 
@@ -21,6 +20,6 @@ An example visualizing an analog clock with hour, minute and seconds hands using
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
 cmake .
-cmake --build . --target clock_example
-./examples/cpp/clock/clock_example
+cmake --build . --target example_clock
+./examples/cpp/clock/example_clock
 ```

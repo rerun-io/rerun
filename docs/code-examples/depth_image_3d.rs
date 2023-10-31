@@ -2,8 +2,7 @@
 use ndarray::{s, Array, ShapeBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_depth_image").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_depth_image").spawn()?;
 
     let mut image = Array::<u16, _>::from_elem((200, 300).f(), 65535);
     image.slice_mut(s![50..150, 50..150]).fill(20000);
@@ -22,6 +21,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.log("world/camera/depth", &depth_image)?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

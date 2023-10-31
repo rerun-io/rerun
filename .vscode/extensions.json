@@ -6,7 +6,6 @@
     "gaborv.flatbuffers",
     "github.vscode-github-actions",
     "josetr.cmake-language-support-vscode",
-    "ms-python.black-formatter",
     "ms-python.mypy-type-checker",
     "ms-python.python",
     "ms-vscode.cmake-tools",

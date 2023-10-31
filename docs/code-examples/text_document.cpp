@@ -2,19 +2,15 @@
 
 #include <rerun.hpp>
 
-#include <cmath>
-
-namespace rrd = rerun::datatypes;
-
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_text_document");
-    rec.connect().throw_on_failure();
+    const auto rec = rerun::RecordingStream("rerun_example_text_document");
+    rec.spawn().exit_on_failure();
 
-    rec.log("text_document", rerun::archetypes::TextDocument("Hello, TextDocument!"));
+    rec.log("text_document", rerun::TextDocument("Hello, TextDocument!"));
 
     rec.log(
         "markdown",
-        rerun::archetypes::TextDocument(R"#(# Hello Markdown!
+        rerun::TextDocument(R"#(# Hello Markdown!
 [Click here to see the raw text](recording://markdown.Text).
 
 Basic formatting:
@@ -28,13 +24,6 @@ Basic formatting:
 | `inline code`     |                 |
 
 ----------------------------------
-
-Some code:
-```rs
-fn main() {
-    println!("Hello, world!");
-}
-```
 
 ## Support
 - [x] [Commonmark](https://commonmark.org/help/) support
@@ -54,6 +43,6 @@ Of course you can also have [normal https links](https://github.com/rerun-io/rer
 
 ## Image
 ![A random image](https://picsum.photos/640/480))#")
-            .with_media_type(rerun::components::MediaType::markdown())
+            .with_media_type(rerun::MediaType::markdown())
     );
 }

@@ -5,8 +5,9 @@ using rerun::demo::grid;
 
 int main() {
     // Create a new `RecordingStream` which sends data over TCP to the viewer process.
-    auto rec = rerun::RecordingStream("rerun_example_minimal_cpp");
-    rec.connect().throw_on_failure();
+    const auto rec = rerun::RecordingStream("rerun_example_cpp");
+    // Try to spawn a new viewer instance.
+    rec.spawn().exit_on_failure();
 
     // Create some data using the `grid` utility function.
     auto points = grid<rerun::Position3D, float>({-10.f, -10.f, -10.f}, {10.f, 10.f, 10.f}, 10);

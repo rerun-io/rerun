@@ -2,17 +2,19 @@
 
 #include <rerun.hpp>
 
-int main() {
-    auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
-    rec.connect().throw_on_failure();
+#include <vector>
 
-    std::vector<rerun::datatypes::Vec3D> strip1 = {
+int main() {
+    const auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
+    rec.spawn().exit_on_failure();
+
+    std::vector<rerun::Vec3D> strip1 = {
         {0.f, 0.f, 2.f},
         {1.f, 0.f, 2.f},
         {1.f, 1.f, 2.f},
         {0.f, 1.f, 2.f},
     };
-    std::vector<rerun::datatypes::Vec3D> strip2 = {
+    std::vector<rerun::Vec3D> strip2 = {
         {0.f, 0.f, 0.f},
         {0.f, 0.f, 1.f},
         {1.f, 0.f, 0.f},

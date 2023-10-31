@@ -1,8 +1,7 @@
 //! Log a simple line strip.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip2d").spawn()?;
 
     let points = [[0., 0.], [2., 1.], [4., -1.], [6., 0.]];
     rec.log("strip", &rerun::LineStrips2D::new([points]))?;
@@ -13,6 +12,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::Boxes2D::from_centers_and_sizes([(3., 0.)], [(8., 6.)]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

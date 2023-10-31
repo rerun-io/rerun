@@ -93,6 +93,9 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}
     secrets: inherit
 
+  # -----------------------------------------------------------------------------------
+  # Build rerun_c library binaries:
+
   build-rerun_c-and-upload-linux:
     needs: [checks]
     name: "Linux-x64: Build & Upload rerun_c"
@@ -129,6 +132,9 @@ jobs:
       PLATFORM: windows
     secrets: inherit
 
+  # -----------------------------------------------------------------------------------
+  # Build rerun-cli (rerun binaries):
+
   build-rerun-cli-and-upload-linux:
     needs: [checks]
     name: "Linux-x64: Build & Upload rerun-cli"
@@ -164,6 +170,8 @@ jobs:
       CONCURRENCY: push-windows-${{ github.ref_name }}
       PLATFORM: windows
     secrets: inherit
+
+  # -----------------------------------------------------------------------------------
 
   build-linux:
     needs: [checks]
@@ -264,7 +272,7 @@ jobs:
     secrets: inherit
 
   bundle-and-upload-rerun_cpp:
-    name: "Bundle and upload rerun_cpp"
+    name: "Bundle and upload rerun_cpp_sdk.zip"
     needs:
       [
         build-rerun_c-and-upload-linux,
@@ -288,6 +296,10 @@ jobs:
         build-rerun_c-and-upload-macos-intel,
         build-rerun_c-and-upload-macos-arm,
         build-rerun_c-and-upload-windows,
+        build-rerun-cli-and-upload-linux,
+        build-rerun-cli-and-upload-macos-intel,
+        build-rerun-cli-and-upload-macos-arm,
+        build-rerun-cli-and-upload-windows,
         bundle-and-upload-rerun_cpp,
       ]
     runs-on: "ubuntu-latest"
@@ -341,12 +353,6 @@ jobs:
             FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip)
             FetchContent_MakeAvailable(rerun_sdk)
             ```
-
-            ## Static libraries for rerun_c
-            * [Windows x64](https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_c/windows/rerun_c.lib)
-            * [Linux x64](https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_c/linux/librerun_c.a)
-            * [Mac Arm64](https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_c/macos-arm/librerun_c.a)
-            * [Mac Intel](https://build.rerun.io/commit/${{ env.SHORT_SHA }}/rerun_c/macos-intel/librerun_c.a)
 
           prerelease: true
           name: "Development Build"

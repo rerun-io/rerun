@@ -1,7 +1,6 @@
 //! The Rerun C SDK.
 //!
 //! The functions here must match `rerun.h`.
-// TODO(emilk): error handling
 
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
@@ -23,7 +22,62 @@ use re_sdk::{
 // ----------------------------------------------------------------------------
 // Types:
 
+/// This is called `rr_string` in the C API.
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CStringView {
+    pub string: *const c_char,
+    pub length: u32,
+}
+
+impl CStringView {
+    #[allow(clippy::result_large_err)]
+    pub fn as_str<'a>(&'a self, argument_name: &'a str) -> Result<&'a str, CError> {
+        ptr::try_char_ptr_as_str(self.string, self.length, argument_name)
+    }
+
+    pub fn is_null(&self) -> bool {
+        self.string.is_null()
+    }
+}
+
 type CRecordingStream = u32;
+
+/// C version of [`re_sdk::SpawnOptions`].
+#[derive(Debug, Clone)]
+#[repr(C)]
+pub struct CSpawnOptions {
+    pub port: u16,
+    pub memory_limit: CStringView,
+    pub executable_name: CStringView,
+    pub executable_path: CStringView,
+}
+
+impl CSpawnOptions {
+    #[allow(clippy::result_large_err)]
+    pub fn as_rust(&self) -> Result<re_sdk::SpawnOptions, CError> {
+        let mut spawn_opts = re_sdk::SpawnOptions::default();
+
+        if self.port != 0 {
+            spawn_opts.port = self.port;
+        }
+
+        if !self.memory_limit.is_null() {
+            spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
+        }
+
+        if !self.executable_name.is_null() {
+            spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
+        }
+
+        if !self.executable_path.is_null() {
+            spawn_opts.executable_path =
+                Some(self.executable_path.as_str("executable_path")?.to_owned());
+        }
+
+        Ok(spawn_opts)
+    }
+}
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,14 +103,14 @@ impl From<CStoreKind> for StoreKind {
 #[derive(Debug)]
 pub struct CStoreInfo {
     /// The user-chosen name of the application doing the logging.
-    pub application_id: *const c_char,
+    pub application_id: CStringView,
 
     pub store_kind: CStoreKind,
 }
 
 #[repr(C)]
 pub struct CDataCell {
-    pub component_name: *const c_char,
+    pub component_name: CStringView,
 
     /// Length of [`Self::bytes`].
     pub num_bytes: u64,
@@ -67,7 +121,7 @@ pub struct CDataCell {
 
 #[repr(C)]
 pub struct CDataRow {
-    pub entity_path: *const c_char,
+    pub entity_path: CStringView,
     pub num_instances: u32,
     pub num_data_cells: u32,
     pub data_cells: *const CDataCell,
@@ -87,6 +141,8 @@ pub enum CErrorCode {
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
     RecordingStreamSaveFailure,
+    // TODO(cmc): Really this should be its own category…
+    RecordingStreamSpawnFailure,
 
     _CategoryArrow = 0x0000_1000,
     ArrowIpcMessageParsingFailure,
@@ -99,7 +155,7 @@ pub enum CErrorCode {
 #[derive(Clone)]
 pub struct CError {
     pub code: CErrorCode,
-    pub message: [c_char; 512],
+    pub message: [c_char; Self::MAX_MESSAGE_SIZE_BYTES],
 }
 
 // ----------------------------------------------------------------------------
@@ -124,8 +180,10 @@ impl RecStreams {
 
     fn get(&self, id: CRecordingStream) -> Option<RecordingStream> {
         match id {
-            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None),
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None),
+            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None)
+                .or(Some(RecordingStream::disabled())),
+            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None)
+                .or(Some(RecordingStream::disabled())),
             _ => self.streams.get(&id).cloned(),
         }
     }
@@ -165,7 +223,33 @@ pub extern "C" fn rr_version_string() -> *const c_char {
 }
 
 #[allow(clippy::result_large_err)]
-fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecordingStream, CError> {
+fn rr_spawn_impl(spawn_opts: *const CSpawnOptions) -> Result<(), CError> {
+    let spawn_opts = if spawn_opts.is_null() {
+        re_sdk::SpawnOptions::default()
+    } else {
+        let spawn_opts = ptr::try_ptr_as_ref(spawn_opts, "spawn_opts")?;
+        spawn_opts.as_rust()?
+    };
+
+    re_sdk::spawn(&spawn_opts)
+        .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_spawn(spawn_opts: *const CSpawnOptions, error: *mut CError) {
+    if let Err(err) = rr_spawn_impl(spawn_opts) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_new_impl(
+    store_info: *const CStoreInfo,
+    default_enabled: bool,
+) -> Result<CRecordingStream, CError> {
     initialize_logging();
 
     let store_info = ptr::try_ptr_as_ref(store_info, "store_info")?;
@@ -175,12 +259,13 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
         store_kind,
     } = *store_info;
 
-    let application_id = ptr::try_char_ptr_as_str(application_id, "store_info.application_id")?;
+    let application_id = application_id.as_str("store_info.application_id")?;
 
     let mut rec_builder = RecordingStreamBuilder::new(application_id)
         //.is_official_example(is_official_example) // TODO(andreas): Is there a meaningful way to expose this?
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
-        .store_source(re_log_types::StoreSource::CSdk);
+        .store_source(re_log_types::StoreSource::CSdk)
+        .default_enabled(default_enabled);
 
     if store_kind == CStoreKind::Blueprint {
         rec_builder = rec_builder.blueprint();
@@ -199,9 +284,10 @@ fn rr_recording_stream_new_impl(store_info: *const CStoreInfo) -> Result<CRecord
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_new(
     store_info: *const CStoreInfo,
+    default_enabled: bool,
     error: *mut CError,
 ) -> CRecordingStream {
-    match rr_recording_stream_new_impl(store_info) {
+    match rr_recording_stream_new_impl(store_info, default_enabled) {
         Err(err) => {
             err.write_error(error);
             0
@@ -237,6 +323,26 @@ pub extern "C" fn rr_recording_stream_set_thread_local(
 
 #[allow(unsafe_code)]
 #[no_mangle]
+pub extern "C" fn rr_recording_stream_is_enabled(
+    stream: CRecordingStream,
+    error: *mut CError,
+) -> bool {
+    match rr_recording_stream_is_enabled_impl(stream) {
+        Ok(enabled) => enabled,
+        Err(err) => {
+            err.write_error(error);
+            false
+        }
+    }
+}
+
+#[allow(clippy::result_large_err)]
+fn rr_recording_stream_is_enabled_impl(id: CRecordingStream) -> Result<bool, CError> {
+    Ok(recording_stream(id)?.is_enabled())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
 pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
     if let Some(stream) = RECORDING_STREAMS.lock().remove(id) {
         stream.flush_blocking();
@@ -246,12 +352,12 @@ pub extern "C" fn rr_recording_stream_flush_blocking(id: CRecordingStream) {
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_connect_impl(
     stream: CRecordingStream,
-    tcp_addr: *const c_char,
+    tcp_addr: CStringView,
     flush_timeout_sec: f32,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
-    let tcp_addr = ptr::try_char_ptr_as_str(tcp_addr, "tcp_addr")?;
+    let tcp_addr = tcp_addr.as_str("tcp_addr")?;
     let tcp_addr = tcp_addr.parse().map_err(|err| {
         CError::new(
             CErrorCode::InvalidSocketAddress,
@@ -264,7 +370,7 @@ fn rr_recording_stream_connect_impl(
     } else {
         None
     };
-    stream.connect(tcp_addr, flush_timeout);
+    stream.connect_opts(tcp_addr, flush_timeout);
 
     Ok(())
 }
@@ -273,7 +379,7 @@ fn rr_recording_stream_connect_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_connect(
     id: CRecordingStream,
-    tcp_addr: *const c_char,
+    tcp_addr: CStringView,
     flush_timeout_sec: f32,
     error: *mut CError,
 ) {
@@ -283,11 +389,51 @@ pub extern "C" fn rr_recording_stream_connect(
 }
 
 #[allow(clippy::result_large_err)]
+fn rr_recording_stream_spawn_impl(
+    stream: CRecordingStream,
+    spawn_opts: *const CSpawnOptions,
+    flush_timeout_sec: f32,
+) -> Result<(), CError> {
+    let stream = recording_stream(stream)?;
+
+    let spawn_opts = if spawn_opts.is_null() {
+        re_sdk::SpawnOptions::default()
+    } else {
+        let spawn_opts = ptr::try_ptr_as_ref(spawn_opts, "spawn_opts")?;
+        spawn_opts.as_rust()?
+    };
+    let flush_timeout = if flush_timeout_sec >= 0.0 {
+        Some(std::time::Duration::from_secs_f32(flush_timeout_sec))
+    } else {
+        None
+    };
+
+    stream
+        .spawn_opts(&spawn_opts, flush_timeout)
+        .map_err(|err| CError::new(CErrorCode::RecordingStreamSpawnFailure, &err.to_string()))?;
+
+    Ok(())
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_recording_stream_spawn(
+    id: CRecordingStream,
+    spawn_opts: *const CSpawnOptions,
+    flush_timeout_sec: f32,
+    error: *mut CError,
+) {
+    if let Err(err) = rr_recording_stream_spawn_impl(id, spawn_opts, flush_timeout_sec) {
+        err.write_error(error);
+    }
+}
+
+#[allow(clippy::result_large_err)]
 fn rr_recording_stream_save_impl(
     stream: CRecordingStream,
-    path: *const c_char,
+    path: CStringView,
 ) -> Result<(), CError> {
-    let path = ptr::try_char_ptr_as_str(path, "path")?;
+    let path = path.as_str("path")?;
     recording_stream(stream)?.save(path).map_err(|err| {
         CError::new(
             CErrorCode::RecordingStreamSaveFailure,
@@ -300,7 +446,7 @@ fn rr_recording_stream_save_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_save(
     id: CRecordingStream,
-    path: *const c_char,
+    path: CStringView,
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_save_impl(id, path) {
@@ -311,11 +457,11 @@ pub extern "C" fn rr_recording_stream_save(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_sequence_impl(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
+    timeline_name: CStringView,
     sequence: i64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
-    recording_stream(stream)?.set_time_sequence(timeline, Some(sequence));
+    let timeline = timeline_name.as_str("timeline_name")?;
+    recording_stream(stream)?.set_time_sequence(timeline, sequence);
     Ok(())
 }
 
@@ -323,7 +469,7 @@ fn rr_recording_stream_set_time_sequence_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_sequence(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
+    timeline_name: CStringView,
     sequence: i64,
     error: *mut CError,
 ) {
@@ -335,11 +481,11 @@ pub extern "C" fn rr_recording_stream_set_time_sequence(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_seconds_impl(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
+    timeline_name: CStringView,
     seconds: f64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
-    recording_stream(stream)?.set_time_seconds(timeline, Some(seconds));
+    let timeline = timeline_name.as_str("timeline_name")?;
+    recording_stream(stream)?.set_time_seconds(timeline, seconds);
     Ok(())
 }
 
@@ -347,7 +493,7 @@ fn rr_recording_stream_set_time_seconds_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_seconds(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
+    timeline_name: CStringView,
     seconds: f64,
     error: *mut CError,
 ) {
@@ -359,11 +505,11 @@ pub extern "C" fn rr_recording_stream_set_time_seconds(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_set_time_nanos_impl(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
+    timeline_name: CStringView,
     nanos: i64,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
-    recording_stream(stream)?.set_time_nanos(timeline, Some(nanos));
+    let timeline = timeline_name.as_str("timeline_name")?;
+    recording_stream(stream)?.set_time_nanos(timeline, nanos);
     Ok(())
 }
 
@@ -371,7 +517,7 @@ fn rr_recording_stream_set_time_nanos_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_set_time_nanos(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
+    timeline_name: CStringView,
     nanos: i64,
     error: *mut CError,
 ) {
@@ -384,10 +530,10 @@ pub extern "C" fn rr_recording_stream_set_time_nanos(
 #[allow(clippy::result_large_err)]
 fn rr_recording_stream_disable_timeline_impl(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
+    timeline_name: CStringView,
 ) -> Result<(), CError> {
-    let timeline = ptr::try_char_ptr_as_str(timeline_name, "timeline_name")?;
-    recording_stream(stream)?.set_time_sequence(timeline, None);
+    let timeline = timeline_name.as_str("timeline_name")?;
+    recording_stream(stream)?.disable_timeline(timeline);
     Ok(())
 }
 
@@ -395,7 +541,7 @@ fn rr_recording_stream_disable_timeline_impl(
 #[no_mangle]
 pub extern "C" fn rr_recording_stream_disable_timeline(
     stream: CRecordingStream,
-    timeline_name: *const c_char,
+    timeline_name: CStringView,
     error: *mut CError,
 ) {
     if let Err(err) = rr_recording_stream_disable_timeline_impl(stream, timeline_name) {
@@ -429,7 +575,7 @@ fn rr_log_impl(
         data_cells,
     } = *data_row;
 
-    let entity_path = ptr::try_char_ptr_as_str(entity_path, "entity_path")?;
+    let entity_path = entity_path.as_str("entity_path")?;
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
     re_log::debug!(
@@ -446,8 +592,7 @@ fn rr_log_impl(
             bytes,
         } = *data_cell;
 
-        let component_name =
-            ptr::try_char_ptr_as_str(component_name, "data_cells[i].component_name")?;
+        let component_name = component_name.as_str("data_cells[i].component_name")?;
         let component_name = ComponentName::from(component_name);
 
         let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };

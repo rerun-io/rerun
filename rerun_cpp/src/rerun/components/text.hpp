@@ -20,7 +20,7 @@ namespace arrow {
 
 namespace rerun {
     namespace components {
-        /// **Component**: A string of text, e.g. for labels and text documents
+        /// **Component**: A string of text, e.g. for labels and text documents.
         struct Text {
             rerun::datatypes::Utf8 value;
 
@@ -30,7 +30,7 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'text_ext.cpp'
 
-            /// Construct `Text` from a zero-terminated UTF8 string.
+            /// Construct `Text` from a null-terminated UTF8 string.
             Text(const char* str) : value(str) {}
 
             const char* c_str() const {

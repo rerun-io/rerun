@@ -3,17 +3,17 @@
 #include <rerun.hpp>
 
 #include <cmath>
-#include <numeric>
+#include <vector>
 
-const float TAU = static_cast<float>(2.0 * M_PI);
+constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_arrow3d");
-    rec.connect().throw_on_failure();
+    const auto rec = rerun::RecordingStream("rerun_example_arrow3d");
+    rec.spawn().exit_on_failure();
 
-    std::vector<rerun::components::Position3D> origins;
-    std::vector<rerun::components::Vector3D> vectors;
-    std::vector<rerun::components::Color> colors;
+    std::vector<rerun::Position3D> origins;
+    std::vector<rerun::Vector3D> vectors;
+    std::vector<rerun::Color> colors;
 
     for (int i = 0; i < 100; ++i) {
         origins.push_back({0, 0, 0});

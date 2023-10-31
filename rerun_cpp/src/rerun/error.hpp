@@ -43,6 +43,7 @@ namespace rerun {
         _CategoryRecordingStream = 0x0000'0100,
         RecordingStreamCreationFailure,
         RecordingStreamSaveFailure,
+        RecordingStreamSpawnFailure,
 
         // Arrow data processing errors.
         _CategoryArrow = 0x0000'1000,
@@ -142,6 +143,9 @@ namespace rerun {
         /// If no log handler is installed, and we are not in strict mode,
         /// the error will be logged to stderr.
         void handle() const;
+
+        /// Calls the `handle` method and then exits the application with code 1 if the error is not `Ok`.
+        void exit_on_failure() const;
 
 #ifdef __cpp_exceptions
         /// Throws a `std::runtime_error` if the status is not `Ok`.

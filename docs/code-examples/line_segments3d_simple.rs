@@ -1,8 +1,7 @@
 //! Log a simple set of line segments.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_line_segments3d").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_segments3d").spawn()?;
 
     let points = [
         [0., 0., 0.],
@@ -16,6 +15,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     ];
     rec.log("segments", &rerun::LineStrips3D::new(points.chunks(2)))?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

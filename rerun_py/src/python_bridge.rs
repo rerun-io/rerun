@@ -59,7 +59,12 @@ fn global_web_viewer_server(
 }
 
 #[pyfunction]
-fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
+fn main(py: Python<'_>) -> PyResult<u8> {
+    // We access argv ourselves instead of accepting as parameter, so that `main`'s signature is
+    // compatible with `[project.scripts]` in `pyproject.toml`.
+    let sys = py.import("sys")?;
+    let argv: Vec<String> = sys.getattr("argv")?.extract()?;
+
     let build_info = re_build_info::build_info!();
     let call_src = rerun::CallSource::Python(python_version(py));
     tokio::runtime::Builder::new_multi_thread()
@@ -67,7 +72,7 @@ fn main(py: Python<'_>, argv: Vec<String>) -> PyResult<u8> {
         .build()
         .unwrap()
         .block_on(async {
-            // Python catches SIGINT and waits for us to release the GIL before shtting down.
+            // Python catches SIGINT and waits for us to release the GIL before shutting down.
             // That's no good, so we need to catch SIGINT ourselves and shut down:
             tokio::spawn(async move {
                 tokio::signal::ctrl_c().await.unwrap();
@@ -135,6 +140,7 @@ fn rerun_bindings(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(set_time_sequence, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_seconds, m)?)?;
     m.add_function(wrap_pyfunction!(set_time_nanos, m)?)?;
+    m.add_function(wrap_pyfunction!(disable_timeline, m)?)?;
     m.add_function(wrap_pyfunction!(reset_time, m)?)?;
 
     // log any
@@ -486,14 +492,14 @@ fn connect(
     py.allow_threads(|| {
         if let Some(recording) = recording {
             // If the user passed in a recording, use it
-            recording.connect(addr, flush_timeout);
+            recording.connect_opts(addr, flush_timeout);
         } else {
             // Otherwise, connect both global defaults
             if let Some(recording) = get_data_recording(None) {
-                recording.connect(addr, flush_timeout);
+                recording.connect_opts(addr, flush_timeout);
             };
             if let Some(blueprint) = get_blueprint_recording(None) {
-                blueprint.connect(addr, flush_timeout);
+                blueprint.connect_opts(addr, flush_timeout);
             };
         }
     });
@@ -664,7 +670,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 // --- Time ---
 
 #[pyfunction]
-fn set_time_sequence(timeline: &str, sequence: Option<i64>, recording: Option<&PyRecordingStream>) {
+fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
@@ -672,7 +678,7 @@ fn set_time_sequence(timeline: &str, sequence: Option<i64>, recording: Option<&P
 }
 
 #[pyfunction]
-fn set_time_seconds(timeline: &str, seconds: Option<f64>, recording: Option<&PyRecordingStream>) {
+fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
@@ -680,11 +686,19 @@ fn set_time_seconds(timeline: &str, seconds: Option<f64>, recording: Option<&PyR
 }
 
 #[pyfunction]
-fn set_time_nanos(timeline: &str, nanos: Option<i64>, recording: Option<&PyRecordingStream>) {
+fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
     };
     recording.set_time_nanos(timeline, nanos);
+}
+
+#[pyfunction]
+fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
+    let Some(recording) = get_data_recording(recording) else {
+        return;
+    };
+    recording.disable_timeline(timeline);
 }
 
 #[pyfunction]

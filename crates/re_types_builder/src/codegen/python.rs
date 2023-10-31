@@ -663,7 +663,7 @@ fn code_for_struct(
             let doc_lines = lines_from_docs(&field.docs);
             if !doc_lines.is_empty() {
                 if show_fields_in_docs {
-                    code.push_text(quote_doc_lines(&doc_lines), 0, 4);
+                    code.push_text(quote_doc_lines(doc_lines), 0, 4);
                 } else {
                     // Still include it for those that are reading the source file:
                     for line in doc_lines {
@@ -816,7 +816,7 @@ fn code_for_union(
 
     // Note: mypy gets confused using staticmethods for field-converters
     code.push_text(
-        format!("inner: {inner_type} = field({converter}) {type_ignore}"),
+        format!("inner: {inner_type} = field({converter} {type_ignore}\n)"),
         1,
         4,
     );
@@ -875,13 +875,41 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
             name, title, image, ..
         } = &example.base;
 
+        let mut example_lines = example.lines.clone();
+
+        if let Some(first_line) = example_lines.first() {
+            if first_line.starts_with("\"\"\"")
+                && first_line.ends_with("\"\"\"")
+                && first_line.len() > 6
+            {
+                // Remove one-line docstring, otherwise we can't embed this.
+                example_lines.remove(0);
+            }
+        }
+
+        // Remove leading blank lines:
+        while example_lines.first() == Some(&String::default()) {
+            example_lines.remove(0);
+        }
+
+        for line in &example_lines {
+            assert!(
+                !line.contains("```"),
+                "Example {name:?} contains ``` in it, so we can't embed it in the Python API docs."
+            );
+            assert!(
+                !line.contains("\"\"\""),
+                "Example {name:?} contains \"\"\" in it, so we can't embed it in the Python API docs."
+            );
+        }
+
         if let Some(title) = title {
             lines.push(format!("### {title}:"));
         } else {
             lines.push(format!("### `{name}`:"));
         }
         lines.push("```python".into());
-        lines.extend(example.lines.into_iter());
+        lines.extend(example_lines.into_iter());
         lines.push("```".into());
         if let Some(image) = &image {
             lines.extend(image.image_stack());
@@ -893,6 +921,7 @@ fn quote_examples(examples: Vec<Example<'_>>, lines: &mut Vec<String>) {
     }
 }
 
+/// Ends with double newlines, unless empty.
 fn quote_obj_docs(obj: &Object) -> String {
     let mut lines = lines_from_docs(&obj.docs);
 
@@ -901,7 +930,7 @@ fn quote_obj_docs(obj: &Object) -> String {
         *first_line = format!("**{}**: {}", obj.kind.singular_name(), first_line);
     }
 
-    quote_doc_lines(&lines)
+    quote_doc_lines(lines)
 }
 
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
@@ -923,18 +952,33 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
     lines
 }
 
-fn quote_doc_lines(lines: &[String]) -> String {
+/// Ends with double newlines, unless empty.
+fn quote_doc_lines(lines: Vec<String>) -> String {
     if lines.is_empty() {
         return String::new();
     }
 
-    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
-    let doc = lines
-        .iter()
-        .filter(|line| !line.starts_with(r#"""""#))
-        .join("\n");
+    for line in &lines {
+        assert!(
+            !line.contains("\"\"\""),
+            "Cannot put triple quotes in Python docstrings"
+        );
+    }
 
-    format!("\"\"\"\n{doc}\n\"\"\"\n\n")
+    // NOTE: Filter out docstrings within docstrings, it just gets crazy otherwise…
+    let lines: Vec<String> = lines
+        .into_iter()
+        .filter(|line| !line.starts_with(r#"""""#))
+        .collect();
+
+    if lines.len() == 1 {
+        // single-line
+        let line = &lines[0];
+        format!("\"\"\"{line}\"\"\"\n\n") // NOLINT
+    } else {
+        // multi-line
+        format!("\"\"\"\n{}\n\"\"\"\n\n", lines.join("\n"))
+    }
 }
 
 fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String {
@@ -1635,10 +1679,11 @@ fn quote_init_method(
         ObjectKind::Component => "component",
         ObjectKind::Archetype => "archetype",
     };
-    let mut doc_string_lines = vec![
-        r#"""""#.to_owned(),
-        format!("Create a new instance of the {} {doc_typedesc}.", obj.name),
-    ];
+
+    let mut doc_string_lines = vec![format!(
+        "Create a new instance of the {} {doc_typedesc}.",
+        obj.name
+    )];
     if !parameter_docs.is_empty() {
         doc_string_lines.push("\n".to_owned());
         doc_string_lines.push("Parameters".to_owned());
@@ -1647,8 +1692,7 @@ fn quote_init_method(
             doc_string_lines.push(doc);
         }
     };
-    doc_string_lines.push(r#"""""#.to_owned());
-    let doc_block = doc_string_lines.join("\n");
+    let doc_block = quote_doc_lines(doc_string_lines);
 
     let custom_init_hint = format!(
         "# You can define your own __init__ function as a member of {} in {}",
@@ -1685,7 +1729,7 @@ fn quote_init_method(
         "{head}\n{}",
         indent::indent_all_by(
             4,
-            format!("{doc_block}\n\n{custom_init_hint}\n{forwarding_call}"),
+            format!("{doc_block}{custom_init_hint}\n{forwarding_call}"),
         )
     )
 }
@@ -1709,7 +1753,7 @@ fn quote_clear_methods(obj: &Object) -> String {
 
         @classmethod
         def _clear(cls) -> {classname}:
-            """Produce an empty {classname}, bypassing `__init__`"""
+            """Produce an empty {classname}, bypassing `__init__`."""
             inst = cls.__new__(cls)
             inst.__attrs_clear__()
             return inst

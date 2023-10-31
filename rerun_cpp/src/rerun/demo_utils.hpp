@@ -1,3 +1,5 @@
+#pragma once
+
 // Utilities used in examples.
 
 #include <algorithm>
@@ -9,11 +11,12 @@
 
 namespace rerun {
     namespace demo {
-        constexpr float TAU = static_cast<float>(M_PI * 2.0);
+        constexpr float PI = 3.14159265358979323846264338327950288f;
+        constexpr float TAU = 6.28318530717958647692528676655900577f;
 
         /// A linear interpolator that bounces between `a` and `b` as `t` goes above `1.0`.
         inline float bounce_lerp(float a, float b, float t) {
-            auto tf = t - static_cast<int32_t>(t);
+            auto tf = t - floorf(t);
             if (static_cast<int32_t>(t) % 2 == 0) {
                 return (1.0f - tf) * a + tf * b;
             } else {
@@ -27,7 +30,7 @@ namespace rerun {
         inline std::vector<T> linspace(T start, T end, size_t num) {
             std::vector<T> linspaced(num);
             std::generate(linspaced.begin(), linspaced.end(), [&, i = 0]() mutable {
-                return start + i++ * (end - start) / static_cast<T>(num - 1);
+                return start + static_cast<T>(i++) * (end - start) / static_cast<T>(num - 1);
             });
             return linspaced;
         }
@@ -40,7 +43,11 @@ namespace rerun {
             for (Elem z : linspace(from[0], to[0], n)) {
                 for (Elem y : linspace(from[1], to[1], n)) {
                     for (Elem x : linspace(from[2], to[2], n)) {
-                        output.emplace_back(x, y, z);
+                        output.emplace_back(
+                            static_cast<Elem>(x),
+                            static_cast<Elem>(y),
+                            static_cast<Elem>(z)
+                        );
                     }
                 }
             }

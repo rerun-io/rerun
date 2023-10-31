@@ -1,17 +1,10 @@
 # Rerun C++ SDK
 
-This is not yet ready to be used.
+Read our [getting-started guide](https://www.rerun.io/docs/getting-started/cpp) for information on how to use the Rerun C++ SDK.
 
-## Requirements
+## Development
+### Requirements
 Run `scripts/setup.sh`.
 
-## Test it
-`./rerun_cpp/build_and_run_tests.sh --werror`
-
-# To do:
-* CI
-* Code-gen
-* Documentation
-* Packaging
-* Publishing
-* …
+### Test it
+`just cpp-test`

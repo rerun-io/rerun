@@ -1,8 +1,7 @@
 //! Log a simple colored triangle with indexed drawing.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_mesh3d_indexed").spawn()?;
 
     rec.log(
         "triangle",
@@ -13,6 +12,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_mesh_material(rerun::Material::from_albedo_factor(0xCC00CCFF)),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

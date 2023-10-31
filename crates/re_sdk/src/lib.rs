@@ -18,12 +18,15 @@
 mod global;
 mod log_sink;
 mod recording_stream;
+mod spawn;
 
 #[cfg(feature = "log")]
 mod log_integration;
 
 // -------------
 // Public items:
+
+pub use spawn::{spawn, SpawnError, SpawnOptions};
 
 pub use self::recording_stream::{
     RecordingStream, RecordingStreamBuilder, RecordingStreamError, RecordingStreamResult,
@@ -102,14 +105,16 @@ mod prelude {
     // the amount of typing for our users.
     pub use super::archetypes::*;
 
-    // Also import some select, often-used, datatypes and components:
+    // Also import any component or datatype that has a unique name:
     pub use super::components::{
-        Color, HalfSizes2D, HalfSizes3D, InstanceKey, Material, MediaType, MeshProperties,
-        OutOfTreeTransform3D, Position3D, Radius, TextLogLevel, Vector3D,
+        Color, HalfSizes2D, HalfSizes3D, InstanceKey, LineStrip2D, LineStrip3D, Material,
+        MediaType, MeshProperties, OutOfTreeTransform3D, Position2D, Position3D, Radius, Text,
+        TextLogLevel, Vector3D,
     };
     pub use super::datatypes::{
         Angle, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32, Rotation3D,
-        RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D,
+        RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D, Vec2D, Vec3D,
+        Vec4D,
     };
 
     pub use super::time::{Time, TimePoint, Timeline};

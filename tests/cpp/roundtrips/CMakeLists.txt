@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16...3.27)
 
 file(GLOB sources_list LIST_DIRECTORIES true ${CMAKE_CURRENT_SOURCE_DIR}/*)
 

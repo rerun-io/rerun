@@ -10,6 +10,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -19,6 +20,63 @@
 namespace rerun {
     namespace archetypes {
         /// **Archetype**: A log entry in a text log, comprised of a text body and its log level.
+        ///
+        /// ## Example
+        ///
+        /// ### `text_log_integration`:
+        /// ```cpp,ignore
+        /// #include <loguru.hpp>
+        /// #include <rerun.hpp>
+        ///
+        /// void loguru_to_rerun(void* user_data, const loguru::Message& message) {
+        ///     // NOTE: `rerun::RecordingStream` is thread-safe.
+        ///     const rerun::RecordingStream* rec = reinterpret_cast<const rerun::RecordingStream*>(user_data);
+        ///
+        ///     rerun::TextLogLevel level;
+        ///     if (message.verbosity == loguru::Verbosity_FATAL) {
+        ///         level = rerun::TextLogLevel::CRITICAL;
+        ///     } else if (message.verbosity == loguru::Verbosity_ERROR) {
+        ///         level = rerun::TextLogLevel::ERROR;
+        ///     } else if (message.verbosity == loguru::Verbosity_WARNING) {
+        ///         level = rerun::TextLogLevel::WARN;
+        ///     } else if (message.verbosity == loguru::Verbosity_INFO) {
+        ///         level = rerun::TextLogLevel::INFO;
+        ///     } else if (message.verbosity == loguru::Verbosity_1) {
+        ///         level = rerun::TextLogLevel::DEBUG;
+        ///     } else if (message.verbosity == loguru::Verbosity_2) {
+        ///         level = rerun::TextLogLevel::TRACE;
+        ///     } else {
+        ///         level = rerun::TextLogLevel(std::to_string(message.verbosity));
+        ///     }
+        ///
+        ///     rec->log(
+        ///         "logs/handler/text_log_integration",
+        ///         rerun::TextLog(message.message).with_level(level)
+        ///     );
+        /// }
+        ///
+        /// int main() {
+        ///     const auto rec = rerun::RecordingStream("rerun_example_text_log_integration");
+        ///     rec.spawn().exit_on_failure();
+        ///
+        ///     // Log a text entry directly:
+        ///     rec.log(
+        ///         "logs",
+        ///         rerun::TextLog("this entry has loglevel TRACE").with_level(rerun::TextLogLevel::TRACE)
+        ///     );
+        ///
+        ///     loguru::add_callback(
+        ///         "rerun",
+        ///         loguru_to_rerun,
+        ///         const_cast<void*>(reinterpret_cast<const void*>(&rec)),
+        ///         loguru::Verbosity_INFO
+        ///     );
+        ///
+        ///     LOG_F(INFO, "This INFO log got added through the standard logging interface");
+        ///
+        ///     loguru::remove_callback("rerun"); // we need to do this before `rec` goes out of scope
+        /// }
+        /// ```
         struct TextLog {
             /// The body of the message.
             rerun::components::Text text;
@@ -47,13 +105,15 @@ namespace rerun {
             /// This can be used to filter the log messages in the Rerun Viewer.
             TextLog with_level(rerun::components::TextLogLevel _level) && {
                 level = std::move(_level);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional color to use for the log line in the Rerun Viewer.
             TextLog with_color(rerun::components::Color _color) && {
                 color = std::move(_color);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

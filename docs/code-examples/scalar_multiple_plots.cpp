@@ -4,11 +4,11 @@
 
 #include <cmath>
 
-#define TAU (M_PI * 2.0)
+constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_points3d_simple");
-    rec.connect().throw_on_failure();
+    const auto rec = rerun::RecordingStream("rerun_example_points3d_simple");
+    rec.spawn().exit_on_failure();
 
     int64_t lcg_state = 0;
 
@@ -22,7 +22,7 @@ int main() {
         );
         rec.log(
             "trig/cos",
-            rerun::TimeSeriesScalar(cos(t / 100.0f))
+            rerun::TimeSeriesScalar(cos(static_cast<float>(t) / 100.0f))
                 .with_label("cos(0.01t)")
                 .with_color({0, 255, 0})
         );

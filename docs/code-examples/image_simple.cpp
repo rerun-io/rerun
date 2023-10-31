@@ -2,9 +2,11 @@
 
 #include <rerun.hpp>
 
+#include <vector>
+
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_image_simple");
-    rec.connect().throw_on_failure();
+    const auto rec = rerun::RecordingStream("rerun_example_image_simple");
+    rec.spawn().exit_on_failure();
 
     // Create a synthetic image.
     const int HEIGHT = 200;

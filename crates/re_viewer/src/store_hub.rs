@@ -120,9 +120,9 @@ impl StoreHub {
             })
     }
 
-    /// Keeps track if a recording was every activated.
+    /// Keeps track if a recording was ever activated.
     ///
-    /// This useful for the heuristic controlling the welcome screen.
+    /// This is useful for the heuristic controlling the welcome screen.
     pub fn was_recording_active(&self) -> bool {
         self.was_recording_active
     }

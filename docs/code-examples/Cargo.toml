@@ -182,4 +182,4 @@ path = "view_coordinates_simple.rs"
 [dependencies]
 ndarray.workspace = true
 rand.workspace = true
-rerun = { path = "../../crates/rerun", features = ["native_viewer"] }
+rerun = { path = "../../crates/rerun" }

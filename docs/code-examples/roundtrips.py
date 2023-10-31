@@ -21,12 +21,12 @@ from os.path import isfile, join
 # for one or more specific SDKs.
 opt_out_run = {
     "any_values": ["cpp", "rust"], # Not yet implemented
-    "custom_data": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "custom_data": ["cpp"], # TODO(emilk): Not yet implemented in C++
     "extra_values": ["cpp", "rust"], # Missing examples
     "image_advanced": ["cpp", "rust"], # Missing examples
     "log_line": ["cpp", "rust", "py"], # Not a complete example -- just a single log line
     "quick_start_spawn": ["cpp"], # TODO(#3870): Not yet implemented in C++
-    "text_log_integration": ["cpp"], # TODO(#2919): Not yet implemented in C++
+    "timelines_example": ["py", "cpp", "rust"], # TODO(ab): incomplete code, need hideable stubs, see https://github.com/rerun-io/landing/issues/515
 
     # This is this script, it's not an example.
     "roundtrips": ["cpp", "py", "rust"],
@@ -153,12 +153,21 @@ def main() -> None:
     if not args.no_py:
         active_languages.append("py")
 
+    # Running CMake in parallel causes failures during rerun_sdk & arrow build.
+    # TODO(andreas): Tell cmake in a single command to build everything at once.
+    if not args.no_cpp_build:
+        for example in examples:
+            example_opt_out_entirely = opt_out_run.get(example, [])
+            if "cpp" in example_opt_out_entirely:
+                continue
+            run_example(example, "cpp", args)
+
     with multiprocessing.Pool() as pool:
         jobs = []
         for example in examples:
             example_opt_out_entirely = opt_out_run.get(example, [])
             for language in active_languages:
-                if language in example_opt_out_entirely:
+                if language in example_opt_out_entirely or language == "cpp":  # cpp already processed in series.
                     continue
                 job = pool.apply_async(run_example, (example, language, args))
                 jobs.append(job)

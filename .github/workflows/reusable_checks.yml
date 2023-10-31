@@ -48,7 +48,7 @@ jobs:
   # ---------------------------------------------------------------------------
 
   py-lints:
-    name: Python lints (black, mypy, flake8)
+    name: Python lints (ruff, mypy, …)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -129,6 +129,11 @@ jobs:
           save_cache: true
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      # So we can format the Python code
+      - name: Set up Python
+        run: |
+          pip install -r rerun_py/requirements-lint.txt
 
       - name: Codegen
         uses: actions-rs/cargo@v1
@@ -350,7 +355,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  cpp-formating:
+  cpp-formatting:
     name: C++ formatting check
     runs-on: ubuntu-latest
     steps:

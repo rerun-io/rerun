@@ -8,6 +8,7 @@ crates/re_types_builder/source_hash.txt
 *.a
 *.bin
 *.o
+**/arrow/
 **/build/
 **/CMakeFiles/
 **/CMakeCache.txt

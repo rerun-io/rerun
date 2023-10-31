@@ -2,8 +2,8 @@
 #include <rerun/recording_stream.hpp>
 
 int main(int, char** argv) {
-    auto rec = rerun::RecordingStream("rerun_example_roundtrip_box2d");
-    rec.save(argv[1]).throw_on_failure();
+    const auto rec = rerun::RecordingStream("rerun_example_roundtrip_box2d");
+    rec.save(argv[1]).exit_on_failure();
 
     rec.log(
         "boxes2d",

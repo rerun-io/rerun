@@ -66,6 +66,10 @@ pub enum RecordingStreamError {
         err: std::io::Error,
     },
 
+    /// Error spawning a Rerun Viewer process.
+    #[error(transparent)] // makes bubbling all the way up to main look nice
+    SpawnViewer(#[from] crate::SpawnError),
+
     /// Failure to host a web viewer and/or Rerun server.
     #[cfg(feature = "web_viewer")]
     #[error(transparent)]
@@ -254,6 +258,21 @@ impl RecordingStreamBuilder {
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
     /// remote Rerun instance.
     ///
+    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn connect(self) -> RecordingStreamResult<RecordingStream> {
+        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout())
+    }
+
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// remote Rerun instance.
+    ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
     /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
@@ -262,10 +281,10 @@ impl RecordingStreamBuilder {
     ///
     /// ```no_run
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .connect(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
+    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
-    pub fn connect(
+    pub fn connect_opts(
         self,
         addr: std::net::SocketAddr,
         flush_timeout: Option<std::time::Duration>,
@@ -309,6 +328,63 @@ impl RecordingStreamBuilder {
             re_log::debug!("Rerun disabled - call to save() ignored");
             Ok(RecordingStream::disabled())
         }
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
+    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
+    ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// See also [`Self::spawn_opts`] if you wish to configure the behavior of thew Rerun process
+    /// as well as the underlying TCP connection.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").spawn()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn spawn(self) -> RecordingStreamResult<RecordingStream> {
+        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then creates a new
+    /// [`RecordingStream`] that is pre-configured to stream the data through to that viewer over TCP.
+    ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// The behavior of the spawned Viewer can be configured via `opts`.
+    /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
+    ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
+    ///     .spawn_opts(&re_sdk::SpawnOptions::default(), re_sdk::default_flush_timeout())?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn spawn_opts(
+        self,
+        opts: &crate::SpawnOptions,
+        flush_timeout: Option<std::time::Duration>,
+    ) -> RecordingStreamResult<RecordingStream> {
+        let connect_addr = opts.connect_addr();
+
+        // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
+        // what, thus spawning a viewer is pointless (and probably not intended).
+        if forced_sink_path().is_some() {
+            return self.connect_opts(connect_addr, flush_timeout);
+        }
+
+        spawn(opts)?;
+
+        self.connect_opts(connect_addr, flush_timeout)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -1088,6 +1164,18 @@ impl RecordingStream {
     /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
     /// the specified address.
     ///
+    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn connect(&self) {
+        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout());
+    }
+
+    /// Swaps the underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to use
+    /// the specified address.
+    ///
     /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
     /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
     /// call to `flush` to block indefinitely if a connection cannot be established.
@@ -1095,13 +1183,68 @@ impl RecordingStream {
     /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
     /// terms of data durability and ordering.
     /// See [`Self::set_sink`] for more information.
-    pub fn connect(&self, addr: std::net::SocketAddr, flush_timeout: Option<std::time::Duration>) {
+    pub fn connect_opts(
+        &self,
+        addr: std::net::SocketAddr,
+        flush_timeout: Option<std::time::Duration>,
+    ) {
         if forced_sink_path().is_some() {
             re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
             return;
         }
 
         self.set_sink(Box::new(crate::log_sink::TcpSink::new(addr, flush_timeout)));
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
+    /// underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to send data to that
+    /// new process.
+    ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// See also [`Self::spawn_opts`] if you wish to configure the behavior of thew Rerun process
+    /// as well as the underlying TCP connection.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn spawn(&self) -> RecordingStreamResult<()> {
+        self.spawn_opts(&Default::default(), crate::default_flush_timeout())
+    }
+
+    /// Spawns a new Rerun Viewer process from an executable available in PATH, then swaps the
+    /// underlying sink for a [`crate::log_sink::TcpSink`] sink pre-configured to send data to that
+    /// new process.
+    ///
+    /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
+    /// that viewer instead of starting a new one.
+    ///
+    /// The behavior of the spawned Viewer can be configured via `opts`.
+    /// If you're fine with the default behavior, refer to the simpler [`Self::spawn`].
+    ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data.  Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
+    /// This is a convenience wrapper for [`Self::set_sink`] that upholds the same guarantees in
+    /// terms of data durability and ordering.
+    /// See [`Self::set_sink`] for more information.
+    pub fn spawn_opts(
+        &self,
+        opts: &crate::SpawnOptions,
+        flush_timeout: Option<std::time::Duration>,
+    ) -> RecordingStreamResult<()> {
+        if forced_sink_path().is_some() {
+            re_log::debug!("Ignored setting new TcpSink since _RERUN_FORCE_SINK is set");
+            return Ok(());
+        }
+
+        spawn(opts)?;
+
+        self.connect_opts(opts.connect_addr(), flush_timeout);
+
+        Ok(())
     }
 
     /// Swaps the underlying sink for a [`crate::sink::MemorySink`] sink and returns the associated
@@ -1177,6 +1320,37 @@ impl fmt::Debug for RecordingStream {
     }
 }
 
+/// Helper to deduplicate spawn logic across [`RecordingStreamBuilder`] & [`RecordingStream`].
+fn spawn(opts: &crate::SpawnOptions) -> RecordingStreamResult<()> {
+    use std::{net::TcpStream, time::Duration};
+
+    let connect_addr = opts.connect_addr();
+
+    // TODO(#4019): application-level handshake
+    if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+        re_log::info!(
+            addr = %opts.listen_addr(),
+            "A process is already listening at this address. Trying to connect instead."
+        );
+    } else {
+        crate::spawn(opts)?;
+
+        // Give the newly spawned Rerun Viewer some time to bind.
+        //
+        // NOTE: The timeout only covers the TCP handshake: if no process is bound to that address
+        // at all, the connection will fail immediately, irrelevant of the timeout configuration.
+        // For that reason we use an extra loop.
+        for _ in 0..5 {
+            if TcpStream::connect_timeout(&connect_addr, Duration::from_secs(1)).is_ok() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+    }
+
+    Ok(())
+}
+
 // --- Stateful time ---
 
 /// Thread-local data.
@@ -1191,8 +1365,12 @@ impl ThreadInfo {
         Self::with(|ti| ti.now(rid))
     }
 
-    fn set_thread_time(rid: &StoreId, timeline: Timeline, time_int: Option<TimeInt>) {
+    fn set_thread_time(rid: &StoreId, timeline: Timeline, time_int: TimeInt) {
         Self::with(|ti| ti.set_time(rid, timeline, time_int));
+    }
+
+    fn unset_thread_time(rid: &StoreId, timeline: Timeline) {
+        Self::with(|ti| ti.unset_time(rid, timeline));
     }
 
     fn reset_thread_time(rid: &StoreId) {
@@ -1219,13 +1397,15 @@ impl ThreadInfo {
         timepoint
     }
 
-    fn set_time(&mut self, rid: &StoreId, timeline: Timeline, time_int: Option<TimeInt>) {
-        if let Some(time_int) = time_int {
-            self.timepoints
-                .entry(rid.clone())
-                .or_default()
-                .insert(timeline, time_int);
-        } else if let Some(timepoint) = self.timepoints.get_mut(rid) {
+    fn set_time(&mut self, rid: &StoreId, timeline: Timeline, time_int: TimeInt) {
+        self.timepoints
+            .entry(rid.clone())
+            .or_default()
+            .insert(timeline, time_int);
+    }
+
+    fn unset_time(&mut self, rid: &StoreId, timeline: Timeline) {
+        if let Some(timepoint) = self.timepoints.get_mut(rid) {
             timepoint.remove(&timeline);
         }
     }
@@ -1253,10 +1433,13 @@ impl RecordingStream {
     /// Used for all subsequent logging performed from this same thread, until the next call
     /// to one of the time setting methods.
     ///
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
+    ///
     /// See also:
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
     pub fn set_timepoint(&self, timepoint: impl Into<TimePoint>) {
         let Some(this) = &*self.inner else {
@@ -1267,7 +1450,7 @@ impl RecordingStream {
         let timepoint = timepoint.into();
 
         for (timeline, time) in timepoint {
-            ThreadInfo::set_thread_time(&this.info.store_id, timeline, Some(time));
+            ThreadInfo::set_thread_time(&this.info.store_id, timeline, time);
         }
     }
 
@@ -1277,19 +1460,17 @@ impl RecordingStream {
     /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
+    /// You can remove a timeline again using `rec.disable_timeline("frame_nr")`.
     ///
-    /// You can remove a timeline again using `set_time_sequence("frame_nr", None)`.
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_sequence(
-        &self,
-        timeline: impl Into<TimelineName>,
-        sequence: impl Into<Option<i64>>,
-    ) {
+    pub fn set_time_sequence(&self, timeline: impl Into<TimelineName>, sequence: impl Into<i64>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_sequence() ignored");
             return;
@@ -1298,7 +1479,7 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Sequence),
-            sequence.into().map(TimeInt::from),
+            sequence.into().into(),
         );
     }
 
@@ -1308,15 +1489,17 @@ impl RecordingStream {
     /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
+    /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
     ///
-    /// You can remove a timeline again using `rec.set_time_seconds("sim_time", None)`.
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_seconds(&self, timeline: &str, seconds: impl Into<Option<f64>>) {
+    pub fn set_time_seconds(&self, timeline: impl Into<TimelineName>, seconds: impl Into<f64>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_seconds() ignored");
             return;
@@ -1325,9 +1508,7 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
-            seconds
-                .into()
-                .map(|secs| Time::from_seconds_since_epoch(secs).into()),
+            Time::from_seconds_since_epoch(seconds.into()).into(),
         );
     }
 
@@ -1337,15 +1518,17 @@ impl RecordingStream {
     /// to one of the time setting methods.
     ///
     /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
+    /// You can remove a timeline again using `rec.disable_timeline("sim_time")`.
     ///
-    /// You can remove a timeline again using `rec.set_time_nanos("sim_time", None)`.
+    /// There is no requirement of monotonicity. You can move the time backwards if you like.
     ///
     /// See also:
     /// - [`Self::set_timepoint`]
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
+    /// - [`Self::disable_timeline`]
     /// - [`Self::reset_time`]
-    pub fn set_time_nanos(&self, timeline: &str, ns: impl Into<Option<i64>>) {
+    pub fn set_time_nanos(&self, timeline: impl Into<TimelineName>, ns: impl Into<i64>) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to set_time_nanos() ignored");
             return;
@@ -1354,8 +1537,30 @@ impl RecordingStream {
         ThreadInfo::set_thread_time(
             &this.info.store_id,
             Timeline::new(timeline, TimeType::Time),
-            ns.into().map(|ns| Time::from_ns_since_epoch(ns).into()),
+            Time::from_ns_since_epoch(ns.into()).into(),
         );
+    }
+
+    /// Clears out the current time of the recording for the specified timeline, for the
+    /// current calling thread.
+    ///
+    /// For example: `rec.disable_timeline("frame")`, `rec.disable_timeline("sim_time")`.
+    ///
+    /// See also:
+    /// - [`Self::set_timepoint`]
+    /// - [`Self::set_time_sequence`]
+    /// - [`Self::set_time_seconds`]
+    /// - [`Self::set_time_nanos`]
+    /// - [`Self::reset_time`]
+    pub fn disable_timeline(&self, timeline: impl Into<TimelineName>) {
+        let Some(this) = &*self.inner else {
+            re_log::warn_once!("Recording disabled - call to disable_timeline() ignored");
+            return;
+        };
+
+        let timeline = timeline.into();
+        ThreadInfo::unset_thread_time(&this.info.store_id, Timeline::new_sequence(timeline));
+        ThreadInfo::unset_thread_time(&this.info.store_id, Timeline::new_temporal(timeline));
     }
 
     /// Clears out the current time of the recording, for the current calling thread.
@@ -1370,6 +1575,7 @@ impl RecordingStream {
     /// - [`Self::set_time_sequence`]
     /// - [`Self::set_time_seconds`]
     /// - [`Self::set_time_nanos`]
+    /// - [`Self::disable_timeline`]
     pub fn reset_time(&self) {
         let Some(this) = &*self.inner else {
             re_log::warn_once!("Recording disabled - call to reset_time() ignored");

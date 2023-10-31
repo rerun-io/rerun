@@ -38,9 +38,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use ndarray::{s, Array, ShapeBuilder};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation")
-///             .memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_annotation_context_segmentation")
+///         .spawn()?;
 ///
 ///     // create an annotation context to describe the classes
 ///     rec.log_timeless(
@@ -61,7 +60,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         &rerun::SegmentationImage::try_from(data)?,
 ///     )?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```

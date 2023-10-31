@@ -9,6 +9,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -20,6 +21,58 @@ namespace rerun {
         /// **Archetype**: A text element intended to be displayed in its own text-box.
         ///
         /// Supports raw text and markdown.
+        ///
+        /// ## Example
+        ///
+        /// ### Markdown text document
+        /// ```cpp,ignore
+        /// #include <rerun.hpp>
+        ///
+        /// int main() {
+        ///     const auto rec = rerun::RecordingStream("rerun_example_text_document");
+        ///     rec.spawn().exit_on_failure();
+        ///
+        ///     rec.log("text_document", rerun::TextDocument("Hello, TextDocument!"));
+        ///
+        ///     rec.log(
+        ///         "markdown",
+        ///         rerun::TextDocument(R"#(# Hello Markdown!
+        /// [Click here to see the raw text](recording://markdown.Text).
+        ///
+        /// Basic formatting:
+        ///
+        /// | **Feature**       | **Alternative** |
+        /// | ----------------- | --------------- |
+        /// | Plain             |                 |
+        /// | *italics*         | _italics_       |
+        /// | **bold**          | __bold__        |
+        /// | ~~strikethrough~~ |                 |
+        /// | `inline code`     |                 |
+        ///
+        /// ----------------------------------
+        ///
+        /// ## Support
+        /// - [x] [Commonmark](https://commonmark.org/help/) support
+        /// - [x] GitHub-style strikethrough, tables, and checkboxes
+        /// - Basic syntax highlighting for:
+        ///   - [x] C and C++
+        ///   - [x] Python
+        ///   - [x] Rust
+        ///   - [ ] Other languages
+        ///
+        /// ## Links
+        /// You can link to [an entity](recording://markdown),
+        /// a [specific instance of an entity](recording://markdown[#0]),
+        /// or a [specific component](recording://markdown.Text).
+        ///
+        /// Of course you can also have [normal https links](https://github.com/rerun-io/rerun), e.g. <https://rerun.io>.
+        ///
+        /// ## Image
+        /// ![A random image](https://picsum.photos/640/480))#")
+        ///             .with_media_type(rerun::MediaType::markdown())
+        ///     );
+        /// }
+        /// ```
         struct TextDocument {
             /// Contents of the text document.
             rerun::components::Text text;
@@ -53,7 +106,8 @@ namespace rerun {
             /// If omitted, `text/plain` is assumed.
             TextDocument with_media_type(rerun::components::MediaType _media_type) && {
                 media_type = std::move(_media_type);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

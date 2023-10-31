@@ -14,6 +14,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -32,25 +33,31 @@ namespace rerun {
         ///
         /// #include <algorithm>
         /// #include <random>
+        /// #include <vector>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_points3d_random");
-        ///     rec.connect().throw_on_failure();
+        ///     const auto rec = rerun::RecordingStream("rerun_example_points3d_random");
+        ///     rec.spawn().exit_on_failure();
         ///
         ///     std::default_random_engine gen;
         ///     std::uniform_real_distribution<float> dist_pos(-5.0f, 5.0f);
         ///     std::uniform_real_distribution<float> dist_radius(0.1f, 1.0f);
-        ///     std::uniform_int_distribution<uint8_t> dist_color(0, 255);
+        ///     // On MSVC uint8_t distributions are not supported.
+        ///     std::uniform_int_distribution<int> dist_color(0, 255);
         ///
-        ///     std::vector<rerun::components::Position3D> points3d(10);
+        ///     std::vector<rerun::Position3D> points3d(10);
         ///     std::generate(points3d.begin(), points3d.end(), [&] {
-        ///         return rerun::components::Position3D(dist_pos(gen), dist_pos(gen), dist_pos(gen));
+        ///         return rerun::Position3D(dist_pos(gen), dist_pos(gen), dist_pos(gen));
         ///     });
-        ///     std::vector<rerun::components::Color> colors(10);
+        ///     std::vector<rerun::Color> colors(10);
         ///     std::generate(colors.begin(), colors.end(), [&] {
-        ///         return rerun::components::Color(dist_color(gen), dist_color(gen), dist_color(gen));
+        ///         return rerun::Color(
+        ///             static_cast<uint8_t>(dist_color(gen)),
+        ///             static_cast<uint8_t>(dist_color(gen)),
+        ///             static_cast<uint8_t>(dist_color(gen))
+        ///         );
         ///     });
-        ///     std::vector<rerun::components::Radius> radii(10);
+        ///     std::vector<rerun::Radius> radii(10);
         ///     std::generate(radii.begin(), radii.end(), [&] { return dist_radius(gen); });
         ///
         ///     rec.log("random", rerun::Points3D(points3d).with_colors(colors).with_radii(radii));
@@ -102,19 +109,22 @@ namespace rerun {
             /// Optional radii for the points, effectively turning them into circles.
             Points3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
                 radii = std::move(_radii);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional colors for the points.
             Points3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
                 colors = std::move(_colors);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional text labels for the points.
             Points3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
                 labels = std::move(_labels);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional class Ids for the points.
@@ -122,7 +132,8 @@ namespace rerun {
             /// The class ID provides colors and labels if not specified explicitly.
             Points3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
                 class_ids = std::move(_class_ids);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Optional keypoint IDs for the points, identifying them within a class.
@@ -136,7 +147,8 @@ namespace rerun {
             Points3D with_keypoint_ids(ComponentBatch<rerun::components::KeypointId> _keypoint_ids
             ) && {
                 keypoint_ids = std::move(_keypoint_ids);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Unique identifiers for each individual point in the batch.
@@ -144,7 +156,8 @@ namespace rerun {
                 ComponentBatch<rerun::components::InstanceKey> _instance_keys
             ) && {
                 instance_keys = std::move(_instance_keys);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

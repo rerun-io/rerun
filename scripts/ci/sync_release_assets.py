@@ -16,13 +16,21 @@ Requires the following packages:
 from __future__ import annotations
 
 import argparse
-from typing import Dict
+import time
+from typing import Dict, cast
 
 from github import Github
 from github.GitRelease import GitRelease
+from github.Repository import Repository
 from google.cloud import storage
 
 Assets = Dict[str, storage.Blob]
+
+
+def get_any_release(repo: Repository, tag_name: str) -> GitRelease | None:
+    """Fetch any release from a Github repository, even drafts."""
+    # Do _not_ use `repo.get_release`, it silently ignores drafts.
+    return next(rel for rel in repo.get_releases() if rel.tag_name == tag_name)
 
 
 def fetch_binary_assets(
@@ -54,18 +62,20 @@ def fetch_binary_assets(
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]
 
-                if "macosx" in name:
-                    if "x86_64" in name:
-                        name = f"rerun_sdk-{tag}-aarch64-apple-darwin.whl"
-                    if "arm64" in name:
-                        name = f"rerun_sdk-{tag}-x86_64-apple-darwin.whl"
-
-                if "manylinux_2_31_x86_64" in name:
-                    if "x86_64" in name:
-                        name = f"rerun_sdk-{tag}-x86_64-unknown-linux-gnu.whl"
-
-                if "win_amd64" in name:
-                    name = f"rerun_sdk-{tag}-x86_64-pc-windows-msvc.whl"
+                # NOTE(cmc): I would love to rename those so they match the versioning of our
+                # other assets, but that breaks `pip install`…
+                # if "macosx" in name:
+                #     if "x86_64" in name:
+                #         name = f"rerun_sdk-{tag}-aarch64-apple-darwin.whl"
+                #     if "arm64" in name:
+                #         name = f"rerun_sdk-{tag}-x86_64-apple-darwin.whl"
+                #
+                # if "manylinux_2_31_x86_64" in name:
+                #     if "x86_64" in name:
+                #         name = f"rerun_sdk-{tag}-x86_64-unknown-linux-gnu.whl"
+                #
+                # if "win_amd64" in name:
+                #     name = f"rerun_sdk-{tag}-x86_64-pc-windows-msvc.whl"
 
                 print(f"    Found Python wheel: {name} ")
                 assets[name] = blob
@@ -166,24 +176,41 @@ def main() -> None:
     parser.add_argument("--github-token", required=True, help="GitHub token")
     parser.add_argument("--github-repository", default="rerun-io/rerun", help="GitHub repository")
     parser.add_argument(
-        "--github-release", required=True, help="ID of the Github (pre)release (e.g. `prerelease` or `0.9.0`)"
+        "--github-release",
+        required=True,
+        help="ID of the Github (pre)release (e.g. `prerelease` or `0.9.0`)",
     )
     parser.add_argument("--github-timeout", default=120, help="Timeout for Github related operations")
-    parser.add_argument("--remove", action="store_true", help="Remove existing assets from the specified release")
-    parser.add_argument("--update", action="store_true", help="Update new assets to the specified release")
+    parser.add_argument("--wait", default=0, help="Sleep a bit before doing anything")
+    parser.add_argument(
+        "--remove",
+        action="store_true",
+        help="Remove existing assets from the specified release",
+    )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help="Update new assets to the specified release",
+    )
     parser.add_argument("--no-wheels", action="store_true", help="Don't upload Python wheels")
     parser.add_argument("--no-rerun-c", action="store_true", help="Don't upload C libraries")
     parser.add_argument("--no-rerun-cpp-sdk", action="store_true", help="Don't upload C++ uber SDK")
     parser.add_argument("--no-rerun-cli", action="store_true", help="Don't upload CLI")
     args = parser.parse_args()
 
+    # Wait for a bit before doing anything, if you must.
+    wait_time_secs = float(args.wait)
+    if wait_time_secs > 0.0:
+        print(f"Waiting for {wait_time_secs}s…")
+        time.sleep(wait_time_secs)
+
     gh = Github(args.github_token, timeout=args.github_timeout)
     repo = gh.get_repo(args.github_repository)
-    release = repo.get_release(args.github_release)
+    release = cast(GitRelease, get_any_release(repo, args.github_release))
     commit = dict([(tag.name, tag.commit) for tag in repo.get_tags()])[args.github_release]
 
     print(
-        f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at}) #{commit.sha[:7]}…'
+        f'Syncing binary assets for release `{release.tag_name}` ("{release.title}" @{release.published_at} draft={release.draft}) #{commit.sha[:7]}…'
     )
 
     assets = fetch_binary_assets(
@@ -200,6 +227,17 @@ def main() -> None:
 
     if args.update:
         update_release_assets(release, assets)
+
+    # Github will unconditionally draft a release in some cases (e.g. because the branch it has
+    # originated from has been modified since). This is beyond our control.
+    #
+    # Draft releases are not accessible through any of the expected ways, so we make sure to fix
+    # that.
+    #
+    # See e.g. <https://github.com/ncipollo/release-action/issues/317>.
+    if release.draft:
+        print("Detected mistakenly drafted release, undrafting…")
+        release.update_release(release.title, release.body, draft=False, prerelease=release.prerelease)
 
 
 if __name__ == "__main__":

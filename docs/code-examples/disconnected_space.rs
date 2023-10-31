@@ -1,8 +1,7 @@
 //! Disconnect two spaces.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_disconnected_space").spawn()?;
 
     // These two points can be projected into the same space..
     rec.log(
@@ -21,6 +20,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &rerun::Points3D::new([(2.0, 2.0, 2.0)]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

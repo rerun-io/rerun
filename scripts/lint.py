@@ -47,7 +47,7 @@ def is_valid_todo_part(part: str) -> bool:
     return False
 
 
-def lint_line(line: str, file_extension: str = "rs") -> str | None:
+def lint_line(line: str, file_extension: str = "rs", is_in_docstring: bool = False) -> str | None:
     if line == "":
         return None
 
@@ -129,6 +129,18 @@ def lint_line(line: str, file_extension: str = "rs") -> str | None:
     if "rec_stream" in line or "rr_stream" in line:
         return "Instantiated RecordingStreams should be named `rec`"
 
+    if not is_in_docstring:
+        if m := re.search(
+            r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("(\w+)',
+            line,
+        ) or re.search(
+            r'(rr.script_setup)\(args, "(\w+)',
+            line,
+        ):
+            app_id = m.group(2)
+            if not app_id.startswith("rerun_example_"):
+                return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
+
     return None
 
 
@@ -170,6 +182,8 @@ def test_lint_line() -> None:
         "anyhow::Result<()>",
         "The theme is great",
         "template <typename... Args>",
+        'protoc_prebuilt::init("22.0")',
+        'rr.init("rerun_example_app")',
     ]
 
     should_error = [
@@ -203,10 +217,16 @@ def test_lint_line() -> None:
         "Result<(), anyhow::Error>",
         "The the problem with double words",
         "More than meets the eye...",
+        'RecordingStreamBuilder::new("missing_prefix")',
+        'args.rerun.init("missing_prefix")',
+        'RecordingStream("missing_prefix")',
+        'rr.init("missing_prefix")',
+        'rr.script_setup(args, "missing_prefix")',
     ]
 
     for line in should_pass:
-        assert lint_line(line) is None, f'expected "{line}" to pass'
+        err = lint_line(line)
+        assert err is None, f'expected "{line}" to pass, but got error: "{err}"'
 
     for line in should_error:
         assert lint_line(line) is not None, f'expected "{line}" to fail'
@@ -590,15 +610,24 @@ def lint_file(filepath: str, args: Any) -> int:
 
     error: str | None
 
+    is_in_docstring = False
+
     for line_nr, line in enumerate(source.lines):
         if line == "" or line[-1] != "\n":
             error = "Missing newline at end of file"
         else:
             line = line[:-1]
-            error = lint_line(line, source.ext)
+            if line.strip() == '"""':
+                is_in_docstring = not is_in_docstring
+            error = lint_line(line, source.ext, is_in_docstring)
         if error is not None:
             num_errors += 1
             print(source.error(error, line_nr=line_nr))
+
+    if filepath.endswith(".hpp"):
+        if not any(line.startswith("#pragma once") for line in source.lines):
+            print(source.error("Missing `#pragma once` in C++ header file"))
+            num_errors += 1
 
     if filepath.endswith(".rs") or filepath.endswith(".fbs"):
         if filepath.endswith(".rs"):
@@ -650,13 +679,35 @@ def main() -> None:
         nargs="*",
         help="File paths. Empty = all files, recursively.",
     )
-    parser.add_argument("--fix", dest="fix", action="store_true", help="Automatically fix some problems.")
+    parser.add_argument(
+        "--fix",
+        dest="fix",
+        action="store_true",
+        help="Automatically fix some problems.",
+    )
 
     args = parser.parse_args()
 
     num_errors = 0
 
-    extensions = ["c", "cpp", "fbs", "h", "hpp", "html", "js", "md", "py", "rs", "sh", "toml", "txt", "wgsl", "yml"]
+    # This list of file extensions matches the one in `.github/workflows/documentation.yaml`
+    extensions = [
+        "c",
+        "cpp",
+        "fbs",
+        "h",
+        "hpp",
+        "html",
+        "js",
+        "md",
+        "py",
+        "rs",
+        "sh",
+        "toml",
+        "txt",
+        "wgsl",
+        "yml",
+    ]
 
     exclude_paths = {
         "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job

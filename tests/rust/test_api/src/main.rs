@@ -495,7 +495,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
     for i in 0..6 * 120 {
         let time = i as f32 / 120.0;
 
-        rec.set_time_seconds("sim_time", Some(time as f64));
+        rec.set_time_seconds("sim_time", time as f64);
 
         rec.log(
             "transforms3d/sun/planet",
@@ -592,10 +592,6 @@ fn main() -> anyhow::Result<()> {
     use clap::Parser as _;
     let args = Args::parse();
 
-    let default_enabled = true;
-    args.rerun
-        .clone()
-        .run("rerun_example_test_api_rs", default_enabled, move |rec| {
-            run(&rec, &args).unwrap();
-        })
+    let (rec, _serve_guard) = args.rerun.init("rerun_example_test_api")?;
+    run(&rec, &args)
 }

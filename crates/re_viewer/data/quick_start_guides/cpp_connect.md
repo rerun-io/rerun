@@ -5,30 +5,24 @@ ${SAFARI_WARNING}
 #### Installing the Rerun viewer
 The Rerun C++ SDK works by connecting to an awaiting Rerun Viewer over TCP.
 
-Building from source:
-* [Install cargo](https://rustup.rs/)
-* `cargo install rerun-cli`
+If you need to install the viewer, follow the [installation guide](https://www.rerun.io/docs/getting-started/installing-viewer). Two of the more common ways to install the Rerun are:
+* Via cargo: `cargo install rerun-cli`
+* Via pip: `pip install rerun-sdk`
 
-Using `pip`:
-* `pip install rerun-sdk`
+After you have installed it, you should be able to type `rerun` in your terminal to start the viewer.
 
-After you have installed it, type `rerun` in your terminal to start the viewer.
-
-
-#### Using the Rerun C++ SDK
-First you need to install the `arrow-cpp` library on your system using your favorite package manager.
-If you are using [pixi], you can simply type `pixi global install arrow-cpp`.
-Find more information at the official Arrow Apache [install guide](https://arrow.apache.org/install/).
-
-If you're using CMake, you can add the following to your `CMakeLists.txt`:
-
+#### Using the Rerun C++ SDK with CMake
 ```cmake
 include(FetchContent)
-FetchContent_Declare(rerun_sdk URL https://github.com/rerun-io/rerun/releases/download/prerelease/rerun_cpp_sdk.zip) # TODO(#3962): update link
+FetchContent_Declare(rerun_sdk URL
+    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
 FetchContent_MakeAvailable(rerun_sdk)
 ```
 
-This will download a bundle with pre-built Rerun C static libraries for most desktop platforms, all Rerun C++ sources and headers, as well as CMake build instructions for them.
+This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
+all Rerun C++ sources and headers, as well as CMake build instructions for them.
+By default this will in turn download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++.
+See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install) to learn more about this step and how to use an existing install.
 
 Make sure you link with `rerun_sdk`:
 ```cmake

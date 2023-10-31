@@ -1,15 +1,17 @@
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
 
+#include <algorithm> // std::generate
 #include <random>
+#include <vector>
 
 using namespace rerun::demo;
 
 static constexpr size_t NUM_POINTS = 100;
 
 int main() {
-    auto rec = rerun::RecordingStream("rerun_example_dna_abacus");
-    rec.connect().throw_on_failure();
+    const auto rec = rerun::RecordingStream("rerun_example_dna_abacus");
+    rec.spawn().exit_on_failure();
 
     std::vector<rerun::Position3D> points1, points2;
     std::vector<rerun::Color> colors1, colors2;

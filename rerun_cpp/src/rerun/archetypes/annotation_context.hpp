@@ -29,11 +29,12 @@ namespace rerun {
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///
-        /// #include <algorithm>
+        /// #include <algorithm> // fill_n
+        /// #include <vector>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
-        ///     rec.connect().throw_on_failure();
+        ///     const auto rec = rerun::RecordingStream("rerun_example_annotation_context_connections");
+        ///     rec.spawn().exit_on_failure();
         ///
         ///     // create an annotation context to describe the classes
         ///     rec.log_timeless(
@@ -49,10 +50,10 @@ namespace rerun {
         ///     const int WIDTH = 300;
         ///     std::vector<uint8_t> data(WIDTH * HEIGHT, 0);
         ///     for (auto y = 50; y <100; ++y) {
-        ///         std::fill_n(data.begin() + y * WIDTH + 50, 70, 1);
+        ///         std::fill_n(data.begin() + y * WIDTH + 50, 70, static_cast<uint8_t>(1));
         ///     }
         ///     for (auto y = 100; y <180; ++y) {
-        ///         std::fill_n(data.begin() + y * WIDTH + 130, 150, 2);
+        ///         std::fill_n(data.begin() + y * WIDTH + 130, 150, static_cast<uint8_t>(2));
         ///     }
         ///
         ///     rec.log("segmentation/image", rerun::SegmentationImage({HEIGHT, WIDTH}, std::move(data)));

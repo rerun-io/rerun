@@ -1,13 +1,20 @@
 use crate::{CError, CErrorCode};
 
 impl CError {
+    /// The maximum size in bytes of the [`CError::message`] field.
+    ///
+    /// Error message larger than this value will be automatically truncated.
+    //
+    // NOTE: You must update `rr_error.description` too if you modify this value.
+    pub const MAX_MESSAGE_SIZE_BYTES: usize = 2048;
+
     pub const OK: CError = CError {
         code: CErrorCode::Ok,
-        message: [0; 512],
+        message: [0; Self::MAX_MESSAGE_SIZE_BYTES],
     };
 
     pub fn new(code: CErrorCode, message: &str) -> Self {
-        let mut message_c = [0; 512];
+        let mut message_c = [0; Self::MAX_MESSAGE_SIZE_BYTES];
 
         // Copy string character by character.
         // Ensure that when truncating is necessary, we don't truncate in the middle of a UTF-8 character!
@@ -77,7 +84,7 @@ mod tests {
     #[allow(unsafe_code)]
     fn write_error_handles_message_overflow() {
         // With ASCII character.
-        let description = "a".repeat(1024);
+        let description = "a".repeat(CError::MAX_MESSAGE_SIZE_BYTES * 2);
         let error = CError::new(CErrorCode::Ok, &description);
         let num_expected_bytes = error.message.len() - 1;
         assert_eq!(
@@ -86,7 +93,7 @@ mod tests {
         );
 
         // With 2 byte UTF8 character
-        let description = "œ".repeat(1024);
+        let description = "œ".repeat(CError::MAX_MESSAGE_SIZE_BYTES * 2);
         let error = CError::new(CErrorCode::Ok, &description);
         let num_expected_bytes = ((error.message.len() - 1) / 2) * 2;
         assert_eq!(
@@ -95,7 +102,7 @@ mod tests {
         );
 
         // With 3 byte UTF8 character
-        let description = "∂".repeat(1024);
+        let description = "∂".repeat(CError::MAX_MESSAGE_SIZE_BYTES * 2);
         let error = CError::new(CErrorCode::Ok, &description);
         let num_expected_bytes = ((error.message.len() - 1) / 3) * 3;
         assert_eq!(
@@ -104,7 +111,7 @@ mod tests {
         );
 
         // With 4 byte UTF8 character
-        let description = "😀".repeat(1024);
+        let description = "😀".repeat(CError::MAX_MESSAGE_SIZE_BYTES * 2);
         let error = CError::new(CErrorCode::Ok, &description);
         let num_expected_bytes = ((error.message.len() - 1) / 4) * 4;
         assert_eq!(

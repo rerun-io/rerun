@@ -331,7 +331,8 @@ impl QuotedObject {
         let type_ident = format_ident!("{}", &obj.name); // The PascalCase name of the object type.
         let quoted_docs = quote_obj_docs(obj);
 
-        let cpp_includes = Includes::new(obj.fqname.clone());
+        let mut cpp_includes = Includes::new(obj.fqname.clone());
+        cpp_includes.insert_rerun("component_batch_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
 
@@ -400,6 +401,11 @@ impl QuotedObject {
             let parameter_ident = format_ident!("_{}", obj_field.name);
             let method_ident = format_ident!("with_{}", obj_field.name);
             let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
+
+            hpp_includes.insert_rerun("util.hpp");
+            let gcc_ignore_comment =
+                quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
+
             methods.push(Method {
                 docs: obj_field.docs.clone().into(),
                 declaration: MethodDeclaration {
@@ -411,7 +417,9 @@ impl QuotedObject {
                 },
                 definition_body: quote! {
                     #field_ident = std::move(#parameter_ident);
-                    return std::move(*this);
+                    #NEWLINE_TOKEN
+                    #gcc_ignore_comment
+                    WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
                 },
                 inline: true,
             });
@@ -756,16 +764,6 @@ impl QuotedObject {
             quote_constants_header_and_cpp(obj, objects, &pascal_case_ident);
         let mut methods = Vec::new();
 
-        // Add one static constructor for every field.
-        for obj_field in &obj.fields {
-            methods.push(static_constructor_for_enum_type(
-                &mut hpp_includes,
-                obj_field,
-                &pascal_case_ident,
-                &tag_typename,
-            ));
-        }
-
         if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
             if are_types_disjoint(&obj.fields) {
                 // Implicit construct from the different variant types:
@@ -778,7 +776,7 @@ impl QuotedObject {
                     methods.push(Method {
                         docs: obj_field.docs.clone().into(),
                         declaration: MethodDeclaration::constructor(
-                            quote!(#pascal_case_ident(#param_declaration)),
+                            quote!(#pascal_case_ident(#param_declaration) : #pascal_case_ident()),
                         ),
                         definition_body,
                         inline: true,
@@ -788,6 +786,16 @@ impl QuotedObject {
                 // Cannot make implicit constructors, e.g. for
                 // `enum Angle { Radians(f32), Degrees(f32) };`
             }
+        }
+
+        // Add one static constructor for every field.
+        for obj_field in &obj.fields {
+            methods.push(static_constructor_for_enum_type(
+                &mut hpp_includes,
+                obj_field,
+                &pascal_case_ident,
+                &tag_typename,
+            ));
         }
 
         // Code that allows to access the data of the union in a safe way.
@@ -986,7 +994,10 @@ impl QuotedObject {
                         union #data_typename {
                             #(#enum_data_declarations;)*
 
-                            #data_typename() { } // Required by static constructors
+                            // Required by static constructors
+                            #data_typename() {
+                                std::memset(reinterpret_cast<void*>(this), 0, sizeof(#data_typename));
+                            }
                             ~#data_typename() { }
 
                             // Note that this type is *not* copyable unless all enum fields are trivially destructable.
@@ -1403,7 +1414,9 @@ fn quote_fill_arrow_array_builder(
             if field.is_nullable {
                 quote! {
                     (void)num_elements;
-                    return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+                    if (true) { // Works around unreachability compiler warning.
+                        return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+                    }
                 }
             } else {
                 // Trivial forwarding to inner type.
@@ -1819,6 +1832,9 @@ fn static_constructor_for_enum_type(
     tag_typename: &Ident,
 ) -> Method {
     let tag_ident = format_ident!("{}", obj_field.name);
+    // We don't use the `from_` prefix here, because this is instantiating an enum variant,
+    // e.g. `Scale3D::Uniform(2.0)` in Rust becomes `Scale3D::uniform(2.0)` in C++.
+    let function_name_ident = format_ident!("{}", obj_field.snake_case_name());
     let snake_case_ident = format_ident!("{}", obj_field.snake_case_name());
     let docs = obj_field.docs.clone().into();
 
@@ -1826,7 +1842,7 @@ fn static_constructor_for_enum_type(
     let declaration = MethodDeclaration {
         is_static: true,
         return_type: quote!(#pascal_case_ident),
-        name_and_parameters: quote!(#snake_case_ident(#param_declaration)),
+        name_and_parameters: quote!(#function_name_ident(#param_declaration)),
     };
 
     // We need to use placement-new since the union is in an uninitialized state here:
@@ -2040,7 +2056,7 @@ fn quote_field_docs(field: &ObjectField) -> TokenStream {
 fn lines_from_docs(docs: &Docs) -> Vec<String> {
     let mut lines = crate::codegen::get_documentation(docs, &["cpp", "c++"]);
 
-    let required = false; // TODO(#2919): `cpp` examples are not required for now
+    let required = true;
     let examples = collect_examples_for_api_docs(docs, "cpp", required).unwrap_or_default();
     if !examples.is_empty() {
         lines.push(String::new());
@@ -2059,6 +2075,10 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
                 image: _, // TODO(andreas): Include images in doc
                 ..
             } = &example.base;
+
+            for line in &example.lines {
+                assert!(!line.contains("```"), "Example {name:?} contains ``` in it, so we can't embed it in the C++ API docs.");
+            }
 
             if let Some(title) = title {
                 lines.push(format!("### {title}"));

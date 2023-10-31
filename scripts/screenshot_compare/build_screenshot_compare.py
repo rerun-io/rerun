@@ -233,7 +233,7 @@ def serve_files() -> None:
 
         os.environ["RUST_LOG"] = "rerun=warn"
 
-        rr.init("Screenshot compare")
+        rr.init("rerun_example_screenshot_compare")
         rr.serve(open_browser=False)
 
     threading.Thread(target=serve, daemon=True).start()

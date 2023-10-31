@@ -30,8 +30,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// use rand::{distributions::Uniform, Rng as _};
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let (rec, storage) =
-///         rerun::RecordingStreamBuilder::new("rerun_example_points3d_random").memory()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_points3d_random").spawn()?;
 ///
 ///     let mut rng = rand::thread_rng();
 ///     let dist = Uniform::new(-5., 5.);
@@ -45,7 +44,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///         .with_radii((0..10).map(|_| rng.gen::<f32>())),
 ///     )?;
 ///
-///     rerun::native_viewer::show(storage.take())?;
 ///     Ok(())
 /// }
 /// ```

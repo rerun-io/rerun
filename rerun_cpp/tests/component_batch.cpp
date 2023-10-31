@@ -2,6 +2,7 @@
 
 #include <rerun/archetypes/points2d.hpp>
 #include <rerun/component_batch.hpp>
+#include <rerun/component_batch_adapter_builtins.hpp>
 #include <rerun/components/position2d.hpp>
 
 #include "archetypes/archetype_test.hpp"
@@ -10,7 +11,7 @@
 
 using namespace rerun::components;
 
-SCENARIO("ComponentBatch creation via common adaptors", TEST_TAG) {
+SCENARIO("ComponentBatch creation via common adapters", TEST_TAG) {
     GIVEN("a vector of components") {
         std::vector<Position2D> components = {
             Position2D(0.0f, 1.0f),
@@ -116,13 +117,13 @@ struct MyVec2Container {
 namespace rerun {
     template <>
     struct ComponentBatchAdapter<components::Position2D, MyVec2Container> {
-        ComponentBatch<components::Position2D> operator()(const MyVec2Container& container) {
-            // Sanity check that this is binary compatible.
-            static_assert(sizeof(components::Position2D) == sizeof(float) * 2);
-            static_assert(alignof(components::Position2D) <= sizeof(float));
+        // We're using the void* version of `borrow` which doesn't do these checks for us.
+        static_assert(sizeof(components::Position2D) == sizeof(float) * 2);
+        static_assert(alignof(components::Position2D) <= alignof(float));
 
+        ComponentBatch<components::Position2D> operator()(const MyVec2Container& container) {
             return ComponentBatch<components::Position2D>::borrow(
-                reinterpret_cast<const components::Position2D*>(container.vecs.data()),
+                reinterpret_cast<const void*>(container.vecs.data()),
                 container.vecs.size() / 2
             );
         }

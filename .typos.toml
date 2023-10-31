@@ -16,6 +16,10 @@ ND = "ND"       # np.NDArray
 somes = "somes" # many `Some`
 teh = "teh"     # part of @teh-cmc
 
+# Use the more common spelling
+adaptor = "adapter"
+adaptors = "adapters"
+
 # For consistency we prefer American English:
 aeroplane = "airplane"
 analogue = "analog"
@@ -116,6 +120,12 @@ tumour = "tumor"
 valour = "valor"
 vaporise = "vaporize"
 vigour = "vigor"
+
+# null-terminated is the name of the wikipedia article!
+# https://en.wikipedia.org/wiki/Null-terminated_string
+nullterminated = "null-terminated"
+zeroterminated = "null-terminated"
+zero-terminated = "null-terminated"
 
 [default]
 # Work around for typos inside of 8-character hashes. These show up inside of ipynb.

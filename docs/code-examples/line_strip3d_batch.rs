@@ -1,8 +1,7 @@
 //! Log a batch of 2d line strips.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_line_strip3d").spawn()?;
 
     let strip1 = [[0., 0., 2.], [1., 0., 2.], [1., 1., 2.], [0., 1., 2.]];
     let strip2 = [
@@ -23,6 +22,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_labels(["one strip here", "and one strip there"]),
     )?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }

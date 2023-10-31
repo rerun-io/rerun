@@ -1,5 +1,7 @@
 #include "boxes2d.hpp"
 
+#include "../component_batch_adapter_builtins.hpp" // TODO(#3991): Should not leak into public header.
+
 // #define EDIT_EXTENSION
 
 namespace rerun {
@@ -61,7 +63,7 @@ namespace rerun {
             std::vector<components::HalfSizes2D> half_sizes;
             half_sizes.reserve(sizes.size());
             for (const auto& size : sizes) {
-                half_sizes.emplace_back(size.x() / 2.0, size.y() / 2.0);
+                half_sizes.emplace_back(size.x() / 2.0f, size.y() / 2.0f);
             }
 
             // Move the vector into a component batch.

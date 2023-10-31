@@ -10,6 +10,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -26,26 +27,23 @@ namespace rerun {
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///
-        /// #include <algorithm>
-        /// #include <cstdlib>
-        /// #include <ctime>
+        /// #include <algorithm> // std::generate
+        /// #include <cstdlib>   // std::rand
+        /// #include <vector>
         ///
         /// int main() {
-        ///     auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
-        ///     rec.connect().throw_on_failure();
+        ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
+        ///     rec.spawn().exit_on_failure();
         ///
-        ///     rec.log("world/image", rerun::Pinhole::focal_length_and_resolution(3.0f, {3.0f, 3.0f}));
+        ///     rec.log("world/image", rerun::Pinhole::from_focal_length_and_resolution(3.0f, {3.0f, 3.0f}));
         ///
-        ///     // TODO(andreas): Improve ergonomics.
-        ///     rerun::datatypes::TensorData tensor;
-        ///     rerun::datatypes::TensorDimension dim3;
-        ///     dim3.size = 3;
-        ///     tensor.shape = {dim3, dim3, dim3};
-        ///     std::srand(static_cast<uint32_t>(std::time(nullptr)));
         ///     std::vector<uint8_t> random_data(3 * 3 * 3);
         ///     std::generate(random_data.begin(), random_data.end(), std::rand);
-        ///     tensor.buffer = rerun::datatypes::TensorBuffer::u8(random_data);
+        ///     std::generate(random_data.begin(), random_data.end(), [] {
+        ///         return static_cast<uint8_t>(std::rand());
+        ///     });
         ///
+        ///     const auto tensor = rerun::datatypes::TensorData({3, 3, 3}, random_data);
         ///     rec.log("world/image", rerun::Image(tensor));
         /// }
         /// ```
@@ -107,7 +105,7 @@ namespace rerun {
             /// cameras.
             ///
             /// Assumes the principal point to be in the middle of the sensor.
-            static Pinhole focal_length_and_resolution(
+            static Pinhole from_focal_length_and_resolution(
                 const datatypes::Vec2D& focal_length, const datatypes::Vec2D& resolution
             );
 
@@ -117,10 +115,10 @@ namespace rerun {
             /// The focal length is the diagonal of the projection matrix.
             ///
             /// Assumes the principal point to be in the middle of the sensor.
-            static Pinhole focal_length_and_resolution(
+            static Pinhole from_focal_length_and_resolution(
                 float focal_length, const datatypes::Vec2D& resolution
             ) {
-                return focal_length_and_resolution({focal_length, focal_length}, resolution);
+                return from_focal_length_and_resolution({focal_length, focal_length}, resolution);
             }
 
             /// Pixel resolution (usually integers) of child image space. Width and height.
@@ -156,7 +154,8 @@ namespace rerun {
             /// `image_from_camera` project onto the space spanned by `(0,0)` and `resolution - 1`.
             Pinhole with_resolution(rerun::components::Resolution _resolution) && {
                 resolution = std::move(_resolution);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Sets the view coordinates for the camera.
@@ -188,7 +187,8 @@ namespace rerun {
             /// but will be re-oriented to project along the forward axis of the `camera_xyz` argument.
             Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
                 camera_xyz = std::move(_camera_xyz);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

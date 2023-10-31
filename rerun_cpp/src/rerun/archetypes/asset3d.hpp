@@ -10,6 +10,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../util.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -33,20 +34,17 @@ namespace rerun {
         /// #include <filesystem>
         /// #include <iostream>
         /// #include <string>
-        /// #include <vector>
         ///
         /// int main(int argc, char* argv[]) {
-        ///     std::vector<std::string> args(argv, argv + argc);
-        ///
-        ///     if (args.size() <2) {
-        ///         std::cerr <<"Usage: " <<args[0] <<" <path_to_asset.[gltf|glb|obj]>" <<std::endl;
+        ///     if (argc <2) {
+        ///         std::cerr <<"Usage: " <<argv[0] <<" <path_to_asset.[gltf|glb|obj]>" <<std::endl;
         ///         return 1;
         ///     }
         ///
-        ///     std::string path = args[1];
+        ///     const auto path = argv[1];
         ///
-        ///     auto rec = rerun::RecordingStream("rerun_example_asset3d_simple");
-        ///     rec.connect().throw_on_failure();
+        ///     const auto rec = rerun::RecordingStream("rerun_example_asset3d_simple");
+        ///     rec.spawn().exit_on_failure();
         ///
         ///     rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP); // Set an up-axis
         ///     rec.log("world/asset", rerun::Asset3D::from_file(path).value_or_throw());
@@ -80,7 +78,7 @@ namespace rerun {
             // Extensions to generated type defined in 'asset3d_ext.cpp'
 
             static std::optional<rerun::components::MediaType> guess_media_type(
-                const std::string& path
+                const std::filesystem::path& path
             );
 
             /// Creates a new [`Asset3D`] from the file contents at `path`.
@@ -121,7 +119,8 @@ namespace rerun {
             /// If it cannot guess, it won't be able to render the asset.
             Asset3D with_media_type(rerun::components::MediaType _media_type) && {
                 media_type = std::move(_media_type);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// An out-of-tree transform.
@@ -129,7 +128,8 @@ namespace rerun {
             /// Applies a transformation to the asset itself without impacting its children.
             Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
                 transform = std::move(_transform);
-                return std::move(*this);
+                // See: https://github.com/rerun-io/rerun/issues/4027
+                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
             }
 
             /// Returns the number of primary instances of this archetype.

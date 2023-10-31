@@ -8,6 +8,10 @@
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
     "files.autoGuessEncoding": true,
+    "cSpell.ignorePaths": [
+        ".vscode",
+        "pixi.lock"
+    ],
     "cSpell.words": [
         "andreas",
         "bbox",
@@ -73,9 +77,7 @@
     "cmake.buildDirectory": "${workspaceRoot}/build/",
     "cmake.generator": "Ninja", // Use Ninja, just like we do in our just/pixi command.
     "rust-analyzer.showUnlinkedFileNotification": false,
-    "black-formatter.args": [
-        "--config=rerun_py/pyproject.toml"
-    ],
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "ruff.format.args": [
         "--config=rerun_py/pyproject.toml"
     ],

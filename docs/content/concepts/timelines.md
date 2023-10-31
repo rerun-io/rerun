@@ -4,23 +4,29 @@ order: 3
 ---
 
 ## Timelines
+
 Each piece of logged data is associated with one or more timelines.
 By default, each log is added to the `log_time` timeline, with a timestamp assigned by the SDK.
 
-In Python, use the _set time_ functions ([set_time_sequence](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_sequence), [set_time_seconds](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_seconds), [set_time_nanos](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_nanos)) to associate logs with other timestamps on other timelines. For example:
+You can use the _set time_ functions (Python reference: [set_time_sequence](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_sequence), [set_time_seconds](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_seconds), [set_time_nanos](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time_nanos)) to associate logs with other timestamps on other timelines. For example:
 
-```python
-for frame in read_sensor_frames():
-    rr.set_time_sequence("frame_idx", frame.idx)
-    rr.set_time_seconds("sensor_time", frame.timestamp)
-
-    rr.log("sensor/points", rr.Points3D(frame.points))
-```
-
-<!-- TODO(emilk): add Rust version -->
+code-example: timelines_example
 
 This will add the logged points to the timelines `log_time`, `frame_idx`, and `sensor_time`.
 You can then choose which timeline you want to organize your data along in the expanded timeline view in the bottom of the Rerun Viewer.
+
+## Events
+
+An _event_ refer to an instance of logging one or more component batches to one or more timelines. In the viewer, the Time panel provide a graphical representation of these events across time and entities.
+
+<picture>
+  <img src="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/1200w.png">
+</picture>
+
 
 ## Timeless data
 

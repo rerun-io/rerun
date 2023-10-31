@@ -34,9 +34,13 @@ cpp-format:
     fd --extension c --exec clang-format -i
     fd --extension cpp --exec clang-format -i
 
+# Build our C++ SDK, and all our tests and examples
+cpp-build-all:
+    pixi run cpp-build-all
+
 # Build our C++ SDK and tests
 cpp-build:
-    pixi run cpp-build
+    pixi run cpp-build-all
 
 # Build all our C++ examples.
 cpp-build-examples:
@@ -97,16 +101,10 @@ py-build *ARGS:
 py-format:
     #!/usr/bin/env bash
     set -euo pipefail
-    # The order below is important and sadly we need to call black twice. Ruff does not yet
-    # fix line-length (See: https://github.com/astral-sh/ruff/issues/1904).
-    #
-    # 1) Call black, which among others things fixes line-length
-    # 2) Call ruff, which requires line-lengths to be correct
-    # 3) Call black again to cleanup some whitespace issues ruff might introduce
-    black --config rerun_py/pyproject.toml {{py_folders}}
-    ruff --fix --config rerun_py/pyproject.toml {{py_folders}}
-    black --config rerun_py/pyproject.toml {{py_folders}}
-    blackdoc {{py_folders}}
+    # NOTE: we need both `ruff check --fix` and `ruff format` in that order: https://twitter.com/charliermarsh/status/1717229721954799727
+    ruff check --fix --config rerun_py/pyproject.toml {{py_folders}}
+    ruff format --config rerun_py/pyproject.toml {{py_folders}}
+    blackdoc {{py_folders}} # Format code examples in docstring. Hopefully `ruff` can do this soon: https://github.com/astral-sh/ruff/issues/7146
 
 # Check that all the requirements.txt files for all the examples are correct
 py-requirements:
@@ -119,9 +117,9 @@ py-lint:
     #!/usr/bin/env bash
     set -euxo pipefail
     ruff check --config rerun_py/pyproject.toml {{py_folders}}
-    black --check --config rerun_py/pyproject.toml --diff {{py_folders}}
+    ruff format --check --config rerun_py/pyproject.toml {{py_folders}}
     blackdoc --check {{py_folders}}
-    mypy --no-warn-unused-ignore
+    mypy --install-types --non-interactive --no-warn-unused-ignore
 
 # Run fast unittests
 py-test:

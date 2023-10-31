@@ -3,7 +3,7 @@
 use ndarray::{Array, ShapeBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_pinhole").memory()?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_pinhole").spawn()?;
 
     let mut image = Array::<u8, _>::default((3, 3, 3).f());
     image.map_inplace(|x| *x = rand::random());
@@ -14,6 +14,5 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
     rec.log("world/image", &rerun::Image::try_from(image)?)?;
 
-    rerun::native_viewer::show(storage.take())?;
     Ok(())
 }
