@@ -36,6 +36,8 @@ function(set_default_warning_settings target)
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
+                -Wc++20-compat-pedantic
+                -Wpre-c2x-compat-pedantic
                 -Wc99-extensions
                 -Wgnu
                 -Wnon-gcc
