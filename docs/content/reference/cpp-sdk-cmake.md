@@ -59,9 +59,11 @@ Defaults to `ON`.
 ### `RERUN_ARROW_LINK_SHARED`
 If enabled, will use a dynamically linked version of Arrow, otherwise links statically with it.
 
-Defaults to `OFF` on Windows and to `ON` on Linux and Mac.
-This makes it a lot easier to relocate windows executable (don't need to copy Arrow.dll around!) which is less of a concern on Linux & Mac where .so/.dylib files found more easily.
+Defaults to `OFF`.
 
+Although enabling shared libraries makes linking faster and reduces binary size, it can present some challenges
+related to locating the shared libraries at runtime. Depending on your system configuration it is even possible
+to pick up a system-version of Arrow instead of the one you built against.
 
 ### `RERUN_C_LIB`
 Path to the static Rerun C library to link against.
