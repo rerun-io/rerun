@@ -93,10 +93,7 @@ cpp-build-doc-examples = { cmd = "cmake --build build --config Debug --target do
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
-cpp-build-and-test-all = { depends_on = [
-  "cpp-build-all",
-  "cpp-test",
-] }
+cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 
 [dependencies]
 attrs = ">=23.1.0"
