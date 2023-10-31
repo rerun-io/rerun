@@ -121,8 +121,6 @@ wheel = ">=0.38,<0.39"
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
 clang = ">=15,<16"
-c-compiler = "1.6.0.*"
-cxx-compiler = "1.6.0.*"
 ninja = "1.11.1"
 
 [target.osx-64.dependencies]
