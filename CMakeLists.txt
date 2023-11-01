@@ -12,6 +12,14 @@ if(DEFINED ENV{RERUN_USE_ASAN})
     set(RERUN_USE_ASAN ON)
 endif()
 
+if(DEFINED ENV{RERUN_SET_CXX_VERSION})
+    message(STATUS "Overwriting CMAKE_CXX_STANDARD to $ENV{RERUN_SET_CXX_VERSION}.")
+    set(CMAKE_CXX_STANDARD $ENV{RERUN_SET_CXX_VERSION})
+else()
+    # Arrow requires a C++17 compliant compiler.
+    set(CMAKE_CXX_STANDARD 17)
+endif()
+
 function(set_default_warning_settings target)
     if(MSVC)
         # TODO(andreas): Try to enable /Wall
@@ -106,11 +114,6 @@ endif()
 # Note that this setting is repeated for rerun_sdk's CMakeLists.txt since it should also work stand-alone.
 if(MSVC)
     add_compile_options("/MP")
-endif()
-
-# Arrow requires a C++17 compliant compiler.
-if(NOT DEFINED CMAKE_CXX_STANDARD)
-    set(CMAKE_CXX_STANDARD 17)
 endif()
 
 # Signal to all our build scripts that we're inside the Rerun repository.

@@ -58,7 +58,7 @@ jobs:
           fi
 
   cpp-tests:
-    name: C++ build & test @ ${{ matrix.runs_on }}
+    name: C++ build & test - ${{ matrix.name }}
     needs: matrix_prep
     strategy:
       matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}
@@ -88,5 +88,5 @@ jobs:
         shell: bash
         run: |
           pixi run cpp-clean
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON pixi run cpp-build-all
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON pixi run cpp-test
+          ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-build-all
+          ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-test
