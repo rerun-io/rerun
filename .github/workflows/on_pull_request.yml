@@ -29,6 +29,8 @@ jobs:
       cpp_changes: ${{ steps.filter.outputs.rerun_cpp }}
     steps:
     - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
     - uses: dorny/paths-filter@v2
       id: filter
       with:
