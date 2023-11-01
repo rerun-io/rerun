@@ -117,15 +117,17 @@ Rust documentation is hosted on <https://docs.rs/rerun/>. You can build them loc
 ## Building for the Web
 
 If you want to build a standalone rerun executable that contains the web-viewer and a websocket server,
-you need to ensure the `web_viewer` feature flag is set:
+you need to ensure the `web_viewer` feature flag is set when building rerun.
+This is automatically done by this shortcut which builds & runs the web viewer:
 ```
-cargo build -p rerun --features web_viewer
+cargo rerun-web
 ```
 
-Rerun uses a standalone tool to build the web-viewer. You can invoke it directly as well:
-```
-cargo run -p re_build_web_viewer -- --release
-```
+If you're on Windows you have to make sure that your git client creates symlinks,
+otherwise you may get errors during the build.
+Run `git config --show-scope --show-origin core.symlinks` to check if symlinks are enabled.
+You may need to turn on Windows developer mode in order to give the `mklink` command sufficient permissions.
+See also this [Stackoverflow reply](https://stackoverflow.com/questions/5917249/git-symbolic-links-in-windows/59761201#59761201) on the issue.
 
 
 ### Building with WebGPU support
