@@ -7,9 +7,11 @@ on:
         required: true
         type: string
       FULL:
-        type: boolean
-        required: false
-        default: true
+        # Booleans are almost unusable
+        # See https://medium.com/@sohail.ra5/github-actions-passing-boolean-input-variables-to-reusable-workflow-call-42d39bf7342e
+        type: string
+        required: true
+        default: 'true'
 
   workflow_dispatch:
     inputs:
@@ -19,9 +21,10 @@ on:
         default: "adhoc"
       FULL:
         description: "If false only linux is tested"
-        type: boolean
-        required: false
-        default: true
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks_cpp
@@ -46,19 +49,16 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load C++ test matrix
         id: set-matrix
-        # Workaround for https://github.com/actions/runner/issues/2831
-        env:
-          FULL: ${{ github.event.inputs.FULL }}
         run: |
-          echo "full: ${{ env.FULL }}"
-          if [${{ env.FULL }} == "true"]; then
+          echo "Full matrix: ${{ github.event.inputs.FULL }}"
+          if [${{ github.event.inputs.FULL }} == "true"]; then
             echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
           else
             echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
           fi
 
   cpp-tests:
-    name: C++ build & test @ ${{ matrix.runner }}
+    name: C++ build & test @ ${{ matrix.runs_on }}
     needs: matrix_prep
     strategy:
       matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}

@@ -13,11 +13,12 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}
     secrets: inherit
 
-  checks_cpp:
+  cpp_checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks_cpp.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
+      FULL: 'true'
     secrets: inherit
 
   # Check that a CLEAN container with just `cargo` on it can build rerun:
@@ -104,7 +105,7 @@ jobs:
   # Build rerun_c library binaries:
 
   build-rerun_c-and-upload-linux:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Linux-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
@@ -113,7 +114,7 @@ jobs:
     secrets: inherit
 
   build-rerun_c-and-upload-macos-intel:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Mac-Intel: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
@@ -122,7 +123,7 @@ jobs:
     secrets: inherit
 
   build-rerun_c-and-upload-macos-arm:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Mac-Arm: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
@@ -131,7 +132,7 @@ jobs:
     secrets: inherit
 
   build-rerun_c-and-upload-windows:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Windows-x64: Build & Upload rerun_c"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
     with:
@@ -143,7 +144,7 @@ jobs:
   # Build rerun-cli (rerun binaries):
 
   build-rerun-cli-and-upload-linux:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Linux-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
@@ -152,7 +153,7 @@ jobs:
     secrets: inherit
 
   build-rerun-cli-and-upload-macos-intel:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Mac-Intel: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
@@ -161,7 +162,7 @@ jobs:
     secrets: inherit
 
   build-rerun-cli-and-upload-macos-arm:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Mac-Arm: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
@@ -170,7 +171,7 @@ jobs:
     secrets: inherit
 
   build-rerun-cli-and-upload-windows:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Windows-x64: Build & Upload rerun-cli"
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
@@ -181,7 +182,7 @@ jobs:
   # -----------------------------------------------------------------------------------
 
   build-linux:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Linux: Build/Test Wheels"
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
@@ -192,7 +193,7 @@ jobs:
     secrets: inherit
 
   build-windows:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Windows: Build/Test Wheels"
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
@@ -203,7 +204,7 @@ jobs:
     secrets: inherit
 
   build-macos-arm:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Macos-Arm: Build/Test Wheels"
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
@@ -214,7 +215,7 @@ jobs:
     secrets: inherit
 
   build-macos-intel:
-    needs: [checks, checks_cpp]
+    needs: [checks]
     name: "Macos-Intel: Build/Test Wheels"
     uses: ./.github/workflows/reusable_build_and_test_wheels.yml
     with:
