@@ -38,9 +38,6 @@ permissions:
 jobs:
   matrix_prep:
     runs-on: ubuntu-latest
-    # Workaround for https://github.com/actions/runner/issues/2831
-    env:
-      FULL: ${{ github.event.inputs.FULL }}
     outputs:
       MATRIX: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -49,18 +46,19 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load C++ test matrix
         id: set-matrix
+        # Workaround for https://github.com/actions/runner/issues/2831
+        env:
+          FULL: ${{ github.event.inputs.FULL }}
         run: |
-          echo "full: $FULL"
-          if [$FULL == 'true']; then
-            echo "Loading full matrix $(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)"
+          echo "full: ${{ env.FULL }}"
+          if [${{ env.FULL }} == "true"]; then
             echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
           else
-            echo "Loading partial matrix $(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)"
             echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
           fi
 
   cpp-tests:
-    name: Build rerun-cli (${{ matrix.runner }})
+    name: C++ build & test @ ${{ matrix.runner }}
     needs: matrix_prep
     strategy:
       matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}
