@@ -6,10 +6,10 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      MINIMAL:
+      FULL:
         required: false
         type: boolean
-        default: false
+        default: true
 
   workflow_dispatch:
     inputs:
@@ -17,10 +17,10 @@ on:
         required: false
         type: string
         default: "adhoc"
-      MINIMAL:
+      FULL:
         type: boolean
-        default: false
-        description: "If true only linux is tested"
+        default: true
+        description: "If false only linux is tested"
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks-cpp
@@ -38,24 +38,24 @@ jobs:
   matrix_prep:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      MATRIX: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-      - name: Load minimal C++ test matrix
-        if: ${{ github.event.inputs.MINIMAL }}
-        run: echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
       - name: Load full C++ test matrix
-        if: ${{ !github.event.inputs.MINIMAL }}
-        run: echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_minimal.json)" >> $GITHUB_OUTPUT
+        if: ${{ github.event.inputs.FULL }}
+        run: echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+      - name: Load partial C++ test matrix
+        if: ${{ !github.event.inputs.FULL }}
+        run: echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
 
   cpp-tests:
     name: Build rerun-cli (${{ matrix.runner }})
     needs: matrix_prep
     runs-on: ${{ matrix.runs_on }}
     strategy:
-      matrix: ${{fromJson(needs.matrix_prep.outputs.matrix)}}
+      matrix: ${{fromJson(needs.matrix_prep.outputs.MATRIX)}}
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
