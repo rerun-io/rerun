@@ -1,4 +1,5 @@
 // @ts-check
+import { assert } from "./util.mjs";
 
 /**
  * @typedef {Record<string, string>} Params
@@ -104,7 +105,9 @@ export class Client {
    * @returns {Promise<Team[]>}
    */
   async teams() {
-    return await this.get("v2/teams").then((r) => r.teams);
+    const response = await this.get("v2/teams");
+    assert("teams" in response, () => `failed to get teams: ${JSON.stringify(response)}`);
+    return response.teams;
   }
 
   /**
@@ -115,7 +118,9 @@ export class Client {
    * @returns {Promise<Project[]>}
    */
   async projects(teamId) {
-    return await this.get("v9/projects", { teamId }).then((r) => r.projects);
+    const response = await this.get("v9/projects", { teamId });
+    assert("projects" in response, () => `failed to get projects: ${JSON.stringify(response)}`);
+    return response.projects;
   }
 
   /**
@@ -133,9 +138,17 @@ export class Client {
    * @returns {Promise<Deployment[]>}
    */
   async deployments(teamId, projectId, target = "production") {
-    return await this.get("v6/deployments", { teamId, projectId, target, sort: "created" }).then(
-      (r) => r.deployments
+    const response = await this.get("v6/deployments", {
+      teamId,
+      projectId,
+      target,
+      sort: "created",
+    });
+    assert(
+      "deployments" in response,
+      () => `failed to get deployments: ${JSON.stringify(response)}`
     );
+    return response.deployments;
   }
 
   /**
@@ -146,7 +159,12 @@ export class Client {
    * @returns {Promise<Env[]>}
    */
   async envs(teamId, projectId) {
-    return await this.get(`v9/projects/${projectId}/env`, { teamId }).then((r) => r.envs);
+    const response = await this.get(`v9/projects/${projectId}/env`, { teamId });
+    assert(
+      "envs" in response,
+      () => `failed to get environment variables: ${JSON.stringify(response)}`
+    );
+    return response.envs;
   }
 
   /**

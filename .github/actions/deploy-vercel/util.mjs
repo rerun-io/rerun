@@ -1,6 +1,27 @@
 // @ts-check
 
 /**
+ * Log a message with level `INFO`
+ *
+ * @param {string | string[] | TemplateStringsArray} strings
+ * @param {any[]} values
+ */
+export function info(strings, ...values) {
+  if (typeof strings === "string") {
+    return console.info(strings);
+  }
+
+  let out = "";
+  for (let i = 0; i < strings.length; i++) {
+    out += strings[i];
+    if (i < values.length) {
+      out += values[i].toString();
+    }
+  }
+  console.info(out);
+}
+
+/**
  * Return a GitHub Actions input, returning `null` if it was not set.
  *
  * @param {string} name
@@ -29,37 +50,20 @@ export function getRequiredInput(name) {
  * Assert that `value` is truthy, throwing an error if it is not.
  *
  * @param {any} value
- * @param {string} [message]
+ * @param {string | (() => string)} [message]
  * @returns {asserts value}
  */
 export function assert(value, message) {
   if (!value) {
-    throw new Error(`assertion failed` + (message ? ` ${message}` : ""));
+    let error;
+    if (typeof message === "string") {
+      error = `assertion failed: ${message}`;
+    } else if (typeof message === "function") {
+      error = `assertion failed: ${message()}`;
+    } else {
+      error = `assertion failed`;
+    }
+    throw new Error(error);
   }
-}
-
-/**
- * Returns a function that attempts to find an object with
- * `key` set to `value` in an array of objects with `key` properties.
- *
- * @template {string} Key
- * @template {{ [p in Key]: string }} T
- * @param {Key} key
- * @param {string} value
- * @returns {(a: T[]) => T|null}
- */
-export function find(key, value) {
-  return (a) => a.find((v) => v[key] === value) ?? null;
-}
-
-/**
- * Returns a function that attempts to retrieve the value at `index` from an array.
- *
- * @template T
- * @param {number} index
- * @returns {(a: T[]) => T|null}
- */
-export function get(index) {
-  return (a) => a[index] ?? null;
 }
 
