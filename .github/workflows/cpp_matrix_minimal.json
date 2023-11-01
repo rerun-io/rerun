@@ -1,0 +1,6 @@
+[
+    {
+        "runs_on": "ubuntu-latest-16-cores",
+        "cache_key": "build-linux"
+    }
+]

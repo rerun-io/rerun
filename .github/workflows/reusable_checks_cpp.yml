@@ -6,7 +6,7 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      LINUX_ONLY:
+      MINIMAL:
         required: false
         type: boolean
         default: false
@@ -17,7 +17,7 @@ on:
         required: false
         type: string
         default: "adhoc"
-      LINUX_ONLY:
+      MINIMAL:
         type: boolean
         default: false
         description: "If true only linux is tested"
@@ -35,34 +35,40 @@ permissions:
   id-token: "write"
 
 jobs:
+  matrix_prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+      - id: load_reduced
+        if: ${{ github.event.inputs.MINIMAL }}
+        run: echo "matrix=$(jq -c . < .github/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+      - id: load_full
+        if: ${{ !github.event.inputs.MINIMAL }}
+        run: echo "matrix=$(jq -c . < .github/cpp_matrix_reduced.json)" >> $GITHUB_OUTPUT
+
   cpp-tests:
     name: Build rerun-cli (${{ matrix.runner }})
-    runs-on: ${{ matrix.runner }}
+    needs: matrix_prep
+    runs-on: ${{ matrix.runs_on }}
     strategy:
-      matrix:
-        include:
-          - runner: ubuntu-latest-16-cores
-            cache_key: build-linux
-          - runner: windows-latest-8-cores
-            cache_key: build-windows
-          - runner: macos-latest-large
-            cache_key: build-macos-arm
+      matrix: ${{fromJson(needs.matrix_prep.outputs.matrix)}}
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v4
-        if: ${{ matrix.cache_key != 'build-linux' && github.event.inputs.LINUX_ONLY }}
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - uses: prefix-dev/setup-pixi@v0.3.0
-        if: ${{ matrix.cache_key != 'build-linux' && github.event.inputs.LINUX_ONLY }}
         with:
           pixi-version: v0.6.0
           cache: true
 
       - name: Set up Rust
-        if: ${{ matrix.cache_key != 'build-linux' && github.event.inputs.LINUX_ONLY }}
         uses: ./.github/actions/setup-rust
         with:
           cache_key: ${{ matrix.cache_key }}
@@ -72,7 +78,6 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Build and run C++ tests
-        if: ${{ matrix.cache_key != 'build-linux' && github.event.inputs.LINUX_ONLY }}
         shell: bash
         run: |
           pixi run cpp-clean
