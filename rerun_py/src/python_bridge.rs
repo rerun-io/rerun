@@ -848,7 +848,7 @@ fn log_arrow_msg(
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
-    // cause a deadlock.
+    // a deadlock.
     let row = crate::arrow::build_data_row_from_components(
         &entity_path,
         components,
