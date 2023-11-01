@@ -1,0 +1,80 @@
+name: "C++ Tests on all platforms & compilers"
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      LINUX_ONLY:
+        required: false
+        type: boolean
+        default: false
+
+  workflow_dispatch:
+    inputs:
+      CONCURRENCY:
+        required: false
+        type: string
+        default: "adhoc"
+      LINUX_ONLY:
+        type: boolean
+        default: false
+        description: "If true only linux is tested"
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-checks
+  cancel-in-progress: true
+
+env:
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "false"
+
+permissions:
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  cpp-tests:
+    name: Build rerun-cli (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest-16-cores
+            cache_key: build-linux
+          - runner: windows-latest-8-cores
+            cache_key: build-windows
+          - runner: macos-latest-large
+            cache_key: build-macos-arm
+    env:
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ matrix.cache_key != 'build-linux' && github.event.inputs.LINUX_ONLY }}
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.3.0
+        if: ${{ matrix.cache_key != 'build-linux' && github.event.inputs.LINUX_ONLY }}
+        with:
+          pixi-version: v0.6.0
+          cache: true
+
+      - name: Set up Rust
+        if: ${{ matrix.cache_key != 'build-linux' && github.event.inputs.LINUX_ONLY }}
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: ${{ matrix.cache_key }}
+          # Cache will be produced by `reusable_checks/rs-lints`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Build and run C++ tests
+        if: ${{ matrix.cache_key != 'build-linux' && github.event.inputs.LINUX_ONLY }}
+        shell: bash
+        run: |
+          pixi run cpp-clean
+          RERUN_WERROR=ON RERUN_USE_ASAN=ON pixi run cpp-build-all
+          RERUN_WERROR=ON RERUN_USE_ASAN=ON pixi run cpp-test
