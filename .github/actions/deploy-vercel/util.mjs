@@ -24,7 +24,6 @@ export function info(strings, ...values) {
  * @returns {string | null}
  */
 export function getInput(name) {
-  // @ts-expect-error: `process` is not defined without the right type definitions
   return process.env[`INPUT_${name.replace(/ /g, "_").toUpperCase()}`] ?? null;
 }
 
