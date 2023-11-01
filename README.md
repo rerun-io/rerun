@@ -70,12 +70,11 @@ There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
 Some shortcomings:
-* Big points clouds (1M+) are slow ([#1136](https://github.com/rerun-io/rerun/issues/1136))
+* [Time-scalar plots and text logs are currently very slow](https://github.com/rerun-io/rerun/issues/374).
+* [Points cloud sizes are limited](https://github.com/rerun-io/rerun/issues/3076), and [big point clouds are slow](https://github.com/rerun-io/rerun/issues/1136).
 * The data you want to visualize must fit in RAM.
-  - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use
-  - We plan on having a disk-based data store some time in the future
-* The Rust library takes a long time to compile
-  - We have way too many big dependencies, and we are planning on improving the situation ([#1316](https://github.com/rerun-io/rerun/pull/1316))
+  - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
+  - We plan on having a disk-based data store some time in the future.
 
 
 ## Business model
