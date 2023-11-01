@@ -189,7 +189,7 @@ jobs:
           manylinux: manylinux_2_31
           container: off
           command: build
-          sccache: "true"
+          sccache: "false"
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release
