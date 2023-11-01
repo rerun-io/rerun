@@ -38,6 +38,9 @@ permissions:
 jobs:
   matrix_prep:
     runs-on: ubuntu-latest
+    # Workaround for https://github.com/actions/runner/issues/2831
+    env:
+      FULL: ${{ github.event.inputs.FULL }}
     outputs:
       MATRIX: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -46,9 +49,6 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load C++ test matrix
         id: set-matrix
-        # Workaround for https://github.com/actions/runner/issues/2831
-        env:
-          FULL: ${{ github.event.inputs.FULL }}
         run: |
           echo "full: $FULL"
           if [$FULL == 'true']; then
