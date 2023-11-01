@@ -24,7 +24,7 @@ namespace rerun {
 
         /// Update the `names` of the contained [`TensorData`] dimensions.
         ///
-        /// Any existing Dimension names will be be overwritten.
+        /// Any existing Dimension names will be overwritten.
         ///
         /// If too many, or too few names are provided, this function will call
         /// Error::handle and then proceed to only update the subset of names that it can.

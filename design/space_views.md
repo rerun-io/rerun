@@ -32,7 +32,7 @@ In addition to blueprint stored data, a space view has a class specific `SpaceVi
 which stored ephemeral state that is not persisted as part of the blueprint.
 This is typically used for animation/transition state.
 
-⚠️ As of writing, we're using this also for state that *should* be be persisted and needs to be moved to
+⚠️ As of writing, we're using this also for state that *should* be persisted and needs to be moved to
 blueprint components.
 
 ## Space View Class
@@ -65,7 +65,7 @@ The fundamental difference between different space views lies in the kinds of ax
 - Rich Text is a rich text document (linear in top to bottom with wraparound in horizontal)
 
 ##### On merging Bar Chart with Spatial 2D
-It might take some time to get the Archetype Queries + defaults expressive and and easy to use enough that it makes sense to merge bar chart with spatial 2D. Right now we have the state that the bar chart space view takes a single 1-D tensor and draws a bar chart with x-axis = tensor indices and y-axis = tensor values. It draws boxes with width 1, centered on integers in x, y-min = 0 and y-max = tensor value.
+It might take some time to get the Archetype Queries + defaults expressive and easy to use enough that it makes sense to merge bar chart with spatial 2D. Right now we have the state that the bar chart space view takes a single 1-D tensor and draws a bar chart with x-axis = tensor indices and y-axis = tensor values. It draws boxes with width 1, centered on integers in x, y-min = 0 and y-max = tensor value.
 
 With the right set of primitives a user should be able to manually build a bar chart in a spatial 2D view. For example they might want a stacked bar chart. Talking about bringing in 3D into a bar chart doesn't likely make sense since there probably doesn't exist a camera projection that maps between 3D and the tensor indices axis (x).
 

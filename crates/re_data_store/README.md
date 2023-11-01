@@ -7,4 +7,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-In-memory storage of Rerun log data, indexed for fast fast queries.
+In-memory storage of Rerun log data, indexed for fast queries.

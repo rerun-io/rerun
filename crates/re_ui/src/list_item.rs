@@ -38,12 +38,12 @@ pub enum WidthAllocationMode {
     ///                      ┌─────────────────────────┐
     ///             hovered: │▼ □ label             ■ ■│
     ///                      └─────────────────────────┘
-    ///                      ┌─────────────────────────┐
-    ///  normal, long label: │▼ □ a very very long lab…│
-    ///                      └─────────────────────────┘
-    ///                      ┌─────────────────────────┐
-    /// hovered, long label: │▼ □ a very very long… ■ ■│
-    ///                      └─────────────────────────┘
+    ///                      ┌──────────────────────────┐
+    ///  normal, long label: │▼ □ a very, very long lab…│
+    ///                      └──────────────────────────┘
+    ///                      ┌──────────────────────────┐
+    /// hovered, long label: │▼ □ a very, very long… ■ ■│
+    ///                      └──────────────────────────┘
     /// ```
     /// The allocated size is always the same, and the label is truncated depending on the available
     /// space, which is further reduced whenever buttons are displayed.
@@ -63,12 +63,12 @@ pub enum WidthAllocationMode {
     ///                      ┌─────────┐
     ///             hovered: │▼ □ … ■ ■│
     ///                      └─────────┘
-    ///                      ┌──────────────────────────┐
-    ///  normal, long label: │▼ □ a very very long label│
-    ///                      └──────────────────────────┘
-    ///                      ┌──────────────────────────┐
-    /// hovered, long label: │▼ □ a very very long … ■ ■│
-    ///                      └──────────────────────────┘
+    ///                      ┌───────────────────────────┐
+    ///  normal, long label: │▼ □ a very, very long label│
+    ///                      └───────────────────────────┘
+    ///                      ┌───────────────────────────┐
+    /// hovered, long label: │▼ □ a very, very long … ■ ■│
+    ///                      └───────────────────────────┘
     /// ```
     Compact,
 }

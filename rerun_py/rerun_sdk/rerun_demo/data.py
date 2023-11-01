@@ -82,7 +82,9 @@ def build_rect_pyramid(count=20, width=100, height=100):
     widths = np.linspace(float(width) / count, width, count)
     heights = 0.8 * np.ones(count) * height / count
     rects = np.stack((x, y, widths, heights), axis=1)
-    colors = turbo_colormap_data[np.linspace(0, len(turbo_colormap_data) - 1, count, dtype=int)]
+    colors = turbo_colormap_data[
+        np.linspace(0, len(turbo_colormap_data) - 1, count, dtype=int)
+    ]
 
     return RectPyramid(rects, RectFormat.XCYCWH, colors)
 
@@ -94,7 +96,9 @@ rect_pyramid = build_rect_pyramid()
 ColorSpiral = namedtuple("ColorSpiral", ["positions", "colors"])
 
 
-def build_color_spiral(num_points=100, radius=2, angular_step=0.02, angular_offset=0, z_step=0.1):
+def build_color_spiral(
+    num_points=100, radius=2, angular_step=0.02, angular_offset=0, z_step=0.1
+):
     """
     Create a spiral of points with colors along the Z axis.
 
@@ -109,7 +113,7 @@ def build_color_spiral(num_points=100, radius=2, angular_step=0.02, angular_offs
     angular_offset:
         Offsets the starting position on the trigonemetric circle.
     z_step:
-        The factor applied between between each step along the Z axis.
+        The factor applied between each step along the Z axis.
 
     """
     positions = np.array(
@@ -122,7 +126,9 @@ def build_color_spiral(num_points=100, radius=2, angular_step=0.02, angular_offs
             for i in range(num_points)
         ]
     )
-    colors = turbo_colormap_data[np.linspace(0, len(turbo_colormap_data) - 1, num_points, dtype=int)]
+    colors = turbo_colormap_data[
+        np.linspace(0, len(turbo_colormap_data) - 1, num_points, dtype=int)
+    ]
 
     return ColorSpiral(positions, colors)
 
