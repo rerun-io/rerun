@@ -29,7 +29,7 @@ const ENV_FORCE_SAVE: &str = "_RERUN_TEST_FORCE_SAVE";
 
 /// Returns path for force sink if private environment variable `_RERUN_TEST_FORCE_SAVE` is set
 ///
-/// Newly created created [`RecordingStream`]s should use a [`crate::sink::FileSink`] pointing to this path.
+/// Newly created [`RecordingStream`]s should use a [`crate::sink::FileSink`] pointing to this path.
 /// Furthermore, [`RecordingStream::set_sink`] calls after this should not swap out to a new sink but re-use the existing one.
 /// Note that creating a new [`crate::sink::FileSink`] to the same file path (even temporarily) can cause
 /// a race between file creation (and thus clearing) and pending file writes.

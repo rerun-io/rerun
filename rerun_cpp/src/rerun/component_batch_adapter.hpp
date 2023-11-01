@@ -19,7 +19,7 @@ namespace rerun {
     /// To implement an adapter for a type T, specialize `ComponentBatchAdapter<TComponent, T>` and
     /// define `ComponentBatch<TComponent> operator()(const T& input)`.
     /// It is *highly recommended* to also specify `ComponentBatch<TComponent> operator()(T&&
-    /// input)` in order to to accidentally borrow data that is passed in as a temporary!
+    /// input)` in order to accidentally borrow data that is passed in as a temporary!
     ///
     /// TODO(andreas): Point to an example here and in the assert.
     template <typename TComponent, typename TInput, typename Enable = std::enable_if_t<true>>
@@ -31,7 +31,7 @@ namespace rerun {
         static_assert(
             NoAdapterFor<TComponent, TInput>::value,
             "ComponentBatchAdapter is not implemented for this type. "
-            "It is implemented for for single components as well as std::vector, std::array, and "
+            "It is implemented for single components as well as std::vector, std::array, and "
             "c-arrays of components. "
             "You can add your own implementation by specializing "
             "ComponentBatchAdapter<TComponent, T> for a given "

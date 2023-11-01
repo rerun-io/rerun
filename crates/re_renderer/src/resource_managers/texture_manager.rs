@@ -239,7 +239,7 @@ impl TextureManager2D {
     }
 
     /// Creates a new 2D texture resource and schedules data upload to the GPU.
-    /// TODO(jleibs): All usages of this should be be replaced with `get_or_create`, which is strictly preferable
+    /// TODO(jleibs): All usages of this should be replaced with `get_or_create`, which is strictly preferable
     pub fn create(
         &self,
         texture_pool: &GpuTexturePool,

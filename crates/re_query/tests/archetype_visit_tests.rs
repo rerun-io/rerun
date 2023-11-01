@@ -340,7 +340,7 @@ fn joint_visit_with_splat() {
 
     let positions_comp =
         ComponentWithInstances::from_native(shared_ids, positions.clone()).unwrap();
-    // TODO(#1893): Replace the instance_keys with with shared_ids.
+    // TODO(#1893): Replace the instance_keys with shared_ids.
     let colors_comp =
         ComponentWithInstances::from_native(vec![InstanceKey::SPLAT], colors).unwrap();
 

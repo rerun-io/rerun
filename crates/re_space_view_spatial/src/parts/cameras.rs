@@ -90,7 +90,7 @@ impl CamerasPart {
                 world_from_camera * transform_at_entity.into_parent_from_child_transform();
         }
 
-        // If this transform is not representable an iso transform transform we can't display it yet.
+        // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let Some(world_from_camera_iso) = macaw::IsoTransform::from_mat4(&world_from_camera.into())
         else {

@@ -33,6 +33,7 @@ ellipsis_bare = re.compile(r"^\s*\.\.\.\s*$")
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 
 double_the = re.compile(r"\bthe the\b")
+double_word = re.compile(r" ([a-z]+) \1[ \.]")
 
 
 def is_valid_todo_part(part: str) -> bool:
@@ -66,6 +67,9 @@ def lint_line(line: str, file_extension: str = "rs", is_in_docstring: bool = Fal
 
     if double_the.search(line.lower()):
         return "Found 'the the'"
+
+    if m := double_word.search(line):
+        return f"Found double word: '{m.group(0)}'"
 
     if file_extension not in ("txt"):
         if (
@@ -222,6 +226,7 @@ def test_lint_line() -> None:
         'RecordingStream("missing_prefix")',
         'rr.init("missing_prefix")',
         'rr.script_setup(args, "missing_prefix")',
+        "I accidentally wrote the same same word twice",
     ]
 
     for line in should_pass:
