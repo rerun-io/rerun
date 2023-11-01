@@ -45,10 +45,10 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load minimal C++ test matrix
         if: ${{ github.event.inputs.MINIMAL }}
-        run: echo "matrix=$(jq -c . < ./.github/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+        run: echo "matrix=$(jq -c . < cpp_matrix_full.json)" >> $GITHUB_OUTPUT
       - name: Load full C++ test matrix
         if: ${{ !github.event.inputs.MINIMAL }}
-        run: echo "matrix=$(jq -c . < ./.github/cpp_matrix_minimal.json)" >> $GITHUB_OUTPUT
+        run: echo "matrix=$(jq -c . < cpp_matrix_minimal.json)" >> $GITHUB_OUTPUT
 
   cpp-tests:
     name: Build rerun-cli (${{ matrix.runner }})
