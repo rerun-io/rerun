@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.16...3.27)
 
 project(rerun_cpp_proj LANGUAGES CXX)
 
+# ------------------------------------------------------------------------------
+
+# Enviroment driven hooks so we can configure CMake configure even if its burried deep inside a pixi task.
 if(DEFINED ENV{RERUN_WERROR})
     message(STATUS "Compiling with warnings as errors since RERUN_WERROR is set.")
     set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
@@ -13,12 +16,11 @@ if(DEFINED ENV{RERUN_USE_ASAN})
 endif()
 
 if(DEFINED ENV{RERUN_SET_CXX_VERSION})
-    message(STATUS "Overwriting CMAKE_CXX_STANDARD to $ENV{RERUN_SET_CXX_VERSION}.")
+    message(STATUS "Overwriting CMAKE_CXX_STANDARD to $ENV{RERUN_SET_CXX_VERSION} since RERUN_SET_CXX_VERSION is set accordingly.")
     set(CMAKE_CXX_STANDARD $ENV{RERUN_SET_CXX_VERSION})
-else()
-    # Arrow requires a C++17 compliant compiler.
-    set(CMAKE_CXX_STANDARD 17)
 endif()
+
+# ------------------------------------------------------------------------------
 
 function(set_default_warning_settings target)
     if(MSVC)
@@ -114,6 +116,11 @@ endif()
 # Note that this setting is repeated for rerun_sdk's CMakeLists.txt since it should also work stand-alone.
 if(MSVC)
     add_compile_options("/MP")
+endif()
+
+# Arrow requires a C++17 compliant compiler.
+if(NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 17)
 endif()
 
 # Signal to all our build scripts that we're inside the Rerun repository.
