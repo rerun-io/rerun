@@ -23,7 +23,7 @@ namespace rerun {
     /// Change whether `RecordingStream`s are enabled by default.
     ///
     /// This governs the creation of new `RecordingStream`s. If `default_enabled` is
-    /// is `false`, `RecordingStreams` will be created in the disabled state. Changing
+    /// `false`, `RecordingStreams` will be created in the disabled state. Changing
     /// the value of `default_enabled` will not affect existing `RecordingStream`s.
     ///
     /// Note that regardless of usage of this API, the value of default_enabled will
