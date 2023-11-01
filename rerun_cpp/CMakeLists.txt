@@ -177,8 +177,15 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         PREFIX ${ARROW_DOWNLOAD_PATH}
         GIT_REPOSITORY https://github.com/apache/arrow.git
         GIT_TAG apache-arrow-10.0.1
-        GIT_SHALLOW true
-        GIT_PROGRESS true
+        GIT_SHALLOW ON
+        GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practive very spammy.
+
+        # LOG_X ON means that the output of the command will
+        # be logged to a file _instead_ of printed to the console.
+        LOG_CONFIGURE ON
+        LOG_BUILD ON
+        LOG_INSTALL ON
+
         CMAKE_ARGS
         --preset ${ARROW_CMAKE_PRESET}
         -DARROW_BOOST_USE_SHARED=OFF
@@ -194,6 +201,9 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         -DBOOST_SOURCE=BUNDLED
         -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
         -Dxsimd_SOURCE=BUNDLED
+        -DBOOST_SOURCE=BUNDLED
+        -DARROW_BOOST_USE_SHARED=OFF
+        -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
         SOURCE_SUBDIR cpp
         BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE} ${ARROW_BUNDLED_DEPENDENCIES_FILE}
     )
