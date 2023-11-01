@@ -22,6 +22,10 @@ function(set_default_warning_settings target)
         if(CMAKE_COMPILE_WARNING_AS_ERROR)
             target_compile_options(${target} PRIVATE /WX)
         endif()
+
+        if(RERUN_USE_ASAN)
+            message(WARNING "Rerun C++ build does not support address sanatizer ('asan') on Windows. Ignoring RERUN_USE_ASAN.")
+        endif()
     else()
         # Enabled warnings.
         target_compile_options(${target} PRIVATE
