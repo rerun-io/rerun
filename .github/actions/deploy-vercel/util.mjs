@@ -3,14 +3,10 @@
 /**
  * Log a message with level `INFO`
  *
- * @param {string | string[] | TemplateStringsArray} strings
+ * @param {TemplateStringsArray} strings
  * @param {any[]} values
  */
 export function info(strings, ...values) {
-  if (typeof strings === "string") {
-    return console.info(strings);
-  }
-
   let out = "";
   for (let i = 0; i < strings.length; i++) {
     out += strings[i];
