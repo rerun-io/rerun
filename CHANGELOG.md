@@ -12,6 +12,8 @@
 * Rust: `cargo add rerun` and `cargo install rerun-cli`
 * Online demo: <https://app.rerun.io/version/0.10.0/>
 
+Release blog post: <https://www.rerun.io/blog/cpp-sdk>
+
 ### Overview & Highlights
 * The C++ SDK is finally here!
   ```cpp
