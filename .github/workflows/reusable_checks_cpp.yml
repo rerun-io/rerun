@@ -47,8 +47,10 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.FULL }}" == "true" ]; then
             echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+            echo $GITHUB_OUTPUT
           else
             echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
+            echo $GITHUB_OUTPUT
           fi
 
   cpp-tests:
