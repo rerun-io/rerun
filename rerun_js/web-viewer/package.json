@@ -5,6 +5,7 @@
   "private": false,
   "scripts": {
     "build:wasm": "cargo run -p re_build_web_viewer -- --release --module -o rerun_js/web-viewer",
+    "build:wasm:debug": "cargo run -p re_build_web_viewer -- --debug --module -o rerun_js/web-viewer",
     "build:types": "dts-buddy",
     "build": "npm run build:wasm && npm run build:types",
     "prepublishOnly": "dts-buddy"
@@ -41,3 +42,4 @@
     "dts-buddy": "^0.3.0"
   }
 }
+
