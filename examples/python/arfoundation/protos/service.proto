@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+option csharp_namespace = "RerunAR";
+
+service RerunARService {
+    rpc register(RegisterRequest) returns (RegisterResponse);
+    rpc data_frame(DataFrameRequest) returns (DataFrameResponse);
+}
+
+message RegisterRequest {
+    float focal_length_x = 1;
+    float focal_length_y = 2;
+
+    float principal_point_x = 3;
+    float principal_point_y = 4;
+
+    int32 color_resolution_x = 5;
+    int32 color_resolution_y = 6;
+
+    int32 color_sample_size_x = 7;
+    int32 color_sample_size_y = 8;
+
+    int32 depth_resolution_x = 9;
+    int32 depth_resolution_y = 10;
+}
+
+message RegisterResponse {
+    string message = 1;
+}
+
+message DataFrameRequest {
+    string uid = 1;
+    bytes color = 2;
+    bytes depth = 3;
+    bytes transform = 4;
+}
+
+message DataFrameResponse {
+    string message = 1;
+}

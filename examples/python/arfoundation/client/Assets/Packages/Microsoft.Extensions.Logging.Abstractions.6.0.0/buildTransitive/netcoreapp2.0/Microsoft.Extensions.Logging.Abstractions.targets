@@ -1,0 +1,6 @@
+<Project InitialTargets="NETStandardCompatError_Microsoft_Extensions_Logging_Abstractions_netcoreapp3_1">
+  <Target Name="NETStandardCompatError_Microsoft_Extensions_Logging_Abstractions_netcoreapp3_1"
+          Condition="'$(SuppressTfmSupportBuildWarnings)' == ''">
+    <Error Text="Microsoft.Extensions.Logging.Abstractions doesn't support $(TargetFramework). Consider updating your TargetFramework to netcoreapp3.1 or later." />
+  </Target>
+</Project>

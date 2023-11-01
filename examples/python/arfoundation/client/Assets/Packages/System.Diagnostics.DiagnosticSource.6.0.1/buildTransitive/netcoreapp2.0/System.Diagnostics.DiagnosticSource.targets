@@ -1,0 +1,6 @@
+<Project InitialTargets="NETStandardCompatError_System_Diagnostics_DiagnosticSource_netcoreapp3_1">
+  <Target Name="NETStandardCompatError_System_Diagnostics_DiagnosticSource_netcoreapp3_1"
+          Condition="'$(SuppressTfmSupportBuildWarnings)' == ''">
+    <Error Text="System.Diagnostics.DiagnosticSource doesn't support $(TargetFramework). Consider updating your TargetFramework to netcoreapp3.1 or later." />
+  </Target>
+</Project>

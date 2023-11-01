@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Grpc.Net.Client</id>
+    <version>2.58.0</version>
+    <authors>The gRPC Authors</authors>
+    <license type="expression">Apache-2.0</license>
+    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>
+    <icon>packageIcon.png</icon>
+    <readme>README.md</readme>
+    <projectUrl>https://github.com/grpc/grpc-dotnet</projectUrl>
+    <description>.NET client for gRPC</description>
+    <copyright>Copyright 2019 The gRPC Authors</copyright>
+    <tags>gRPC RPC HTTP/2</tags>
+    <repository type="git" url="https://github.com/grpc/grpc-dotnet.git" commit="002368bbca9bb1411aab277acf84b1d73d1a44b0" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.6.2">
+        <dependency id="Grpc.Net.Common" version="2.58.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Logging.Abstractions" version="6.0.0" exclude="Build,Analyzers" />
+        <dependency id="System.Diagnostics.DiagnosticSource" version="6.0.1" exclude="Build,Analyzers" />
+        <dependency id="System.Net.Http.WinHttpHandler" version="7.0.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net6.0">
+        <dependency id="Grpc.Net.Common" version="2.58.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Logging.Abstractions" version="6.0.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net7.0">
+        <dependency id="Grpc.Net.Common" version="2.58.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Logging.Abstractions" version="6.0.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net8.0">
+        <dependency id="Grpc.Net.Common" version="2.58.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Logging.Abstractions" version="6.0.0" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="Grpc.Net.Common" version="2.58.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Logging.Abstractions" version="6.0.0" exclude="Build,Analyzers" />
+        <dependency id="System.Diagnostics.DiagnosticSource" version="6.0.1" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.1">
+        <dependency id="Grpc.Net.Common" version="2.58.0" exclude="Build,Analyzers" />
+        <dependency id="Microsoft.Extensions.Logging.Abstractions" version="6.0.0" exclude="Build,Analyzers" />
+        <dependency id="System.Diagnostics.DiagnosticSource" version="6.0.1" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

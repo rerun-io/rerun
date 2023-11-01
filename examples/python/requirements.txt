@@ -1,3 +1,4 @@
+-r arfoundation/requirements.txt
 -r arkit_scenes/requirements.txt
 -r blueprint/requirements.txt
 -r car/requirements.txt

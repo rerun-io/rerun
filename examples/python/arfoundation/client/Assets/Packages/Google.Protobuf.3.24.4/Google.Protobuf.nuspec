@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Google.Protobuf</id>
+    <version>3.24.4</version>
+    <authors>Google Inc.</authors>
+    <license type="expression">BSD-3-Clause</license>
+    <licenseUrl>https://licenses.nuget.org/BSD-3-Clause</licenseUrl>
+    <projectUrl>https://github.com/protocolbuffers/protobuf</projectUrl>
+    <description>C# runtime library for Protocol Buffers - Google's data interchange format.</description>
+    <releaseNotes>C# proto3 support</releaseNotes>
+    <copyright>Copyright 2015, Google Inc.</copyright>
+    <tags>Protocol Buffers Binary Serialization Format Google proto proto3</tags>
+    <repository type="git" url="https://github.com/protocolbuffers/protobuf.git" commit="deaaeca79bc84a09126ce6dd0723b9cf3dd7be26" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.5">
+        <dependency id="System.Memory" version="4.5.3" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard1.1">
+        <dependency id="NETStandard.Library" version="1.6.1" exclude="Build,Analyzers" />
+        <dependency id="System.Memory" version="4.5.3" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework="net5.0" />
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="System.Memory" version="4.5.3" exclude="Build,Analyzers" />
+        <dependency id="System.Runtime.CompilerServices.Unsafe" version="4.5.2" exclude="Build,Analyzers" />
+      </group>
+    </dependencies>
+  </metadata>
+</package>

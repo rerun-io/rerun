@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
+  <metadata>
+    <id>Grpc.Core.Api</id>
+    <version>2.58.0</version>
+    <authors>The gRPC Authors</authors>
+    <license type="expression">Apache-2.0</license>
+    <licenseUrl>https://licenses.nuget.org/Apache-2.0</licenseUrl>
+    <icon>packageIcon.png</icon>
+    <readme>README.md</readme>
+    <projectUrl>https://github.com/grpc/grpc-dotnet</projectUrl>
+    <description>gRPC C# Surface API</description>
+    <copyright>Copyright 2019 The gRPC Authors</copyright>
+    <tags>gRPC RPC HTTP/2</tags>
+    <repository type="git" url="https://github.com/grpc/grpc-dotnet.git" commit="002368bbca9bb1411aab277acf84b1d73d1a44b0" />
+    <dependencies>
+      <group targetFramework=".NETFramework4.6.2">
+        <dependency id="System.Memory" version="4.5.3" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.0">
+        <dependency id="System.Memory" version="4.5.3" exclude="Build,Analyzers" />
+      </group>
+      <group targetFramework=".NETStandard2.1" />
+    </dependencies>
+    <frameworkAssemblies>
+      <frameworkAssembly assemblyName="Microsoft.CSharp" targetFramework=".NETFramework4.6.2" />
+      <frameworkAssembly assemblyName="System" targetFramework=".NETFramework4.6.2" />
+    </frameworkAssemblies>
+  </metadata>
+</package>
