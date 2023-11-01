@@ -109,7 +109,7 @@ def build_color_spiral(num_points=100, radius=2, angular_step=0.02, angular_offs
     angular_offset:
         Offsets the starting position on the trigonemetric circle.
     z_step:
-        The factor applied between between each step along the Z axis.
+        The factor applied between each step along the Z axis.
 
     """
     positions = np.array(

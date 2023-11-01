@@ -315,8 +315,9 @@ fn create_entity_add_info(
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
     tree.visit_children_recursively(&mut |entity_path| {
+        let heuristic_context_per_entity = heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default();
         let can_add: CanAddToSpaceView =
-            if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path, heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default(), &ctx.current_query()) {
+            if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
                         already_added: space_view.contents.contains_entity(entity_path),

@@ -79,7 +79,7 @@ SCENARIO(
     }
 
     SECTION("TranslationRotationScale") {
-        const auto rotation = rrd::Quaternion{1.0f, 2.0f, 3.0f, 4.0f};
+        const auto rotation = rrd::Quaternion::from_xyzw(1.0f, 2.0f, 3.0f, 4.0f);
 
         Transform3D manual;
         rrd::TranslationRotationScale3D translation_rotation_scale;

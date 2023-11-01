@@ -33,6 +33,7 @@ impl MeshManager {
         mesh: &Mesh,
         lifetime: ResourceLifeTime,
     ) -> Result<GpuMeshHandle, ResourceManagerError> {
+        re_tracing::profile_function!();
         Ok(self.manager.store_resource(
             GpuMesh::new(ctx, self.mesh_bind_group_layout, mesh)?,
             lifetime,

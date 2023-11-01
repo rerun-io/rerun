@@ -53,7 +53,7 @@ def new_blueprint(
         If you don't call this, log events will be buffered indefinitely until
         you call either `connect`, `show`, or `save`
     add_to_app_default_blueprint
-        Should the blueprint append to the existing app-default blueprint instead instead of creating a new one.
+        Should the blueprint append to the existing app-default blueprint instead of creating a new one.
     default_enabled
         Should Rerun logging be on by default?
         Can overridden with the RERUN env-var, e.g. `RERUN=on` or `RERUN=off`.

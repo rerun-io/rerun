@@ -578,8 +578,6 @@ impl IndexedTable {
     ///
     /// See [`IndexedTable::buckets`] for more information.
     pub fn find_bucket(&self, time: TimeInt) -> (TimeInt, &IndexedBucket) {
-        re_tracing::profile_function!();
-
         // This cannot fail, `iter_bucket` is guaranteed to always yield at least one bucket,
         // since indexed tables always spawn with a default bucket that covers [-∞;+∞].
         self.range_buckets_rev(..=time).next().unwrap()
@@ -592,8 +590,6 @@ impl IndexedTable {
     ///
     /// See [`IndexedTable::buckets`] for more information.
     pub fn find_bucket_mut(&mut self, time: TimeInt) -> (TimeInt, &mut IndexedBucket) {
-        re_tracing::profile_function!();
-
         // This cannot fail, `iter_bucket_mut` is guaranteed to always yield at least one bucket,
         // since indexed tables always spawn with a default bucket that covers [-∞;+∞].
         self.range_bucket_rev_mut(..=time).next().unwrap()

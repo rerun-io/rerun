@@ -363,7 +363,6 @@ impl IndexedBucket {
     /// Returns the number of rows stored across this bucket.
     #[inline]
     pub fn num_rows(&self) -> u64 {
-        re_tracing::profile_function!();
         self.inner.read().col_time.len() as u64
     }
 }

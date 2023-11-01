@@ -1,4 +1,4 @@
-// Log a a simple 3D asset.
+// Log a simple 3D asset.
 
 #include <rerun.hpp>
 

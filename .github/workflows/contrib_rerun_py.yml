@@ -91,7 +91,7 @@ jobs:
           which rerun
           rerun --version
 
-      - name: Run unit tests
+      - name: Run Python unit-tests
         shell: bash
         run: cd rerun_py/tests && pytest -c ../pyproject.toml
 

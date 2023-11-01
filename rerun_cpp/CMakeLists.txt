@@ -109,13 +109,9 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 
 # -----------------------------------------------------------------------------
 # Arrow:
-if (WIN32)
-    # This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
-    set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
-else()
-    # On non-windows platforms ld search path settings alleviate this concern and this makes linking faster!
-    set(RERUN_ARROW_LINK_SHARED_DEFAULT ON)
-endif()
+# This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
+# Additionally reduces risk of picking up system libraries on Mac / Linux.
+set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
 option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_LINK_SHARED_DEFAULT})
 option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
@@ -143,10 +139,13 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
 
         if(APPLE)
             set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
+            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow_bundled_dependencies.a)
         elseif(UNIX) # if(LINUX) # CMake 3.25
             set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
+            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow_bundled_dependencies.a)
         elseif(WIN32)
             set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/arrow_static.lib)
+            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/arrow_bundled_dependencies.lib)
         else()
             message(FATAL_ERROR "Unsupported platform.")
         endif()
@@ -159,29 +158,54 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         set(DARROW_CXXFLAGS "")
     endif()
 
+    # Workaround for https://github.com/apache/arrow/issues/36117
+    # This works around linking issues on Windows we got after enabling mimalloc.
+    if(MSVC)
+        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/debug/)
+        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/relwithdebinfo/)
+        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/release/)
+    endif()
+
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        set(ARROW_CMAKE_PRESET ninja-debug-minimal)
+    else()
+        set(ARROW_CMAKE_PRESET ninja-release-minimal)
+    endif()
+
     ExternalProject_Add(
         arrow_cpp
         PREFIX ${ARROW_DOWNLOAD_PATH}
         GIT_REPOSITORY https://github.com/apache/arrow.git
         GIT_TAG apache-arrow-10.0.1
-        GIT_SHALLOW true
-        GIT_PROGRESS true
+        GIT_SHALLOW ON
+        GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practive very spammy.
+
+        # LOG_X ON means that the output of the command will
+        # be logged to a file _instead_ of printed to the console.
+        LOG_CONFIGURE ON
+        LOG_BUILD ON
+        LOG_INSTALL ON
+
         CMAKE_ARGS
-        --preset ninja-debug-minimal
-        -DARROW_IPC=ON
+        --preset ${ARROW_CMAKE_PRESET}
+        -DARROW_BOOST_USE_SHARED=OFF
         -DARROW_BUILD_SHARED=${ARROW_BUILD_SHARED}
         -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
-        -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
-        -DARROW_USE_ASAN=OFF
+        -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
+        -DARROW_IPC=ON
+        -DARROW_JEMALLOC=OFF # We encountered some build issues with jemalloc, use mimalloc instead.
+        -DARROW_MIMALLOC=ON
+        -DARROW_USE_ASAN=${RERUN_USE_ASAN}
         -DARROW_USE_TSAN=OFF
         -DARROW_USE_UBSAN=OFF
-        -DARROW_JEMALLOC=OFF
+        -DBOOST_SOURCE=BUNDLED
+        -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
         -Dxsimd_SOURCE=BUNDLED
         -DBOOST_SOURCE=BUNDLED
         -DARROW_BOOST_USE_SHARED=OFF
         -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
         SOURCE_SUBDIR cpp
-        BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE}
+        BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE} ${ARROW_BUNDLED_DEPENDENCIES_FILE}
     )
 
     # arrow_cpp target is not a library. Assemble one from it.
@@ -194,7 +218,17 @@ if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
         endif()
     else()
         add_library(RerunArrowTarget STATIC IMPORTED)
+
+        # Need to set the ARROW_STATIC define, otherwise arrow functions are dllimport decorated on Windows.
         target_compile_definitions(RerunArrowTarget INTERFACE ARROW_STATIC)
+
+        # We have to explicitly opt in the arrow bundled dependencies, otherwise we're missing the symbols for mimalloc.
+        add_library(RerunArrowTargetBundledDeps STATIC IMPORTED)
+        add_dependencies(RerunArrowTargetBundledDeps arrow_cpp)
+        set_target_properties(RerunArrowTargetBundledDeps PROPERTIES
+            IMPORTED_LOCATION ${ARROW_BUNDLED_DEPENDENCIES_FILE}
+        )
+        target_link_libraries(RerunArrowTarget INTERFACE RerunArrowTargetBundledDeps)
     endif()
 
     add_dependencies(RerunArrowTarget arrow_cpp)
