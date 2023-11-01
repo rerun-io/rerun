@@ -1,14 +1,16 @@
-[
-    {
-        "runs_on": "ubuntu-latest-16-cores",
-        "cache_key": "build-linux"
-    },
-    {
-        "runs_on": "windows-latest-8-cores",
-        "cache_key": "build-windows"
-    },
-    {
-        "runs_on": "macos-latest-large",
-        "cache_key": "build-macos-arm"
-    }
-]
+{
+    "include": [
+        {
+            "runs_on": "ubuntu-latest-16-cores",
+            "cache_key": "build-linux"
+        },
+        {
+            "runs_on": "windows-latest-8-cores",
+            "cache_key": "build-windows"
+        },
+        {
+            "runs_on": "macos-latest-large",
+            "cache_key": "build-macos-arm"
+        }
+    ]
+}

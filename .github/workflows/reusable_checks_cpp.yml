@@ -48,10 +48,10 @@ jobs:
         id: set-matrix
         # Workaround for https://github.com/actions/runner/issues/2831
         env:
-          full: ${{ github.event.inputs.FULL }}
+          FULL: ${{ github.event.inputs.FULL }}
         run: |
           echo "starting..."
-          if [${{ env.full }}]; then
+          if [$FULL == 'true']; then
             echo "Loading full matrix $(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)"
             echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
           else
@@ -62,9 +62,9 @@ jobs:
   cpp-tests:
     name: Build rerun-cli (${{ matrix.runner }})
     needs: matrix_prep
-    runs-on: ${{ matrix.runs_on }}
     strategy:
       matrix: ${{fromJson(needs.matrix_prep.outputs.MATRIX)}}
+    runs-on: ${{ matrix.runs_on }}
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
