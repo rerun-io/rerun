@@ -187,6 +187,8 @@ impl GpuMesh {
         mesh_bind_group_layout: GpuBindGroupLayoutHandle,
         data: &Mesh,
     ) -> Result<Self, ResourceManagerError> {
+        re_tracing::profile_function!();
+
         data.sanity_check()?;
 
         re_log::trace!(

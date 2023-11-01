@@ -106,10 +106,12 @@ impl LoadedMesh {
             .as_ref()
             .and_then(|props| props.indices.as_ref())
         {
+            re_tracing::profile_scope!("copy_indices");
             anyhow::ensure!(indices.len() % 3 == 0);
             let indices: &[glam::UVec3] = bytemuck::cast_slice(indices);
             indices.to_vec()
         } else {
+            re_tracing::profile_scope!("generate_indices");
             anyhow::ensure!(num_positions % 3 == 0);
             (0..num_positions as u32)
                 .tuples::<(_, _, _)>()
@@ -119,6 +121,7 @@ impl LoadedMesh {
         let num_indices = triangle_indices.len() * 3;
 
         let vertex_colors = if let Some(vertex_colors) = vertex_colors {
+            re_tracing::profile_scope!("copy_colors");
             vertex_colors
                 .iter()
                 .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
@@ -128,6 +131,7 @@ impl LoadedMesh {
         };
 
         let vertex_normals = if let Some(normals) = vertex_normals {
+            re_tracing::profile_scope!("collect_normals");
             normals.iter().map(|v| v.0.into()).collect::<Vec<_>>()
         } else {
             // TODO(andreas): Calculate normals
@@ -138,7 +142,10 @@ impl LoadedMesh {
         let vertex_texcoords = vec![glam::Vec2::ZERO; vertex_normals.len()];
         let albedo_factor = mesh_material.as_ref().and_then(|mat| mat.albedo_factor);
 
-        let bbox = macaw::BoundingBox::from_points(vertex_positions.iter().copied());
+        let bbox = {
+            re_tracing::profile_scope!("bbox");
+            macaw::BoundingBox::from_points(vertex_positions.iter().copied())
+        };
 
         let mesh = re_renderer::mesh::Mesh {
             label: name.clone().into(),
