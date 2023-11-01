@@ -7,8 +7,8 @@ on:
         required: true
         type: string
       FULL:
-        required: false
         type: boolean
+        required: false
         default: true
 
   workflow_dispatch:
@@ -18,9 +18,10 @@ on:
         type: string
         default: "adhoc"
       FULL:
-        type: boolean
-        default: true
         description: "If false only linux is tested"
+        type: boolean
+        required: false
+        default: true
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks_cpp
@@ -46,12 +47,15 @@ jobs:
       - name: Load C++ test matrix
         id: set-matrix
         run: |
+          echo "starting..."
           if [ "${{ github.event.inputs.FULL }}" == "true" ]; then
             echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
             echo "$GITHUB_OUTPUT"
+            echo "full was true"
           else
             echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
             echo "$GITHUB_OUTPUT"
+            echo "full was false"
           fi
 
   cpp-tests:
