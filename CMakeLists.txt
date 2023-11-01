@@ -14,7 +14,14 @@ endif()
 
 function(set_default_warning_settings target)
     if(MSVC)
+        # TODO(andreas): Try to enable /Wall
         target_compile_options(${target} PRIVATE /W4)
+
+        # CMAKE_COMPILE_WARNING_AS_ERROR is only directly supported starting in CMake `3.24`
+        # https://cmake.org/cmake/help/latest/prop_tgt/COMPILE_WARNING_AS_ERROR.html
+        if(CMAKE_COMPILE_WARNING_AS_ERROR)
+            target_compile_options(${target} PRIVATE /WX)
+        endif()
     else()
         # Enabled warnings.
         target_compile_options(${target} PRIVATE
