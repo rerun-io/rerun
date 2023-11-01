@@ -44,13 +44,14 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load C++ test matrix
+        id: set-matrix
         run: |
           if [ "${{ github.event.inputs.FULL }}" == "true" ]; then
             echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
-            echo $GITHUB_OUTPUT
+            echo "$GITHUB_OUTPUT"
           else
             echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
-            echo $GITHUB_OUTPUT
+            echo "$GITHUB_OUTPUT"
           fi
 
   cpp-tests:
