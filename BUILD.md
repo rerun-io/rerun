@@ -127,7 +127,7 @@ If you're on Windows you have to make sure that your git client creates symlinks
 otherwise you may get errors during the build.
 Run `git config --show-scope --show-origin core.symlinks` to check if symlinks are enabled.
 You may need to turn on Windows developer mode in order to give the `mklink` command sufficient permissions.
-See also this [Stackoverflow reply](https://stackoverflow.com/questions/5917249/git-symbolic-links-in-windows/59761201#59761201) on the issue.
+See also this [Stack Overflow reply](https://stackoverflow.com/questions/5917249/git-symbolic-links-in-windows/59761201#59761201) on the issue.
 
 
 ### Building with WebGPU support
