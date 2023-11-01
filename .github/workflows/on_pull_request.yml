@@ -28,7 +28,7 @@ jobs:
     outputs:
       cpp_changes: ${{ steps.filter.outputs.rerun_cpp }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - uses: dorny/paths-filter@v2
       id: filter
       with:
