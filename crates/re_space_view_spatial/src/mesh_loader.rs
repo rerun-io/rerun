@@ -124,9 +124,7 @@ impl LoadedMesh {
                 .map(|c| Rgba32Unmul::from_rgba_unmul_array(c.to_array()))
                 .collect()
         } else {
-            std::iter::repeat(Rgba32Unmul::WHITE)
-                .take(num_positions)
-                .collect()
+            vec![Rgba32Unmul::WHITE; num_positions]
         };
 
         let vertex_normals = if let Some(normals) = vertex_normals {
@@ -134,9 +132,7 @@ impl LoadedMesh {
         } else {
             // TODO(andreas): Calculate normals
             // TODO(cmc): support textured raw meshes
-            std::iter::repeat(glam::Vec3::ZERO)
-                .take(num_positions)
-                .collect()
+            vec![glam::Vec3::ZERO; num_positions]
         };
 
         let vertex_texcoords = vec![glam::Vec2::ZERO; vertex_normals.len()];
