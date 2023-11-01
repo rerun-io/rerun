@@ -53,10 +53,10 @@ jobs:
           echo "full: $FULL"
           if [$FULL == 'true']; then
             echo "Loading full matrix $(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)"
-            echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+            echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
           else
             echo "Loading partial matrix $(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)"
-            echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
+            echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
           fi
 
   cpp-tests:
