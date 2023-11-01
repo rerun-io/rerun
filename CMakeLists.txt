@@ -4,7 +4,7 @@ project(rerun_cpp_proj LANGUAGES CXX)
 
 # ------------------------------------------------------------------------------
 
-# Enviroment driven hooks so we can configure CMake configure even if its burried deep inside a pixi task.
+# Environment driven hooks so we can configure CMake configure even if its buried deep inside a pixi task.
 if(DEFINED ENV{RERUN_WERROR})
     message(STATUS "Compiling with warnings as errors since RERUN_WERROR is set.")
     set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
