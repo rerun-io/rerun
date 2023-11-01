@@ -5,3 +5,4 @@ rerun-sdk
 scipy
 tqdm
 trimesh
+matplotlib
