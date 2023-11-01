@@ -129,6 +129,7 @@ FetchContent_Declare(LoguruGitRepo
     GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
     GIT_TAG "master"
 )
+FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 
 # Set any loguru compile-time flags before calling MakeAvailable()
 # Stacktraces are not yet supported on Windows.
@@ -136,7 +137,6 @@ if(NOT WIN32)
     set(LOGURU_STACKTRACES 1)
 endif()
 
-FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 
 # ------------------------------------------------------------------------------
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library
