@@ -23,7 +23,7 @@ on:
         description: "If true only linux is tested"
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-checks
+  group: ${{ inputs.CONCURRENCY }}-checks-cpp
   cancel-in-progress: true
 
 env:
