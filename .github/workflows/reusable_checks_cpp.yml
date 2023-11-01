@@ -23,7 +23,7 @@ on:
         description: "If false only linux is tested"
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-checks-cpp
+  group: ${{ inputs.CONCURRENCY }}-checks_cpp
   cancel-in-progress: true
 
 env:
@@ -43,12 +43,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-      - name: Load full C++ test matrix
-        if: ${{ github.event.inputs.FULL }}
-        run: echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
-      - name: Load partial C++ test matrix
-        if: ${{ !github.event.inputs.FULL }}
-        run: echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
+      - name: Load C++ test matrix
+        run: |
+          if [ "${{ github.event.inputs.FULL }}" == "true" ]; then
+            echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
+          else
+            echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
+          fi
 
   cpp-tests:
     name: Build rerun-cli (${{ matrix.runner }})
