@@ -2,6 +2,16 @@ cmake_minimum_required(VERSION 3.16...3.27)
 
 project(rerun_cpp_proj LANGUAGES CXX)
 
+if(DEFINED ENV{RERUN_WERROR})
+    message(STATUS "Compiling with warnings as errors since RERUN_WERROR is set.")
+    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+endif()
+
+if(DEFINED ENV{RERUN_USE_ASAN})
+    message(STATUS "Compiling with with address sanatizer ('asan') since RERUN_USE_ASAN is set.")
+    set(RERUN_USE_ASAN ON)
+endif()
+
 function(set_default_warning_settings target)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4)
@@ -20,16 +30,40 @@ function(set_default_warning_settings target)
             -Wpointer-arith
             -Wshadow
             -Wswitch-enum
+            -Wunreachable-code
             -Wvla
         )
 
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
+                -Wc++20-compat-pedantic
                 -Wc99-extensions
+                -Weverything
                 -Wgnu
                 -Wnon-gcc
+                -Wpre-c2x-compat-pedantic
                 -Wshadow-all
+
+                # Turn off some warning that -Weverything turns on:
+                -Wno-c++98-compat
+                -Wno-c++98-compat-pedantic
+                -Wno-covered-switch-default # We often add a `default:` case out of paranoia
+                -Wno-ctad-maybe-unsupported
+                -Wno-disabled-macro-expansion
+                -Wno-documentation
+                -Wno-documentation-unknown-command
+                -Wno-double-promotion # float->double is nothing to whine about
+                -Wno-exit-time-destructors
+                -Wno-float-equal # comparing floats is fine
+                -Wno-global-constructors
+                -Wno-missing-prototypes
+                -Wno-padded
+                -Wno-reserved-id-macro
+                -Wno-reserved-identifier
+                -Wno-unreachable-code-break # TODO(emilk): remove this exception - we only need this because of codegen
+                -Wno-unreachable-code-return # TODO(emilk): remove this exception - we only need this because of codegen
+                -Wno-unused-macros
             )
         endif()
 
@@ -40,18 +74,17 @@ function(set_default_warning_settings target)
         endif()
 
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            # Debug build with fsanatize:
+            # Improve stack traces:
             target_compile_options(${target} PRIVATE -g -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fno-optimize-sibling-calls)
+        endif()
+
+        if(RERUN_USE_ASAN)
+            # Turn on the address sanatizer ("asan"):
             target_compile_options(${target} PRIVATE -fsanitize=address)
             target_link_options(${target} PRIVATE -fsanitize=address)
         endif()
     endif()
 endfunction()
-
-if(DEFINED ENV{WARNINGS_AS_ERRORS})
-    message(STATUS "Compiling with warnings as errors since WARNINGS_AS_ERRORS is set.")
-    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
-endif()
 
 # Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.
 if(NOT DEFINED CMAKE_GENERATOR AND UNIX)

@@ -73,7 +73,7 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
 
-# All the cpp-* tasks can be configured with environment variables, e.g.:  WARNINGS_AS_ERRORS=ON  CXX=clang++
+# All the cpp-* tasks can be configured with environment variables, e.g.:  RERUN_WERROR=ON  CXX=clang++
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
 cpp-build-all = { depends_on = [
   "cpp-prepare",
@@ -98,7 +98,7 @@ cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 [dependencies]
 attrs = ">=23.1.0"
 blackdoc = "0.3.8"
-clang-tools = ">=15,<16"
+clang-tools = ">=15,<16"       # clang-format
 cmake = "3.27.6"
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"

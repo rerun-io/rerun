@@ -52,7 +52,8 @@ namespace rerun {
                 : translation(other.translation),
                   rotation(other.rotation),
                   scale(other.scale),
-                  from_parent(other.from_parent){};
+                  from_parent(other.from_parent) {}
+
             DISABLE_MAYBE_UNINITIALIZED_POP
 
             /// Creates a new 3D transform from translation/rotation/scale.
