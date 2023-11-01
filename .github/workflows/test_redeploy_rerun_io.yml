@@ -1,0 +1,26 @@
+name: "(TEMP) Re-deploy rerun.io"
+
+on:
+  workflow_dispatch:
+    inputs:
+      RELEASE_COMMIT:
+        required: false
+        type: string
+
+permissions:
+  contents: "write"
+  id-token: "write"
+
+jobs:
+  redeploy-rerun-io:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Re-deploy rerun.io
+        uses: ./.github/actions/deploy-vercel
+        with:
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
+          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          release_commit: ${{ inputs.RELEASE_COMMIT }}
