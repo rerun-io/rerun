@@ -51,7 +51,7 @@ jobs:
         id: set-matrix
         run: |
           echo "Full matrix: ${{ inputs.FULL }}"
-          if [${{ inputs.FULL }} == "true"]; then
+          if ["${{ inputs.FULL }}" == "true"]; then
             echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
           else
             echo "matrix=$(jq -c . < ./.github/workflows/cpp_matrix_partial.json)" >> $GITHUB_OUTPUT
