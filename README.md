@@ -14,7 +14,7 @@
 
 # Build time aware visualizations of multimodal data
 
-Use the Rerun SDK (available in Python, Rust, and C++) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
+Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
 
 ```py
 import rerun as rr  # pip install rerun-sdk
@@ -44,9 +44,9 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 </p>
 
 ## Getting started
+* **C++**: [Guide](https://www.rerun.io/docs/getting-started/cpp)
 * **Python**: `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
 * **Rust**: `cargo add rerun`
-* **C++**: [Guide](https://www.rerun.io/docs/getting-started/cpp)
 
 ### Rerun Viewer binary
 Both the Python and Rust library can start the Rerun Viewer, but to stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
@@ -58,7 +58,9 @@ You should now be able to run `rerun --help` in any terminal.
 
 ### Documentation
 - 📚 [High-level docs](http://rerun.io/docs)
+- ⏃ [Loggable Types](https://www.rerun.io/docs/reference/types)
 - ⚙️ [Examples](http://rerun.io/examples)
+- 🌊 C++ API docs ([coming soon](https://github.com/rerun-io/rerun/issues/3974))
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python)
 - 🦀 [Rust API docs](https://docs.rs/rerun/)
 - ⁉️ [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
@@ -70,12 +72,11 @@ There are many features we want to add, and the API is still evolving.
 _Expect breaking changes!_
 
 Some shortcomings:
-* Big points clouds (1M+) are slow ([#1136](https://github.com/rerun-io/rerun/issues/1136))
+* [Time-scalar plots and text logs are currently very slow](https://github.com/rerun-io/rerun/issues/374).
+* [Points cloud sizes are limited](https://github.com/rerun-io/rerun/issues/3076), and [big point clouds are slow](https://github.com/rerun-io/rerun/issues/1136).
 * The data you want to visualize must fit in RAM.
-  - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use
-  - We plan on having a disk-based data store some time in the future
-* The Rust library takes a long time to compile
-  - We have way too many big dependencies, and we are planning on improving the situation ([#1316](https://github.com/rerun-io/rerun/pull/1316))
+  - See <https://www.rerun.io/docs/howto/limit-ram> for how to bound memory use.
+  - We plan on having a disk-based data store some time in the future.
 
 
 ## Business model
