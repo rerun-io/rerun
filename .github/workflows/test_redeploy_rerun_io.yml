@@ -1,6 +1,7 @@
 name: "(TEMP) Re-deploy rerun.io"
 
 on:
+  pull_request:
   workflow_dispatch:
     inputs:
       RELEASE_COMMIT:
@@ -14,6 +15,7 @@ permissions:
 jobs:
   redeploy-rerun-io:
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
