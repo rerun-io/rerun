@@ -20,7 +20,7 @@ impl Tensor {
 
     /// Update the `names` of the contained [`TensorData`] dimensions.
     ///
-    /// Any existing Dimension names will be be overwritten.
+    /// Any existing Dimension names will be overwritten.
     ///
     /// If too many, or too few names are provided, this function will warn and only
     /// update the subset of names that it can.

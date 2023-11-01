@@ -307,7 +307,7 @@ impl Chunk {
         // To ensure that the buffer is still around, we put the ref counted buffer handle into the struct with it.
         // Additionally, the buffer pool needs to ensure:
         // * it can't drop buffers if there's still users
-        //      -> We assert on on that
+        //      -> We assert on that
         // * buffers are never moved in memory
         //      -> buffers are always owned by the pool and are always Arc.
         //          This means it not allowed to move the buffer out.

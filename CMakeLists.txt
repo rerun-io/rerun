@@ -8,7 +8,7 @@ if(DEFINED ENV{RERUN_WERROR})
 endif()
 
 if(DEFINED ENV{RERUN_USE_ASAN})
-    message(STATUS "Compiling with with address sanatizer ('asan') since RERUN_USE_ASAN is set.")
+    message(STATUS "Compiling with address sanatizer ('asan') since RERUN_USE_ASAN is set.")
     set(RERUN_USE_ASAN ON)
 endif()
 

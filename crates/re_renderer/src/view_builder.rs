@@ -652,7 +652,7 @@ impl ViewBuilder {
     /// }
     /// ```
     ///
-    /// Received data that that isn't retrieved for more than a frame, will be automatically discarded.
+    /// Received data that isn't retrieved for more than a frame will be automatically discarded.
     pub fn schedule_screenshot<T: 'static + Send + Sync>(
         &mut self,
         ctx: &RenderContext,
@@ -705,7 +705,7 @@ impl ViewBuilder {
     /// }
     /// ```
     ///
-    /// Received data that that isn't retrieved for more than a frame, will be automatically discarded.
+    /// Received data that isn't retrieved for more than a frame will be automatically discarded.
     pub fn schedule_picking_rect<T: 'static + Send + Sync>(
         &mut self,
         ctx: &mut RenderContext,

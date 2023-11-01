@@ -100,7 +100,7 @@ impl DataStore {
     /// The garbage collector has limited support for latest-at semantics. The configuration option:
     /// [`GarbageCollectionOptions::protect_latest`] will protect the N latest values of each
     /// component on each timeline. The only practical guarantee this gives is that a latest-at query
-    /// with a value of max-int will be be unchanged. However, latest-at queries from other arbitrary
+    /// with a value of max-int will be unchanged. However, latest-at queries from other arbitrary
     /// points in time may provide different results pre- and post- GC.
     ///
     /// NOTE: This configuration option is not yet enabled for the Rerun viewer GC pass.

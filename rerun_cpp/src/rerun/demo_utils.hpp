@@ -62,7 +62,7 @@ namespace rerun {
         /// * `radius`: The radius of the spiral.
         /// * `angular_step`: The factor applied between each step along the trigonometric circle.
         /// * `angular_offset`: Offsets the starting position on the trigonometric circle.
-        /// * `z_step`: The factor applied between between each step along the Z axis.
+        /// * `z_step`: The factor applied between each step along the Z axis.
         void color_spiral(
             size_t num_points, float radius, float angular_step, float angular_offset, float z_step,
             std::vector<components::Position3D>& out_points,

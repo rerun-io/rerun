@@ -106,7 +106,7 @@ pub fn compute_dir_hash<'a>(path: impl AsRef<Path>, extensions: Option<&'a [&'a 
 }
 
 /// Given a directory path, computes the sha256 hash of the accumulated contents of all of its
-/// files (ordered by filename) except those failing a a custom filter, and returns an hexadecimal string for it.
+/// files (ordered by filename) except those failing a custom filter, and returns an hexadecimal string for it.
 ///
 /// This includes files in sub-directories (i.e. it's recursive).
 ///
