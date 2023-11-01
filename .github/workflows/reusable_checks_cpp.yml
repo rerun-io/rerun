@@ -50,7 +50,7 @@ jobs:
         env:
           FULL: ${{ github.event.inputs.FULL }}
         run: |
-          echo "starting..."
+          echo "full: $FULL"
           if [$FULL == 'true']; then
             echo "Loading full matrix $(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)"
             echo "matrix=$(jq -c -s . < ./.github/workflows/cpp_matrix_full.json)" >> $GITHUB_OUTPUT
@@ -63,7 +63,7 @@ jobs:
     name: Build rerun-cli (${{ matrix.runner }})
     needs: matrix_prep
     strategy:
-      matrix: ${{fromJson(needs.matrix_prep.outputs.MATRIX)}}
+      matrix: ${{ fromJson(needs.matrix_prep.outputs.MATRIX) }}
     runs-on: ${{ matrix.runs_on }}
     env:
       RUSTC_WRAPPER: "sccache"
