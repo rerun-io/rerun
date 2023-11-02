@@ -307,7 +307,7 @@ fn blueprint_ui(
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
                         // splat - the whole entity
-                        let space_view_class_name = space_view.class_name().clone();
+                        let space_view_class_name = *space_view.class_name();
                         let data_blueprint = space_view.contents.data_blueprints_individual();
                         let mut props = data_blueprint.get(&instance_path.entity_path);
                         entity_props_ui(
@@ -332,7 +332,7 @@ fn blueprint_ui(
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                let space_view_class_name = space_view.class_name().clone();
+                let space_view_class_name = *space_view.class_name();
                 if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
                     entity_props_ui(
                         ctx,
@@ -410,16 +410,23 @@ fn entity_props_ui(
 }
 
 fn visible_history_ui(
-    ctx: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut Ui,
     space_view_class_name: &SpaceViewClassName,
     entity_props: &mut EntityProperties,
 ) {
+    //TODO(#4107): support more space view types.
     if space_view_class_name != "3D" && space_view_class_name != "2D" {
         return;
     }
 
-    ui.checkbox(&mut entity_props.visible_history.enabled, "Visible history");
+    let re_ui = ctx.re_ui;
+
+    re_ui.checkbox(
+        ui,
+        &mut entity_props.visible_history.enabled,
+        "Visible history",
+    );
 
     let time_range = if let Some(times) = ctx
         .store_db
@@ -437,10 +444,7 @@ fn visible_history_ui(
         .unwrap_or_default()
         .at_least(*time_range.start()); // accounts for timeless time (TimeInt::BEGINNING)
 
-    let sequence_timeline = match ctx.rec_cfg.time_ctrl.timeline().typ() {
-        TimeType::Time => false,
-        TimeType::Sequence => true,
-    };
+    let sequence_timeline = matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
 
     let visible_history = if sequence_timeline {
         &mut entity_props.visible_history.sequences
@@ -449,31 +453,50 @@ fn visible_history_ui(
     };
 
     ui.add_enabled_ui(entity_props.visible_history.enabled, |ui| {
-        ui.horizontal(|ui| {
-            ui.label("From");
-            visible_history_boundary_ui(
-                ui,
-                &mut visible_history.from,
-                sequence_timeline,
-                current_time,
-                time_range.clone(),
-            )
-        });
+        egui::Grid::new("visible_history_boundaries")
+            .num_columns(4)
+            .show(ui, |ui| {
+                ui.label("From");
+                visible_history_boundary_ui(
+                    re_ui,
+                    ui,
+                    &mut visible_history.from,
+                    sequence_timeline,
+                    current_time,
+                    time_range.clone(),
+                );
 
-        ui.horizontal(|ui| {
-            ui.label("To");
-            visible_history_boundary_ui(
-                ui,
-                &mut visible_history.to,
-                sequence_timeline,
-                current_time,
-                time_range,
-            )
-        });
+                ui.end_row();
+
+                ui.label("To");
+                visible_history_boundary_ui(
+                    re_ui,
+                    ui,
+                    &mut visible_history.to,
+                    sequence_timeline,
+                    current_time,
+                    time_range,
+                );
+
+                ui.end_row();
+            });
     });
+    ui.add(
+        egui::Label::new(
+            egui::RichText::new(if sequence_timeline {
+                "These settings apply to all sequence timelines."
+            } else {
+                "These settings apply to all temporal timelines."
+            })
+            .italics()
+            .weak(),
+        )
+        .wrap(true),
+    );
 }
 
 fn visible_history_boundary_ui(
+    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     visible_history_boundary: &mut VisibleHistoryBoundary,
     sequence_timeline: bool,
@@ -489,8 +512,7 @@ fn visible_history_boundary_ui(
     let span = time_range.end() - time_range.start();
     if relative {
         // in relative mode, the range must be wider
-        time_range =
-            (time_range.start() - current_time - span)..=(time_range.end() - current_time + span);
+        time_range = (time_range.start() - span)..=(time_range.end() + span);
     }
 
     match visible_history_boundary {
@@ -507,7 +529,7 @@ fn visible_history_boundary_ui(
                 time_drag_value_ui(ui, value, &time_range);
             }
 
-            if ui.checkbox(&mut relative, "Relative").changed() {
+            if re_ui.checkbox(ui, &mut relative, "Relative").changed() {
                 if relative {
                     *visible_history_boundary =
                         VisibleHistoryBoundary::Relative(*value - current_time);
@@ -533,7 +555,7 @@ fn visible_history_boundary_ui(
         }
     }
 
-    if ui.checkbox(&mut infinite, "Infinite").changed() {
+    if re_ui.checkbox(ui, &mut infinite, "Infinite").changed() {
         if infinite {
             *visible_history_boundary = VisibleHistoryBoundary::Infinite;
         } else {
