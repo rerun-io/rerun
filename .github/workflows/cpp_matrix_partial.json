@@ -1,0 +1,10 @@
+{
+    "include": [
+        {
+            "name": "Linux x64",
+            "runs_on": "ubuntu-latest-16-cores",
+            "cache_key": "build-linux",
+            "extra_env_vars": ""
+        }
+    ]
+}
