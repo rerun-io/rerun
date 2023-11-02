@@ -1,15 +1,15 @@
 #include "mat4x4.hpp"
 
-// [CODEGEN COPY TO HEADER START]
+// <CODEGEN_COPY_TO_HEADER>
 #include "vec4d.hpp"
 
-// [CODEGEN COPY TO HEADER END]
+// </CODEGEN_COPY_TO_HEADER>
 
 namespace rerun {
     namespace datatypes {
 
 #if 0
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         static const Mat4x4 IDENTITY;
 
@@ -55,7 +55,7 @@ namespace rerun {
                   elements[15],
               } {}
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         const Mat4x4 Mat4x4::IDENTITY = Mat4x4({

@@ -9,7 +9,7 @@ namespace rerun {
 #ifdef EDIT_EXTENSION
 #define TensorData TensorDataExt
 
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         // TODO(#3794): There should be the option to not have TensorData take ownership of the buffer.
         TensorData(
@@ -18,7 +18,7 @@ namespace rerun {
         )
             : shape(std::move(shape_)), buffer(std::move(buffer_)) {}
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
     } // namespace datatypes
 } // namespace rerun

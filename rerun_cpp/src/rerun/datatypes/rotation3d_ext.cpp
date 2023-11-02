@@ -10,11 +10,11 @@ namespace rerun {
         struct Rotation3DExt {
 #define Rotation3D Rotation3DExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static const Rotation3D IDENTITY;
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #undef Rotation3DExt

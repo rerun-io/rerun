@@ -15,7 +15,7 @@ namespace rerun {
 
 #define Transform3D Transform3DExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static const Transform3D IDENTITY;
 
@@ -191,7 +191,7 @@ namespace rerun {
             Transform3D(const datatypes::Scale3D& scale, bool from_parent = false)
                 : Transform3D(datatypes::TranslationRotationScale3D(scale, from_parent)) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #undef Transform3DExt

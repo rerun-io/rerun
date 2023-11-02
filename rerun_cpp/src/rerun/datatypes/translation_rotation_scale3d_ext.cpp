@@ -1,14 +1,14 @@
 #include "translation_rotation_scale3d.hpp"
 
-// [CODEGEN COPY TO HEADER START]
+// <CODEGEN_COPY_TO_HEADER>
 #include "../warning_macros.hpp"
 
-// [CODEGEN COPY TO HEADER END]
+// </CODEGEN_COPY_TO_HEADER>
 namespace rerun {
     namespace datatypes {
 
 #if 0
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static const TranslationRotationScale3D IDENTITY;
 
@@ -161,7 +161,7 @@ namespace rerun {
                   scale(_scale),
                   from_parent(_from_parent) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
 

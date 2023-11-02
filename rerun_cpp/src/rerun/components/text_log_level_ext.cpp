@@ -13,7 +13,7 @@ namespace rerun {
 
             // Don't provide a string_view constructor, std::string constructor exists and covers this.
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             /// Designates catastrophic failures.
             static const TextLogLevel CRITICAL;
@@ -40,7 +40,7 @@ namespace rerun {
                 return value.c_str();
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #undef TextLogLevel

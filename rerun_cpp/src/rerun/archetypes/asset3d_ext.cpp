@@ -6,17 +6,17 @@
 
 // It's undefined behavior to pre-declare std types, see http://www.gotw.ca/gotw/034.htm
 // We want to use `std::filesystem::path`, so we have it include it in the header.
-// [CODEGEN COPY TO HEADER START]
+// <CODEGEN_COPY_TO_HEADER>
 
 #include <filesystem>
 
-// [CODEGEN COPY TO HEADER END]
+// </CODEGEN_COPY_TO_HEADER>
 
 namespace rerun {
     namespace archetypes {
 
 #if 0
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         static std::optional<rerun::components::MediaType> guess_media_type(
             const std::filesystem::path& path
@@ -43,7 +43,7 @@ namespace rerun {
             return asset;
         }
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         Result<Asset3D> Asset3D::from_file(const std::filesystem::path& path) {

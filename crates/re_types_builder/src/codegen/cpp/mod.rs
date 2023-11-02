@@ -207,8 +207,8 @@ fn hpp_type_extensions(
         return (quote! {}, None);
     };
 
-    const COPY_TO_HEADER_START_MARKER: &str = "[CODEGEN COPY TO HEADER START]";
-    const COPY_TO_HEADER_END_MARKER: &str = "[CODEGEN COPY TO HEADER END]";
+    const COPY_TO_HEADER_START_MARKER: &str = "<CODEGEN_COPY_TO_HEADER>";
+    const COPY_TO_HEADER_END_MARKER: &str = "</CODEGEN_COPY_TO_HEADER>";
 
     let mut remaining_content = &content[..];
     let mut hpp_extension_string = String::new();

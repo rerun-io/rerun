@@ -11,7 +11,7 @@ namespace rerun {
             float xyz[3];
 #define Vec3D Vec3DExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             /// Construct Vec3D from x/y/z values.
             Vec3D(float x, float y, float z) : xyz{x, y, z} {}
@@ -31,7 +31,7 @@ namespace rerun {
                 return xyz[2];
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
     } // namespace datatypes

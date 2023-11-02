@@ -8,7 +8,7 @@ namespace rerun {
     namespace archetypes {
 
 #ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
         static Boxes3D from_half_sizes(ComponentBatch<components::HalfSizes3D> half_sizes) {
@@ -60,7 +60,7 @@ namespace rerun {
             const std::vector<datatypes::Vec3D>& mins, const std::vector<datatypes::Vec3D>& sizes
         );
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
         Boxes3D Boxes3D::from_sizes(const std::vector<datatypes::Vec3D>& sizes) {
             std::vector<components::HalfSizes3D> half_sizes;

@@ -13,7 +13,7 @@ namespace rerun {
 
             // Don't provide a string_view constructor, std::string constructor exists and covers this.
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             /// Construct a `Utf8` from null-terminated UTF-8.
             Utf8(const char* str) : value(str) {}
@@ -22,7 +22,7 @@ namespace rerun {
                 return value.c_str();
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
     } // namespace datatypes

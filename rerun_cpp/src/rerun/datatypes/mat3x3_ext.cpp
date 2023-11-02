@@ -1,15 +1,15 @@
 #include "mat3x3.hpp"
 
-// [CODEGEN COPY TO HEADER START]
+// <CODEGEN_COPY_TO_HEADER>
 #include "vec3d.hpp"
 
-// [CODEGEN COPY TO HEADER END]
+// </CODEGEN_COPY_TO_HEADER>
 
 namespace rerun {
     namespace datatypes {
 
 #if 0
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         static const Mat3x3 IDENTITY;
 
@@ -41,7 +41,7 @@ namespace rerun {
                   elements[8],
               } {}
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         const Mat3x3 Mat3x3::IDENTITY = Mat3x3({
