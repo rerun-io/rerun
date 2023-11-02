@@ -1,6 +1,6 @@
 #include "boxes2d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp" // TODO(#3991): Should not leak into public header.
+#include "../component_batch_adapter_builtins.hpp"
 
 // #define EDIT_EXTENSION
 

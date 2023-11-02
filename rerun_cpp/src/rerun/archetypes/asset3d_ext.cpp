@@ -1,16 +1,21 @@
 #include <algorithm>
-#include <filesystem> // TODO(#3991): Should not leak into public header.
-#include <fstream>    // TODO(#3991): Should not leak into public header.
+#include <fstream>
 #include <string>
 
 #include "asset3d.hpp"
 
-//#define EDIT_EXTENSION
+// It's undefined behavior to pre-declare std types, see http://www.gotw.ca/gotw/034.htm
+// We want to use `std::filesystem::path`, so we have it include it in the header.
+// [CODEGEN COPY TO HEADER START]
+
+#include <filesystem>
+
+// [CODEGEN COPY TO HEADER END]
 
 namespace rerun {
     namespace archetypes {
 
-#ifdef EDIT_EXTENSION
+#if 0
         // [CODEGEN COPY TO HEADER START]
 
         static std::optional<rerun::components::MediaType> guess_media_type(

@@ -10,14 +10,11 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../util.hpp"
+#include "../warning_macros.hpp"
 
-#include <algorithm>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
 #include <optional>
-#include <string>
 #include <utility>
 #include <vector>
 

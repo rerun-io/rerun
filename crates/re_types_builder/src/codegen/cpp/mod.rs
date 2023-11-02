@@ -207,50 +207,56 @@ fn hpp_type_extensions(
         return (quote! {}, None);
     };
 
-    let target_header = format!("{filename_stem}.hpp");
-    for line in content.lines() {
-        if line.starts_with("#include") {
-            if let Some(start) = line.find('\"') {
-                let end = line.rfind('\"').unwrap_or_else(|| {
-                    panic!("Expected to find '\"' include line {line} in file {extension_file:?}")
-                });
-
-                let include = &line[start + 1..end];
-                if include != target_header {
-                    includes.insert_relative(include);
-                }
-            } else if let Some(start) = line.find('<') {
-                let end = line.rfind('>').unwrap_or_else(|| {
-                    panic!(
-                        "Expected to find or '>' in include line {line} in file {extension_file:?}"
-                    )
-                });
-                includes.insert_system(&line[start + 1..end]);
-            } else {
-                panic!("Expected to find '\"' or '<' in include line {line} in file {extension_file:?}");
-            }
-        }
-    }
-
     const COPY_TO_HEADER_START_MARKER: &str = "[CODEGEN COPY TO HEADER START]";
     const COPY_TO_HEADER_END_MARKER: &str = "[CODEGEN COPY TO HEADER END]";
 
-    let start = content.find(COPY_TO_HEADER_START_MARKER).unwrap_or_else(||
-        panic!("C++ extension file missing start marker. Without it, nothing is exposed to the header, i.e. not accessible to the user. Expected to find '{COPY_TO_HEADER_START_MARKER}' in {extension_file:?}")
-    );
+    let mut remaining_content = &content[..];
+    let mut hpp_extension_string = String::new();
 
-    let end = content.find(COPY_TO_HEADER_END_MARKER).unwrap_or_else(||
-        panic!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_START_MARKER}' in {extension_file:?}")
-    );
-    let end = content[..end].rfind('\n').unwrap_or_else(||
-        panic!("Expected line break at some point before {COPY_TO_HEADER_END_MARKER} in {extension_file:?}")
-    );
+    while let Some(start) = remaining_content.find(COPY_TO_HEADER_START_MARKER) {
+        let end = remaining_content.find(COPY_TO_HEADER_END_MARKER).unwrap_or_else(||
+            panic!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_START_MARKER}' in {extension_file:?}")
+        );
+        let end = remaining_content[..end].rfind('\n').unwrap_or_else(||
+            panic!("Expected line break at some point before {COPY_TO_HEADER_END_MARKER} in {extension_file:?}")
+        );
+
+        let extensions = &remaining_content[start + COPY_TO_HEADER_START_MARKER.len()..end];
+
+        // Comb through any includes in the extension string.
+        for line in extensions.lines() {
+            if line.starts_with("#include") {
+                if let Some(start) = line.find('\"') {
+                    let end = line.rfind('\"').unwrap_or_else(|| {
+                        panic!(
+                            "Expected to find '\"' include line {line} in file {extension_file:?}"
+                        )
+                    });
+
+                    includes.insert_relative(&line[start + 1..end]);
+                } else if let Some(start) = line.find('<') {
+                    let end = line.rfind('>').unwrap_or_else(|| {
+                        panic!(
+                        "Expected to find or '>' in include line {line} in file {extension_file:?}"
+                    )
+                    });
+                    includes.insert_system(&line[start + 1..end]);
+                } else {
+                    panic!("Expected to find '\"' or '<' in include line {line} in file {extension_file:?}");
+                }
+            } else {
+                hpp_extension_string += line;
+                hpp_extension_string += "\n";
+            }
+        }
+
+        remaining_content = &remaining_content[end + COPY_TO_HEADER_END_MARKER.len()..];
+    }
 
     let comment = quote_comment(&format!(
         "Extensions to generated type defined in '{}'",
         extension_file.file_name().unwrap()
     ));
-    let hpp_extension_string = content[start + COPY_TO_HEADER_START_MARKER.len()..end].to_owned();
     let hpp_type_extensions = quote! {
         public:
         #NEWLINE_TOKEN
@@ -402,7 +408,7 @@ impl QuotedObject {
             let method_ident = format_ident!("with_{}", obj_field.name);
             let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
 
-            hpp_includes.insert_rerun("util.hpp");
+            hpp_includes.insert_rerun("warning_macros.hpp");
             let gcc_ignore_comment =
                 quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
 
