@@ -1,11 +1,16 @@
+# ------------------------------------------------------------------------------
+# Rerun C++ SDK
+#
+# For more information check README.md
+# ------------------------------------------------------------------------------
+
 cmake_minimum_required(VERSION 3.16...3.27)
 
 message("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
 
-# NOTE: CMake docs strongly discourages using GLOB, and instead suggests
-# manually listing all the files, like it's 1972.
-# However, that won't work for use since we auto-generate the source tree.
-# See https://cmake.org/cmake/help/latest/command/file.html#glob
+# ------------------------------------------------------------------------------
+# Base setup for rerun_sdk C++ library.
+
 file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
     "src/*.hpp"
     "src/*.cpp"
@@ -25,43 +30,12 @@ if(MSVC)
 endif()
 
 # ------------------------------------------------------------------------------
-# Rerun development setup only:
+# Setup rerun_c dependency.
+# Inside the repo build ourselves, otherwise default to a local `lib` folder.
 if(DEFINED RERUN_REPOSITORY)
-    # TODO(andreas): use add_custom_command instead so this runs at build time! https://cmake.org/cmake/help/latest/command/add_custom_command.html#command:add_custom_command
-    execute_process(COMMAND cargo build --release -p rerun_c RESULT_VARIABLE ret) # We link against this, so must be up-to-date
-
-    # execute process doesn't fail if the process fails.
-    # `COMMAND_ERROR_IS_FATAL ANY` parameter fixes this but is only available in CMake 3.19
-    if(NOT(ret EQUAL "0"))
-        message(FATAL_ERROR "Failed to build rerun_c.")
-    endif()
-
-    # Overwrite where to find rerun_c library.
-    if(APPLE)
-        set(RERUN_C_LIB_DEFAULT ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
-    elseif(UNIX) # if(LINUX) # CMake 3.25
-        set(RERUN_C_LIB_DEFAULT ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/librerun_c.a)
-    elseif(WIN32)
-        set(RERUN_C_LIB_DEFAULT ${CMAKE_CURRENT_SOURCE_DIR}/../target/release/rerun_c.lib)
-    else()
-        message(FATAL_ERROR "Unsupported platform.")
-    endif()
-
-    # Set very strict warning settings when we're testing the SDK.
-    # We don't want to force this on any user!
-    set_default_warning_settings(rerun_sdk)
-
-    # Put `rerun.h` into the same place where it's on a user's machine and apply CMake variables like version number.
-    configure_file(
-        "${CMAKE_CURRENT_SOURCE_DIR}/../crates/rerun_c/src/rerun.h"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h"
-        NEWLINE_STYLE LF # Specify line endings, otherwise CMake wants to change them on Windows.
-    )
-endif()
-
-# ------------------------------------------------------------------------------
-# Setup rerun_c dependency:
-if(NOT DEFINED RERUN_C_LIB_DEFAULT)
+    include(build_rerun_c.cmake)
+    build_rerun_c(RERUN_C_LIB_DEFAULT)
+else()
     set(RERUN_C_DEFAULT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/)
 
     if(APPLE)
@@ -108,7 +82,7 @@ endif()
 target_link_libraries(rerun_sdk PRIVATE rerun_c)
 
 # -----------------------------------------------------------------------------
-# Arrow:
+# Arrow dependency.
 # This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
 # Additionally reduces risk of picking up system libraries on Mac / Linux.
 set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
@@ -116,143 +90,19 @@ option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_
 option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
 if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
-    include(ExternalProject)
-
-    set(ARROW_DOWNLOAD_PATH ${CMAKE_BINARY_DIR}/arrow)
-
-    if(RERUN_ARROW_LINK_SHARED)
-        set(ARROW_BUILD_SHARED ON)
-        set(ARROW_BUILD_STATIC OFF)
-
-        if(APPLE)
-            set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.dylib)
-        elseif(UNIX) # if(LINUX) # CMake 3.25
-            set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.so)
-        elseif(WIN32)
-            set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/bin/arrow.dll)
-        else()
-            message(FATAL_ERROR "Unsupported platform.")
-        endif()
-    else()
-        set(ARROW_BUILD_SHARED OFF)
-        set(ARROW_BUILD_STATIC ON)
-
-        if(APPLE)
-            set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
-            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow_bundled_dependencies.a)
-        elseif(UNIX) # if(LINUX) # CMake 3.25
-            set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow.a)
-            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/libarrow_bundled_dependencies.a)
-        elseif(WIN32)
-            set(ARROW_LIBRARY_FILE ${ARROW_DOWNLOAD_PATH}/lib/arrow_static.lib)
-            set(ARROW_BUNDLED_DEPENDENCIES_FILE ${ARROW_DOWNLOAD_PATH}/lib/arrow_bundled_dependencies.lib)
-        else()
-            message(FATAL_ERROR "Unsupported platform.")
-        endif()
-    endif()
-
-    # Enable multithreaded compiling of Arrow on MSVC.
-    if(MSVC)
-        set(DARROW_CXXFLAGS "/MP")
-    else()
-        set(DARROW_CXXFLAGS "")
-    endif()
-
-    # Workaround for https://github.com/apache/arrow/issues/36117
-    # This works around linking issues on Windows we got after enabling mimalloc.
-    if(MSVC)
-        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/debug/)
-        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/relwithdebinfo/)
-        file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/src/arrow_cpp-build/release/)
-    endif()
-
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(ARROW_CMAKE_PRESET ninja-debug-minimal)
-    else()
-        set(ARROW_CMAKE_PRESET ninja-release-minimal)
-    endif()
-
-    ExternalProject_Add(
-        arrow_cpp
-        PREFIX ${ARROW_DOWNLOAD_PATH}
-        GIT_REPOSITORY https://github.com/apache/arrow.git
-        GIT_TAG apache-arrow-10.0.1
-        GIT_SHALLOW ON
-        GIT_PROGRESS OFF # Git progress sounds like a nice idea but is in practive very spammy.
-
-        # LOG_X ON means that the output of the command will
-        # be logged to a file _instead_ of printed to the console.
-        LOG_CONFIGURE ON
-        LOG_BUILD ON
-        LOG_INSTALL ON
-
-        CMAKE_ARGS
-        --preset ${ARROW_CMAKE_PRESET}
-        -DARROW_BOOST_USE_SHARED=OFF
-        -DARROW_BUILD_SHARED=${ARROW_BUILD_SHARED}
-        -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
-        -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
-        -DARROW_IPC=ON
-        -DARROW_JEMALLOC=OFF # We encountered some build issues with jemalloc, use mimalloc instead.
-        -DARROW_MIMALLOC=ON
-        -DARROW_USE_ASAN=${RERUN_USE_ASAN}
-        -DARROW_USE_TSAN=OFF
-        -DARROW_USE_UBSAN=OFF
-        -DBOOST_SOURCE=BUNDLED
-        -DCMAKE_INSTALL_PREFIX=${ARROW_DOWNLOAD_PATH}
-        -Dxsimd_SOURCE=BUNDLED
-        -DBOOST_SOURCE=BUNDLED
-        -DARROW_BOOST_USE_SHARED=OFF
-        -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
-        SOURCE_SUBDIR cpp
-        BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE} ${ARROW_BUNDLED_DEPENDENCIES_FILE}
-    )
-
-    # arrow_cpp target is not a library. Assemble one from it.
-    if(RERUN_ARROW_LINK_SHARED)
-        add_library(RerunArrowTarget SHARED IMPORTED)
-
-        # For windows we need to know both the dll AND the import library.
-        if(WIN32)
-            set_target_properties(RerunArrowTarget PROPERTIES IMPORTED_IMPLIB ${ARROW_DOWNLOAD_PATH}/lib/arrow.lib)
-        endif()
-    else()
-        add_library(RerunArrowTarget STATIC IMPORTED)
-
-        # Need to set the ARROW_STATIC define, otherwise arrow functions are dllimport decorated on Windows.
-        target_compile_definitions(RerunArrowTarget INTERFACE ARROW_STATIC)
-
-        # We have to explicitly opt in the arrow bundled dependencies, otherwise we're missing the symbols for mimalloc.
-        add_library(RerunArrowTargetBundledDeps STATIC IMPORTED)
-        add_dependencies(RerunArrowTargetBundledDeps arrow_cpp)
-        set_target_properties(RerunArrowTargetBundledDeps PROPERTIES
-            IMPORTED_LOCATION ${ARROW_BUNDLED_DEPENDENCIES_FILE}
-        )
-        target_link_libraries(RerunArrowTarget INTERFACE RerunArrowTargetBundledDeps)
-    endif()
-
-    add_dependencies(RerunArrowTarget arrow_cpp)
-    set_target_properties(RerunArrowTarget PROPERTIES
-        IMPORTED_LOCATION ${ARROW_LIBRARY_FILE}
-        INTERFACE_INCLUDE_DIRECTORIES ${ARROW_DOWNLOAD_PATH}/include
-    )
-
-    # Hack to propagate INTERFACE_INCLUDE_DIRECTORIES.
-    # via https://stackoverflow.com/a/47358004
-    file(MAKE_DIRECTORY ${ARROW_DOWNLOAD_PATH}/include)
+    include(download_and_build_arrow.cmake)
+    download_and_build_arrow() # populates `rerun_arrow_target`
 else()
     find_package(Arrow REQUIRED)
 
     if(RERUN_ARROW_LINK_SHARED)
-        message(STATUS "Arrow SO version: ${ARROW_FULL_SO_VERSION}")
-        add_library(RerunArrowTarget ALIAS Arrow::arrow_shared)
+        add_library(rerun_arrow_target ALIAS Arrow::arrow_shared)
     else()
-        message(STATUS "Arrow version: ${ARROW_VERSION}")
-        add_library(RerunArrowTarget ALIAS Arrow::arrow_static)
+        add_library(rerun_arrow_target ALIAS Arrow::arrow_static)
     endif()
 endif()
 
-target_link_libraries(rerun_sdk PRIVATE RerunArrowTarget)
+target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
 
 # -----------------------------------------------------------------------------
 # Add test subfolder if we're inside the Rerun repository
