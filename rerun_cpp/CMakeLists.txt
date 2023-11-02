@@ -31,10 +31,12 @@ endif()
 
 # ------------------------------------------------------------------------------
 # Setup rerun_c dependency.
+add_library(rerun_c STATIC IMPORTED)
+
 # Inside the repo build ourselves, otherwise default to a local `lib` folder.
 if(DEFINED RERUN_REPOSITORY)
     include(build_rerun_c.cmake)
-    build_rerun_c(RERUN_C_LIB_DEFAULT)
+    build_rerun_c(rerun_c)
 else()
     set(RERUN_C_DEFAULT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/)
 
@@ -55,21 +57,19 @@ else()
     else()
         message(WARNING "Unsupported platform ${RERUN_C_LIB_DEFAULT}, can't find rerun_c library.")
     endif()
+
+    set(RERUN_C_LIB ${RERUN_C_LIB_DEFAULT} CACHE PATH "\
+        Where to find the rerun_c library.\n\
+        If not specified, a local rerun_c with the current system architecture will be used."
+    )
+
+    if("${RERUN_C_LIB}" STREQUAL "")
+        message(FATAL_ERROR "RERUN_C_LIB is not set.")
+    endif()
+
+    set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION ${RERUN_C_LIB})
 endif()
 
-set(RERUN_C_LIB ${RERUN_C_LIB_DEFAULT} CACHE PATH "\
-Where to find the rerun_c library.\n\
-If not specified, a local rerun_c with the current system architecture will be used."
-)
-
-if("${RERUN_C_LIB}" STREQUAL "")
-    message(FATAL_ERROR "RERUN_C_LIB is not set.")
-endif()
-
-# For cleanliness, create a rerun_c target with the correct dependencies.
-# This allows other targets to depend on rerun_c directly if they need to.
-add_library(rerun_c STATIC IMPORTED)
-set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION ${RERUN_C_LIB})
 
 if(APPLE)
     target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit")
