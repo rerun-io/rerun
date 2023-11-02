@@ -9,7 +9,6 @@
 This is a small release primarily to tie up some loose ends for our C++ SDK.
 
 #### 🌊 C++ SDK
-- Spawn via `$PATH` 3: C and C++ implementations [#3998](https://github.com/rerun-io/rerun/pull/3998)
 - Avoid possible link/symbol errors but defaulting all OSes to static linking of arrow [#4101](https://github.com/rerun-io/rerun/pull/4101)
 - Fix compilation errors with C++20 [#4098](https://github.com/rerun-io/rerun/pull/4098)
 - Improve C++ SDK perf 5x by respecting CMAKE_BUILD_TYPE and enabling mimalloc [#4094](https://github.com/rerun-io/rerun/pull/4094)
