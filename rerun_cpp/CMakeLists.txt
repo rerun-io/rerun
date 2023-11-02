@@ -105,8 +105,10 @@ endif()
 target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
 
 # -----------------------------------------------------------------------------
-# Add test subfolder if we're inside the Rerun repository
-# (we don't ship them in our fetch-content bundle)
+# Additional settings for building from within the repo.
 if(DEFINED RERUN_REPOSITORY)
+    # Set of very string warnings.
+    set_default_warning_settings(rerun_sdk)
+    # Add tests (they are not part of the distribution zip).
     add_subdirectory(tests)
 endif()
