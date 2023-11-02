@@ -18,12 +18,6 @@ This is a small release primarily to tie up some loose ends for our C++ SDK.
 #### 🧑‍💻 Dev-experience
 - C++ Windows CI [#4110](https://github.com/rerun-io/rerun/pull/4110)
 
-#### 🗣 Refactors
-- Codegen: Multi-pass refactoring & support for `--check` [#3918](https://github.com/rerun-io/rerun/pull/3918)
-
-#### 📦 Dependencies
-- `arrow2-convert` migration 3: `attr.rust.override_crate` & optimizing out dependencies [#3897](https://github.com/rerun-io/rerun/pull/3897)
-
 ## [0.10.0](https://github.com/rerun-io/rerun/compare/0.9.1...0.10.0) - C++ SDK - 2023-10-30
 
 [Rerun](https://www.rerun.io/) is an easy-to-use visualization toolbox for computer vision and robotics.
