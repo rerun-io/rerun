@@ -40,9 +40,13 @@ function(download_and_build_arrow)
 
     # Enable multithreaded compiling of Arrow on MSVC.
     if(MSVC)
-        set(DARROW_CXXFLAGS "/MP")
+        # Enable multithreaded compiling of Arrow on MSVC.
+        set(ARROW_CXXFLAGS "/MP")
+        # ASAN doesn't work with arrow (yet?)
+        set(ARROW_ASAN OFF)
     else()
-        set(DARROW_CXXFLAGS "")
+        set(ARROW_CXXFLAGS "")
+        set(ARROW_ASAN ${RERUN_USE_ASAN})
     endif()
 
     # Workaround for https://github.com/apache/arrow/issues/36117
