@@ -1,7 +1,16 @@
 #!/usr/bin/env node
 
 import fs from "node:fs";
-import { $, script_dir, path, argv, packages, fail, isSemver } from "./common.mjs";
+import {
+  $,
+  script_dir,
+  path,
+  argv,
+  packages,
+  fail,
+  isSemver,
+  stripSemverBuildMetadata,
+} from "./common.mjs";
 
 if (argv.length != 1) {
   fail("expected one positional argument: version");
@@ -25,7 +34,7 @@ for (const pkg of packages) {
   if ("dependencies" in package_json) {
     for (const dependency of Object.keys(package_json.dependencies)) {
       if (dependency.startsWith("@rerun-io/web-viewer")) {
-        package_json.dependencies[dependency] = version;
+        package_json.dependencies[dependency] = stripSemverBuildMetadata(version);
       }
     }
   }

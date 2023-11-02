@@ -30,5 +30,20 @@ export function isSemver(version) {
   return RE.test(version);
 }
 
+/**
+ * Strip the `+BUILD` from the version
+ *
+ * @type {(version: string) => string}
+ */
+export function stripSemverBuildMetadata(version) {
+  if (!isSemver(version)) throw new Error(`${version} is not semver`);
+  const idx = version.indexOf("+");
+  if (idx === -1) {
+    return version;
+  } else {
+    return version.slice(0, idx);
+  }
+}
+
 export { path };
 
