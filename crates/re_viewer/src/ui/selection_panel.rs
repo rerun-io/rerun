@@ -10,6 +10,7 @@ use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
+use re_types_core::ComponentName;
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
     ViewerContext,
@@ -392,9 +393,7 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    // TODO(ab): this should be displayed only if the entity supports visible history
-    // TODO(ab): this should run at SV-level for timeseries and text log SV
-    visible_history_ui(ctx, ui, space_view_class_name, entity_props);
+    visible_history_ui(ctx, ui, space_view_class_name, entity_path, entity_props);
 
     egui::Grid::new("entity_properties")
         .num_columns(2)
@@ -413,10 +412,15 @@ fn visible_history_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut Ui,
     space_view_class_name: &SpaceViewClassName,
+    entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
 ) {
     //TODO(#4107): support more space view types.
     if space_view_class_name != "3D" && space_view_class_name != "2D" {
+        return;
+    }
+
+    if !should_display_visible_history(ctx, entity_path) {
         return;
     }
 
@@ -495,6 +499,43 @@ fn visible_history_ui(
     );
 }
 
+static VISIBLE_HISTORY_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentName::from("rerun.components.Position2D"),
+            ComponentName::from("rerun.components.Position3D"),
+            ComponentName::from("rerun.components.LineStrip2D"),
+            ComponentName::from("rerun.components.LineStrip3D"),
+            ComponentName::from("rerun.components.TensorData"),
+            ComponentName::from("rerun.components.Vector3D"),
+            ComponentName::from("rerun.components.HalfSizes2D"),
+            ComponentName::from("rerun.components.HalfSizes3D"),
+        ]
+        .into()
+    });
+
+fn should_display_visible_history(
+    ctx: &mut ViewerContext<'_>,
+    entity_path: Option<&EntityPath>,
+) -> bool {
+    if let Some(entity_path) = entity_path {
+        let store = ctx.store_db.store();
+        let component_names = store.all_components(ctx.rec_cfg.time_ctrl.timeline(), entity_path);
+        if let Some(component_names) = component_names {
+            if !component_names
+                .iter()
+                .any(|name| VISIBLE_HISTORY_COMPONENT_NAMES.contains(name))
+            {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    true
+}
+
 fn visible_history_boundary_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
@@ -526,7 +567,7 @@ fn visible_history_boundary_ui(
                         .speed(speed),
                 );
             } else {
-                time_drag_value_ui(ui, value, &time_range);
+                re_ui.time_drag_value(ui, value, &time_range);
             }
 
             if re_ui.checkbox(ui, &mut relative, "Relative").changed() {
@@ -562,32 +603,6 @@ fn visible_history_boundary_ui(
             *visible_history_boundary = VisibleHistoryBoundary::Relative(0);
         }
     }
-}
-
-fn time_drag_value_ui(ui: &mut egui::Ui, value: &mut i64, time_range: &RangeInclusive<i64>) {
-    let span = time_range.end() - time_range.start();
-
-    let (unit, factor) = if span / 1_000_000_000 > 0 {
-        ("s", 1_000_000_000.)
-    } else if span / 1_000_000 > 0 {
-        ("ms", 1_000_000.)
-    } else if span / 1_000 > 0 {
-        ("μs", 1_000.)
-    } else {
-        ("ns", 1.)
-    };
-
-    let mut time_unit = *value as f32 / factor;
-    let time_range = *time_range.start() as f32 / factor..=*time_range.end() as f32 / factor;
-    let speed = (time_range.end() - time_range.start()) * 0.005;
-
-    ui.add(
-        egui::DragValue::new(&mut time_unit)
-            .clamp_range(time_range)
-            .speed(speed)
-            .suffix(unit),
-    );
-    *value = (time_unit * factor).round() as _;
 }
 
 fn colormap_props_ui(
