@@ -22,6 +22,33 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
+  cpp-paths-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      cpp_changes: ${{ steps.filter.outputs.cpp_changes }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          cpp_changes:
+            - '**/*.hpp'
+            - '**/.cpp'
+            - '**/CMakeLists.txt'
+
+  cpp-tests:
+    name: "C++ tests"
+    # Wait for the cpp-paths-filter to be completed before starting.
+    needs: cpp-paths-filter
+    uses: ./.github/workflows/reusable_checks_cpp.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      FULL: "${{ needs.cpp-paths-filter.outputs.cpp_changes }}"
+    secrets: inherit
+
   min-test-wheel:
     name: "Minimum Wheel"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
