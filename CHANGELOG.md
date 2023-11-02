@@ -1,8 +1,32 @@
 # Rerun changelog
 
-
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+
+## [0.10.1](https://github.com/rerun-io/rerun/compare/0.10.0...0.10.1)
+
+### Overview & Highlights
+This is a small release primarily to tie up some loose ends for our C++ SDK.
+
+#### 🌊 C++ SDK
+- Spawn via `$PATH` 3: C and C++ implementations [#3998](https://github.com/rerun-io/rerun/pull/3998)
+- Avoid possible link/symbol errors but defaulting all OSes to static linking of arrow [#4101](https://github.com/rerun-io/rerun/pull/4101)
+- Fix compilation errors with C++20 [#4098](https://github.com/rerun-io/rerun/pull/4098)
+- Improve C++ SDK perf 5x by respecting CMAKE_BUILD_TYPE and enabling mimalloc [#4094](https://github.com/rerun-io/rerun/pull/4094)
+- Reduce amount of cmake log from building & downloading libArrow [#4103](https://github.com/rerun-io/rerun/pull/4103)
+- Add MacOS C++ CI, add Linux C++20 CI [#4120](https://github.com/rerun-io/rerun/pull/4120)
+
+#### 🪳 Bug Fixes
+- Fix `rerun_demo` to stop using deprecated APIs [#3900](https://github.com/rerun-io/rerun/pull/3900)
+
+#### 🧑‍💻 Dev-experience
+- C++ Windows CI [#4110](https://github.com/rerun-io/rerun/pull/4110)
+
+#### 🗣 Refactors
+- Codegen: Multi-pass refactoring & support for `--check` [#3918](https://github.com/rerun-io/rerun/pull/3918)
+
+#### 📦 Dependencies
+- `arrow2-convert` migration 3: `attr.rust.override_crate` & optimizing out dependencies [#3897](https://github.com/rerun-io/rerun/pull/3897)
 
 ## [0.10.0](https://github.com/rerun-io/rerun/compare/0.9.1...0.10.0) - C++ SDK - 2023-10-30
 
