@@ -349,8 +349,9 @@ jobs:
             rerun_io_docs_link="https://rerun.io/docs"
             py_docs_link="https://ref.rerun.io/docs/python/${{ needs.version.outputs.final }}"
           else
-            web_app_link="https://app.rerun.io/commit/${{ needs.version.outputs.release-commit }}"
-            rerun_io_docs_link="https://rerun.io/preview/${{ needs.version.outputs.release-commit }}/docs"
+            short_commit_hash=$(echo ${{ needs.version.outputs.release-commit }} | cut -c1-7)
+            web_app_link="https://app.rerun.io/commit/$short_commit_hash"
+            rerun_io_docs_link="https://rerun.io/preview/$short_commit_hash/docs"
             py_docs_link="https://ref.rerun.io/docs/python/dev"
           fi
           wheels_link="https://pypi.org/project/rerun-sdk/${{ needs.version.outputs.current }}"
