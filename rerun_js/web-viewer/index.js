@@ -1,12 +1,14 @@
-/** @type {(typeof import("./re_viewer").WebHandle) | null} */
+// @ts-check
+
+/** @type {(typeof import("./re_viewer.js").WebHandle) | null} */
 let WebHandle = null;
 
-/** @returns {Promise<(typeof import("./re_viewer").WebHandle)>} */
+/** @returns {Promise<(typeof import("./re_viewer.js").WebHandle)>} */
 async function load() {
   if (WebHandle) {
     return WebHandle;
   }
-  WebHandle = (await import("./re_viewer")).WebHandle;
+  WebHandle = (await import("./re_viewer.js")).WebHandle;
   return WebHandle;
 }
 
@@ -20,7 +22,7 @@ function randomId() {
 }
 
 export class WebViewer {
-  /** @type {(import("./re_viewer").WebHandle) | null} */
+  /** @type {(import("./re_viewer.js").WebHandle) | null} */
   #handle = null;
 
   /** @type {HTMLCanvasElement | null} */
