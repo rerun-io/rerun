@@ -12,6 +12,10 @@ Embed the Rerun web viewer within your app.
 $ npm i @rerun-io/web-viewer
 ```
 
+ℹ️ Note:
+The package version is equal to the supported rerun SDK version.
+This means that `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, websocket connection, etc.) that originates from a rerun SDK with version `0.10.0`!
+
 ## Usage
 
 The web viewer is an object which manages a canvas element:
