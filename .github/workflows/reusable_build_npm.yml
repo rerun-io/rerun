@@ -8,7 +8,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-build-web
+  group: ${{ inputs.CONCURRENCY }}-build-js
   cancel-in-progress: true
 
 env:
