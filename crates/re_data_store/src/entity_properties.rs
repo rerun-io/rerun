@@ -175,8 +175,8 @@ impl EntityProperties {
 
 /// One of the boundary of the visible history.
 ///
-/// The for [`Relative`] and [`Absolute`], the value are either nanos or frames, depending on the
-/// type of timeline.
+/// The for [`VisibleHistoryBoundary::Relative`] and [`VisibleHistoryBoundary::Absolute`], the value
+/// are either nanos or frames, depending on the type of timeline.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum VisibleHistoryBoundary {
