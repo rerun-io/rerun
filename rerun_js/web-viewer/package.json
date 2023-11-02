@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.0.7",
+  "version": "0.11.0-alpha.1+dev",
   "description": "Embed the Rerun web viewer in your app",
   "private": false,
   "scripts": {
@@ -42,4 +42,3 @@
     "dts-buddy": "^0.3.0"
   }
 }
-
