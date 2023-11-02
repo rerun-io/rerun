@@ -6,6 +6,7 @@
 #include <vector>
 
 using namespace rerun::demo;
+using namespace std::chrono_literals;
 
 static constexpr size_t NUM_POINTS = 100;
 
@@ -18,7 +19,7 @@ int main() {
     color_spiral(NUM_POINTS, 2.0f, 0.02f, 0.0f, 0.1f, points1, colors1);
     color_spiral(NUM_POINTS, 2.0f, 0.02f, TAU * 0.5f, 0.1f, points2, colors2);
 
-    rec.set_time_seconds("stable_time", 0.0f);
+    rec.set_time("stable_time", 0s);
 
     rec.log(
         "dna/structure/left",
@@ -48,12 +49,12 @@ int main() {
     std::vector<rerun::Color> beads_colors(lines.size());
 
     for (int t = 0; t < 400; t++) {
-        float time = static_cast<float>(t) * 0.01f;
+        auto time = std::chrono::duration<float>(t) * 0.01f;
 
-        rec.set_time_seconds("stable_time", time);
+        rec.set_time("stable_time", time);
 
         for (size_t i = 0; i < lines.size(); ++i) {
-            float time_offset = time + offsets[i];
+            float time_offset = time.count() + offsets[i];
             auto c = static_cast<uint8_t>(bounce_lerp(80.0f, 230.0f, time_offset * 2.0f));
 
             beads_positions[i] = rerun::Position3D(
@@ -73,7 +74,7 @@ int main() {
             "dna/structure",
             rerun::archetypes::Transform3D(rerun::RotationAxisAngle(
                 {0.0f, 0.0f, 1.0f},
-                rerun::Angle::radians(time / 4.0f * TAU)
+                rerun::Angle::radians(time.count() / 4.0f * TAU)
             ))
         );
     }
