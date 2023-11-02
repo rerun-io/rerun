@@ -15,9 +15,6 @@ This is a small release primarily to tie up some loose ends for our C++ SDK.
 - Reduce amount of cmake log from building & downloading libArrow [#4103](https://github.com/rerun-io/rerun/pull/4103)
 - Add MacOS C++ CI, add Linux C++20 CI [#4120](https://github.com/rerun-io/rerun/pull/4120)
 
-#### 🪳 Bug Fixes
-- Fix `rerun_demo` to stop using deprecated APIs [#3900](https://github.com/rerun-io/rerun/pull/3900)
-
 #### 🧑‍💻 Dev-experience
 - C++ Windows CI [#4110](https://github.com/rerun-io/rerun/pull/4110)
 
