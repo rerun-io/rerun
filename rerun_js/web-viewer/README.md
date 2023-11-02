@@ -28,7 +28,7 @@ const parentElement = document.body;
 
 const viewer = new WebViewer();
 await viewer.start(URL, parentElement);
-// ...
+// …
 viewer.stop();
 ```
 
