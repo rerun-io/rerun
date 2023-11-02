@@ -44,7 +44,7 @@ fn warn_on_version_mismatch(
     } else {
         match version_policy {
             VersionPolicy::Warn => {
-                re_log::warn!(
+                re_log::warn_once!(
                     "Found log stream with Rerun version {encoded_version}, \
                      which is incompatible with the local Rerun version {LOCAL_VERSION}. \
                      Loading will try to continue, but might fail in subtle ways."
