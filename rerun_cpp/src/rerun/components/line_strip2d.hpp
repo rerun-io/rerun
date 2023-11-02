@@ -7,6 +7,7 @@
 #include "../datatypes/vec2d.hpp"
 #include "../result.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <utility>
