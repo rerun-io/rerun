@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { $, script_dir, path, argv } from "./common.mjs";
+import { $, script_dir, path, argv, packages } from "./common.mjs";
 
 if (argv.length == 0) {
   console.error("missing arguments: expected one of patch, minor, major, or <exact version>");
@@ -10,6 +10,8 @@ if (argv.length == 0) {
 const args = argv.join(" ");
 const root_dir = path.resolve(script_dir, "..");
 
-$(`npm version ${args}`, { cwd: root_dir, stdio: "inherit" });
-$(`npm version ${args}`, { cwd: path.join(root_dir, "react"), stdio: "inherit" });
+for (const pkg of packages) {
+  const cwd = path.join(root_dir, pkg);
+  $(`npm version ${args}`, { cwd });
+}
 

@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
-import { $, script_dir, path, argv } from "./common.mjs";
+import { $, script_dir, path, argv, packages } from "./common.mjs";
 
 const args = argv.join(" ");
 const root_dir = path.resolve(script_dir, "..");
 
-$(`npm publish ${args}`, { cwd: root_dir, stdio: "inherit" });
-$(`npm publish ${args}`, { cwd: path.join(root_dir, "react"), stdio: "inherit" });
+for (const pkg of packages) {
+  const cwd = path.join(root_dir, pkg);
+  $(`npm publish ${args}`, { cwd });
+}
 
