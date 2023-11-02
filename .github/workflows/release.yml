@@ -74,6 +74,10 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -129,6 +133,10 @@ jobs:
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
+
+      - name: Update NPM versions
+        run: |
+          node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
 
       - name: "Taplo fmt"
         run: taplo fmt
@@ -248,6 +256,15 @@ jobs:
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
+  publish-npm:
+    name: "Publish to NPM"
+    needs: [version]
+    uses: ./.github/workflows/reusable_publish_npm.yml
+    with:
+      release-commit: ${{ needs.version.outputs.release-commit }}
+      concurrency: ${{ github.ref_name }}
+    secrets: inherit
+
   update-latest-branch:
     name: "Update Latest Branch"
     if: inputs.release-type == 'final'
@@ -292,6 +309,15 @@ jobs:
         with:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
+
       - name: Install dependencies
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
@@ -306,6 +332,10 @@ jobs:
         run: |
           python3 scripts/ci/crates.py version --bump auto
           echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Update NPM versions
+        run: |
+          node rerun_js/web-viewer/scripts/version.mjs ${{ steps.update-version.outputs.version }}
 
       - name: "Taplo fmt"
         run: taplo fmt
