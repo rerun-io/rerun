@@ -1,7 +1,7 @@
 // @ts-check
 
 import { Client } from "./vercel.mjs";
-import { assert, find, get, getRequiredInput } from "./util.mjs";
+import { assert, getRequiredInput, info } from "./util.mjs";
 
 // These inputs are defined in `action.yml`, and should be kept in sync
 const token = getRequiredInput("vercel_token");
@@ -11,25 +11,35 @@ const releaseCommit = getRequiredInput("release_commit");
 
 const client = new Client(token);
 
-console.log(`Fetching team \`${teamName}\``);
-const team = await client.teams().then(find("name", teamName));
-assert(team, `failed to get team \`${teamName}\``);
+info`Fetching team "${teamName}"`;
+const availableTeams = await client.teams();
+assert(availableTeams, `failed to get team "${teamName}"`);
+const team = availableTeams.find((team) => team.name === teamName);
+assert(team, `failed to get team "${teamName}"`);
 
-console.log(`Fetching project \`${projectName}\``);
-const project = await client.projects(team.id).then(find("name", projectName));
-assert(project, `failed to get project \`${projectName}\``);
+info`Fetching project "${projectName}"`;
+const projectsInTeam = await client.projects(team.id);
+const project = projectsInTeam.find((project) => project.name === projectName);
+assert(project, `failed to get project "${projectName}"`);
 
-console.log(`Fetching latest deployment`);
-const deployment = await client.deployments(team.id, project.id).then(get(0));
-assert(deployment, `failed to get latest deployment`);
+info`Fetching latest production deployment`;
+const productionDeployments = await client.deployments(team.id, project.id);
+const latestProductionDeployment = productionDeployments[0];
+assert(latestProductionDeployment, `failed to get latest production deployment`);
 
-console.log(`Fetching \`RELEASE_COMMIT\` env var`);
-const env = await client.envs(team.id, project.id).then(find("key", "RELEASE_COMMIT"));
-assert(env, `failed to get \`RELEASE_COMMIT\` env var`);
+const RELEASE_COMMIT_KEY = "RELEASE_COMMIT";
 
-console.log(`Setting \`RELEASE_COMMIT\` env to \`${releaseCommit}\``);
-await client.setEnv(team.id, project.id, env.id, { key: "RELEASE_COMMIT", value: releaseCommit });
+info`Fetching "${RELEASE_COMMIT_KEY}" env var`;
+const environment = await client.envs(team.id, project.id);
+const releaseCommitEnv = environment.find((env) => env.key === RELEASE_COMMIT_KEY);
+assert(releaseCommitEnv, `failed to get "${RELEASE_COMMIT_KEY}" env var`);
 
-console.log(`Triggering redeploy`);
-await client.redeploy(team.id, deployment.uid, "landing");
+info`Setting "${RELEASE_COMMIT_KEY}" env to "${releaseCommit}"`;
+await client.setEnv(team.id, project.id, releaseCommitEnv.id, {
+  key: RELEASE_COMMIT_KEY,
+  value: releaseCommit,
+});
+
+info`Triggering redeploy`;
+await client.redeploy(team.id, latestProductionDeployment.uid, "landing");
 
