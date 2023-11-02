@@ -1,6 +1,9 @@
-use egui::NumExt as _;
+use egui::{NumExt as _, Ui};
+use std::ops::RangeInclusive;
 
-use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
+use re_data_store::{
+    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistoryBoundary,
+};
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::TimeType;
 use re_types::{
@@ -8,7 +11,8 @@ use re_types::{
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewId, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
+    ViewerContext,
 };
 use re_viewport::{Viewport, ViewportBlueprint};
 
@@ -303,9 +307,16 @@ fn blueprint_ui(
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
                         // splat - the whole entity
+                        let space_view_class_name = space_view.class_name().clone();
                         let data_blueprint = space_view.contents.data_blueprints_individual();
                         let mut props = data_blueprint.get(&instance_path.entity_path);
-                        entity_props_ui(ctx, ui, Some(&instance_path.entity_path), &mut props);
+                        entity_props_ui(
+                            ctx,
+                            ui,
+                            &space_view_class_name,
+                            Some(&instance_path.entity_path),
+                            &mut props,
+                        );
                         data_blueprint.set(instance_path.entity_path.clone(), props);
                     }
                 }
@@ -321,8 +332,15 @@ fn blueprint_ui(
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+                let space_view_class_name = space_view.class_name().clone();
                 if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
-                    entity_props_ui(ctx, ui, None, &mut group.properties_individual);
+                    entity_props_ui(
+                        ctx,
+                        ui,
+                        &space_view_class_name,
+                        None,
+                        &mut group.properties_individual,
+                    );
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }
@@ -364,6 +382,7 @@ fn list_existing_data_blueprints(
 fn entity_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
+    space_view_class_name: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
 ) {
@@ -373,36 +392,13 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
+    // TODO(ab): this should be displayed only if the entity supports visible history
+    // TODO(ab): this should run at SV-level for timeseries and text log SV
+    visible_history_ui(ctx, ui, space_view_class_name, entity_props);
+
     egui::Grid::new("entity_properties")
         .num_columns(2)
         .show(ui, |ui| {
-            ui.label("Visible history");
-            let visible_history = &mut entity_props.visible_history;
-            match ctx.rec_cfg.time_ctrl.timeline().typ() {
-                TimeType::Time => {
-                    let mut time_sec = visible_history.nanos as f32 / 1e9;
-                    let speed = (time_sec * 0.05).at_least(0.01);
-                    ui.add(
-                        egui::DragValue::new(&mut time_sec)
-                            .clamp_range(0.0..=f32::INFINITY)
-                            .speed(speed)
-                            .suffix("s"),
-                    )
-                    .on_hover_text("Include this much history of the Entity in the Space View");
-                    visible_history.nanos = (time_sec * 1e9).round() as _;
-                }
-                TimeType::Sequence => {
-                    let speed = (visible_history.sequences as f32 * 0.05).at_least(1.0);
-                    ui.add(
-                        egui::DragValue::new(&mut visible_history.sequences)
-                            .clamp_range(0.0..=f32::INFINITY)
-                            .speed(speed),
-                    )
-                    .on_hover_text("Include this much history of the Entity in the Space View");
-                }
-            }
-            ui.end_row();
-
             // TODO(wumpf): It would be nice to only show pinhole & depth properties in the context of a 3D view.
             // if *view_state.state_spatial.nav_mode.get() == SpatialNavigationMode::ThreeD {
             if let Some(entity_path) = entity_path {
@@ -411,6 +407,165 @@ fn entity_props_ui(
                 transform3d_visualization_ui(ctx, ui, entity_path, entity_props);
             }
         });
+}
+
+fn visible_history_ui(
+    ctx: &mut ViewerContext,
+    ui: &mut Ui,
+    space_view_class_name: &SpaceViewClassName,
+    entity_props: &mut EntityProperties,
+) {
+    if space_view_class_name != "3D" && space_view_class_name != "2D" {
+        return;
+    }
+
+    ui.checkbox(&mut entity_props.visible_history.enabled, "Visible history");
+
+    let time_range = if let Some(times) = ctx
+        .store_db
+        .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
+    {
+        times.min_key().unwrap_or_default()..=times.max_key().unwrap_or_default()
+    } else {
+        0..=0
+    };
+
+    let current_time = ctx
+        .rec_cfg
+        .time_ctrl
+        .time_i64()
+        .unwrap_or_default()
+        .at_least(*time_range.start()); // accounts for timeless time (TimeInt::BEGINNING)
+
+    let sequence_timeline = match ctx.rec_cfg.time_ctrl.timeline().typ() {
+        TimeType::Time => false,
+        TimeType::Sequence => true,
+    };
+
+    let visible_history = if sequence_timeline {
+        &mut entity_props.visible_history.sequences
+    } else {
+        &mut entity_props.visible_history.nanos
+    };
+
+    ui.add_enabled_ui(entity_props.visible_history.enabled, |ui| {
+        ui.horizontal(|ui| {
+            ui.label("From");
+            visible_history_boundary_ui(
+                ui,
+                &mut visible_history.from,
+                sequence_timeline,
+                current_time,
+                time_range.clone(),
+            )
+        });
+
+        ui.horizontal(|ui| {
+            ui.label("To");
+            visible_history_boundary_ui(
+                ui,
+                &mut visible_history.to,
+                sequence_timeline,
+                current_time,
+                time_range,
+            )
+        });
+    });
+}
+
+fn visible_history_boundary_ui(
+    ui: &mut egui::Ui,
+    visible_history_boundary: &mut VisibleHistoryBoundary,
+    sequence_timeline: bool,
+    current_time: i64,
+    mut time_range: RangeInclusive<i64>,
+) {
+    let mut infinite: bool;
+    let mut relative = matches!(
+        visible_history_boundary,
+        VisibleHistoryBoundary::Relative(_)
+    );
+
+    let span = time_range.end() - time_range.start();
+    if relative {
+        // in relative mode, the range must be wider
+        time_range =
+            (time_range.start() - current_time - span)..=(time_range.end() - current_time + span);
+    }
+
+    match visible_history_boundary {
+        VisibleHistoryBoundary::Relative(value) | VisibleHistoryBoundary::Absolute(value) => {
+            if sequence_timeline {
+                let speed = (span as f32 * 0.005).at_least(1.0);
+
+                ui.add(
+                    egui::DragValue::new(value)
+                        .clamp_range(time_range)
+                        .speed(speed),
+                );
+            } else {
+                time_drag_value_ui(ui, value, &time_range);
+            }
+
+            if ui.checkbox(&mut relative, "Relative").changed() {
+                if relative {
+                    *visible_history_boundary =
+                        VisibleHistoryBoundary::Relative(*value - current_time);
+                } else {
+                    *visible_history_boundary =
+                        VisibleHistoryBoundary::Absolute(*value + current_time);
+                }
+            }
+
+            infinite = false;
+        }
+        VisibleHistoryBoundary::Infinite => {
+            let mut unused = 0.0;
+            ui.add_enabled(
+                false,
+                egui::DragValue::new(&mut unused).custom_formatter(|_, _| "∞".to_owned()),
+            );
+
+            let mut unused = false;
+            ui.add_enabled(false, egui::Checkbox::new(&mut unused, "Relative"));
+
+            infinite = true;
+        }
+    }
+
+    if ui.checkbox(&mut infinite, "Infinite").changed() {
+        if infinite {
+            *visible_history_boundary = VisibleHistoryBoundary::Infinite;
+        } else {
+            *visible_history_boundary = VisibleHistoryBoundary::Relative(0);
+        }
+    }
+}
+
+fn time_drag_value_ui(ui: &mut egui::Ui, value: &mut i64, time_range: &RangeInclusive<i64>) {
+    let span = time_range.end() - time_range.start();
+
+    let (unit, factor) = if span / 1_000_000_000 > 0 {
+        ("s", 1_000_000_000.)
+    } else if span / 1_000_000 > 0 {
+        ("ms", 1_000_000.)
+    } else if span / 1_000 > 0 {
+        ("μs", 1_000.)
+    } else {
+        ("ns", 1.)
+    };
+
+    let mut time_unit = *value as f32 / factor;
+    let time_range = *time_range.start() as f32 / factor..=*time_range.end() as f32 / factor;
+    let speed = (time_range.end() - time_range.start()) * 0.005;
+
+    ui.add(
+        egui::DragValue::new(&mut time_unit)
+            .clamp_range(time_range)
+            .speed(speed)
+            .suffix(unit),
+    );
+    *value = (time_unit * factor).round() as _;
 }
 
 fn colormap_props_ui(

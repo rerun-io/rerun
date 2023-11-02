@@ -296,6 +296,10 @@ impl StoreDb {
         &self.entity_db.times_per_timeline
     }
 
+    pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
+        self.entity_db().tree.prefix_times.get(timeline)
+    }
+
     pub fn num_timeless_messages(&self) -> usize {
         self.entity_db.tree.num_timeless_messages()
     }
