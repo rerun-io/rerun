@@ -1,3 +1,5 @@
+//! Integrates the Rerun SDK with the [`log`] crate.
+
 use log::Log;
 use re_types::{archetypes::TextLog, components::TextLogLevel};
 
