@@ -8,7 +8,7 @@
 namespace rerun {
     namespace components {
 
-#ifdef 0
+#if 0
         // <CODEGEN_COPY_TO_HEADER>
 
         template <typename T>
