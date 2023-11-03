@@ -431,8 +431,8 @@ fn visible_history_ui(
         &mut entity_props.visible_history.enabled,
         "Visible history",
     ).on_hover_text(
-        "Enable the Visible History feature.\n\nBy default, only the last data received before the \
-        current time is shown. By activating the Visible History, all the data received within a \
+        "Enable Visible History.\n\nBy default, only the last state before the \
+        current time is shown. By activating Visible History, all data within a \
         time window is shown instead.");
 
     let time_range = if let Some(times) = ctx
