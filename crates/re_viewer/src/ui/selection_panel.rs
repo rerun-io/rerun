@@ -552,8 +552,9 @@ fn visible_history_boundary_ui(
 
     let span = time_range.end() - time_range.start();
     if relative {
-        // in relative mode, the range must be wider
-        time_range = (time_range.start() - span)..=(time_range.end() + span);
+        // the wider range is needed to avoid the DragValue bounds to modify the boundary value when
+        // the time slider is moved to the timeline's extremes
+        time_range = -span..=2 * span;
     }
 
     match visible_history_boundary {
