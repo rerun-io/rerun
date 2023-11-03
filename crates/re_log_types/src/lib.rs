@@ -60,13 +60,6 @@ pub use self::data_table_batcher::{
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
 };
 
-mod load_file;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::load_file::data_cells_from_file_path;
-
-pub use self::load_file::{data_cells_from_file_contents, FromFileError};
-
 pub mod external {
     pub use arrow2;
 

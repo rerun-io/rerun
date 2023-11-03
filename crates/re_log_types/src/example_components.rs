@@ -1,19 +1,19 @@
 //! Example components to be used for tests and docs
 
-use re_types::Loggable;
+use re_types_core::Loggable;
 
 // ----------------------------------------------------------------------------
 
 pub struct MyPoints;
 
-impl re_types::Archetype for MyPoints {
-    type Indicator = re_types::GenericIndicatorComponent<Self>;
+impl re_types_core::Archetype for MyPoints {
+    type Indicator = re_types_core::GenericIndicatorComponent<Self>;
 
-    fn name() -> re_types::ArchetypeName {
+    fn name() -> re_types_core::ArchetypeName {
         "test.MyPoints".into()
     }
 
-    fn required_components() -> ::std::borrow::Cow<'static, [re_types::ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [re_types_core::ComponentName]> {
         vec![MyPoint::name()].into()
     }
 
@@ -36,10 +36,10 @@ impl MyPoint {
     }
 }
 
-re_types::macros::impl_into_cow!(MyPoint);
+re_types_core::macros::impl_into_cow!(MyPoint);
 
 impl Loggable for MyPoint {
-    type Name = re_types::ComponentName;
+    type Name = re_types_core::ComponentName;
 
     fn name() -> Self::Name {
         "example.MyPoint".into()
@@ -118,10 +118,10 @@ impl From<u32> for MyColor {
     }
 }
 
-re_types::macros::impl_into_cow!(MyColor);
+re_types_core::macros::impl_into_cow!(MyColor);
 
 impl Loggable for MyColor {
-    type Name = re_types::ComponentName;
+    type Name = re_types_core::ComponentName;
 
     fn name() -> Self::Name {
         "example.MyColor".into()
@@ -137,7 +137,7 @@ impl Loggable for MyColor {
     where
         Self: 'a,
     {
-        use re_types::datatypes::UInt32;
+        use re_types_core::datatypes::UInt32;
         UInt32::to_arrow_opt(
             data.into_iter()
                 .map(|opt| opt.map(Into::into).map(|c| UInt32(c.0))),
@@ -147,7 +147,7 @@ impl Loggable for MyColor {
     fn from_arrow_opt(
         data: &dyn arrow2::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
-        use re_types::datatypes::UInt32;
+        use re_types_core::datatypes::UInt32;
         Ok(UInt32::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| opt.map(|v| Self(v.0)))
@@ -161,17 +161,17 @@ impl Loggable for MyColor {
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct MyLabel(pub String);
 
-re_types::macros::impl_into_cow!(MyLabel);
+re_types_core::macros::impl_into_cow!(MyLabel);
 
 impl Loggable for MyLabel {
-    type Name = re_types::ComponentName;
+    type Name = re_types_core::ComponentName;
 
     fn name() -> Self::Name {
         "example.MyLabel".into()
     }
 
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        re_types::datatypes::Utf8::arrow_datatype()
+        re_types_core::datatypes::Utf8::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -180,7 +180,7 @@ impl Loggable for MyLabel {
     where
         Self: 'a,
     {
-        use re_types::datatypes::Utf8;
+        use re_types_core::datatypes::Utf8;
         Utf8::to_arrow_opt(
             data.into_iter()
                 .map(|opt| opt.map(Into::into).map(|l| Utf8(l.0.clone().into()))),
@@ -190,7 +190,7 @@ impl Loggable for MyLabel {
     fn from_arrow_opt(
         data: &dyn arrow2::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Option<Self>>> {
-        use re_types::datatypes::Utf8;
+        use re_types_core::datatypes::Utf8;
         Ok(Utf8::from_arrow_opt(data)?
             .into_iter()
             .map(|opt| opt.map(|v| Self(v.0.to_string())))
