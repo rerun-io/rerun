@@ -35,11 +35,6 @@ if (COMMAND rerun_strict_warning_settings)
     rerun_strict_warning_settings(rerun_sdk)
 endif()
 
-# Add tests if they exist (they are not part of the distribution zip).
-if(EXISTS tests)
-    add_subdirectory(tests)
-endif()
-
 # ------------------------------------------------------------------------------
 # Setup rerun_c dependency if it wasn't set up already.
 if(TARGET rerun_c)
@@ -110,3 +105,11 @@ else()
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
+
+
+# -----------------------------------------------------------------------------
+# Add tests if they exist (they are not part of the distribution zip).
+# Has direct dpeendency to arrow, so needs to happen last.
+if(EXISTS tests)
+    add_subdirectory(tests)
+endif()
