@@ -37,7 +37,7 @@ endif()
 
 # ------------------------------------------------------------------------------
 # Setup rerun_c dependency if it wasn't set up already.
-if(TARGET rerun_c)
+if(NOT TARGET rerun_c)
     add_library(rerun_c STATIC IMPORTED)
 
     # Inside the repo build ourselves, otherwise default to a local `lib` folder.
