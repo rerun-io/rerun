@@ -22,7 +22,7 @@ endif()
 
 # ------------------------------------------------------------------------------
 
-function(set_default_warning_settings target)
+function(rerun_strict_warning_settings target)
     if(MSVC)
         # TODO(andreas): Try to enable /Wall
         target_compile_options(${target} PRIVATE /W4)
@@ -151,9 +151,9 @@ if(NOT WIN32)
     set(LOGURU_STACKTRACES 1)
 endif()
 
-
 # ------------------------------------------------------------------------------
-add_subdirectory(rerun_cpp) # The Rerun C++ SDK library
+add_subdirectory(crates/rerun_c) # The Rerun C SDK library, must be included before the C++ SDK.
+add_subdirectory(rerun_cpp) # The Rerun C++ SDK library.
 add_subdirectory(examples/cpp)
 add_subdirectory(tests/cpp)
 add_subdirectory(docs/code-examples)

@@ -19,7 +19,7 @@ foreach(SOURCE_PATH ${sources_list})
 
     add_executable(${EXAMPLE_TARGET} ${SOURCE_PATH})
 
-    set_default_warning_settings(${EXAMPLE_TARGET})
+    rerun_strict_warning_settings(${EXAMPLE_TARGET})
     target_link_libraries(${EXAMPLE_TARGET} PRIVATE rerun_sdk)
 
     add_dependencies(doc_examples ${EXAMPLE_TARGET})
