@@ -173,7 +173,7 @@ impl EntityProperties {
 
 // ----------------------------------------------------------------------------
 
-/// One of the boundary of the visible history.
+/// One of the boundaries of the visible history.
 ///
 /// The for [`VisibleHistoryBoundary::Relative`] and [`VisibleHistoryBoundary::Absolute`], the value
 /// are either nanos or frames, depending on the type of timeline.
