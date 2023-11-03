@@ -46,10 +46,19 @@ fn main() {
     // or patched!).
     rebuild_if_crate_changed("re_viewer");
 
-    let release = re_build_tools::get_and_track_env_var("PROFILE").unwrap() == "release";
-    if let Err(err) =
-        re_build_web_viewer::build(release, is_tracked_env_var_set("RERUN_BUILD_WEBGPU"))
-    {
+    let release = if re_build_tools::get_and_track_env_var("PROFILE").unwrap() == "release" {
+        re_build_web_viewer::Profile::Release
+    } else {
+        re_build_web_viewer::Profile::Debug
+    };
+    let backend = if is_tracked_env_var_set("RERUN_BUILD_WEBGPU") {
+        re_build_web_viewer::Backend::WebGPU
+    } else {
+        re_build_web_viewer::Backend::WebGL
+    };
+    let target = re_build_web_viewer::Target::Browser;
+    let build_dir = re_build_web_viewer::default_build_dir();
+    if let Err(err) = re_build_web_viewer::build(release, backend, target, &build_dir) {
         panic!("Failed to build web viewer: {}", re_error::format(err));
     }
 }
