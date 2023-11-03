@@ -81,7 +81,6 @@ pub use re_types_core::{
     MaybeOwnedComponentBatch, NamedIndicatorComponent,
 };
 
-
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
 pub mod web_viewer;
@@ -90,7 +89,6 @@ pub mod web_viewer;
 pub mod external {
     pub use re_log;
     pub use re_log_types;
-    pub use re_memory;
     pub use re_sdk_comms;
 
     pub use re_log::external::*;
