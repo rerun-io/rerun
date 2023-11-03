@@ -620,11 +620,11 @@ fn visible_history_boundary_ui(
         })
         .changed()
     {
-        if infinite {
-            *visible_history_boundary = VisibleHistoryBoundary::Infinite;
+        *visible_history_boundary = if infinite {
+            VisibleHistoryBoundary::Infinite
         } else {
-            *visible_history_boundary = VisibleHistoryBoundary::Relative(0);
-        }
+            VisibleHistoryBoundary::Relative(0)
+        };
     }
 }
 
