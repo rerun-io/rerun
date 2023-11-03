@@ -74,6 +74,10 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RERUN_BOT_TOKEN }}
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
@@ -129,6 +133,10 @@ jobs:
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
+
+      - name: Update NPM versions
+        run: |
+          node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
 
       - name: "Taplo fmt"
         run: taplo fmt
@@ -248,6 +256,15 @@ jobs:
       concurrency: ${{ github.ref_name }}
     secrets: inherit
 
+  publish-npm:
+    name: "Publish to NPM"
+    needs: [version]
+    uses: ./.github/workflows/reusable_publish_npm.yml
+    with:
+      release-commit: ${{ needs.version.outputs.release-commit }}
+      concurrency: ${{ github.ref_name }}
+    secrets: inherit
+
   update-latest-branch:
     name: "Update Latest Branch"
     if: inputs.release-type == 'final'
@@ -259,6 +276,7 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
+        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -284,6 +302,7 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
+        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -291,6 +310,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.RERUN_BOT_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
 
       - name: Install dependencies
         run: |
@@ -307,12 +335,15 @@ jobs:
           python3 scripts/ci/crates.py version --bump auto
           echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
+      - name: Update NPM versions
+        run: |
+          node rerun_js/web-viewer/scripts/version.mjs ${{ steps.update-version.outputs.version }}
+
       - name: "Taplo fmt"
         run: taplo fmt
 
       - name: Commit new version
         run: |
-          git pull
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
           git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
@@ -328,6 +359,7 @@ jobs:
         publish-web,
         publish-rerun_c,
         publish-rerun-cli,
+        publish-npm,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -343,34 +375,40 @@ jobs:
         run: |
           pr_number=$(gh pr view --json number | jq '.number')
           echo "pr_number: $pr_number"
+          short_commit_hash=$(echo ${{ needs.version.outputs.release-commit }} | cut -c1-7)
 
           if [ ${{ inputs.release-type }} = "final" ]; then
             web_app_link="https://app.rerun.io/version/${{ needs.version.outputs.final }}"
             rerun_io_docs_link="https://rerun.io/docs"
             py_docs_link="https://ref.rerun.io/docs/python/${{ needs.version.outputs.final }}"
           else
-            web_app_link="https://app.rerun.io/commit/${{ needs.version.outputs.release-commit }}"
-            rerun_io_docs_link="https://rerun.io/preview/${{ needs.version.outputs.release-commit }}/docs"
+            web_app_link="https://app.rerun.io/commit/$short_commit_hash"
+            rerun_io_docs_link="https://rerun.io/preview/$short_commit_hash/docs"
             py_docs_link="https://ref.rerun.io/docs/python/dev"
           fi
           wheels_link="https://pypi.org/project/rerun-sdk/${{ needs.version.outputs.current }}"
           crates_link="https://crates.io/crates/rerun/${{ needs.version.outputs.current }}"
+          npm_link="https://www.npmjs.com/package/@rerun-io/web-viewer/v/${{ needs.version.outputs.current }}"
           rs_docs_link="https://docs.rs/rerun/${{ needs.version.outputs.current }}"
+          cpp_sdk_zip_link="https://build.rerun.io/commit/$short_commit_hash/rerun_cpp_sdk.zip"
 
           pip_install="pip install rerun-sdk==${{ needs.version.outputs.current }}"
           cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
+          npm_install="npm install @rerun-io/web-viewer@${{ needs.version.outputs.current }}"
 
           cat <<EOF > comment-body.txt
           Version ${{ needs.version.outputs.current }} published successfully.
 
-          | artifact                    | install        |
-          | --------------------------- | -------------- |
-          | [web app]($web_app_link)    |                |
-          | [wheels]($wheels_link)      | $pip_install   |
-          | [crates]($crates_link)      | $cargo_install |
-          | [docs]($rerun_io_docs_link) |                |
-          | [py docs]($py_docs_link)    |                |
-          | [rs docs]($rs_docs_link)    |                |
+          | artifact                          | install        |
+          | --------------------------------- | -------------- |
+          | [web app]($web_app_link)          |                |
+          | [wheels]($wheels_link)            | $pip_install   |
+          | [crates]($crates_link)            | $cargo_install |
+          | [npm]($npm_link)                  | $npm_install   |
+          | [docs]($rerun_io_docs_link)       |                |
+          | [py docs]($py_docs_link)          |                |
+          | [rs docs]($rs_docs_link)          |                |
+          | [cpp_sdk zip]($cpp_sdk_zip_link)  |                |
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt

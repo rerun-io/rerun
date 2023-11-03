@@ -601,6 +601,14 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     SECTION("Setting time nanos does not log errors") {
         check_logged_error([&] { stream.set_time_nanos("my sequence", 1); });
     }
+    SECTION("Setting time via chrono duration does not log errors") {
+        using namespace std::chrono_literals;
+        check_logged_error([&] { stream.set_time("duration", 1.0s); });
+        check_logged_error([&] { stream.set_time("duration", 1000ms); });
+    }
+    SECTION("Setting time via chrono duration does not log errors") {
+        check_logged_error([&] { stream.set_time("timepoint", std::chrono::system_clock::now()); });
+    }
     SECTION("Resetting time does not log errors") {
         check_logged_error([&] { stream.reset_time(); });
     }
