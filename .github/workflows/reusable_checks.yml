@@ -369,37 +369,3 @@ jobs:
           clang-format-version: "16"
           # Only check c/cpp/h/hpp (default checks also .proto and others)
           include-regex: ^.*\.(c|cpp|h|hpp)$
-
-  cpp-tests:
-    name: C++ tests
-    runs-on: ubuntu-latest
-    container:
-      image: rerunio/ci_docker:0.10.0
-    env:
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          # Cache will be produced by `reusable_checks/rs-lints`
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
-
-      - name: Build and run rerun_cpp tests
-        shell: bash
-        run: ./rerun_cpp/build_and_run_tests.sh --werror
-
-      - name: Build examples
-        shell: bash
-        run: ./examples/cpp/build_all.sh --werror
-
-      - name: Build doc-code examples
-        shell: bash
-        run: ./docs/code-examples/cpp_build_all.sh --werror
-

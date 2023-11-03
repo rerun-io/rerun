@@ -108,6 +108,8 @@ impl GpuBindGroupPool {
         pools: &WgpuResourcePools,
         desc: &BindGroupDesc,
     ) -> GpuBindGroup {
+        re_tracing::profile_function!();
+
         // Retrieve strong handles to buffers and textures.
         // This way, an owner of a bind group handle keeps buffers & textures alive!.
         let owned_buffers: SmallVec<[GpuBuffer; 4]> = desc

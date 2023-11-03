@@ -50,3 +50,6 @@ web_demo
 
 .nox/
 *.rrd
+
+# Python example dataset caches:
+cache/

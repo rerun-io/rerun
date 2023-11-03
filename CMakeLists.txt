@@ -2,9 +2,40 @@ cmake_minimum_required(VERSION 3.16...3.27)
 
 project(rerun_cpp_proj LANGUAGES CXX)
 
+# ------------------------------------------------------------------------------
+
+# Environment driven hooks so we can configure CMake configure even if its buried deep inside a pixi task.
+if(DEFINED ENV{RERUN_WERROR})
+    message(STATUS "Compiling with warnings as errors since RERUN_WERROR is set.")
+    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+endif()
+
+if(DEFINED ENV{RERUN_USE_ASAN})
+    message(STATUS "Compiling with address sanatizer ('asan') since RERUN_USE_ASAN is set.")
+    set(RERUN_USE_ASAN ON)
+endif()
+
+if(DEFINED ENV{RERUN_SET_CXX_VERSION})
+    message(STATUS "Overwriting CMAKE_CXX_STANDARD to $ENV{RERUN_SET_CXX_VERSION} since RERUN_SET_CXX_VERSION is set accordingly.")
+    set(CMAKE_CXX_STANDARD $ENV{RERUN_SET_CXX_VERSION})
+endif()
+
+# ------------------------------------------------------------------------------
+
 function(set_default_warning_settings target)
     if(MSVC)
+        # TODO(andreas): Try to enable /Wall
         target_compile_options(${target} PRIVATE /W4)
+
+        # CMAKE_COMPILE_WARNING_AS_ERROR is only directly supported starting in CMake `3.24`
+        # https://cmake.org/cmake/help/latest/prop_tgt/COMPILE_WARNING_AS_ERROR.html
+        if(CMAKE_COMPILE_WARNING_AS_ERROR)
+            target_compile_options(${target} PRIVATE /WX)
+        endif()
+
+        if(RERUN_USE_ASAN)
+            message(WARNING "Rerun C++ build does not support address sanatizer ('asan') on Windows. Ignoring RERUN_USE_ASAN.")
+        endif()
     else()
         # Enabled warnings.
         target_compile_options(${target} PRIVATE
@@ -20,16 +51,40 @@ function(set_default_warning_settings target)
             -Wpointer-arith
             -Wshadow
             -Wswitch-enum
+            -Wunreachable-code
             -Wvla
         )
 
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang") # match both "Clang" and "AppleClang"
             target_compile_options(${target} PRIVATE
                 -Wc++17-compat-pedantic
+                -Wc++20-compat-pedantic
                 -Wc99-extensions
+                -Weverything
                 -Wgnu
                 -Wnon-gcc
+                -Wpre-c2x-compat-pedantic
                 -Wshadow-all
+
+                # Turn off some warning that -Weverything turns on:
+                -Wno-c++98-compat
+                -Wno-c++98-compat-pedantic
+                -Wno-covered-switch-default # We often add a `default:` case out of paranoia
+                -Wno-ctad-maybe-unsupported
+                -Wno-disabled-macro-expansion
+                -Wno-documentation
+                -Wno-documentation-unknown-command
+                -Wno-double-promotion # float->double is nothing to whine about
+                -Wno-exit-time-destructors
+                -Wno-float-equal # comparing floats is fine
+                -Wno-global-constructors
+                -Wno-missing-prototypes
+                -Wno-padded
+                -Wno-reserved-id-macro
+                -Wno-reserved-identifier
+                -Wno-unreachable-code-break # TODO(emilk): remove this exception - we only need this because of codegen
+                -Wno-unreachable-code-return # TODO(emilk): remove this exception - we only need this because of codegen
+                -Wno-unused-macros
             )
         endif()
 
@@ -40,18 +95,17 @@ function(set_default_warning_settings target)
         endif()
 
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-            # Debug build with fsanatize:
+            # Improve stack traces:
             target_compile_options(${target} PRIVATE -g -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fno-optimize-sibling-calls)
+        endif()
+
+        if(RERUN_USE_ASAN)
+            # Turn on the address sanatizer ("asan"):
             target_compile_options(${target} PRIVATE -fsanitize=address)
             target_link_options(${target} PRIVATE -fsanitize=address)
         endif()
     endif()
 endfunction()
-
-if(DEFINED ENV{WARNINGS_AS_ERRORS})
-    message(STATUS "Compiling with warnings as errors since WARNINGS_AS_ERRORS is set.")
-    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
-endif()
 
 # Use makefiles on linux, otherwise it might use Ninja which isn't installed by default.
 if(NOT DEFINED CMAKE_GENERATOR AND UNIX)
@@ -89,6 +143,7 @@ FetchContent_Declare(LoguruGitRepo
     GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
     GIT_TAG "master"
 )
+FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 
 # Set any loguru compile-time flags before calling MakeAvailable()
 # Stacktraces are not yet supported on Windows.
@@ -96,7 +151,6 @@ if(NOT WIN32)
     set(LOGURU_STACKTRACES 1)
 endif()
 
-FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 
 # ------------------------------------------------------------------------------
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library

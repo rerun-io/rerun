@@ -15,7 +15,7 @@
 //!
 //! Quick recap & overview:
 //! * Render scene into a mask texture
-//! * Extract a contour from the mask texture, for each contour contour pixel write the position in the (to-be) voronoi texture.
+//! * Extract a contour from the mask texture, for each contour pixel write the position in the (to-be) voronoi texture.
 //!     * in our case we extract all pixels at which the mask changes (details below)
 //! * Jump-flooding iterations: For each pixel in the voronoi texture,
 //!  sample the current pixel and an 8-neighborhood at a certain, for each pass decreasing, distance and write out the closest position seen so far.

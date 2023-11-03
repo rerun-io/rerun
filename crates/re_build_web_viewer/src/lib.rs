@@ -3,19 +3,67 @@
 //! Build the Rerun web-viewer .wasm and generate the .js bindings for it.
 
 use anyhow::Context as _;
-use cargo_metadata::camino::Utf8PathBuf;
+use cargo_metadata::camino::{Utf8Path, Utf8PathBuf};
+
+pub fn workspace_root() -> Utf8PathBuf {
+    cargo_metadata::MetadataCommand::new()
+        .manifest_path(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))
+        .features(cargo_metadata::CargoOpt::NoDefaultFeatures)
+        .no_deps()
+        .exec()
+        .unwrap()
+        .workspace_root
+}
+
+pub fn default_build_dir() -> Utf8PathBuf {
+    workspace_root().join("web_viewer")
+}
 
 fn target_directory() -> Utf8PathBuf {
     let metadata = cargo_metadata::MetadataCommand::new()
-        .manifest_path("./Cargo.toml")
+        .manifest_path(concat!(env!("CARGO_MANIFEST_DIR"), "/Cargo.toml"))
         .features(cargo_metadata::CargoOpt::NoDefaultFeatures)
         .exec()
         .unwrap();
     metadata.target_directory
 }
 
-/// Build `re_viewer` as Wasm, generate .js bindings for it, and place it all into the `./web_viewer` folder.
-pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Profile {
+    Release,
+    Debug,
+}
+
+impl Profile {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Profile::Release => "release",
+            Profile::Debug => "debug",
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Backend {
+    WebGL,
+    WebGPU,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Target {
+    Browser,
+    Module,
+}
+
+/// Build `re_viewer` as Wasm, generate .js bindings for it, and place it all into the `build_dir` folder.
+pub fn build(
+    profile: Profile,
+    backend: Backend,
+    target: Target,
+    build_dir: &Utf8Path,
+) -> anyhow::Result<()> {
+    std::env::set_current_dir(workspace_root())?;
+
     eprintln!("Building web viewer wasm…");
     eprintln!("We assume you've already run ./scripts/setup_web.sh");
 
@@ -30,8 +78,6 @@ pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
     let root_dir = target_wasm_dir.parent().unwrap();
 
     // Where we will place the final .wasm and .js artifacts.
-    let build_dir = root_dir.join("web_viewer");
-
     assert!(
         build_dir.exists(),
         "Failed to find dir {build_dir}. CWD: {:?}, CARGO_MANIFEST_DIR: {:?}",
@@ -63,12 +109,11 @@ pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
         target_wasm_dir.as_str(),
         "--no-default-features",
     ]);
-    if webgpu {
-        cmd.arg("--features=analytics");
-    } else {
-        cmd.arg("--features=analytics,webgl");
-    }
-    if release {
+    match backend {
+        Backend::WebGL => cmd.arg("--features=analytics,webgl"),
+        Backend::WebGPU => cmd.arg("--features=analytics"),
+    };
+    if profile == Profile::Release {
         cmd.arg("--release");
     }
 
@@ -95,21 +140,22 @@ pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------
     eprintln!("Generating JS bindings for wasm…");
 
-    let build = if release { "release" } else { "debug" };
+    let build = profile.as_str();
 
     let target_wasm_path = target_wasm_dir
         .join("wasm32-unknown-unknown")
         .join(build)
         .join(format!("{crate_name}.wasm"));
 
-    // wasm-bindgen --target web target_wasm_path --no-typescript --out-name target_name --out-dir build_dir
-    if let Err(err) = wasm_bindgen_cli_support::Bindgen::new()
-        .no_modules(true)?
+    let mut bindgen_cmd = wasm_bindgen_cli_support::Bindgen::new();
+    bindgen_cmd
         .input_path(target_wasm_path.as_str())
-        .typescript(false)
-        .out_name(crate_name)
-        .generate(build_dir.as_str())
-    {
+        .out_name(crate_name);
+    match target {
+        Target::Browser => bindgen_cmd.no_modules(true)?.typescript(false),
+        Target::Module => bindgen_cmd.no_modules(false)?.typescript(true),
+    };
+    if let Err(err) = bindgen_cmd.generate(build_dir.as_str()) {
         if err
             .to_string()
             .starts_with("cannot import from modules (`env`")
@@ -127,7 +173,7 @@ pub fn build(release: bool, webgpu: bool) -> anyhow::Result<()> {
 
     // --------------------------------------------------------------------------------
 
-    if release {
+    if profile == Profile::Release {
         eprintln!("Optimizing wasm with wasm-opt…");
 
         // to get wasm-opt:  apt/brew/dnf install binaryen

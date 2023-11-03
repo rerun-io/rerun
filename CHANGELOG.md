@@ -1,8 +1,22 @@
 # Rerun changelog
 
-
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+
+## [0.10.1](https://github.com/rerun-io/rerun/compare/0.10.0...0.10.1)
+
+### Overview & Highlights
+This is a small release primarily to tie up some loose ends for our C++ SDK.
+
+#### 🌊 C++ SDK
+- Avoid possible link/symbol errors but defaulting all OSes to static linking of arrow [#4101](https://github.com/rerun-io/rerun/pull/4101)
+- Fix compilation errors with C++20 [#4098](https://github.com/rerun-io/rerun/pull/4098)
+- Improve C++ SDK perf 5x by respecting CMAKE_BUILD_TYPE and enabling mimalloc [#4094](https://github.com/rerun-io/rerun/pull/4094)
+- Reduce amount of cmake log from building & downloading libArrow [#4103](https://github.com/rerun-io/rerun/pull/4103)
+
+#### 🧑‍💻 Dev-experience
+- C++ Windows CI [#4110](https://github.com/rerun-io/rerun/pull/4110)
+- Add MacOS C++ CI, add Linux C++20 CI [#4120](https://github.com/rerun-io/rerun/pull/4120)
 
 ## [0.10.0](https://github.com/rerun-io/rerun/compare/0.9.1...0.10.0) - C++ SDK - 2023-10-30
 
@@ -11,6 +25,8 @@
 * Python: `pip install rerun-sdk`
 * Rust: `cargo add rerun` and `cargo install rerun-cli`
 * Online demo: <https://app.rerun.io/version/0.10.0/>
+
+Release blog post: <https://www.rerun.io/blog/cpp-sdk>
 
 ### Overview & Highlights
 * The C++ SDK is finally here!
@@ -184,7 +200,7 @@ Other highlights:
 * 🐛 Lots and lots of bugfixes
   * 👷‍♀️ Internally we have now way more automated testing for the new API surfaces
 * ✨ drag & drop for images & meshes (even on web!), time display in local time (thanks @jparismorgan!),
-  .obj mesh support, default enabled memory limit, new how-to guide for custom data… and many many more smaller features!
+  .obj mesh support, default enabled memory limit, new how-to guide for custom data… and many more smaller features!
 
 ### Some select details
 #### 🐍 Python SDK
@@ -1149,7 +1165,7 @@ We now host an experimental and unpolished web-viewer at <https://app.rerun.io/>
 - Handle ctrl+c to gracefully shutdown the server(s) [#1613](https://github.com/rerun-io/rerun/pull/1613)
 - Fix crash on serve exit, second attempt [#1633](https://github.com/rerun-io/rerun/pull/1633)
 - Fix wrong remove-tooltip for entities and groups [#1637](https://github.com/rerun-io/rerun/pull/1637)
-- Fix requiring requiring focus for shutdown via ctrl+c when starting viewer from command line [#1646](https://github.com/rerun-io/rerun/pull/1646)
+- Fix requiring focus for shutdown via ctrl+c when starting viewer from command line [#1646](https://github.com/rerun-io/rerun/pull/1646)
 - Fix eye spin after eye reset [#1652](https://github.com/rerun-io/rerun/pull/1652)
 - Fix crash on negative radii by instead warning [#1654](https://github.com/rerun-io/rerun/pull/1654)
 - Fix crash when trying to listen on a taken TCP port [#1650](https://github.com/rerun-io/rerun/pull/1650)
@@ -1378,7 +1394,7 @@ Meanwhile, we did a bunch of improvements to our manual. If you had trouble runn
   * add event for when we serve the web-viewer .wasm [#1379](https://github.com/rerun-io/rerun/pull/1379)
   * register SDK language and data source [#1371](https://github.com/rerun-io/rerun/pull/1371)
   * Refactor analytics [#1368](https://github.com/rerun-io/rerun/pull/1368)
-* Versioned log streams streams [#1420](https://github.com/rerun-io/rerun/pull/1420)
+* Versioned log streams [#1420](https://github.com/rerun-io/rerun/pull/1420)
 * Fix path issues when running debug viewer within workspace [#1341](https://github.com/rerun-io/rerun/pull/1341)
 * Detailed errors for re_renderer `include_file!` [#1339](https://github.com/rerun-io/rerun/pull/1339)
 * Limit logging in web-viewer to `warn` in order to workaround a crash issue (and reduce log spam) [1514](https://github.com/rerun-io/rerun/pull/1514)

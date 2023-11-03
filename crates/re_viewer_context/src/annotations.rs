@@ -243,7 +243,7 @@ impl AnnotationMap {
             let mut next_parent = Some(ent_path.clone());
             while let Some(parent) = next_parent {
                 // If we've visited this parent before it's safe to break early.
-                // All of it's parents have have also been visited.
+                // All of it's parents have also been visited.
                 if !visited.insert(parent.clone()) {
                     break;
                 }

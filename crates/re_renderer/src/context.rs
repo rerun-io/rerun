@@ -33,7 +33,7 @@ pub struct RenderContext {
     /// List of unfinished queue submission via this context.
     ///
     /// This is currently only about submissions we do via the global encoder in [`ActiveFrameContext`]
-    /// TODO(andreas): We rely on egui to to the "primary" submissions in re_viewer. It would be nice to take full control over all submissions.
+    /// TODO(andreas): We rely on egui for the "primary" submissions in re_viewer. It would be nice to take full control over all submissions.
     inflight_queue_submissions: Vec<wgpu::SubmissionIndex>,
 
     pub active_frame: ActiveFrameContext,

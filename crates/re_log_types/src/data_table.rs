@@ -118,6 +118,7 @@ impl DataCellColumn {
     /// Beware: this is _very_ costly!
     #[inline]
     pub fn compute_all_size_bytes(&mut self) {
+        re_tracing::profile_function!();
         for cell in &mut self.0 {
             cell.as_mut().map(|cell| cell.compute_size_bytes());
         }
@@ -507,6 +508,7 @@ impl DataTable {
     /// Beware: this is _very_ costly!
     #[inline]
     pub fn compute_all_size_bytes(&mut self) {
+        re_tracing::profile_function!();
         for column in self.columns.values_mut() {
             column.compute_all_size_bytes();
         }

@@ -1,5 +1,6 @@
 # Official Rerun examples
 
+* [C++](cpp)
 * [Python](python)
 * [Rust](rust)
 

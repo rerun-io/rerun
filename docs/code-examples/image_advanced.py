@@ -1,7 +1,6 @@
 """Log an image."""
 
 import tempfile
-from pathlib import Path
 
 import cv2
 import numpy as np
@@ -20,7 +19,7 @@ image.save(file_path)
 rr.init("rerun_example_images_adv", spawn=True)
 
 # Log the image from the file.
-rr.log("from_file", rr.ImageEncoded(path=Path(file_path)))
+rr.log("from_file", rr.ImageEncoded(path=file_path))
 
 # Read with Pillow and NumPy, and log the image.
 image = np.array(Image.open(file_path))

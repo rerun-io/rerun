@@ -83,13 +83,13 @@ jobs:
               container="null"
               ;;
             macos-arm)
-              runner="macos-latest"
+              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
               run_tests="false"
               container="null"
               ;;
             macos-intel)
-              runner="macos-latest"
+              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
               run_tests="false"
               container="null"
@@ -189,7 +189,6 @@ jobs:
           manylinux: manylinux_2_31
           container: off
           command: build
-          sccache: "true"
           args: |
             --manifest-path rerun_py/Cargo.toml
             --release

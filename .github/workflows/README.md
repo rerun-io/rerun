@@ -50,7 +50,7 @@ uploaded anywhere.
   request builds associated with their originating commit, even if the web-build happens on an ephemeral merge-commit.
 - [reusable_build_web_demo.yml](reusable_build_web.yml) - This job builds the assets uploaded to `demo.rerun.io`.
   - `SOURCE_LINK_COMMIT_OVERRIDE` - If set, will replace the value of `<commit>` in the built app. This ensures that the
-  source source code link in the built app always points to the pull request's `HEAD`.
+  source code link in the built app always points to the pull request's `HEAD`.
 - [reusable_upload_web_demo.yml](reusable_upload_web_demo.yml) - This job uploads the `demo.rerun.io` assets to google cloud. By default this
   only uploads to: `demo.rerun.io/commit/<commit>/`
   - `MARK_TAGGED_VERSION` - If true, then the web assets will go to `demo.rerun.io/version/<RELEASE_VERSION>`
