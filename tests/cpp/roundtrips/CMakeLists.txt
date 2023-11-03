@@ -13,7 +13,7 @@ foreach(DIR ${sources_list})
         set(ROUNDTRIP_TARGET roundtrip_${ARCHETYPE})
 
         add_executable(${ROUNDTRIP_TARGET} ${DIR}/main.cpp)
-        set_default_warning_settings(${ROUNDTRIP_TARGET})
+        rerun_strict_warning_settings(${ROUNDTRIP_TARGET})
         target_link_libraries(${ROUNDTRIP_TARGET} PRIVATE rerun_sdk)
     ELSE()
         CONTINUE()
