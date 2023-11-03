@@ -430,7 +430,10 @@ fn visible_history_ui(
         ui,
         &mut entity_props.visible_history.enabled,
         "Visible history",
-    );
+    ).on_hover_text(
+        "Enable the Visible History feature.\n\nBy default, only the last data received before the \
+        current time is shown. By activating the Visible History, all the data received within a \
+        time window is shown instead.");
 
     let time_range = if let Some(times) = ctx
         .store_db
@@ -468,6 +471,7 @@ fn visible_history_ui(
                     sequence_timeline,
                     current_time,
                     time_range.clone(),
+                    true,
                 );
 
                 ui.end_row();
@@ -480,6 +484,7 @@ fn visible_history_ui(
                     sequence_timeline,
                     current_time,
                     time_range,
+                    false,
                 );
 
                 ui.end_row();
@@ -543,6 +548,7 @@ fn visible_history_boundary_ui(
     sequence_timeline: bool,
     current_time: i64,
     mut time_range: RangeInclusive<i64>,
+    low_bound: bool,
 ) {
     let mut infinite: bool;
     let mut relative = matches!(
@@ -571,7 +577,15 @@ fn visible_history_boundary_ui(
                 re_ui.time_drag_value(ui, value, &time_range);
             }
 
-            if re_ui.checkbox(ui, &mut relative, "Relative").changed() {
+            if re_ui
+                .checkbox(ui, &mut relative, "Relative")
+                .on_hover_text(
+                    "When enabled, the provided value is interpreted as relative to the \
+                    current time. Otherwise, the provided value is interpreted as an absolute \
+                    time.",
+                )
+                .changed()
+            {
                 if relative {
                     *visible_history_boundary =
                         VisibleHistoryBoundary::Relative(*value - current_time);
@@ -597,7 +611,15 @@ fn visible_history_boundary_ui(
         }
     }
 
-    if re_ui.checkbox(ui, &mut infinite, "Infinite").changed() {
+    if re_ui
+        .checkbox(ui, &mut infinite, "Infinite")
+        .on_hover_text(if low_bound {
+            "Show data from the beginning of the timeline"
+        } else {
+            "Show data until the end of the timeline"
+        })
+        .changed()
+    {
         if infinite {
             *visible_history_boundary = VisibleHistoryBoundary::Infinite;
         } else {
