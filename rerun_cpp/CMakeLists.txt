@@ -31,14 +31,14 @@ endif()
 
 # Set default warning settings if defined.
 if (COMMAND rerun_strict_warning_settings)
-    message("Building SDK with strict warnings.")
+    message("Building Rerun C++ SDK with strict compilation warnings.")
     rerun_strict_warning_settings(rerun_sdk)
 endif()
 
 # ------------------------------------------------------------------------------
 # Setup rerun_c dependency if it wasn't set up already.
 if(NOT TARGET rerun_c)
-    add_library(rerun_c STATIC IMPORTED)
+    add_library(rerun_c STATIC IMPORTED GLOBAL)
 
     # Inside the repo build ourselves, otherwise default to a local `lib` folder.
     set(RERUN_C_DEFAULT_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib/)
@@ -71,14 +71,14 @@ if(NOT TARGET rerun_c)
     endif()
 
     set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION ${RERUN_C_LIB})
+endif()
 
-    if(APPLE)
-        target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit")
-    elseif(UNIX) # if(LINUX) # CMake 3.25
-        target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
-    elseif(WIN32)
-        target_link_libraries(rerun_c INTERFACE ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
-    endif()
+if(APPLE)
+    target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit")
+elseif(UNIX) # if(LINUX) # CMake 3.25
+    target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
+elseif(WIN32)
+    target_link_libraries(rerun_c INTERFACE ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_c)

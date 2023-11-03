@@ -101,14 +101,14 @@ function(download_and_build_arrow)
 
     # arrow_cpp target is not a library. Assemble one from it.
     if(RERUN_ARROW_LINK_SHARED)
-        add_library(rerun_arrow_target SHARED IMPORTED)
+        add_library(rerun_arrow_target SHARED IMPORTED GLOBAL)
 
         # For windows we need to know both the dll AND the import library.
         if(WIN32)
             set_target_properties(rerun_arrow_target PROPERTIES IMPORTED_IMPLIB ${ARROW_DOWNLOAD_PATH}/lib/arrow.lib)
         endif()
     else()
-        add_library(rerun_arrow_target STATIC IMPORTED)
+        add_library(rerun_arrow_target STATIC IMPORTED GLOBAL)
 
         # Need to set the ARROW_STATIC define, otherwise arrow functions are dllimport decorated on Windows.
         target_compile_definitions(rerun_arrow_target INTERFACE ARROW_STATIC)
