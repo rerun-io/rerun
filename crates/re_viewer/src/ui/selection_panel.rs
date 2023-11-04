@@ -465,6 +465,9 @@ fn visible_history_ui(
         &mut entity_props.visible_history.nanos
     };
 
+    let visible_history_time_range = visible_history.from(current_time.into()).as_i64()
+        ..=visible_history.to(current_time.into()).as_i64();
+
     ui.add_enabled_ui(entity_props.visible_history.enabled, |ui| {
         egui::Grid::new("visible_history_boundaries")
             .num_columns(4)
@@ -478,6 +481,7 @@ fn visible_history_ui(
                     current_time,
                     time_range.clone(),
                     true,
+                    *visible_history_time_range.end(),
                 );
 
                 ui.end_row();
@@ -491,6 +495,7 @@ fn visible_history_ui(
                     current_time,
                     time_range,
                     false,
+                    *visible_history_time_range.start(),
                 );
 
                 ui.end_row();
@@ -547,6 +552,7 @@ fn should_display_visible_history(
     true
 }
 
+#[allow(clippy::too_many_arguments)]
 fn visible_history_boundary_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
@@ -555,15 +561,34 @@ fn visible_history_boundary_ui(
     current_time: i64,
     mut time_range: RangeInclusive<i64>,
     low_bound: bool,
+    other_boundary_absolute: i64,
 ) {
     let span = time_range.end() - time_range.start();
+
+    // Hot "usability" area! This achieves two things:
+    // 1) It makes sure the time range in relative mode has enough margin beyond the current
+    //    timeline's span to avoid the boundary value to be modified by changing the current time
+    //    cursor
+    // 2) It makes sure the two boundaries don't cross in time (i.e. low > high). It does so by
+    //    prioritizing the low boundary. Moving the low boundary against the high boundary will
+    //    displace the high boundary. On the other hand, the high boundary cannot be moved against
+    //    the low boundary. This asymmetry is intentional, and avoids both boundaries fighting each
+    //    other in some corner cases (when the user interacts with the current time cursor).
+    #[allow(clippy::collapsible_else_if)] // for readability
     if matches!(
         visible_history_boundary,
         VisibleHistoryBoundary::RelativeToTimeCursor(_)
     ) {
-        // the wider range is needed to avoid the DragValue bounds to modify the boundary value when
-        // the time slider is moved to the timeline's extremes
-        time_range = -span..=2 * span;
+        if low_bound {
+            time_range = -span..=2 * span;
+        } else {
+            time_range =
+                (other_boundary_absolute.saturating_sub(current_time)).at_least(-span)..=2 * span;
+        }
+    } else {
+        if !low_bound {
+            time_range = other_boundary_absolute.at_least(-span)..=*time_range.end();
+        }
     }
 
     match visible_history_boundary {
