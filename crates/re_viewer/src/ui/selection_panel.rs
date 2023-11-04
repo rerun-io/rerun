@@ -426,14 +426,17 @@ fn visible_history_ui(
 
     let re_ui = ctx.re_ui;
 
-    re_ui.checkbox(
-        ui,
-        &mut entity_props.visible_history.enabled,
-        "Visible history",
-    ).on_hover_text(
-        "Enable Visible History.\n\nBy default, only the last state before the \
-        current time is shown. By activating Visible History, all data within a \
-        time window is shown instead.");
+    re_ui
+        .checkbox(
+            ui,
+            &mut entity_props.visible_history.enabled,
+            "Visible history",
+        )
+        .on_hover_text(
+            "Enable Visible History.\n\nBy default, only the last state before the \
+            current time is shown. By activating Visible History, all data within a \
+            time window is shown instead.",
+        );
 
     let time_range = if let Some(times) = ctx
         .store_db
@@ -550,21 +553,19 @@ fn visible_history_boundary_ui(
     mut time_range: RangeInclusive<i64>,
     low_bound: bool,
 ) {
-    let mut infinite: bool;
-    let mut relative = matches!(
-        visible_history_boundary,
-        VisibleHistoryBoundary::Relative(_)
-    );
-
     let span = time_range.end() - time_range.start();
-    if relative {
+    if matches!(
+        visible_history_boundary,
+        VisibleHistoryBoundary::RelativeToTimeCursor(_)
+    ) {
         // the wider range is needed to avoid the DragValue bounds to modify the boundary value when
         // the time slider is moved to the timeline's extremes
         time_range = -span..=2 * span;
     }
 
     match visible_history_boundary {
-        VisibleHistoryBoundary::Relative(value) | VisibleHistoryBoundary::Absolute(value) => {
+        VisibleHistoryBoundary::RelativeToTimeCursor(value)
+        | VisibleHistoryBoundary::Absolute(value) => {
             if sequence_timeline {
                 let speed = (span as f32 * 0.005).at_least(1.0);
 
@@ -576,26 +577,6 @@ fn visible_history_boundary_ui(
             } else {
                 re_ui.time_drag_value(ui, value, &time_range);
             }
-
-            if re_ui
-                .checkbox(ui, &mut relative, "Relative")
-                .on_hover_text(
-                    "When enabled, the provided value is interpreted as relative to the \
-                    current time. Otherwise, the provided value is interpreted as an absolute \
-                    time.",
-                )
-                .changed()
-            {
-                if relative {
-                    *visible_history_boundary =
-                        VisibleHistoryBoundary::Relative(*value - current_time);
-                } else {
-                    *visible_history_boundary =
-                        VisibleHistoryBoundary::Absolute(*value + current_time);
-                }
-            }
-
-            infinite = false;
         }
         VisibleHistoryBoundary::Infinite => {
             let mut unused = 0.0;
@@ -603,29 +584,55 @@ fn visible_history_boundary_ui(
                 false,
                 egui::DragValue::new(&mut unused).custom_formatter(|_, _| "∞".to_owned()),
             );
-
-            let mut unused = false;
-            ui.add_enabled(false, egui::Checkbox::new(&mut unused, "Relative"));
-
-            infinite = true;
         }
     }
 
-    if re_ui
-        .checkbox(ui, &mut infinite, "Infinite")
+    let (abs_time, rel_time) = match visible_history_boundary {
+        VisibleHistoryBoundary::RelativeToTimeCursor(value) => (*value + current_time, *value),
+        VisibleHistoryBoundary::Absolute(value) => (*value, *value - current_time),
+        VisibleHistoryBoundary::Infinite => (current_time, 0),
+    };
+
+    egui::ComboBox::from_id_source(if low_bound {
+        "time_history_low_bound"
+    } else {
+        "time_history_high_bound"
+    })
+    .selected_text(visible_history_boundary.label())
+    .show_ui(ui, |ui| {
+        ui.set_min_width(64.0);
+
+        ui.selectable_value(
+            visible_history_boundary,
+            VisibleHistoryBoundary::RelativeToTimeCursor(rel_time),
+            VisibleHistoryBoundary::RELATIVE_LABEL,
+        )
+        .on_hover_text(if low_bound {
+            "Show data from a time point relative to the current time."
+        } else {
+            "Show data until a time point relative to the current time."
+        });
+        ui.selectable_value(
+            visible_history_boundary,
+            VisibleHistoryBoundary::Absolute(abs_time),
+            VisibleHistoryBoundary::ABSOLUTE_LABEL,
+        )
+        .on_hover_text(if low_bound {
+            "Show data from an absolute time point."
+        } else {
+            "Show data until an absolute time point."
+        });
+        ui.selectable_value(
+            visible_history_boundary,
+            VisibleHistoryBoundary::Infinite,
+            VisibleHistoryBoundary::INFINITE_LABEL,
+        )
         .on_hover_text(if low_bound {
             "Show data from the beginning of the timeline"
         } else {
             "Show data until the end of the timeline"
-        })
-        .changed()
-    {
-        *visible_history_boundary = if infinite {
-            VisibleHistoryBoundary::Infinite
-        } else {
-            VisibleHistoryBoundary::Relative(0)
-        };
-    }
+        });
+    });
 }
 
 fn colormap_props_ui(

@@ -175,13 +175,13 @@ impl EntityProperties {
 
 /// One of the boundaries of the visible history.
 ///
-/// The for [`VisibleHistoryBoundary::Relative`] and [`VisibleHistoryBoundary::Absolute`], the value
-/// are either nanos or frames, depending on the type of timeline.
+/// For [`VisibleHistoryBoundary::RelativeToTimeCursor`] and [`VisibleHistoryBoundary::Absolute`],
+/// the value are either nanos or frames, depending on the type of timeline.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum VisibleHistoryBoundary {
     /// Boundary is a value relative to the time cursor
-    Relative(i64),
+    RelativeToTimeCursor(i64),
 
     /// Boundary is an absolute value
     Absolute(i64),
@@ -191,7 +191,26 @@ pub enum VisibleHistoryBoundary {
 }
 
 impl VisibleHistoryBoundary {
-    pub const AT_CURSOR: Self = Self::Relative(0);
+    /// UI label to use when [`VisibleHistoryBoundary::RelativeToTimeCursor`] is selected.
+    pub const RELATIVE_LABEL: &'static str = "Relative";
+
+    /// UI label to use when [`VisibleHistoryBoundary::Absolute`] is selected.
+    pub const ABSOLUTE_LABEL: &'static str = "Absolute";
+
+    /// UI label to use when [`VisibleHistoryBoundary::Infinite`] is selected.
+    pub const INFINITE_LABEL: &'static str = "Infinite";
+
+    /// Value when the boundary is set to the current time cursor.
+    pub const AT_CURSOR: Self = Self::RelativeToTimeCursor(0);
+
+    /// Label to use in the UI.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::RelativeToTimeCursor(_) => Self::RELATIVE_LABEL,
+            Self::Absolute(_) => Self::ABSOLUTE_LABEL,
+            Self::Infinite => Self::INFINITE_LABEL,
+        }
+    }
 }
 
 impl Default for VisibleHistoryBoundary {
@@ -221,7 +240,7 @@ impl VisibleHistory {
     pub fn from(&self, cursor: TimeInt) -> TimeInt {
         match self.from {
             VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
-            VisibleHistoryBoundary::Relative(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
             VisibleHistoryBoundary::Infinite => TimeInt::MIN,
         }
     }
@@ -229,7 +248,7 @@ impl VisibleHistory {
     pub fn to(&self, cursor: TimeInt) -> TimeInt {
         match self.to {
             VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
-            VisibleHistoryBoundary::Relative(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
             VisibleHistoryBoundary::Infinite => TimeInt::MAX,
         }
     }
