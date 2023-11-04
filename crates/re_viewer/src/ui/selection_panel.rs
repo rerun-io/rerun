@@ -530,6 +530,8 @@ static VISIBLE_HISTORY_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>
         .into()
     });
 
+// TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the ViewPart
+// system is able to report its ability to handle the visible history feature.
 fn should_display_visible_history(
     ctx: &mut ViewerContext<'_>,
     entity_path: Option<&EntityPath>,
