@@ -6,6 +6,7 @@ use re_data_store::{
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::TimeType;
+use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
@@ -416,7 +417,9 @@ fn visible_history_ui(
     entity_props: &mut EntityProperties,
 ) {
     //TODO(#4107): support more space view types.
-    if space_view_class_name != "3D" && space_view_class_name != "2D" {
+    if space_view_class_name != SpatialSpaceView3D::NAME
+        && space_view_class_name != SpatialSpaceView2D::NAME
+    {
         return;
     }
 
