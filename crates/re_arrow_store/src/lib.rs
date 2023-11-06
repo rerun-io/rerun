@@ -15,6 +15,8 @@
 //!
 
 mod arrow_util;
+mod changelog;
+mod metadata_registry;
 mod store;
 mod store_arrow;
 mod store_dump;
@@ -36,6 +38,7 @@ pub mod polars_util;
 pub mod test_util;
 
 pub use self::arrow_util::ArrayExt;
+pub use self::changelog::{SharedStoreView, StoreDiff, StoreEvent, StoreView, StoreViewBuilder};
 pub use self::store::{DataStore, DataStoreConfig, StoreGeneration};
 pub use self::store_gc::{Deleted, GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::store_helpers::VersionedComponent;
@@ -43,9 +46,10 @@ pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_stats::{DataStoreRowStats, DataStoreStats, EntityStats};
 pub use self::store_write::{WriteError, WriteResult};
 
+pub(crate) use self::metadata_registry::{MetadataRegistry, Registry};
 pub(crate) use self::store::{
     ClusterCellCache, DataTypeRegistry, IndexedBucket, IndexedBucketInner, IndexedTable,
-    MetadataRegistry, PersistentIndexedTable,
+    PersistentIndexedTable,
 };
 
 // Re-exports

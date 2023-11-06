@@ -9,20 +9,26 @@ impl std::fmt::Display for DataStore {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
+            id,
             cluster_key,
             config,
             cluster_cell_cache: _,
-            metadata_registry: _,
+            row_registry: _,
+            entity_path_registry,
+            component_times_registry,
+            // views,
             type_registry: _,
             tables,
             timeless_tables,
             insert_id: _,
             query_id: _,
             gc_id: _,
+            event_id: _,
         } = self;
 
         f.write_str("DataStore {\n")?;
 
+        f.write_str(&indent::indent_all_by(4, format!("id: {id}\n")))?;
         f.write_str(&indent::indent_all_by(
             4,
             format!("cluster_key: {cluster_key:?}\n"),

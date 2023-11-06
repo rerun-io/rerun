@@ -1,17 +1,24 @@
-use std::collections::BTreeMap;
 use std::sync::atomic::AtomicU64;
+use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 use smallvec::SmallVec;
 
 use re_log_types::{
     DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
-    RowIdVec, TimeInt, TimePoint, TimeRange, Timeline,
+    RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
 };
+use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
+
+use crate::SharedStoreView;
+use crate::{changelog::StoreView, MetadataRegistry, Registry};
+
+// TODO: identify tables, buckets, etc
+// TODO: let's make everything RowId based once and for all
+// TODO: also metadata_registry should probably be row_registry
 
 // --- Data store ---
 
@@ -97,42 +104,6 @@ impl std::ops::DerefMut for DataTypeRegistry {
     }
 }
 
-/// Keeps track of arbitrary per-row metadata.
-#[derive(Debug, Clone)]
-pub struct MetadataRegistry<T: Clone> {
-    pub registry: BTreeMap<RowId, T>,
-
-    /// Cached heap size, because the registry gets very, very large.
-    pub heap_size_bytes: u64,
-}
-
-impl Default for MetadataRegistry<TimePoint> {
-    fn default() -> Self {
-        let mut this = Self {
-            registry: Default::default(),
-            heap_size_bytes: 0,
-        };
-        this.heap_size_bytes = this.heap_size_bytes(); // likely zero, just future proofing
-        this
-    }
-}
-
-impl<T: Clone> std::ops::Deref for MetadataRegistry<T> {
-    type Target = BTreeMap<RowId, T>;
-
-    #[inline]
-    fn deref(&self) -> &Self::Target {
-        &self.registry
-    }
-}
-
-impl<T: Clone> std::ops::DerefMut for MetadataRegistry<T> {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.registry
-    }
-}
-
 /// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, …) so that they
 /// can be properly deduplicated on insertion.
 #[derive(Debug, Default, Clone)]
@@ -156,9 +127,11 @@ impl std::ops::DerefMut for ClusterCellCache {
 
 // ---
 
+// TODO: eh, make it 2 u64s with a as_u128
+// TODO: this should be u128 and account for GCs too
 /// Incremented on each edit
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct StoreGeneration(u64);
+pub struct StoreGeneration(u128);
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
@@ -172,6 +145,8 @@ pub struct StoreGeneration(u64);
 /// Additionally, if the `polars` feature is enabled, you can dump the entire datastore as a
 /// flat denormalized dataframe using [`Self::to_dataframe`].
 pub struct DataStore {
+    pub(crate) id: StoreId,
+
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
     ///
@@ -189,17 +164,29 @@ pub struct DataStore {
     /// The configuration of the data store (e.g. bucket sizes).
     pub(crate) config: DataStoreConfig,
 
+    // TODO: this needs to die once we have a real runtime registry -> link to issue
     /// Keeps track of datatype information for all component types that have been written to
     /// the store so far.
     ///
     /// See also [`Self::lookup_datatype`].
     pub(crate) type_registry: DataTypeRegistry,
 
-    /// Keeps track of arbitrary per-row metadata.
+    /// Maintains per-[`RowId`] information.
     ///
-    /// Only used to map `RowId`s to their original [`TimePoint`]s at the moment.
-    pub(crate) metadata_registry: MetadataRegistry<TimePoint>,
+    /// This is the source of truth for what [`RowId`]s currently exist.
+    /// If an incoming [`RowId`] doesn't exist in this registry, then it will appear as a new
+    /// addition in the changelog.
+    pub(crate) row_registry: Registry<RowId, TimePoint>,
 
+    // TODO
+    pub(crate) entity_path_registry: Registry<EntityPathHash, ()>,
+
+    // TODO
+    pub(crate) component_times_registry:
+        Registry<(EntityPathHash, ComponentName), IntMap<Timeline, TimeInt>>,
+
+    // TODO
+    // pub(crate) views: Vec<SharedStoreView>,
     /// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, …)
     /// so that they can be properly deduplicated on insertion.
     pub(crate) cluster_cell_cache: ClusterCellCache,
@@ -222,15 +209,23 @@ pub struct DataStore {
 
     /// Monotonically increasing ID for GCs.
     pub(crate) gc_id: u64,
+
+    /// Monotonically increasing ID for store events.
+    pub(crate) event_id: AtomicU64,
 }
 
+// TODO: this is just weird, why do we have this? tests?
 impl Clone for DataStore {
     fn clone(&self) -> Self {
         Self {
+            id: self.id.clone(),
             cluster_key: self.cluster_key,
             config: self.config.clone(),
             type_registry: self.type_registry.clone(),
-            metadata_registry: self.metadata_registry.clone(),
+            row_registry: self.row_registry.clone(),
+            entity_path_registry: self.entity_path_registry.clone(),
+            component_times_registry: self.component_times_registry.clone(),
+            // views: Vec::new(), // TODO: ???
             cluster_cell_cache: self.cluster_cell_cache.clone(),
             tables: self.tables.clone(),
             timeless_tables: self.timeless_tables.clone(),
@@ -240,25 +235,36 @@ impl Clone for DataStore {
                 .load(std::sync::atomic::Ordering::Relaxed)
                 .into(),
             gc_id: self.gc_id,
+            event_id: self
+                .event_id
+                .load(std::sync::atomic::Ordering::Relaxed)
+                .into(),
         }
     }
 }
 
 impl DataStore {
     /// See [`Self::cluster_key`] for more information about the cluster key.
-    pub fn new(cluster_key: ComponentName, config: DataStoreConfig) -> Self {
-        Self {
+    pub fn new(id: StoreId, cluster_key: ComponentName, config: DataStoreConfig) -> Self {
+        let mut this = Self {
+            id,
             cluster_key,
             config,
             cluster_cell_cache: Default::default(),
-            metadata_registry: Default::default(),
+            row_registry: Default::default(),
+            entity_path_registry: Default::default(),
+            component_times_registry: Default::default(),
+            // views: Default::default(),
             type_registry: Default::default(),
             tables: Default::default(),
             timeless_tables: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
             gc_id: 0,
-        }
+            event_id: AtomicU64::new(0),
+        };
+
+        this
     }
 
     /// The column name used for storing insert requests' IDs alongside the data when manipulating
@@ -272,7 +278,7 @@ impl DataStore {
     /// Return the current `StoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
     pub fn generation(&self) -> StoreGeneration {
-        StoreGeneration(self.insert_id)
+        StoreGeneration(((self.insert_id as u128) << 64) | self.gc_id as u128)
     }
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
@@ -339,6 +345,7 @@ fn datastore_internal_repr() {
     use re_types_core::Loggable as _;
 
     let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         re_types::components::InstanceKey::name(),
         DataStoreConfig {
             indexed_bucket_num_rows: 0,
@@ -393,6 +400,7 @@ pub struct IndexedTable {
     /// though the bucket doesn't actually contains data with a timestamp of `-∞`!
     pub buckets: BTreeMap<TimeInt, IndexedBucket>,
 
+    // TODO: that is a pretty weird one...
     /// Track all of the components that have been written to.
     ///
     /// Note that this set will never be purged and will continue to return components that may

@@ -585,7 +585,7 @@ impl TimePanel {
 
                 // `data.times` does not contain timeless. Need to add those manually:
                 let total_num_messages =
-                    messages_over_time.total_count() + data.num_timeless_messages() as u64;
+                    messages_over_time.total_count() + data.num_timeless_messages();
                 response.on_hover_ui(|ui| {
                     if total_num_messages == 0 {
                         ui.label(ctx.re_ui.warning_text(format!(
@@ -620,7 +620,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         ui,
-                        data.num_timeless_messages(),
+                        data.num_timeless_messages() as usize, // TODO
                         messages_over_time,
                         row_rect,
                         &self.time_ranges_ui,

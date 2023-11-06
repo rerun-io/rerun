@@ -9,6 +9,8 @@ use crate::{
 
 // ---
 
+// TODO: there should be an issue somewhere that mentions how slow this thing is
+
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct DataStoreRowStats {
     pub num_rows: u64,
@@ -95,8 +97,8 @@ impl DataStoreStats {
         let metadata_registry = {
             re_tracing::profile_scope!("metadata_registry");
             DataStoreRowStats {
-                num_rows: store.metadata_registry.len() as _,
-                num_bytes: store.metadata_registry.total_size_bytes(),
+                num_rows: store.row_registry.len() as _,
+                num_bytes: store.row_registry.total_size_bytes(),
             }
         };
 

@@ -5,7 +5,7 @@ use crate::path::EntityPath;
 /// A [`EntityPath`] plus a [`ComponentName`].
 ///
 /// Example: `camera / "left" / points / #42`.`color`
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct ComponentPath {
     /// `camera / "left" / points / #42`

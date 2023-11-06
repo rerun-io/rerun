@@ -248,8 +248,14 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
 }
 
 fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> DataStore {
-    let mut store = DataStore::new(InstanceKey::name(), Default::default());
-    msgs.for_each(|row| store.insert_row(row).unwrap());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
+    msgs.for_each(|row| {
+        store.insert_row(row).unwrap();
+    });
     store
 }
 

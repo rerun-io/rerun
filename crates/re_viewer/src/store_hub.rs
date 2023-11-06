@@ -1,7 +1,7 @@
 use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 
-use re_arrow_store::{DataStoreConfig, DataStoreStats};
+use re_arrow_store::{DataStoreConfig, DataStoreStats, StoreViewBuilder};
 use re_data_store::StoreDb;
 use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
@@ -83,6 +83,11 @@ impl StoreHub {
 
             blueprint_last_save: Default::default(),
         }
+    }
+
+    // TODO
+    pub fn register_view_builder(&mut self, view_builder: Box<StoreViewBuilder>) {
+        self.store_dbs.register_view_builder(view_builder);
     }
 
     /// Get a read-only [`StoreContext`] from the [`StoreHub`] if one is available.
@@ -359,9 +364,15 @@ pub enum StoreLoadError {
 pub struct StoreBundle {
     // TODO(emilk): two separate maps per [`StoreKind`].
     store_dbs: ahash::HashMap<StoreId, StoreDb>,
+    view_builders: Vec<Box<StoreViewBuilder>>,
 }
 
 impl StoreBundle {
+    // TODO
+    pub fn register_view_builder(&mut self, view_builder: Box<StoreViewBuilder>) {
+        self.view_builders.push(view_builder);
+    }
+
     /// Decode an rrd stream.
     /// It can theoretically contain multiple recordings, and blueprints.
     pub fn from_rrd(

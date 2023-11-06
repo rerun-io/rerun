@@ -6,20 +6,21 @@ use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, TimeInt, TimePoint,
-    TimeRange,
+    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, EntityPath, TimeInt, TimeRange,
 };
 use re_types_core::{
     components::InstanceKey, ComponentName, ComponentNameSet, Loggable, SizeBytes as _,
 };
 
 use crate::{
-    store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
-    IndexedTable, PersistentIndexedTable,
+    DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner, IndexedTable,
+    PersistentIndexedTable, StoreDiff, StoreEvent,
 };
 
-// TODO(cmc): the store should insert column-per-column rather than row-per-row (purely a
-// performance matter).
+// TODO: gentle reminder that you can insert the same RowId multiple times as long as you don't
+// overlap...
+// If we get rid of that fact, we can have much saner events though, since the RowId becomes the
+// atomic unit of change of both inserts and removals.
 
 // --- Data store ---
 
@@ -52,6 +53,9 @@ pub enum WriteError {
 
 pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
+// TODO: we probably should just remove insert_table... or at the very least return what couldnt be
+// inserted... im not even sure we guarantee atomic insertion of several cells?
+
 impl DataStore {
     /// Inserts a [`DataTable`]'s worth of components into the datastore.
     ///
@@ -62,11 +66,12 @@ impl DataStore {
     /// table's columns: the bigger the tables, the bigger the benefits!
     ///
     /// See [`Self::insert_row`].
-    pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
+    pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<Vec<StoreEvent>> {
+        let mut events = Vec::new();
         for row in table.to_rows() {
-            self.insert_row(&row?)?;
+            events.extend(self.insert_row(&row?)?);
         }
-        Ok(())
+        Ok(events)
     }
 
     /// Inserts a [`DataRow`]'s worth of components into the datastore.
@@ -74,17 +79,50 @@ impl DataStore {
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
     /// based on the length of the components in the payload, in the form of an array of
     /// monotonically increasing `u64`s going from `0` to `N-1`.
-    pub fn insert_row(&mut self, row: &DataRow) -> WriteResult<()> {
+    pub fn insert_row(&mut self, row: &DataRow) -> WriteResult<Vec<StoreEvent>> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
+        let DataRow {
+            row_id,
+            timepoint,
+            entity_path: ent_path,
+            num_instances,
+            cells,
+        } = row;
+
+        // TODO:
+        // - what happens when inserting the same rowid twice? -> we throw a warn today
+        //    - prob should escalate that to hard error / discard the data?
+        // - we need a rowid set to identify full deletion anyway, don't we? -> metadata_registry
+
+        // TODO: how do we know if they are _new_ though?
+        // - a RowId is always new... isn't it?
+        //    -> not necessarily, allowed to be shared across unique timestamps
+        // - a timepoint might or might not be
+        // - an entitypath might or might not be
+        // - a cached cell might or might not be
+        // - a cell might or might not be... we should probably assume it always is tho
+        // let mut modification = CellAddition::at(*row_id, timepoint.clone(), ent_path.clone());
+
+        // TODO: is_new detection:
+        // - RowId: check metadata registry (aka row-registry)
+        // - Time(Point): check time registry (doesn't exist yet)
+        // - EntityPath: check path registry (doesn't exist yet)
+        //
+        // GC is going to have to make sure that these registries are appropriately cleaned too.
+
+        // TODO: timepoints are irrelevant, individual times are what one cares about.
+
         if row.num_cells() == 0 {
-            return Ok(());
+            return Ok(Vec::new());
         }
 
         re_tracing::profile_function!();
 
         // Update type registry and do typechecking if enabled
+        // TODO: not only this should be replaced by a central arrow runtime registry, it should
+        // also be implemented as a changelog subscriber.
         if self.config.enable_typecheck {
             for cell in row.cells().iter() {
                 use std::collections::hash_map::Entry;
@@ -113,14 +151,6 @@ impl DataStore {
                     .insert(cell.component_name(), cell.datatype().clone());
             }
         }
-
-        let DataRow {
-            row_id,
-            timepoint,
-            entity_path: ent_path,
-            num_instances,
-            cells,
-        } = row;
 
         let ent_path_hash = ent_path.hash();
         let num_instances = *num_instances;
@@ -163,58 +193,150 @@ impl DataStore {
             // one… unless we've already generated one of this exact length in the past,
             // in which case we can simply re-use that cell.
 
-            Some(self.generate_cluster_cell(num_instances.into()))
+            let (cell, is_from_cache) = self.generate_cluster_cell(num_instances.into());
+            if !is_from_cache {
+                // modification.cached_cell = Some(cell.clone());
+            }
+
+            Some(cell)
         };
 
         let insert_id = self.config.store_insert_ids.then_some(self.insert_id);
+
+        let mut diffs = Vec::new();
+
+        // Things cannot fail past this point, so this is already true (future truth!).
+        // diffs.push(RowIdDiff(*row_id).added());
+
+        // let mut additions = Vec::new();
+        let mut row_id_is_new = self.row_registry.add(*row_id, timepoint.clone());
+        let mut entity_path_is_new = self.entity_path_registry.add(ent_path_hash);
+
+        // TODO: we need to answer three questions:
+        // - is the row-id new, globally?
+        //      -> we can answer this with a global registry
+        // - is the entity_path new, globally?
+        //      -> we can answer this with yet another global registry
+        // - is each timestamp new, entity+component wise?
+        //      -> we could add yet another registry but maybe we can answer this on inline though?
+        //      -> yeah no that would require sorting... and searching...
+
+        // TODO: dont need the component registry for timeless, just ask the table directly.
 
         if timepoint.is_timeless() {
             let index = self
                 .timeless_tables
                 .entry(ent_path_hash)
-                .or_insert_with(|| PersistentIndexedTable::new(self.cluster_key, ent_path.clone()));
+                .or_insert_with(|| {
+                    // diffs.push(TimelessEntityPathDiff::new(*row_id, ent_path_hash).added());
+                    PersistentIndexedTable::new(self.cluster_key, ent_path.clone())
+                });
 
-            index.insert_row(insert_id, generated_cluster_cell, row);
+            diffs.extend(index.insert_row(insert_id, generated_cluster_cell, row));
+
+            // for cell in row.cells().iter() {
+            //     additions.push(CellAddition {
+            //         row_id: *row_id,
+            //         row_id_is_new,
+            //         times: Default::default(),
+            //         is_new_timeless: self
+            //             .timeless_tables
+            //             .get(&ent_path_hash)
+            //             .map_or(false, |table| {
+            //                 table.columns.contains_key(&cell.component_name())
+            //             }),
+            //         entity_path: ent_path_hash,
+            //         entity_path_is_new,
+            //         cell: cell.clone(),
+            //     });
+            //     row_id_is_new = false;
+            //     entity_path_is_new = false;
+            // }
         } else {
             for (timeline, time) in timepoint.iter() {
                 let ent_path = ent_path.clone(); // shallow
                 let index = self
                     .tables
                     .entry((*timeline, ent_path_hash))
-                    .or_insert_with(|| IndexedTable::new(self.cluster_key, *timeline, ent_path));
+                    .or_insert_with(|| {
+                        // diffs.push(EntityPathDiff::new(*row_id, *timeline, ent_path_hash).added());
+                        IndexedTable::new(self.cluster_key, *timeline, ent_path)
+                    });
 
-                index.insert_row(
+                diffs.extend(index.insert_row(
                     &self.config,
                     insert_id,
                     *time,
                     generated_cluster_cell.clone(), /* shallow */
                     row,
-                );
+                ));
+
+                // for cell in row.cells().iter() {
+                //     additions.push(CellAddition {
+                //         row_id: *row_id,
+                //         row_id_is_new,
+                //         times: timepoint
+                //             .iter()
+                //             .map(|(&timeline, &time)| {
+                //                 let is_new = self.component_times_registry.add(
+                //                     ent_path_hash,
+                //                     cell.component_name(),
+                //                     (timeline, time),
+                //                 );
+                //                 (timeline, (time, is_new))
+                //             })
+                //             .collect(),
+                //         is_new_timeless: false,
+                //         entity_path: ent_path_hash,
+                //         entity_path_is_new,
+                //         cell: cell.clone(),
+                //     });
+                //     row_id_is_new = false;
+                //     entity_path_is_new = false;
+                // }
             }
         }
 
-        self.metadata_registry.upsert(*row_id, timepoint.clone());
+        let events = diffs
+            .into_iter()
+            .map(|diff| StoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect_vec();
 
-        Ok(())
+        // TODO: note that this means that no view will ever be more than one row behind -> they
+        // are always in perfect sync on a row by row basis.
+        Self::on_events(&events);
+
+        // TODO: for non-registered folks
+        Ok(events)
     }
 
     /// Wipes all timeless data.
     ///
     /// Mostly useful for testing/debugging purposes.
     pub fn wipe_timeless_data(&mut self) {
+        // TODO: no events??!
         self.timeless_tables = Default::default();
     }
 
     /// Auto-generates an appropriate cluster cell for the specified number of instances and
     /// transparently handles caching.
+    ///
+    /// Returns `true` if the cell was returned from cache.
     // TODO(#1777): shared slices for auto generated keys
-    fn generate_cluster_cell(&mut self, num_instances: u32) -> DataCell {
+    fn generate_cluster_cell(&mut self, num_instances: u32) -> (DataCell, bool) {
         re_tracing::profile_function!();
 
         if let Some(cell) = self.cluster_cell_cache.get(&num_instances) {
             // Cache hit!
 
-            cell.clone() // shallow
+            (cell.clone(), true)
         } else {
             // Cache miss! Craft a new instance keys from the ground up.
 
@@ -228,44 +350,8 @@ impl DataStore {
             self.cluster_cell_cache
                 .insert(num_instances, cell.clone() /* shallow */);
 
-            cell
+            (cell, false)
         }
-    }
-}
-
-impl MetadataRegistry<TimePoint> {
-    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) {
-        let mut added_size_bytes = 0;
-
-        // This is valuable information even for a timeless timepoint!
-        match self.entry(row_id) {
-            std::collections::btree_map::Entry::Vacant(entry) => {
-                // NOTE: In a map, thus on the heap!
-                added_size_bytes += row_id.total_size_bytes();
-                added_size_bytes += timepoint.total_size_bytes();
-                entry.insert(timepoint);
-            }
-            // NOTE: When saving and loading data from disk, it's very possible that we try to
-            // insert data for a single `RowId` in multiple calls (buckets are per-timeline, so a
-            // single `RowId` can get spread across multiple buckets)!
-            std::collections::btree_map::Entry::Occupied(mut entry) => {
-                let entry = entry.get_mut();
-                for (timeline, time) in timepoint {
-                    if let Some(old_time) = entry.insert(timeline, time) {
-                        if old_time != time {
-                            re_log::error!(%row_id, ?timeline, old_time = ?old_time, new_time = ?time, "detected re-used `RowId/Timeline` pair, this is illegal and will lead to undefined behavior in the datastore");
-                            debug_assert!(false, "detected re-used `RowId/Timeline`");
-                        }
-                    } else {
-                        // NOTE: In a map, thus on the heap!
-                        added_size_bytes += timeline.total_size_bytes();
-                        added_size_bytes += time.as_i64().total_size_bytes();
-                    }
-                }
-            }
-        }
-
-        self.heap_size_bytes += added_size_bytes;
     }
 }
 
@@ -279,9 +365,10 @@ impl IndexedTable {
         time: TimeInt,
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
-    ) {
+    ) -> Vec<StoreDiff> {
         re_tracing::profile_function!();
 
+        let mut diffs = Vec::new();
         let components: ComponentNameSet = row.component_names().collect();
 
         // borrowck workaround
@@ -409,12 +496,24 @@ impl IndexedTable {
             "inserted into indexed tables"
         );
 
-        self.buckets_size_bytes +=
-            bucket.insert_row(insert_id, time, generated_cluster_cell, row, &components);
-        self.buckets_num_rows += 1;
+        diffs.extend({
+            let (events, size_bytes) = bucket.insert_row(
+                insert_id,
+                &ent_path,
+                time,
+                generated_cluster_cell,
+                row,
+                &components,
+            );
+            self.buckets_size_bytes += size_bytes;
+            self.buckets_num_rows += 1;
+            events
+        });
 
         // Insert components last, only if bucket-insert succeeded.
         self.all_components.extend(components);
+
+        diffs
     }
 }
 
@@ -423,13 +522,15 @@ impl IndexedBucket {
     fn insert_row(
         &mut self,
         insert_id: Option<u64>,
+        ent_path: &EntityPath,
         time: TimeInt,
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
         components: &ComponentNameSet,
-    ) -> u64 {
+    ) -> (Vec<StoreDiff>, u64) {
         re_tracing::profile_function!();
 
+        let mut diffs = Vec::new();
         let mut size_bytes_added = 0u64;
         let num_rows = self.num_rows() as usize;
 
@@ -476,11 +577,18 @@ impl IndexedBucket {
                 column
             });
             size_bytes_added += cluster_cell.total_size_bytes();
-            column.0.push(Some(cluster_cell));
+            column.0.push(Some(cluster_cell.clone()));
+
+            diffs.push(
+                StoreDiff::addition(row.row_id(), ent_path.clone(), component_name, cluster_cell)
+                    .at(self.timeline, time),
+            );
         }
 
         // append components to their respective columns (2-way merge)
 
+        // TODO: this would be the place where we need to know whether the timestamp is new as far
+        // as this component is concerned.
         // 2-way merge, step 1: left-to-right
         for cell in row.cells().iter() {
             let component_name = cell.component_name();
@@ -488,10 +596,34 @@ impl IndexedBucket {
                 let column = DataCellColumn::empty(col_time.len().saturating_sub(1));
                 size_bytes_added += component_name.total_size_bytes();
                 size_bytes_added += column.total_size_bytes();
+
+                // diffs.push(
+                //     ComponentDiff::new(
+                //         row.row_id(),
+                //         self.timeline,
+                //         ent_path.hash(),
+                //         component_name,
+                //     )
+                //     .added(),
+                // );
+
                 column
             });
             size_bytes_added += cell.total_size_bytes();
             column.0.push(Some(cell.clone() /* shallow */));
+
+            // TODO: that should be it, right?
+            // diffs.push(StoreDiff::TimestampAdded(
+            //     row.row_id(),
+            //     self.timeline,
+            //     ent_path.hash(),
+            //     component_name,
+            //     time,
+            // ));
+            diffs.push(
+                StoreDiff::addition(row.row_id(), ent_path.clone(), component_name, cell.clone())
+                    .at(self.timeline, time),
+            );
         }
 
         // 2-way merge, step 2: right-to-left
@@ -518,7 +650,7 @@ impl IndexedBucket {
             self.sanity_check().unwrap();
         }
 
-        size_bytes_added
+        (diffs, size_bytes_added)
     }
 
     /// Splits the bucket into two, potentially uneven parts.
@@ -806,13 +938,14 @@ impl PersistentIndexedTable {
         insert_id: Option<u64>,
         generated_cluster_cell: Option<DataCell>,
         row: &DataRow,
-    ) {
+    ) -> Vec<StoreDiff> {
         re_tracing::profile_function!();
 
+        let mut diffs = Vec::new();
         let num_rows = self.num_rows() as usize;
 
         let Self {
-            ent_path: _,
+            ent_path,
             cluster_key: _,
             col_insert_id,
             col_row_id,
@@ -837,15 +970,38 @@ impl PersistentIndexedTable {
             let column = columns
                 .entry(cluster_cell.component_name())
                 .or_insert_with(|| DataCellColumn::empty(num_rows));
-            column.0.push(Some(cluster_cell));
+            column.0.push(Some(cluster_cell.clone()));
+
+            diffs.push(StoreDiff::addition(
+                row.row_id(),
+                ent_path.clone(),
+                cluster_cell.component_name(),
+                cluster_cell,
+            ));
         }
 
         // 2-way merge, step 1: left-to-right
         for cell in row.cells().iter() {
-            let column = columns
-                .entry(cell.component_name())
-                .or_insert_with(|| DataCellColumn::empty(num_rows));
+            let column = columns.entry(cell.component_name()).or_insert_with(|| {
+                // diffs.push(
+                //     TimelessComponentDiff::new(
+                //         row.row_id(),
+                //         ent_path.hash(),
+                //         cell.component_name(),
+                //     )
+                //     .added(),
+                // );
+                DataCellColumn::empty(num_rows)
+            });
             column.0.push(Some(cell.clone() /* shallow */));
+
+            // TODO: that should be it, right?
+            diffs.push(StoreDiff::addition(
+                row.row_id(),
+                ent_path.clone(),
+                cell.component_name(),
+                cell.clone(),
+            ));
         }
 
         // 2-way merge, step 2: right-to-left
@@ -864,5 +1020,7 @@ impl PersistentIndexedTable {
 
         #[cfg(debug_assertions)]
         self.sanity_check().unwrap();
+
+        diffs
     }
 }

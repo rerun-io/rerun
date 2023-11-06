@@ -466,7 +466,7 @@ impl DataStore {
     pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&TimePoint> {
         re_tracing::profile_function!();
 
-        self.metadata_registry.get(row_id)
+        self.row_registry.get(row_id)
     }
 
     /// Sort all unsorted indices in the store.

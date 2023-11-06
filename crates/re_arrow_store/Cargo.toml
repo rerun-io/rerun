@@ -49,6 +49,7 @@ document-features.workspace = true
 indent.workspace = true
 itertools = { workspace = true }
 nohash-hasher.workspace = true
+once_cell.workspace = true
 parking_lot.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
@@ -86,6 +87,7 @@ polars-core = { workspace = true, features = [
   "sort_multiple",
 ] }
 rand.workspace = true
+similar-asserts.workspace = true
 tinyvec.workspace = true
 
 [lib]

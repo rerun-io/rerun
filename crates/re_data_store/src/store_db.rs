@@ -2,26 +2,32 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
+use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreView};
 use re_log_types::{
     ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
     PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
 use re_types_core::{components::InstanceKey, Loggable};
 
-use crate::{Error, TimesPerTimeline};
+use crate::{
+    store_views::{TimesPerTimeline, TimesPerTimelineView},
+    EntityTreeEvent, Error,
+};
 
 // ----------------------------------------------------------------------------
 
 /// Stored entities with easy indexing of the paths.
 ///
 /// NOTE: don't go mutating the contents of this. Use the public functions instead.
+// TODO: that is also a non registerable view
 pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
     /// Used for time control
-    pub times_per_timeline: TimesPerTimeline,
+    // TODO
+    // TODO: ha, so this one _is_ global
+    pub times_per_timeline: TimesPerTimelineView,
 
     /// A tree-view (split on path components) of the entities.
     pub tree: crate::EntityTree,
@@ -30,21 +36,20 @@ pub struct EntityDb {
     pub data_store: re_arrow_store::DataStore,
 }
 
-impl Default for EntityDb {
-    fn default() -> Self {
+impl EntityDb {
+    pub fn new(store_id: StoreId) -> Self {
         Self {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             data_store: re_arrow_store::DataStore::new(
+                store_id,
                 InstanceKey::name(),
                 DataStoreConfig::default(),
             ),
         }
     }
-}
 
-impl EntityDb {
     /// A sorted list of all the entity paths in this database.
     pub fn entity_paths(&self) -> Vec<&EntityPath> {
         use itertools::Itertools as _;
@@ -75,110 +80,148 @@ impl EntityDb {
             .or_insert_with(|| entity_path.clone());
     }
 
-    // TODO(cmc): Updates of secondary datastructures should be the result of subscribing to the
-    // datastore's changelog and reacting to these changes appropriately. We shouldn't be creating
-    // many sources of truth.
+    // TODO: explain two-passes
     fn add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+        re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
+
         self.register_entity_path(&row.entity_path);
 
-        for (&timeline, &time_int) in row.timepoint().iter() {
-            self.times_per_timeline.insert(timeline, time_int);
-        }
+        // First pass: write row to storage, apply resulting store events onto the entity-tree
+        // and collect resulting entity-tree events.
+        let store_events = self.data_store.insert_row(row)?;
+        self.times_per_timeline.on_events(&store_events); // TODO
+        let entity_tree_events = self.tree.on_additions(&store_events);
 
-        for cell in row.cells().iter() {
-            let component_path =
-                ComponentPath::new(row.entity_path().clone(), cell.component_name());
-            let pending_clears = self.tree.add_data_msg(row.timepoint(), &component_path);
+        // Seconds pass: apply entity-tree events onto the store, collect resulting store events
+        // then apply store events onto entity-tree one final time.
+        let store_events = self.on_entity_tree_events(entity_tree_events)?;
+        self.times_per_timeline.on_events(&store_events); // TODO
+        let entity_tree_events = self.tree.on_additions(&store_events);
 
-            for (row_id, time_point) in pending_clears {
-                // Create and insert an empty component into the arrow store
-                // TODO(jleibs): Faster empty-array creation
-                let cell =
-                    DataCell::from_arrow_empty(cell.component_name(), cell.datatype().clone());
-
-                // NOTE(cmc): The fact that this inserts data to multiple entity paths using a
-                // single `RowId` is… interesting. Keep it in mind.
-                let row = DataRow::from_cells1(
-                    row_id,
-                    row.entity_path.clone(),
-                    time_point.clone(),
-                    cell.num_instances(),
-                    cell,
-                )?;
-                self.data_store.insert_row(&row).ok();
-
-                // Also update the tree with the clear-event
-                self.tree.add_data_msg(&time_point, &component_path);
-            }
-        }
-
-        self.data_store.insert_row(row)?;
-
-        // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
-        // instead.
-        use re_types_core::components::ClearIsRecursive;
-        if let Some(idx) = row.find_cell(&ClearIsRecursive::name()) {
-            let cell = &row.cells()[idx];
-            let settings = cell.try_to_native_mono::<ClearIsRecursive>().unwrap();
-            let path_op = if settings.map_or(false, |s| s.0) {
-                PathOp::ClearRecursive(row.entity_path.clone())
-            } else {
-                PathOp::ClearComponents(row.entity_path.clone())
-            };
-            // NOTE: We've just added the row itself, so make sure to bump the row ID already!
-            self.add_path_op(row.row_id().next(), row.timepoint(), &path_op);
-        }
+        // There should be no changes in the entity-tree at this point since the whole process
+        // should self-stabilize after a single roundtrip.
+        debug_assert!(entity_tree_events.is_empty());
 
         Ok(())
     }
 
-    fn add_path_op(&mut self, row_id: RowId, time_point: &TimePoint, path_op: &PathOp) {
-        let cleared_paths = self.tree.add_path_op(row_id, time_point, path_op);
+    // TODO
+    fn on_entity_tree_events(
+        &mut self,
+        entity_tree_events: EntityTreeEvent,
+    ) -> Result<Vec<StoreEvent>, Error> {
+        let mut store_events = Vec::new();
 
-        // NOTE: Btree! We need a stable ordering here!
-        let mut cells = BTreeMap::<EntityPath, Vec<DataCell>>::default();
-        for component_path in cleared_paths {
-            if let Some(data_type) = self
-                .data_store
-                .lookup_datatype(&component_path.component_name)
-            {
-                let cells = cells
-                    .entry(component_path.entity_path.clone())
-                    .or_insert_with(Vec::new);
+        // Apply partial clears caused by freshly registered clears.
+        {
+            let mut cells_per_entity_per_row_id =
+                BTreeMap::<RowId, BTreeMap<EntityPath, Vec<DataCell>>>::default();
+            for (row_id, component_paths) in entity_tree_events.paths_to_clear {
+                for component_path in component_paths {
+                    if let Some(data_type) = self
+                        .data_store
+                        .lookup_datatype(&component_path.component_name)
+                    {
+                        let per_entity = cells_per_entity_per_row_id.entry(row_id).or_default();
+                        let cells = per_entity
+                            .entry(component_path.entity_path.clone())
+                            .or_default();
 
-                cells.push(DataCell::from_arrow_empty(
-                    component_path.component_name,
-                    data_type.clone(),
-                ));
-
-                // Update the tree with the clear-event.
-                self.tree.add_data_msg(time_point, &component_path);
-            }
-        }
-
-        // Create and insert empty components into the arrow store.
-        let mut row_id = row_id;
-        for (ent_path, cells) in cells {
-            // NOTE: It is important we insert all those empty components using a single row (id)!
-            // 1. It'll be much more efficient when querying that data back.
-            // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
-            //    these rows! This flaky ordering will in turn leak through the public
-            //    API (e.g. range queries)!!
-            match DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells) {
-                Ok(row) => {
-                    self.data_store.insert_row(&row).ok();
-                }
-                Err(err) => {
-                    re_log::error_once!("Failed to insert PathOp {path_op:?}: {err}");
+                        cells.push(DataCell::from_arrow_empty(
+                            component_path.component_name,
+                            data_type.clone(),
+                        ));
+                    }
                 }
             }
 
-            // Don't reuse the same row ID for the next entity!
-            row_id = row_id.next();
+            // Create and insert empty components into the arrow store.
+            for (original_row_id, per_entity) in cells_per_entity_per_row_id {
+                let timepoint = entity_tree_events
+                    .timepoints_to_clear
+                    .get(&original_row_id)
+                    .cloned()
+                    .unwrap_or_default();
+                let mut row_id = original_row_id;
+                for (entity_path, cells) in per_entity {
+                    // NOTE: It is important we insert all those empty components using a single row (id)!
+                    // 1. It'll be much more efficient when querying that data back.
+                    // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
+                    //    these rows! This flaky ordering will in turn leak through the public
+                    //    API (e.g. range queries)!!
+                    match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
+                        Ok(row) => {
+                            store_events.extend(self.data_store.insert_row(&row)?);
+                        }
+                        Err(err) => {
+                            re_log::error_once!("XXXXXXXXXXXXXXXXX: {err}"); // TODO
+                        }
+                    }
+
+                    // Don't reuse the same row ID for the next entity!
+                    row_id = row_id.next();
+                }
+            }
         }
+
+        Ok(store_events)
     }
 
-    pub fn purge(&mut self, deleted: &re_arrow_store::Deleted) {
+    // fn add_path_op(
+    //     &mut self,
+    //     row_id: RowId,
+    //     time_point: &TimePoint,
+    //     path_op: &PathOp,
+    // ) -> Result<Vec<StoreEvent>, Error> {
+    //     let mut store_events = Vec::new();
+    //     let cleared_paths = self.tree.add_path_op(row_id, time_point, path_op);
+    //
+    //     // NOTE: Btree! We need a stable ordering here!
+    //     let mut cells = BTreeMap::<EntityPath, Vec<DataCell>>::default();
+    //     for component_path in cleared_paths {
+    //         if let Some(data_type) = self
+    //             .data_store
+    //             .lookup_datatype(&component_path.component_name)
+    //         {
+    //             let cells = cells
+    //                 .entry(component_path.entity_path.clone())
+    //                 .or_insert_with(Vec::new);
+    //
+    //             cells.push(DataCell::from_arrow_empty(
+    //                 component_path.component_name,
+    //                 data_type.clone(),
+    //             ));
+    //
+    //             // Update the tree with the clear-event.
+    //             self.tree.add_data_msg(time_point, &component_path);
+    //         }
+    //     }
+    //
+    //     // Create and insert empty components into the arrow store.
+    //     let mut row_id = row_id;
+    //     for (ent_path, cells) in cells {
+    //         // NOTE: It is important we insert all those empty components using a single row (id)!
+    //         // 1. It'll be much more efficient when querying that data back.
+    //         // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
+    //         //    these rows! This flaky ordering will in turn leak through the public
+    //         //    =PI (e.g. range queries)!!
+    //         match DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells) {
+    //             Ok(row) => {
+    //                 store_events.extend(self.data_store.insert_row(&row)?);
+    //             }
+    //             Err(err) => {
+    //                 re_log::error_once!("Failed to insert PathOp {path_op:?}: {err}");
+    //             }
+    //         }
+    //
+    //         // Don't reuse the same row ID for the next entity!
+    //         row_id = row_id.next();
+    //     }
+    //
+    //     Ok(store_events)
+    // }
+
+    pub fn purge(&mut self, deleted: &re_arrow_store::Deleted, store_events: &[StoreEvent]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -188,23 +231,30 @@ impl EntityDb {
             data_store: _, // purged before this function is called
         } = self;
 
-        let mut actually_deleted = Default::default();
+        // let mut actually_deleted = Default::default();
 
-        {
-            re_tracing::profile_scope!("tree");
-            tree.purge(deleted, &mut actually_deleted);
-        }
+        // TODO: let's filter here based on counts?
 
-        {
-            re_tracing::profile_scope!("times_per_timeline");
-            for (timeline, times) in actually_deleted.timeful {
-                if let Some(time_set) = times_per_timeline.get_mut(&timeline) {
-                    for time in times {
-                        time_set.remove(&time);
-                    }
-                }
-            }
-        }
+        tree.purge2(store_events);
+        // tree.on_additions(store_events);
+        // {
+        //     re_tracing::profile_scope!("tree");
+        //     tree.purge(deleted, &mut actually_deleted);
+        // }
+
+        times_per_timeline.on_events(store_events);
+
+        // TODO
+        // {
+        //     re_tracing::profile_scope!("times_per_timeline");
+        //     for (timeline, times) in actually_deleted.timeful {
+        //         if let Some(time_set) = times_per_timeline.get_mut(&timeline) {
+        //             for time in times {
+        //                 time_set.remove(&time);
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 
@@ -230,14 +280,14 @@ pub struct StoreDb {
 impl StoreDb {
     pub fn new(store_id: StoreId) -> Self {
         Self {
-            store_id,
+            store_id: store_id.clone(),
             data_source: None,
             set_store_info: None,
-            entity_db: Default::default(),
+            entity_db: EntityDb::new(store_id),
         }
     }
 
-    /// Helper function to create a recording from a [`StoreInfo`] and a some [`DataRow`]s.
+    /// Helper function to create a recording from a [`StoreInfo`] and some [`DataRow`]s.
     ///
     /// This is useful to programmatically create recordings from within the viewer, which cannot
     /// use the `re_sdk`, which is not Wasm-compatible.
@@ -293,7 +343,7 @@ impl StoreDb {
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.entity_db.times_per_timeline
+        &self.entity_db.times_per_timeline.times
     }
 
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
@@ -342,8 +392,7 @@ impl StoreDb {
 
         // TODO(cmc): batch all of this
         for row in table.to_rows() {
-            let row = row?;
-            self.add_data_row(&row)?;
+            self.add_data_row(&row?)?;
         }
 
         Ok(())
@@ -386,7 +435,7 @@ impl StoreDb {
     pub fn gc(&mut self, gc_options: GarbageCollectionOptions) {
         re_tracing::profile_function!();
 
-        let (deleted, stats_diff) = self.entity_db.data_store.gc(gc_options);
+        let (deleted, store_events, stats_diff) = self.entity_db.data_store.gc(gc_options);
         re_log::trace!(
             num_row_ids_dropped = deleted.row_ids.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
@@ -400,7 +449,7 @@ impl StoreDb {
             entity_db,
         } = self;
 
-        entity_db.purge(&deleted);
+        entity_db.purge(&deleted, &store_events);
     }
 
     /// Key used for sorting recordings in the UI.

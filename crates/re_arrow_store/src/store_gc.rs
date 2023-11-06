@@ -1,13 +1,21 @@
 use ahash::{HashMap, HashSet};
 
 use nohash_hasher::IntMap;
-use re_log_types::{EntityPathHash, RowId, TimeInt, TimeRange, Timeline};
+use re_log_types::{EntityPath, EntityPathHash, RowId, TimeInt, TimeRange, Timeline};
 use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{
     store::{IndexedBucketInner, IndexedTable, PersistentIndexedTable},
-    DataStore, DataStoreStats,
+    DataStore, DataStoreStats, StoreDiff, StoreEvent,
 };
+
+// TODO: it doesn't really make sense to account for the size of metadata registry since it is only
+// one of _many_ secondary datastructures.
+
+// TODO: a RowId without a `(Timeline, Time)` doesn't mean that much.
+
+// TODO: Since we are RowId-driven, deleting a RowId's worth (WHICH IS NOT THE SAME AS DELETING A
+// ROW!!!) is guaranteed to delete all timestamps associated with that row
 
 // ---
 
@@ -61,12 +69,17 @@ impl std::fmt::Display for GarbageCollectionTarget {
 
 #[derive(Default)]
 pub struct Deleted {
-    /// What rows where deleted?
+    // TODO: reminder that we GC on a RowId-basis: a RowId cannot survive in half places.
+    // Or do we? the protection stuff makes things weird though... or does it?
+    /// What rows were deleted?
     pub row_ids: HashSet<RowId>,
 
-    /// What time points where deleted for each entity+timeline+component?
+    // TODO: reminder that you can have the same time more than once, even at this level of
+    // precision.
+    /// What time points were deleted for each entity+timeline+component?
     pub timeful: IntMap<EntityPathHash, IntMap<Timeline, IntMap<ComponentName, Vec<TimeInt>>>>,
 
+    // TODO: that sounds always right no matter what I think?
     /// For each entity+component, how many timeless entries were deleted?
     pub timeless: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
 }
@@ -87,8 +100,7 @@ impl DataStore {
     ///
     /// Garbage collection works on a row-level basis and is driven by [`RowId`] order,
     /// i.e. the order defined by the clients' wall-clocks, allowing it to drop data across
-    /// the different timelines
-    /// in a fair, deterministic manner.
+    /// the different timelines in a fair, deterministic manner.
     /// Similarly, out-of-order data is supported out of the box.
     ///
     /// The garbage collector doesn't deallocate data in and of itself: all it does is drop the
@@ -102,17 +114,16 @@ impl DataStore {
     /// component on each timeline. The only practical guarantee this gives is that a latest-at query
     /// with a value of max-int will be unchanged. However, latest-at queries from other arbitrary
     /// points in time may provide different results pre- and post- GC.
-    ///
-    /// NOTE: This configuration option is not yet enabled for the Rerun viewer GC pass.
-    ///
-    /// See <https://github.com/rerun-io/rerun/issues/1803>.
     //
     // TODO(#1804): There shouldn't be any need to return the purged `RowId`s, all secondary
     // datastructures should be able to purge themselves based solely off of
     // [`DataStore::oldest_time_per_timeline`].
     //
     // TODO(#1823): Workload specific optimizations.
-    pub fn gc(&mut self, options: GarbageCollectionOptions) -> (Deleted, DataStoreStats) {
+    pub fn gc(
+        &mut self,
+        options: GarbageCollectionOptions,
+    ) -> (Deleted, Vec<StoreEvent>, DataStoreStats) {
         re_tracing::profile_function!();
 
         self.gc_id += 1;
@@ -124,7 +135,7 @@ impl DataStore {
 
         let protected_rows = self.find_all_protected_rows(options.protect_latest);
 
-        let mut deleted = match options.target {
+        let mut diffs = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 assert!((0.0..=1.0).contains(&p));
 
@@ -163,7 +174,9 @@ impl DataStore {
         };
 
         if options.purge_empty_tables {
-            deleted.row_ids.extend(self.purge_empty_tables());
+            let deleted_row_ids = self.purge_empty_tables();
+            // deleted.row_ids.extend(deleted_row_ids.clone());
+            // events.extend(deleted_row_ids.into_iter().map(StoreEvent::RowIdRemoved));
         }
 
         #[cfg(debug_assertions)]
@@ -187,7 +200,61 @@ impl DataStore {
 
         let stats_diff = stats_before - stats_after;
 
-        (deleted, stats_diff)
+        let events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| StoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
+
+        let mut deleted = Deleted {
+            row_ids: events.iter().map(|event| event.row_id()).collect(),
+            timeful: Default::default(), // TODO
+            timeless: Default::default(),
+        };
+
+        // TODO: the translation to sets is well-defined because we GC on a row-level basis.
+        // im still not sure how rowids shared across timeliness behave though, hmm...
+        for event in &events {
+            if event.diff.delta < 0 {
+                if let Some((timeline, time)) = event.diff.timestamp {
+                    let per_timeline = deleted
+                        .timeful
+                        .entry(event.diff.entity_path.hash())
+                        .or_default();
+                    let per_component = per_timeline.entry(timeline).or_default();
+                    per_component
+                        .entry(event.diff.component_name)
+                        .or_default()
+                        .push(time);
+                } else {
+                    let per_component = deleted
+                        .timeless
+                        .entry(event.diff.entity_path.hash())
+                        .or_default();
+                    *per_component.entry(event.diff.component_name).or_default() +=
+                        event.diff.delta.unsigned_abs();
+                }
+            }
+        }
+
+        Self::on_events(&events);
+        // for view in &mut self.views {
+        //     view.write().on_events(&events);
+        // }
+
+        // timeless: events.iter().filter_map(|event| match event.diff {
+        //     StoreDiff::TimelessDataRemoved(diff) => ,
+        //     StoreDiff::DataRemoved(diff) => todo!(),
+        //     _ => unreachable!(),
+        // }),
+
+        (deleted, events, stats_diff)
     }
 
     /// Tries to drop _at least_ `num_bytes_to_drop` bytes of data from the store.
@@ -195,7 +262,7 @@ impl DataStore {
     /// Returns the list of `RowId`s that were purged from the store.
     //
     // TODO(jleibs): There are some easy optimizations here if we find GC taking too long:
-    //  - If we stored the entity_path_hash along with timepoints in the metadata_registry we could jump
+    //  - If we stored the entity_path_hash along with timepoints in the row_registry we could jump
     //    directly to the relevant tables instead of needing to iterate over all tables.
     //  - If we know we are clearing almost everything, then we can batch-clear the rows from the
     //    the tables instead of needing to iterate over every single row incrementally.
@@ -204,17 +271,19 @@ impl DataStore {
         mut num_bytes_to_drop: f64,
         include_timeless: bool,
         protected_rows: &HashSet<RowId>,
-    ) -> Deleted {
+    ) -> Vec<StoreDiff> {
         re_tracing::profile_function!();
 
-        let mut deleted = Deleted::default();
+        let mut diffs = Vec::new();
+        // let mut deleted = Deleted::default();
+        // let mut deletions = Vec::new();
 
         // The algorithm is straightforward:
         // 1. Find the oldest `RowId` that is not protected
         // 2. Find all tables that potentially hold data associated with that `RowId`
         // 3. Drop the associated row and account for the space we got back
 
-        for (row_id, timepoint) in &self.metadata_registry.registry {
+        for (row_id, timepoint) in &self.row_registry.registry {
             if num_bytes_to_drop <= 0.0 {
                 break;
             }
@@ -222,27 +291,28 @@ impl DataStore {
             if protected_rows.contains(row_id) {
                 continue;
             }
-
             let metadata_dropped_size_bytes =
                 row_id.total_size_bytes() + timepoint.total_size_bytes();
-            self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
+            self.row_registry.heap_size_bytes -= metadata_dropped_size_bytes;
             num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
 
-            deleted.row_ids.insert(*row_id);
+            // deleted.row_ids.insert(*row_id);
+            // events.push(StoreEvent::RowIdRemoved(*row_id));
 
             // find all tables that could possibly contain this `RowId`
 
             for ((timeline, ent_path_hash), table) in &mut self.tables {
                 if let Some(time) = timepoint.get(timeline) {
-                    let deleted_comps = deleted
-                        .timeful
-                        .entry(*ent_path_hash)
-                        .or_default()
-                        .entry(*timeline)
-                        .or_default();
+                    // let deleted_comps = deleted
+                    //     .timeful
+                    //     .entry(ent_path.clone()_hash)
+                    //     .or_default()
+                    //     .entry(*timeline)
+                    //     .or_default();
 
-                    num_bytes_to_drop -=
-                        table.try_drop_row(*row_id, time.as_i64(), deleted_comps) as f64;
+                    let (removed, num_bytes_removed) = table.try_drop_row(*row_id, time.as_i64());
+                    diffs.extend(removed);
+                    num_bytes_to_drop -= num_bytes_removed as f64;
                 }
             }
 
@@ -250,18 +320,26 @@ impl DataStore {
             // first and then remove them in one pass.
             if timepoint.is_timeless() && include_timeless {
                 for (ent_path_hash, table) in &mut self.timeless_tables {
-                    let deleted_comps = deleted.timeless.entry(*ent_path_hash).or_default();
-                    num_bytes_to_drop -= table.try_drop_row(*row_id, deleted_comps) as f64;
+                    // let deleted_comps = deleted.timeless.entry(ent_path.clone()_hash).or_default();
+                    let (removed, num_bytes_removed) = table.try_drop_row(*row_id);
+                    diffs.extend(removed);
+                    num_bytes_to_drop -= num_bytes_removed as f64;
                 }
             }
         }
 
-        // Purge the removed rows from the metadata_registry
-        for row_id in &deleted.row_ids {
-            self.metadata_registry.remove(row_id);
+        // // Purge the removed rows from the row_registry
+        // for row_id in &deleted.row_ids {
+        //     self.row_registry.remove(row_id);
+        // }
+
+        for diff in &diffs {
+            self.row_registry.remove(&diff.row_id);
         }
 
-        deleted
+        diffs
+        // deleted
+        // events
     }
 
     /// For each `EntityPath`, `Timeline`, `Component` find the N latest [`RowId`]s.
@@ -401,11 +479,19 @@ impl DataStore {
                 }
             }
 
+            // TODO: I'm missing something here: the row-id can be (and usually is) shared across
+            // multiple tables. How can we be sure that dropping this table is enough to declare
+            // this `RowId` as gone?
+            // The assumption is probably that a single RowId cannot be both timeful and timeless
+            // due to how we encode it in `DataTable`.
+            // But even then, it can still be shared across many tables?
+
             // Otherwise we can drop it
             for bucket in table.buckets.values() {
                 let inner = bucket.inner.read();
                 row_ids.extend(inner.col_row_id.iter());
             }
+
             false
         });
 
@@ -418,21 +504,20 @@ impl IndexedTable {
     /// specified `time`.
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(
-        &mut self,
-        row_id: RowId,
-        time: i64,
-        deleted_comps: &mut IntMap<ComponentName, Vec<TimeInt>>,
-    ) -> u64 {
+    fn try_drop_row(&mut self, row_id: RowId, time: i64) -> (Vec<StoreDiff>, u64) {
         re_tracing::profile_function!();
+
+        let ent_path = self.ent_path.clone();
+        let timeline = self.timeline;
+
         let table_has_more_than_one_bucket = self.buckets.len() > 1;
 
         let (bucket_key, bucket) = self.find_bucket_mut(time.into());
         let bucket_num_bytes = bucket.total_size_bytes();
 
-        let mut dropped_num_bytes = {
+        let (diffs, mut dropped_num_bytes) = {
             let inner = &mut *bucket.inner.write();
-            inner.try_drop_row(row_id, time, deleted_comps)
+            inner.try_drop_row(row_id, timeline, &ent_path, time)
         };
 
         // NOTE: We always need to keep at least one bucket alive, otherwise we have
@@ -459,7 +544,7 @@ impl IndexedTable {
         self.buckets_size_bytes -= dropped_num_bytes;
         self.buckets_num_rows -= (dropped_num_bytes > 0) as u64;
 
-        dropped_num_bytes
+        (diffs, dropped_num_bytes)
     }
 }
 
@@ -471,9 +556,10 @@ impl IndexedBucketInner {
     fn try_drop_row(
         &mut self,
         row_id: RowId,
+        timeline: Timeline,
+        ent_path: &EntityPath,
         time: i64,
-        deleted_comps: &mut IntMap<ComponentName, Vec<TimeInt>>,
-    ) -> u64 {
+    ) -> (Vec<StoreDiff>, u64) {
         self.sort();
 
         let IndexedBucketInner {
@@ -487,6 +573,7 @@ impl IndexedBucketInner {
             size_bytes,
         } = self;
 
+        let mut diffs = Vec::new();
         let mut dropped_num_bytes = 0u64;
 
         let mut row_index = col_time.partition_point(|&time2| time2 < time);
@@ -533,11 +620,24 @@ impl IndexedBucketInner {
 
             // each data column
             for (comp_name, column) in columns {
-                dropped_num_bytes += column.0.swap_remove(row_index).total_size_bytes();
-                deleted_comps
-                    .entry(*comp_name)
-                    .or_default()
-                    .push(time.into());
+                let cell = column.0.swap_remove(row_index);
+                dropped_num_bytes += cell.total_size_bytes();
+                if let Some(cell) = cell {
+                    diffs.push(
+                        StoreDiff::deletion(
+                            removed_row_id,
+                            ent_path.clone(),
+                            *comp_name,
+                            cell.clone(),
+                        )
+                        .at(timeline, time),
+                    );
+                }
+                // // TODO: no if condition for the cell presence? that seems weird?
+                // deleted_comps
+                //     .entry(*comp_name)
+                //     .or_default()
+                //     .push(time.into());
             }
 
             // NOTE: A single `RowId` cannot possibly have more than one datapoint for
@@ -547,7 +647,7 @@ impl IndexedBucketInner {
 
         *size_bytes -= dropped_num_bytes;
 
-        dropped_num_bytes
+        (diffs, dropped_num_bytes)
     }
 }
 
@@ -555,17 +655,14 @@ impl PersistentIndexedTable {
     /// Tries to drop the given `row_id` from the table.
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(
-        &mut self,
-        row_id: RowId,
-        deleted_comps: &mut IntMap<ComponentName, u64>,
-    ) -> u64 {
+    fn try_drop_row(&mut self, row_id: RowId) -> (Vec<StoreDiff>, u64) {
         re_tracing::profile_function!();
 
+        let mut diffs = Vec::new();
         let mut dropped_num_bytes = 0u64;
 
         let PersistentIndexedTable {
-            ent_path: _,
+            ent_path,
             cluster_key: _,
             col_insert_id,
             col_row_id,
@@ -573,6 +670,7 @@ impl PersistentIndexedTable {
             columns,
         } = self;
 
+        // TODO: todo syntax
         // TODO(jleibs) Timeless data isn't sorted, so we need to do a full scan here.
         // Speed this up when we implement: https://github.com/rerun-io/rerun/issues/1807
         if let Some(row_index) = col_row_id
@@ -599,11 +697,40 @@ impl PersistentIndexedTable {
 
             // each data column
             for (comp_name, column) in columns {
-                dropped_num_bytes += column.0.remove(row_index).total_size_bytes();
-                *deleted_comps.entry(*comp_name).or_default() += 1;
+                let cell = column.0.remove(row_index);
+                dropped_num_bytes += cell.total_size_bytes();
+                // *deleted_comps.entry(*comp_name).or_default() += 1;
+
+                if let Some(cell) = cell {
+                    // TODO: we cannot be advertising autogenerated cluster keys!
+                    // From the PoV of the user/datamodel, they don't exist, they're just an
+                    // implementation detail.
+                    //
+                    // Or actually, the opposite: when you query, they are there, and so they sould
+                    // be visible!!
+                    // if comp_name != &self.cluster_key {
+                    diffs.push(StoreDiff::deletion(
+                        row_id,
+                        ent_path.clone(),
+                        cell.component_name(),
+                        cell,
+                    ));
+                    // }
+
+                    // TODO: and btw, what about "comoponent is gone"?
+                    // deletions.push(CellDeletion {
+                    //     row_id,
+                    //     row_id_is_gone,
+                    //     times: Default::default(),
+                    //     entity_path: ent_path.hash(),
+                    //     // TODO: well we need to somehow patch that up later then
+                    //     entity_path_is_gone: false,
+                    //     cell,
+                    // });
+                }
             }
         }
 
-        dropped_num_bytes
+        (diffs, dropped_num_bytes)
     }
 }

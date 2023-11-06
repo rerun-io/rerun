@@ -285,7 +285,7 @@ fn gc(c: &mut Criterion) {
         let store = insert_table(Default::default(), InstanceKey::name(), &table);
         b.iter(|| {
             let mut store = store.clone();
-            let (_, stats_diff) = store.gc(GarbageCollectionOptions {
+            let (_, _, stats_diff) = store.gc(GarbageCollectionOptions {
                 target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
                 gc_timeless: false,
                 protect_latest: 0,
@@ -308,7 +308,7 @@ fn gc(c: &mut Criterion) {
             );
             b.iter(|| {
                 let mut store = store.clone();
-                let (_, stats_diff) = store.gc(GarbageCollectionOptions {
+                let (_, _, stats_diff) = store.gc(GarbageCollectionOptions {
                     target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
                     gc_timeless: false,
                     protect_latest: 0,
@@ -357,7 +357,11 @@ fn insert_table(
     cluster_key: ComponentName,
     table: &DataTable,
 ) -> DataStore {
-    let mut store = DataStore::new(cluster_key, config);
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        cluster_key,
+        config,
+    );
     store.insert_table(table).unwrap();
     store
 }

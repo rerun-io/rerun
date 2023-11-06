@@ -1,12 +1,15 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use itertools::Itertools;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
+use re_arrow_store::{StoreDiff, StoreEvent, StoreView};
 use re_log_types::{
-    ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
+    ComponentPath, DataRow, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
 };
 use re_types_core::{ComponentName, Loggable};
+
+use crate::TimeHistogramPerTimeline;
 
 // ----------------------------------------------------------------------------
 
@@ -32,99 +35,6 @@ impl ActuallyDeleted {
 
 // ----------------------------------------------------------------------------
 
-/// Number of messages per time
-pub type TimeHistogram = re_int_histogram::Int64Histogram;
-
-/// Number of messages per time per timeline.
-///
-/// Does NOT include timeless.
-#[derive(Default)]
-pub struct TimeHistogramPerTimeline(BTreeMap<Timeline, TimeHistogram>);
-
-impl TimeHistogramPerTimeline {
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.0.keys()
-    }
-
-    pub fn get(&self, timeline: &Timeline) -> Option<&TimeHistogram> {
-        self.0.get(timeline)
-    }
-
-    pub fn has_timeline(&self, timeline: &Timeline) -> bool {
-        self.0.contains_key(timeline)
-    }
-
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &TimeHistogram)> {
-        self.0.iter()
-    }
-
-    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (&Timeline, &mut TimeHistogram)> {
-        self.0.iter_mut()
-    }
-
-    pub fn purge(&mut self, deleted: &ActuallyDeleted) {
-        re_tracing::profile_function!();
-
-        for (timeline, histogram) in &mut self.0 {
-            if let Some(times) = deleted.timeful.get(timeline) {
-                for &time in times {
-                    histogram.decrement(time.as_i64(), 1);
-                }
-            }
-
-            // NOTE: we don't include timeless in the histogram.
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Number of messages per time per timeline.
-///
-/// Does NOT include timeless.
-pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeSet<TimeInt>>);
-
-impl TimesPerTimeline {
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.0.keys()
-    }
-
-    pub fn get(&self, timeline: &Timeline) -> Option<&BTreeSet<TimeInt>> {
-        self.0.get(timeline)
-    }
-
-    pub fn get_mut(&mut self, timeline: &Timeline) -> Option<&mut BTreeSet<TimeInt>> {
-        self.0.get_mut(timeline)
-    }
-
-    pub fn insert(&mut self, timeline: Timeline, time: TimeInt) {
-        self.0.entry(timeline).or_default().insert(time);
-    }
-
-    pub fn has_timeline(&self, timeline: &Timeline) -> bool {
-        self.0.contains_key(timeline)
-    }
-
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &BTreeSet<TimeInt>)> {
-        self.0.iter()
-    }
-
-    pub fn iter_mut(
-        &mut self,
-    ) -> impl ExactSizeIterator<Item = (&Timeline, &mut BTreeSet<TimeInt>)> {
-        self.0.iter_mut()
-    }
-}
-
-// Always ensure we have a default "log_time" timeline.
-impl Default for TimesPerTimeline {
-    fn default() -> Self {
-        Self(BTreeMap::from([(Timeline::log_time(), Default::default())]))
-    }
-}
-
-// ----------------------------------------------------------------------------
-
 /// Tree of entity paths, plus components at the leaves.
 pub struct EntityTree {
     /// Full path to the root of this tree.
@@ -137,9 +47,6 @@ pub struct EntityTree {
     /// Data logged at this exact path or any child path.
     pub prefix_times: TimeHistogramPerTimeline,
 
-    /// Extra book-keeping used to seed any timelines that include timeless msgs
-    num_timeless_messages: usize,
-
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<RowId, TimePoint>,
 
@@ -147,7 +54,25 @@ pub struct EntityTree {
     pub recursive_clears: BTreeMap<RowId, TimePoint>,
 
     /// Data logged at this entity path.
-    pub components: BTreeMap<ComponentName, ComponentStats>,
+    pub components: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
+}
+
+// TODO: poor name too
+#[derive(Debug, Clone, Default)]
+pub struct EntityTreeEvent {
+    // TODO: explain the split between the two then?
+    pub timepoints_to_clear: BTreeMap<RowId, TimePoint>,
+    pub paths_to_clear: BTreeMap<RowId, BTreeSet<ComponentPath>>,
+}
+
+impl EntityTreeEvent {
+    pub fn is_empty(&self) -> bool {
+        let Self {
+            timepoints_to_clear: timepoints,
+            paths_to_clear: paths,
+        } = self;
+        timepoints.is_empty() && paths.is_empty()
+    }
 }
 
 impl EntityTree {
@@ -160,7 +85,6 @@ impl EntityTree {
             path,
             children: Default::default(),
             prefix_times: Default::default(),
-            num_timeless_messages: 0,
             nonrecursive_clears: recursive_clears.clone(),
             recursive_clears,
             components: Default::default(),
@@ -176,24 +100,103 @@ impl EntityTree {
         self.children.len() + self.components.len()
     }
 
+    // TODO: just remove this though
     pub fn num_timeless_messages(&self) -> usize {
-        self.num_timeless_messages
+        // TODO: why usize though
+        self.prefix_times.num_timeless_messages as _
     }
 
-    /// Returns a collection of pending clear operations
-    pub fn add_data_msg(
-        &mut self,
-        time_point: &TimePoint,
-        component_path: &ComponentPath,
-    ) -> Vec<(RowId, TimePoint)> {
-        re_tracing::profile_function!();
+    pub fn on_additions(&mut self, events: &[StoreEvent]) -> EntityTreeEvent {
+        use re_types_core::components::ClearIsRecursive;
 
+        let mut changelog = EntityTreeEvent::default();
+
+        // additions
+        for event in events.iter().filter(|e| e.diff.delta > 0) {
+            let diff = &event.diff;
+
+            // grow tree
+            {
+                let full_clears = self.on_added_data(diff);
+                for (row_id, timepoint, component_path) in full_clears {
+                    for (timeline, time) in timepoint {
+                        changelog
+                            .timepoints_to_clear
+                            .entry(row_id)
+                            .or_default()
+                            .insert(timeline, time);
+                    }
+                    changelog
+                        .paths_to_clear
+                        .entry(row_id)
+                        .or_default()
+                        .insert(component_path.clone());
+                }
+            }
+
+            // register pending clear
+            if diff.cell.component_name() == ClearIsRecursive::name() {
+                let is_recursive = diff
+                    .cell
+                    .try_to_native_mono::<ClearIsRecursive>()
+                    .unwrap()
+                    .map_or(false, |settings| settings.0);
+
+                let cleared_paths = self.on_added_clear(diff, is_recursive);
+
+                if let Some((timeline, time)) = diff.timestamp {
+                    changelog
+                        .timepoints_to_clear
+                        .entry(diff.row_id)
+                        .or_default()
+                        .insert(timeline, time);
+                }
+                changelog
+                    .paths_to_clear
+                    .entry(diff.row_id)
+                    .or_default()
+                    .extend(cleared_paths);
+            }
+        }
+
+        // deletions
+        for event in events.iter().filter(|e| e.diff.delta > 0) {}
+
+        changelog
+    }
+
+    // TODO: this guy clears all added components affected by the previously added clears (and so
+    // using the old rowid/timepoints).
+    //
+    /// Returns a collection of pending clear operations
+    pub fn on_added_data(&mut self, diff: &StoreDiff) -> Vec<(RowId, TimePoint, ComponentPath)> {
+        // pub fn on_added_data(
+        //     &mut self,
+        //     time_point: &TimePoint,
+        //     component_path: &ComponentPath,
+        // ) -> Vec<(RowId, TimePoint)> {
+        //     re_tracing::profile_function!();
+        //
+        //     let timepoint = time_point.clone();
+
+        let StoreDiff {
+            timestamp,
+            entity_path,
+            component_name,
+            ..
+        } = diff;
+
+        let component_path = ComponentPath::new(entity_path.clone(), *component_name);
+        let timepoint =
+            timestamp.map_or(Default::default(), |timestamp| TimePoint::from([timestamp]));
+
+        // TODO: reminder this not only creates a subtree but also update the prefix_times thingy
         let leaf =
-            self.create_subtrees_recursively(component_path.entity_path.as_slice(), 0, time_point);
+            self.create_subtrees_recursively(component_path.entity_path.as_slice(), 0, &timepoint);
 
         let mut pending_clears = vec![];
 
-        let fields = leaf
+        let stats = leaf
             .components
             .entry(component_path.component_name)
             .or_insert_with(|| {
@@ -204,30 +207,48 @@ impl EntityTree {
                 Default::default()
             });
 
-        fields.add(time_point);
+        stats.add(&timepoint);
 
         pending_clears
+            .into_iter()
+            .map(|(row_id, timepoint)| (row_id, timepoint, component_path.clone()))
+            .collect()
     }
 
+    // TODO: this guy clears all existing components affected by the newly added clear (and so
+    // using its rowid/timepoint).
+    //
     /// Add a path operation into the entity tree.
     ///
     /// Returns a collection of paths to clear as a result of the operation
     /// Additional pending clear operations will be stored in the tree for future
     /// insertion.
-    pub fn add_path_op(
+    pub fn on_added_clear(
         &mut self,
-        row_id: RowId,
-        time_point: &TimePoint,
-        path_op: &PathOp,
-    ) -> Vec<ComponentPath> {
+        diff: &StoreDiff,
+        is_recursive: bool,
+    ) -> BTreeSet<ComponentPath> {
         use re_types_core::{archetypes::Clear, components::ClearIsRecursive, Archetype as _};
 
         re_tracing::profile_function!();
 
-        let entity_path = path_op.entity_path();
+        let StoreDiff {
+            row_id,
+            timestamp,
+            entity_path,
+            ..
+        } = diff;
+
+        let Some(timestamp) = timestamp else {
+            return BTreeSet::new();
+        };
 
         // Look up the leaf at which we will execute the path operation
-        let leaf = self.create_subtrees_recursively(entity_path.as_slice(), 0, time_point);
+        let leaf = self.create_subtrees_recursively(
+            entity_path.as_slice(),
+            0,
+            &TimePoint::from([*timestamp]),
+        );
 
         fn filter_out_clear_components(comp_name: &ComponentName) -> bool {
             let is_clear_component = [
@@ -238,76 +259,56 @@ impl EntityTree {
             !is_clear_component
         }
 
-        // TODO(jleibs): Refactor this as separate functions
-        match path_op {
-            PathOp::ClearComponents(entity_path) => {
-                // Track that any future fields need a Null at the right
-                // time-point when added.
-                leaf.nonrecursive_clears
+        fn clear_tree(
+            tree: &mut EntityTree,
+            is_recursive: bool,
+            row_id: RowId,
+            (timeline, time): (Timeline, TimeInt),
+        ) -> impl IntoIterator<Item = ComponentPath> + '_ {
+            if is_recursive {
+                // Track that any future children need a Null at the right timepoint when added.
+                tree.recursive_clears
                     .entry(row_id)
-                    .or_insert_with(|| time_point.clone());
-
-                // For every existing field return a clear event
-                leaf.components
-                    .keys()
-                    .filter(|comp_name| filter_out_clear_components(comp_name))
-                    .map(|component_name| ComponentPath::new(entity_path.clone(), *component_name))
-                    .collect_vec()
+                    .or_default()
+                    .insert(timeline, time);
             }
-            PathOp::ClearRecursive(_) => {
-                let mut results = vec![];
-                let mut trees = vec![];
-                trees.push(leaf);
-                while let Some(next) = trees.pop() {
-                    trees.extend(next.children.values_mut().collect::<Vec<&mut Self>>());
 
-                    // Track that any future children need a Null at the right
-                    // time-point when added.
-                    next.recursive_clears
-                        .entry(row_id)
-                        .or_insert_with(|| time_point.clone());
+            // Track that any future fields need a Null at the right timepoint when added.
+            tree.nonrecursive_clears
+                .entry(row_id)
+                .or_default()
+                .insert(timeline, time);
 
-                    // Track that any future fields need a Null at the right
-                    // time-point when added.
-                    next.nonrecursive_clears
-                        .entry(row_id)
-                        .or_insert_with(|| time_point.clone());
-
-                    // For every existing field append a clear event into the
-                    // results
-                    results.extend(
-                        next.components
-                            .keys()
-                            .filter(|comp_name| filter_out_clear_components(comp_name))
-                            .map(|component_name| {
-                                ComponentPath::new(next.path.clone(), *component_name)
-                            }),
-                    );
-                }
-                results
-            }
+            // For every existing field return a clear event
+            tree.components
+                .keys()
+                .filter(|comp_name| filter_out_clear_components(comp_name))
+                .map(|component_name| ComponentPath::new(tree.path.clone(), *component_name))
         }
+
+        let mut cleared_paths = BTreeSet::new();
+
+        if is_recursive {
+            let mut stack = vec![];
+            stack.push(leaf);
+            while let Some(next) = stack.pop() {
+                cleared_paths.extend(clear_tree(next, is_recursive, *row_id, *timestamp));
+                stack.extend(next.children.values_mut().collect::<Vec<&mut Self>>());
+            }
+        } else {
+            cleared_paths.extend(clear_tree(leaf, is_recursive, *row_id, *timestamp));
+        }
+
+        cleared_paths
     }
 
     fn create_subtrees_recursively(
         &mut self,
         full_path: &[EntityPathPart],
         depth: usize,
-        time_point: &TimePoint,
+        timepoint: &TimePoint,
     ) -> &mut Self {
-        // If the time_point is timeless…
-        if time_point.is_timeless() {
-            self.num_timeless_messages += 1;
-        } else {
-            for (timeline, time_value) in time_point.iter() {
-                self.prefix_times
-                    .0
-                    .entry(*timeline)
-                    .or_default()
-                    .increment(time_value.as_i64(), 1);
-            }
-        }
-
+        self.prefix_times.add(timepoint);
         match full_path.get(depth) {
             None => {
                 self // end of path
@@ -318,7 +319,7 @@ impl EntityTree {
                 .or_insert_with(|| {
                     EntityTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
                 })
-                .create_subtrees_recursively(full_path, depth + 1, time_point),
+                .create_subtrees_recursively(full_path, depth + 1, timepoint),
         }
     }
 
@@ -337,6 +338,39 @@ impl EntityTree {
     }
 
     /// Purge all times before the cutoff, or in the given set
+    // TODO: not correct until we count
+    pub fn purge2(&mut self, store_events: &[StoreEvent]) {
+        let Self {
+            path,
+            children,
+            prefix_times,
+            nonrecursive_clears,
+            recursive_clears,
+            components,
+        } = self;
+
+        for event in store_events.iter().filter(|e| e.diff.delta < 0) {
+            let StoreDiff {
+                row_id,
+                timestamp,
+                entity_path,
+                component_name,
+                cell,
+                delta,
+            } = &event.diff;
+
+            nonrecursive_clears.remove(row_id);
+            recursive_clears.remove(row_id);
+        }
+
+        prefix_times.on_events(store_events);
+
+        for child in children.values_mut() {
+            child.purge2(store_events);
+        }
+    }
+
+    /// Purge all times before the cutoff, or in the given set
     pub fn purge(
         &mut self,
         deleted: &re_arrow_store::Deleted,
@@ -346,12 +380,12 @@ impl EntityTree {
             path,
             children,
             prefix_times,
-            num_timeless_messages,
             nonrecursive_clears,
             recursive_clears,
             components,
         } = self;
 
+        // TODO: ask the store if the rowid is alive?
         {
             re_tracing::profile_scope!("nonrecursive_clears");
             nonrecursive_clears.retain(|row_id, _| !deleted.row_ids.contains(row_id));
@@ -373,12 +407,12 @@ impl EntityTree {
             // The `deleted` stats are per component, so start here:
 
             for (comp_name, stats) in components {
-                let ComponentStats {
+                let TimeHistogramPerTimeline {
                     times,
                     num_timeless_messages,
                 } = stats;
 
-                for (timeline, histogram) in &mut times.0 {
+                for (timeline, histogram) in times {
                     if let Some(times) = deleted
                         .timeful
                         .get(&path.hash())
@@ -411,13 +445,13 @@ impl EntityTree {
             }
         }
 
-        {
-            // Apply what was deleted by children and by our components:
-            *num_timeless_messages =
-                num_timeless_messages.saturating_sub(deleted_by_us_and_children.timeless as _);
-
-            prefix_times.purge(&deleted_by_children);
-        }
+        // {
+        //     // Apply what was deleted by children and by our components:
+        //     *num_timeless_messages =
+        //         num_timeless_messages.saturating_sub(deleted_by_us_and_children.timeless as _);
+        //
+        //     prefix_times.purge(&deleted_by_children);
+        // }
 
         deleted_by_us_and_children.append(deleted_by_children);
     }
@@ -427,36 +461,6 @@ impl EntityTree {
         visitor(&self.path);
         for child in self.children.values() {
             child.visit_children_recursively(visitor);
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct ComponentStats {
-    /// When do we have data? Ignored timeless.
-    pub times: TimeHistogramPerTimeline,
-
-    /// Extra book-keeping used to seed any timelines that include timeless msgs
-    num_timeless_messages: usize,
-}
-
-impl ComponentStats {
-    pub fn num_timeless_messages(&self) -> usize {
-        self.num_timeless_messages
-    }
-
-    pub fn add(&mut self, time_point: &TimePoint) {
-        // If the `time_point` is timeless…
-        if time_point.is_timeless() {
-            self.num_timeless_messages += 1;
-        } else {
-            for (timeline, time_value) in time_point.iter() {
-                self.times
-                    .0
-                    .entry(*timeline)
-                    .or_default()
-                    .increment(time_value.as_i64(), 1);
-            }
         }
     }
 }
