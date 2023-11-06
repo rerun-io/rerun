@@ -37,7 +37,7 @@ namespace rerun {
             arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(std::make_shared<arrow::DenseUnionBuilder>(
@@ -61,14 +61,17 @@ namespace rerun {
             ));
         }
 
-        Error AffixFuzzer3::fill_arrow_array_builder(
+        rerun::Error AffixFuzzer3::fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const AffixFuzzer3* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array builder is null."
+                );
             }
             if (elements == nullptr) {
-                return Error(
+                return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
                 );
@@ -105,7 +108,7 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
                         (void)variant_builder;
-                        return Error(
+                        return rerun::Error(
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer3::craziness: objects (Object(\"rerun.testing.datatypes.AffixFuzzer1\")) in unions not yet implemented"
                         );
@@ -114,7 +117,7 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::FixedSizeListBuilder*>(variant_builder_untyped);
                         (void)variant_builder;
-                        return Error(
+                        return rerun::Error(
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer3::fixed_size_shenanigans: FixedSizeListBuilder in unions not yet implemented"
                         );

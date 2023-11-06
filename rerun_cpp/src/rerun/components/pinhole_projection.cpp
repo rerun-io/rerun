@@ -20,21 +20,24 @@ namespace rerun {
         Result<std::shared_ptr<arrow::FixedSizeListBuilder>>
             PinholeProjection::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
             if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(rerun::datatypes::Mat3x3::new_arrow_array_builder(memory_pool).value);
         }
 
-        Error PinholeProjection::fill_arrow_array_builder(
+        rerun::Error PinholeProjection::fill_arrow_array_builder(
             arrow::FixedSizeListBuilder* builder, const PinholeProjection* elements,
             size_t num_elements
         ) {
             if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array builder is null."
+                );
             }
             if (elements == nullptr) {
-                return Error(
+                return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
                 );

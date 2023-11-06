@@ -1235,7 +1235,7 @@ fn new_arrow_array_builder_method(
         },
         definition_body: quote! {
             if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
@@ -1264,7 +1264,7 @@ fn fill_arrow_array_builder_method(
         docs: "Fills an arrow array builder with an array of this type.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { Error },
+            return_type: quote! { rerun::Error },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
                 fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #type_ident* elements, size_t num_elements)
@@ -1272,10 +1272,10 @@ fn fill_arrow_array_builder_method(
         },
         definition_body: quote! {
             if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (elements == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Cannot serialize null pointer to arrow array.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Cannot serialize null pointer to arrow array.");
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
@@ -1415,7 +1415,7 @@ fn quote_fill_arrow_array_builder(
                 quote! {
                     (void)num_elements;
                     if (true) { // Works around unreachability compiler warning.
-                        return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+                        return rerun::Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
                     }
                 }
             } else {
@@ -1470,7 +1470,7 @@ fn quote_fill_arrow_array_builder(
                             let error = format!("Failed to serialize {}::{}: nullable list types in unions not yet implemented", obj.name, variant.name);
                             quote! {
                                 (void)#variant_builder;
-                                return Error(ErrorCode::NotImplemented, #error);
+                                return rerun::Error(ErrorCode::NotImplemented, #error);
                             }
                         } else if arrow_builder_type == "ListBuilder" {
                             let field_name = format_ident!("{}", variant.snake_case_name());
@@ -1522,7 +1522,7 @@ fn quote_fill_arrow_array_builder(
                                     let error = format!("Failed to serialize {}::{}: objects ({:?}) in unions not yet implemented", obj.name, variant.name, element_type);
                                     quote! {
                                         (void)#variant_builder;
-                                        return Error(ErrorCode::NotImplemented, #error);
+                                        return rerun::Error(ErrorCode::NotImplemented, #error);
                                     }
                                 }
                             }
@@ -1530,7 +1530,7 @@ fn quote_fill_arrow_array_builder(
                             let error = format!("Failed to serialize {}::{}: {} in unions not yet implemented", obj.name, variant.name, arrow_builder_type);
                             quote! {
                                 (void)#variant_builder;
-                                return Error(ErrorCode::NotImplemented, #error);
+                                return rerun::Error(ErrorCode::NotImplemented, #error);
                             }
                         }
                     } else {

@@ -43,7 +43,7 @@ namespace rerun {
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
+            static rerun::Error fill_arrow_array_builder(
                 arrow::BooleanBuilder* builder, const ScalarScattering* elements,
                 size_t num_elements
             );

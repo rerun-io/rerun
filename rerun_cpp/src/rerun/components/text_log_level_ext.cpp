@@ -16,22 +16,22 @@ namespace rerun {
             // [CODEGEN COPY TO HEADER START]
 
             /// Designates catastrophic failures.
-            static const TextLogLevel LEVEL_CRITICAL;
+            static const TextLogLevel Critical;
 
             /// Designates very serious errors.
-            static const TextLogLevel LEVEL_ERROR;
+            static const TextLogLevel Error;
 
             /// Designates hazardous situations.
-            static const TextLogLevel LEVEL_WARN;
+            static const TextLogLevel Warning;
 
             /// Designates useful information.
-            static const TextLogLevel LEVEL_INFO;
+            static const TextLogLevel Info;
 
             /// Designates lower priority information.
-            static const TextLogLevel LEVEL_DEBUG;
+            static const TextLogLevel Debug;
 
             /// Designates very low priority, often extremely verbose, information.
-            static const TextLogLevel LEVEL_TRACE;
+            static const TextLogLevel Trace;
 
             /// Construct `TextLogLevel` from a null-terminated UTF8 string.
             TextLogLevel(const char* str) : value(str) {}
@@ -48,11 +48,11 @@ namespace rerun {
 #define TextLogLevelExt TextLogLevel
 #endif
 
-        const TextLogLevel TextLogLevel::LEVEL_CRITICAL = "CRITICAL";
-        const TextLogLevel TextLogLevel::LEVEL_ERROR = "ERROR";
-        const TextLogLevel TextLogLevel::LEVEL_WARN = "WARN";
-        const TextLogLevel TextLogLevel::LEVEL_INFO = "INFO";
-        const TextLogLevel TextLogLevel::LEVEL_DEBUG = "DEBUG";
-        const TextLogLevel TextLogLevel::LEVEL_TRACE = "TRACE";
+        const TextLogLevel TextLogLevel::Critical = "CRITICAL";
+        const TextLogLevel TextLogLevel::Error = "ERROR";
+        const TextLogLevel TextLogLevel::Warning = "WARN";
+        const TextLogLevel TextLogLevel::Info = "INFO";
+        const TextLogLevel TextLogLevel::Debug = "DEBUG";
+        const TextLogLevel TextLogLevel::Trace = "TRACE";
     } // namespace components
 } // namespace rerun

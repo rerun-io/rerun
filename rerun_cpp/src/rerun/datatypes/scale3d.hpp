@@ -137,7 +137,7 @@ namespace rerun {
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
+            static rerun::Error fill_arrow_array_builder(
                 arrow::DenseUnionBuilder* builder, const Scale3D* elements, size_t num_elements
             );
 

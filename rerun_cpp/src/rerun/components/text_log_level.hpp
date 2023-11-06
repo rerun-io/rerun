@@ -39,22 +39,22 @@ namespace rerun {
             // Extensions to generated type defined in 'text_log_level_ext.cpp'
 
             /// Designates catastrophic failures.
-            static const TextLogLevel LEVEL_CRITICAL;
+            static const TextLogLevel Critical;
 
             /// Designates very serious errors.
-            static const TextLogLevel LEVEL_ERROR;
+            static const TextLogLevel Error;
 
             /// Designates hazardous situations.
-            static const TextLogLevel LEVEL_WARN;
+            static const TextLogLevel Warning;
 
             /// Designates useful information.
-            static const TextLogLevel LEVEL_INFO;
+            static const TextLogLevel Info;
 
             /// Designates lower priority information.
-            static const TextLogLevel LEVEL_DEBUG;
+            static const TextLogLevel Debug;
 
             /// Designates very low priority, often extremely verbose, information.
-            static const TextLogLevel LEVEL_TRACE;
+            static const TextLogLevel Trace;
 
             /// Construct `TextLogLevel` from a null-terminated UTF8 string.
             TextLogLevel(const char* str) : value(str) {}
@@ -94,7 +94,7 @@ namespace rerun {
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
+            static rerun::Error fill_arrow_array_builder(
                 arrow::StringBuilder* builder, const TextLogLevel* elements, size_t num_elements
             );
 
