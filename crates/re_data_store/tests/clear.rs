@@ -15,7 +15,7 @@ fn clears() -> anyhow::Result<()> {
 
     let entity_path_parent: EntityPath = "parent".into();
     let entity_path_child1: EntityPath = "parent/child1".into();
-    let entity_path_child2: EntityPath = "parent/child2".into();
+    let entity_path_child2: EntityPath = "parent/deep/deep/down/child2".into();
 
     // * Insert a 2D point & color for 'parent' at frame #10.
     // * Query 'parent' at frame #11 and make sure we find everything back.
