@@ -13,7 +13,11 @@ use re_types_core::Loggable as _;
 // ---
 
 fn main() {
-    let mut store = DataStore::new(InstanceKey::name(), Default::default());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
 
     let ent_paths = [
         EntityPath::from("this/that"),

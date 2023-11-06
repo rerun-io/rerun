@@ -36,6 +36,13 @@ impl EntityPathHash {
     }
 }
 
+impl SizeBytes for EntityPathHash {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl std::hash::Hash for EntityPathHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

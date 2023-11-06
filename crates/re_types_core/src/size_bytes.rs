@@ -87,6 +87,20 @@ impl<T: SizeBytes> SizeBytes for Option<T> {
     }
 }
 
+impl<T: SizeBytes, U: SizeBytes> SizeBytes for (T, U) {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes() + self.1.heap_size_bytes()
+    }
+}
+
+impl<T: SizeBytes, U: SizeBytes, V: SizeBytes> SizeBytes for (T, U, V) {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes() + self.1.heap_size_bytes() + self.2.heap_size_bytes()
+    }
+}
+
 // NOTE: `impl<T: bytemuck::Pod> SizeBytesExt for T {}` would be nice but violates orphan rules.
 macro_rules! impl_size_bytes_pod {
     ($ty:ty) => {

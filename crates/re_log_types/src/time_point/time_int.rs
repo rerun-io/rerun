@@ -1,3 +1,5 @@
+use re_types_core::SizeBytes;
+
 use crate::time::{Duration, Time};
 
 /// A 64-bit number describing either nanoseconds OR sequence numbers.
@@ -72,6 +74,12 @@ impl TimeInt {
     #[inline]
     pub fn is_timeless(&self) -> bool {
         self == &Self::BEGINNING
+    }
+}
+
+impl SizeBytes for TimeInt {
+    fn heap_size_bytes(&self) -> u64 {
+        0
     }
 }
 

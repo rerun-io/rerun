@@ -34,6 +34,7 @@ re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 
+ahash.workspace = true
 document-features.workspace = true
 getrandom.workspace = true
 itertools.workspace = true

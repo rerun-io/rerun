@@ -49,6 +49,7 @@ document-features.workspace = true
 indent.workspace = true
 itertools = { workspace = true }
 nohash-hasher.workspace = true
+once_cell.workspace = true
 parking_lot.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
@@ -71,6 +72,7 @@ polars-ops = { workspace = true, optional = true, features = [
 
 
 [dev-dependencies]
+re_log_types = { workspace = true, features = ["testing"] }
 re_types = { workspace = true, features = ["datagen"] }
 
 anyhow.workspace = true
