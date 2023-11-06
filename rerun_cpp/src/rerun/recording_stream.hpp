@@ -129,6 +129,8 @@ namespace rerun {
         /// that viewer instead of starting a new one.
         ///
         /// ## Parameters
+        /// options:
+        /// See `rerun::SpawnOptions` for more information.
         ///
         /// flush_timeout_sec:
         /// The minimum time the SDK will wait during a flush before potentially
@@ -136,7 +138,7 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
 
-        /// See RecordingStream::spawn
+        /// @see RecordingStream::spawn
         template <typename TRep, typename TPeriod>
         Error spawn(
             const SpawnOptions& options = {},

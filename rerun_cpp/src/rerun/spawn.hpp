@@ -14,5 +14,8 @@ namespace rerun {
     ///
     /// If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to
     /// that viewer instead of starting a new one.
+    ///
+    /// options:
+    /// See `rerun::SpawnOptions` for more information.
     Error spawn(const SpawnOptions& options = {});
 } // namespace rerun
