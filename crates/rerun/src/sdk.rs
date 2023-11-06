@@ -34,9 +34,3 @@ mod prelude {
     };
 }
 pub use prelude::*;
-
-#[cfg(feature = "log")]
-pub use re_log::default_log_filter;
-
-#[cfg(feature = "log")]
-pub use super::log_integration::Logger;

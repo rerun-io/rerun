@@ -121,6 +121,12 @@ pub mod demo_util;
 #[cfg(feature = "log")]
 pub mod log_integration;
 
+#[cfg(feature = "log")]
+pub use re_log::default_log_filter;
+
+#[cfg(feature = "log")]
+pub use log_integration::Logger;
+
 pub use run::{run, CallSource};
 
 #[cfg(feature = "sdk")]
