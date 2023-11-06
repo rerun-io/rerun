@@ -15,6 +15,7 @@ pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
 pub use layout_job_builder::LayoutJobBuilder;
+use std::ops::RangeInclusive;
 pub use toggle_switch::toggle_switch;
 
 // ---------------------------------------------------------------------------
@@ -443,6 +444,41 @@ impl ReUi {
             ui.radio_value(current_value, alternative, text)
         })
         .inner
+    }
+
+    /// Shows a `egui::DragValue` for a time in nanoseconds.
+    ///
+    /// The value and unit displayed adapts to the provided allowable time range.
+    #[allow(clippy::unused_self)]
+    pub fn time_drag_value(
+        &self,
+        ui: &mut egui::Ui,
+        value: &mut i64,
+        time_range: &RangeInclusive<i64>,
+    ) {
+        let span = time_range.end() - time_range.start();
+
+        let (unit, factor) = if span / 1_000_000_000 > 0 {
+            ("s", 1_000_000_000.)
+        } else if span / 1_000_000 > 0 {
+            ("ms", 1_000_000.)
+        } else if span / 1_000 > 0 {
+            ("μs", 1_000.)
+        } else {
+            ("ns", 1.)
+        };
+
+        let mut time_unit = *value as f32 / factor;
+        let time_range = *time_range.start() as f32 / factor..=*time_range.end() as f32 / factor;
+        let speed = (time_range.end() - time_range.start()) * 0.005;
+
+        ui.add(
+            egui::DragValue::new(&mut time_unit)
+                .clamp_range(time_range)
+                .speed(speed)
+                .suffix(unit),
+        );
+        *value = (time_unit * factor).round() as _;
     }
 
     pub fn large_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
