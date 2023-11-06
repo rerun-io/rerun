@@ -281,6 +281,9 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
         if prev_line.endswith("*"):
             return False  # maybe in a macro
 
+        if prev_line.endswith("r##\""):
+            return False # part of a multi-line string
+
         return True
 
     return False
