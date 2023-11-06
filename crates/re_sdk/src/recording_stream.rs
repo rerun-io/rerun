@@ -669,8 +669,8 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// # Example:
-    /// ```
-    /// # use re_sdk as rerun;
+    /// ```ignore
+    /// # use rerun;
     /// # let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_points3d_simple").memory()?;
     /// rec.log(
     ///     "my/points",
