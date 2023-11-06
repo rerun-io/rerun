@@ -19,6 +19,11 @@ pub use self::query::{get_component_with_instances, query_archetype};
 pub use self::range::range_archetype;
 pub use self::util::query_archetype_with_history;
 
+// Used for doc-tests
+#[doc(hidden)]
+#[cfg(test)]
+pub use self::query::__populate_example_store;
+
 #[derive(thiserror::Error, Debug)]
 pub enum QueryError {
     #[error("Tried to access a column that doesn't exist")]
