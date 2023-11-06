@@ -34,17 +34,17 @@ namespace rerun {
         ///
         ///     rerun::TextLogLevel level;
         ///     if (message.verbosity == loguru::Verbosity_FATAL) {
-        ///         level = rerun::TextLogLevel::CRITICAL;
+        ///         level = rerun::TextLogLevel::LEVEL_CRITICAL;
         ///     } else if (message.verbosity == loguru::Verbosity_ERROR) {
-        ///         level = rerun::TextLogLevel::ERROR;
+        ///         level = rerun::TextLogLevel::LEVEL_ERROR;
         ///     } else if (message.verbosity == loguru::Verbosity_WARNING) {
-        ///         level = rerun::TextLogLevel::WARN;
+        ///         level = rerun::TextLogLevel::LEVEL_WARN;
         ///     } else if (message.verbosity == loguru::Verbosity_INFO) {
-        ///         level = rerun::TextLogLevel::INFO;
+        ///         level = rerun::TextLogLevel::LEVEL_INFO;
         ///     } else if (message.verbosity == loguru::Verbosity_1) {
-        ///         level = rerun::TextLogLevel::DEBUG;
+        ///         level = rerun::TextLogLevel::LEVEL_DEBUG;
         ///     } else if (message.verbosity == loguru::Verbosity_2) {
-        ///         level = rerun::TextLogLevel::TRACE;
+        ///         level = rerun::TextLogLevel::LEVEL_TRACE;
         ///     } else {
         ///         level = rerun::TextLogLevel(std::to_string(message.verbosity));
         ///     }
@@ -62,7 +62,7 @@ namespace rerun {
         ///     // Log a text entry directly:
         ///     rec.log(
         ///         "logs",
-        ///         rerun::TextLog("this entry has loglevel TRACE").with_level(rerun::TextLogLevel::TRACE)
+        ///         rerun::TextLog("this entry has loglevel TRACE").with_level(rerun::TextLogLevel::LEVEL_TRACE)
         ///     );
         ///
         ///     loguru::add_callback(
