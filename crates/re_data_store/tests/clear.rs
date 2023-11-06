@@ -254,62 +254,20 @@ fn clears() -> anyhow::Result<()> {
         }
     }
 
+    // * Insert a 2D point for 'child1' at frame #9.
     // * Insert a color for 'child1' at frame #9.
-    // * Query 'child1' at frame #9 and make sure we find it back.
-    // * Query 'child1' at frame #11 and make sure we do _not_ find it.
+    // * Query 'child1' at frame #9 and make sure we find everything back.
+    // * Query 'child1' at frame #11 and make sure we do _not_ find anything.
     {
         let row_id = RowId::random();
         let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let point = MyPoint::new(42.0, 43.0);
         let color = MyColor::from(0xBBBBBBBB);
         let row = DataRow::from_component_batches(
             row_id,
             timepoint,
             entity_path_child1.clone(),
-            [&[color] as _],
-        )?;
-
-        db.add_data_row(&row)?;
-
-        {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 9.into(),
-            };
-
-            let got_color = db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child1, &query)
-                .unwrap()
-                .value;
-
-            similar_asserts::assert_eq!(color, got_color);
-        }
-
-        {
-            let query = LatestAtQuery {
-                timeline: timeline_frame,
-                at: 11.into(),
-            };
-
-            assert!(db
-                .store()
-                .query_latest_component::<MyColor>(&entity_path_child1, &query)
-                .is_none());
-        }
-    }
-
-    // * Insert a 2D point for 'child2' at frame #9.
-    // * Query 'child2' at frame #9 and make sure we find it back.
-    // * Query 'child2' at frame #11 and make sure we do _not_ find it.
-    {
-        let row_id = RowId::random();
-        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
-        let point = MyPoint::new(66.0, 666.0);
-        let row = DataRow::from_component_batches(
-            row_id,
-            timepoint,
-            entity_path_child2.clone(),
-            [&[point] as _],
+            [&[point] as _, &[color] as _],
         )?;
 
         db.add_data_row(&row)?;
@@ -322,10 +280,72 @@ fn clears() -> anyhow::Result<()> {
 
             let got_point = db
                 .store()
+                .query_latest_component::<MyPoint>(&entity_path_child1, &query)
+                .unwrap()
+                .value;
+            let got_color = db
+                .store()
+                .query_latest_component::<MyColor>(&entity_path_child1, &query)
+                .unwrap()
+                .value;
+
+            similar_asserts::assert_eq!(point, got_point);
+            similar_asserts::assert_eq!(color, got_color);
+        }
+
+        {
+            let query = LatestAtQuery {
+                timeline: timeline_frame,
+                at: 11.into(),
+            };
+
+            assert!(db
+                .store()
+                .query_latest_component::<MyPoint>(&entity_path_child1, &query)
+                .is_none());
+            assert!(db
+                .store()
+                .query_latest_component::<MyColor>(&entity_path_child1, &query)
+                .is_none());
+        }
+    }
+
+    // * Insert a color for 'child2' at frame #9.
+    // * Insert a 2D point for 'child2' at frame #9.
+    // * Query 'child2' at frame #9 and make sure we find everything back.
+    // * Query 'child2' at frame #11 and make sure we do _not_ find anything.
+    {
+        let row_id = RowId::random();
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let color = MyColor::from(0x00AA00DD);
+        let point = MyPoint::new(66.0, 666.0);
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint,
+            entity_path_child2.clone(),
+            [&[color] as _, &[point] as _],
+        )?;
+
+        db.add_data_row(&row)?;
+
+        {
+            let query = LatestAtQuery {
+                timeline: timeline_frame,
+                at: 9.into(),
+            };
+
+            let got_color = db
+                .store()
+                .query_latest_component::<MyColor>(&entity_path_child2, &query)
+                .unwrap()
+                .value;
+            let got_point = db
+                .store()
                 .query_latest_component::<MyPoint>(&entity_path_child2, &query)
                 .unwrap()
                 .value;
 
+            similar_asserts::assert_eq!(color, got_color);
             similar_asserts::assert_eq!(point, got_point);
         }
 
@@ -335,6 +355,10 @@ fn clears() -> anyhow::Result<()> {
                 at: 11.into(),
             };
 
+            assert!(db
+                .store()
+                .query_latest_component::<MyColor>(&entity_path_child2, &query)
+                .is_none());
             assert!(db
                 .store()
                 .query_latest_component::<MyPoint>(&entity_path_child2, &query)
