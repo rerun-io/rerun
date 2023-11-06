@@ -1,5 +1,5 @@
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{DataRow, EntityPath, RowId};
+use re_log_types::{EntityPath, RowId};
 use re_types_core::{components::InstanceKey, Archetype, ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
@@ -155,9 +155,10 @@ pub fn query_archetype<A: Archetype>(
 }
 
 /// Helper used to create an example store we can use for querying in doctests
+#[cfg(test)]
 pub fn __populate_example_store() -> DataStore {
-    use re_log_types::build_frame_nr;
     use re_log_types::example_components::{MyColor, MyPoint};
+    use re_log_types::{build_frame_nr, DataRow};
 
     let mut store = DataStore::new(InstanceKey::name(), Default::default());
 
@@ -195,6 +196,7 @@ pub fn __populate_example_store() -> DataStore {
 
 // Minimal test matching the doctest for `get_component_with_instances`
 #[test]
+#[cfg(test)]
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::example_components::MyPoint;
@@ -228,6 +230,7 @@ fn simple_get_component() {
 
 // Minimal test matching the doctest for `query_entity_with_primary`
 #[test]
+#[cfg(test)]
 fn simple_query_archetype() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
