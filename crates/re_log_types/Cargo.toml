@@ -29,6 +29,7 @@ serde = [
   "re_types_core/serde",
 ]
 
+testing = []
 
 [dependencies]
 
@@ -79,5 +80,4 @@ crossbeam.workspace = true
 
 
 [dev-dependencies]
-re_types.workspace = true
 similar-asserts.workspace = true

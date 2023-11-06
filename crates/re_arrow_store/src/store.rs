@@ -336,6 +336,7 @@ impl DataStore {
 #[test]
 #[cfg(test)]
 fn datastore_internal_repr() {
+    use re_log_types::DataTable;
     use re_types_core::Loggable as _;
 
     let mut store = DataStore::new(
@@ -347,11 +348,11 @@ fn datastore_internal_repr() {
         },
     );
 
-    let timeless = crate::example_datatable(true);
+    let timeless = DataTable::example(true);
     eprintln!("{timeless}");
     store.insert_table(&timeless).unwrap();
 
-    let temporal = crate::example_datatable(false);
+    let temporal = DataTable::example(false);
     eprintln!("{temporal}");
     store.insert_table(&temporal).unwrap();
 

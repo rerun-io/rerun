@@ -4255,7 +4255,6 @@ dependencies = [
  "re_string_interner",
  "re_tracing",
  "re_tuid",
- "re_types",
  "re_types_core",
  "rmp-serde",
  "serde",

@@ -32,11 +32,6 @@ mod store_polars;
 #[cfg(feature = "polars")]
 pub mod polars_util;
 
-#[cfg(feature = "testing")]
-mod example_datatable;
-#[cfg(feature = "testing")]
-pub use example_datatable::example_datatable;
-
 #[doc(hidden)]
 pub mod test_util;
 
