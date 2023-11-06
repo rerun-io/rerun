@@ -136,6 +136,18 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
 
+        /// See RecordingStream::spawn
+        template <typename TRep, typename TPeriod>
+        Error spawn(
+            const SpawnOptions& options = {},
+            std::chrono::duration<TRep, TPeriod> flush_timeout = std::chrono::seconds(2)
+        ) const {
+            return spawn(
+                options,
+                std::chrono::duration_cast<std::chrono::duration<float>>(flush_timeout).count()
+            );
+        }
+
         /// Stream all log-data to a given file.
         ///
         /// This function returns immediately.
