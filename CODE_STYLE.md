@@ -189,10 +189,17 @@ class Rect {
 }
 ```
 
+### Constants & Enums
+
+Constants & enum values have PascalCase names.
+
+When possible, use `constexpr` for (global & struct/class scoped) constants.
+
 ### String handling
 Whenever possible we use `std::string_view` to pass strings.
 
 To accommodate for this and other languages, strings on the C interface are almost never expected to be null-terminated and are always passed along with a byte length using `rr_string`.
+
 
 ### Misc
 We don't add `inline` before class/struct member functions if they are inlined in the class/struct definition.

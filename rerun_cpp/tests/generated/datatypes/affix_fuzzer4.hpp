@@ -25,7 +25,7 @@ namespace rerun {
         namespace detail {
             enum class AffixFuzzer4Tag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
-                NONE = 0,
+                None = 0,
                 single_required,
                 many_required,
                 many_optional,
@@ -57,7 +57,7 @@ namespace rerun {
         } // namespace detail
 
         struct AffixFuzzer4 {
-            AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::NONE) {}
+            AffixFuzzer4() : _tag(detail::AffixFuzzer4Tag::None) {}
 
             /// Copy constructor
             AffixFuzzer4(const AffixFuzzer4& other) : _tag(other._tag) {
@@ -75,7 +75,7 @@ namespace rerun {
                             std::optional<std::vector<rerun::datatypes::AffixFuzzer3>>;
                         new (&_data.many_optional) TypeAlias(other._data.many_optional);
                     } break;
-                    case detail::AffixFuzzer4Tag::NONE: {
+                    case detail::AffixFuzzer4Tag::None: {
                     } break;
                 }
             }
@@ -97,7 +97,7 @@ namespace rerun {
 
             ~AffixFuzzer4() {
                 switch (this->_tag) {
-                    case detail::AffixFuzzer4Tag::NONE: {
+                    case detail::AffixFuzzer4Tag::None: {
                         // Nothing to destroy
                     } break;
                     case detail::AffixFuzzer4Tag::single_required: {
@@ -187,7 +187,7 @@ namespace rerun {
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
+            static rerun::Error fill_arrow_array_builder(
                 arrow::DenseUnionBuilder* builder, const AffixFuzzer4* elements, size_t num_elements
             );
 
