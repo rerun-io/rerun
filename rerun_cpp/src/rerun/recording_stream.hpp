@@ -144,10 +144,8 @@ namespace rerun {
             const SpawnOptions& options = {},
             std::chrono::duration<TRep, TPeriod> flush_timeout = std::chrono::seconds(2)
         ) const {
-            return spawn(
-                options,
-                std::chrono::duration_cast<std::chrono::duration<float>>(flush_timeout).count()
-            );
+            using seconds_float = std::chrono::duration<float>; // Default ratio is 1:1 == seconds.
+            return spawn(options, std::chrono::duration_cast<seconds_float>(flush_timeout).count());
         }
 
         /// Stream all log-data to a given file.
@@ -201,9 +199,11 @@ namespace rerun {
         void set_time(std::string_view timeline_name, std::chrono::duration<TRep, TPeriod> time)
             const {
             if constexpr (std::is_floating_point<TRep>::value) {
+                using seconds_double =
+                    std::chrono::duration<double>; // Default ratio is 1:1 == seconds.
                 set_time_seconds(
                     timeline_name,
-                    std::chrono::duration_cast<std::chrono::duration<double>>(time).count()
+                    std::chrono::duration_cast<seconds_double>(time).count()
                 );
             } else {
                 set_time_nanos(
