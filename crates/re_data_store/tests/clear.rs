@@ -16,6 +16,7 @@ fn clears() -> anyhow::Result<()> {
     let entity_path_parent: EntityPath = "parent".into();
     let entity_path_child1: EntityPath = "parent/child1".into();
     let entity_path_child2: EntityPath = "parent/deep/deep/down/child2".into();
+    let entity_path_grandchild: EntityPath = "parent/child1/grandchild".into();
 
     // * Insert a 2D point & color for 'parent' at frame #10.
     // * Query 'parent' at frame #11 and make sure we find everything back.
@@ -362,6 +363,50 @@ fn clears() -> anyhow::Result<()> {
             assert!(db
                 .store()
                 .query_latest_component::<MyPoint>(&entity_path_child2, &query)
+                .is_none());
+        }
+    }
+
+    // * Insert a color for 'grandchild' (new!) at frame #9.
+    // * Query 'grandchild' at frame #9 and make sure we find everything back.
+    // * Query 'grandchild' at frame #11 and make sure we do _not_ find anything.
+    {
+        let row_id = RowId::random();
+        let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
+        let color = MyColor::from(0x00AA00DD);
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint,
+            entity_path_grandchild.clone(),
+            [&[color] as _],
+        )?;
+
+        db.add_data_row(&row)?;
+
+        {
+            let query = LatestAtQuery {
+                timeline: timeline_frame,
+                at: 9.into(),
+            };
+
+            let got_color = db
+                .store()
+                .query_latest_component::<MyColor>(&entity_path_grandchild, &query)
+                .unwrap()
+                .value;
+
+            similar_asserts::assert_eq!(color, got_color);
+        }
+
+        {
+            let query = LatestAtQuery {
+                timeline: timeline_frame,
+                at: 11.into(),
+            };
+
+            assert!(db
+                .store()
+                .query_latest_component::<MyColor>(&entity_path_grandchild, &query)
                 .is_none());
         }
     }
