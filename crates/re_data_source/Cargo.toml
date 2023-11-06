@@ -30,6 +30,7 @@ re_types = { workspace = true, features = ["image"] }
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
+image.workspace = true
 itertools.workspace = true
 rayon.workspace = true
 thiserror.workspace = true

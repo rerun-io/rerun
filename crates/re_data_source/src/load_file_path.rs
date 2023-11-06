@@ -99,7 +99,6 @@ fn log_msg_from_file_path(
 }
 
 // Non-blocking
-#[cfg(not(target_arch = "wasm32"))]
 fn stream_rrd_file(
     path: std::path::PathBuf,
     tx: re_smart_channel::Sender<LogMsg>,

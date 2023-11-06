@@ -1,5 +1,5 @@
+use image::{guess_format, ImageFormat};
 use re_log_types::{DataCell, DataCellError};
-use re_types::external::image::{guess_format, ImageFormat};
 
 /// Errors from [`data_cells_from_file_path`].
 #[derive(thiserror::Error, Debug)]

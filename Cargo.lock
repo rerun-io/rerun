@@ -4104,6 +4104,7 @@ name = "re_data_source"
 version = "0.11.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "image",
  "itertools 0.11.0",
  "rayon",
  "re_build_tools",

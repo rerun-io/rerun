@@ -20,8 +20,7 @@ pub use self::range::range_archetype;
 pub use self::util::query_archetype_with_history;
 
 // Used for doc-tests
-#[doc(hidden)]
-#[cfg(test)]
+#[cfg(feature = "testing")]
 pub use self::query::__populate_example_store;
 
 #[derive(thiserror::Error, Debug)]
