@@ -68,10 +68,11 @@ webbrowser = { workspace = true, optional = true }
 
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen"] }
+re_arrow_store = { workspace = true, features = ["testing"] }
 
-ndarray.workspace = true
+itertools.workspace = true
 ndarray-rand.workspace = true
+ndarray.workspace = true
 rand.workspace = true
 similar-asserts.workspace = true
 

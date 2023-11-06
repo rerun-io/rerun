@@ -1589,6 +1589,7 @@ impl RecordingStream {
 
 #[cfg(test)]
 mod tests {
+    use re_arrow_store::example_datatable;
     use re_log_types::{DataTable, RowId};
 
     use super::*;
@@ -1599,233 +1600,232 @@ mod tests {
         assert_send_sync::<RecordingStream>();
     }
 
-    // TODO:
-    // #[test]
-    // fn never_flush() {
-    //     let rec = RecordingStreamBuilder::new("rerun_example_never_flush")
-    //         .enabled(true)
-    //         .batcher_config(DataTableBatcherConfig::NEVER)
-    //         .buffered()
-    //         .unwrap();
+    #[test]
+    fn never_flush() {
+        let rec = RecordingStreamBuilder::new("rerun_example_never_flush")
+            .enabled(true)
+            .batcher_config(DataTableBatcherConfig::NEVER)
+            .buffered()
+            .unwrap();
 
-    //     let store_info = rec.store_info().cloned().unwrap();
+        let store_info = rec.store_info().cloned().unwrap();
 
-    //     let mut table = DataTable::example(false);
-    //     table.compute_all_size_bytes();
-    //     for row in table.to_rows() {
-    //         rec.record_row(row.unwrap(), false);
-    //     }
+        let mut table = example_datatable(false);
+        table.compute_all_size_bytes();
+        for row in table.to_rows() {
+            rec.record_row(row.unwrap(), false);
+        }
 
-    //     let storage = rec.memory();
-    //     let mut msgs = {
-    //         let mut msgs = storage.take();
-    //         msgs.reverse();
-    //         msgs
-    //     };
+        let storage = rec.memory();
+        let mut msgs = {
+            let mut msgs = storage.take();
+            msgs.reverse();
+            msgs
+        };
 
-    //     // First message should be a set_store_info resulting from the original sink swap to
-    //     // buffered mode.
-    //     match msgs.pop().unwrap() {
-    //         LogMsg::SetStoreInfo(msg) => {
-    //             assert!(msg.row_id != RowId::ZERO);
-    //             similar_asserts::assert_eq!(store_info, msg.info);
-    //         }
-    //         LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
-    //     }
+        // First message should be a set_store_info resulting from the original sink swap to
+        // buffered mode.
+        match msgs.pop().unwrap() {
+            LogMsg::SetStoreInfo(msg) => {
+                assert!(msg.row_id != RowId::ZERO);
+                similar_asserts::assert_eq!(store_info, msg.info);
+            }
+            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+        }
 
-    //     // Second message should be a set_store_info resulting from the later sink swap from
-    //     // buffered mode into in-memory mode.
-    //     // This arrives _before_ the data itself since we're using manual flushing.
-    //     match msgs.pop().unwrap() {
-    //         LogMsg::SetStoreInfo(msg) => {
-    //             assert!(msg.row_id != RowId::ZERO);
-    //             similar_asserts::assert_eq!(store_info, msg.info);
-    //         }
-    //         LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
-    //     }
+        // Second message should be a set_store_info resulting from the later sink swap from
+        // buffered mode into in-memory mode.
+        // This arrives _before_ the data itself since we're using manual flushing.
+        match msgs.pop().unwrap() {
+            LogMsg::SetStoreInfo(msg) => {
+                assert!(msg.row_id != RowId::ZERO);
+                similar_asserts::assert_eq!(store_info, msg.info);
+            }
+            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+        }
 
-    //     // Third message is the batched table itself, which was sent as a result of the implicit
-    //     // flush when swapping the underlying sink from buffered to in-memory.
-    //     match msgs.pop().unwrap() {
-    //         LogMsg::ArrowMsg(rid, msg) => {
-    //             assert_eq!(store_info.store_id, rid);
+        // Third message is the batched table itself, which was sent as a result of the implicit
+        // flush when swapping the underlying sink from buffered to in-memory.
+        match msgs.pop().unwrap() {
+            LogMsg::ArrowMsg(rid, msg) => {
+                assert_eq!(store_info.store_id, rid);
 
-    //             let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-    //             // TODO(#1760): we shouldn't have to (re)do this!
-    //             got.compute_all_size_bytes();
-    //             // NOTE: Override the resulting table's ID so they can be compared.
-    //             got.table_id = table.table_id;
+                let mut got = DataTable::from_arrow_msg(&msg).unwrap();
+                // TODO(#1760): we shouldn't have to (re)do this!
+                got.compute_all_size_bytes();
+                // NOTE: Override the resulting table's ID so they can be compared.
+                got.table_id = table.table_id;
 
-    //             similar_asserts::assert_eq!(table, got);
-    //         }
-    //         LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
-    //     }
+                similar_asserts::assert_eq!(table, got);
+            }
+            LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+        }
 
-    //     // That's all.
-    //     assert!(msgs.pop().is_none());
-    // }
+        // That's all.
+        assert!(msgs.pop().is_none());
+    }
 
-    // #[test]
-    // fn always_flush() {
-    //     use itertools::Itertools as _;
+    #[test]
+    fn always_flush() {
+        use itertools::Itertools as _;
 
-    //     let rec = RecordingStreamBuilder::new("rerun_example_always_flush")
-    //         .enabled(true)
-    //         .batcher_config(DataTableBatcherConfig::ALWAYS)
-    //         .buffered()
-    //         .unwrap();
+        let rec = RecordingStreamBuilder::new("rerun_example_always_flush")
+            .enabled(true)
+            .batcher_config(DataTableBatcherConfig::ALWAYS)
+            .buffered()
+            .unwrap();
 
-    //     let store_info = rec.store_info().cloned().unwrap();
+        let store_info = rec.store_info().cloned().unwrap();
 
-    //     let mut table = DataTable::example(false);
-    //     table.compute_all_size_bytes();
-    //     for row in table.to_rows() {
-    //         rec.record_row(row.unwrap(), false);
-    //     }
+        let mut table = example_datatable(false);
+        table.compute_all_size_bytes();
+        for row in table.to_rows() {
+            rec.record_row(row.unwrap(), false);
+        }
 
-    //     let storage = rec.memory();
-    //     let mut msgs = {
-    //         let mut msgs = storage.take();
-    //         msgs.reverse();
-    //         msgs
-    //     };
+        let storage = rec.memory();
+        let mut msgs = {
+            let mut msgs = storage.take();
+            msgs.reverse();
+            msgs
+        };
 
-    //     // First message should be a set_store_info resulting from the original sink swap to
-    //     // buffered mode.
-    //     match msgs.pop().unwrap() {
-    //         LogMsg::SetStoreInfo(msg) => {
-    //             assert!(msg.row_id != RowId::ZERO);
-    //             similar_asserts::assert_eq!(store_info, msg.info);
-    //         }
-    //         LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
-    //     }
+        // First message should be a set_store_info resulting from the original sink swap to
+        // buffered mode.
+        match msgs.pop().unwrap() {
+            LogMsg::SetStoreInfo(msg) => {
+                assert!(msg.row_id != RowId::ZERO);
+                similar_asserts::assert_eq!(store_info, msg.info);
+            }
+            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+        }
 
-    //     // Second message should be a set_store_info resulting from the later sink swap from
-    //     // buffered mode into in-memory mode.
-    //     // This arrives _before_ the data itself since we're using manual flushing.
-    //     match msgs.pop().unwrap() {
-    //         LogMsg::SetStoreInfo(msg) => {
-    //             assert!(msg.row_id != RowId::ZERO);
-    //             similar_asserts::assert_eq!(store_info, msg.info);
-    //         }
-    //         LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
-    //     }
+        // Second message should be a set_store_info resulting from the later sink swap from
+        // buffered mode into in-memory mode.
+        // This arrives _before_ the data itself since we're using manual flushing.
+        match msgs.pop().unwrap() {
+            LogMsg::SetStoreInfo(msg) => {
+                assert!(msg.row_id != RowId::ZERO);
+                similar_asserts::assert_eq!(store_info, msg.info);
+            }
+            LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+        }
 
-    //     let mut rows = {
-    //         let mut rows: Vec<_> = table.to_rows().try_collect().unwrap();
-    //         rows.reverse();
-    //         rows
-    //     };
+        let mut rows = {
+            let mut rows: Vec<_> = table.to_rows().try_collect().unwrap();
+            rows.reverse();
+            rows
+        };
 
-    //     let mut assert_next_row = || {
-    //         match msgs.pop().unwrap() {
-    //             LogMsg::ArrowMsg(rid, msg) => {
-    //                 assert_eq!(store_info.store_id, rid);
+        let mut assert_next_row = || {
+            match msgs.pop().unwrap() {
+                LogMsg::ArrowMsg(rid, msg) => {
+                    assert_eq!(store_info.store_id, rid);
 
-    //                 let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-    //                 // TODO(#1760): we shouldn't have to (re)do this!
-    //                 got.compute_all_size_bytes();
-    //                 // NOTE: Override the resulting table's ID so they can be compared.
-    //                 got.table_id = table.table_id;
+                    let mut got = DataTable::from_arrow_msg(&msg).unwrap();
+                    // TODO(#1760): we shouldn't have to (re)do this!
+                    got.compute_all_size_bytes();
+                    // NOTE: Override the resulting table's ID so they can be compared.
+                    got.table_id = table.table_id;
 
-    //                 let expected = DataTable::from_rows(got.table_id, [rows.pop().unwrap()]);
+                    let expected = DataTable::from_rows(got.table_id, [rows.pop().unwrap()]);
 
-    //                 similar_asserts::assert_eq!(expected, got);
-    //             }
-    //             LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
-    //         }
-    //     };
+                    similar_asserts::assert_eq!(expected, got);
+                }
+                LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+            }
+        };
 
-    //     // 3rd, 4th and 5th messages are all the single-row batched tables themselves, which were
-    //     // sent as a result of the implicit flush when swapping the underlying sink from buffered
-    //     // to in-memory.
-    //     assert_next_row();
-    //     assert_next_row();
-    //     assert_next_row();
+        // 3rd, 4th and 5th messages are all the single-row batched tables themselves, which were
+        // sent as a result of the implicit flush when swapping the underlying sink from buffered
+        // to in-memory.
+        assert_next_row();
+        assert_next_row();
+        assert_next_row();
 
-    //     // That's all.
-    //     assert!(msgs.pop().is_none());
-    // }
+        // That's all.
+        assert!(msgs.pop().is_none());
+    }
 
-    // #[test]
-    // fn flush_hierarchy() {
-    //     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_flush_hierarchy")
-    //         .enabled(true)
-    //         .batcher_config(DataTableBatcherConfig::NEVER)
-    //         .memory()
-    //         .unwrap();
+    #[test]
+    fn flush_hierarchy() {
+        let (rec, storage) = RecordingStreamBuilder::new("rerun_example_flush_hierarchy")
+            .enabled(true)
+            .batcher_config(DataTableBatcherConfig::NEVER)
+            .memory()
+            .unwrap();
 
-    //     let store_info = rec.store_info().cloned().unwrap();
+        let store_info = rec.store_info().cloned().unwrap();
 
-    //     let mut table = DataTable::example(false);
-    //     table.compute_all_size_bytes();
-    //     for row in table.to_rows() {
-    //         rec.record_row(row.unwrap(), false);
-    //     }
+        let mut table = example_datatable(false);
+        table.compute_all_size_bytes();
+        for row in table.to_rows() {
+            rec.record_row(row.unwrap(), false);
+        }
 
-    //     {
-    //         let mut msgs = {
-    //             let mut msgs = storage.take();
-    //             msgs.reverse();
-    //             msgs
-    //         };
+        {
+            let mut msgs = {
+                let mut msgs = storage.take();
+                msgs.reverse();
+                msgs
+            };
 
-    //         // First message should be a set_store_info resulting from the original sink swap
-    //         // to in-memory mode.
-    //         match msgs.pop().unwrap() {
-    //             LogMsg::SetStoreInfo(msg) => {
-    //                 assert!(msg.row_id != RowId::ZERO);
-    //                 similar_asserts::assert_eq!(store_info, msg.info);
-    //             }
-    //             LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
-    //         }
+            // First message should be a set_store_info resulting from the original sink swap
+            // to in-memory mode.
+            match msgs.pop().unwrap() {
+                LogMsg::SetStoreInfo(msg) => {
+                    assert!(msg.row_id != RowId::ZERO);
+                    similar_asserts::assert_eq!(store_info, msg.info);
+                }
+                LogMsg::ArrowMsg { .. } => panic!("expected SetStoreInfo"),
+            }
 
-    //         // MemorySinkStorage transparently handles flushing during `take()`!
+            // MemorySinkStorage transparently handles flushing during `take()`!
 
-    //         // The batched table itself, which was sent as a result of the explicit flush above.
-    //         match msgs.pop().unwrap() {
-    //             LogMsg::ArrowMsg(rid, msg) => {
-    //                 assert_eq!(store_info.store_id, rid);
+            // The batched table itself, which was sent as a result of the explicit flush above.
+            match msgs.pop().unwrap() {
+                LogMsg::ArrowMsg(rid, msg) => {
+                    assert_eq!(store_info.store_id, rid);
 
-    //                 let mut got = DataTable::from_arrow_msg(&msg).unwrap();
-    //                 // TODO(#1760): we shouldn't have to (re)do this!
-    //                 got.compute_all_size_bytes();
-    //                 // NOTE: Override the resulting table's ID so they can be compared.
-    //                 got.table_id = table.table_id;
+                    let mut got = DataTable::from_arrow_msg(&msg).unwrap();
+                    // TODO(#1760): we shouldn't have to (re)do this!
+                    got.compute_all_size_bytes();
+                    // NOTE: Override the resulting table's ID so they can be compared.
+                    got.table_id = table.table_id;
 
-    //                 similar_asserts::assert_eq!(table, got);
-    //             }
-    //             LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
-    //         }
+                    similar_asserts::assert_eq!(table, got);
+                }
+                LogMsg::SetStoreInfo { .. } => panic!("expected ArrowMsg"),
+            }
 
-    //         // That's all.
-    //         assert!(msgs.pop().is_none());
-    //     }
-    // }
+            // That's all.
+            assert!(msgs.pop().is_none());
+        }
+    }
 
-    // #[test]
-    // fn disabled() {
-    //     let (rec, storage) = RecordingStreamBuilder::new("rerun_example_disabled")
-    //         .enabled(false)
-    //         .batcher_config(DataTableBatcherConfig::ALWAYS)
-    //         .memory()
-    //         .unwrap();
+    #[test]
+    fn disabled() {
+        let (rec, storage) = RecordingStreamBuilder::new("rerun_example_disabled")
+            .enabled(false)
+            .batcher_config(DataTableBatcherConfig::ALWAYS)
+            .memory()
+            .unwrap();
 
-    //     let mut table = DataTable::example(false);
-    //     table.compute_all_size_bytes();
-    //     for row in table.to_rows() {
-    //         rec.record_row(row.unwrap(), false);
-    //     }
+        let mut table = example_datatable(false);
+        table.compute_all_size_bytes();
+        for row in table.to_rows() {
+            rec.record_row(row.unwrap(), false);
+        }
 
-    //     let mut msgs = {
-    //         let mut msgs = storage.take();
-    //         msgs.reverse();
-    //         msgs
-    //     };
+        let mut msgs = {
+            let mut msgs = storage.take();
+            msgs.reverse();
+            msgs
+        };
 
-    //     // That's all.
-    //     assert!(msgs.pop().is_none());
-    // }
+        // That's all.
+        assert!(msgs.pop().is_none());
+    }
 
     #[test]
     fn test_set_thread_local() {

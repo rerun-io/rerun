@@ -68,11 +68,10 @@ polars-ops = { workspace = true, optional = true, features = [
   "dtype-time",
   "dtype-struct",
 ] }
+re_types = { workspace = true, optional = true, features = ["datagen"] }
 
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen"] }
-
 anyhow.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true
