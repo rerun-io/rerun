@@ -657,7 +657,7 @@ impl RecordingStream {
     /// Log data to Rerun.
     ///
     /// This is the main entry point for logging data to rerun. It can be used to log anything
-    /// that implements the [`AsComponents`], such as any [archetype][crate::archetypes].
+    /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
     ///
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
     /// See [`RecordingStream::set_time_sequence`] etc for more information.
@@ -693,14 +693,14 @@ impl RecordingStream {
     /// Log data to Rerun.
     ///
     /// It can be used to log anything
-    /// that implements the [`AsComponents`], such as any [archetype][crate::archetypes].
+    /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
     ///
     /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
     /// into the past.
     /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
     ///
-    /// This is most often used for [`re_types::components::ViewCoordinates`] and
-    /// [`re_types::components::AnnotationContext`].
+    /// This is most often used for [`rerun::ViewCoordinates`](https://docs.rs/rerun/latest/rerun/archetypes/struct.ViewCoordinates.html) and
+    /// [`rerun::AnnotationContext`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AnnotationContext.html).
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
