@@ -20,7 +20,7 @@ all-features = true
 default = []
 
 ## Enables access to re_types' test components/datatypes.
-testing = ["re_types/testing", "re_log_types/testing"]
+testing = ["re_log_types/testing"]
 
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
@@ -68,10 +68,11 @@ polars-ops = { workspace = true, optional = true, features = [
   "dtype-time",
   "dtype-struct",
 ] }
-re_types = { workspace = true, optional = true, features = ["datagen"] }
 
 
 [dev-dependencies]
+re_types = { workspace = true, features = ["datagen"] }
+
 anyhow.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true
