@@ -120,7 +120,7 @@ namespace rerun {
                         return rerun::Error(
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer3::fixed_size_shenanigans: FixedSizeListBuilder in unions not yet implemented"
-                        )
+                        );
                     } break;
                 }
             }

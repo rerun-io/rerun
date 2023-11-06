@@ -1530,7 +1530,7 @@ fn quote_fill_arrow_array_builder(
                             let error = format!("Failed to serialize {}::{}: {} in unions not yet implemented", obj.name, variant.name, arrow_builder_type);
                             quote! {
                                 (void)#variant_builder;
-                                return rerun::Error(ErrorCode::NotImplemented, #error)
+                                return rerun::Error(ErrorCode::NotImplemented, #error);
                             }
                         }
                     } else {
