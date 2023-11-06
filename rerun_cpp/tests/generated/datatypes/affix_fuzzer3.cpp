@@ -86,7 +86,7 @@ namespace rerun {
                 auto variant_builder_untyped = builder->child_builder(variant_index).get();
 
                 switch (union_instance._tag) {
-                    case detail::AffixFuzzer3Tag::NONE: {
+                    case detail::AffixFuzzer3Tag::None: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                     } break;
                     case detail::AffixFuzzer3Tag::degrees: {
@@ -120,7 +120,7 @@ namespace rerun {
                         return rerun::Error(
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer3::fixed_size_shenanigans: FixedSizeListBuilder in unions not yet implemented"
-                        );
+                        )
                     } break;
                 }
             }

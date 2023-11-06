@@ -23,7 +23,7 @@ namespace rerun {
         namespace detail {
             enum class Scale3DTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
-                NONE = 0,
+                None = 0,
                 ThreeD,
                 Uniform,
             };
@@ -55,7 +55,7 @@ namespace rerun {
 
         /// **Datatype**: 3D scaling factor, part of a transform representation.
         struct Scale3D {
-            Scale3D() : _tag(detail::Scale3DTag::NONE) {}
+            Scale3D() : _tag(detail::Scale3DTag::None) {}
 
             /// Copy constructor
             Scale3D(const Scale3D& other) : _tag(other._tag) {

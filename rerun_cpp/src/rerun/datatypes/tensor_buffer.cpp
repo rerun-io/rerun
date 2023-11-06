@@ -166,7 +166,7 @@ namespace rerun {
                 auto variant_builder_untyped = builder->child_builder(variant_index).get();
 
                 switch (union_instance._tag) {
-                    case detail::TensorBufferTag::NONE: {
+                    case detail::TensorBufferTag::None: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                     } break;
                     case detail::TensorBufferTag::U8: {

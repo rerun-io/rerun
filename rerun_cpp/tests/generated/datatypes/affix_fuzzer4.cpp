@@ -91,7 +91,7 @@ namespace rerun {
                 auto variant_builder_untyped = builder->child_builder(variant_index).get();
 
                 switch (union_instance._tag) {
-                    case detail::AffixFuzzer4Tag::NONE: {
+                    case detail::AffixFuzzer4Tag::None: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                     } break;
                     case detail::AffixFuzzer4Tag::single_required: {

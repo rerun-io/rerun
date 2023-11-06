@@ -24,7 +24,7 @@ namespace rerun {
         namespace detail {
             enum class Rotation3DTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
-                NONE = 0,
+                None = 0,
                 Quaternion,
                 AxisAngle,
             };
@@ -56,7 +56,7 @@ namespace rerun {
 
         /// **Datatype**: A 3D rotation.
         struct Rotation3D {
-            Rotation3D() : _tag(detail::Rotation3DTag::NONE) {}
+            Rotation3D() : _tag(detail::Rotation3DTag::None) {}
 
             /// Copy constructor
             Rotation3D(const Rotation3D& other) : _tag(other._tag) {

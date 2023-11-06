@@ -22,7 +22,7 @@ namespace rerun {
         namespace detail {
             enum class AngleTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
-                NONE = 0,
+                None = 0,
                 Radians,
                 Degrees,
             };
@@ -52,7 +52,7 @@ namespace rerun {
 
         /// **Datatype**: Angle in either radians or degrees.
         struct Angle {
-            Angle() : _tag(detail::AngleTag::NONE) {}
+            Angle() : _tag(detail::AngleTag::None) {}
 
             /// Copy constructor
             Angle(const Angle& other) : _tag(other._tag) {

@@ -63,7 +63,7 @@ namespace rerun {
                 auto variant_builder_untyped = builder->child_builder(variant_index).get();
 
                 switch (union_instance._tag) {
-                    case detail::Scale3DTag::NONE: {
+                    case detail::Scale3DTag::None: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                     } break;
                     case detail::Scale3DTag::ThreeD: {

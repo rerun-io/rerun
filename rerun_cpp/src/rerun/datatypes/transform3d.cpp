@@ -76,7 +76,7 @@ namespace rerun {
                 auto variant_builder_untyped = builder->child_builder(variant_index).get();
 
                 switch (union_instance._tag) {
-                    case detail::Transform3DTag::NONE: {
+                    case detail::Transform3DTag::None: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                     } break;
                     case detail::Transform3DTag::TranslationAndMat3x3: {
