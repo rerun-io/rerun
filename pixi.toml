@@ -77,11 +77,15 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
 cpp-build-all = { depends_on = [
   "cpp-prepare",
-  "cpp-build-tests",
-  "cpp-build-examples",
   "cpp-build-doc-examples",
+  "cpp-build-examples",
+  "cpp-build-roundtrips",
+  "cpp-build-tests",
 ] }
 cpp-build-tests = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
+  "cpp-prepare",
+] }
+cpp-build-roundtrips = { cmd = "cmake --build build --config Debug --target roundtrips", depends_on = [
   "cpp-prepare",
 ] }
 cpp-build-examples = { cmd = "cmake --build build --config Debug --target examples", depends_on = [
