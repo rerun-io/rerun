@@ -1,0 +1,22 @@
+name: "GitHub Release"
+
+on:
+  release:
+    types: [released]
+
+concurrency:
+  group: "release-${{ github.event.release.tag_name }}"
+  cancel-in-progress: true
+
+permissions:
+  # required for updating the release
+  contents: write
+
+jobs:
+  sync-release-assets:
+    name: "Sync Release Assets"
+    uses: ./.github/workflows/reusable_sync_release_assets.yml
+    with:
+      CONCURRENCY: "${{ github.event.release.tag_name }}"
+      RELEASE_VERSION: "${{ github.event.release.tag_name }}"
+    secrets: inherit

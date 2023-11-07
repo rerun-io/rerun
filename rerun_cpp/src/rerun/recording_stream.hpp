@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint> // uint32_t etc.
 #include <optional>
 #include <string_view>
@@ -8,6 +9,7 @@
 #include "as_components.hpp"
 #include "component_batch.hpp"
 #include "error.hpp"
+#include "spawn_options.hpp"
 
 namespace rerun {
     struct DataCell;
@@ -127,34 +129,24 @@ namespace rerun {
         /// that viewer instead of starting a new one.
         ///
         /// ## Parameters
-        ///
-        /// port:
-        /// The port to listen on.
-        ///
-        /// memory_limit:
-        /// An upper limit on how much memory the Rerun Viewer should use.
-        /// When this limit is reached, Rerun will drop the oldest data.
-        /// Example: `16GB` or `50%` (of system total).
-        ///
-        /// executable_name:
-        /// Specifies the name of the Rerun executable.
-        /// You can omit the `.exe` suffix on Windows.
-        ///
-        /// executable_path:
-        /// Enforce a specific executable to use instead of searching though PATH
-        /// for [`Self::executable_name`].
+        /// options:
+        /// See `rerun::SpawnOptions` for more information.
         ///
         /// flush_timeout_sec:
         /// The minimum time the SDK will wait during a flush before potentially
         /// dropping data if progress is not being made. Passing a negative value indicates no
         /// timeout, and can cause a call to `flush` to block indefinitely.
+        Error spawn(const SpawnOptions& options = {}, float flush_timeout_sec = 2.0) const;
+
+        /// @see RecordingStream::spawn
+        template <typename TRep, typename TPeriod>
         Error spawn(
-            uint16_t port = 9876,                                           //
-            std::string_view memory_limit = "75%",                          //
-            std::string_view executable_name = "rerun",                     //
-            std::optional<std::string_view> executable_path = std::nullopt, //
-            float flush_timeout_sec = 2.0
-        ) const;
+            const SpawnOptions& options = {},
+            std::chrono::duration<TRep, TPeriod> flush_timeout = std::chrono::seconds(2)
+        ) const {
+            using seconds_float = std::chrono::duration<float>; // Default ratio is 1:1 == seconds.
+            return spawn(options, std::chrono::duration_cast<seconds_float>(flush_timeout).count());
+        }
 
         /// Stream all log-data to a given file.
         ///
@@ -177,8 +169,49 @@ namespace rerun {
         /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time, disable_timeline
+        /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time, set_time, disable_timeline
         void set_time_sequence(std::string_view timeline_name, int64_t sequence_nr) const;
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time("sim_time", sim_time_secs)`.
+        ///
+        /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, reset_time, disable_timeline
+        template <typename TClock>
+        void set_time(std::string_view timeline_name, std::chrono::time_point<TClock> time) const {
+            set_time(timeline_name, time.time_since_epoch());
+        }
+
+        /// Set the current time of the recording, for the current calling thread.
+        ///
+        /// Used for all subsequent logging performed from this same thread, until the next call
+        /// to one of the time setting methods.
+        ///
+        /// For example: `rec.set_time("sim_time", sim_time_secs)`.
+        ///
+        /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, reset_time, disable_timeline
+        template <typename TRep, typename TPeriod>
+        void set_time(std::string_view timeline_name, std::chrono::duration<TRep, TPeriod> time)
+            const {
+            if constexpr (std::is_floating_point<TRep>::value) {
+                using seconds_double =
+                    std::chrono::duration<double>; // Default ratio is 1:1 == seconds.
+                set_time_seconds(
+                    timeline_name,
+                    std::chrono::duration_cast<seconds_double>(time).count()
+                );
+            } else {
+                set_time_nanos(
+                    timeline_name,
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(time).count()
+                );
+            }
+        }
 
         /// Set the current time of the recording, for the current calling thread.
         ///
@@ -188,7 +221,7 @@ namespace rerun {
         /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time, disable_timeline
+        /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time, set_time, disable_timeline
         void set_time_seconds(std::string_view timeline_name, double seconds) const;
 
         /// Set the current time of the recording, for the current calling thread.
@@ -199,7 +232,7 @@ namespace rerun {
         /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, disable_timeline
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, set_time, disable_timeline
         void set_time_nanos(std::string_view timeline_name, int64_t nanos) const;
 
         /// Stops logging to the specified timeline for subsequent log calls.
@@ -208,7 +241,7 @@ namespace rerun {
         ///
         /// No-op if the timeline doesn't exist.
         ///
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time
+        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time, reset_time
         void disable_timeline(std::string_view timeline_name) const;
 
         /// Clears out the current time of the recording, for the current calling thread.

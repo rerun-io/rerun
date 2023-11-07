@@ -49,7 +49,7 @@ impl Loggable for NumInstances {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        re_types::datatypes::UInt32::arrow_datatype()
+        re_types_core::datatypes::UInt32::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -71,14 +71,14 @@ impl Loggable for NumInstances {
     where
         Self: 'a,
     {
-        use re_types::datatypes::UInt32;
+        use re_types_core::datatypes::UInt32;
         UInt32::to_arrow(data.into_iter().map(Into::into).map(|c| UInt32(c.0)))
     }
 
     fn from_arrow(
         array: &dyn ::arrow2::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Self>> {
-        use re_types::datatypes::UInt32;
+        use re_types_core::datatypes::UInt32;
         Ok(UInt32::from_arrow(array)?
             .into_iter()
             .map(|v| Self(v.0))

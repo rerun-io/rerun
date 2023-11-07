@@ -19,20 +19,23 @@ namespace rerun {
             arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
         }
 
-        Error AffixFuzzer8::fill_arrow_array_builder(
+        rerun::Error AffixFuzzer8::fill_arrow_array_builder(
             arrow::FloatBuilder* builder, const AffixFuzzer8* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array builder is null."
+                );
             }
             if (elements == nullptr) {
-                return Error(
+                return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
                 );

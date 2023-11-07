@@ -84,7 +84,7 @@ namespace rerun {
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
+            static rerun::Error fill_arrow_array_builder(
                 arrow::FixedSizeListBuilder* builder, const Mat3x3* elements, size_t num_elements
             );
         };

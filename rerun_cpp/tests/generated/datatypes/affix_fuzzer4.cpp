@@ -44,7 +44,7 @@ namespace rerun {
             arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(std::make_shared<arrow::DenseUnionBuilder>(
@@ -66,14 +66,17 @@ namespace rerun {
             ));
         }
 
-        Error AffixFuzzer4::fill_arrow_array_builder(
+        rerun::Error AffixFuzzer4::fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const AffixFuzzer4* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array builder is null."
+                );
             }
             if (elements == nullptr) {
-                return Error(
+                return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
                 );
@@ -88,7 +91,7 @@ namespace rerun {
                 auto variant_builder_untyped = builder->child_builder(variant_index).get();
 
                 switch (union_instance._tag) {
-                    case detail::AffixFuzzer4Tag::NONE: {
+                    case detail::AffixFuzzer4Tag::None: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                     } break;
                     case detail::AffixFuzzer4Tag::single_required: {
@@ -104,7 +107,7 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
                         (void)variant_builder;
-                        return Error(
+                        return rerun::Error(
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer4::many_required: objects (Object(\"rerun.testing.datatypes.AffixFuzzer3\")) in unions not yet implemented"
                         );
@@ -113,7 +116,7 @@ namespace rerun {
                         auto variant_builder =
                             static_cast<arrow::ListBuilder*>(variant_builder_untyped);
                         (void)variant_builder;
-                        return Error(
+                        return rerun::Error(
                             ErrorCode::NotImplemented,
                             "Failed to serialize AffixFuzzer4::many_optional: nullable list types in unions not yet implemented"
                         );

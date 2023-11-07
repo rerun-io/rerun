@@ -260,7 +260,7 @@ impl Loggable for EntityPath {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        re_types::datatypes::Utf8::arrow_datatype()
+        re_types_core::datatypes::Utf8::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -282,17 +282,17 @@ impl Loggable for EntityPath {
     where
         Self: 'a,
     {
-        re_types::datatypes::Utf8::to_arrow(
+        re_types_core::datatypes::Utf8::to_arrow(
             data.into_iter()
                 .map(Into::into)
-                .map(|ent_path| re_types::datatypes::Utf8(ent_path.path.to_string().into())),
+                .map(|ent_path| re_types_core::datatypes::Utf8(ent_path.path.to_string().into())),
         )
     }
 
     fn from_arrow(
         array: &dyn ::arrow2::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Self>> {
-        Ok(re_types::datatypes::Utf8::from_arrow(array)?
+        Ok(re_types_core::datatypes::Utf8::from_arrow(array)?
             .into_iter()
             .map(|utf8| Self::from(utf8.to_string()))
             .collect())

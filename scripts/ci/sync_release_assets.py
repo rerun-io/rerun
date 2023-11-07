@@ -178,7 +178,7 @@ def main() -> None:
     parser.add_argument(
         "--github-release",
         required=True,
-        help="ID of the Github (pre)release (e.g. `prerelease` or `0.9.0`)",
+        help="Github (pre)release tag (e.g. `prerelease` or `0.9.0`)",
     )
     parser.add_argument("--github-timeout", default=120, help="Timeout for Github related operations")
     parser.add_argument("--wait", default=0, help="Sleep a bit before doing anything")

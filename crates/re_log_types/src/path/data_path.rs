@@ -1,5 +1,4 @@
-use re_types::components::InstanceKey;
-use re_types_core::ComponentName;
+use re_types_core::{components::InstanceKey, ComponentName};
 
 use crate::EntityPath;
 

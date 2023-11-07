@@ -22,6 +22,7 @@ default = []
 ## Polars support
 polars = ["dep:polars-core", "re_arrow_store/polars"]
 
+testing = ["re_log_types/testing"]
 
 [dependencies]
 # Rerun dependencies:
@@ -62,10 +63,8 @@ polars-core = { workspace = true, features = [
 ] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 
-
 [lib]
 bench = false
-
 
 [[bench]]
 name = "query_benchmark"

@@ -21,6 +21,7 @@ pub mod arrow_msg;
 mod data_cell;
 mod data_row;
 mod data_table;
+#[cfg(feature = "testing")]
 pub mod example_components;
 pub mod hash;
 mod index;
@@ -59,13 +60,6 @@ pub use self::time_real::TimeReal;
 pub use self::data_table_batcher::{
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
 };
-
-mod load_file;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::load_file::data_cells_from_file_path;
-
-pub use self::load_file::{data_cells_from_file_contents, FromFileError};
 
 pub mod external {
     pub use arrow2;

@@ -6,7 +6,7 @@ int main(int, char** argv) {
     rec.log("log", rerun::archetypes::TextLog("No level"));
     rec.log(
         "log",
-        rerun::archetypes::TextLog("INFO level").with_level(rerun::components::TextLogLevel::INFO)
+        rerun::archetypes::TextLog("INFO level").with_level(rerun::components::TextLogLevel::Info)
     );
     rec.log("log", rerun::archetypes::TextLog("WILD level").with_level("WILD"));
 }

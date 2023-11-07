@@ -106,19 +106,11 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::spawn(
-        uint16_t port, std::string_view memory_limit, std::string_view executable_name,
-        std::optional<std::string_view> executable_path, float flush_timeout_sec
-    ) const {
-        rr_spawn_options spawn_opts;
-        spawn_opts.port = port;
-        spawn_opts.memory_limit = detail::to_rr_string(memory_limit);
-        spawn_opts.executable_name = detail::to_rr_string(executable_name);
-        spawn_opts.executable_path = detail::to_rr_string(executable_path);
-
+    Error RecordingStream::spawn(const SpawnOptions& options, float flush_timeout_sec) const {
+        rr_spawn_options rerun_c_options = {};
+        options.fill_rerun_c_struct(rerun_c_options);
         rr_error status = {};
-        rr_recording_stream_spawn(_id, &spawn_opts, flush_timeout_sec, &status);
-
+        rr_recording_stream_spawn(_id, &rerun_c_options, flush_timeout_sec, &status);
         return status;
     }
 

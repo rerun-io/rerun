@@ -43,9 +43,12 @@ thiserror.workspace = true
 [dev-dependencies]
 re_types = { workspace = true, features = ["datagen"] }
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+
+anyhow.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true
 rand.workspace = true
+similar-asserts.workspace = true
 
 [lib]
 bench = false

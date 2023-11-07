@@ -32,7 +32,7 @@ namespace rerun {
             arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(std::make_shared<arrow::DenseUnionBuilder>(
@@ -51,14 +51,17 @@ namespace rerun {
             ));
         }
 
-        Error Transform3D::fill_arrow_array_builder(
+        rerun::Error Transform3D::fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array builder is null."
+                );
             }
             if (elements == nullptr) {
-                return Error(
+                return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
                 );
@@ -73,7 +76,7 @@ namespace rerun {
                 auto variant_builder_untyped = builder->child_builder(variant_index).get();
 
                 switch (union_instance._tag) {
-                    case detail::Transform3DTag::NONE: {
+                    case detail::Transform3DTag::None: {
                         ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                     } break;
                     case detail::Transform3DTag::TranslationAndMat3x3: {

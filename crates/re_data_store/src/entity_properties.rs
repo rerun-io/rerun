@@ -1,5 +1,6 @@
 #[cfg(feature = "serde")]
 use re_log_types::EntityPath;
+use re_log_types::TimeInt;
 
 #[cfg(feature = "serde")]
 use crate::EditableAutoValue;
@@ -172,25 +173,110 @@ impl EntityProperties {
 
 // ----------------------------------------------------------------------------
 
+/// One of the boundaries of the visible history.
+///
+/// For [`VisibleHistoryBoundary::RelativeToTimeCursor`] and [`VisibleHistoryBoundary::Absolute`],
+/// the value are either nanos or frames, depending on the type of timeline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum VisibleHistoryBoundary {
+    /// Boundary is a value relative to the time cursor
+    RelativeToTimeCursor(i64),
+
+    /// Boundary is an absolute value
+    Absolute(i64),
+
+    /// The boundary extends to infinity.
+    Infinite,
+}
+
+impl VisibleHistoryBoundary {
+    /// UI label to use when [`VisibleHistoryBoundary::RelativeToTimeCursor`] is selected.
+    pub const RELATIVE_LABEL: &'static str = "Relative";
+
+    /// UI label to use when [`VisibleHistoryBoundary::Absolute`] is selected.
+    pub const ABSOLUTE_LABEL: &'static str = "Absolute";
+
+    /// UI label to use when [`VisibleHistoryBoundary::Infinite`] is selected.
+    pub const INFINITE_LABEL: &'static str = "Infinite";
+
+    /// Value when the boundary is set to the current time cursor.
+    pub const AT_CURSOR: Self = Self::RelativeToTimeCursor(0);
+
+    /// Label to use in the UI.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::RelativeToTimeCursor(_) => Self::RELATIVE_LABEL,
+            Self::Absolute(_) => Self::ABSOLUTE_LABEL,
+            Self::Infinite => Self::INFINITE_LABEL,
+        }
+    }
+}
+
+impl Default for VisibleHistoryBoundary {
+    fn default() -> Self {
+        Self::AT_CURSOR
+    }
+}
+
+/// Visible history bounds.
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct VisibleHistory {
+    /// Low time boundary.
+    pub from: VisibleHistoryBoundary,
+
+    /// High time boundary.
+    pub to: VisibleHistoryBoundary,
+}
+
+impl VisibleHistory {
+    /// Value with the visible history feature is disabled.
+    pub const OFF: Self = Self {
+        from: VisibleHistoryBoundary::AT_CURSOR,
+        to: VisibleHistoryBoundary::AT_CURSOR,
+    };
+
+    pub fn from(&self, cursor: TimeInt) -> TimeInt {
+        match self.from {
+            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::Infinite => TimeInt::MIN,
+        }
+    }
+
+    pub fn to(&self, cursor: TimeInt) -> TimeInt {
+        match self.to {
+            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::Infinite => TimeInt::MAX,
+        }
+    }
+}
+
 /// When showing an entity in the history view, add this much history to it.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct ExtraQueryHistory {
-    /// Zero = off.
-    pub nanos: i64,
+    /// Is the feature enabled?
+    pub enabled: bool,
 
-    /// Zero = off.
-    pub sequences: i64,
+    /// Visible history settings for time timelines
+    pub nanos: VisibleHistory,
+
+    /// Visible history settings for frame timelines
+    pub sequences: VisibleHistory,
 }
 
 impl ExtraQueryHistory {
     /// Multiply/and these together.
     #[allow(dead_code)]
     fn with_child(&self, child: &Self) -> Self {
-        Self {
-            nanos: self.nanos.max(child.nanos),
-            sequences: self.sequences.max(child.sequences),
+        if child.enabled {
+            *child
+        } else {
+            *self
         }
     }
 }

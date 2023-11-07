@@ -21,21 +21,24 @@ namespace rerun {
             arrow::MemoryPool* memory_pool
         ) {
             if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
 
             return Result(rerun::datatypes::Transform3D::new_arrow_array_builder(memory_pool).value
             );
         }
 
-        Error Transform3D::fill_arrow_array_builder(
+        rerun::Error Transform3D::fill_arrow_array_builder(
             arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
         ) {
             if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array builder is null."
+                );
             }
             if (elements == nullptr) {
-                return Error(
+                return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Cannot serialize null pointer to arrow array."
                 );

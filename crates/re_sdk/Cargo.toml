@@ -19,19 +19,7 @@ all-features = true
 
 
 [features]
-default = ["demo", "glam", "image", "log"]
-
-## Enable the `demo` module (helpers for Rerun examples).
-demo = []
-
-## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
-glam = ["re_types/glam"]
-
-## Integration with the [`image`](https://crates.io/crates/image/) crate, plus JPEG support.
-image = ["re_types/image"]
-
-## Integration with the [`log`](https://crates.io/crates/log/) crate.
-log = ["dep:env_logger", "dep:log"]
+default = []
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -59,15 +47,12 @@ re_build_info.workspace = true
 re_log_encoding = { workspace = true, features = ["encoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
-re_memory.workspace = true
 re_sdk_comms = { workspace = true, features = ["client"] }
 re_types_core.workspace = true
-re_types = { workspace = true, features = ["ecolor", "glam"] }
 
 ahash.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
-itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
@@ -79,16 +64,15 @@ re_ws_comms = { workspace = true, optional = true }
 re_web_viewer_server = { workspace = true, optional = true }
 
 anyhow = { workspace = true, optional = true }
-env_logger = { workspace = true, optional = true }
-log = { workspace = true, optional = true }
 webbrowser = { workspace = true, optional = true }
 
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen"] }
+re_arrow_store = { workspace = true, features = ["testing"] }
 
-ndarray.workspace = true
+itertools.workspace = true
 ndarray-rand.workspace = true
+ndarray.workspace = true
 rand.workspace = true
 similar-asserts.workspace = true
 

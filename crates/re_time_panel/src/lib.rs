@@ -822,10 +822,7 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .store_db
-        .entity_db()
-        .tree
-        .prefix_times
-        .get(ctx.rec_cfg.time_ctrl.timeline())
+        .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
     {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {

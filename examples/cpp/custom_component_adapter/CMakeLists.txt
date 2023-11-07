@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.16...3.27)
 # This can be done by passing `-DRERUN_CPP_URL=<path to rerun_sdk_cpp zip>` to cmake.
 if(DEFINED RERUN_REPOSITORY)
     add_executable(example_custom_component_adapter main.cpp)
-    set_default_warning_settings(example_custom_component_adapter)
+    rerun_strict_warning_settings(example_custom_component_adapter)
 else()
     project(example_custom_component_adapter LANGUAGES CXX)
 

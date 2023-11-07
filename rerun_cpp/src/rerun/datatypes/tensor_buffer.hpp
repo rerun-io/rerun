@@ -24,7 +24,7 @@ namespace rerun {
         namespace detail {
             enum class TensorBufferTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
-                NONE = 0,
+                None = 0,
                 U8,
                 U16,
                 U32,
@@ -89,7 +89,7 @@ namespace rerun {
         ///
         /// Tensor elements are stored in a contiguous buffer of a single type.
         struct TensorBuffer {
-            TensorBuffer() : _tag(detail::TensorBufferTag::NONE) {}
+            TensorBuffer() : _tag(detail::TensorBufferTag::None) {}
 
             /// Copy constructor
             TensorBuffer(const TensorBuffer& other) : _tag(other._tag) {
@@ -146,7 +146,7 @@ namespace rerun {
                         using TypeAlias = std::vector<uint8_t>;
                         new (&_data.nv12) TypeAlias(other._data.nv12);
                     } break;
-                    case detail::TensorBufferTag::NONE: {
+                    case detail::TensorBufferTag::None: {
                     } break;
                 }
             }
@@ -168,7 +168,7 @@ namespace rerun {
 
             ~TensorBuffer() {
                 switch (this->_tag) {
-                    case detail::TensorBufferTag::NONE: {
+                    case detail::TensorBufferTag::None: {
                         // Nothing to destroy
                     } break;
                     case detail::TensorBufferTag::U8: {
@@ -500,7 +500,7 @@ namespace rerun {
             );
 
             /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
+            static rerun::Error fill_arrow_array_builder(
                 arrow::DenseUnionBuilder* builder, const TensorBuffer* elements, size_t num_elements
             );
 

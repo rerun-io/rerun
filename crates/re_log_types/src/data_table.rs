@@ -1251,12 +1251,15 @@ impl DataTable {
 
 // ---
 
+/// Crafts a simple but interesting [`DataTable`].
 #[cfg(not(target_arch = "wasm32"))]
+#[cfg(feature = "testing")]
 impl DataTable {
-    /// Crafts a simple but interesting [`DataTable`].
     pub fn example(timeless: bool) -> DataTable {
-        use crate::Time;
-        use re_types::components::{Color, Position2D, Text};
+        use crate::{
+            example_components::{MyColor, MyLabel, MyPoint},
+            Time,
+        };
 
         let table_id = TableId::random();
 
@@ -1277,9 +1280,9 @@ impl DataTable {
 
         let row0 = {
             let num_instances = 2;
-            let positions: &[Position2D] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
-            let colors: &[_] = &[Color::from_rgb(128, 128, 128)];
-            let labels: &[Text] = &[];
+            let positions: &[MyPoint] = &[MyPoint::new(10.0, 10.0), MyPoint::new(20.0, 20.0)];
+            let colors: &[_] = &[MyColor(0x8080_80FF)];
+            let labels: &[MyLabel] = &[];
 
             DataRow::from_cells3(
                 RowId::random(),
@@ -1293,15 +1296,15 @@ impl DataTable {
 
         let row1 = {
             let num_instances = 0;
-            let colors: &[Color] = &[];
+            let colors: &[MyColor] = &[];
 
             DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors).unwrap()
         };
 
         let row2 = {
             let num_instances = 1;
-            let colors: &[_] = &[Color::from_rgb(255, 255, 255)];
-            let labels: &[_] = &[Text("hey".into())];
+            let colors: &[_] = &[MyColor(0xFFFF_FFFF)];
+            let labels: &[_] = &[MyLabel("hey".into())];
 
             DataRow::from_cells2(
                 RowId::random(),
