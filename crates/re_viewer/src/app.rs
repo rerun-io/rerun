@@ -571,6 +571,7 @@ impl App {
         let location = eframe::web::web_location();
         let mut origin = location.origin;
         if location.host == "app.rerun.io" {
+            // links to `app.rerun.io` can be made into permanent links:
             let path = match &self.build_info.version.meta {
                 // not a final release, use commit hash
                 Some(..) => format!("commit/{}", &self.build_info.git_hash[..7]),
