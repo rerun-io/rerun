@@ -12,6 +12,7 @@ import numpy as np
 
 __all__ = [
     "AnnotationContext",
+    "AnnotationInfo",
     "AnyValues",
     "Arrows3D",
     "AsComponents",
@@ -20,6 +21,7 @@ __all__ = [
     "Box2DFormat",
     "Boxes2D",
     "Boxes3D",
+    "ClassDescription",
     "Clear",
     "ComponentBatchLike",
     "DepthImage",
@@ -127,6 +129,8 @@ from .components import (
     TextLogLevel,
 )
 from .datatypes import (
+    AnnotationInfo,
+    ClassDescription,
     Quaternion,
     RotationAxisAngle,
     Scale3D,

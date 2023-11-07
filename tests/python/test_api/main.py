@@ -79,9 +79,9 @@ def run_segmentation() -> None:
         "seg_test",
         rr.AnnotationContext(
             [
-                rr.datatypes.AnnotationInfo(13, color=(255, 0, 0)),
+                rr.AnnotationInfo(13, color=(255, 0, 0)),
                 (42, "label2", (0, 255, 0)),
-                rr.datatypes.AnnotationInfo(99, label="label3"),
+                rr.AnnotationInfo(99, label="label3"),
             ]
         ),
         timeless=False,
