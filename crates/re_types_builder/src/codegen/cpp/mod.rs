@@ -215,7 +215,7 @@ fn hpp_type_extensions(
 
     while let Some(start) = remaining_content.find(COPY_TO_HEADER_START_MARKER) {
         let end = remaining_content.find(COPY_TO_HEADER_END_MARKER).unwrap_or_else(||
-            panic!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_END_MARKER)}' in {extension_file:?}")
+            panic!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_END_MARKER}' in {extension_file:?}")
         );
         let end = remaining_content[..end].rfind('\n').unwrap_or_else(||
             panic!("Expected line break at some point before {COPY_TO_HEADER_END_MARKER} in {extension_file:?}")
