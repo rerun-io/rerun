@@ -14,7 +14,7 @@ namespace rerun {
 
 #define KeypointPair KeypointPairExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             KeypointPair(uint16_t _keypoint0, uint16_t _keypoint1)
                 : keypoint0(_keypoint0), keypoint1(_keypoint1) {}
@@ -22,7 +22,7 @@ namespace rerun {
             KeypointPair(std::pair<uint16_t, uint16_t> pair)
                 : keypoint0(pair.first), keypoint1(pair.second) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #endif

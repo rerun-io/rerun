@@ -13,12 +13,12 @@ namespace rerun {
 
 #define RotationAxisAngle RotationAxisAngleExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             RotationAxisAngle(const Vec3D& _axis, const Angle& _angle)
                 : axis(_axis), angle(_angle) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
 

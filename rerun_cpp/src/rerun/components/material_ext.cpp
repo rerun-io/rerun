@@ -10,13 +10,13 @@ namespace rerun {
         struct MaterialExt {
 #define Material MaterialExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static Material from_albedo_factor(rerun::datatypes::Rgba32 color) {
                 return Material(color);
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
     } // namespace components

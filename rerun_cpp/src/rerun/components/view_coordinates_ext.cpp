@@ -11,7 +11,7 @@ namespace rerun {
             uint8_t coordinates[3];
 #define ViewCoordinates ViewCoordinatesExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             enum ViewDir : uint8_t {
                 Up = 1,
@@ -94,7 +94,7 @@ namespace rerun {
             static const rerun::components::ViewCoordinates LEFT_HAND_Z_DOWN;
             // <END_GENERATED:declarations>
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
         // <BEGIN_GENERATED:definitions>

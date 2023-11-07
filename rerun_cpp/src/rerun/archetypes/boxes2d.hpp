@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../component_batch.hpp"
-#include "../component_batch_adapter_builtins.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"
@@ -16,7 +15,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../util.hpp"
+#include "../warning_macros.hpp"
 
 #include <cstdint>
 #include <optional>

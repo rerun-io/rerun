@@ -11,7 +11,7 @@ namespace rerun {
             uint8_t coordinates[3];
 #define ViewCoordinates ViewCoordinatesExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             /// Construct Vec3D from x/y/z values.
             constexpr ViewCoordinates(uint8_t axis0, uint8_t axis1, uint8_t axis2)
@@ -81,7 +81,7 @@ namespace rerun {
             static const rerun::archetypes::ViewCoordinates LEFT_HAND_Z_DOWN;
             // <END_GENERATED:declarations>
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
 

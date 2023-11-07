@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../result.hpp"
-#include "../util.hpp"
+#include "../warning_macros.hpp"
 #include "rotation3d.hpp"
 #include "scale3d.hpp"
 #include "vec3d.hpp"

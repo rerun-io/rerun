@@ -1,14 +1,15 @@
 #include "line_strip3d.hpp"
 
+// <CODEGEN_COPY_TO_HEADER>
 #include <algorithm>
 
-// #define EDIT_EXTENSION
+// </CODEGEN_COPY_TO_HEADER>
 
 namespace rerun {
     namespace components {
 
-#ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+#if 0
+        // <CODEGEN_COPY_TO_HEADER>
 
         template <typename T>
         LineStrip3D(const std::vector<T>& points_) : points(points_.size()) {
@@ -17,7 +18,7 @@ namespace rerun {
             });
         }
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
     } // namespace components
 } // namespace rerun

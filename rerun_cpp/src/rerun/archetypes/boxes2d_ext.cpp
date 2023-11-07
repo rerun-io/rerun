@@ -1,6 +1,6 @@
 #include "boxes2d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp" // TODO(#3991): Should not leak into public header.
+#include "../component_batch_adapter_builtins.hpp"
 
 // #define EDIT_EXTENSION
 
@@ -8,7 +8,7 @@ namespace rerun {
     namespace archetypes {
 
 #ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         /// Creates new `Boxes2D` with `half_sizes` centered around the local origin.
         static Boxes2D from_half_sizes(ComponentBatch<components::HalfSizes2D> half_sizes) {
@@ -57,7 +57,7 @@ namespace rerun {
             const std::vector<datatypes::Vec2D>& mins, const std::vector<datatypes::Vec2D>& sizes
         );
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
         Boxes2D Boxes2D::from_sizes(const std::vector<datatypes::Vec2D>& sizes) {
             std::vector<components::HalfSizes2D> half_sizes;

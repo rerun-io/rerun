@@ -10,13 +10,13 @@ namespace rerun {
         struct MeshPropertiesExt {
 #define MeshProperties MeshPropertiesExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static MeshProperties from_triangle_indices(std::vector<uint32_t> indices) {
                 return MeshProperties(indices);
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
     } // namespace components

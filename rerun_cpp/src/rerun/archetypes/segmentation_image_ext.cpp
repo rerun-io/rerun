@@ -8,7 +8,7 @@ namespace rerun {
     namespace archetypes {
 
 #ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         /// New segmentation image from height/width and tensor buffer.
         ///
@@ -25,7 +25,7 @@ namespace rerun {
         /// Calls `Error::handle()` if the shape is not rank 2.
         explicit SegmentationImage(components::TensorData _data);
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         SegmentationImage::SegmentationImage(components::TensorData _data)

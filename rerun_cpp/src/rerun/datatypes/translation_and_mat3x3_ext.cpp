@@ -13,7 +13,7 @@ namespace rerun {
             bool from_parent;
 
 #define TranslationAndMat3x3 TranslationAndMat3x3Ext
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static const TranslationAndMat3x3 IDENTITY;
 
@@ -44,7 +44,7 @@ namespace rerun {
             TranslationAndMat3x3(const Vec3D& _translation, bool _from_parent = false)
                 : translation(_translation), mat3x3(std::nullopt), from_parent(_from_parent) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #undef TranslationAndMat3x3

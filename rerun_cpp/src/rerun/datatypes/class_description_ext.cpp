@@ -14,7 +14,7 @@ namespace rerun {
 
 #define ClassDescription ClassDescriptionExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             ClassDescription(
                 AnnotationInfo _info, std::vector<AnnotationInfo> _keypoint_annotations = {},
@@ -24,7 +24,7 @@ namespace rerun {
                   keypoint_annotations(std::move(_keypoint_annotations)),
                   keypoint_connections(std::move(_keypoint_connections)) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
 

@@ -28,7 +28,7 @@
 #include <rerun/data_cell.hpp>
 #include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
-#include <rerun/util.hpp>
+#include <rerun/warning_macros.hpp>
 #include <utility>
 #include <vector>
 
