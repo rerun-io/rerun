@@ -1,9 +1,9 @@
 use re_data_store::{EntityPath, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{ScreenshotMode, SpaceViewContents};
+use re_space_view::{DataQuery, ScreenshotMode, SpaceViewContents};
 use re_viewer_context::{
-    DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    SpaceViewSystemRegistry, ViewerContext,
+    DynSpaceViewClass, PerSystemEntities, SpaceViewClassName, SpaceViewHighlights, SpaceViewId,
+    SpaceViewState, SpaceViewSystemRegistry, ViewerContext,
 };
 
 use crate::{
@@ -217,11 +217,26 @@ impl SpaceViewBlueprint {
         }
 
         let class = self.class(ctx.space_view_class_registry);
+
+        let mut per_system_entities = PerSystemEntities::default();
+
+        let data_results = self.contents.execute_query(class);
+        re_log::debug!("Data results for: {:?}", self.display_name);
+        data_results.visit(|data_result| {
+            re_log::debug!("-> {:?}", data_result.data_result.entity_path);
+            for system in &data_result.data_result.view_parts {
+                per_system_entities
+                    .entry(*system)
+                    .or_default()
+                    .insert(data_result.data_result.entity_path.clone());
+            }
+        });
+
         let system_registry = self.class_system_registry(ctx.space_view_class_registry);
         let query = re_viewer_context::ViewQuery {
             space_view_id: self.id,
             space_origin: &self.space_origin,
-            per_system_entities: self.contents.per_system_entities(),
+            per_system_entities: &per_system_entities,
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             entity_props_map: self.contents.data_blueprints_projected(),

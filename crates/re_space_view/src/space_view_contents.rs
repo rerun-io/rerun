@@ -7,9 +7,11 @@ use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
 /// A grouping of several data-blueprints.
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct DataBlueprintGroup {
     pub display_name: String,
+
+    pub group_path: EntityPath,
 
     /// Individual settings. Mutate & display this.
     pub properties_individual: EntityProperties,
@@ -31,11 +33,26 @@ pub struct DataBlueprintGroup {
     pub entities: BTreeSet<EntityPath>,
 }
 
+impl Default for DataBlueprintGroup {
+    fn default() -> Self {
+        DataBlueprintGroup {
+            display_name: Default::default(),
+            group_path: EntityPath::root(),
+            properties_individual: Default::default(),
+            properties_projected: Default::default(),
+            parent: Default::default(),
+            children: Default::default(),
+            entities: Default::default(),
+        }
+    }
+}
+
 impl DataBlueprintGroup {
     /// Determine whether this `DataBlueprints` has user-edits relative to another `DataBlueprints`
     fn has_edits(&self, other: &Self) -> bool {
         let Self {
             display_name,
+            group_path: _,
             properties_individual,
             properties_projected: _,
             parent,
@@ -316,6 +333,7 @@ impl SpaceViewContents {
                 // Otherwise, create a new group which only contains this entity and add the group to the hierarchy.
                 let new_group = self.groups.insert(DataBlueprintGroup {
                     display_name: path_to_group_name(path),
+                    group_path: path.clone(),
                     ..Default::default()
                 });
                 self.add_group_to_hierarchy_recursively(new_group, path, base_path);
