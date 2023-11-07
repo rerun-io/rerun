@@ -524,6 +524,27 @@ impl App {
                     }
                 }
             }
+            #[cfg(target_arch = "wasm32")]
+            UICommand::CopyDirectLink => {
+                let Some(SmartChannelSource::RrdHttpStream { url }) = store_context
+                    .and_then(|ctx| ctx.recording)
+                    .and_then(|rec| rec.data_source.as_ref())
+                else {
+                    return;
+                };
+                let direct_link = match &self.startup_options.location {
+                    Some(eframe::Location { origin, .. }) => format!("{origin}/?url={url}"),
+                    None => format!("https://app.rerun.io/?url={url}"),
+                };
+                self.re_ui
+                    .egui_ctx
+                    .output_mut(|o| o.copied_text = direct_link.clone());
+                self.toasts.add(toasts::Toast {
+                    kind: toasts::ToastKind::Success,
+                    text: format!("Copied {direct_link} to clipboard"),
+                    options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
+                });
+            }
         }
     }
 

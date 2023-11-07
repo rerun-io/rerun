@@ -61,6 +61,9 @@ pub enum UICommand {
     ScreenshotWholeApp,
     #[cfg(not(target_arch = "wasm32"))]
     PrintDatastore,
+
+    #[cfg(target_arch = "wasm32")]
+    CopyDirectLink,
 }
 
 impl UICommand {
@@ -161,6 +164,12 @@ impl UICommand {
                 "Print datastore",
                 "Prints the entire data store to the console. WARNING: this may be A LOT of text.",
             ),
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::CopyDirectLink => (
+                "Copy direct link",
+                "Copy a link to the viewer with the URL parameter set to the current .rrd data source."
+            )
         }
     }
 
@@ -231,6 +240,9 @@ impl UICommand {
             UICommand::ScreenshotWholeApp => None,
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintDatastore => None,
+
+            #[cfg(target_arch = "wasm32")]
+            UICommand::CopyDirectLink => None,
         }
     }
 
