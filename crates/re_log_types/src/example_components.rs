@@ -24,7 +24,7 @@ impl re_types::Archetype for MyPoints {
 
 // ----------------------------------------------------------------------------
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MyPoint {
     pub x: f32,
     pub y: f32,
