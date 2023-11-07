@@ -229,7 +229,7 @@ fn hpp_type_extensions(
                 if let Some(start) = line.find('\"') {
                     let end = line.rfind('\"').unwrap_or_else(|| {
                         panic!(
-                            "Expected to find '\"' include line {line} in file {extension_file:?}"
+                            "Expected to find ending '\"' in include line {line} in file {extension_file:?}"
                         )
                     });
 
