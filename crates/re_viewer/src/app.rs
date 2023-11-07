@@ -568,7 +568,17 @@ impl App {
 
     #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let origin = eframe::web::web_location().origin;
+        let location = eframe::web::web_location();
+        let mut origin = location.origin;
+        if location.host == "app.rerun.io" {
+            let path = match &self.build_info.version.meta {
+                // not a final release, use commit hash
+                Some(..) => format!("commit/{}", &self.build_info.git_hash[..7]),
+                // final release, use version tag
+                None => format!("version/{}", self.build_info.version),
+            };
+            origin = format!("{origin}/{path}/index.html");
+        }
         let direct_link = match store_context
             .and_then(|ctx| ctx.recording)
             .and_then(|rec| rec.data_source.as_ref())
