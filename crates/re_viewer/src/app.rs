@@ -568,20 +568,13 @@ impl App {
 
     #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
-        let Some(SmartChannelSource::RrdHttpStream { url }) = store_context
+        let origin = eframe::web::web_location().origin;
+        let direct_link = match store_context
             .and_then(|ctx| ctx.recording)
             .and_then(|rec| rec.data_source.as_ref())
-        else {
-            self.toasts.add(toasts::Toast {
-                kind: toasts::ToastKind::Warning,
-                text: format!("Could not copy direct link, no recording is open"),
-                options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
-            });
-            return;
-        };
-        let direct_link = match &self.startup_options.location {
-            Some(eframe::Location { origin, .. }) => format!("{origin}/?url={url}"),
-            None => format!("https://app.rerun.io/?url={url}"),
+        {
+            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{origin}/?url={url}"),
+            _ => origin,
         };
         self.re_ui
             .egui_ctx
