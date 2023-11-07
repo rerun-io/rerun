@@ -161,6 +161,15 @@ impl TableId {
     pub fn next(&self) -> Self {
         Self(self.0.next())
     }
+
+    /// Returns a new [`TableId`] with the same timestamp but a different random value.
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`TableId::random`] when unsure.
+    #[inline]
+    pub fn reroll(&self) -> Self {
+        Self(self.0.reroll())
+    }
 }
 
 impl SizeBytes for TableId {

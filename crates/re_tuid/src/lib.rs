@@ -100,6 +100,19 @@ impl Tuid {
         }
     }
 
+    /// Returns a new `Tuid` with the same timestamp but a different random value.
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`Tuid::random`] when unsure.
+    #[inline]
+    pub fn reroll(&self) -> Self {
+        Self {
+            time_ns: self.time_ns,
+            // Leave top bit at zero so we have plenty of room to grow.
+            inc: random_u64() & !(1_u64 << 63),
+        }
+    }
+
     #[inline]
     pub fn nanoseconds_since_epoch(&self) -> u64 {
         self.time_ns

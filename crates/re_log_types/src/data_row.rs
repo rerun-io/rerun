@@ -133,6 +133,15 @@ impl RowId {
     pub fn next(&self) -> Self {
         Self(self.0.next())
     }
+
+    /// Returns a new [`RowId`] with the same timestamp but a different random value.
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`RowId::random`] when unsure.
+    #[inline]
+    pub fn reroll(&self) -> Self {
+        Self(self.0.reroll())
+    }
 }
 
 impl SizeBytes for RowId {
