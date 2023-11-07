@@ -130,7 +130,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
                                         .text_styles
                                         .entry(egui::TextStyle::Heading)
                                         .or_insert(egui::FontId::proportional(32.0))
-                                        .size = 24.0;
+                                        .size = 32.0;
 
                                     egui_commonmark::CommonMarkViewer::new("markdown_viewer")
                                         .max_image_width(Some(ui.available_width().floor() as _))
