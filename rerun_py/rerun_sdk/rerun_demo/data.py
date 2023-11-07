@@ -5,7 +5,7 @@ from collections import namedtuple
 from math import cos, sin, tau
 
 import numpy as np
-from rerun import RectFormat
+from rerun import Box2DFormat
 
 from rerun_demo.turbo import turbo_colormap_data
 
@@ -84,7 +84,7 @@ def build_rect_pyramid(count=20, width=100, height=100):
     rects = np.stack((x, y, widths, heights), axis=1)
     colors = turbo_colormap_data[np.linspace(0, len(turbo_colormap_data) - 1, count, dtype=int)]
 
-    return RectPyramid(rects, RectFormat.XCYCWH, colors)
+    return RectPyramid(rects, Box2DFormat.XCYCWH, colors)
 
 
 rect_pyramid = build_rect_pyramid()

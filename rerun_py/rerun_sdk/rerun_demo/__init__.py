@@ -12,9 +12,9 @@ As an example, consider:
 import rerun as rr
 from rerun_demo.data import color_grid
 
-rr.init("rerun_example_log_points", True)
+rr.init("rerun_example_log_points", spawn=True)
 
-rr.log_points("my_points", color_grid.positions, colors=color_grid.colors)
+rr.log("my_points", rr.Points3D(color_grid.positions, colors=color_grid.colors))
 ```
 
 Note that because this package is shipped with the rerun-sdk pypi package, it
