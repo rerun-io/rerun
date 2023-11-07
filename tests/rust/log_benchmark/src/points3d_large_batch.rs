@@ -1,51 +1,18 @@
-use crate::lcg;
+use crate::points3d_shared::{prepare_points3d, Point3DInput};
 
 const NUM_POINTS: usize = 50_000_000;
 
 /// Log a single large batch of points with positions, colors, radii and a splatted string.
 pub fn run() -> anyhow::Result<()> {
     re_tracing::profile_function!();
-    let input = std::hint::black_box(prepare());
+    let input = std::hint::black_box(prepare_points3d(42, NUM_POINTS));
     execute(input)
 }
 
-/// Batch that should be logged.
-/// Intentionally not using `rerun::Points3D` here already.
-struct PointBatchInput {
-    positions: Vec<glam::Vec3>,
-    colors: Vec<u32>,
-    radii: Vec<f32>,
-    label: String,
-}
-
-fn prepare() -> PointBatchInput {
-    re_tracing::profile_function!();
-    let mut lcg_state = 42_i64;
-
-    PointBatchInput {
-        positions: (0..NUM_POINTS)
-            .map(|_| {
-                glam::vec3(
-                    lcg(&mut lcg_state) as f32,
-                    lcg(&mut lcg_state) as f32,
-                    lcg(&mut lcg_state) as f32,
-                )
-            })
-            .collect(),
-        colors: (0..NUM_POINTS)
-            .map(|_| lcg(&mut lcg_state) as u32)
-            .collect(),
-        radii: (0..NUM_POINTS)
-            .map(|_| lcg(&mut lcg_state) as f32)
-            .collect(),
-        label: "large_batch".to_owned(),
-    }
-}
-
-fn execute(input: PointBatchInput) -> anyhow::Result<()> {
+fn execute(input: Point3DInput) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
-    let PointBatchInput {
+    let Point3DInput {
         positions,
         colors,
         radii,

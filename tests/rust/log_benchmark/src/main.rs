@@ -29,6 +29,7 @@ use clap::{Parser as _, ValueEnum as _};
 mod image;
 mod points3d_large_batch;
 mod points3d_many_individual;
+mod points3d_shared;
 
 // ---
 
