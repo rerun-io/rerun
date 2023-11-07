@@ -358,7 +358,9 @@ fn insert_table(
     table: &DataTable,
 ) -> DataStore {
     let mut store = DataStore::new(cluster_key, config);
-    store.insert_table(table).unwrap();
+    for row in table.to_rows() {
+        store.insert_row(&row.unwrap()).unwrap();
+    }
     store
 }
 

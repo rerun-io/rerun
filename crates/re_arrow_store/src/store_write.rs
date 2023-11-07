@@ -6,8 +6,7 @@ use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, TimeInt, TimePoint,
-    TimeRange,
+    DataCell, DataCellColumn, DataCellError, DataRow, RowId, TimeInt, TimePoint, TimeRange,
 };
 use re_types_core::{
     components::InstanceKey, ComponentName, ComponentNameSet, Loggable, SizeBytes as _,
@@ -56,22 +55,6 @@ pub enum WriteError {
 pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
 impl DataStore {
-    /// Inserts a [`DataTable`]'s worth of components into the datastore.
-    ///
-    /// This iteratively inserts all rows from the table on a row-by-row basis.
-    /// The entire method fails if any row fails.
-    ///
-    /// Both the write and read paths transparently benefit from the contiguous memory of the
-    /// table's columns: the bigger the tables, the bigger the benefits!
-    ///
-    /// See [`Self::insert_row`].
-    pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
-        for row in table.to_rows() {
-            self.insert_row(&row?)?;
-        }
-        Ok(())
-    }
-
     /// Inserts a [`DataRow`]'s worth of components into the datastore.
     ///
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
