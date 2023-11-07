@@ -72,6 +72,32 @@ fn write_errors() {
             ));
         }
     }
+
+    {
+        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+
+        let mut row = test_row!(ent_path @ [
+            build_frame_nr(1.into()),
+            build_log_time(Time::now()),
+        ] => 1; [ build_some_positions2d(1) ]);
+
+        row.row_id = re_log_types::RowId::random();
+        store.insert_row(&row).unwrap();
+
+        row.row_id = row.row_id.next();
+        store.insert_row(&row).unwrap();
+
+        assert!(matches!(
+            store.insert_row(&row),
+            Err(WriteError::ReusedRowId(_)),
+        ));
+
+        let err = store.insert_row(&row).unwrap_err();
+        let WriteError::ReusedRowId(err_row_id) = err else {
+            unreachable!();
+        };
+        assert_eq!(row.row_id(), err_row_id);
+    }
 }
 
 // ---

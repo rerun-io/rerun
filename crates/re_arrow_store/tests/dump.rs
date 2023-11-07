@@ -3,6 +3,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use itertools::Itertools;
+use re_arrow_store::WriteError;
 use re_arrow_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreStats, GarbageCollectionOptions,
     TimeInt, TimeRange, Timeline,
@@ -47,9 +48,24 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
         store.insert_table(table).unwrap();
 
         // insert timeless
-        let mut table_timeless = table.clone();
+        let mut table_timeless = table.clone().next();
         table_timeless.col_timelines = Default::default();
         store.insert_table(&table_timeless).unwrap();
+    };
+
+    let insert_table_with_retries = |store: &mut DataStore, table: &DataTable| {
+        for row in table.to_rows() {
+            let mut row = row.unwrap();
+            loop {
+                match store.insert_row(&row) {
+                    Ok(_) => break,
+                    Err(WriteError::ReusedRowId(_)) => {
+                        row.row_id = row.row_id.next();
+                    }
+                    err @ Err(_) => err.unwrap(),
+                }
+            }
+        }
     };
 
     let ent_paths = ["this/that", "other", "yet/another/one"];
@@ -66,13 +82,13 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
 
     // Dump the first store into the second one.
     for table in store1.to_data_tables(None) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     sanity_unwrap(store2);
 
     // Dump the second store into the third one.
     for table in store2.to_data_tables(None) {
-        store3.insert_table(&table).unwrap();
+        insert_table_with_retries(store3, &table);
     }
     sanity_unwrap(store3);
 
@@ -165,7 +181,7 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     }
     // Dump the other frame3 from the first store into the second one.
     for table in store1.to_data_tables((timeline_log_time, TimeRange::new(frame3, frame3)).into()) {
-        store2.insert_table(&table).unwrap();
+        store2.insert_table(&table.clone().next()).unwrap();
     }
     // Dump frame4 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame4, frame4)).into()) {

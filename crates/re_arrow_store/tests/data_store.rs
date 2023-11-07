@@ -279,7 +279,7 @@ fn latest_at_impl(store: &mut DataStore) {
         store.insert_table(table).unwrap();
 
         // insert timeless
-        let mut table_timeless = table.clone();
+        let mut table_timeless = table.clone().next();
         table_timeless.col_timelines = Default::default();
         store.insert_table(&table_timeless).unwrap();
     };
@@ -394,7 +394,7 @@ fn range_impl(store: &mut DataStore) {
         store.insert_row(row).unwrap();
 
         // insert timeless
-        let mut row_timeless = (*row).clone();
+        let mut row_timeless = (*row).clone().next();
         row_timeless.timepoint = Default::default();
         store.insert_row(&row_timeless).unwrap();
     };
@@ -950,7 +950,10 @@ fn protected_gc_impl(store: &mut DataStore) {
         .unwrap();
 
     // Re-insert row1 and row2 as timeless data as well
-    let mut table_timeless = DataTable::from_rows(TableId::random(), [row1.clone(), row2.clone()]);
+    let mut table_timeless = DataTable::from_rows(
+        TableId::random(),
+        [row1.clone().next(), row2.clone().next()],
+    );
     table_timeless.col_timelines = Default::default();
     store.insert_table(&table_timeless).unwrap();
 
