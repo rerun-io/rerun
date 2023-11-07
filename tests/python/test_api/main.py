@@ -23,7 +23,7 @@ import numpy as np
 import rerun as rr  # pip install rerun-sdk
 
 
-def run_segmentation(experimental_api: bool) -> None:
+def run_segmentation() -> None:
     rr.set_time_seconds("sim_time", 1)
 
     # Log an image before we have set up our labels
@@ -79,9 +79,9 @@ def run_segmentation(experimental_api: bool) -> None:
         "seg_test",
         rr.AnnotationContext(
             [
-                rr.AnnotationInfo(13, color=(255, 0, 0)),
+                rr.datatypes.AnnotationInfo(13, color=(255, 0, 0)),
                 (42, "label2", (0, 255, 0)),
-                rr.AnnotationInfo(99, label="label3"),
+                rr.datatypes.AnnotationInfo(99, label="label3"),
             ]
         ),
         timeless=False,
@@ -89,7 +89,7 @@ def run_segmentation(experimental_api: bool) -> None:
     rr.log("logs/seg_test_log", rr.TextLog("label1 disappears and everything with label3 is now default colored again"))
 
 
-def small_image(experimental_api: bool) -> None:
+def small_image() -> None:
     img = [
         [[255, 0, 0], [0, 255, 0], [0, 0, 255]],
         [[0, 0, 255], [255, 0, 0], [0, 255, 0]],
@@ -97,7 +97,7 @@ def small_image(experimental_api: bool) -> None:
     rr.log("small_image", rr.Image(img))
 
 
-def run_2d_layering(experimental_api: bool) -> None:
+def run_2d_layering() -> None:
     rr.set_time_seconds("sim_time", 1)
 
     # Large gray background.
@@ -141,7 +141,7 @@ def run_2d_layering(experimental_api: bool) -> None:
     )
 
 
-def transforms(experimental_api: bool) -> None:
+def transforms() -> None:
     rr.log("transforms", rr.ViewCoordinates.RIGHT_HAND_Y_UP, timeless=True)
 
     # Log a disconnected space (this doesn't do anything here, but can be used to force a new space)
@@ -195,7 +195,7 @@ def transforms(experimental_api: bool) -> None:
     )
 
 
-def run_2d_lines(experimental_api: bool) -> None:
+def run_2d_lines() -> None:
     import numpy as np
 
     T = np.linspace(0, 5, 100)
@@ -208,7 +208,7 @@ def run_2d_lines(experimental_api: bool) -> None:
         rr.log("2d_lines/spiral", rr.LineStrips2D(strips=pts))
 
 
-def run_3d_points(experimental_api: bool) -> None:
+def run_3d_points() -> None:
     rr.set_time_seconds("sim_time", 1)
     rr.log("3d_points/single_point_unlabeled", rr.Points3D(np.array([10.0, 0.0, 0.0])))
     rr.log("3d_points/single_point_labeled", rr.Points3D(np.array([0.0, 0.0, 0.0]), labels="labeled point"))
@@ -230,7 +230,7 @@ def run_3d_points(experimental_api: bool) -> None:
     )
 
 
-def raw_mesh(experimental_api: bool) -> None:
+def raw_mesh() -> None:
     rr.log(
         "mesh_test/triangle",
         rr.Mesh3D(
@@ -240,7 +240,7 @@ def raw_mesh(experimental_api: bool) -> None:
     )
 
 
-def run_rects(experimental_api: bool) -> None:
+def run_rects() -> None:
     rr.set_time_seconds("sim_time", 1)
 
     # Add an image
@@ -258,10 +258,10 @@ def run_rects(experimental_api: bool) -> None:
 
     # Clear the rectangles by logging an empty set
     rr.set_time_seconds("sim_time", 3)
-    rr.log_rects("rects_test/rects", [])
+    rr.log("rects_test/rects", rr.Boxes2D(sizes=[]))
 
 
-def run_text_logs(experimental_api: bool) -> None:
+def run_text_logs() -> None:
     rr.log("logs", rr.TextLog("Text with explicitly set color", color=[255, 215, 0]), timeless=True)
     rr.log("logs", rr.TextLog("this entry has loglevel TRACE", level="TRACE"))
 
@@ -270,7 +270,7 @@ def run_text_logs(experimental_api: bool) -> None:
     logging.info("This log got added through a `LoggingHandler`")
 
 
-def run_log_cleared(experimental_api: bool) -> None:
+def run_log_cleared() -> None:
     rr.set_time_seconds("sim_time", 1)
     rr.log(
         "null_test/rect/0",
@@ -290,7 +290,7 @@ def run_log_cleared(experimental_api: bool) -> None:
     rr.log("null_test/rect/1", rr.Boxes2D(array=[10, 5, 4, 4], array_format=rr.Box2DFormat.XYWH))
 
 
-def transforms_rigid_3d(experimental_api: bool) -> None:
+def transforms_rigid_3d() -> None:
     rr.set_time_seconds("sim_time", 0)
 
     sun_to_planet_distance = 6.0
@@ -368,7 +368,7 @@ def transforms_rigid_3d(experimental_api: bool) -> None:
         )
 
 
-def run_bounding_box(experimental_api: bool) -> None:
+def run_bounding_box() -> None:
     rr.set_time_seconds("sim_time", 0)
     rr.log(
         "bbox_test/bbox",
@@ -395,7 +395,7 @@ def run_bounding_box(experimental_api: bool) -> None:
     )
 
 
-def run_extension_component(experimental_api: bool) -> None:
+def run_extension_component() -> None:
     rr.set_time_seconds("sim_time", 0)
     # Hack to establish 2d view bounds
     rr.log("extension_components", rr.Boxes2D(array=[0, 0, 128, 128], array_format=rr.Box2DFormat.XYWH))
@@ -415,7 +415,7 @@ def run_extension_component(experimental_api: bool) -> None:
     )
 
 
-def run_gradient_image(experimental_api: bool) -> None:
+def run_gradient_image() -> None:
     rr.log(
         "gradient_explain",
         rr.TextLog("gradients should look the same, and external color picket should show 128 in the middle"),
@@ -434,7 +434,7 @@ def run_gradient_image(experimental_api: bool) -> None:
     rr.log("gradient_u16_0_1020", rr.Image(im))
 
 
-def run_image_tensors(experimental_api: bool) -> None:
+def run_image_tensors() -> None:
     # Make sure you use a colorful image with alpha!
     dir_path = os.path.dirname(os.path.realpath(__file__))
     img_path = f"{dir_path}/../../../crates/re_ui/data/logo_dark_mode.png"
@@ -507,12 +507,6 @@ def main() -> None:
         action="store_true",
         help="If specified, each test will be its own recording",
     )
-    parser.add_argument(
-        "--experimental-api",
-        dest="experimental_api",
-        action="store_true",
-        help="If specified run tests using the new experimental APIs",
-    )
 
     rr.script_add_args(parser)
     args = parser.parse_args()
@@ -535,26 +529,23 @@ def main() -> None:
             if args.multithread:
                 t = threading.Thread(
                     target=spawn_test,
-                    args=(
-                        test,
-                        rec,
-                    ),
+                    args=(test, rec),
                 )
                 t.start()
                 threads.append(t)
             else:
                 logging.info(f"Starting {name}")
                 with rec:
-                    test(args.experimental_api)
+                    test()
 
         for t in threads:
             t.join()
     else:
         if args.split_recordings:
             with rr.script_setup(args, f"rerun_example_test_api/{args.test}"):
-                tests[args.test](args.experimental_api)
+                tests[args.test]()
         else:
-            tests[args.test](args.experimental_api)
+            tests[args.test]()
 
     rr.script_teardown(args)
 
