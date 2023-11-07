@@ -194,7 +194,7 @@ def log_tf_as_transform3d(self, path: str, time: Time) -> None:
 
 As an example of logging points in the map frame, we simply call:
 ```python
-rr.log_points("map/points", positions=pts, colors=colors)
+rr.log("map/points", rr.Points3D(positions=pts, colors=colors))
 self.log_tf_as_transform3d("map/points", time)
 ```
 
@@ -203,7 +203,7 @@ be logged to the same point on the timeline as the data, using a timestamp looke
 matching timepoint.
 
 ### Odometry to rr.TimeSeriesScalar and rr.Transform3D
-When receiving odometry messages, we log the linear and angular velocities using `rr.log_scalar`.
+When receiving odometry messages, we log the linear and angular velocities using `rr.TimeSeriesScalar`.
 Additionally, since we know that odometry will also update the `map/robot` transform, we use
 this as a cue to look up the corresponding transform and log it.
 ```python
@@ -225,7 +225,7 @@ Not all Transforms are rigid as defined in TF. The other transform we want to lo
 is the pinhole projection that is stored in the `CameraInfo` msg.
 
 Fortunately, the `image_geometry` package has a `PinholeCameraModel` that exposes
-the intrinsic matrix in the same structure used by Rerun `rr.log_pinhole`:
+the intrinsic matrix in the same structure used by Rerun `rr.Pinhole`:
 ```python
 def __init__(self) -> None:
     # …
@@ -249,7 +249,7 @@ def cam_info_callback(self, info: CameraInfo) -> None:
 
 ### Image to rr.Image
 ROS Images can also be mapped to Rerun very easily, using the `cv_bridge` package.
-The output of `cv_bridge.imgmsg_to_cv2` can be fed directly into `rr.log_image`:
+The output of `cv_bridge.imgmsg_to_cv2` can be fed directly into `rr.Image`:
 ```python
 def __init__(self) -> None:
     # …
@@ -276,7 +276,7 @@ array of Nx3 floats.
 Color is extracted in a similar way, although the realsense gazebo driver does not provide the correct offsets for
 the r,g,b channels, requiring us to patch the field values.
 
-After extracting the positions and colors as numpy arrays, the entire cloud can be logged as a batch with `rr.log_points`
+After extracting the positions and colors as numpy arrays, the entire cloud can be logged as a batch with `rr.Points3D`
 ```python
 def points_callback(self, points: PointCloud2) -> None:
     """Log a `PointCloud2` with `log_points`."""
@@ -315,14 +315,14 @@ to do a bit of additional transformation logic (see: [#1534](https://github.com/
 First, we convert the scan into a point-cloud using the `laser_geometry` package.
 After converting to a point-cloud, we extract the pts just as above with `PointCloud2`.
 
-We could have logged the Points directly using `rr.log_points`, but for
+We could have logged the Points directly using `rr.Points3D`, but for
 the sake of this demo, we wanted to instead log a laser scan as a bunch of lines
 in a similar fashion to how it is depicted in gazebo.
 
 We generate a second matching set of points for each ray projected out 0.3m from
 the origin and then interlace the two sets of points using numpy hstack and reshape.
 This results in a set of alternating points defining rays from the origin to each
-laser scan result, which is the format expected by `rr.log_line_segments`:
+laser scan result, which is the format expected by `rr.LineStrips3D`:
 ```python
 def __init__(self) -> None:
     # …
