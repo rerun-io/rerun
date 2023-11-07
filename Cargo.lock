@@ -2795,6 +2795,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "log_benchmark"
+version = "0.11.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam",
+ "re_tracing",
+ "rerun",
+]
+
+[[package]]
 name = "lz4_flex"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

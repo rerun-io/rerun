@@ -1,0 +1,15 @@
+[package]
+name = "log_benchmark"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+rerun = { path = "../../../crates/rerun" }
+re_tracing = { path = "../../../crates/re_tracing", features = ["server"] }
+
+anyhow.workspace = true
+clap = { workspace = true, features = ["derive"] }
+glam.workspace = true
