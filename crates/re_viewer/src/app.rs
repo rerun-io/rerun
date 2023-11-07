@@ -524,6 +524,10 @@ impl App {
                     }
                 }
             }
+            #[cfg(target_arch = "wasm32")]
+            UICommand::CopyDirectLink => {
+                self.run_copy_direct_link_command(store_context);
+            }
         }
     }
 
@@ -560,6 +564,38 @@ impl App {
                 time_ctrl.restart(times_per_timeline);
             }
         }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
+        let location = eframe::web::web_location();
+        let mut href = location.origin;
+        if location.host == "app.rerun.io" {
+            // links to `app.rerun.io` can be made into permanent links:
+            let path = if self.build_info.is_final() {
+                // final release, use version tag
+                format!("version/{}", self.build_info.version)
+            } else {
+                // not a final release, use commit hash
+                format!("commit/{}", self.build_info.short_git_hash())
+            };
+            href = format!("{href}/{path}");
+        }
+        let direct_link = match store_context
+            .and_then(|ctx| ctx.recording)
+            .and_then(|rec| rec.data_source.as_ref())
+        {
+            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}/?url={url}"),
+            _ => href,
+        };
+        self.re_ui
+            .egui_ctx
+            .output_mut(|o| o.copied_text = direct_link.clone());
+        self.toasts.add(toasts::Toast {
+            kind: toasts::ToastKind::Success,
+            text: format!("Copied {direct_link:?} to clipboard"),
+            options: toasts::ToastOptions::with_ttl_in_seconds(4.0),
+        });
     }
 
     fn memory_panel_ui(
