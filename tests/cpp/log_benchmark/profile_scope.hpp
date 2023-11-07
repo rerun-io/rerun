@@ -19,12 +19,14 @@ class ProfileScope {
 
     ~ProfileScope() {
         const auto end = std::chrono::high_resolution_clock::now();
-        const auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - _start);
+        const auto duration =
+            std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end - _start);
         --_indentation;
         print_indent();
-        printf("%s end: %fms\n", _location, duration.count() / 1000.0f);
+        printf("%s end: %.2fms\n", _location, duration.count());
     }
 
+  private:
     static void print_indent() {
         for (int i = 0; i < _indentation; ++i) {
             printf("--");
@@ -34,7 +36,6 @@ class ProfileScope {
         }
     }
 
-  private:
     std::chrono::high_resolution_clock::time_point _start;
     const char* _location;
     static int _indentation;
