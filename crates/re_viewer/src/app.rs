@@ -569,23 +569,24 @@ impl App {
     #[cfg(target_arch = "wasm32")]
     fn run_copy_direct_link_command(&mut self, store_context: Option<&StoreContext<'_>>) {
         let location = eframe::web::web_location();
-        let mut origin = location.origin;
+        let mut href = location.origin;
         if location.host == "app.rerun.io" {
             // links to `app.rerun.io` can be made into permanent links:
-            let path = match &self.build_info.version.meta {
-                // not a final release, use commit hash
-                Some(..) => format!("commit/{}", &self.build_info.git_hash[..7]),
+            let path = if self.build_info.is_final() {
                 // final release, use version tag
-                None => format!("version/{}", self.build_info.version),
+                format!("version/{}", self.build_info.version)
+            } else {
+                // not a final release, use commit hash
+                format!("commit/{}", self.build_info.short_git_hash())
             };
-            origin = format!("{origin}/{path}/index.html");
+            href = format!("{href}/{path}");
         }
         let direct_link = match store_context
             .and_then(|ctx| ctx.recording)
             .and_then(|rec| rec.data_source.as_ref())
         {
-            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{origin}/?url={url}"),
-            _ => origin,
+            Some(SmartChannelSource::RrdHttpStream { url }) => format!("{href}/?url={url}"),
+            _ => href,
         };
         self.re_ui
             .egui_ctx
