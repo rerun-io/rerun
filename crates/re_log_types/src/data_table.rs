@@ -152,6 +152,15 @@ impl TableId {
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
     }
+
+    /// Returns the next logical [`TableId`].
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`TableId::random`] when unsure.
+    #[inline]
+    pub fn next(&self) -> Self {
+        Self(self.0.next())
+    }
 }
 
 impl SizeBytes for TableId {
@@ -440,6 +449,15 @@ impl DataTable {
             col_entity_path,
             col_num_instances,
             columns,
+        }
+    }
+
+    /// Consumes the [`DataTable`] and returns a new one with incremented [`RowId`]s.
+    #[inline]
+    pub fn next(self) -> Self {
+        Self {
+            col_row_id: self.col_row_id.iter().map(RowId::next).collect(),
+            ..self
         }
     }
 }
