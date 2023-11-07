@@ -48,6 +48,9 @@ pub enum WriteError {
         expected: DataType,
         got: DataType,
     },
+
+    #[error("Attempted to re-use already taken RowId:{0}")]
+    ReusedRowId(RowId),
 }
 
 pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
@@ -82,6 +85,16 @@ impl DataStore {
             return Ok(());
         }
 
+        let DataRow {
+            row_id,
+            timepoint,
+            entity_path: ent_path,
+            num_instances,
+            cells,
+        } = row;
+
+        self.metadata_registry.upsert(*row_id, timepoint.clone())?;
+
         re_tracing::profile_function!();
 
         // Update type registry and do typechecking if enabled
@@ -113,14 +126,6 @@ impl DataStore {
                     .insert(cell.component_name(), cell.datatype().clone());
             }
         }
-
-        let DataRow {
-            row_id,
-            timepoint,
-            entity_path: ent_path,
-            num_instances,
-            cells,
-        } = row;
 
         let ent_path_hash = ent_path.hash();
         let num_instances = *num_instances;
@@ -193,8 +198,6 @@ impl DataStore {
             }
         }
 
-        self.metadata_registry.upsert(*row_id, timepoint.clone());
-
         Ok(())
     }
 
@@ -234,38 +237,20 @@ impl DataStore {
 }
 
 impl MetadataRegistry<TimePoint> {
-    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) {
-        let mut added_size_bytes = 0;
-
-        // This is valuable information even for a timeless timepoint!
-        match self.entry(row_id) {
-            std::collections::btree_map::Entry::Vacant(entry) => {
-                // NOTE: In a map, thus on the heap!
-                added_size_bytes += row_id.total_size_bytes();
-                added_size_bytes += timepoint.total_size_bytes();
-                entry.insert(timepoint);
-            }
-            // NOTE: When saving and loading data from disk, it's very possible that we try to
-            // insert data for a single `RowId` in multiple calls (buckets are per-timeline, so a
-            // single `RowId` can get spread across multiple buckets)!
-            std::collections::btree_map::Entry::Occupied(mut entry) => {
-                let entry = entry.get_mut();
-                for (timeline, time) in timepoint {
-                    if let Some(old_time) = entry.insert(timeline, time) {
-                        if old_time != time {
-                            re_log::error!(%row_id, ?timeline, old_time = ?old_time, new_time = ?time, "detected re-used `RowId/Timeline` pair, this is illegal and will lead to undefined behavior in the datastore");
-                            debug_assert!(false, "detected re-used `RowId/Timeline`");
-                        }
-                    } else {
-                        // NOTE: In a map, thus on the heap!
-                        added_size_bytes += timeline.total_size_bytes();
-                        added_size_bytes += time.as_i64().total_size_bytes();
-                    }
-                }
-            }
+    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) -> WriteResult<()> {
+        if self.contains_key(&row_id) {
+            return Err(WriteError::ReusedRowId(row_id));
         }
 
+        // NOTE: In a map, thus on the heap!
+        let added_size_bytes = row_id.total_size_bytes() + timepoint.total_size_bytes();
+
+        // This is valuable information even for a timeless timepoint!
+        self.insert(row_id, timepoint);
+
         self.heap_size_bytes += added_size_bytes;
+
+        Ok(())
     }
 }
 
