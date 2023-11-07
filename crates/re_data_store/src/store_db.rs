@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStoreConfig, GarbageCollectionOptions};
+use re_arrow_store::{DataStore, DataStoreConfig, GarbageCollectionOptions};
+use re_log::warn_once;
 use re_log_types::{
     ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
     PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
@@ -27,7 +28,7 @@ pub struct EntityDb {
     pub tree: crate::EntityTree,
 
     /// Stores all components for all entities for all timelines.
-    pub data_store: re_arrow_store::DataStore,
+    pub data_store: DataStore,
 }
 
 impl Default for EntityDb {
@@ -36,12 +37,40 @@ impl Default for EntityDb {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
-            data_store: re_arrow_store::DataStore::new(
-                InstanceKey::name(),
-                DataStoreConfig::default(),
-            ),
+            data_store: DataStore::new(InstanceKey::name(), DataStoreConfig::default()),
         }
     }
+}
+
+/// See [`insert_row_with_retries`].
+const NUM_INSERT_ROW_ATTEMPTS: usize = 100;
+
+/// Inserts a [`DataRow`] into the [`DataStore`].
+///
+/// Retries a maximum of `num_attempts` times if the row couldn't be inserted because of a
+/// duplicated [`RowId`], rerolling the [`RowId`] as needed between attempts.
+///
+/// Returns the actual [`DataRow`] that was successfully inserted, if any.
+///
+/// The default value of `num_attempts` (see [`NUM_INSERT_ROW_ATTEMPTS`]) should be (way) more than
+/// enough for all valid use cases.
+fn insert_row_with_retries(
+    store: &mut DataStore,
+    mut row: DataRow,
+    num_attempts: usize,
+) -> re_arrow_store::WriteResult<DataRow> {
+    for _ in 0..num_attempts {
+        match store.insert_row(&row) {
+            Ok(_) => return Ok(row),
+            Err(re_arrow_store::WriteError::ReusedRowId(_)) => {
+                warn_once!("Found duplicated RowId({})", row.row_id());
+                row.row_id = row.row_id.reroll();
+            }
+            Err(err) => return Err(err),
+        }
+    }
+
+    Err(re_arrow_store::WriteError::ReusedRowId(row.row_id()))
 }
 
 impl EntityDb {
@@ -75,10 +104,12 @@ impl EntityDb {
             .or_insert_with(|| entity_path.clone());
     }
 
+    /// Returns the [`DataRow`] that was inserted. It might have been modified!
+    //
     // TODO(cmc): Updates of secondary datastructures should be the result of subscribing to the
     // datastore's changelog and reacting to these changes appropriately. We shouldn't be creating
     // many sources of truth.
-    fn add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
+    fn add_data_row(&mut self, row: DataRow) -> Result<DataRow, Error> {
         self.register_entity_path(&row.entity_path);
 
         for (&timeline, &time_int) in row.timepoint().iter() {
@@ -96,23 +127,31 @@ impl EntityDb {
                 let cell =
                     DataCell::from_arrow_empty(cell.component_name(), cell.datatype().clone());
 
-                // NOTE(cmc): The fact that this inserts data to multiple entity paths using a
-                // single `RowId` is… interesting. Keep it in mind.
                 let row = DataRow::from_cells1(
-                    row_id,
+                    // Remember: the GC process is driven by RowId order, which means we must make
+                    // sure that the empty cell we're inserting uses a RowId with a similar
+                    // timestamp as the one used in the original Clear component cell.
+                    // On the other hand, we cannot re-use the RowId as-is since RowIds are unique,
+                    // therefore we reroll.
+                    row_id.reroll(),
                     row.entity_path.clone(),
                     time_point.clone(),
                     cell.num_instances(),
                     cell,
                 )?;
-                self.data_store.insert_row(&row).ok();
+
+                if let Err(err) =
+                    insert_row_with_retries(&mut self.data_store, row, NUM_INSERT_ROW_ATTEMPTS)
+                {
+                    re_log::error!(%err, "Failed to insert pending clear cell");
+                }
 
                 // Also update the tree with the clear-event
                 self.tree.add_data_msg(&time_point, &component_path);
             }
         }
 
-        self.data_store.insert_row(row)?;
+        let row = insert_row_with_retries(&mut self.data_store, row, NUM_INSERT_ROW_ATTEMPTS)?;
 
         // Look for a `ClearIsRecursive` component, and if it's there, go through the clear path
         // instead.
@@ -125,14 +164,13 @@ impl EntityDb {
             } else {
                 PathOp::ClearComponents(row.entity_path.clone())
             };
-            // NOTE: We've just added the row itself, so make sure to bump the row ID already!
-            self.add_path_op(row.row_id().next(), row.timepoint(), &path_op);
+            self.add_path_op(row.row_id(), row.timepoint(), &path_op);
         }
 
-        Ok(())
+        Ok(row)
     }
 
-    fn add_path_op(&mut self, row_id: RowId, time_point: &TimePoint, path_op: &PathOp) {
+    fn add_path_op(&mut self, mut row_id: RowId, time_point: &TimePoint, path_op: &PathOp) {
         let cleared_paths = self.tree.add_path_op(row_id, time_point, path_op);
 
         // NOTE: Btree! We need a stable ordering here!
@@ -156,25 +194,41 @@ impl EntityDb {
             }
         }
 
+        // Remember: the GC process is driven by RowId order, which means we must make
+        // sure that the empty rows we're about to insert all use a RowId with a similar
+        // timestamp as the one that's just been used to insert the main Clear-bearing row.
+        // On the other hand, we cannot re-use the RowId as-is since RowIds are unique,
+        // therefore we keep incrementing for every added row.
+        row_id = row_id.next();
+
         // Create and insert empty components into the arrow store.
-        let mut row_id = row_id;
         for (ent_path, cells) in cells {
             // NOTE: It is important we insert all those empty components using a single row (id)!
             // 1. It'll be much more efficient when querying that data back.
             // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
             //    these rows! This flaky ordering will in turn leak through the public
             //    API (e.g. range queries)!!
-            match DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells) {
+            row_id = match DataRow::from_cells(row_id, time_point.clone(), ent_path, 0, cells) {
                 Ok(row) => {
-                    self.data_store.insert_row(&row).ok();
+                    match insert_row_with_retries(
+                        &mut self.data_store,
+                        row,
+                        NUM_INSERT_ROW_ATTEMPTS,
+                    ) {
+                        Ok(row) => row.row_id(),
+                        Err(err) => {
+                            re_log::error!(%err, ?path_op, "Failed to insert PathOp");
+                            row_id
+                        }
+                    }
                 }
                 Err(err) => {
-                    re_log::error_once!("Failed to insert PathOp {path_op:?}: {err}");
+                    re_log::error!(%err, ?path_op, "Failed to insert PathOp");
+                    row_id
                 }
-            }
+            };
 
-            // Don't reuse the same row ID for the next entity!
-            row_id = row_id.next();
+            row_id = row_id.next(); // see comment above
         }
     }
 
@@ -252,7 +306,7 @@ impl StoreDb {
             info: store_info,
         });
         for row in rows {
-            store_db.add_data_row(&row)?;
+            store_db.add_data_row(row)?;
         }
 
         Ok(store_db)
@@ -276,7 +330,7 @@ impl StoreDb {
     }
 
     #[inline]
-    pub fn store(&self) -> &re_arrow_store::DataStore {
+    pub fn store(&self) -> &DataStore {
         &self.entity_db.data_store
     }
 
@@ -340,17 +394,15 @@ impl StoreDb {
         // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
         table.compute_all_size_bytes();
 
-        // TODO(cmc): batch all of this
         for row in table.to_rows() {
-            let row = row?;
-            self.add_data_row(&row)?;
+            self.add_data_row(row?)?;
         }
 
         Ok(())
     }
 
-    pub fn add_data_row(&mut self, row: &DataRow) -> Result<(), Error> {
-        self.entity_db.add_data_row(row)
+    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
+        self.entity_db.add_data_row(row).map(|_| ())
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
