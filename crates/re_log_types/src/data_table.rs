@@ -161,6 +161,18 @@ impl TableId {
     pub fn next(&self) -> Self {
         Self(self.0.next())
     }
+
+    /// Returns the `n`-next logical [`TableId`].
+    ///
+    /// This is equivalent to calling [`TableId::next`] `n` times.
+    /// Wraps the monotonically increasing back to zero on overflow.
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`TableId::random`] when unsure.
+    #[inline]
+    pub fn increment(&self, n: u64) -> Self {
+        Self(self.0.increment(n))
+    }
 }
 
 impl SizeBytes for TableId {
