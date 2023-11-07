@@ -4125,6 +4125,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "document-features",
+ "getrandom",
  "itertools 0.11.0",
  "mimalloc",
  "nohash-hasher",

@@ -35,6 +35,7 @@ re_tracing.workspace = true
 re_types_core.workspace = true
 
 document-features.workspace = true
+getrandom.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
