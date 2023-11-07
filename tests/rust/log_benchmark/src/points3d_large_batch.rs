@@ -20,7 +20,7 @@ fn execute(input: Point3DInput) -> anyhow::Result<()> {
     } = input;
 
     let (rec, _storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_points3d_random").memory()?;
+        rerun::RecordingStreamBuilder::new("rerun_example_benchmark_points3d_large_batch").memory()?;
     rec.log(
         "large_batch",
         &rerun::Points3D::new(positions)

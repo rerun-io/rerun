@@ -20,12 +20,13 @@ fn execute(input: Point3DInput) -> anyhow::Result<()> {
     } = input;
 
     let (rec, _storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_points3d_random").memory()?;
+        rerun::RecordingStreamBuilder::new("rerun_example_benchmark_points3d_many_individual")
+            .memory()?;
 
     for i in 0..NUM_POINTS {
         rec.set_time_sequence("my_timeline", i as i64);
         rec.log(
-            "large_batch",
+            "single_point",
             &rerun::Points3D::new([positions[i]])
                 .with_colors([colors[i]])
                 .with_radii([radii[i]]),
