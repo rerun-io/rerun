@@ -20,9 +20,6 @@ mod log_sink;
 mod recording_stream;
 mod spawn;
 
-#[cfg(feature = "log")]
-mod log_integration;
-
 // -------------
 // Public items:
 
@@ -53,9 +50,6 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
 // ---------------
 // Public modules:
 
-#[cfg(feature = "demo")]
-pub mod demo_util;
-
 /// Different destinations for log messages.
 ///
 /// This is how you select whether the log stream ends up
@@ -79,52 +73,13 @@ pub mod log {
 pub mod time {
     pub use re_log_types::{Time, TimeInt, TimePoint, TimeType, Timeline};
 }
+pub use time::{Time, TimePoint, Timeline};
 
-/// Transform helpers, for use with [`components::Transform3D`].
-pub mod transform {
-    pub use re_types::datatypes::{
-        Angle, Rotation3D, RotationAxisAngle, Scale3D, Transform3D, TranslationAndMat3x3,
-        TranslationRotationScale3D,
-    };
-}
-
-/// Coordinate system helpers, for use with [`components::ViewCoordinates`].
-pub mod coordinates {
-    pub use re_types::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3};
-}
-
-pub use re_types::{archetypes, components, datatypes};
 pub use re_types_core::{
     Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentName, Datatype,
     DatatypeBatch, DatatypeName, GenericIndicatorComponent, Loggable, LoggableBatch,
     MaybeOwnedComponentBatch, NamedIndicatorComponent,
 };
-
-mod prelude {
-    // Import all archetypes into the global namespace to minimize
-    // the amount of typing for our users.
-    pub use super::archetypes::*;
-
-    // Also import any component or datatype that has a unique name:
-    pub use super::components::{
-        Color, HalfSizes2D, HalfSizes3D, InstanceKey, LineStrip2D, LineStrip3D, Material,
-        MediaType, MeshProperties, OutOfTreeTransform3D, Position2D, Position3D, Radius, Text,
-        TextLogLevel, Vector3D,
-    };
-    pub use super::datatypes::{
-        Angle, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32, Rotation3D,
-        RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D, Vec2D, Vec3D,
-        Vec4D,
-    };
-
-    pub use super::time::{Time, TimePoint, Timeline};
-}
-pub use prelude::*;
-
-#[cfg(feature = "log")]
-pub use self::log_integration::Logger;
-#[cfg(feature = "log")]
-pub use re_log::default_log_filter;
 
 /// Methods for spawning the web viewer and streaming the SDK log stream to it.
 #[cfg(feature = "web_viewer")]
@@ -134,13 +89,10 @@ pub mod web_viewer;
 pub mod external {
     pub use re_log;
     pub use re_log_types;
-    pub use re_memory;
     pub use re_sdk_comms;
-    pub use re_types;
 
     pub use re_log::external::*;
     pub use re_log_types::external::*;
-    pub use re_types::external::*;
 
     #[cfg(feature = "log")]
     pub use log;

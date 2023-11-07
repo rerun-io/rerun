@@ -334,6 +334,7 @@ impl DataStore {
 /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
 /// ```
 #[test]
+#[cfg(test)]
 fn datastore_internal_repr() {
     use re_log_types::DataTable;
     use re_types_core::Loggable as _;
