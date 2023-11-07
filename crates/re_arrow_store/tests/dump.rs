@@ -45,12 +45,16 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
     // helper to insert a table both as a temporal and timeless payload
     let insert_table = |store: &mut DataStore, table: &DataTable| {
         // insert temporal
-        store.insert_table(table).unwrap();
+        for row in table.to_rows() {
+            store.insert_row(&row.unwrap()).unwrap();
+        }
 
         // insert timeless
         let mut table_timeless = table.clone().next();
         table_timeless.col_timelines = Default::default();
-        store.insert_table(&table_timeless).unwrap();
+        for row in table_timeless.to_rows() {
+            store.insert_row(&row.unwrap()).unwrap();
+        }
     };
 
     let insert_table_with_retries = |store: &mut DataStore, table: &DataTable| {
@@ -155,6 +159,12 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
     let frame3: TimeInt = 3.into();
     let frame4: TimeInt = 4.into();
 
+    let insert_table = |store: &mut DataStore, table: &DataTable| {
+        for row in table.to_rows() {
+            store.insert_row(&row.unwrap()).unwrap();
+        }
+    };
+
     let ent_paths = ["this/that", "other", "yet/another/one"];
     let tables = ent_paths
         .iter()
@@ -163,29 +173,29 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 
     // Fill the first store.
     for table in &tables {
-        store1.insert_table(table).unwrap();
+        insert_table(store1, table);
     }
     sanity_unwrap(store1);
 
     // Dump frame1 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame1, frame1)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table(store2, &table);
     }
     // Dump frame2 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame2, frame2)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table(store2, &table);
     }
     // Dump frame3 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame3, frame3)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table(store2, &table);
     }
     // Dump the other frame3 from the first store into the second one.
     for table in store1.to_data_tables((timeline_log_time, TimeRange::new(frame3, frame3)).into()) {
-        store2.insert_table(&table.clone().next()).unwrap();
+        insert_table(store2, &table.clone().next());
     }
     // Dump frame4 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame4, frame4)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table(store2, &table);
     }
     sanity_unwrap(store2);
 
@@ -279,6 +289,12 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
     let frame2: TimeInt = 2.into();
     let frame3: TimeInt = 3.into();
 
+    let insert_table = |store: &mut DataStore, table: &DataTable| {
+        for row in table.to_rows() {
+            store.insert_row(&row.unwrap()).unwrap();
+        }
+    };
+
     // Start by inserting a table with 2 rows, one with colors, and one with points.
     {
         let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));
@@ -292,7 +308,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
         ] => 3; [instances2, positions2]);
         let mut table = DataTable::from_rows(TableId::random(), [row1, row2]);
         table.compute_all_size_bytes();
-        store.insert_table(&table).unwrap();
+        insert_table(store, &table);
     }
 
     // Now insert another table with points only.
@@ -303,7 +319,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
             ] => 3; [instances3, positions3]);
         let mut table = DataTable::from_rows(TableId::random(), [row3]);
         table.compute_all_size_bytes();
-        store.insert_table(&table).unwrap();
+        insert_table(store, &table);
     }
 
     let data_msgs: Result<Vec<_>, _> = store
