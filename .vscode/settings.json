@@ -5,9 +5,19 @@
             "*.unsafe:rust": "#eb5046"
         }
     },
+    "files.autoGuessEncoding": true,
+    "files.exclude": {
+        "venv": true,
+        ".pixi": true,
+        "build": true,
+        "compare_screenshot": true,
+        "target": true,
+        "target_ra": true,
+        "target_wasm": true,
+        "web_demo": true
+    },
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
-    "files.autoGuessEncoding": true,
     "cSpell.ignorePaths": [
         ".vscode",
         "pixi.lock"
@@ -77,11 +87,13 @@
     "cmake.buildDirectory": "${workspaceRoot}/build/",
     "cmake.generator": "Ninja", // Use Ninja, just like we do in our just/pixi command.
     "rust-analyzer.showUnlinkedFileNotification": false,
-    "editor.defaultFormatter": "charliermarsh.ruff",
     "ruff.format.args": [
         "--config=rerun_py/pyproject.toml"
     ],
     "ruff.lint.args": [
         "--config=rerun_py/pyproject.toml"
-    ]
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+    },
 }
