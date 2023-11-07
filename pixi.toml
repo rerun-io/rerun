@@ -25,24 +25,28 @@ version = "0.1.0"                                                              #
 # Also, it's more likely that users are also going to use Visual Studio/MSBuild directly.
 [target.win-64.tasks]
 cpp-prepare = "cmake -G 'Visual Studio 17 2022' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-prepare-release = "cmake -G 'Visual Studio 17 2022' -B build -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/Debug/rerun_sdk_tests.exe", depends_on = [
   "cpp-build-tests",
 ] }
 
 [target.linux-64.tasks]
 cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
 
 [target.osx-64.tasks]
 cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
 
 [target.osx-arm64.tasks]
 cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
@@ -94,9 +98,16 @@ cpp-build-examples = { cmd = "cmake --build build --config Debug --target exampl
 cpp-build-doc-examples = { cmd = "cmake --build build --config Debug --target doc_examples", depends_on = [
   "cpp-prepare",
 ] }
+cpp-build-log-benchmark = { cmd = "cmake --build build --config Release --target log_benchmark", depends_on = [
+  "cpp-prepare-release",
+] }
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
+cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/tests/cpp/log_benchmark/log_benchmark", depends_on = [
+  "cpp-build-log-benchmark",
+] }
+
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
 
 [dependencies]
