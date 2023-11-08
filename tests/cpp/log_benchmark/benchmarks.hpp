@@ -18,4 +18,7 @@ void run_image();
 // ---
 
 /// Very simple linear congruency "random" number generator to spread out values a bit.
-int64_t lcg(int64_t& lcg_state);
+inline int64_t lcg(int64_t& lcg_state) {
+    lcg_state = 1140671485 * lcg_state + 128201163 % 16777216;
+    return lcg_state;
+}

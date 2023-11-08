@@ -22,18 +22,23 @@
 // pixi run cpp-log-benchmark points3d_large_batch
 // ```
 //
+// For better whole-executable timing capture you can also first build the executable and then run:
+// ```
+// pixi run cpp-build-log-benchmark
+// ./build/tests/cpp/log_benchmark/log_benchmark
+// ```
+//
 
 #include <cstdio>
 #include <vector>
 
 #include "benchmarks.hpp"
 
-int64_t lcg(int64_t& lcg_state) {
-    lcg_state = 1140671485 * lcg_state + 128201163 % 16777216;
-    return lcg_state;
-}
-
 int main(int argc, char** argv) {
+#ifndef NDEBUG
+    printf("WARNING: Debug build, timings will be inaccurate!\n");
+#endif
+
     std::vector<const char*> benchmarks(argv + 1, argv + argc);
     if (argc == 1) {
         benchmarks.push_back(ArgPoints3DLargeBatch);
@@ -44,9 +49,9 @@ int main(int argc, char** argv) {
     for (const auto& benchmark : benchmarks) {
         if (strcmp(benchmark, ArgPoints3DLargeBatch) == 0) {
             run_points3d_large_batch();
-        } else if (benchmark == ArgPoints3DManyIndividual) {
+        } else if (strcmp(benchmark, ArgPoints3DManyIndividual) == 0) {
             run_points3d_many_individual();
-        } else if (benchmark == ArgImage) {
+        } else if (strcmp(benchmark, ArgImage) == 0) {
             run_image();
         } else {
             printf("Unknown benchmark: %s\n", benchmark);
