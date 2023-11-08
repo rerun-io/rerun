@@ -41,8 +41,9 @@ serde = { workspace = true, features = ["derive", "rc"], optional = true }
 thiserror.workspace = true
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen"] }
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+re_log_types = { workspace = true, features = ["testing"] }
+re_types = { workspace = true, features = ["datagen"] }
 
 anyhow.workspace = true
 criterion.workspace = true

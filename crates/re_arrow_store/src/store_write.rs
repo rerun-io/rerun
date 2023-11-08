@@ -238,19 +238,20 @@ impl DataStore {
 
 impl MetadataRegistry<TimePoint> {
     fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) -> WriteResult<()> {
-        if self.contains_key(&row_id) {
-            return Err(WriteError::ReusedRowId(row_id));
+        match self.entry(row_id) {
+            std::collections::btree_map::Entry::Occupied(_) => Err(WriteError::ReusedRowId(row_id)),
+            std::collections::btree_map::Entry::Vacant(entry) => {
+                // NOTE: In a map, thus on the heap!
+                let added_size_bytes = row_id.total_size_bytes() + timepoint.total_size_bytes();
+
+                // This is valuable information even for a timeless timepoint!
+                entry.insert(timepoint);
+
+                self.heap_size_bytes += added_size_bytes;
+
+                Ok(())
+            }
         }
-
-        // NOTE: In a map, thus on the heap!
-        let added_size_bytes = row_id.total_size_bytes() + timepoint.total_size_bytes();
-
-        // This is valuable information even for a timeless timepoint!
-        self.insert(row_id, timepoint);
-
-        self.heap_size_bytes += added_size_bytes;
-
-        Ok(())
     }
 }
 
