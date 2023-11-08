@@ -1,8 +1,8 @@
-## Rust Quick Start
+# Rust Quick Start
 
 ${SAFARI_WARNING}
 
-### Installing Rerun
+## Installing Rerun
 
 After you have [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.
 
@@ -14,7 +14,7 @@ cargo init cube && cd cube && cargo add rerun
 
 Note that the Rerun SDK requires a working installation of Rust 1.72+.
 
-### Logging your own data
+## Logging your own data
 
 Add the following code to your `main.rs` file:
 

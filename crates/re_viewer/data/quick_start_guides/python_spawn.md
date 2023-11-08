@@ -1,8 +1,8 @@
-## Python Quick Start
+# Python Quick Start
 
 ${SAFARI_WARNING}
 
-### Installing the Rerun SDK
+## Installing the Rerun SDK
 
 The Rerun SDK is available on [PyPI](https://pypi.org/) under the
 [`rerun-sdk`](https://pypi.org/project/rerun-sdk/) name. It can be installed like any other
@@ -12,7 +12,7 @@ Python package:
 pip install rerun-sdk
 ```
 
-### Logging your own data
+## Logging your own data
 
 Copy and paste the following snippet in a new Python file and execute it to create a recording in a new viewer:
 
