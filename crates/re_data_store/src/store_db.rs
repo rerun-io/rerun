@@ -318,6 +318,9 @@ pub struct StoreDb {
 
     /// Where we store the entities.
     entity_db: EntityDb,
+
+    /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
+    last_modified_at: web_time::Instant,
 }
 
 impl StoreDb {
@@ -327,6 +330,7 @@ impl StoreDb {
             data_source: None,
             set_store_info: None,
             entity_db: Default::default(),
+            last_modified_at: web_time::Instant::now(),
         }
     }
 
@@ -437,6 +441,8 @@ impl StoreDb {
             self.add_data_row(row?)?;
         }
 
+        self.last_modified_at = web_time::Instant::now();
+
         Ok(())
     }
 
@@ -489,6 +495,7 @@ impl StoreDb {
             data_source: _,
             set_store_info: _,
             entity_db,
+            last_modified_at: _,
         } = self;
 
         entity_db.purge(&deleted);
