@@ -35,6 +35,7 @@ bytemuck.workspace = true
 egui_extras.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
+once_cell.workspace = true
 image.workspace = true
 itertools.workspace = true
 rfd.workspace = true

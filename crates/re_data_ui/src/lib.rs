@@ -23,6 +23,7 @@ mod log_msg;
 mod pinhole;
 mod rotation3d;
 mod transform3d;
+pub mod visible_history;
 
 pub use crate::image::{
     show_zoomed_image_region, show_zoomed_image_region_area_outline,

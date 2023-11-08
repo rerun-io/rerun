@@ -117,7 +117,7 @@ impl TimeSeriesSystem {
 
         let store = ctx.store_db.store();
 
-        for (ent_path, _ent_props) in query.iter_entities_for_system(Self::name()) {
+        for (ent_path, ent_props) in query.iter_entities_for_system(Self::name()) {
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(ent_path);
             let annotation_info = annotations
@@ -125,10 +125,21 @@ impl TimeSeriesSystem {
                 .annotation_info();
             let default_color = DefaultColor::EntityPath(ent_path);
 
-            let query = re_arrow_store::RangeQuery::new(
-                query.timeline,
-                TimeRange::new(i64::MIN.into(), i64::MAX.into()),
-            );
+            let visible_history = match query.timeline.typ() {
+                re_log_types::TimeType::Time => ent_props.visible_history.nanos,
+                re_log_types::TimeType::Sequence => ent_props.visible_history.sequences,
+            };
+
+            let (from, to) = if ent_props.visible_history.enabled {
+                (
+                    visible_history.from(query.latest_at),
+                    visible_history.to(query.latest_at),
+                )
+            } else {
+                (i64::MIN.into(), i64::MAX.into())
+            };
+
+            let query = re_arrow_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
             let arch_views = range_archetype::<
                 TimeSeriesScalar,
