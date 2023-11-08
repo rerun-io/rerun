@@ -350,11 +350,15 @@ fn datastore_internal_repr() {
 
     let timeless = DataTable::example(true);
     eprintln!("{timeless}");
-    store.insert_table(&timeless).unwrap();
+    for row in timeless.to_rows() {
+        store.insert_row(&row.unwrap()).unwrap();
+    }
 
     let temporal = DataTable::example(false);
     eprintln!("{temporal}");
-    store.insert_table(&temporal).unwrap();
+    for row in temporal.to_rows() {
+        store.insert_row(&row.unwrap()).unwrap();
+    }
 
     store.sanity_check().unwrap();
     eprintln!("{store}");

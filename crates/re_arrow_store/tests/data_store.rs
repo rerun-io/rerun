@@ -65,13 +65,13 @@ fn all_components() {
             // Stress test save-to-disk & load-from-disk
             let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
             for table in store.to_data_tables(None) {
-                store2.insert_table(&table).unwrap();
+                insert_table_with_retries(&mut store2, &table);
             }
 
             // Stress test GC
             store2.gc(GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
-                store2.insert_table(&table).unwrap();
+                insert_table_with_retries(&mut store2, &table);
             }
 
             let mut store = store2;
@@ -326,12 +326,12 @@ fn latest_at_impl(store: &mut DataStore) {
     // Stress test save-to-disk & load-from-disk
     let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
     for table in store.to_data_tables(None) {
-        store2.insert_table(&table).unwrap();
+        insert_table(&mut store2, &table);
     }
     // Stress test GC
     store2.gc(GarbageCollectionOptions::gc_everything());
     for table in store.to_data_tables(None) {
-        store2.insert_table(&table).unwrap();
+        insert_table(&mut store2, &table);
     }
     let mut store = store2;
 
@@ -468,12 +468,12 @@ fn range_impl(store: &mut DataStore) {
             // Stress test save-to-disk & load-from-disk
             let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
             for table in store.to_data_tables(None) {
-                store2.insert_table(&table).unwrap();
+                insert_table_with_retries(&mut store2, &table);
             }
             store2.wipe_timeless_data();
             store2.gc(GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
-                store2.insert_table(&table).unwrap();
+                insert_table_with_retries(&mut store2, &table);
             }
             let mut store = store2;
 
@@ -961,12 +961,10 @@ fn protected_gc_impl(store: &mut DataStore) {
     let colors4 = build_some_colors(5);
     let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 5; [colors4]);
 
-    store
-        .insert_table(&DataTable::from_rows(
-            TableId::random(),
-            [row1.clone(), row2.clone(), row3.clone(), row4.clone()],
-        ))
-        .unwrap();
+    store.insert_row(&row1).unwrap();
+    store.insert_row(&row2).unwrap();
+    store.insert_row(&row3).unwrap();
+    store.insert_row(&row4).unwrap();
 
     // Re-insert row1 and row2 as timeless data as well
     let mut table_timeless = DataTable::from_rows(
@@ -974,7 +972,7 @@ fn protected_gc_impl(store: &mut DataStore) {
         [row1.clone().next(), row2.clone().next()],
     );
     table_timeless.col_timelines = Default::default();
-    store.insert_table(&table_timeless).unwrap();
+    insert_table_with_retries(store, &table_timeless);
 
     store.gc(GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
@@ -1065,7 +1063,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         [row1.clone(), row2.clone(), row3.clone()],
     );
     table_timeless.col_timelines = Default::default();
-    store.insert_table(&table_timeless).unwrap();
+    insert_table_with_retries(store, &table_timeless);
 
     store.gc(GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
@@ -1106,7 +1104,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     // Now erase points and GC again
     let mut table_timeless = DataTable::from_rows(TableId::random(), [row4]);
     table_timeless.col_timelines = Default::default();
-    store.insert_table(&table_timeless).unwrap();
+    insert_table_with_retries(store, &table_timeless);
 
     store.gc(GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,

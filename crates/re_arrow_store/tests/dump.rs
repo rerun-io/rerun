@@ -166,7 +166,7 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 
     // Fill the first store.
     for table in &tables {
-        store1.insert_table(table).unwrap();
+        insert_table_with_retries(store1, table);
     }
     sanity_unwrap(store1);
 
@@ -295,7 +295,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
         ] => 3; [instances2, positions2]);
         let mut table = DataTable::from_rows(TableId::random(), [row1, row2]);
         table.compute_all_size_bytes();
-        store.insert_table(&table).unwrap();
+        insert_table_with_retries(store, &table);
     }
 
     // Now insert another table with points only.
@@ -306,7 +306,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
             ] => 3; [instances3, positions3]);
         let mut table = DataTable::from_rows(TableId::random(), [row3]);
         table.compute_all_size_bytes();
-        store.insert_table(&table).unwrap();
+        insert_table_with_retries(store, &table);
     }
 
     let data_msgs: Result<Vec<_>, _> = store
