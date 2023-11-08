@@ -26,6 +26,9 @@ version = "0.1.0"                                                              #
 [target.win-64.tasks]
 cpp-prepare = "cmake -G 'Visual Studio 17 2022' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 cpp-prepare-release = "cmake -G 'Visual Studio 17 2022' -B build -S . -DCMAKE_BUILD_TYPE=Release"
+cpp-build-all = { cmd = "cmake --build build --config Debug --target ALL_BUILD", depends_on = [
+  "cpp-prepare",
+] }
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/Debug/rerun_sdk_tests.exe", depends_on = [
   "cpp-build-tests",
 ] }
@@ -33,6 +36,9 @@ cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/Debug/rerun
 [target.linux-64.tasks]
 cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
+cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
+  "cpp-prepare",
+] }
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
@@ -40,6 +46,9 @@ cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_t
 [target.osx-64.tasks]
 cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
+cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
+  "cpp-prepare",
+] }
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
@@ -47,6 +56,9 @@ cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_t
 [target.osx-arm64.tasks]
 cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
 cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
+cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
+  "cpp-prepare",
+] }
 cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
@@ -79,9 +91,6 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
 
 # All the cpp-* tasks can be configured with environment variables, e.g.:  RERUN_WERROR=ON  CXX=clang++
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
-cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
-  "cpp-prepare",
-] }
 cpp-build-tests = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",
 ] }
