@@ -2,13 +2,6 @@ use crate::points3d_shared::{prepare_points3d, Point3DInput};
 
 const NUM_POINTS: usize = 1_000_000;
 
-/// Log many individual points (position, color, radius), each with a different timestamp.
-pub fn run() -> anyhow::Result<()> {
-    re_tracing::profile_function!();
-    let input = std::hint::black_box(prepare_points3d(1337, NUM_POINTS));
-    execute(input)
-}
-
 fn execute(input: Point3DInput) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
@@ -33,4 +26,11 @@ fn execute(input: Point3DInput) -> anyhow::Result<()> {
         )?;
     }
     Ok(())
+}
+
+/// Log many individual points (position, color, radius), each with a different timestamp.
+pub fn run() -> anyhow::Result<()> {
+    re_tracing::profile_function!();
+    let input = std::hint::black_box(prepare_points3d(1337, NUM_POINTS));
+    execute(input)
 }

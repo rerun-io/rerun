@@ -23,6 +23,12 @@
 //! cargo run -p log_benchmark --release -- --benchmarks points3d_large_batch
 //! ```
 //!
+//! For better whole-executable timing capture you can also first build the executable and then run:
+//! ```
+//! cargo build -p log_benchmark --release
+//! ./target/release/log_benchmark
+//! ```
+//!
 
 use clap::{Parser as _, ValueEnum as _};
 
@@ -68,6 +74,9 @@ struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
+    #[cfg(debug_assertions)]
+    println!("WARNING: Debug build, timings will be inaccurate!");
+
     let args = Args::parse();
 
     let mut profiler = re_tracing::Profiler::default();

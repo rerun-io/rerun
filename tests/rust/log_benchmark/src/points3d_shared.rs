@@ -28,6 +28,6 @@ pub fn prepare_points3d(mut lcg_state: i64, num_points: usize) -> Point3DInput {
         radii: (0..num_points)
             .map(|_| lcg(&mut lcg_state) as f32)
             .collect(),
-        label: "large_batch".to_owned(),
+        label: "some label".to_owned(),
     }
 }

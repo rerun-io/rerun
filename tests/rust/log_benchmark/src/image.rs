@@ -12,13 +12,6 @@ const IMAGE_CHANNELS: u64 = 4;
 // Each time with a single pixel changed.
 const NUM_LOG_CALLS: usize = 4;
 
-/// Log a single large image.
-pub fn run() -> anyhow::Result<()> {
-    re_tracing::profile_function!();
-    let input = std::hint::black_box(prepare());
-    execute(input)
-}
-
 fn prepare() -> Vec<u8> {
     re_tracing::profile_function!();
 
@@ -44,7 +37,7 @@ fn execute(mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
     re_tracing::profile_function!();
 
     let (rec, _storage) =
-        rerun::RecordingStreamBuilder::new("rerun_example_points3d_random").memory()?;
+        rerun::RecordingStreamBuilder::new("rerun_example_benchmark_").memory()?;
 
     for i in 0..NUM_LOG_CALLS {
         raw_image_data[i] += 1;
@@ -68,4 +61,11 @@ fn execute(mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+/// Log a single large image.
+pub fn run() -> anyhow::Result<()> {
+    re_tracing::profile_function!();
+    let input = std::hint::black_box(prepare());
+    execute(input)
 }
