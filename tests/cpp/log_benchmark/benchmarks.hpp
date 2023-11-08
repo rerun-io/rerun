@@ -2,10 +2,6 @@
 
 #include <cstdint>
 
-static const char* ArgPoints3DLargeBatch = "points3d_large_batch";
-static const char* ArgPoints3DManyIndividual = "points3d_many_individual";
-static const char* ArgImage = "image";
-
 /// Log a single large batch of points with positions, colors, radii and a splatted string.
 void run_points3d_large_batch();
 

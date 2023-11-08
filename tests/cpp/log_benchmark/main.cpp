@@ -34,6 +34,10 @@
 
 #include "benchmarks.hpp"
 
+static const char* ArgPoints3DLargeBatch = "points3d_large_batch";
+static const char* ArgPoints3DManyIndividual = "points3d_many_individual";
+static const char* ArgImage = "image";
+
 int main(int argc, char** argv) {
 #ifndef NDEBUG
     printf("WARNING: Debug build, timings will be inaccurate!\n");
