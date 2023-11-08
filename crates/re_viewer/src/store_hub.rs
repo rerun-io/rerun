@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, VecDeque};
+
 use ahash::{HashMap, HashMapExt};
 use itertools::Itertools;
 
@@ -5,6 +7,7 @@ use re_arrow_store::{DataStoreConfig, DataStoreStats};
 use re_data_store::StoreDb;
 use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{ApplicationId, StoreId, StoreKind};
+use re_memory::MemoryUse;
 use re_viewer_context::StoreContext;
 
 use re_arrow_store::StoreGeneration;
@@ -211,8 +214,47 @@ impl StoreHub {
     }
 
     /// Call [`StoreDb::purge_fraction_of_ram`] on every recording
+    //
+    // NOTE: If you touch any of this, make sure to play around with our GC stress test scripts
+    // available under `$WORKSPACE_ROOT/tests/python/gc_stress`.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
-        self.store_dbs.purge_fraction_of_ram(fraction_to_purge);
+        re_tracing::profile_function!();
+
+        let Some(store_id) = self.store_dbs.find_oldest_modified_recording().cloned() else {
+            return;
+        };
+
+        let store_dbs = &mut self.store_dbs.store_dbs;
+        if store_dbs.len() <= 1 {
+            return;
+        }
+
+        let Some(store_db) = store_dbs.get_mut(&store_id) else {
+            if cfg!(debug_assertions) {
+                unreachable!();
+            }
+            return; // unreachable
+        };
+
+        let store_size_before =
+            store_db.store().timeless_size_bytes() + store_db.store().temporal_size_bytes();
+        store_db.purge_fraction_of_ram(fraction_to_purge);
+        let store_size_after =
+            store_db.store().timeless_size_bytes() + store_db.store().temporal_size_bytes();
+
+        // Running the GC didn't do anything.
+        // That's because all that's left in that store is protected rows: it's time to remove it entirely.
+        if store_size_before == store_size_after {
+            self.remove_recording_id(&store_id);
+        }
+
+        // Either we've reached our target goal or we couldn't fetch memory stats, in which case
+        // we still consider that we're done anyhow.
+
+        // NOTE: It'd be tempting to loop through recordings here, as long as we haven't reached
+        // our actual target goal.
+        // We cannot do that though: there are other subsystems that need to release memory before
+        // we can get an accurate reading of the current memory used and decide if we should go on.
     }
 
     /// Directly access the [`StoreDb`] for the selected recording
@@ -433,6 +475,19 @@ impl StoreBundle {
         }
     }
 
+    /// Returns the [`StoreId`] of the oldest modified recording, according to [`StoreDb::last_modified_at`].
+    pub fn find_oldest_modified_recording(&self) -> Option<&StoreId> {
+        let mut store_dbs = self
+            .store_dbs
+            .values()
+            .filter(|db| db.store_kind() == StoreKind::Recording)
+            .collect_vec();
+
+        store_dbs.sort_by_key(|db| db.last_modified_at());
+
+        store_dbs.first().map(|db| db.store_id())
+    }
+
     // --
 
     pub fn contains_recording(&self, id: &StoreId) -> bool {
@@ -528,14 +583,6 @@ impl StoreBundle {
 
     pub fn purge_empty(&mut self) {
         self.store_dbs.retain(|_, store_db| !store_db.is_empty());
-    }
-
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
-        re_tracing::profile_function!();
-
-        for store_db in self.store_dbs.values_mut() {
-            store_db.purge_fraction_of_ram(fraction_to_purge);
-        }
     }
 
     pub fn drain_store_dbs(&mut self) -> impl Iterator<Item = StoreDb> + '_ {

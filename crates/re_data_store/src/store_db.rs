@@ -412,6 +412,10 @@ impl StoreDb {
         self.entity_db.data_store.generation()
     }
 
+    pub fn last_modified_at(&self) -> web_time::Instant {
+        self.last_modified_at
+    }
+
     pub fn is_empty(&self) -> bool {
         self.set_store_info.is_none() && self.num_rows() == 0
     }
