@@ -107,6 +107,42 @@ impl SizeBytes for DataCellRow {
 // ---
 
 /// A unique ID for a [`DataRow`].
+///
+/// ## Semantics
+///
+/// [`RowId`]s play an important role in how we store, query and garbage collect data.
+///
+/// ### Storage
+///
+/// [`RowId`]s must be unique within a `DataStore`. This is enforced by the store's APIs.
+///
+/// This makes it easy to build and maintain secondary indices around `RowId`s with few to no
+/// extraneous state tracking.
+///
+/// ### Query
+///
+/// Queries (both latest-at & range semantics) will defer to `RowId` order as a tie-breaker when
+/// looking at several rows worth of data that rest at the exact same timestamp.
+///
+/// In pseudo-code:
+/// ```text
+/// rr.set_time_sequence("frame", 10)
+///
+/// rr.log("my_entity", point1, row_id=#1)
+/// rr.log("my_entity", point2, row_id=#0)
+///
+/// rr.query("my_entity", at=("frame", 10))  # returns `point1`
+/// ```
+///
+/// Think carefully about your `RowId`s when logging a lot of data at the same timestamp.
+///
+/// ### Garbage collection
+///
+/// Garbage collection happens in `RowId`-order, which roughly means that it happens in the
+/// logger's wall-clock order.
+///
+/// This has very important implications where inserting data far into the past or into the future:
+/// think carefully about your `RowId`s in these cases.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct RowId(pub(crate) re_tuid::Tuid);
