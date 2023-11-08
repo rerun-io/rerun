@@ -9,7 +9,7 @@
 //
 // The data we generate for benchmarking should be:
 // * minimal overhead to generate
-// * not homogenous (arrow, ourselves, or even the compiler might exploit this)
+// * not homogeneous (arrow, ourselves, or even the compiler might exploit this)
 // * not trivially optimized out
 // * not random between runs
 //
