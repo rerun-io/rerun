@@ -152,6 +152,15 @@ impl TableId {
     pub fn random() -> Self {
         Self(re_tuid::Tuid::random())
     }
+
+    /// Returns the next logical [`TableId`].
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`TableId::random`] when unsure.
+    #[inline]
+    pub fn next(&self) -> Self {
+        Self(self.0.next())
+    }
 }
 
 impl SizeBytes for TableId {

@@ -125,7 +125,7 @@ impl RowId {
         Self(re_tuid::Tuid::random())
     }
 
-    /// Returns the next logical `RowId`.
+    /// Returns the next logical [`RowId`].
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`RowId::random`] when unsure.
@@ -347,6 +347,15 @@ impl DataRow {
             num_instances: num_instances.into(),
             cells,
         })
+    }
+
+    /// Consumes the [`DataRow`] and returns a new one with an incremented [`RowId`].
+    #[inline]
+    pub fn next(self) -> Self {
+        Self {
+            row_id: self.row_id.next(),
+            ..self
+        }
     }
 
     /// Turns the `DataRow` into a single-row [`DataTable`].
