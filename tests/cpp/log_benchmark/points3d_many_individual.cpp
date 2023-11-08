@@ -17,7 +17,7 @@ static void execute(Point3DInput input) {
         rec.set_time_sequence("my_timeline", static_cast<int64_t>(i));
         rec.log(
             "large_batch",
-            rerun::Points3D({input.positions[i]})
+            rerun::Points3D(input.positions[i])
                 .with_colors({input.colors[i]})
                 .with_radii({input.radii[i]})
         );
