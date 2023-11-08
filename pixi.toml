@@ -21,48 +21,6 @@ readme = "README.md"
 repository = "https://github.com/rerun-io/rerun"
 version = "0.1.0"                                                              # TODO(emilk): sync version with `Cargo.toml` with help from `crates.py`
 
-# We could use Ninja on Windows as well, but this makes the compiler setup needlessly complicated.
-# Also, it's more likely that users are also going to use Visual Studio/MSBuild directly.
-[target.win-64.tasks]
-cpp-prepare = "cmake -G 'Visual Studio 17 2022' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-prepare-release = "cmake -G 'Visual Studio 17 2022' -B build -S . -DCMAKE_BUILD_TYPE=Release"
-cpp-build-all = { cmd = "cmake --build build --config Debug --target ALL_BUILD", depends_on = [
-  "cpp-prepare",
-] }
-cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/Debug/rerun_sdk_tests.exe", depends_on = [
-  "cpp-build-tests",
-] }
-
-[target.linux-64.tasks]
-cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
-cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
-  "cpp-prepare",
-] }
-cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
-  "cpp-build-tests",
-] }
-
-[target.osx-64.tasks]
-cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
-cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
-  "cpp-prepare",
-] }
-cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
-  "cpp-build-tests",
-] }
-
-[target.osx-arm64.tasks]
-cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
-cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
-  "cpp-prepare",
-] }
-cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
-  "cpp-build-tests",
-] }
-
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
 
@@ -90,6 +48,11 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
 ] }
 
 # All the cpp-* tasks can be configured with environment variables, e.g.:  RERUN_WERROR=ON  CXX=clang++
+cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
+cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
+  "cpp-prepare",
+] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
 cpp-build-tests = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",
@@ -112,8 +75,10 @@ cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_t
 cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/tests/cpp/log_benchmark/log_benchmark", depends_on = [
   "cpp-build-log-benchmark",
 ] }
-
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
+
+[target.win-64.tasks]
+cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
 
 [dependencies]
 attrs = ">=23.1.0"
@@ -137,6 +102,7 @@ taplo = ">=0.8.1"
 typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
+ninja = "1.11.1"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
