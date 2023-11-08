@@ -125,7 +125,7 @@ impl SizeBytes for DataCellRow {
 /// looking at several rows worth of data that rest at the exact same timestamp.
 ///
 /// In pseudo-code:
-/// ```ignore
+/// ```text
 /// rr.set_time_sequence("frame", 10)
 ///
 /// rr.log("my_entity", point1, row_id=#1)
