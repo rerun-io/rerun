@@ -9,7 +9,10 @@ use re_types::{
 };
 use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 
-use crate::{parts::image_view_coordinates, query_pinhole};
+use crate::{
+    parts::{image_view_coordinates, CamerasPart},
+    query_pinhole,
+};
 
 #[derive(Clone)]
 struct TransformInfo {
@@ -85,7 +88,23 @@ impl ViewContextSystem for TransformContext {
 
         let entity_db = ctx.store_db.entity_db();
         let time_ctrl = &ctx.rec_cfg.time_ctrl;
-        let entity_prop_map = query.entity_props_map;
+
+        // TODO(jleibs): The need to do this hints at a problem with how we think about
+        // the interaction between properties and "context-systems".
+        // Build an entity_property_map for just the CamerasParts, where we would expect to find
+        // the image_depth_plane_distance property.
+        let entity_prop_map: EntityPropertyMap = query
+            .per_system_data_results
+            .get(&CamerasPart::name())
+            .map(|results| {
+                results
+                    .iter()
+                    .map(|r| (r.entity_path.clone(), r.resolved_properties.clone()))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        //query.entity_props_map;
 
         self.space_origin = query.space_origin.clone();
 
@@ -104,7 +123,7 @@ impl ViewContextSystem for TransformContext {
             current_tree,
             &entity_db.data_store,
             &time_query,
-            entity_prop_map,
+            &entity_prop_map,
             glam::Affine3A::IDENTITY,
             &None, // Ignore potential pinhole camera at the root of the space view, since it regarded as being "above" this root.
         );
@@ -150,7 +169,7 @@ impl ViewContextSystem for TransformContext {
                 parent_tree,
                 &entity_db.data_store,
                 &time_query,
-                entity_prop_map,
+                &entity_prop_map,
                 reference_from_ancestor,
                 &encountered_pinhole,
             );

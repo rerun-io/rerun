@@ -65,13 +65,13 @@ impl ViewPartSystem for TensorSystem {
         re_tracing::profile_function!();
 
         let store = ctx.store_db.store();
-        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
+        for (ent_path, props) in query.iter_entities_and_properties_for_system(Self::name()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(tensor) =
                 store.query_latest_component::<TensorData>(ent_path, &timeline_query)
             {
-                self.load_tensor_entity(ctx, ent_path, &props, tensor);
+                self.load_tensor_entity(ctx, ent_path, props, tensor);
             }
         }
 

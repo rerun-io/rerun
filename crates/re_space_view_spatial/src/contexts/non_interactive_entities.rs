@@ -26,13 +26,12 @@ impl ViewContextSystem for NonInteractiveEntities {
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         self.0 = query
-            .entity_props_map
-            .iter()
-            .filter_map(|(entity_path, props)| {
-                if props.interactive {
+            .iter_data_results()
+            .filter_map(|data_result| {
+                if data_result.resolved_properties.interactive {
                     None
                 } else {
-                    Some(entity_path.hash())
+                    Some(data_result.entity_path.hash())
                 }
             })
             .collect();

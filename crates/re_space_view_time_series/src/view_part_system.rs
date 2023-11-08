@@ -93,7 +93,7 @@ impl ViewPartSystem for TimeSeriesSystem {
         self.annotation_map.load(
             ctx,
             &query.latest_at_query(),
-            query.iter_entities_for_system(Self::name()).map(|(p, _)| p),
+            query.iter_entities_and_properties_for_system(Self::name()).map(|(p, _)| p),
         );
 
         match self.load_scalars(ctx, query) {
@@ -117,7 +117,7 @@ impl TimeSeriesSystem {
 
         let store = ctx.store_db.store();
 
-        for (ent_path, _ent_props) in query.iter_entities_for_system(Self::name()) {
+        for (ent_path, _ent_props) in query.iter_entities_and_properties_for_system(Self::name()) {
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(ent_path);
             let annotation_info = annotations

@@ -1,3 +1,4 @@
+use re_data_store::EntityProperties;
 use re_log_types::EntityPath;
 use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
 use re_renderer::DepthOffset;
@@ -32,6 +33,7 @@ where
     F: FnMut(
         &mut ViewerContext<'_>,
         &EntityPath,
+        &EntityProperties,
         ArchetypeView<A>,
         &SpatialSceneEntityContext<'_>,
     ) -> Result<(), QueryError>,
@@ -42,7 +44,7 @@ where
     let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-    for (ent_path, props) in query.iter_entities_for_system(System::name()) {
+    for (ent_path, props) in query.iter_entities_and_properties_for_system(System::name()) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
         let world_from_entity = if view_ctx.space_view_class_name() == SpatialSpaceView3D.name() {
             transforms.reference_from_entity(ent_path)
@@ -83,7 +85,7 @@ where
                     std::sync::atomic::Ordering::Relaxed,
                 );
 
-                fun(ctx, ent_path, ent_view, &entity_context)?;
+                fun(ctx, ent_path, props, ent_view, &entity_context)?;
             }
             Ok(())
         }) {

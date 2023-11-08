@@ -48,6 +48,14 @@ impl EntityPropertyMap {
     }
 }
 
+impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
+    fn from_iter<T: IntoIterator<Item = (EntityPath, EntityProperties)>>(iter: T) -> Self {
+        Self {
+            props: iter.into_iter().collect(),
+        }
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 // TODO(#1423): We need to properly split entity properties that only apply to specific

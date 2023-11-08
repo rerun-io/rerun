@@ -59,7 +59,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
 
         let store = ctx.store_db.store();
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
-        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
+        for (ent_path, props) in query.iter_entities_and_properties_for_system(Self::name()) {
             if store
                 .query_latest_component::<Transform3D>(ent_path, &latest_at_query)
                 .is_none()

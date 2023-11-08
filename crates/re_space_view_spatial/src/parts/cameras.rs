@@ -204,7 +204,7 @@ impl ViewPartSystem for CamerasPart {
 
         let store = ctx.store_db.store();
 
-        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
+        for (ent_path, props) in query.iter_entities_and_properties_for_system(Self::name()) {
             let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = query_pinhole(store, &time_query, ent_path) {
@@ -214,7 +214,7 @@ impl ViewPartSystem for CamerasPart {
                     transforms,
                     shared_render_builders,
                     ent_path,
-                    &props,
+                    props,
                     &pinhole,
                     store
                         .query_latest_component::<Transform3D>(ent_path, &time_query)
