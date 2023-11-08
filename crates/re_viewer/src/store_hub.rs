@@ -222,9 +222,6 @@ impl StoreHub {
         };
 
         let store_dbs = &mut self.store_bundle.store_dbs;
-        if store_dbs.len() <= 1 {
-            return;
-        }
 
         let Some(store_db) = store_dbs.get_mut(&store_id) else {
             if cfg!(debug_assertions) {
@@ -239,9 +236,21 @@ impl StoreHub {
         let store_size_after =
             store_db.store().timeless_size_bytes() + store_db.store().temporal_size_bytes();
 
+        // No point keeping an empty recording around.
+        if store_db.is_empty() {
+            self.remove_recording_id(&store_id);
+            return;
+        }
+
         // Running the GC didn't do anything.
-        // That's because all that's left in that store is protected rows: it's time to remove it entirely.
-        if store_size_before == store_size_after {
+        //
+        // That's because all that's left in that store is protected rows: it's time to remove it
+        // entirely, unless it's the last recording still standing, in which case we're better off
+        // keeping some data around to show the user rather than a blank screen.
+        //
+        // If the user needs the memory for something else, they will get it back as soon as they
+        // log new things anyhow.
+        if store_size_before == store_size_after && store_dbs.len() > 1 {
             self.remove_recording_id(&store_id);
         }
 
