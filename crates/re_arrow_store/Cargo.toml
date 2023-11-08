@@ -86,6 +86,7 @@ polars-core = { workspace = true, features = [
   "sort_multiple",
 ] }
 rand.workspace = true
+similar-asserts.workspace = true
 tinyvec.workspace = true
 
 [lib]
