@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 use nohash_hasher::IntMap;
 
 use re_arrow_store::{DataStore, DataStoreConfig, GarbageCollectionOptions};
-use re_log::warn_once;
 use re_log_types::{
     ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
     PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
@@ -123,7 +122,7 @@ impl EntityDb {
     fn add_data_row(&mut self, row: DataRow) -> Result<DataRow, Error> {
         // ## RowId duplication
         //
-        // We shouldn't be attempting to retry in this intance: a duplicated RowId at this stage
+        // We shouldn't be attempting to retry in this instance: a duplicated RowId at this stage
         // is likely a user error.
         //
         // We only do so because, the way our 'save' feature is currently implemented in the
