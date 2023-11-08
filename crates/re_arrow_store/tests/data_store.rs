@@ -10,6 +10,7 @@ use nohash_hasher::IntMap;
 use polars_core::{prelude::*, series::Series};
 use polars_ops::prelude::DataFrameJoinOps;
 use rand::Rng;
+use re_arrow_store::WriteError;
 use re_arrow_store::{
     polars_util, test_row, test_util::sanity_unwrap, ArrayExt as _, DataStore, DataStoreConfig,
     DataStoreStats, GarbageCollectionOptions, GarbageCollectionTarget, LatestAtQuery, RangeQuery,
@@ -26,6 +27,24 @@ use re_types::{
     testing::{build_some_large_structs, LargeStruct},
 };
 use re_types_core::{ComponentName, Loggable as _};
+
+// ---
+
+// We very often re-use RowIds when generating test data.
+fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
+    for row in table.to_rows() {
+        let mut row = row.unwrap();
+        loop {
+            match store.insert_row(&row) {
+                Ok(_) => break,
+                Err(WriteError::ReusedRowId(_)) => {
+                    row.row_id = row.row_id.next();
+                }
+                err @ Err(_) => err.unwrap(),
+            }
+        }
+    }
+}
 
 // --- LatestComponentsAt ---
 
@@ -276,12 +295,12 @@ fn latest_at_impl(store: &mut DataStore) {
     // helper to insert a table both as a temporal and timeless payload
     let insert_table = |store: &mut DataStore, table: &DataTable| {
         // insert temporal
-        store.insert_table(table).unwrap();
+        insert_table_with_retries(store, table);
 
         // insert timeless
-        let mut table_timeless = table.clone().next();
+        let mut table_timeless = table.clone();
         table_timeless.col_timelines = Default::default();
-        store.insert_table(&table_timeless).unwrap();
+        insert_table_with_retries(store, &table_timeless);
     };
 
     let (instances1, colors1) = (build_some_instances(3), build_some_colors(3));

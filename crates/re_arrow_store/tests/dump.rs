@@ -13,6 +13,24 @@ use re_types::components::InstanceKey;
 use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
 use re_types_core::Loggable as _;
 
+// ---
+
+// We very often re-use RowIds when generating test data.
+fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
+    for row in table.to_rows() {
+        let mut row = row.unwrap();
+        loop {
+            match store.insert_row(&row) {
+                Ok(_) => break,
+                Err(WriteError::ReusedRowId(_)) => {
+                    row.row_id = row.row_id.next();
+                }
+                err @ Err(_) => err.unwrap(),
+            }
+        }
+    }
+}
+
 // --- Dump ---
 
 #[test]
@@ -45,27 +63,12 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
     // helper to insert a table both as a temporal and timeless payload
     let insert_table = |store: &mut DataStore, table: &DataTable| {
         // insert temporal
-        store.insert_table(table).unwrap();
+        insert_table_with_retries(store, table);
 
         // insert timeless
-        let mut table_timeless = table.clone().next();
+        let mut table_timeless = table.clone();
         table_timeless.col_timelines = Default::default();
-        store.insert_table(&table_timeless).unwrap();
-    };
-
-    let insert_table_with_retries = |store: &mut DataStore, table: &DataTable| {
-        for row in table.to_rows() {
-            let mut row = row.unwrap();
-            loop {
-                match store.insert_row(&row) {
-                    Ok(_) => break,
-                    Err(WriteError::ReusedRowId(_)) => {
-                        row.row_id = row.row_id.next();
-                    }
-                    err @ Err(_) => err.unwrap(),
-                }
-            }
-        }
+        insert_table_with_retries(store, &table_timeless);
     };
 
     let ent_paths = ["this/that", "other", "yet/another/one"];
@@ -169,23 +172,23 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 
     // Dump frame1 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame1, frame1)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     // Dump frame2 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame2, frame2)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     // Dump frame3 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame3, frame3)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     // Dump the other frame3 from the first store into the second one.
     for table in store1.to_data_tables((timeline_log_time, TimeRange::new(frame3, frame3)).into()) {
-        store2.insert_table(&table.clone().next()).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     // Dump frame4 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame4, frame4)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     sanity_unwrap(store2);
 

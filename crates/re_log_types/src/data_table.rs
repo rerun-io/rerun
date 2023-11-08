@@ -451,15 +451,6 @@ impl DataTable {
             columns,
         }
     }
-
-    /// Consumes the [`DataTable`] and returns a new one with incremented [`RowId`]s.
-    #[inline]
-    pub fn next(self) -> Self {
-        Self {
-            col_row_id: self.col_row_id.iter().map(RowId::next).collect(),
-            ..self
-        }
-    }
 }
 
 impl DataTable {
