@@ -1383,13 +1383,6 @@ HTML_DYNAMIC_MENUS     = YES
 
 HTML_DYNAMIC_SECTIONS  = NO
 
-# If the HTML_CODE_FOLDING tag is set to YES then classes and functions can be
-# dynamically folded and expanded in the generated HTML source code.
-# The default value is: YES.
-# This tag requires that the tag GENERATE_HTML is set to YES.
-
-HTML_CODE_FOLDING      = YES
-
 # With HTML_INDEX_NUM_ENTRIES one can control the preferred number of entries
 # shown in the various tree structured indices initially; the user can expand
 # and collapse entries dynamically later on. Doxygen will expand the tree to
@@ -1934,16 +1927,6 @@ GENERATE_DOCBOOK       = NO
 # The default value is: NO.
 
 GENERATE_AUTOGEN_DEF   = NO
-
-#---------------------------------------------------------------------------
-# Configuration options related to Sqlite3 output
-#---------------------------------------------------------------------------
-
-# If the GENERATE_SQLITE3 tag is set to YES doxygen will generate a Sqlite3
-# database with symbols found by doxygen stored in tables.
-# The default value is: NO.
-
-GENERATE_SQLITE3       = NO
 
 #---------------------------------------------------------------------------
 # Configuration options related to the Perl module output
