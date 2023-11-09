@@ -4,6 +4,21 @@ The Rerun C++ SDK allows logging data to Rerun directly from C++.
 
 Read the [getting started guide](https://www.rerun.io/docs/getting-started/cpp) for information on how to use the Rerun C++ SDK.
 
+## Building Blocks
+
+The most important type in the SDK is the `rerun::RecordingStream`.
+It allows you to connect to the Rerun Viewer and send data.
+
+The built-in types are distributed to the respective namespaces:
+* `rerun::archetypes`
+* `rerun::components`
+* `rerun::datatypes`
+
+If you include `rerun.hpp`, all archetypes and selected components become part of the `rerun` namespace.
+
+Check the [general doc page on types](https://www.rerun.io/docs/reference/types) to learn more.
+
+
 ## Build & Distribution
 
 ### Overview
