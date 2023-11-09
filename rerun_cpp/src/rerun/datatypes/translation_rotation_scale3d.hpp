@@ -63,6 +63,24 @@ namespace rerun {
                   scale(scale_),
                   from_parent(from_parent_) {}
 
+            /// Creates a new 3D transform from translation/rotation/uniform-scale.
+            ///
+            /// \param translation \copydoc TranslationRotationScale3D::translation
+            /// \param rotation \copydoc TranslationRotationScale3D::rotation
+            /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
+            ///
+            /// _Implementation note:_ This explicit overload prevents interpretation of the float as
+            /// bool, leading to a call to the wrong overload.
+            Transform3D(
+                const Vec3D& translation, const Rotation3D& rotation, float uniform_scale,
+                bool from_parent_ = false
+            )
+                : translation(translation_),
+                  rotation(rotation_),
+                  scale(uniform_scale),
+                  from_parent(from_parent_) {}
+
             /// Creates a new rigid transform (translation & rotation only).
             ///
             /// \param translation_ \copydoc TranslationRotationScale3D::translation
@@ -89,6 +107,20 @@ namespace rerun {
                   scale(scale_),
                   from_parent(from_parent_) {}
 
+            /// From translation & uniform scale.
+            ///
+            /// \param translation_ \copydoc TranslationRotationScale3D::translation
+            /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
+            ///
+            /// _Implementation note:_ This explicit overload prevents interpretation of the float as
+            /// bool, leading to a call to the wrong overload.
+            Transform3D(const Vec3D& translation_, float uniform_scale, bool from_parent_ = false)
+                : translation(translation_),
+                  rotation(std::nullopt),
+                  scale(uniform_scale),
+                  from_parent(from_parent_) {}
+
             /// From rotation & scale only.
             ///
             /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
@@ -100,6 +132,20 @@ namespace rerun {
                 : translation(std::nullopt),
                   rotation(rotation_),
                   scale(scale_),
+                  from_parent(from_parent_) {}
+
+            /// From rotation & uniform scale.
+            ///
+            /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
+            /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
+            ///
+            /// _Implementation note:_ This explicit overload prevents interpretation of the float as
+            /// bool, leading to a call to the wrong overload.
+            Transform3D(const Rotation3D& rotation_, float uniform_scale, bool from_parent_ = false)
+                : translation(std::nullopt),
+                  rotation(rotation_),
+                  scale(uniform_scale),
                   from_parent(from_parent_) {}
 
             /// From translation only.
