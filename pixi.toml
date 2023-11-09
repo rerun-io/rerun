@@ -76,6 +76,7 @@ cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/tests/cpp/log_benc
   "cpp-build-log-benchmark",
 ] }
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }
+cpp-docs = { cmd = "doxygen rerun_cpp/docs/Doxyfile" }
 
 [target.win-64.tasks]
 cpp-prepare-msvc = "cmake -G 'Visual Studio 17 2022' -B build-msvc -S ."
@@ -103,6 +104,7 @@ typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
 ninja = "1.11.1"
+doxygen = "1.9.8.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"

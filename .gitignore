@@ -17,6 +17,7 @@ crates/re_types_builder/source_hash.txt
 **/cmake_install.cmake
 _deps
 **/.cache/
+**/rerun_cpp/docs/html
 
 # Rust compile target directory:
 **/target
