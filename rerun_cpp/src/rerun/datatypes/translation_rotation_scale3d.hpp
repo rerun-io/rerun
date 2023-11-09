@@ -43,7 +43,8 @@ namespace rerun {
 
             /// Identity transformation.
             ///
-            /// Applying this transform does not alter an entities translation/rotation/scale.
+            /// Applying this transform does not alter an entity's transformation.
+            /// It has all optional fields set to `std::nullopt`.
             static const TranslationRotationScale3D IDENTITY;
 
             /// Creates a new 3D transform from translation/rotation/scale.

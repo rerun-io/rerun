@@ -1,4 +1,4 @@
-#include "translation_and_mat3x3.hpp"
+#include "translation_andmat3x3_.hpp"
 
 // Uncomment for better auto-complete while editing the extension.
 // #define EDIT_EXTENSION
@@ -15,34 +15,36 @@ namespace rerun {
 #define TranslationAndMat3x3 TranslationAndMat3x3Ext
             // <CODEGEN_COPY_TO_HEADER>
 
+            /// Identity transformation.
+            ///
+            /// Applying this transform does not alter an entity's transformation.
+            /// It has all optional fields set to `std::nullopt`.
             static const TranslationAndMat3x3 IDENTITY;
 
             /// Creates a new 3D transform from translation/matrix.
             ///
-            /// \param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
+            /// \param translation_ \copydoc TranslationAndMat3x3::translation
+            /// \param mat3x3_ \copydoc TranslationAndMat3x3::mat3x3
+            /// \param from_parent_ \copydoc TranslationAndMat3x3::from_parent
             TranslationAndMat3x3(
-                const std::optional<Vec3D>& _translation, const std::optional<Mat3x3>& _mat3x3,
-                bool _from_parent
+                const std::optional<Vec3D>& translation_, const std::optional<Mat3x3>& mat3x3_,
+                bool from_parent_
             )
-                : translation(_translation), mat3x3(_mat3x3), from_parent(_from_parent) {}
+                : translation(translation_), mat3x3(mat3x3_), from_parent(from_parent_) {}
 
             /// From rotation only.
             ///
-            /// \param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
-            TranslationAndMat3x3(const Mat3x3& _mat3x3, bool _from_parent = false)
-                : translation(std::nullopt), mat3x3(_mat3x3), from_parent(_from_parent) {}
+            /// \param mat3x3_ \copydoc TranslationAndMat3x3::mat3x3
+            /// \param from_parent_ \copydoc TranslationAndMat3x3::from_parent
+            TranslationAndMat3x3(const Mat3x3& mat3x3_, bool from_parent_ = false)
+                : translation(std::nullopt), mat3x3(mat3x3_), from_parent(from_parent_) {}
 
             /// From translation only.
             ///
-            /// \param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
-            TranslationAndMat3x3(const Vec3D& _translation, bool _from_parent = false)
-                : translation(_translation), mat3x3(std::nullopt), from_parent(_from_parent) {}
+            /// \param translation_ \copydoc TranslationAndMat3x3::translation
+            /// \param from_parent_ \copydoc TranslationAndMat3x3::from_parent
+            TranslationAndMat3x3(const Vec3D& translation_, bool from_parent_ = false)
+                : translation(translation_), mat3x3(std::nullopt), from_parent(from_parent_) {}
 
             // </CODEGEN_COPY_TO_HEADER>
         };
