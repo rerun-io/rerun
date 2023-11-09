@@ -80,17 +80,17 @@ namespace rerun {
                 const std::filesystem::path& path
             );
 
-            /// Creates a new [`Asset3D`] from the file contents at `path`.
+            /// Creates a new `Asset3D` from the file contents at `path`.
             ///
-            /// The [`MediaType`] will be guessed from the file extension.
+            /// The `MediaType` will be guessed from the file extension.
             ///
-            /// If no [`MediaType`] can be guessed at the moment, the Rerun Viewer will try to guess one
+            /// If no `MediaType` can be guessed at the moment, the Rerun Viewer will try to guess one
             /// from the data at render-time. If it can't, rendering will fail with an error.
             static Result<Asset3D> from_file(const std::filesystem::path& path);
 
-            /// Creates a new [`Asset3D`] from the given `bytes`.
+            /// Creates a new `Asset3D` from the given `bytes`.
             ///
-            /// If no [`MediaType`] is specified, the Rerun Viewer will try to guess one from the data
+            /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
             /// at render-time. If it can't, rendering will fail with an error.
             static Asset3D from_bytes(
                 const std::vector<uint8_t> bytes,
