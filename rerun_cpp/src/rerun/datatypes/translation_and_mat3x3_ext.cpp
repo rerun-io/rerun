@@ -6,7 +6,7 @@
 namespace rerun {
     namespace datatypes {
 
-#ifdef 0
+#if 0
         // <CODEGEN_COPY_TO_HEADER>
 
         /// Identity transformation.

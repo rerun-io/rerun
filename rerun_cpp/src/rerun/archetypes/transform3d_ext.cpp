@@ -6,7 +6,12 @@
 namespace rerun {
     namespace archetypes {
 
-#ifdef 0
+#if 0
+        // <CODEGEN_COPY_TO_HEADER>
+
+        /// Identity transformation.
+        ///
+        /// Applying this transform does not alter an entity's transformation.
         static const Transform3D IDENTITY;
 
         /// New 3D transform from translation/matrix datatype.

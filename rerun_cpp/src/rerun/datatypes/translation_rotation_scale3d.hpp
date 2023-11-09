@@ -72,8 +72,8 @@ namespace rerun {
             ///
             /// _Implementation note:_ This explicit overload prevents interpretation of the float as
             /// bool, leading to a call to the wrong overload.
-            Transform3D(
-                const Vec3D& translation, const Rotation3D& rotation, float uniform_scale,
+            TranslationRotationScale3D(
+                const Vec3D& translation_, const Rotation3D& rotation_, float uniform_scale,
                 bool from_parent_ = false
             )
                 : translation(translation_),
@@ -115,7 +115,9 @@ namespace rerun {
             ///
             /// _Implementation note:_ This explicit overload prevents interpretation of the float as
             /// bool, leading to a call to the wrong overload.
-            Transform3D(const Vec3D& translation_, float uniform_scale, bool from_parent_ = false)
+            TranslationRotationScale3D(
+                const Vec3D& translation_, float uniform_scale, bool from_parent_ = false
+            )
                 : translation(translation_),
                   rotation(std::nullopt),
                   scale(uniform_scale),
@@ -142,7 +144,9 @@ namespace rerun {
             ///
             /// _Implementation note:_ This explicit overload prevents interpretation of the float as
             /// bool, leading to a call to the wrong overload.
-            Transform3D(const Rotation3D& rotation_, float uniform_scale, bool from_parent_ = false)
+            TranslationRotationScale3D(
+                const Rotation3D& rotation_, float uniform_scale, bool from_parent_ = false
+            )
                 : translation(std::nullopt),
                   rotation(rotation_),
                   scale(uniform_scale),
