@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataResult, ViewerContext};
+use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, EntityPropertyMap};
+use re_viewer_context::{DataResult, SpaceViewId, ViewerContext};
 use slotmap::SlotMap;
 
 use crate::{DataBlueprintGroup, SpaceViewContents};
@@ -49,10 +49,19 @@ pub struct DataResultNode {
 
 pub trait DataQuery {
     /// Execute query over the entire store to produce all data results.
-    fn execute_query(&self, ctx: &ViewerContext<'_>) -> DataResultTree;
+    fn execute_query(
+        &self,
+        auto_values: EntityPropertyMap,
+        ctx: &ViewerContext<'_>,
+    ) -> DataResultTree;
 
     /// Find a single [`DataResult`] within the context of the query.
-    fn resolve(&self, ctx: &ViewerContext<'_>, entity_path: &EntityPath) -> DataResult;
+    fn resolve(
+        &self,
+        auto_values: EntityPropertyMap,
+        ctx: &ViewerContext<'_>,
+        entity_path: &EntityPath,
+    ) -> DataResult;
 }
 
 /// Iterate over all entities from start to end, NOT including start itself.
@@ -207,9 +216,36 @@ impl DataBlueprintGroup {
     }
 }
 
+fn lookup_entity_properties_for_id(
+    space_view_id: SpaceViewId,
+    auto_properties: EntityPropertyMap,
+    ctx: &ViewerContext<'_>,
+) -> EntityPropertyMap {
+    let blueprint = ctx.store_context.blueprint;
+    let mut prop_map = auto_properties;
+    let props_path = space_view_id.as_entity_path().join(&"properties".into());
+    if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
+        tree.visit_children_recursively(&mut |path: &EntityPath| {
+            if let Some(props) = blueprint
+                .store()
+                .query_timeless_component::<EntityPropertiesComponent>(path)
+            {
+                let overridden_path =
+                    EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
+                prop_map.set(overridden_path, props.value.props);
+            }
+        });
+    }
+    prop_map
+}
+
 impl DataQuery for SpaceViewContents {
-    fn execute_query(&self, ctx: &ViewerContext<'_>) -> DataResultTree {
-        let overrides = self.lookup_entity_properties(ctx);
+    fn execute_query(
+        &self,
+        auto_values: EntityPropertyMap,
+        ctx: &ViewerContext<'_>,
+    ) -> DataResultTree {
+        let overrides = lookup_entity_properties_for_id(self.space_view_id, auto_values, ctx);
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
         let root_handle = self.root_group().to_data_result(
             self,
@@ -224,8 +260,13 @@ impl DataQuery for SpaceViewContents {
         }
     }
 
-    fn resolve(&self, ctx: &ViewerContext<'_>, entity_path: &EntityPath) -> DataResult {
-        let overrides = self.lookup_entity_properties(ctx);
+    fn resolve(
+        &self,
+        auto_values: EntityPropertyMap,
+        ctx: &ViewerContext<'_>,
+        entity_path: &EntityPath,
+    ) -> DataResult {
+        let overrides = lookup_entity_properties_for_id(self.space_view_id, auto_values, ctx);
 
         let view_parts = self
             .per_system_entities()

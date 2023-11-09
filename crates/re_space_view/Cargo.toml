@@ -17,7 +17,7 @@ all-features = true
 
 [dependencies]
 re_data_store.workspace = true
-re_log.workspace= true
+re_log.workspace = true
 re_tracing.workspace = true
 re_viewer_context.workspace = true
 

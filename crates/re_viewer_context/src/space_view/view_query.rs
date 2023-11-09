@@ -31,6 +31,8 @@ impl DataResult {
         if props.has_edits(&self.resolved_properties) {
             let timepoint = TimePoint::timeless();
 
+            re_log::debug!("Overriding {:?} with {:?}", self.override_path, props);
+
             let component = EntityPropertiesComponent { props };
 
             let row = DataRow::from_cells1_sized(

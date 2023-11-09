@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
-use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, EntityPropertyMap};
-use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, SpaceViewId, ViewerContext};
+use re_data_store::EntityPath;
+use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, SpaceViewId};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -12,15 +12,6 @@ pub struct DataBlueprintGroup {
     pub display_name: String,
 
     pub group_path: EntityPath,
-
-    /// Individual settings. Mutate & display this.
-    pub properties_individual: EntityProperties,
-
-    /// Properties, as inherited from parent. Read from this.
-    ///
-    /// Recalculated at the start of each frame from [`Self::properties_individual`].
-    #[cfg_attr(feature = "serde", serde(skip))]
-    pub properties_projected: EntityProperties,
 
     /// Parent of this blueprint group. Every data blueprint except the root has a parent.
     pub parent: DataBlueprintGroupHandle,
@@ -38,8 +29,6 @@ impl Default for DataBlueprintGroup {
         DataBlueprintGroup {
             display_name: Default::default(),
             group_path: EntityPath::root(),
-            properties_individual: Default::default(),
-            properties_projected: Default::default(),
             parent: Default::default(),
             children: Default::default(),
             entities: Default::default(),
@@ -53,44 +42,15 @@ impl DataBlueprintGroup {
         let Self {
             display_name,
             group_path: _,
-            properties_individual,
-            properties_projected: _,
             parent,
             children,
             entities,
         } = self;
 
         display_name != &other.display_name
-            || properties_individual.has_edits(&other.properties_individual)
             || parent != &other.parent
             || children != &other.children
             || entities != &other.entities
-    }
-}
-
-/// Data blueprints for all entity paths in a space view.
-#[derive(Clone, Default, serde::Deserialize, serde::Serialize)]
-pub struct DataBlueprints {
-    /// Individual settings. Mutate this.
-    individual: EntityPropertyMap,
-
-    /// Properties, as inherited from parent. Read from this.
-    ///
-    /// Recalculated at the start of each frame from [`Self::individual`].
-    #[cfg_attr(feature = "serde", serde(skip))]
-    projected: EntityPropertyMap,
-}
-
-// Manually implement `PartialEq` since projected is serde skip
-impl DataBlueprints {
-    /// Determine whether this `DataBlueprints` has user-edits relative to another `DataBlueprints`
-    fn has_edits(&self, other: &Self) -> bool {
-        let Self {
-            individual,
-            projected: _,
-        } = self;
-
-        individual.has_edits(&other.individual)
     }
 }
 
@@ -98,7 +58,7 @@ impl DataBlueprints {
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct SpaceViewContents {
     /// The space view these contents belong to.
-    space_view_id: SpaceViewId,
+    pub space_view_id: SpaceViewId,
 
     /// All data blueprint groups.
     groups: SlotMap<DataBlueprintGroupHandle, DataBlueprintGroup>,
@@ -121,8 +81,6 @@ pub struct SpaceViewContents {
 
     /// Root group, always exists as a placeholder
     root_group_handle: DataBlueprintGroupHandle,
-
-    data_blueprints: DataBlueprints,
 }
 
 /// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
@@ -134,7 +92,6 @@ impl SpaceViewContents {
             path_to_group,
             per_system_entity_list: _,
             root_group_handle,
-            data_blueprints,
         } = self;
 
         groups.len() != other.groups.len()
@@ -146,7 +103,6 @@ impl SpaceViewContents {
             })
             || *path_to_group != other.path_to_group
             || *root_group_handle != other.root_group_handle
-            || data_blueprints.has_edits(&other.data_blueprints)
     }
 }
 
@@ -164,7 +120,6 @@ impl SpaceViewContents {
             path_to_group: path_to_blueprint,
             per_system_entity_list: BTreeMap::default(),
             root_group_handle: root_group,
-            data_blueprints: DataBlueprints::default(),
         }
     }
 }
@@ -218,16 +173,6 @@ impl SpaceViewContents {
         }
     }
 
-    /// Returns entity properties with the hierarchy applied.
-    pub fn data_blueprints_projected(&self) -> &EntityPropertyMap {
-        &self.data_blueprints.projected
-    }
-
-    /// Returns mutable individual entity properties, the hierarchy was not applied to this.
-    pub fn data_blueprints_individual(&mut self) -> &mut EntityPropertyMap {
-        &mut self.data_blueprints.individual
-    }
-
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
         // If an entity is in path_to_group it is *likely* also an entity in the Space View.
         // However, it could be that the path *only* refers to a group, not also an entity.
@@ -270,46 +215,6 @@ impl SpaceViewContents {
             }
         }
         true
-    }
-
-    /// Should be called on frame start.
-    ///
-    /// Propagates any data blueprint changes along the tree.
-    pub fn propagate_individual_to_tree(&mut self) {
-        re_tracing::profile_function!();
-
-        // NOTE: We could do this projection only when the entity properties changes
-        // and/or when new entity paths are added, but such memoization would add complexity.
-
-        fn project_tree(
-            tree: &mut SpaceViewContents,
-            parent_properties: &EntityProperties,
-            group_handle: DataBlueprintGroupHandle,
-        ) {
-            let Some(group) = tree.groups.get_mut(group_handle) else {
-                debug_assert!(false, "Invalid group handle in blueprint group tree");
-                return;
-            };
-
-            let group_properties_projected =
-                parent_properties.with_child(&group.properties_individual);
-            group.properties_projected = group_properties_projected.clone();
-
-            for entity_path in &group.entities {
-                let projected_properties = group_properties_projected
-                    .with_child(&tree.data_blueprints.individual.get(entity_path));
-                tree.data_blueprints
-                    .projected
-                    .set(entity_path.clone(), projected_properties);
-            }
-
-            let children = group.children.clone(); // TODO(andreas): How to avoid this clone?
-            for child in &children {
-                project_tree(tree, &group_properties_projected, *child);
-            }
-        }
-
-        project_tree(self, &EntityProperties::default(), self.root_group_handle);
     }
 
     /// Adds a list of entity paths to the tree, using grouping as dictated by their entity path hierarchy.
@@ -522,28 +427,6 @@ impl SpaceViewContents {
 
     pub fn entity_path(&self) -> EntityPath {
         self.space_view_id.as_entity_path()
-    }
-
-    pub fn lookup_entity_properties(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap {
-        let blueprint = ctx.store_context.blueprint;
-        let mut prop_map = EntityPropertyMap::default();
-        let props_path = self
-            .space_view_id
-            .as_entity_path()
-            .join(&"properties".into());
-        if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
-            tree.visit_children_recursively(&mut |path: &EntityPath| {
-                if let Some(props) = blueprint
-                    .store()
-                    .query_timeless_component::<EntityPropertiesComponent>(path)
-                {
-                    let overriden_path =
-                        EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
-                    prop_map.set(overriden_path, props.value.props);
-                }
-            });
-        }
-        prop_map
     }
 }
 

@@ -1,4 +1,4 @@
-use re_data_store::{EntityPath, EntityTree, TimeInt};
+use re_data_store::{EntityPath, EntityPropertyMap, EntityTree, TimeInt};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQuery, ScreenshotMode, SpaceViewContents};
 use re_viewer_context::{
@@ -35,6 +35,11 @@ pub struct SpaceViewBlueprint {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
+
+    /// Auto Properties
+    // TODO(jleibs): This needs to be per-query
+    #[serde(skip)]
+    pub auto_properties: EntityPropertyMap,
 }
 
 // Default needed for deserialization when adding/changing fields.
@@ -48,6 +53,7 @@ impl Default for SpaceViewBlueprint {
             space_origin: EntityPath::root(),
             contents: SpaceViewContents::new(id),
             entities_determined_by_user: Default::default(),
+            auto_properties: Default::default(),
         }
     }
 }
@@ -62,6 +68,7 @@ impl SpaceViewBlueprint {
             space_origin,
             contents,
             entities_determined_by_user,
+            auto_properties: _,
         } = self;
 
         id != &other.id
@@ -102,6 +109,7 @@ impl SpaceViewBlueprint {
             space_origin: space_path.clone(),
             contents,
             entities_determined_by_user: false,
+            auto_properties: Default::default(),
         }
     }
 
@@ -155,12 +163,9 @@ impl SpaceViewBlueprint {
         self.class(ctx.space_view_class_registry).on_frame_start(
             ctx,
             view_state,
-            &self.contents.per_system_entities().clone(), // Clone to work around borrow checker.
-            self.contents.data_blueprints_individual(),
+            self.contents.per_system_entities(),
+            &mut self.auto_properties,
         );
-
-        // Propagate any heuristic changes that may have been in `on_frame_start` made to blueprints right away.
-        self.contents.propagate_individual_to_tree();
     }
 
     fn handle_pending_screenshots(&self, data: &[u8], extent: glam::UVec2, mode: ScreenshotMode) {
@@ -223,7 +228,9 @@ impl SpaceViewBlueprint {
 
         let mut per_system_data_results = PerSystemDataResults::default();
 
-        let data_results = self.contents.execute_query(ctx);
+        let data_results = self
+            .contents
+            .execute_query(self.auto_properties.clone(), ctx);
         data_results.visit(|handle| {
             if let Some(result) = data_results.lookup(handle) {
                 for system in &result.view_parts {
