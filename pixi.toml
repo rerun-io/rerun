@@ -104,7 +104,9 @@ typing_extensions = ">4.5"
 typos = ">=1.16.20"
 wheel = ">=0.38,<0.39"
 ninja = "1.11.1"
-doxygen = "1.9.8.*"
+# Make sure to use a version that is compatible with
+# the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
+doxygen = "1.9.7.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"

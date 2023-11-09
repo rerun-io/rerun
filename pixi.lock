@@ -2924,68 +2924,68 @@ package:
   timestamp: 1689097905706
 - platform: linux-64
   name: doxygen
-  version: 1.9.8
+  version: 1.9.7
   category: main
   manager: conda
   dependencies:
   - libgcc-ng >=12
   - libiconv >=1.17,<2.0a0
   - libstdcxx-ng >=12
-  url: https://conda.anaconda.org/conda-forge/linux-64/doxygen-1.9.8-h661eb56_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/doxygen-1.9.7-h661eb56_1.conda
   hash:
-    md5: c750eb61744de0e40655fecbe1ceb70d
-    sha256: 720f662b14d4e851b39ba5c1e5c3553fcedb3c996c558dfecd737b1a6048aa85
-  build: h661eb56_0
+    md5: cc4690294cdd88059b42428f68ab9def
+    sha256: 41334db7aaea41ca7e5968f598c52dbe714a4f5019d482ebc16f0e1d7ba1992d
+  build: h661eb56_1
   arch: x86_64
   subdir: linux-64
-  build_number: 0
+  build_number: 1
   license: GPL-2.0-only
   license_family: GPL
-  size: 6548859
-  timestamp: 1694426200860
+  size: 6179024
+  timestamp: 1687332729384
 - platform: osx-64
   name: doxygen
-  version: 1.9.8
+  version: 1.9.7
   category: main
   manager: conda
   dependencies:
   - libcxx >=15.0.7
   - libiconv >=1.17,<2.0a0
-  url: https://conda.anaconda.org/conda-forge/osx-64/doxygen-1.9.8-hd7636e7_0.conda
+  url: https://conda.anaconda.org/conda-forge/osx-64/doxygen-1.9.7-hd7636e7_1.conda
   hash:
-    md5: 4e8af6fcfd7de8e4db6d1015e4b4c50b
-    sha256: 5a1f8a4ec6368953dd74e2e448c064667b66f2dd794b474d2927970b2977f71d
-  build: hd7636e7_0
+    md5: 00ada1ebe41c7febae72032969017b09
+    sha256: b3a43f399a710dbfff7f0380d43db3c7155ae128af5f14a0a23ac51a48209123
+  build: hd7636e7_1
   arch: x86_64
   subdir: osx-64
-  build_number: 0
+  build_number: 1
   license: GPL-2.0-only
   license_family: GPL
-  size: 5714415
-  timestamp: 1694427120919
+  size: 5344962
+  timestamp: 1687332955991
 - platform: osx-arm64
   name: doxygen
-  version: 1.9.8
+  version: 1.9.7
   category: main
   manager: conda
   dependencies:
   - libcxx >=15.0.7
   - libiconv >=1.17,<2.0a0
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/doxygen-1.9.8-h0e2417a_0.conda
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/doxygen-1.9.7-h0e2417a_1.conda
   hash:
-    md5: 89a69a12eb2240356aeb8dc868ce5bfb
-    sha256: 7ea4b30c86db2c8987fec3bc7fad837de98b9ae35d0559fb413f2528ef17a6c3
-  build: h0e2417a_0
+    md5: 02c4969f0c780d47e3f95b43f18a8ad7
+    sha256: 4bfaf6721b163301135c2db1268b40a099f51e2a42fdec60262137c72e20b9eb
+  build: h0e2417a_1
   arch: aarch64
   subdir: osx-arm64
-  build_number: 0
+  build_number: 1
   license: GPL-2.0-only
   license_family: GPL
-  size: 5417237
-  timestamp: 1694426792430
+  size: 5103390
+  timestamp: 1687332854077
 - platform: win-64
   name: doxygen
-  version: 1.9.8
+  version: 1.9.7
   category: main
   manager: conda
   dependencies:
@@ -2993,18 +2993,18 @@ package:
   - ucrt >=10.0.20348.0
   - vc >=14.2,<15
   - vc14_runtime >=14.29.30139
-  url: https://conda.anaconda.org/conda-forge/win-64/doxygen-1.9.8-h849606c_0.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/doxygen-1.9.7-h849606c_1.conda
   hash:
-    md5: 8875a4d69b74dd24775ba97568f41c9d
-    sha256: 54420c8c32bb5fe0d92dbe075a6c7db51fdd0b9756869da227decbf02ea9a210
-  build: h849606c_0
+    md5: 7c9a71d497a45a053fa85eeef616f936
+    sha256: b78b504b6c61a7a6252be49f2838c4788332332616fdd427f81adddc650b2520
+  build: h849606c_1
   arch: x86_64
   subdir: win-64
-  build_number: 0
+  build_number: 1
   license: GPL-2.0-only
   license_family: GPL
-  size: 5222023
-  timestamp: 1694427202495
+  size: 4861033
+  timestamp: 1687333355663
 - platform: linux-64
   name: exceptiongroup
   version: 1.1.3
