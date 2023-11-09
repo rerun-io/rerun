@@ -1,69 +1,30 @@
 use egui_plot::{Legend, Line, Plot, Points};
 
 use re_arrow_store::TimeType;
-use re_data_ui::visible_history::visible_history_ui;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;
-use re_viewer_context::external::re_data_store::{
-    EntityPropertyMap, ExtraQueryHistory, VisibleHistory,
-};
+use re_viewer_context::external::re_data_store::EntityPropertyMap;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
     ViewerContext,
 };
 
 use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
 
-#[derive(Clone)]
-pub struct TimeSeriesSpaceViewState {
-    visible_history: ExtraQueryHistory,
-}
-
-impl Default for TimeSeriesSpaceViewState {
-    fn default() -> Self {
-        Self {
-            visible_history: ExtraQueryHistory {
-                enabled: false,
-
-                // this mirrors TimeSeriesSystem's behaviors when `enabled` is `false`
-                nanos: VisibleHistory::ALL,
-                sequences: VisibleHistory::ALL,
-            },
-        }
-    }
-}
-
-impl SpaceViewState for TimeSeriesSpaceViewState {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-}
-
-impl TimeSeriesSpaceViewState {
-    fn selection_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _space_view_id: SpaceViewId,
-    ) {
-        visible_history_ui(ctx, ui, None, &mut self.visible_history);
-    }
-}
-
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;
 
+impl TimeSeriesSpaceView {
+    pub const NAME: &'static str = "Time Series";
+}
+
 impl SpaceViewClass for TimeSeriesSpaceView {
-    type State = TimeSeriesSpaceViewState;
+    type State = ();
 
     fn name(&self) -> SpaceViewClassName {
-        "Time Series".into()
+        Self::NAME.into()
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -117,27 +78,20 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     fn on_frame_start(
         &self,
         _ctx: &mut ViewerContext<'_>,
-        state: &Self::State,
-        entity_paths: &re_viewer_context::PerSystemEntities,
-        entity_properties: &mut EntityPropertyMap,
+        _state: &Self::State,
+        _entity_paths: &re_viewer_context::PerSystemEntities,
+        _entity_properties: &mut EntityPropertyMap,
     ) {
-        // synchronise all entities with the Space View's visible history state.
-        for entity_path in entity_paths.values().flat_map(|paths| paths.iter()) {
-            let mut props = entity_properties.get(entity_path);
-            props.visible_history = state.visible_history;
-            entity_properties.set(entity_path.clone(), props);
-        }
     }
 
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        state: &mut Self::State,
+        _ctx: &mut ViewerContext<'_>,
+        _ui: &mut egui::Ui,
+        _state: &mut Self::State,
         _space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        _space_view_id: SpaceViewId,
     ) {
-        state.selection_ui(ctx, ui, space_view_id);
     }
 
     fn ui(

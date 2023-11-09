@@ -253,7 +253,7 @@ impl SpaceViewContents {
     /// Should be called on frame start.
     ///
     /// Propagates any data blueprint changes along the tree.
-    pub fn propagate_individual_to_tree(&mut self) {
+    pub fn propagate_individual_to_tree(&mut self, root_entity_property: &EntityProperties) {
         re_tracing::profile_function!();
 
         // NOTE: We could do this projection only when the entity properties changes
@@ -287,7 +287,7 @@ impl SpaceViewContents {
             }
         }
 
-        project_tree(self, &EntityProperties::default(), self.root_group_handle);
+        project_tree(self, root_entity_property, self.root_group_handle);
     }
 
     /// Adds a list of entity paths to the tree, using grouping as dictated by their entity path hierarchy.

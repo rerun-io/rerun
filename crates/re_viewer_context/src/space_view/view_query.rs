@@ -26,6 +26,9 @@ pub struct ViewQuery<'s> {
     /// TODO(jleibs, wumpf): This will be replaced by blueprint queries.
     pub entity_props_map: &'s EntityPropertyMap,
 
+    /// Root entity properties (stored in the space view's blueprints).  
+    pub root_entity_props: &'s EntityProperties,
+
     /// Hover/select highlighting information for this space view.
     ///
     /// TODO(andreas): This should be a [`crate::ViewContextSystem`] instead.
