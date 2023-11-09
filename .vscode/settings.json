@@ -6,16 +6,6 @@
         }
     },
     "files.autoGuessEncoding": true,
-    "files.exclude": {
-        "venv": true,
-        ".pixi": true,
-        "build": true,
-        "compare_screenshot": true,
-        "target": true,
-        "target_ra": true,
-        "target_wasm": true,
-        "web_demo": true
-    },
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
     "cSpell.ignorePaths": [
