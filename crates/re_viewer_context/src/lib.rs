@@ -73,6 +73,9 @@ pub mod external {
 pub struct SpaceViewId(uuid::Uuid);
 
 impl SpaceViewId {
+    // TODO(jleibs): Can we make this an EntityPath instead?
+    pub const SPACEVIEW_PREFIX: &str = "space_view";
+
     pub fn invalid() -> Self {
         Self(uuid::Uuid::nil())
     }
@@ -114,6 +117,10 @@ impl SpaceViewId {
 
     pub fn gpu_readback_id(self) -> re_renderer::GpuReadbackIdentifier {
         re_log_types::hash::Hash64::hash(self).hash64()
+    }
+
+    pub fn as_entity_path(&self) -> EntityPath {
+        EntityPath::from(format!("{}/{}", Self::SPACEVIEW_PREFIX, self))
     }
 }
 

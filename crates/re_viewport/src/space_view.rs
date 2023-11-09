@@ -40,12 +40,13 @@ pub struct SpaceViewBlueprint {
 // Default needed for deserialization when adding/changing fields.
 impl Default for SpaceViewBlueprint {
     fn default() -> Self {
+        let id = SpaceViewId::invalid();
         Self {
-            id: SpaceViewId::invalid(),
+            id,
             display_name: "invalid".to_owned(),
             class_name: SpaceViewClassName::invalid(),
             space_origin: EntityPath::root(),
-            contents: Default::default(),
+            contents: SpaceViewContents::new(id),
             entities_determined_by_user: Default::default(),
         }
     }
@@ -89,13 +90,15 @@ impl SpaceViewBlueprint {
             format!("/ ({space_view_class})")
         };
 
-        let mut contents = SpaceViewContents::default();
+        let id = SpaceViewId::random();
+
+        let mut contents = SpaceViewContents::new(id);
         contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
         Self {
             display_name,
             class_name: space_view_class,
-            id: SpaceViewId::random(),
+            id,
             space_origin: space_path.clone(),
             contents,
             entities_determined_by_user: false,
@@ -220,7 +223,7 @@ impl SpaceViewBlueprint {
 
         let mut per_system_data_results = PerSystemDataResults::default();
 
-        let data_results = self.contents.execute_query(class);
+        let data_results = self.contents.execute_query(ctx);
         data_results.visit(|handle| {
             if let Some(result) = data_results.lookup(handle) {
                 for system in &result.view_parts {
@@ -322,5 +325,9 @@ impl SpaceViewBlueprint {
         }
 
         *self.contents.per_system_entities_mut() = per_system_entities;
+    }
+
+    pub fn entity_path(&self) -> EntityPath {
+        self.id.as_entity_path()
     }
 }

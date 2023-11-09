@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
-use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities};
+use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, EntityPropertyMap};
+use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, SpaceViewId, ViewerContext};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -97,6 +97,9 @@ impl DataBlueprints {
 /// Tree of all data blueprint groups for a single space view.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
 pub struct SpaceViewContents {
+    /// The space view these contents belong to.
+    space_view_id: SpaceViewId,
+
     /// All data blueprint groups.
     groups: SlotMap<DataBlueprintGroupHandle, DataBlueprintGroup>,
 
@@ -126,6 +129,7 @@ pub struct SpaceViewContents {
 impl SpaceViewContents {
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
+            space_view_id: _,
             groups,
             path_to_group,
             per_system_entity_list: _,
@@ -146,8 +150,8 @@ impl SpaceViewContents {
     }
 }
 
-impl Default for SpaceViewContents {
-    fn default() -> Self {
+impl SpaceViewContents {
+    pub fn new(id: SpaceViewId) -> Self {
         let mut groups = SlotMap::default();
         let root_group = groups.insert(DataBlueprintGroup::default());
 
@@ -155,6 +159,7 @@ impl Default for SpaceViewContents {
         path_to_blueprint.insert(EntityPath::root(), root_group);
 
         Self {
+            space_view_id: id,
             groups,
             path_to_group: path_to_blueprint,
             per_system_entity_list: BTreeMap::default(),
@@ -513,6 +518,26 @@ impl SpaceViewContents {
                 self.remove_group_if_empty(parent_group_handle);
             }
         }
+    }
+
+    pub fn lookup_entity_properties(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap {
+        let blueprint = ctx.store_context.blueprint;
+        let mut prop_map = EntityPropertyMap::default();
+        let props_path = self
+            .space_view_id
+            .as_entity_path()
+            .join(&"properties".into());
+        if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
+            tree.visit_children_recursively(&mut |path: &EntityPath| {
+                if let Some(props) = blueprint
+                    .store()
+                    .query_timeless_component::<EntityPropertiesComponent>(path)
+                {
+                    prop_map.set(path.clone(), props.value.props);
+                }
+            });
+        }
+        prop_map
     }
 }
 

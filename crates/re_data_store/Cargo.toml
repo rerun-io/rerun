@@ -20,7 +20,7 @@ all-features = true
 default = []
 
 ## Enable (de)serialization using serde.
-serde = ["dep:serde", "re_log_types/serde"]
+serde = ["dep:serde", "dep:rmp-serde", "re_log_types/serde"]
 
 
 [dependencies]
@@ -38,6 +38,7 @@ document-features.workspace = true
 getrandom.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+rmp-serde = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 thiserror.workspace = true
 web-time.workspace = true

@@ -93,7 +93,9 @@ impl ViewPartSystem for TimeSeriesSystem {
         self.annotation_map.load(
             ctx,
             &query.latest_at_query(),
-            query.iter_entities_and_properties_for_system(Self::name()).map(|(p, _)| p),
+            query
+                .iter_entities_and_properties_for_system(Self::name())
+                .map(|(p, _)| p),
         );
 
         match self.load_scalars(ctx, query) {
