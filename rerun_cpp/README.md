@@ -40,7 +40,7 @@ From a build system perspective, the SDK consists of three dependencies:
   * See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install) for how to install this library
 
 
-### SDK bundle (`rerun_cpp_sdk.zip`)
+### SDK bundle `rerun_cpp_sdk.zip`
 
 For convenience, Rerun provides a C++ SDK bundle with every release.
 (this includes our regular [Development Builds](https://github.com/rerun-io/rerun/releases/tag/prerelease)!)
