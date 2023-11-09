@@ -172,8 +172,9 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
-    struct AsComponents;
+    struct AsComponents; /// \private
 
     template <>
     struct AsComponents<archetypes::BarChart> {

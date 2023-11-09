@@ -63,6 +63,7 @@ namespace rerun {
         RecordingStream(std::string_view app_id, StoreKind store_kind = StoreKind::Recording);
         ~RecordingStream();
 
+        /// \private
         RecordingStream(RecordingStream&& other);
 
         // TODO(andreas): We could easily make the recording stream trivial to copy by bumping Rusts
@@ -70,7 +71,9 @@ namespace rerun {
         // Doing it this way would likely yield the most consistent behavior when interacting with
         // global streams (and especially when interacting with different languages in the same
         // application).
+        /// \private
         RecordingStream(const RecordingStream&) = delete;
+        /// \private
         RecordingStream() = delete;
 
         // -----------------------------------------------------------------------------------------
@@ -310,7 +313,7 @@ namespace rerun {
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         ///
         /// @see try_log, log_timeless, try_log_with_timeless
         template <typename... Ts>
@@ -331,7 +334,7 @@ namespace rerun {
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         ///
         /// @see log, try_log_timeless, try_log_with_timeless
         template <typename... Ts>
@@ -351,7 +354,7 @@ namespace rerun {
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         ///
         /// @see log, try_log_timeless, try_log_with_timeless
         template <typename... Ts>
@@ -370,7 +373,7 @@ namespace rerun {
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         /// \returns An error if an error occurs during serialization or logging.
         ///
         /// @see log_timeless, try_log, try_log_with_timeless
@@ -394,7 +397,7 @@ namespace rerun {
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
         /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
-        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         /// \returns An error if an error occurs during serialization or logging.
         ///
         /// @see log, try_log, log_timeless, try_log_timeless

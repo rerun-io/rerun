@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 
-use super::NEWLINE_TOKEN;
+use super::{quote_hide_from_docs, NEWLINE_TOKEN};
 
 /// A C++ forward declaration.
 #[derive(Debug, Clone)]
@@ -64,7 +64,11 @@ impl quote::ToTokens for ForwardDecl {
                 quote! { class #name; }
             }
             ForwardDecl::TemplateClass(name) => {
+                // Doxygen likes including template declarations in the docs.
+                let hide_from_docs = quote_hide_from_docs();
                 quote! {
+                    #NEWLINE_TOKEN
+                    #hide_from_docs
                     template<typename T> class #name;
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN

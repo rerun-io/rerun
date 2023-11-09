@@ -26,4 +26,4 @@ We stick to the following styles:
 * use `\` for starting [doxygen commands](https://www.doxygen.nl/manual/commands.html)
 * whenever possible prefer markdown over [doxygen commands](https://www.doxygen.nl/manual/commands.html)
 * Don't use `\brief`, instead write a single line brief description at the top, leave a newline and continue with the detailed description.
-* TODO: there is definitely more here
+* If you want to hide a class or method use `\private`

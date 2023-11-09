@@ -46,6 +46,10 @@ fn quote_doc_comment(text: &str) -> TokenStream {
     quote! { #DOC_COMMENT_PREFIX_TOKEN #text #DOC_COMMENT_SUFFIX_TOKEN }
 }
 
+fn quote_hide_from_docs() -> TokenStream {
+    quote_doc_comment("\\private")
+}
+
 fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
@@ -479,6 +483,7 @@ impl QuotedObject {
         };
 
         let indicator_comment = quote_doc_comment("Indicator component, used to identify the archetype when converting to a list of components.");
+        let doc_hide_comment = quote_hide_from_docs();
 
         let hpp = quote! {
             #hpp_includes
@@ -505,10 +510,12 @@ impl QuotedObject {
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
 
-                // Instead of including as_components.hpp, simply re-declare the template since it's trivial.
+                // Instead of including as_components.hpp, simply re-declare the template since it's trivial
+                #doc_hide_comment
                 template<typename T>
                 struct AsComponents;
 
+                #doc_hide_comment
                 template<>
                 struct AsComponents<archetypes::#type_ident> {
                     #serialize_hpp
