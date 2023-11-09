@@ -145,8 +145,9 @@ namespace rerun {
 
     /// \private
     template <typename T>
-    struct AsComponents; /// \private
+    struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::LineStrips3D> {
         /// Serialize all set component batches.

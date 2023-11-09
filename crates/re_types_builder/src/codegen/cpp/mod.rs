@@ -47,7 +47,11 @@ fn quote_doc_comment(text: &str) -> TokenStream {
 }
 
 fn quote_hide_from_docs() -> TokenStream {
-    quote_doc_comment("\\private")
+    let comment = quote_doc_comment("\\private");
+    quote! {
+        #NEWLINE_TOKEN
+        #comment
+    }
 }
 
 fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
@@ -990,6 +994,7 @@ impl QuotedObject {
         };
 
         let swap_comment = quote_comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
+        let hide_from_docs_comment = quote_hide_from_docs();
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
         let hpp = quote! {
@@ -1000,10 +1005,12 @@ impl QuotedObject {
             namespace rerun {
                 namespace #namespace_ident {
                     namespace detail {
+                        #hide_from_docs_comment
                         enum class #tag_typename : uint8_t {
                             #(#tag_fields)*
                         };
 
+                        #hide_from_docs_comment
                         union #data_typename {
                             #(#enum_data_declarations;)*
 

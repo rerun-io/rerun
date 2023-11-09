@@ -202,8 +202,9 @@ namespace rerun {
 
     /// \private
     template <typename T>
-    struct AsComponents; /// \private
+    struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Pinhole> {
         /// Serialize all set component batches.

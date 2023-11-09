@@ -61,4 +61,18 @@ namespace rerun {
     using datatypes::Vec2D;
     using datatypes::Vec3D;
     using datatypes::Vec4D;
+
+    // Document namespaces that span several files:
+
+    /// All built-in archetypes. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
+    namespace archetypes {}
+
+    /// All built-in components. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
+    namespace components {}
+
+    /// All built-in datatypes. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
+    namespace datatypes {}
+
+    /// All blueprint types. This is still experimental and subject to change!
+    namespace blueprint {}
 } // namespace rerun

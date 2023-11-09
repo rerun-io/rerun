@@ -210,8 +210,9 @@ namespace rerun {
 
     /// \private
     template <typename T>
-    struct AsComponents; /// \private
+    struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Boxes3D> {
         /// Serialize all set component batches.

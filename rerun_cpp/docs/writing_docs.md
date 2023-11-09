@@ -27,3 +27,10 @@ We stick to the following styles:
 * whenever possible prefer markdown over [doxygen commands](https://www.doxygen.nl/manual/commands.html)
 * Don't use `\brief`, instead write a single line brief description at the top, leave a newline and continue with the detailed description.
 * If you want to hide a class or method use `\private`
+    * if you have to hide several entries at once, use:
+    ```cpp
+    /// \cond private
+    ...
+    /// \endcond
+    ```
+* Avoid the use of groups when namespaces can be used instead

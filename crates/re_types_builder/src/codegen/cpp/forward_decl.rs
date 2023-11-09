@@ -67,7 +67,6 @@ impl quote::ToTokens for ForwardDecl {
                 // Doxygen likes including template declarations in the docs.
                 let hide_from_docs = quote_hide_from_docs();
                 quote! {
-                    #NEWLINE_TOKEN
                     #hide_from_docs
                     template<typename T> class #name;
                     #NEWLINE_TOKEN
