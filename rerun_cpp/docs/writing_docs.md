@@ -12,7 +12,7 @@ pixi run cpp-docs
 They then can be locally viewed at `rerun_cpp/docs/html/index.html`
 
 ### How versioned docs are generated and served
-TODO: get this part working for C++!
+TODO(#3974): get this part working for C++!
 
 
 ## Writing docs
