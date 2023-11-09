@@ -30,7 +30,7 @@ namespace rerun {
         /// ### Simple indexed 3D mesh
         /// ![image](https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <vector>

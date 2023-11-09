@@ -26,7 +26,7 @@ namespace rerun {
         /// ### Simple Pinhole Camera
         /// ![image](https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm> // std::generate

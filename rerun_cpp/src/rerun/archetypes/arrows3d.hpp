@@ -30,7 +30,7 @@ namespace rerun {
         /// ### Simple batch of 3D Arrows
         /// ![image](https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>

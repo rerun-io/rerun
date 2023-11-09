@@ -27,7 +27,7 @@ namespace rerun {
         /// ### Disconnected Space
         /// ![image](https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// int main() {

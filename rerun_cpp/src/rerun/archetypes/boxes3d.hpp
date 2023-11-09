@@ -31,7 +31,7 @@ namespace rerun {
         /// ### Batch of 3D boxes
         /// ![image](https://static.rerun.io/box3d_batch/6d3e453c3a0201ae42bbae9de941198513535f1d/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// int main() {

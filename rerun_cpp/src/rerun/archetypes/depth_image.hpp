@@ -29,7 +29,7 @@ namespace rerun {
         /// ### Depth to 3D example
         /// ![image](https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm> // fill_n

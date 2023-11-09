@@ -22,7 +22,7 @@ namespace rerun {
         /// ### Variety of 3D transforms
         /// ![image](https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// constexpr float TAU = 6.28318530717958647692528676655900577f;

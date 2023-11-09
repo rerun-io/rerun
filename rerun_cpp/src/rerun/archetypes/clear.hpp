@@ -22,7 +22,7 @@ namespace rerun {
         /// ### Flat
         /// ![image](https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>

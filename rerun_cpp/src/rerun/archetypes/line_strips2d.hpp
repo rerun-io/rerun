@@ -30,7 +30,7 @@ namespace rerun {
         /// ### `line_strip2d_batch`:
         /// ![image](https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png)
         ///
-        /// ```cpp,ignore
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <vector>
