@@ -27,6 +27,8 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Many strips
+        /// ![image](https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png)
+        ///
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///

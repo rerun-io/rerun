@@ -29,6 +29,8 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple segmentation image
+        /// ![image](https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png)
+        ///
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///

@@ -2076,10 +2076,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             let ExampleInfo {
-                name,
-                title,
-                image: _, // TODO(andreas): Include images in doc
-                ..
+                name, title, image, ..
             } = &example.base;
 
             for line in &example.lines {
@@ -2091,6 +2088,17 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
             } else {
                 lines.push(format!("### `{name}`:"));
             }
+
+            if let Some(image) = image {
+                match image {
+                    super::common::ImageUrl::Rerun(image) => lines.push(image.markdown_tag()),
+                    super::common::ImageUrl::Other(url) => {
+                        lines.push(format!("![example image]({url})"))
+                    }
+                }
+                lines.push(String::new());
+            }
+
             lines.push("```cpp,ignore".into());
             lines.extend(example.lines.iter().cloned());
             lines.push("```".into());

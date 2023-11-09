@@ -25,6 +25,8 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Markdown text document
+        /// ![image](https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png)
+        ///
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///

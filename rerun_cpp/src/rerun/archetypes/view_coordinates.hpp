@@ -27,6 +27,8 @@ namespace rerun {
         /// ## Example
         ///
         /// ### View coordinates for adjusting the eye camera
+        /// ![image](https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/full.png)
+        ///
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///

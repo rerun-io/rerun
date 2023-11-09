@@ -28,6 +28,8 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Randomly distributed 3D points with varying color and radius
+        /// ![image](https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png)
+        ///
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///

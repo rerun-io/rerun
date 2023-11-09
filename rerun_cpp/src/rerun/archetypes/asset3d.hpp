@@ -25,6 +25,8 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple 3D asset
+        /// ![image](https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png)
+        ///
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///

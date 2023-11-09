@@ -225,6 +225,16 @@ impl RerunImageUrl<'_> {
 
         stack
     }
+
+    pub fn markdown_tag(&self) -> String {
+        let RerunImageUrl {
+            name,
+            hash,
+            max_width: _,
+            extension,
+        } = *self;
+        format!("![image](https://static.rerun.io/{name}/{hash}/full.{extension})")
+    }
 }
 
 pub struct Example<'a> {

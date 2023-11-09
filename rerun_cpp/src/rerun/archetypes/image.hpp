@@ -31,6 +31,8 @@ namespace rerun {
         /// ## Example
         ///
         /// ### `image_simple`:
+        /// ![image](https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png)
+        ///
         /// ```cpp,ignore
         /// #include <rerun.hpp>
         ///
