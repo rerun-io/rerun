@@ -62,6 +62,8 @@ pub struct PlotSeries {
 pub struct TimeSeriesSystem {
     pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
+
+    /// Earliest time an entity was recorded at on the current timeline.
     pub min_time: Option<i64>,
 }
 
