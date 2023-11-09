@@ -52,7 +52,7 @@ pub trait DataQuery {
     fn execute_query(&self, ctx: &ViewerContext<'_>) -> DataResultTree;
 
     /// Find a single [`DataResult`] within the context of the query.
-    fn resolve(&self, ctx: &ViewerContext<'_>, entity_path: &EntityPath) -> Option<DataResult>;
+    fn resolve(&self, ctx: &ViewerContext<'_>, entity_path: &EntityPath) -> DataResult;
 }
 
 /// Iterate over all entities from start to end, NOT including start itself.
@@ -163,6 +163,10 @@ impl DataBlueprintGroup {
                         entity_path: entity_path.clone(),
                         view_parts,
                         resolved_properties,
+                        override_path: contents
+                            .entity_path()
+                            .join(&"properties".into())
+                            .join(entity_path),
                     },
                     children: Default::default(),
                 })
@@ -187,11 +191,16 @@ impl DataBlueprintGroup {
 
         children.append(&mut recursive_children);
 
+        let override_path = contents
+            .entity_path()
+            .join(&"properties".into())
+            .join(&group_path);
         data_results.insert(DataResultNode {
             data_result: DataResult {
                 entity_path: group_path,
                 view_parts,
                 resolved_properties,
+                override_path,
             },
             children,
         })
@@ -215,7 +224,7 @@ impl DataQuery for SpaceViewContents {
         }
     }
 
-    fn resolve(&self, ctx: &ViewerContext<'_>, entity_path: &EntityPath) -> Option<DataResult> {
+    fn resolve(&self, ctx: &ViewerContext<'_>, entity_path: &EntityPath) -> DataResult {
         let overrides = self.lookup_entity_properties(ctx);
 
         let view_parts = self
@@ -235,10 +244,14 @@ impl DataQuery for SpaceViewContents {
             resolved_properties = resolved_properties.with_child(&overrides.get(&prefix));
         }
 
-        Some(DataResult {
+        DataResult {
             entity_path: entity_path.clone(),
             view_parts,
             resolved_properties,
-        })
+            override_path: self
+                .entity_path()
+                .join(&"properties".into())
+                .join(entity_path),
+        }
     }
 }

@@ -2,9 +2,13 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, TimeInt, Timeline};
+use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
+use re_log_types::{DataRow, RowId, TimePoint};
 
-use crate::{SpaceViewHighlights, SpaceViewId, ViewSystemName};
+use crate::{
+    SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewSystemName,
+    ViewerContext,
+};
 
 #[derive(Debug)]
 pub struct DataResult {
@@ -17,6 +21,34 @@ pub struct DataResult {
     // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView
     // The reason we store it here though is that context is part of the DataResult.
     pub resolved_properties: EntityProperties,
+
+    // `EntityPath` in the Blueprint store where an override can be written
+    pub override_path: EntityPath,
+}
+
+impl DataResult {
+    pub fn save_override(&self, props: EntityProperties, ctx: &ViewerContext<'_>) {
+        if props.has_edits(&self.resolved_properties) {
+            let timepoint = TimePoint::timeless();
+
+            let component = EntityPropertiesComponent { props };
+
+            let row = DataRow::from_cells1_sized(
+                RowId::random(),
+                self.override_path.clone(),
+                timepoint,
+                1,
+                [component],
+            )
+            .unwrap();
+
+            ctx.command_sender
+                .send_system(SystemCommand::UpdateBlueprint(
+                    ctx.store_context.blueprint.store_id().clone(),
+                    vec![row],
+                ));
+        }
+    }
 }
 
 pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemName, Vec<&'a DataResult>>;

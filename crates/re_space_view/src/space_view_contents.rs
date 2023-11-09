@@ -520,6 +520,10 @@ impl SpaceViewContents {
         }
     }
 
+    pub fn entity_path(&self) -> EntityPath {
+        self.space_view_id.as_entity_path()
+    }
+
     pub fn lookup_entity_properties(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap {
         let blueprint = ctx.store_context.blueprint;
         let mut prop_map = EntityPropertyMap::default();
@@ -533,7 +537,9 @@ impl SpaceViewContents {
                     .store()
                     .query_timeless_component::<EntityPropertiesComponent>(path)
                 {
-                    prop_map.set(path.clone(), props.value.props);
+                    let overriden_path =
+                        EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
+                    prop_map.set(overriden_path, props.value.props);
                 }
             });
         }
