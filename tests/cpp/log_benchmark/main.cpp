@@ -30,6 +30,7 @@
 //
 
 #include <cstdio>
+#include <cstring>
 #include <vector>
 
 #include "benchmarks.hpp"
