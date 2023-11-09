@@ -57,7 +57,7 @@ namespace rerun {
     class RecordingStream {
       public:
         /// Creates a new recording stream to log to.
-        /// @param app_id The user-chosen name of the application doing the logging.
+        /// \param app_id The user-chosen name of the application doing the logging.
         RecordingStream(std::string_view app_id, StoreKind store_kind = StoreKind::Recording);
         ~RecordingStream();
 
@@ -260,7 +260,7 @@ namespace rerun {
         ///
         /// Failures are handled with `Error::handle`.
         ///
-        /// @param archetypes_or_component_batches
+        /// \param archetypes_or_component_batches
         /// Any type for which the `AsComponents<T>` trait is implemented.
         /// By default this is any archetype or std::vector/std::array/C-array of components.
         ///
@@ -281,7 +281,7 @@ namespace rerun {
         ///
         /// Failures are handled with `Error::handle`.
         ///
-        /// @param archetypes_or_component_batches
+        /// \param archetypes_or_component_batches
         /// Any type for which the `AsComponents<T>` trait is implemented.
         /// By default this is any archetype or std::vector/std::array/C-array of components.
         ///
@@ -300,7 +300,7 @@ namespace rerun {
         ///
         /// Returns an error if an error occurs during serialization or logging.
         ///
-        /// @param archetypes_or_component_batches
+        /// \param archetypes_or_component_batches
         /// Any type for which the `AsComponents<T>` trait is implemented.
         /// By default this is any archetype or std::vector/std::array/C-array of components.
         ///
@@ -322,7 +322,7 @@ namespace rerun {
         ///
         /// Returns an error if an error occurs during serialization or logging.
         ///
-        /// @param archetypes_or_component_batches
+        /// \param archetypes_or_component_batches
         /// Any type for which the `AsComponents<T>` trait is implemented.
         /// By default this is any archetype or std::vector/std::array/C-array of components.
         ///
@@ -341,7 +341,7 @@ namespace rerun {
         ///
         /// Returns an error if an error occurs during serialization or logging.
         ///
-        /// @param archetypes_or_component_batches
+        /// \param archetypes_or_component_batches
         /// Any type for which the `AsComponents<T>` trait is implemented.
         /// By default this is any archetype or std::vector/std::array/C-array of components.
         ///
@@ -399,10 +399,10 @@ namespace rerun {
 
         /// Low level API that logs raw data cells to the recording stream.
         ///
-        /// @param num_instances
+        /// \param num_instances
         /// Each cell is expected to hold exactly `num_instances` instances.
         ///
-        /// @param inject_time
+        /// \param inject_time
         /// If set to `true`, the row's timestamp data will be overridden using the recording
         /// streams internal clock.
         Error try_log_data_row(

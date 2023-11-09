@@ -27,7 +27,7 @@ namespace rerun {
 
             /// Creates a new 3D transform from translation/rotation/scale.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
+            /// \param _from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationRotationScale3D(
@@ -42,7 +42,7 @@ namespace rerun {
 
             /// Creates a new 3D transform from translation/rotation/uniform-scale.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
+            /// \param _from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             ///
@@ -59,7 +59,7 @@ namespace rerun {
 
             /// Creates a new rigid transform (translation & rotation only).
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
+            /// \param _from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationRotationScale3D(
@@ -72,7 +72,7 @@ namespace rerun {
 
             /// From translation & scale only.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
+            /// \param _from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationRotationScale3D(
@@ -85,7 +85,7 @@ namespace rerun {
 
             /// From translation & uniform scale only.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
+            /// \param _from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             ///
@@ -101,7 +101,7 @@ namespace rerun {
 
             /// From rotation & scale only.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
+            /// \param _from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationRotationScale3D(
@@ -114,7 +114,7 @@ namespace rerun {
 
             /// From rotation & uniform scale only.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
+            /// \param _from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             ///
@@ -130,7 +130,7 @@ namespace rerun {
 
             /// From translation only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationRotationScale3D(const Vec3D& _translation, bool _from_parent = false)
@@ -141,7 +141,7 @@ namespace rerun {
 
             /// From rotation only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationRotationScale3D(const Rotation3D& _rotation, bool _from_parent = false)
@@ -152,7 +152,7 @@ namespace rerun {
 
             /// From scale only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             TranslationRotationScale3D(const Scale3D& _scale, bool _from_parent = false)

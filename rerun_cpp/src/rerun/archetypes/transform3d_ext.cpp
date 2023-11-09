@@ -26,7 +26,7 @@ namespace rerun {
 
             /// Creates a new 3D transform from translation and matrix provided as 3 columns.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             ///
@@ -40,7 +40,7 @@ namespace rerun {
 
             /// Creates a new 3D transform from translation/matrix.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(
@@ -51,7 +51,7 @@ namespace rerun {
 
             /// From translation only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(const datatypes::Vec3D& translation, bool from_parent = false)
@@ -59,7 +59,7 @@ namespace rerun {
 
             /// From 3x3 matrix only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(const datatypes::Mat3x3& matrix, bool from_parent = false)
@@ -67,7 +67,7 @@ namespace rerun {
 
             /// From 3x3 matrix provided as 3 columns only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(const datatypes::Vec3D (&columns)[3], bool from_parent = false)
@@ -81,7 +81,7 @@ namespace rerun {
 
             /// Creates a new 3D transform from translation/rotation/scale.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(
@@ -94,7 +94,7 @@ namespace rerun {
 
             /// Creates a new 3D transform from translation/rotation/uniform-scale.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             ///
@@ -110,7 +110,7 @@ namespace rerun {
 
             /// Creates a new rigid transform (translation & rotation only).
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(
@@ -123,7 +123,7 @@ namespace rerun {
 
             /// From translation & scale only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(
@@ -135,7 +135,7 @@ namespace rerun {
 
             /// From translation & uniform scale only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             ///
@@ -150,7 +150,7 @@ namespace rerun {
 
             /// From rotation & scale.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(
@@ -162,7 +162,7 @@ namespace rerun {
 
             /// From rotation & uniform scale.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             ///
@@ -177,7 +177,7 @@ namespace rerun {
 
             /// From rotation only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(const datatypes::Rotation3D& rotation, bool from_parent = false)
@@ -185,7 +185,7 @@ namespace rerun {
 
             /// From scale only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
+            /// \param from_parent If true, the transform maps from the parent space to the space
             /// where the transform was logged. Otherwise, the transform maps from the space to its
             /// parent.
             Transform3D(const datatypes::Scale3D& scale, bool from_parent = false)
