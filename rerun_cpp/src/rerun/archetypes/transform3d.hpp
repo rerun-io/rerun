@@ -90,6 +90,7 @@ namespace rerun {
             /// Creates a new 3D transform from translation/matrix.
             ///
             /// \param translation \çopydoc datatypes::TranslationAndMat3x3::translation
+            /// \param matrix \copydoc datatypes::TranslationAndMat3x3::mat3x3
             /// \param from_parent \copydoc datatypes::TranslationAndMat3x3::from_parent
             Transform3D(
                 const datatypes::Vec3D& translation, const datatypes::Mat3x3& matrix,
@@ -106,7 +107,7 @@ namespace rerun {
 
             /// From 3x3 matrix only.
             ///
-            /// \param matrix \copydoc datatypes::TranslationAndMat3x3::matrix
+            /// \param matrix \copydoc datatypes::TranslationAndMat3x3::mat3x3
             /// \param from_parent \copydoc datatypes::TranslationAndMat3x3::from_parent
             Transform3D(const datatypes::Mat3x3& matrix, bool from_parent = false)
                 : Transform3D(datatypes::TranslationAndMat3x3(matrix, from_parent)) {}
@@ -198,6 +199,8 @@ namespace rerun {
 
             /// From rotation & scale.
             ///
+            /// \param rotation \copydoc datatypes::TranslationRotationScale3D::rotation
+            /// \param scale datatypes::TranslationRotationScale3D::scale
             /// \param from_parent \copydoc datatypes::TranslationRotationScale3D::from_parent
             Transform3D(
                 const datatypes::Rotation3D& rotation, const datatypes::Scale3D& scale,

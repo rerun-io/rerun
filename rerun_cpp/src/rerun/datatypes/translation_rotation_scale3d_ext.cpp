@@ -34,8 +34,8 @@ namespace rerun {
 
             /// Creates a new 3D transform from translation/rotation/uniform-scale.
             ///
-            /// \param translation \copydoc TranslationRotationScale3D::translation
-            /// \param rotation \copydoc TranslationRotationScale3D::rotation
+            /// \param translation_ \copydoc TranslationRotationScale3D::translation
+            /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
             /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
             /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
             ///
