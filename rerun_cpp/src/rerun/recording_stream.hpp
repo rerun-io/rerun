@@ -57,7 +57,9 @@ namespace rerun {
     class RecordingStream {
       public:
         /// Creates a new recording stream to log to.
+        ///
         /// \param app_id The user-chosen name of the application doing the logging.
+        /// \param store_kind Whether to log to the recording store or the blueprint store.
         RecordingStream(std::string_view app_id, StoreKind store_kind = StoreKind::Recording);
         ~RecordingStream();
 
@@ -72,18 +74,27 @@ namespace rerun {
         RecordingStream() = delete;
 
         // -----------------------------------------------------------------------------------------
-        // Properties
+        /// \name Properties
+        /// @{
 
+        /// Returns the store kind as passed during construction
         StoreKind kind() const {
             return _store_kind;
         }
 
+        /// Returns whether the recording stream is enabled.
+        ///
+        /// All log functions early out if a recording stream is disabled.
+        /// Naturally, logging functions that take unserialized data will skip the serialization step as well.
         bool is_enabled() const {
             return _enabled;
         }
 
+        /// @}
+
         // -----------------------------------------------------------------------------------------
-        // Controlling globally available instances of RecordingStream.
+        /// \name Controlling globally available instances of RecordingStream.
+        /// @{
 
         /// Replaces the currently active recording for this stream's store kind in the global scope
         /// with this one.
@@ -105,9 +116,12 @@ namespace rerun {
         /// If neither was set, any operations on the returned stream will be no-ops.
         static RecordingStream& current(StoreKind store_kind = StoreKind::Recording);
 
+        /// @}
+
         // -----------------------------------------------------------------------------------------
-        // Directing the recording stream. Either of these needs to be called, otherwise the stream
-        // will buffer up indefinitely.
+        /// \name Directing the recording stream.
+        /// \details Either of these needs to be called, otherwise the stream will buffer up indefinitely.
+        /// @{
 
         /// Connect to a remote Rerun Viewer on the given ip:port.
         ///
@@ -158,8 +172,12 @@ namespace rerun {
         /// See `RecordingStream` docs for ordering semantics and multithreading guarantees.
         void flush_blocking() const;
 
+        /// @}
+
         // -----------------------------------------------------------------------------------------
-        // Methods for controlling time.
+        /// \name Controlling log time.
+        /// \details
+        /// @{
 
         /// Set the current time of the recording, for the current calling thread.
         ///
@@ -169,7 +187,7 @@ namespace rerun {
         /// For example: `rec.set_time_sequence("frame_nr", frame_nr)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_timepoint, set_time_seconds, set_time_nanos, reset_time, set_time, disable_timeline
+        /// @see set_time_seconds, set_time_nanos, reset_time, set_time, disable_timeline
         void set_time_sequence(std::string_view timeline_name, int64_t sequence_nr) const;
 
         /// Set the current time of the recording, for the current calling thread.
@@ -180,7 +198,7 @@ namespace rerun {
         /// For example: `rec.set_time("sim_time", sim_time_secs)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, reset_time, disable_timeline
+        /// @see set_time_sequence, set_time_seconds, set_time_nanos, reset_time, disable_timeline
         template <typename TClock>
         void set_time(std::string_view timeline_name, std::chrono::time_point<TClock> time) const {
             set_time(timeline_name, time.time_since_epoch());
@@ -194,7 +212,7 @@ namespace rerun {
         /// For example: `rec.set_time("sim_time", sim_time_secs)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, reset_time, disable_timeline
+        /// @see set_time_sequence, set_time_seconds, set_time_nanos, reset_time, disable_timeline
         template <typename TRep, typename TPeriod>
         void set_time(std::string_view timeline_name, std::chrono::duration<TRep, TPeriod> time)
             const {
@@ -221,7 +239,7 @@ namespace rerun {
         /// For example: `rec.set_time_seconds("sim_time", sim_time_secs)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_timepoint, set_time_sequence, set_time_nanos, reset_time, set_time, disable_timeline
+        /// @see set_time_sequence, set_time_nanos, reset_time, set_time, disable_timeline
         void set_time_seconds(std::string_view timeline_name, double seconds) const;
 
         /// Set the current time of the recording, for the current calling thread.
@@ -232,7 +250,7 @@ namespace rerun {
         /// For example: `rec.set_time_nanos("sim_time", sim_time_nanos)`.
         ///
         /// You can remove a timeline from subsequent log calls again using `rec.disable_timeline`.
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, reset_time, set_time, disable_timeline
+        /// @see set_time_sequence, set_time_seconds, reset_time, set_time, disable_timeline
         void set_time_nanos(std::string_view timeline_name, int64_t nanos) const;
 
         /// Stops logging to the specified timeline for subsequent log calls.
@@ -241,7 +259,7 @@ namespace rerun {
         ///
         /// No-op if the timeline doesn't exist.
         ///
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time, reset_time
+        /// @see set_time_sequence, set_time_seconds, set_time, reset_time
         void disable_timeline(std::string_view timeline_name) const;
 
         /// Clears out the current time of the recording, for the current calling thread.
@@ -250,21 +268,51 @@ namespace rerun {
         /// to one of the time setting methods.
         ///
         /// For example: `rec.reset_time()`.
-        /// @see set_timepoint, set_time_sequence, set_time_seconds, set_time_nanos, disable_timeline
+        /// @see set_time_sequence, set_time_seconds, set_time_nanos, disable_timeline
         void reset_time() const;
 
+        /// @}
+
         // -----------------------------------------------------------------------------------------
-        // Methods for logging.
+        /// \name Logging
+        /// @{
 
         /// Logs one or more archetype and/or component batches.
         ///
-        /// Failures are handled with `Error::handle`.
+        /// This is the main entry point for logging data to rerun. It can be used to log anything
+        /// that implements the `AsComponents<T>` trait.
         ///
-        /// \param archetypes_or_component_batches
-        /// Any type for which the `AsComponents<T>` trait is implemented.
-        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        /// When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/entity-path)
+        /// for identifying the data. Note that the path prefix "rerun/" is considered reserved for use by the Rerun SDK
+        /// itself and should not be used for logging user data. This is where Rerun will log additional information
+        /// such as warnings.
         ///
-        /// @see try_log
+        /// The most common way to log is with one of the rerun archetypes, all of which implement the `AsComponents` trait.
+        ///
+        /// For example, to log two 3D points:
+        /// ```
+        /// rec.log("my/point", rerun::Points3D({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));
+        /// ```
+        ///
+        /// The `log` function can flexibly accept an arbitrary number of additional objects which will
+        /// be merged into the first entity so long as they don't expose conflicting components, for instance:
+        /// ```
+        /// // Log three points with arrows sticking out of them:
+        /// rec.log(
+        ///     "my/points",
+        ///     rerun::Points3D({{0.2f, 0.5f, 0.3f}, {0.9f, 1.2f, 0.1f}, {1.0f, 4.2f, 0.3f}})
+        ///             .with_radii({0.1, 0.2, 0.3}),
+        ///     rerun::Arrows3D::from_vectors({{0.3f, 2.1f, 0.2f}, {0.9f, -1.1, 2.3f}, {-0.4f, 0.5f, 2.9f}})
+        /// );
+        /// ```
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
+        ///
+        /// @see try_log, log_timeless, try_log_with_timeless
         template <typename... Ts>
         void log(std::string_view entity_path, const Ts&... archetypes_or_component_batches) const {
             if (!is_enabled()) {
@@ -275,17 +323,17 @@ namespace rerun {
 
         /// Logs one or more archetype and/or component batches as timeless data.
         ///
+        /// Like `log` but logs the data as timeless:
         /// Timeless data is present on all timelines and behaves as if it was recorded infinitely
-        /// far into the past. All timestamp data associated with this message will be dropped right
-        /// before sending it to Rerun.
+        /// far into the past.
         ///
         /// Failures are handled with `Error::handle`.
         ///
-        /// \param archetypes_or_component_batches
-        /// Any type for which the `AsComponents<T>` trait is implemented.
-        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
         ///
-        /// @see try_log
+        /// @see log, try_log_timeless, try_log_with_timeless
         template <typename... Ts>
         void log_timeless(
             std::string_view entity_path, const Ts&... archetypes_or_component_batches
@@ -298,13 +346,14 @@ namespace rerun {
 
         /// Logs one or more archetype and/or component batches.
         ///
-        /// Returns an error if an error occurs during serialization or logging.
+        /// See `log` for more information.
+        /// Unlike `log` this method returns an error if an error occurs during serialization or logging.
         ///
-        /// \param archetypes_or_component_batches
-        /// Any type for which the `AsComponents<T>` trait is implemented.
-        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
         ///
-        /// @see try_log
+        /// @see log, try_log_timeless, try_log_with_timeless
         template <typename... Ts>
         Error try_log(std::string_view entity_path, const Ts&... archetypes_or_component_batches)
             const {
@@ -314,19 +363,17 @@ namespace rerun {
             return try_log_with_timeless(entity_path, false, archetypes_or_component_batches...);
         }
 
-        /// Logs one or more archetype and/or component batches as timeless data.
+        /// Logs one or more archetype and/or component batches as timeless data, returning an error.
         ///
-        /// Timeless data is present on all timelines and behaves as if it was recorded infinitely
-        /// far into the past. All timestamp data associated with this message will be dropped right
-        /// before sending it to Rerun.
+        /// See `log`/`log_timeless` for more information.
+        /// Unlike `log_timeless` this method returns if an error occurs during serialization or logging.
         ///
-        /// Returns an error if an error occurs during serialization or logging.
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
+        /// \returns An error if an error occurs during serialization or logging.
         ///
-        /// \param archetypes_or_component_batches
-        /// Any type for which the `AsComponents<T>` trait is implemented.
-        /// By default this is any archetype or std::vector/std::array/C-array of components.
-        ///
-        /// @see try_log
+        /// @see log_timeless, try_log, try_log_with_timeless
         template <typename... Ts>
         Error try_log_timeless(
             std::string_view entity_path, const Ts&... archetypes_or_component_batches
@@ -337,13 +384,18 @@ namespace rerun {
             return try_log_with_timeless(entity_path, true, archetypes_or_component_batches...);
         }
 
-        /// Logs one or more archetype and/or component batches optionally timeless.
+        /// Logs one or more archetype and/or component batches optionally timeless, returning an error.
         ///
+        /// See `log`/`log_timeless` for more information.
         /// Returns an error if an error occurs during serialization or logging.
         ///
-        /// \param archetypes_or_component_batches
-        /// Any type for which the `AsComponents<T>` trait is implemented.
-        /// By default this is any archetype or std::vector/std::array/C-array of components.
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param timeless If true, the logged components will be timeless.
+        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
+        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components.
+        /// \returns An error if an error occurs during serialization or logging.
         ///
         /// @see log, try_log, log_timeless, try_log_timeless
         template <typename... Ts>
@@ -389,26 +441,45 @@ namespace rerun {
 
         /// Logs several serialized batches batches, returning an error on failure.
         ///
+        /// This is a more low-level API than `log`/`log_timeless\ and requires you to already serialize the data
+        /// ahead of time.
+        ///
         /// The number of instances in each batch must either be equal to the maximum or:
         /// - zero instances - implies a clear
         /// - single instance (but other instances have more) - causes a splat
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param timeless If true, the logged components will be timeless.
+        /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
+        /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
+        /// \param batches The serialized batches to log.
+        ///
+        /// \see `log`, `try_log`, `log_timeless`, `try_log_timeless`, `try_log_with_timeless`
         Error try_log_serialized_batches(
             std::string_view entity_path, bool timeless,
             const std::vector<SerializedComponentBatch>& batches
         ) const;
 
-        /// Low level API that logs raw data cells to the recording stream.
+        /// Bottom level API that logs raw data cells to the recording stream.
         ///
+        /// In order to use this you need to pass serialized Arrow data cells.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
         /// \param num_instances
         /// Each cell is expected to hold exactly `num_instances` instances.
-        ///
+        /// \param num_data_cells Number of data cells passed in.
+        /// \param data_cells The data cells to log.
         /// \param inject_time
         /// If set to `true`, the row's timestamp data will be overridden using the recording
         /// streams internal clock.
+        ///
+        /// \see `try_log_serialized_batches`
         Error try_log_data_row(
             std::string_view entity_path, size_t num_instances, size_t num_data_cells,
             const DataCell* data_cells, bool inject_time
         ) const;
+
+        /// @}
 
       private:
         RecordingStream(uint32_t id, StoreKind store_kind);
