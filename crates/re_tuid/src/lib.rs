@@ -84,7 +84,7 @@ impl Tuid {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
 
-    /// Returns the next logical `Tuid`.
+    /// Returns the next logical [`Tuid`].
     ///
     /// Wraps the monotonically increasing back to zero on overflow.
     ///
@@ -97,6 +97,22 @@ impl Tuid {
         Self {
             time_ns,
             inc: inc.wrapping_add(1),
+        }
+    }
+
+    /// Returns the `n`-next logical [`Tuid`].
+    ///
+    /// This is equivalent to calling [`Tuid::next`] `n` times.
+    /// Wraps the monotonically increasing back to zero on overflow.
+    ///
+    /// Beware: wrong usage can easily lead to conflicts.
+    /// Prefer [`Tuid::random`] when unsure.
+    #[inline]
+    pub fn increment(&self, n: u64) -> Self {
+        let Self { time_ns, inc } = *self;
+        Self {
+            time_ns,
+            inc: inc.wrapping_add(n),
         }
     }
 

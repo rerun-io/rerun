@@ -9,7 +9,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../util.hpp"
+#include "../warning_macros.hpp"
 
 #include <cstdint>
 #include <optional>

@@ -6,13 +6,10 @@
 #include "../component_batch.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
-#include "../error.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
-#include <algorithm>
 #include <cstdint>
-#include <string>
 #include <utility>
 #include <vector>
 

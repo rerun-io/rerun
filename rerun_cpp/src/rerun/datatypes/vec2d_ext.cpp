@@ -11,7 +11,7 @@ namespace rerun {
             float xy[2];
 #define Vec2D Vec2DExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             /// Construct Vec2D from x/y values.
             Vec2D(float x, float y) : xy{x, y} {}
@@ -27,7 +27,7 @@ namespace rerun {
                 return xy[1];
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
     } // namespace datatypes

@@ -10,7 +10,7 @@
 #include "component_batch_adapter.hpp"
 #include "result.hpp"
 #include "serialized_component_batch.hpp"
-#include "util.hpp"
+#include "warning_macros.hpp"
 
 namespace rerun {
     /// Type of ownership of the batch's data.

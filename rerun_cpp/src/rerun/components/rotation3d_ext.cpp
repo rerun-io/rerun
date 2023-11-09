@@ -11,7 +11,7 @@ namespace rerun {
             Rotation3D repr;
 #define Rotation3D Rotation3DExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static const Rotation3D IDENTITY;
 
@@ -21,7 +21,7 @@ namespace rerun {
             /// Construct Rotation3d from axis-angle
             Rotation3D(datatypes::RotationAxisAngle axis_angle) : repr{axis_angle} {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #undef Rotation3DExt

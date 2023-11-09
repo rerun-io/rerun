@@ -9,7 +9,6 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <utility>
 
 namespace arrow {
     class DataType;

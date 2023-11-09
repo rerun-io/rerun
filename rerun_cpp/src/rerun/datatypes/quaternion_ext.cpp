@@ -7,7 +7,7 @@ namespace rerun {
     namespace datatypes {
 
 #ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         static const Quaternion IDENTITY;
 
@@ -59,7 +59,7 @@ namespace rerun {
             return xyzw[3];
         }
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         const Quaternion Quaternion::IDENTITY = Quaternion::from_xyzw(0.0f, 0.0f, 0.0f, 1.0f);

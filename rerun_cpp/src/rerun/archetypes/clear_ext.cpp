@@ -10,7 +10,7 @@ namespace rerun {
         struct ClearExt {
             rerun::components::ClearIsRecursive clear;
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static const Clear FLAT;
 
@@ -19,7 +19,7 @@ namespace rerun {
             Clear(bool _is_recursive = false)
                 : Clear(components::ClearIsRecursive(_is_recursive)) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
 

@@ -1,4 +1,4 @@
-### How does it work?
+## How does it work?
 
 Rerun's goal is to make handling and visualizing multimodal data streams easy and performant.
 

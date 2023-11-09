@@ -6,7 +6,6 @@
 #include "../component_batch.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
-#include "../half.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 

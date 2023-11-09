@@ -3,6 +3,8 @@ use anyhow::Context as _;
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
+use crate::load_file::data_cells_from_file_path;
+
 /// Non-blocking.
 #[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
 pub fn load_file_path(
@@ -76,7 +78,7 @@ fn log_msg_from_file_path(
     file_path: &std::path::Path,
 ) -> anyhow::Result<LogMsg> {
     let entity_path = re_log_types::EntityPath::from_file_path_as_single_string(file_path);
-    let cells = re_log_types::data_cells_from_file_path(file_path)?;
+    let cells = data_cells_from_file_path(file_path)?;
 
     let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
 
@@ -97,7 +99,6 @@ fn log_msg_from_file_path(
 }
 
 // Non-blocking
-#[cfg(not(target_arch = "wasm32"))]
 fn stream_rrd_file(
     path: std::path::PathBuf,
     tx: re_smart_channel::Sender<LogMsg>,

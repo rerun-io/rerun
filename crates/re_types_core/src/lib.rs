@@ -10,6 +10,10 @@
 //! [`ComponentBatch`]: the atomic unit of (de)serialization.
 //!
 //! Internally, [`Component`]s are implemented using many different [`Datatype`]s.
+//!
+//! ## Feature flags
+#![doc = document_features::document_features!()]
+//!
 
 // ---
 

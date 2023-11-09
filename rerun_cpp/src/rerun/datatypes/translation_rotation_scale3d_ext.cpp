@@ -1,21 +1,14 @@
-#include "../util.hpp"
 #include "translation_rotation_scale3d.hpp"
 
-// Uncomment for better auto-complete while editing the extension.
-// #define EDIT_EXTENSION
+// <CODEGEN_COPY_TO_HEADER>
+#include "../warning_macros.hpp"
 
+// </CODEGEN_COPY_TO_HEADER>
 namespace rerun {
     namespace datatypes {
 
-#ifdef EDIT_EXTENSION
-        struct TranslationRotationScale3DExt {
-            std::optional<Vec3D> translation;
-            std::optional<Rotation3D> rotation;
-            std::optional<Scale3D> scale;
-            bool from_parent;
-
-#define TranslationRotationScale3D TranslationRotationScale3DExt
-            // [CODEGEN COPY TO HEADER START]
+#if 0
+            // <CODEGEN_COPY_TO_HEADER>
 
             static const TranslationRotationScale3D IDENTITY;
 
@@ -168,15 +161,11 @@ namespace rerun {
                   scale(_scale),
                   from_parent(_from_parent) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
-
-#undef TranslationAndMat3x3
-#else
-#define TranslationRotationScale3DExt TranslationRotationScale3D
 #endif
 
-        const TranslationRotationScale3DExt TranslationRotationScale3DExt::IDENTITY =
+        const TranslationRotationScale3D TranslationRotationScale3D::IDENTITY =
             TranslationRotationScale3D();
 
     } // namespace datatypes

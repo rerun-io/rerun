@@ -6,8 +6,7 @@ use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, TimeInt, TimePoint,
-    TimeRange,
+    DataCell, DataCellColumn, DataCellError, DataRow, RowId, TimeInt, TimePoint, TimeRange,
 };
 use re_types_core::{
     components::InstanceKey, ComponentName, ComponentNameSet, Loggable, SizeBytes as _,
@@ -48,27 +47,14 @@ pub enum WriteError {
         expected: DataType,
         got: DataType,
     },
+
+    #[error("Attempted to re-use already taken RowId:{0}")]
+    ReusedRowId(RowId),
 }
 
 pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
 impl DataStore {
-    /// Inserts a [`DataTable`]'s worth of components into the datastore.
-    ///
-    /// This iteratively inserts all rows from the table on a row-by-row basis.
-    /// The entire method fails if any row fails.
-    ///
-    /// Both the write and read paths transparently benefit from the contiguous memory of the
-    /// table's columns: the bigger the tables, the bigger the benefits!
-    ///
-    /// See [`Self::insert_row`].
-    pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
-        for row in table.to_rows() {
-            self.insert_row(&row?)?;
-        }
-        Ok(())
-    }
-
     /// Inserts a [`DataRow`]'s worth of components into the datastore.
     ///
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
@@ -81,6 +67,16 @@ impl DataStore {
         if row.num_cells() == 0 {
             return Ok(());
         }
+
+        let DataRow {
+            row_id,
+            timepoint,
+            entity_path: ent_path,
+            num_instances,
+            cells,
+        } = row;
+
+        self.metadata_registry.upsert(*row_id, timepoint.clone())?;
 
         re_tracing::profile_function!();
 
@@ -113,14 +109,6 @@ impl DataStore {
                     .insert(cell.component_name(), cell.datatype().clone());
             }
         }
-
-        let DataRow {
-            row_id,
-            timepoint,
-            entity_path: ent_path,
-            num_instances,
-            cells,
-        } = row;
 
         let ent_path_hash = ent_path.hash();
         let num_instances = *num_instances;
@@ -193,8 +181,6 @@ impl DataStore {
             }
         }
 
-        self.metadata_registry.upsert(*row_id, timepoint.clone());
-
         Ok(())
     }
 
@@ -234,38 +220,21 @@ impl DataStore {
 }
 
 impl MetadataRegistry<TimePoint> {
-    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) {
-        let mut added_size_bytes = 0;
-
-        // This is valuable information even for a timeless timepoint!
+    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) -> WriteResult<()> {
         match self.entry(row_id) {
+            std::collections::btree_map::Entry::Occupied(_) => Err(WriteError::ReusedRowId(row_id)),
             std::collections::btree_map::Entry::Vacant(entry) => {
                 // NOTE: In a map, thus on the heap!
-                added_size_bytes += row_id.total_size_bytes();
-                added_size_bytes += timepoint.total_size_bytes();
+                let added_size_bytes = row_id.total_size_bytes() + timepoint.total_size_bytes();
+
+                // This is valuable information even for a timeless timepoint!
                 entry.insert(timepoint);
-            }
-            // NOTE: When saving and loading data from disk, it's very possible that we try to
-            // insert data for a single `RowId` in multiple calls (buckets are per-timeline, so a
-            // single `RowId` can get spread across multiple buckets)!
-            std::collections::btree_map::Entry::Occupied(mut entry) => {
-                let entry = entry.get_mut();
-                for (timeline, time) in timepoint {
-                    if let Some(old_time) = entry.insert(timeline, time) {
-                        if old_time != time {
-                            re_log::error!(%row_id, ?timeline, old_time = ?old_time, new_time = ?time, "detected re-used `RowId/Timeline` pair, this is illegal and will lead to undefined behavior in the datastore");
-                            debug_assert!(false, "detected re-used `RowId/Timeline`");
-                        }
-                    } else {
-                        // NOTE: In a map, thus on the heap!
-                        added_size_bytes += timeline.total_size_bytes();
-                        added_size_bytes += time.as_i64().total_size_bytes();
-                    }
-                }
+
+                self.heap_size_bytes += added_size_bytes;
+
+                Ok(())
             }
         }
-
-        self.heap_size_bytes += added_size_bytes;
     }
 }
 

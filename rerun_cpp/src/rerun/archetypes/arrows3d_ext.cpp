@@ -6,7 +6,7 @@ namespace rerun {
     namespace archetypes {
 
 #ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         /// Creates new 3D arrows pointing in the given directions, with a base at the origin (0, 0,
         /// 0).
@@ -16,7 +16,7 @@ namespace rerun {
             return arrows;
         }
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
     } // namespace archetypes
 } // namespace rerun

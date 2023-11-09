@@ -1506,9 +1506,9 @@ dependencies = [
 
 [[package]]
 name = "egui_commonmark"
-version = "0.9.0"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3423cc4ae1cb068e3aff8c6b33eb9bab2a79c5563e8e3979dac3d56c92f00a2f"
+checksum = "a1665b7659f041aa99d3f97ec11d5f1f7062cd757e2ebd12e13532b96a348a6b"
 dependencies = [
  "egui",
  "egui_extras",
@@ -2795,6 +2795,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "log_benchmark"
+version = "0.11.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "bytemuck",
+ "clap",
+ "glam",
+ "re_tracing",
+ "rerun",
+]
+
+[[package]]
 name = "lz4_flex"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4055,6 +4067,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
+ "similar-asserts",
  "smallvec",
  "thiserror",
  "tinyvec",
@@ -4104,6 +4117,7 @@ name = "re_data_source"
 version = "0.11.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "image",
  "itertools 0.11.0",
  "rayon",
  "re_build_tools",
@@ -4112,7 +4126,9 @@ dependencies = [
  "re_log_types",
  "re_smart_channel",
  "re_tracing",
+ "re_types",
  "re_ws_comms",
+ "thiserror",
 ]
 
 [[package]]
@@ -4122,6 +4138,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "document-features",
+ "getrandom",
  "itertools 0.11.0",
  "mimalloc",
  "nohash-hasher",
@@ -4139,6 +4156,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "thiserror",
+ "web-time",
 ]
 
 [[package]]
@@ -4246,7 +4264,6 @@ dependencies = [
  "document-features",
  "fixed",
  "half 2.3.1",
- "image",
  "itertools 0.11.0",
  "nohash-hasher",
  "num-derive",
@@ -4256,7 +4273,6 @@ dependencies = [
  "re_string_interner",
  "re_tracing",
  "re_tuid",
- "re_types",
  "re_types_core",
  "rmp-serde",
  "serde",
@@ -4375,23 +4391,20 @@ dependencies = [
  "anyhow",
  "crossbeam",
  "document-features",
- "env_logger",
  "itertools 0.11.0",
- "log",
  "ndarray",
  "ndarray-rand",
  "once_cell",
  "parking_lot 0.12.1",
  "rand",
+ "re_arrow_store",
  "re_build_info",
  "re_build_tools",
  "re_log",
  "re_log_encoding",
  "re_log_types",
- "re_memory",
  "re_sdk_comms",
  "re_smart_channel",
- "re_types",
  "re_types_core",
  "re_web_viewer_server",
  "re_ws_comms",
@@ -4955,7 +4968,9 @@ dependencies = [
  "anyhow",
  "clap",
  "document-features",
+ "env_logger",
  "itertools 0.11.0",
+ "log",
  "puffin",
  "rayon",
  "re_analytics",
@@ -4973,6 +4988,7 @@ dependencies = [
  "re_sdk_comms",
  "re_smart_channel",
  "re_tracing",
+ "re_types",
  "re_viewer",
  "re_web_viewer_server",
  "re_ws_comms",

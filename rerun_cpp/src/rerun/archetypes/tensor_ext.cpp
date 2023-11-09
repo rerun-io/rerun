@@ -13,7 +13,7 @@ namespace rerun {
     namespace archetypes {
 
 #ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         /// New Tensor from dimensions and tensor buffer.
         Tensor(
@@ -32,7 +32,7 @@ namespace rerun {
         /// TODO(#3794): don't use std::vector here.
         Tensor with_dim_names(std::vector<std::string> names) &&;
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         Tensor Tensor::with_dim_names(std::vector<std::string> names) && {

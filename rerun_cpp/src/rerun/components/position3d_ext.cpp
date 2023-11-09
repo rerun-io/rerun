@@ -11,7 +11,7 @@ namespace rerun {
             float xyz[3];
 #define Position3D Position3DExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             /// Construct Position3D from x/y/z values.
             Position3D(float x, float y, float z) : xyz{x, y, z} {}
@@ -28,7 +28,7 @@ namespace rerun {
                 return xyz.z();
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
     } // namespace components

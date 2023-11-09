@@ -11,7 +11,7 @@ namespace rerun {
             rerun::datatypes::Vec2D resolution;
 #define Resolution ResolutionExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             static const Resolution IDENTITY;
 
@@ -22,7 +22,7 @@ namespace rerun {
             Resolution(int width, int height)
                 : resolution{static_cast<float>(width), static_cast<float>(height)} {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #undef ResolutionExt

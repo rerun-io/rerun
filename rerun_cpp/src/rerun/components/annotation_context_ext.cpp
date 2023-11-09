@@ -12,7 +12,7 @@ namespace rerun {
 
 #define AnnotationContext AnnotationContextExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             AnnotationContext(
                 std::initializer_list<rerun::datatypes::ClassDescription> class_descriptions
@@ -23,7 +23,7 @@ namespace rerun {
                 }
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
 

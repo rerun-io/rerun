@@ -32,7 +32,7 @@ fn clears() -> anyhow::Result<()> {
             [&[point] as _, &[color] as _],
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {
@@ -69,7 +69,7 @@ fn clears() -> anyhow::Result<()> {
             [&[point] as _],
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {
@@ -100,7 +100,7 @@ fn clears() -> anyhow::Result<()> {
             [&[color] as _],
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {
@@ -133,7 +133,7 @@ fn clears() -> anyhow::Result<()> {
             clear.as_component_batches().iter().map(|b| b.as_ref()),
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {
@@ -180,7 +180,7 @@ fn clears() -> anyhow::Result<()> {
             clear.as_component_batches().iter().map(|b| b.as_ref()),
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {
@@ -226,7 +226,7 @@ fn clears() -> anyhow::Result<()> {
             [&[instance_key] as _],
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {
@@ -271,7 +271,7 @@ fn clears() -> anyhow::Result<()> {
             [&[point] as _, &[color] as _],
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {
@@ -327,7 +327,7 @@ fn clears() -> anyhow::Result<()> {
             [&[color] as _, &[point] as _],
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {
@@ -381,7 +381,7 @@ fn clears() -> anyhow::Result<()> {
             [&[color] as _],
         )?;
 
-        db.add_data_row(&row)?;
+        db.add_data_row(row)?;
 
         {
             let query = LatestAtQuery {

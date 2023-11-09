@@ -26,11 +26,14 @@ re_log_types.workspace = true
 re_log.workspace = true
 re_smart_channel.workspace = true
 re_tracing.workspace = true
+re_types = { workspace = true, features = ["image"] }
 re_ws_comms = { workspace = true, features = ["client"] }
 
 anyhow.workspace = true
+image.workspace = true
 itertools.workspace = true
 rayon.workspace = true
+thiserror.workspace = true
 
 
 [build-dependencies]

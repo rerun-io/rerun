@@ -3,7 +3,7 @@
 namespace rerun {
     namespace archetypes {
 #ifdef CODEGEN
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         /// Creates a pinhole from the camera focal length and resolution, both specified in pixels.
         ///
@@ -44,7 +44,7 @@ namespace rerun {
             return std::move(*this);
         }
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         Pinhole Pinhole::from_focal_length_and_resolution(

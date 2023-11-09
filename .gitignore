@@ -10,6 +10,7 @@ crates/re_types_builder/source_hash.txt
 *.o
 **/arrow/
 **/build/
+**/build-msvc/
 **/CMakeFiles/
 **/CMakeCache.txt
 **/Makefile

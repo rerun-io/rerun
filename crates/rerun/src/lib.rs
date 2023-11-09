@@ -105,6 +105,9 @@
 
 mod run;
 
+#[cfg(feature = "sdk")]
+mod sdk;
+
 #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
 pub mod clap;
 
@@ -112,11 +115,22 @@ pub mod clap;
 #[cfg(all(feature = "sdk", feature = "native_viewer"))]
 pub mod native_viewer;
 
+#[cfg(feature = "demo")]
+pub mod demo_util;
+
+#[cfg(feature = "log")]
+pub mod log_integration;
+
+#[cfg(feature = "log")]
+pub use re_log::default_log_filter;
+
+#[cfg(feature = "log")]
+pub use log_integration::Logger;
+
 pub use run::{run, CallSource};
 
-// NOTE: Have a look at `re_sdk/src/lib.rs` for an accurate listing of all these symbols.
 #[cfg(feature = "sdk")]
-pub use re_sdk::*;
+pub use sdk::*;
 
 /// Re-exports of other crates.
 pub mod external {
@@ -133,4 +147,10 @@ pub mod external {
 
     #[cfg(feature = "sdk")]
     pub use re_sdk::external::*;
+
+    #[cfg(feature = "sdk")]
+    pub use re_types;
+
+    #[cfg(feature = "sdk")]
+    pub use re_types::external::*;
 }
