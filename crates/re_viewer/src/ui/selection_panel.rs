@@ -427,36 +427,6 @@ fn entity_props_ui(
         });
 }
 
-fn colormap_props_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    entity_props: &mut EntityProperties,
-) {
-    let mut re_renderer_colormap = match *entity_props.color_mapper.get() {
-        ColorMapper::Colormap(Colormap::Grayscale) => re_renderer::Colormap::Grayscale,
-        ColorMapper::Colormap(Colormap::Turbo) => re_renderer::Colormap::Turbo,
-        ColorMapper::Colormap(Colormap::Viridis) => re_renderer::Colormap::Viridis,
-        ColorMapper::Colormap(Colormap::Plasma) => re_renderer::Colormap::Plasma,
-        ColorMapper::Colormap(Colormap::Magma) => re_renderer::Colormap::Magma,
-        ColorMapper::Colormap(Colormap::Inferno) => re_renderer::Colormap::Inferno,
-    };
-
-    ui.label("Color map");
-    colormap_dropdown_button_ui(ctx.render_ctx, ui, &mut re_renderer_colormap);
-
-    let new_colormap = match re_renderer_colormap {
-        re_renderer::Colormap::Grayscale => Colormap::Grayscale,
-        re_renderer::Colormap::Turbo => Colormap::Turbo,
-        re_renderer::Colormap::Viridis => Colormap::Viridis,
-        re_renderer::Colormap::Plasma => Colormap::Plasma,
-        re_renderer::Colormap::Magma => Colormap::Magma,
-        re_renderer::Colormap::Inferno => Colormap::Inferno,
-    };
-    entity_props.color_mapper = EditableAutoValue::UserEdited(ColorMapper::Colormap(new_colormap));
-
-    ui.end_row();
-}
-
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<SpaceViewClassName>> =
     once_cell::sync::Lazy::new(|| {
@@ -720,6 +690,36 @@ fn visible_history_boundary_ui(
             "Show data until the end of the timeline"
         });
     });
+}
+
+fn colormap_props_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_props: &mut EntityProperties,
+) {
+    let mut re_renderer_colormap = match *entity_props.color_mapper.get() {
+        ColorMapper::Colormap(Colormap::Grayscale) => re_renderer::Colormap::Grayscale,
+        ColorMapper::Colormap(Colormap::Turbo) => re_renderer::Colormap::Turbo,
+        ColorMapper::Colormap(Colormap::Viridis) => re_renderer::Colormap::Viridis,
+        ColorMapper::Colormap(Colormap::Plasma) => re_renderer::Colormap::Plasma,
+        ColorMapper::Colormap(Colormap::Magma) => re_renderer::Colormap::Magma,
+        ColorMapper::Colormap(Colormap::Inferno) => re_renderer::Colormap::Inferno,
+    };
+
+    ui.label("Color map");
+    colormap_dropdown_button_ui(ctx.render_ctx, ui, &mut re_renderer_colormap);
+
+    let new_colormap = match re_renderer_colormap {
+        re_renderer::Colormap::Grayscale => Colormap::Grayscale,
+        re_renderer::Colormap::Turbo => Colormap::Turbo,
+        re_renderer::Colormap::Viridis => Colormap::Viridis,
+        re_renderer::Colormap::Plasma => Colormap::Plasma,
+        re_renderer::Colormap::Magma => Colormap::Magma,
+        re_renderer::Colormap::Inferno => Colormap::Inferno,
+    };
+    entity_props.color_mapper = EditableAutoValue::UserEdited(ColorMapper::Colormap(new_colormap));
+
+    ui.end_row();
 }
 
 fn pinhole_props_ui(

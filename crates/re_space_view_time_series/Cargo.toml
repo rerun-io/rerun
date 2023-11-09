@@ -17,7 +17,6 @@ all-features = true
 
 [dependencies]
 re_arrow_store.workspace = true
-re_data_ui.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
