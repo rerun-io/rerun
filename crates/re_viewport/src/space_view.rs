@@ -1,6 +1,7 @@
-use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt};
+use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{ScreenshotMode, SpaceViewContents};
+use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
     DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
     SpaceViewSystemRegistry, ViewerContext,
@@ -98,6 +99,14 @@ impl SpaceViewBlueprint {
         let mut contents = SpaceViewContents::default();
         contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
+        let mut root_entity_properties = EntityProperties::default();
+
+        // better defaults for the time series space view
+        if space_view_class == TimeSeriesSpaceView::NAME {
+            root_entity_properties.visible_history.nanos = VisibleHistory::ALL;
+            root_entity_properties.visible_history.sequences = VisibleHistory::ALL;
+        }
+
         Self {
             display_name,
             class_name: space_view_class,
@@ -105,7 +114,7 @@ impl SpaceViewBlueprint {
             space_origin: space_path.clone(),
             contents,
             entities_determined_by_user: false,
-            root_entity_properties: Default::default(),
+            root_entity_properties,
         }
     }
 
