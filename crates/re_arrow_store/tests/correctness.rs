@@ -11,7 +11,8 @@ use re_arrow_store::{
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
 use re_log_types::{
-    build_frame_nr, build_log_time, DataCell, Duration, EntityPath, Time, TimeType, Timeline,
+    build_frame_nr, build_log_time, DataCell, Duration, EntityPath, Time, TimeInt, TimeType,
+    Timeline,
 };
 use re_types::components::InstanceKey;
 use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
@@ -345,4 +346,96 @@ pub fn init_logs() {
     if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
         re_log::setup_native_logging();
     }
+}
+
+// ---
+
+#[test]
+fn entity_min_time_correct() {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        entity_min_time_correct_impl(&mut store);
+    }
+}
+
+fn entity_min_time_correct_impl(store: &mut DataStore) {
+    let ent_path = EntityPath::from("this/that");
+    let wrong_ent_path = EntityPath::from("this/that/other");
+
+    let positions = build_some_positions2d(3);
+    let colors = build_some_colors(3);
+    let now = Time::now();
+    let now_plus_one = now + Duration::from_secs(1.0);
+    let now_minus_one = now - Duration::from_secs(1.0);
+    let row = test_row!(ent_path @ [build_log_time(now), build_frame_nr(42.into())] => 3; [positions.clone(), colors.clone()]);
+    store.insert_row(&row).unwrap();
+
+    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
+    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_log_time = Timeline::log_time();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(42))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
+
+    // insert row in the future, these shouldn't be visible
+    let row = test_row!(ent_path @ [build_log_time(now_plus_one), build_frame_nr(54.into())] => 3; [positions.clone(), colors.clone()]);
+    store.insert_row(&row).unwrap();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(42))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
+
+    // insert row in the past, these should be visible
+    let row = test_row!(ent_path @ [build_log_time(now_minus_one), build_frame_nr(32.into())] => 3; [positions.clone(), colors.clone()]);
+    store.insert_row(&row).unwrap();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(32))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now_minus_one))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
 }

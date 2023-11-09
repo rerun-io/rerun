@@ -62,6 +62,7 @@ pub struct PlotSeries {
 pub struct TimeSeriesSystem {
     pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
+    pub min_time: Option<i64>,
 }
 
 impl NamedViewSystem for TimeSeriesSystem {
@@ -181,6 +182,12 @@ impl TimeSeriesSystem {
             if points.is_empty() {
                 continue;
             }
+
+            let min_time = store
+                .entity_min_time(&query.timeline, ent_path)
+                .map_or(points[0].time, |time| time.as_i64()); // point is not empty
+
+            self.min_time = Some(self.min_time.map_or(min_time, |time| time.min(min_time)));
 
             // If all points within a line share the label (and it isn't `None`), then we use it
             // as the whole line label for the plot legend.
