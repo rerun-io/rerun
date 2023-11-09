@@ -27,7 +27,7 @@ pub struct StoreHub {
     selected_rec_id: Option<StoreId>,
     selected_application_id: Option<ApplicationId>,
     blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
-    store_dbs: StoreBundle,
+    store_bundle: StoreBundle,
 
     /// Was a recording ever activated? Used by the heuristic controlling the welcome screen.
     was_recording_active: bool,
@@ -59,7 +59,7 @@ impl StoreHub {
     pub fn new() -> Self {
         re_tracing::profile_function!();
         let mut blueprint_by_app_id = HashMap::new();
-        let mut store_dbs = StoreBundle::default();
+        let mut store_bundle = StoreBundle::default();
 
         let welcome_screen_store_id = StoreId::from_string(
             StoreKind::Blueprint,
@@ -70,14 +70,14 @@ impl StoreHub {
             welcome_screen_store_id.clone(),
         );
 
-        let welcome_screen_blueprint = store_dbs.blueprint_entry(&welcome_screen_store_id);
+        let welcome_screen_blueprint = store_bundle.blueprint_entry(&welcome_screen_store_id);
         crate::app_blueprint::setup_welcome_screen_blueprint(welcome_screen_blueprint);
 
         Self {
             selected_rec_id: None,
             selected_application_id: None,
             blueprint_by_app_id,
-            store_dbs,
+            store_bundle,
 
             was_recording_active: false,
 
@@ -100,22 +100,22 @@ impl StoreHub {
         // As long as we have a blueprint-id, create the blueprint.
         blueprint_id
             .as_ref()
-            .map(|id| self.store_dbs.blueprint_entry(id));
+            .map(|id| self.store_bundle.blueprint_entry(id));
 
         // If we have a blueprint, we can return the `StoreContext`. In most
         // cases it should have already existed or been created above.
         blueprint_id
-            .and_then(|id| self.store_dbs.blueprint(id))
+            .and_then(|id| self.store_bundle.blueprint(id))
             .map(|blueprint| {
                 let recording = self
                     .selected_rec_id
                     .as_ref()
-                    .and_then(|id| self.store_dbs.recording(id));
+                    .and_then(|id| self.store_bundle.recording(id));
 
                 StoreContext {
                     blueprint,
                     recording,
-                    all_recordings: self.store_dbs.recordings().collect_vec(),
+                    all_recordings: self.store_bundle.recordings().collect_vec(),
                 }
             })
     }
@@ -132,7 +132,7 @@ impl StoreHub {
     pub fn set_recording_id(&mut self, recording_id: StoreId) {
         // If this recording corresponds to an app that we know about, then update the app-id.
         if let Some(app_id) = self
-            .store_dbs
+            .store_bundle
             .recording(&recording_id)
             .as_ref()
             .and_then(|recording| recording.app_id())
@@ -146,7 +146,7 @@ impl StoreHub {
 
     pub fn remove_recording_id(&mut self, recording_id: &StoreId) {
         if self.selected_rec_id.as_ref() == Some(recording_id) {
-            if let Some(new_selection) = self.store_dbs.find_closest_recording(recording_id) {
+            if let Some(new_selection) = self.store_bundle.find_closest_recording(recording_id) {
                 self.set_recording_id(new_selection.clone());
             } else {
                 self.selected_application_id = None;
@@ -154,7 +154,7 @@ impl StoreHub {
             }
         }
 
-        self.store_dbs.remove(recording_id);
+        self.store_bundle.remove(recording_id);
     }
 
     /// Change the selected [`ApplicationId`]
@@ -187,7 +187,7 @@ impl StoreHub {
     pub fn clear_blueprint(&mut self) {
         if let Some(app_id) = &self.selected_application_id {
             if let Some(blueprint_id) = self.blueprint_by_app_id.remove(app_id) {
-                self.store_dbs.remove(&blueprint_id);
+                self.store_bundle.remove(&blueprint_id);
             }
         }
     }
@@ -197,34 +197,82 @@ impl StoreHub {
     /// Note that the recording is not automatically made active. Use [`StoreHub::set_recording_id`]
     /// if needed.
     pub fn insert_recording(&mut self, store_db: StoreDb) {
-        self.store_dbs.insert_recording(store_db);
+        self.store_bundle.insert_recording(store_db);
     }
 
     /// Mutable access to a [`StoreDb`] by id
     pub fn store_db_mut(&mut self, store_id: &StoreId) -> &mut StoreDb {
-        self.store_dbs.store_db_entry(store_id)
+        self.store_bundle.store_db_entry(store_id)
     }
 
     /// Remove any empty [`StoreDb`]s from the hub
     pub fn purge_empty(&mut self) {
-        self.store_dbs.purge_empty();
+        self.store_bundle.purge_empty();
     }
 
     /// Call [`StoreDb::purge_fraction_of_ram`] on every recording
+    //
+    // NOTE: If you touch any of this, make sure to play around with our GC stress test scripts
+    // available under `$WORKSPACE_ROOT/tests/python/gc_stress`.
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
-        self.store_dbs.purge_fraction_of_ram(fraction_to_purge);
+        re_tracing::profile_function!();
+
+        let Some(store_id) = self.store_bundle.find_oldest_modified_recording().cloned() else {
+            return;
+        };
+
+        let store_dbs = &mut self.store_bundle.store_dbs;
+
+        let Some(store_db) = store_dbs.get_mut(&store_id) else {
+            if cfg!(debug_assertions) {
+                unreachable!();
+            }
+            return; // unreachable
+        };
+
+        let store_size_before =
+            store_db.store().timeless_size_bytes() + store_db.store().temporal_size_bytes();
+        store_db.purge_fraction_of_ram(fraction_to_purge);
+        let store_size_after =
+            store_db.store().timeless_size_bytes() + store_db.store().temporal_size_bytes();
+
+        // No point keeping an empty recording around.
+        if store_db.is_empty() {
+            self.remove_recording_id(&store_id);
+            return;
+        }
+
+        // Running the GC didn't do anything.
+        //
+        // That's because all that's left in that store is protected rows: it's time to remove it
+        // entirely, unless it's the last recording still standing, in which case we're better off
+        // keeping some data around to show the user rather than a blank screen.
+        //
+        // If the user needs the memory for something else, they will get it back as soon as they
+        // log new things anyhow.
+        if store_size_before == store_size_after && store_dbs.len() > 1 {
+            self.remove_recording_id(&store_id);
+        }
+
+        // Either we've reached our target goal or we couldn't fetch memory stats, in which case
+        // we still consider that we're done anyhow.
+
+        // NOTE: It'd be tempting to loop through recordings here, as long as we haven't reached
+        // our actual target goal.
+        // We cannot do that though: there are other subsystems that need to release memory before
+        // we can get an accurate reading of the current memory used and decide if we should go on.
     }
 
     /// Directly access the [`StoreDb`] for the selected recording
     pub fn current_recording(&self) -> Option<&StoreDb> {
         self.selected_rec_id
             .as_ref()
-            .and_then(|id| self.store_dbs.recording(id))
+            .and_then(|id| self.store_bundle.recording(id))
     }
 
     /// Check whether the [`StoreHub`] contains the referenced recording
     pub fn contains_recording(&self, id: &StoreId) -> bool {
-        self.store_dbs.contains_recording(id)
+        self.store_bundle.contains_recording(id)
     }
 
     /// Persist any in-use blueprints to durable storage.
@@ -237,7 +285,7 @@ impl StoreHub {
         // there may be other Blueprints in the Hub.
 
         for (app_id, blueprint_id) in &self.blueprint_by_app_id {
-            if let Some(blueprint) = self.store_dbs.blueprint_mut(blueprint_id) {
+            if let Some(blueprint) = self.store_bundle.blueprint_mut(blueprint_id) {
                 if self.blueprint_last_save.get(blueprint_id) != Some(&blueprint.generation()) {
                     blueprint.gc_everything_but_the_latest_row();
 
@@ -291,7 +339,7 @@ impl StoreHub {
                             .insert(app_id.clone(), store.store_id().clone());
                         self.blueprint_last_save
                             .insert(store.store_id().clone(), store.generation());
-                        self.store_dbs.insert_blueprint(store);
+                        self.store_bundle.insert_blueprint(store);
                     } else {
                         anyhow::bail!(
                             "Found unexpected store while loading blueprint: {:?}",
@@ -313,7 +361,7 @@ impl StoreHub {
             .selected_application_id
             .as_ref()
             .and_then(|app_id| self.blueprint_by_app_id.get(app_id))
-            .and_then(|blueprint_id| self.store_dbs.blueprint(blueprint_id));
+            .and_then(|blueprint_id| self.store_bundle.blueprint(blueprint_id));
 
         let blueprint_stats = blueprint
             .map(|store_db| DataStoreStats::from_store(store_db.store()))
@@ -326,7 +374,7 @@ impl StoreHub {
         let recording = self
             .selected_rec_id
             .as_ref()
-            .and_then(|rec_id| self.store_dbs.recording(rec_id));
+            .and_then(|rec_id| self.store_bundle.recording(rec_id));
 
         let recording_stats = recording
             .map(|store_db| DataStoreStats::from_store(store_db.store()))
@@ -433,6 +481,19 @@ impl StoreBundle {
         }
     }
 
+    /// Returns the [`StoreId`] of the oldest modified recording, according to [`StoreDb::last_modified_at`].
+    pub fn find_oldest_modified_recording(&self) -> Option<&StoreId> {
+        let mut store_dbs = self
+            .store_dbs
+            .values()
+            .filter(|db| db.store_kind() == StoreKind::Recording)
+            .collect_vec();
+
+        store_dbs.sort_by_key(|db| db.last_modified_at());
+
+        store_dbs.first().map(|db| db.store_id())
+    }
+
     // --
 
     pub fn contains_recording(&self, id: &StoreId) -> bool {
@@ -528,14 +589,6 @@ impl StoreBundle {
 
     pub fn purge_empty(&mut self) {
         self.store_dbs.retain(|_, store_db| !store_db.is_empty());
-    }
-
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
-        re_tracing::profile_function!();
-
-        for store_db in self.store_dbs.values_mut() {
-            store_db.purge_fraction_of_ram(fraction_to_purge);
-        }
     }
 
     pub fn drain_store_dbs(&mut self) -> impl Iterator<Item = StoreDb> + '_ {

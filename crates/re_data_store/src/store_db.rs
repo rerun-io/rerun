@@ -318,6 +318,9 @@ pub struct StoreDb {
 
     /// Where we store the entities.
     entity_db: EntityDb,
+
+    /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
+    last_modified_at: web_time::Instant,
 }
 
 impl StoreDb {
@@ -327,6 +330,7 @@ impl StoreDb {
             data_source: None,
             set_store_info: None,
             entity_db: Default::default(),
+            last_modified_at: web_time::Instant::now(),
         }
     }
 
@@ -408,6 +412,10 @@ impl StoreDb {
         self.entity_db.data_store.generation()
     }
 
+    pub fn last_modified_at(&self) -> web_time::Instant {
+        self.last_modified_at
+    }
+
     pub fn is_empty(&self) -> bool {
         self.set_store_info.is_none() && self.num_rows() == 0
     }
@@ -436,6 +444,8 @@ impl StoreDb {
         for row in table.to_rows() {
             self.add_data_row(row?)?;
         }
+
+        self.last_modified_at = web_time::Instant::now();
 
         Ok(())
     }
@@ -489,6 +499,7 @@ impl StoreDb {
             data_source: _,
             set_store_info: _,
             entity_db,
+            last_modified_at: _,
         } = self;
 
         entity_db.purge(&deleted);

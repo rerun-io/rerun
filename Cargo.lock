@@ -4144,6 +4144,7 @@ dependencies = [
  "serde",
  "similar-asserts",
  "thiserror",
+ "web-time",
 ]
 
 [[package]]

@@ -18,10 +18,31 @@ pub struct MemoryUse {
 }
 
 impl MemoryUse {
+    #[inline]
     pub fn capture() -> Self {
         Self {
             resident: bytes_resident(),
             counted: crate::accounting_allocator::global_allocs().map(|c| c.size as _),
+        }
+    }
+
+    /// Bytes used by the application according to our best estimate.
+    ///
+    /// This is either [`Self::counted`] if it's available, otherwise fallbacks to
+    /// [`Self::resident`] if that's available, otherwise `None`.
+    #[inline]
+    pub fn used(&self) -> Option<i64> {
+        self.counted.or(self.resident)
+    }
+}
+
+impl std::ops::Mul<f32> for MemoryUse {
+    type Output = Self;
+
+    fn mul(self, factor: f32) -> Self::Output {
+        Self {
+            resident: self.resident.map(|v| (v as f32 * factor) as i64),
+            counted: self.counted.map(|v| (v as f32 * factor) as i64),
         }
     }
 }
