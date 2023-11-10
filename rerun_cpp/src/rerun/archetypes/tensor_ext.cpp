@@ -22,7 +22,7 @@ namespace rerun {
         )
             : Tensor(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
-        /// Update the `names` of the contained [`TensorData`] dimensions.
+        /// Update the `names` of the contained `TensorData` dimensions.
         ///
         /// Any existing Dimension names will be overwritten.
         ///

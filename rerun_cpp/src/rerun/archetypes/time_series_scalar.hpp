@@ -29,7 +29,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple line plot
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>
@@ -168,9 +170,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::TimeSeriesScalar> {
         /// Serialize all set component batches.

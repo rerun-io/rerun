@@ -27,7 +27,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Depth to 3D example
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/depth_image_3d/f78674bdae0eb25786c6173307693c5338f38b87/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm> // fill_n
@@ -132,9 +134,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::DepthImage> {
         /// Serialize all set component batches.

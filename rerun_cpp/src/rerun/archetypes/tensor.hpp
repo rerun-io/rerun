@@ -20,7 +20,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple Tensor
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm> // std::generate
@@ -63,7 +65,7 @@ namespace rerun {
             )
                 : Tensor(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
-            /// Update the `names` of the contained [`TensorData`] dimensions.
+            /// Update the `names` of the contained `TensorData` dimensions.
             ///
             /// Any existing Dimension names will be overwritten.
             ///
@@ -87,9 +89,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Tensor> {
         /// Serialize all set component batches.

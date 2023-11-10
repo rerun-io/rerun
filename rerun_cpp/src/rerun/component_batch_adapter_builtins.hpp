@@ -3,6 +3,9 @@
 #include "component_batch.hpp"
 #include "component_batch_adapter.hpp"
 
+// Documenting the builtin adapters is too much clutter for the doc class overview.
+/// \cond private
+
 namespace rerun {
     /// Adapter from std::vector of components.
     ///
@@ -98,3 +101,5 @@ namespace rerun {
         }
     };
 } // namespace rerun
+
+/// \endcond

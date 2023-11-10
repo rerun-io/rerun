@@ -24,6 +24,7 @@ namespace rerun {
     /// TODO(andreas): Point to an example here and in the assert.
     template <typename TComponent, typename TInput, typename Enable = std::enable_if_t<true>>
     struct ComponentBatchAdapter {
+        /// \private
         template <typename... Ts>
         struct NoAdapterFor : std::false_type {};
 

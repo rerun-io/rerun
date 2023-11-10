@@ -28,7 +28,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple indexed 3D mesh
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/mesh3d_simple/e1e5fd97265daf0d0bc7b782d862f19086fd6975/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <vector>
@@ -155,9 +157,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Mesh3D> {
         /// Serialize all set component batches.

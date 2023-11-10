@@ -9,6 +9,7 @@
 #include <rerun/result.hpp>
 
 namespace arrow {
+    /// \private
     template <typename T>
     class NumericBuilder;
 

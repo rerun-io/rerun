@@ -31,7 +31,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### `image_simple`:
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <vector>
@@ -109,9 +111,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Image> {
         /// Serialize all set component batches.

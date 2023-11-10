@@ -1,8 +1,3 @@
-// The Rerun C++ SDK.
-//
-// For more information, read our [getting-started guide](https://www.rerun.io/docs/getting-started/cpp)
-// or visit <https://www.rerun.io/>.
-
 #pragma once
 
 // Built-in Rerun types (largely generated from an interface definition language)
@@ -61,4 +56,18 @@ namespace rerun {
     using datatypes::Vec2D;
     using datatypes::Vec3D;
     using datatypes::Vec4D;
+
+    // Document namespaces that span several files:
+
+    /// All built-in archetypes. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
+    namespace archetypes {}
+
+    /// All built-in components. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
+    namespace components {}
+
+    /// All built-in datatypes. See [Types](https://www.rerun.io/docs/reference/types) in the Rerun manual.
+    namespace datatypes {}
+
+    /// All blueprint types. This is still experimental and subject to change!
+    namespace blueprint {}
 } // namespace rerun

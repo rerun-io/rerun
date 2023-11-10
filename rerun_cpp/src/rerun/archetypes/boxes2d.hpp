@@ -29,7 +29,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple 2D boxes
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// int main() {
@@ -197,9 +199,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Boxes2D> {
         /// Serialize all set component batches.

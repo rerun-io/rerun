@@ -6,12 +6,16 @@
 #endif
 
 namespace rerun {
+    /// Configuration singleton that applies to the entire SDK.
     struct RerunGlobalConfig {
         static RerunGlobalConfig& instance();
 
         RerunGlobalConfig(const RerunGlobalConfig&) = delete;
         RerunGlobalConfig& operator=(const RerunGlobalConfig&) = delete;
 
+        /// Whether `RecordingStream`s are enabled by default.
+        ///
+        /// \see set_default_enabled, is_default_enabled
         std::atomic_bool default_enabled;
 
       private:

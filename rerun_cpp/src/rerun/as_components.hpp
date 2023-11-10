@@ -25,6 +25,9 @@ namespace rerun {
         );
     };
 
+    // Documenting the builtin generic `AsComponents` impls is too much clutter for the doc class overview.
+    /// \cond private
+
     /// AsComponents for a ComponentBatch.
     template <typename TComponent>
     struct AsComponents<ComponentBatch<TComponent>> {
@@ -88,4 +91,5 @@ namespace rerun {
         }
     };
 
+    /// \endcond
 } // namespace rerun

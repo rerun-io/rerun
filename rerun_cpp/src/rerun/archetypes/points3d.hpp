@@ -28,7 +28,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Randomly distributed 3D points with varying color and radius
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm>
@@ -168,9 +170,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Points3D> {
         /// Serialize all set component batches.

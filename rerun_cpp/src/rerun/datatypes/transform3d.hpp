@@ -22,6 +22,7 @@ namespace arrow {
 namespace rerun {
     namespace datatypes {
         namespace detail {
+            /// \private
             enum class Transform3DTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 None = 0,
@@ -29,6 +30,7 @@ namespace rerun {
                 TranslationRotationScale,
             };
 
+            /// \private
             union Transform3DData {
                 rerun::datatypes::TranslationAndMat3x3 translation_and_mat3x3;
 
