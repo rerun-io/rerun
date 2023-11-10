@@ -36,8 +36,13 @@ fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_si
 }
 
 // Determines the scale factor of a matrix
+//
 // This quite expensive, you may want to precompute this.
 fn average_scale_from_transform(transform: mat4x4f) -> f32 {
-    let scale = vec3f(length(transform[0]), length(transform[1]), length(transform[2]));
+    // Source: https://math.stackexchange.com/a/1463487
+    // Won't work with negative scale.
+    // Note we're only look at the scale, not at shear
+    let scale = vec3f(length(transform[0].xyz), length(transform[1].xyz), length(transform[2].xyz));
+    // Get geometric mean
     return pow(scale.x * scale.y * scale.z, 0.3333);
 }
