@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
 use re_data_store::EntityPath;
-use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, SpaceViewId};
+use re_viewer_context::{DataBlueprintGroupHandle, PerSystemEntities, SpaceViewId, ViewSystemName};
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
@@ -427,6 +427,22 @@ impl SpaceViewContents {
 
     pub fn entity_path(&self) -> EntityPath {
         self.space_view_id.as_entity_path()
+    }
+
+    /// Find all `ViewParts` that this [`SpaceViewContents`] thinks are relevant for the given entity path.
+    // TODO(jleibs): This inversion of data-structure is not great, but I believe this goes away as we
+    // implement a more direct heuristic evaluation in the future.
+    pub fn view_parts_for_entity_path(&self, entity_path: &EntityPath) -> Vec<ViewSystemName> {
+        self.per_system_entities()
+            .iter()
+            .filter_map(|(part, ents)| {
+                if ents.contains(entity_path) {
+                    Some(*part)
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 

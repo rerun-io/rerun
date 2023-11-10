@@ -26,6 +26,14 @@ impl EntityPropertyMap {
     pub fn set(&mut self, entity_path: EntityPath, prop: EntityProperties) {
         if prop == EntityProperties::default() {
             self.props.remove(&entity_path); // save space
+        } else if self.props.contains_key(&entity_path) {
+            let merged = self
+                .props
+                .get(&entity_path)
+                .cloned()
+                .unwrap_or_default()
+                .with_child(&prop);
+            self.props.insert(entity_path, merged);
         } else {
             self.props.insert(entity_path, prop);
         }
