@@ -90,7 +90,7 @@ impl Boxes2DPart {
         let positions = arch_view
             .iter_optional_component::<Position2D>()?
             .map(|position| position.unwrap_or(Position2D::ZERO));
-        let radii = process_radii(arch_view, ent_context.pinhole_scale, ent_path)?;
+        let radii = process_radii(arch_view, ent_context.radii_scale_factor, ent_path)?;
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
 
         if arch_view.num_instances() <= self.max_labels {

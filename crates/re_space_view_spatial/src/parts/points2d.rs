@@ -86,7 +86,7 @@ impl Points2DPart {
             )?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_context.pinhole_scale, ent_path)?;
+        let radii = process_radii(arch_view, ent_context.radii_scale_factor, ent_path)?;
 
         let positions = arch_view
             .iter_required_component::<Position2D>()?

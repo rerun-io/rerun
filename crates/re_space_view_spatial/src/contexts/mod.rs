@@ -23,7 +23,7 @@ use re_viewer_context::{
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
     pub world_from_entity: glam::Affine3A,
-    pub pinhole_scale: Option<glam::Vec2>,
+    pub radii_scale_factor: Option<f32>,
     pub depth_offset: DepthOffset,
     pub annotations: std::sync::Arc<Annotations>,
     pub shared_render_builders: &'a SharedRenderBuilders,

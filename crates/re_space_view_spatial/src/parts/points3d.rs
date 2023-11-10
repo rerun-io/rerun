@@ -267,7 +267,6 @@ impl LoadedPoints {
     #[inline]
     pub fn load_radii(
         arch_view: &ArchetypeView<Points3D>,
-
         ent_path: &EntityPath,
     ) -> Result<Vec<re_renderer::Size>, QueryError> {
         re_tracing::profile_function!();

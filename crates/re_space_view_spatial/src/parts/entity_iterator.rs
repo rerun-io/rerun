@@ -63,7 +63,7 @@ where
                 .per_entity
                 .get(&ent_path.hash())
                 .unwrap_or(&default_depth_offset),
-            pinhole_scale: get_pinhole_scale(ctx, query, transforms, ent_path),
+            radii_scale_factor: get_radii_scale_factor(ctx, query, transforms, ent_path),
             annotations: annotations.0.find(ent_path),
             shared_render_builders,
             highlight: query.highlights.entity_outline_mask(ent_path.hash()),
@@ -98,12 +98,12 @@ where
     Ok(())
 }
 
-fn get_pinhole_scale(
+fn get_radii_scale_factor(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,
     transforms: &TransformContext,
     ent_path: &EntityPath,
-) -> Option<glam::Vec2> {
+) -> Option<f32> {
     let pinhole_ent_path = transforms.parent_pinhole(ent_path)?;
 
     let pinhole = crate::query_pinhole(
@@ -120,6 +120,7 @@ fn get_pinhole_scale(
 
     let focal_length = pinhole.focal_length_in_pixels();
     let focal_length = glam::vec2(focal_length.x(), focal_length.y());
+    let scale = distance / focal_length;
 
-    Some(distance / focal_length)
+    Some(2.0 / (1.0 / scale.x + 1.0 / scale.y))
 }
