@@ -440,7 +440,7 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<Spac
     });
 
 /// Entities containing one of these components support the Visible History feature.
-static VISIBLE_HISTORY_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
+static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.HalfSizes2D",
@@ -474,7 +474,7 @@ fn should_display_visible_history(
         if let Some(component_names) = component_names {
             if !component_names
                 .iter()
-                .any(|name| VISIBLE_HISTORY_COMPONENT_NAMES.contains(name))
+                .any(|name| VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES.contains(name))
             {
                 return false;
             }

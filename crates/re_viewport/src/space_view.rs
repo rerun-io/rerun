@@ -102,6 +102,7 @@ impl SpaceViewBlueprint {
         let mut root_entity_properties = EntityProperties::default();
 
         // better defaults for the time series space view
+        // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
         if space_view_class == TimeSeriesSpaceView::NAME {
             root_entity_properties.visible_history.nanos = VisibleHistory::ALL;
             root_entity_properties.visible_history.sequences = VisibleHistory::ALL;

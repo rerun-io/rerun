@@ -13,12 +13,12 @@ use re_viewer_context::{
 use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
 
 #[derive(Clone, Default)]
-pub struct TimerSeriesSpaceViewState {
+pub struct TimeSeriesSpaceViewState {
     /// track across frames when the user moves the time cursor
     is_dragging_time_cursor: bool,
 }
 
-impl SpaceViewState for TimerSeriesSpaceViewState {
+impl SpaceViewState for TimeSeriesSpaceViewState {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -36,7 +36,7 @@ impl TimeSeriesSpaceView {
 }
 
 impl SpaceViewClass for TimeSeriesSpaceView {
-    type State = TimerSeriesSpaceViewState;
+    type State = TimeSeriesSpaceViewState;
 
     fn name(&self) -> SpaceViewClassName {
         Self::NAME.into()

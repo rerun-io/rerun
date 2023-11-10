@@ -187,7 +187,7 @@ impl TimeSeriesSystem {
 
             let min_time = store
                 .entity_min_time(&query.timeline, ent_path)
-                .map_or(points[0].time, |time| time.as_i64()); // point is not empty
+                .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
             self.min_time = Some(self.min_time.map_or(min_time, |time| time.min(min_time)));
 
