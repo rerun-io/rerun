@@ -162,16 +162,24 @@ pub fn process_labels<'a, A: Archetype>(
 /// where no radius is specified.
 pub fn process_radii<'a, A: Archetype>(
     arch_view: &'a re_query::ArchetypeView<A>,
+    pinhole_scale: Option<glam::Vec2>,
     ent_path: &EntityPath,
 ) -> Result<impl Iterator<Item = re_renderer::Size> + 'a, re_query::QueryError> {
     re_tracing::profile_function!();
+
     let ent_path = ent_path.clone();
     Ok(arch_view
         .iter_optional_component::<re_types::components::Radius>()?
         .map(move |radius| {
             radius.map_or(re_renderer::Size::AUTO, |r| {
                 if 0.0 <= r.0 && r.0.is_finite() {
-                    re_renderer::Size::new_scene(r.0)
+                    let factor = if let Some(scale) = pinhole_scale {
+                        2.0 / (1.0 / scale.x + 1.0 / scale.y)
+                    } else {
+                        1.
+                    };
+
+                    re_renderer::Size::new_scene(r.0 * factor)
                 } else {
                     if r.0 < 0.0 {
                         re_log::warn_once!("Found negative radius in entity {ent_path}");

@@ -88,7 +88,7 @@ impl Arrows3DPart {
             process_annotations::<Vector3D, Arrows3D>(query, arch_view, &ent_context.annotations)?;
 
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
-        let radii = process_radii(arch_view, ent_path)?;
+        let radii = process_radii(arch_view, ent_context.pinhole_scale, ent_path)?;
 
         if arch_view.num_instances() <= self.max_labels {
             // Max labels is small enough that we can afford iterating on the colors again.

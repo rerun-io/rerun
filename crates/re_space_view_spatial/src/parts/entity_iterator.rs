@@ -63,6 +63,7 @@ where
                 .per_entity
                 .get(&ent_path.hash())
                 .unwrap_or(&default_depth_offset),
+            pinhole_scale: get_pinhole_scale(ctx, query, transforms, ent_path),
             annotations: annotations.0.find(ent_path),
             shared_render_builders,
             highlight: query.highlights.entity_outline_mask(ent_path.hash()),
@@ -95,4 +96,30 @@ where
     }
 
     Ok(())
+}
+
+fn get_pinhole_scale(
+    ctx: &mut ViewerContext<'_>,
+    query: &ViewQuery<'_>,
+    transforms: &TransformContext,
+    ent_path: &EntityPath,
+) -> Option<glam::Vec2> {
+    let pinhole_ent_path = transforms.parent_pinhole(ent_path)?;
+
+    let pinhole = crate::query_pinhole(
+        ctx.store_db.store(),
+        &query.latest_at_query(),
+        pinhole_ent_path,
+    )?;
+
+    let distance = *query
+        .entity_props_map
+        .get(pinhole_ent_path)
+        .pinhole_image_plane_distance
+        .get();
+
+    let focal_length = pinhole.focal_length_in_pixels();
+    let focal_length = glam::vec2(focal_length.x(), focal_length.y());
+
+    Some(distance / focal_length)
 }
