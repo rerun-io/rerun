@@ -51,7 +51,7 @@ impl Boxes3DPart {
         let rotation = arch_view
             .iter_optional_component::<Rotation3D>()?
             .map(|position| position.unwrap_or(Rotation3D::IDENTITY));
-        let radii = process_radii(arch_view, ent_context.pinhole_scale, ent_path)?;
+        let radii = process_radii(arch_view, None, ent_path)?;
         let colors = process_colors(arch_view, ent_path, &annotation_infos)?;
         let labels = process_labels(arch_view, &annotation_infos)?;
 
