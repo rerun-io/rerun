@@ -94,8 +94,8 @@ impl ViewPartSystem for TimeSeriesSystem {
             ctx,
             &query.latest_at_query(),
             query
-                .iter_entities_and_properties_for_system(Self::name())
-                .map(|(p, _)| p),
+                .iter_visible_data_results(Self::name())
+                .map(|data| &data.entity_path),
         );
 
         match self.load_scalars(ctx, query) {
@@ -119,13 +119,13 @@ impl TimeSeriesSystem {
 
         let store = ctx.store_db.store();
 
-        for (ent_path, _ent_props) in query.iter_entities_and_properties_for_system(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::name()) {
             let mut points = Vec::new();
-            let annotations = self.annotation_map.find(ent_path);
+            let annotations = self.annotation_map.find(&data_result.entity_path);
             let annotation_info = annotations
                 .resolved_class_description(None)
                 .annotation_info();
-            let default_color = DefaultColor::EntityPath(ent_path);
+            let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
             let query = re_arrow_store::RangeQuery::new(
                 query.timeline,
@@ -135,7 +135,7 @@ impl TimeSeriesSystem {
             let arch_views = range_archetype::<
                 TimeSeriesScalar,
                 { TimeSeriesScalar::NUM_COMPONENTS },
-            >(store, &query, ent_path);
+            >(store, &query, &data_result.entity_path);
 
             for (time, arch_view) in arch_views {
                 let Some(time) = time else {
@@ -181,7 +181,8 @@ impl TimeSeriesSystem {
                 (points.iter().all(|p| p.attrs.label.as_ref() == Some(label)))
                     .then(|| label.clone())
             };
-            let line_label = same_label(&points).unwrap_or_else(|| ent_path.to_string());
+            let line_label =
+                same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string());
 
             self.add_line_segments(&line_label, points);
         }

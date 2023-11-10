@@ -61,7 +61,7 @@ impl ViewPartSystem for TextLogSystem {
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let store = ctx.store_db.store();
 
-        for (ent_path, _) in query.iter_entities_and_properties_for_system(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::name()) {
             // We want everything, for all times:
             let timeline_query =
                 re_arrow_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
@@ -69,7 +69,7 @@ impl ViewPartSystem for TextLogSystem {
             let arch_views = range_archetype::<TextLog, { TextLog::NUM_COMPONENTS }>(
                 store,
                 &timeline_query,
-                ent_path,
+                &data_result.entity_path,
             );
 
             for (time, arch_view) in arch_views {
@@ -80,7 +80,7 @@ impl ViewPartSystem for TextLogSystem {
                 for (body, level, color) in itertools::izip!(bodies, levels, colors) {
                     self.entries.push(Entry {
                         row_id: arch_view.primary_row_id(),
-                        entity_path: ent_path.clone(),
+                        entity_path: data_result.entity_path.clone(),
                         time: time.map(|time| time.as_i64()),
                         color,
                         body,

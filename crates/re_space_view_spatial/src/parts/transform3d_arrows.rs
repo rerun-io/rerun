@@ -59,21 +59,21 @@ impl ViewPartSystem for Transform3DArrowsPart {
 
         let store = ctx.store_db.store();
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
-        for (ent_path, props) in query.iter_entities_and_properties_for_system(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::name()) {
             if store
-                .query_latest_component::<Transform3D>(ent_path, &latest_at_query)
+                .query_latest_component::<Transform3D>(&data_result.entity_path, &latest_at_query)
                 .is_none()
             {
                 continue;
             }
 
-            if !*props.transform_3d_visible {
+            if !*data_result.resolved_properties.transform_3d_visible {
                 continue;
             }
 
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.
             let Some(world_from_obj) = transforms.reference_from_entity_ignoring_pinhole(
-                ent_path,
+                &data_result.entity_path,
                 store,
                 &latest_at_query,
             ) else {
@@ -90,11 +90,11 @@ impl ViewPartSystem for Transform3DArrowsPart {
             add_axis_arrows(
                 &mut line_builder,
                 world_from_obj,
-                Some(ent_path),
-                *props.transform_3d_size,
+                Some(&data_result.entity_path),
+                *data_result.resolved_properties.transform_3d_size,
                 query
                     .highlights
-                    .entity_outline_mask(ent_path.hash())
+                    .entity_outline_mask(data_result.entity_path.hash())
                     .overall,
             );
         }

@@ -75,14 +75,17 @@ impl ViewPartSystem for BarChartViewPartSystem {
 
         let store = ctx.store_db.store();
 
-        for (ent_path, _props) in query.iter_entities_and_properties_for_system(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::name()) {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
-            let tensor =
-                store.query_latest_component::<re_types::components::TensorData>(ent_path, &query);
+            let tensor = store.query_latest_component::<re_types::components::TensorData>(
+                &data_result.entity_path,
+                &query,
+            );
 
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {
-                    self.charts.insert(ent_path.clone(), tensor.value.0.clone());
+                    self.charts
+                        .insert(data_result.entity_path.clone(), tensor.value.0.clone());
                     // shallow clones
                 }
             }

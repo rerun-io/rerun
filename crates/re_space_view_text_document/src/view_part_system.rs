@@ -51,10 +51,14 @@ impl ViewPartSystem for TextDocumentSystem {
 
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-        for (ent_path, _props) in query.iter_entities_and_properties_for_system(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::name()) {
             // TODO(jleibs): this match can go away once we resolve:
             // https://github.com/rerun-io/rerun/issues/3320
-            match query_archetype::<archetypes::TextDocument>(store, &timeline_query, ent_path) {
+            match query_archetype::<archetypes::TextDocument>(
+                store,
+                &timeline_query,
+                &data_result.entity_path,
+            ) {
                 Ok(arch_view) => {
                     let bodies = arch_view.iter_required_component::<components::Text>()?;
                     let media_types =
@@ -68,7 +72,10 @@ impl ViewPartSystem for TextDocumentSystem {
                 }
                 Err(QueryError::PrimaryNotFound(_)) => {}
                 Err(err) => {
-                    re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
+                    re_log::error_once!(
+                        "Unexpected error querying {:?}: {err}",
+                        &data_result.entity_path
+                    );
                 }
             };
         }

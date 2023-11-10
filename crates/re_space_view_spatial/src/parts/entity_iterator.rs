@@ -44,13 +44,13 @@ where
     let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-    for (ent_path, props) in query.iter_entities_and_properties_for_system(System::name()) {
+    for data_result in query.iter_visible_data_results(System::name()) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
         let world_from_entity = if view_ctx.space_view_class_name() == SpatialSpaceView3D.name() {
-            transforms.reference_from_entity(ent_path)
+            transforms.reference_from_entity(&data_result.entity_path)
         } else {
             transforms.reference_from_entity_ignoring_pinhole(
-                ent_path,
+                &data_result.entity_path,
                 ctx.store_db.store(),
                 &query.latest_at_query(),
             )
@@ -63,11 +63,13 @@ where
             world_from_entity,
             depth_offset: *depth_offsets
                 .per_entity
-                .get(&ent_path.hash())
+                .get(&data_result.entity_path.hash())
                 .unwrap_or(&default_depth_offset),
-            annotations: annotations.0.find(ent_path),
+            annotations: annotations.0.find(&data_result.entity_path),
             shared_render_builders,
-            highlight: query.highlights.entity_outline_mask(ent_path.hash()),
+            highlight: query
+                .highlights
+                .entity_outline_mask(data_result.entity_path.hash()),
             space_view_class_name: view_ctx.space_view_class_name(),
         };
 
@@ -75,8 +77,8 @@ where
             ctx.store_db.store(),
             &query.timeline,
             &query.latest_at,
-            &props.visible_history,
-            ent_path,
+            &data_result.resolved_properties.visible_history,
+            &data_result.entity_path,
         )
         .and_then(|entity_views| {
             for ent_view in entity_views {
@@ -85,13 +87,22 @@ where
                     std::sync::atomic::Ordering::Relaxed,
                 );
 
-                fun(ctx, ent_path, props, ent_view, &entity_context)?;
+                fun(
+                    ctx,
+                    &data_result.entity_path,
+                    &data_result.resolved_properties,
+                    ent_view,
+                    &entity_context,
+                )?;
             }
             Ok(())
         }) {
             Ok(_) | Err(QueryError::PrimaryNotFound(_)) => {}
             Err(err) => {
-                re_log::error_once!("Unexpected error querying {ent_path:?}: {err}");
+                re_log::error_once!(
+                    "Unexpected error querying {:?}: {err}",
+                    &data_result.entity_path
+                );
             }
         }
     }

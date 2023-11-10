@@ -10,23 +10,34 @@ use crate::{
     ViewerContext,
 };
 
+/// This is the primary mechanism through which data is passed to a `SpaceView`.
+///
+/// It contains everything necessary to properly use this data in the context of the
+/// `ViewSystem`s that it is a part of.
+///
+/// In the future `resolved_properties` will be replaced by a `StoreView` that contains
+/// the relevant data overrides for the given query.
 #[derive(Debug)]
 pub struct DataResult {
+    /// Where to retrieve the data from.
     // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
     // multi-RRD or blueprint-static data references.
     pub entity_path: EntityPath,
 
+    /// Which `ViewSystems`s to pass the `DataResult` to.
     pub view_parts: Vec<ViewSystemName>,
 
-    // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView
-    // The reason we store it here though is that context is part of the DataResult.
+    /// The resolved properties (including any hierarchical flattening) to apply.
+    // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
+    // For now, bundling this here acts as a good proxy for that future data-override mechanism.
     pub resolved_properties: EntityProperties,
 
-    // `EntityPath` in the Blueprint store where an override can be written
+    /// `EntityPath` in the Blueprint store where updated overrides should be written back.
     pub override_path: EntityPath,
 }
 
 impl DataResult {
+    /// Write the [`EntityProperties`] for this result back to the Blueprint store.
     pub fn save_override(&self, props: EntityProperties, ctx: &ViewerContext<'_>) {
         if props.has_edits(&self.resolved_properties) {
             let timepoint = TimePoint::timeless();
@@ -62,7 +73,7 @@ pub struct ViewQuery<'s> {
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
 
-    /// All queried entities.
+    /// All queried [`DataResult`]s.
     ///
     /// Contains also invisible objects, use `iter_entities` to iterate over visible ones.
     pub per_system_data_results: &'s PerSystemDataResults<'s>,
@@ -80,38 +91,34 @@ pub struct ViewQuery<'s> {
 }
 
 impl<'s> ViewQuery<'s> {
-    /// Iter over all of the currently visible [`EntityPath`]s in the [`ViewQuery`].
-    ///
-    /// Also includes the corresponding [`EntityProperties`].
-    pub fn iter_entities_and_properties_for_system(
+    /// Iter over all of the currently visible [`DataResults`]s for a given `ViewSystem`
+    pub fn iter_visible_data_results(
         &self,
         system: ViewSystemName,
-    ) -> impl Iterator<Item = (&EntityPath, &EntityProperties)> {
+    ) -> impl Iterator<Item = &DataResult> {
         self.per_system_data_results.get(&system).map_or(
             itertools::Either::Left(std::iter::empty()),
             |results| {
                 itertools::Either::Right(
                     results
                         .iter()
-                        .map(|data_result| {
-                            (&data_result.entity_path, &data_result.resolved_properties)
-                        })
-                        .filter(|(_, props)| props.visible),
+                        .filter(|result| result.resolved_properties.visible)
+                        .copied(),
                 )
             },
         )
     }
 
     /// Iterates over all [`DataResult`]s of the [`ViewQuery`].
-    pub fn iter_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
+    pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
         self.per_system_data_results
             .values()
             .flat_map(|data_results| data_results.iter().copied())
     }
 
     /// Iterates over all entities of the [`ViewQuery`].
-    pub fn iter_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
-        self.iter_data_results()
+    pub fn iter_all_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
+        self.iter_all_data_results()
             .map(|data_result| &data_result.entity_path)
             .unique()
     }

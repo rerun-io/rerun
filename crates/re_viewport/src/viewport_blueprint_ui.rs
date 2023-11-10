@@ -223,6 +223,8 @@ impl ViewportBlueprint<'_> {
         let entities = group.entities.clone();
         let group_name = group.display_name.clone();
 
+        // TODO(jleibs): We should use `query` instead of `resolve` in this function, but doing so
+        // requires changing the view layout a little bit, so holding off on that for now.
         let top_data_result =
             space_view
                 .contents

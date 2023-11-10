@@ -231,7 +231,7 @@ impl SpaceViewBlueprint {
         let data_results = self
             .contents
             .execute_query(self.auto_properties.clone(), ctx);
-        data_results.visit(|handle| {
+        data_results.visit(&mut |handle| {
             if let Some(result) = data_results.lookup(handle) {
                 for system in &result.view_parts {
                     per_system_data_results
