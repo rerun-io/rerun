@@ -161,8 +161,12 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     if 0.0 < point_data.unresolved_radius {
         // Span quad
-        let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos_in_world, point_data.unresolved_radius,
-                                                depth_cloud_info.radius_boost_in_ui_points, false);
+        let camera_distance = distance(frame.camera_position, point_data.pos_in_world);
+        let world_scale_factor = average_scale_from_transform(depth_cloud_info.world_from_rdf); // TODO(andreas): somewhat costly, should precompute this
+        let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance,
+                                                    frame.auto_size_points, world_scale_factor) +
+                           world_size_from_point_size(depth_cloud_info.radius_boost_in_ui_points, camera_distance);
+        let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos_in_world, world_radius, false);
         out.pos_in_clip = frame.projection_from_world * Vec4(quad.pos_in_world, 1.0);
         out.pos_in_world = quad.pos_in_world;
         out.point_radius = quad.point_resolved_radius;

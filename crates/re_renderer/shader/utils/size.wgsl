@@ -7,7 +7,12 @@ fn world_size_from_point_size(size_in_points: f32, camera_distance: f32) -> f32 
     return approx_pixel_world_size_at(camera_distance) * pixel_size;
 }
 
-fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_size: f32) -> f32 {
+// Resolves a size (see size.rs!) to a world scale size.
+//
+// world_size_scale:
+//      Scale factor that is applied iff the size is a world size.
+//      This is usually part of your object->world transform.
+fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_size: f32, world_size_scale: f32) -> f32 {
     // Resolve auto size.
     var unresolved_size: f32;
     if _unresolved_size >= f32max {
@@ -23,9 +28,16 @@ fn unresolved_size_to_world(_unresolved_size: f32, camera_distance: f32, auto_si
 
     // Is it a world size?
     if unresolved_size > 0.0 {
-        return unresolved_size;
+        return unresolved_size * world_size_scale;
     }
 
     // Negative size indicates size in points.
     return world_size_from_point_size(-unresolved_size, camera_distance);
+}
+
+// Determines the scale factor of a matrix
+// This quite expensive, you may want to precompute this.
+fn average_scale_from_transform(transform: mat4x4f) -> f32 {
+    let scale = vec3f(length(transform[0]), length(transform[1]), length(transform[2]));
+    return pow(scale.x * scale.y * scale.z, 0.3333);
 }

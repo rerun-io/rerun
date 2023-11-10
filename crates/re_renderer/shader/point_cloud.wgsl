@@ -98,8 +98,13 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let point_data = read_data(quad_idx);
 
     // Span quad
-    let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos, point_data.unresolved_radius,
-                                          draw_data.radius_boost_in_ui_points, has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES));
+    let camera_distance = distance(frame.camera_position, point_data.pos);
+    let world_scale_factor = average_scale_from_transform(batch.world_from_obj); // TODO(andreas): somewhat costly, should precompute this
+    let world_radius = unresolved_size_to_world(point_data.unresolved_radius, camera_distance,
+                                                frame.auto_size_points, world_scale_factor) +
+                       world_size_from_point_size(draw_data.radius_boost_in_ui_points, camera_distance);
+    let quad = sphere_or_circle_quad_span(vertex_idx, point_data.pos, world_radius,
+                                             has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES));
 
     // Output, transform to projection space and done.
     var out: VertexOut;
