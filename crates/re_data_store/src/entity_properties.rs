@@ -56,6 +56,7 @@ impl EntityPropertyMap {
     }
 }
 
+#[cfg(feature = "serde")]
 impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
     fn from_iter<T: IntoIterator<Item = (EntityPath, EntityProperties)>>(iter: T) -> Self {
         Self {
