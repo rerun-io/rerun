@@ -27,8 +27,13 @@ impl EntityPropertyMap {
         self.props.get(entity_path)
     }
 
+    /// Updates the properties for a given entity path.
+    ///
+    /// If an existing value is already in the map for the given entity path, the new value is merged
+    /// with the existing value. When merging, auto values that were already set inside the map are
+    /// preserved.
     #[inline]
-    pub fn set(&mut self, entity_path: EntityPath, prop: EntityProperties) {
+    pub fn update(&mut self, entity_path: EntityPath, prop: EntityProperties) {
         if prop == EntityProperties::default() {
             self.props.remove(&entity_path); // save space
         } else if self.props.contains_key(&entity_path) {
@@ -37,7 +42,7 @@ impl EntityPropertyMap {
                 .get(&entity_path)
                 .cloned()
                 .unwrap_or_default()
-                .with_child(&prop);
+                .merge_with(&prop);
             self.props.insert(entity_path, merged);
         } else {
             self.props.insert(entity_path, prop);
@@ -162,6 +167,44 @@ impl EntityProperties {
                 .or(&child.transform_3d_visible)
                 .clone(),
             transform_3d_size: self.transform_3d_size.or(&child.transform_3d_size).clone(),
+        }
+    }
+
+    /// Merge this `EntityProperty` with the values from another `EntityProperty`.
+    ///
+    /// When merging, other values are preferred over self values unless they are auto
+    /// values, in which case self values are preferred.
+    ///
+    /// This is important to combine the base-layer of up-to-date auto-values with values
+    /// loaded from the Blueprint store where the Auto values are not up-to-date.
+    pub fn merge_with(&self, other: &Self) -> Self {
+        Self {
+            visible: other.visible,
+            visible_history: self.visible_history.with_child(&other.visible_history),
+            interactive: other.interactive,
+
+            color_mapper: other.color_mapper.or(&self.color_mapper).clone(),
+
+            pinhole_image_plane_distance: other
+                .pinhole_image_plane_distance
+                .or(&self.pinhole_image_plane_distance)
+                .clone(),
+
+            backproject_depth: other.backproject_depth.or(&self.backproject_depth).clone(),
+            depth_from_world_scale: other
+                .depth_from_world_scale
+                .or(&self.depth_from_world_scale)
+                .clone(),
+            backproject_radius_scale: other
+                .backproject_radius_scale
+                .or(&self.backproject_radius_scale)
+                .clone(),
+
+            transform_3d_visible: other
+                .transform_3d_visible
+                .or(&self.transform_3d_visible)
+                .clone(),
+            transform_3d_size: self.transform_3d_size.or(&other.transform_3d_size).clone(),
         }
     }
 

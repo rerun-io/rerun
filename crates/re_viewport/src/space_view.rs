@@ -393,7 +393,7 @@ impl PropertyResolver for SpaceViewBlueprint {
                 {
                     let overridden_path =
                         EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
-                    prop_map.set(overridden_path, props.value.props);
+                    prop_map.update(overridden_path, props.value.props);
                 }
             });
         }
