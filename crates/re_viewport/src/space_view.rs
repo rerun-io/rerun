@@ -1,11 +1,11 @@
-use re_data_store::EntityPropertyMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
+use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataQuery, ScreenshotMode, SpaceViewContents};
+use re_space_view::{DataQuery, PropertyResolver, ScreenshotMode, SpaceViewContents};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
-    DynSpaceViewClass, PerSystemDataResults, SpaceViewClassName, SpaceViewHighlights, SpaceViewId,
-    SpaceViewState, SpaceViewSystemRegistry, ViewerContext,
+    DataResult, DynSpaceViewClass, PerSystemDataResults, SpaceViewClassName, SpaceViewHighlights,
+    SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, ViewerContext,
 };
 
 use crate::{
@@ -42,9 +42,6 @@ pub struct SpaceViewBlueprint {
     // TODO(jleibs): This needs to be per-query
     #[serde(skip)]
     pub auto_properties: EntityPropertyMap,
-
-    /// Top-level entity properties to be cascaded to all groups/entities contained in the space view.
-    pub root_entity_properties: EntityProperties,
 }
 
 // Default needed for deserialization when adding/changing fields.
@@ -59,7 +56,6 @@ impl Default for SpaceViewBlueprint {
             contents: SpaceViewContents::new(id),
             entities_determined_by_user: Default::default(),
             auto_properties: Default::default(),
-            root_entity_properties: Default::default(),
         }
     }
 }
@@ -75,7 +71,6 @@ impl SpaceViewBlueprint {
             contents,
             entities_determined_by_user,
             auto_properties: _,
-            root_entity_properties,
         } = self;
 
         id != &other.id
@@ -84,7 +79,6 @@ impl SpaceViewBlueprint {
             || space_origin != &other.space_origin
             || contents.has_edits(&other.contents)
             || entities_determined_by_user != &other.entities_determined_by_user
-            || root_entity_properties != &other.root_entity_properties
     }
 }
 
@@ -110,15 +104,6 @@ impl SpaceViewBlueprint {
         let mut contents = SpaceViewContents::new(id);
         contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
-        let mut root_entity_properties = EntityProperties::default();
-
-        // better defaults for the time series space view
-        // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
-        if space_view_class == TimeSeriesSpaceView::NAME {
-            root_entity_properties.visible_history.nanos = VisibleHistory::ALL;
-            root_entity_properties.visible_history.sequences = VisibleHistory::ALL;
-        }
-
         Self {
             display_name,
             class_name: space_view_class,
@@ -127,7 +112,6 @@ impl SpaceViewBlueprint {
             contents,
             entities_determined_by_user: false,
             auto_properties: Default::default(),
-            root_entity_properties,
         }
     }
 
@@ -244,9 +228,7 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let data_results = self
-            .contents
-            .execute_query(self.auto_properties.clone(), ctx);
+        let data_results = self.contents.execute_query(self, ctx);
 
         let mut per_system_data_results = PerSystemDataResults::default();
         {
@@ -358,5 +340,67 @@ impl SpaceViewBlueprint {
 
     pub fn entity_path(&self) -> EntityPath {
         self.id.as_entity_path()
+    }
+
+    pub fn root_data_result(&self, ctx: &ViewerContext<'_>) -> DataResult {
+        let entity_path = self.entity_path();
+
+        let props = ctx
+            .store_context
+            .blueprint
+            .store()
+            .query_timeless_component::<EntityPropertiesComponent>(&self.entity_path())
+            .map_or_else(
+                || {
+                    let mut props = EntityProperties::default();
+                    // better defaults for the time series space view
+                    // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
+                    if self.class_name == TimeSeriesSpaceView::NAME {
+                        props.visible_history.nanos = VisibleHistory::ALL;
+                        props.visible_history.sequences = VisibleHistory::ALL;
+                    }
+                    props
+                },
+                |result| result.value.props,
+            );
+
+        DataResult {
+            entity_path: entity_path.clone(),
+            view_parts: vec![],
+            resolved_properties: props,
+            override_path: entity_path,
+        }
+    }
+}
+
+impl PropertyResolver for SpaceViewBlueprint {
+    /// Helper function to lookup the properties for a given entity path.
+    ///
+    /// We start with the auto properties for the `SpaceView` as the base layer and
+    /// then incrementally override from there.
+    fn resolve_entity_overrides(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap {
+        re_tracing::profile_function!();
+        let blueprint = ctx.store_context.blueprint;
+
+        let mut prop_map = self.auto_properties.clone();
+
+        let props_path = self.entity_path().join(&"properties".into());
+        if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
+            tree.visit_children_recursively(&mut |path: &EntityPath| {
+                if let Some(props) = blueprint
+                    .store()
+                    .query_timeless_component::<EntityPropertiesComponent>(path)
+                {
+                    let overridden_path =
+                        EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
+                    prop_map.set(overridden_path, props.value.props);
+                }
+            });
+        }
+        prop_map
+    }
+
+    fn resolve_root_override(&self, ctx: &ViewerContext<'_>) -> EntityProperties {
+        self.root_data_result(ctx).resolved_properties
     }
 }

@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
-use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, EntityPropertyMap};
-use re_viewer_context::{DataResult, SpaceViewId, ViewerContext};
+use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
+use re_viewer_context::{DataResult, ViewerContext};
 use slotmap::SlotMap;
 
 use crate::{DataBlueprintGroup, SpaceViewContents};
@@ -50,6 +50,10 @@ pub struct DataResultNode {
     children: BTreeSet<DataResultHandle>,
 }
 
+pub trait PropertyResolver {
+    fn resolve_entity_overrides(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap;
+    fn resolve_root_override(&self, ctx: &ViewerContext<'_>) -> EntityProperties;
+}
 /// The common trait implemented for data queries
 ///
 /// Both interfaces return [`DataResult`]s, which are self-contained description of the data
@@ -62,7 +66,7 @@ pub trait DataQuery {
     /// This is used when building up the contents for a `SpaceView`.
     fn execute_query(
         &self,
-        auto_properties: EntityPropertyMap,
+        property_resolver: &impl PropertyResolver,
         ctx: &ViewerContext<'_>,
     ) -> DataResultTree;
 
@@ -74,7 +78,7 @@ pub trait DataQuery {
     /// a selection panel.
     fn resolve(
         &self,
-        auto_properties: EntityPropertyMap,
+        property_resolver: &impl PropertyResolver,
         ctx: &ViewerContext<'_>,
         entity_path: &EntityPath,
     ) -> DataResult;
@@ -102,17 +106,18 @@ fn incremental_walk<'a>(
 impl DataQuery for SpaceViewContents {
     fn execute_query(
         &self,
-        auto_properties: EntityPropertyMap,
+        property_resolver: &impl PropertyResolver,
         ctx: &ViewerContext<'_>,
     ) -> DataResultTree {
         re_tracing::profile_function!();
-        let overrides = lookup_entity_properties_for_id(self.space_view_id, auto_properties, ctx);
+        let root_override = property_resolver.resolve_root_override(ctx);
+        let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
         let root_handle = self.root_group().add_to_data_results_recursive(
             self,
-            &overrides,
+            &entity_overrides,
             None,
-            &EntityProperties::default(),
+            &root_override,
             &mut data_results,
         );
         DataResultTree {
@@ -123,12 +128,12 @@ impl DataQuery for SpaceViewContents {
 
     fn resolve(
         &self,
-        auto_properties: EntityPropertyMap,
+        property_resolver: &impl PropertyResolver,
         ctx: &ViewerContext<'_>,
         entity_path: &EntityPath,
     ) -> DataResult {
         re_tracing::profile_function!();
-        let overrides = lookup_entity_properties_for_id(self.space_view_id, auto_properties, ctx);
+        let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
 
         let view_parts = self
             .per_system_entities()
@@ -142,9 +147,9 @@ impl DataQuery for SpaceViewContents {
             })
             .collect();
 
-        let mut resolved_properties = EntityProperties::default();
+        let mut resolved_properties = property_resolver.resolve_root_override(ctx);
         for prefix in incremental_walk(None, entity_path) {
-            resolved_properties = resolved_properties.with_child(&overrides.get(&prefix));
+            resolved_properties = resolved_properties.with_child(&entity_overrides.get(&prefix));
         }
 
         DataResult {
@@ -157,37 +162,6 @@ impl DataQuery for SpaceViewContents {
                 .join(entity_path),
         }
     }
-}
-
-/// Helper function to lookup the properties for a given entity path.
-///
-/// We start with the auto properties for the `SpaceView` as the base layer and
-/// then incrementally override from there.
-///
-// TODO(jleibs): This should eventually go somewhere more general like `SpaceView`
-// but we can't find the `SpaceView` from here -- only the id.
-fn lookup_entity_properties_for_id(
-    space_view_id: SpaceViewId,
-    auto_properties: EntityPropertyMap,
-    ctx: &ViewerContext<'_>,
-) -> EntityPropertyMap {
-    re_tracing::profile_function!();
-    let blueprint = ctx.store_context.blueprint;
-    let mut prop_map = auto_properties;
-    let props_path = space_view_id.as_entity_path().join(&"properties".into());
-    if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
-        tree.visit_children_recursively(&mut |path: &EntityPath| {
-            if let Some(props) = blueprint
-                .store()
-                .query_timeless_component::<EntityPropertiesComponent>(path)
-            {
-                let overridden_path =
-                    EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
-                prop_map.set(overridden_path, props.value.props);
-            }
-        });
-    }
-    prop_map
 }
 
 impl DataBlueprintGroup {

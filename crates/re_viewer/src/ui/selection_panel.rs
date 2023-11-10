@@ -284,6 +284,8 @@ fn blueprint_ui(
                     space_view.id,
                     space_view.class_name(),
                 );
+                let root_data_result = space_view.root_data_result(ctx);
+                let mut props = root_data_result.resolved_properties.clone();
 
                 space_view
                     .class(ctx.space_view_class_registry)
@@ -295,13 +297,9 @@ fn blueprint_ui(
                         space_view.id,
                     );
 
-                visible_history_ui(
-                    ctx,
-                    ui,
-                    &space_view_class,
-                    None,
-                    &mut space_view.root_entity_properties.visible_history,
-                );
+                visible_history_ui(ctx, ui, &space_view_class, None, &mut props.visible_history);
+
+                root_data_result.save_override(props, ctx);
             }
         }
 
@@ -323,7 +321,7 @@ fn blueprint_ui(
                         // splat - the whole entity
                         let space_view_class_name = *space_view.class_name();
                         let data_result = space_view.contents.resolve(
-                            space_view.auto_properties.clone(),
+                            space_view,
                             ctx,
                             &instance_path.entity_path,
                         );
@@ -351,11 +349,10 @@ fn blueprint_ui(
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 if let Some(group) = space_view.contents.group(*data_blueprint_group_handle) {
-                    let data_result = space_view.contents.resolve(
-                        space_view.auto_properties.clone(),
-                        ctx,
-                        &group.group_path,
-                    );
+                    let data_result =
+                        space_view
+                            .contents
+                            .resolve(space_view, ctx, &group.group_path);
                     let space_view_class_name = *space_view.class_name();
                     let mut props = data_result.resolved_properties.clone();
                     entity_props_ui(ctx, ui, &space_view_class_name, None, &mut props);

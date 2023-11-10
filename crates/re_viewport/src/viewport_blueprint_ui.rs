@@ -225,10 +225,9 @@ impl ViewportBlueprint<'_> {
 
         // TODO(jleibs): We should use `query` instead of `resolve` in this function, but doing so
         // requires changing the view layout a little bit, so holding off on that for now.
-        let top_data_result =
-            space_view
-                .contents
-                .resolve(space_view.auto_properties.clone(), ctx, &group.group_path);
+        let top_data_result = space_view
+            .contents
+            .resolve(space_view, ctx, &group.group_path);
 
         let group_is_visible = top_data_result.resolved_properties.visible && space_view_visible;
 
@@ -249,10 +248,7 @@ impl ViewportBlueprint<'_> {
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-            let data_result =
-                space_view
-                    .contents
-                    .resolve(space_view.auto_properties.clone(), ctx, entity_path);
+            let data_result = space_view.contents.resolve(space_view, ctx, entity_path);
 
             let mut properties = data_result.resolved_properties.clone();
 
@@ -300,11 +296,10 @@ impl ViewportBlueprint<'_> {
             let mut remove_group = false;
             let default_open = Self::default_open_for_group(child_group);
 
-            let child_data_result = space_view.contents.resolve(
-                space_view.auto_properties.clone(),
-                ctx,
-                &child_group.group_path,
-            );
+            let child_data_result =
+                space_view
+                    .contents
+                    .resolve(space_view, ctx, &child_group.group_path);
 
             let mut child_properties = child_data_result.resolved_properties.clone();
 
