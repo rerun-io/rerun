@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Benchmark</title>
+    <style>
+      html,
+      body,
+      main {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+
+      header {
+        display: flex;
+        justify-content: center;
+      }
+
+      main {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 16px;
+      }
+
+      .chart-container {
+        position: relative;
+        width: 320px;
+      }
+
+      @media only screen and (min-width: 1024px) {
+        .chart-container {
+          width: 640px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header><h1 id="title">Benchmark</h1></header>
+    <main></main>
+
+    <!-- https://www.chartjs.org/docs/latest/ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+      const TITLE = "%%TITLE%%";
+      const CHARTS = JSON.parse("%%CHARTS%%");
+
+      function canvas() {
+        // <main>
+        //   <div class="chart-container"><canvas /></div>
+        //   <div class="chart-container"><canvas /></div>
+        //   <!-- repeated for each chart -->
+        // </main>
+
+        const parent = document.querySelector("main");
+        const container = document.createElement("div");
+        container.className = "chart-container";
+        parent.append(container);
+        const element = document.createElement("canvas");
+        container.append(element);
+        return element;
+      }
+
+      document.title = TITLE;
+      document.getElementById("title").innerText = TITLE;
+
+      // note: the `resize` and `responsive` is a hack to
+      // make chart.js respond to resizes properly
+      const resize = [];
+      for (const name of Object.keys(CHARTS)) {
+        const chart = new Chart(canvas(), {
+          ...CHARTS[name],
+          responsive: false,
+          maintainAspectRatio: true,
+        });
+        resize.push(chart);
+      }
+      window.addEventListener("resize", (e) => {
+        for (const chart of resize) {
+          chart.resize();
+        }
+      });
+    </script>
+  </body>
+</html>
+
