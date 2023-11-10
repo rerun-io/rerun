@@ -1413,43 +1413,6 @@ HTML_INDEX_NUM_ENTRIES = 100
 
 GENERATE_DOCSET        = NO
 
-# This tag determines the name of the docset feed. A documentation feed provides
-# an umbrella under which multiple documentation sets from a single provider
-# (such as a company or product suite) can be grouped.
-# The default value is: Doxygen generated docs.
-# This tag requires that the tag GENERATE_DOCSET is set to YES.
-
-DOCSET_FEEDNAME        = "Doxygen generated docs"
-
-# This tag determines the URL of the docset feed. A documentation feed provides
-# an umbrella under which multiple documentation sets from a single provider
-# (such as a company or product suite) can be grouped.
-# This tag requires that the tag GENERATE_DOCSET is set to YES.
-
-DOCSET_FEEDURL         =
-
-# This tag specifies a string that should uniquely identify the documentation
-# set bundle. This should be a reverse domain-name style string, e.g.
-# com.mycompany.MyDocSet. Doxygen will append .docset to the name.
-# The default value is: org.doxygen.Project.
-# This tag requires that the tag GENERATE_DOCSET is set to YES.
-
-DOCSET_BUNDLE_ID       = org.doxygen.Project
-
-# The DOCSET_PUBLISHER_ID tag specifies a string that should uniquely identify
-# the documentation publisher. This should be a reverse domain-name style
-# string, e.g. com.mycompany.MyDocSet.documentation.
-# The default value is: org.doxygen.Publisher.
-# This tag requires that the tag GENERATE_DOCSET is set to YES.
-
-DOCSET_PUBLISHER_ID    = org.doxygen.Publisher
-
-# The DOCSET_PUBLISHER_NAME tag identifies the documentation publisher.
-# The default value is: Publisher.
-# This tag requires that the tag GENERATE_DOCSET is set to YES.
-
-DOCSET_PUBLISHER_NAME  = Publisher
-
 # If the GENERATE_HTMLHELP tag is set to YES then doxygen generates three
 # additional HTML index files: index.hhp, index.hhc, and index.hhk. The
 # index.hhp is a project file that can be read by Microsoft's HTML Help Workshop
@@ -1472,49 +1435,6 @@ DOCSET_PUBLISHER_NAME  = Publisher
 
 GENERATE_HTMLHELP      = NO
 
-# The CHM_FILE tag can be used to specify the file name of the resulting .chm
-# file. You can add a path in front of the file if the result should not be
-# written to the html output directory.
-# This tag requires that the tag GENERATE_HTMLHELP is set to YES.
-
-CHM_FILE               =
-
-# The HHC_LOCATION tag can be used to specify the location (absolute path
-# including file name) of the HTML help compiler (hhc.exe). If non-empty,
-# doxygen will try to run the HTML help compiler on the generated index.hhp.
-# The file has to be specified with full path.
-# This tag requires that the tag GENERATE_HTMLHELP is set to YES.
-
-HHC_LOCATION           =
-
-# The GENERATE_CHI flag controls if a separate .chi index file is generated
-# (YES) or that it should be included in the main .chm file (NO).
-# The default value is: NO.
-# This tag requires that the tag GENERATE_HTMLHELP is set to YES.
-
-GENERATE_CHI           = NO
-
-# The CHM_INDEX_ENCODING is used to encode HtmlHelp index (hhk), content (hhc)
-# and project file content.
-# This tag requires that the tag GENERATE_HTMLHELP is set to YES.
-
-CHM_INDEX_ENCODING     =
-
-# The BINARY_TOC flag controls whether a binary table of contents is generated
-# (YES) or a normal table of contents (NO) in the .chm file. Furthermore it
-# enables the Previous and Next buttons.
-# The default value is: NO.
-# This tag requires that the tag GENERATE_HTMLHELP is set to YES.
-
-BINARY_TOC             = NO
-
-# The TOC_EXPAND flag can be set to YES to add extra items for group members to
-# the table of contents of the HTML help documentation and to the tree view.
-# The default value is: NO.
-# This tag requires that the tag GENERATE_HTMLHELP is set to YES.
-
-TOC_EXPAND             = NO
-
 # The SITEMAP_URL tag is used to specify the full URL of the place where the
 # generated documentation will be placed on the server by the user during the
 # deployment of the documentation. The generated sitemap is called sitemap.xml
@@ -1533,61 +1453,6 @@ SITEMAP_URL            =
 # This tag requires that the tag GENERATE_HTML is set to YES.
 
 GENERATE_QHP           = NO
-
-# If the QHG_LOCATION tag is specified, the QCH_FILE tag can be used to specify
-# the file name of the resulting .qch file. The path specified is relative to
-# the HTML output folder.
-# This tag requires that the tag GENERATE_QHP is set to YES.
-
-QCH_FILE               =
-
-# The QHP_NAMESPACE tag specifies the namespace to use when generating Qt Help
-# Project output. For more information please see Qt Help Project / Namespace
-# (see:
-# https://doc.qt.io/archives/qt-4.8/qthelpproject.html#namespace).
-# The default value is: org.doxygen.Project.
-# This tag requires that the tag GENERATE_QHP is set to YES.
-
-QHP_NAMESPACE          = org.doxygen.Project
-
-# The QHP_VIRTUAL_FOLDER tag specifies the namespace to use when generating Qt
-# Help Project output. For more information please see Qt Help Project / Virtual
-# Folders (see:
-# https://doc.qt.io/archives/qt-4.8/qthelpproject.html#virtual-folders).
-# The default value is: doc.
-# This tag requires that the tag GENERATE_QHP is set to YES.
-
-QHP_VIRTUAL_FOLDER     = doc
-
-# If the QHP_CUST_FILTER_NAME tag is set, it specifies the name of a custom
-# filter to add. For more information please see Qt Help Project / Custom
-# Filters (see:
-# https://doc.qt.io/archives/qt-4.8/qthelpproject.html#custom-filters).
-# This tag requires that the tag GENERATE_QHP is set to YES.
-
-QHP_CUST_FILTER_NAME   =
-
-# The QHP_CUST_FILTER_ATTRS tag specifies the list of the attributes of the
-# custom filter to add. For more information please see Qt Help Project / Custom
-# Filters (see:
-# https://doc.qt.io/archives/qt-4.8/qthelpproject.html#custom-filters).
-# This tag requires that the tag GENERATE_QHP is set to YES.
-
-QHP_CUST_FILTER_ATTRS  =
-
-# The QHP_SECT_FILTER_ATTRS tag specifies the list of the attributes this
-# project's filter section matches. Qt Help Project / Filter Attributes (see:
-# https://doc.qt.io/archives/qt-4.8/qthelpproject.html#filter-attributes).
-# This tag requires that the tag GENERATE_QHP is set to YES.
-
-QHP_SECT_FILTER_ATTRS  =
-
-# The QHG_LOCATION tag can be used to specify the location (absolute path
-# including file name) of Qt's qhelpgenerator. If non-empty doxygen will try to
-# run qhelpgenerator on the generated .qhp file.
-# This tag requires that the tag GENERATE_QHP is set to YES.
-
-QHG_LOCATION           =
 
 # If the GENERATE_ECLIPSEHELP tag is set to YES, additional index files will be
 # generated, together with the HTML files, they form an Eclipse help plugin. To
