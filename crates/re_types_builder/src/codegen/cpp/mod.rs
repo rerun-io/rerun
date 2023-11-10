@@ -2107,7 +2107,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
                 match image {
                     super::common::ImageUrl::Rerun(image) => lines.push(image.markdown_tag()),
                     super::common::ImageUrl::Other(url) => {
-                        lines.push(format!("![example image]({url})"))
+                        lines.push(format!("![example image]({url})"));
                     }
                 }
                 lines.push(String::new());
