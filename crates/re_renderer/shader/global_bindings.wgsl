@@ -1,18 +1,18 @@
 struct FrameUniformBuffer {
-    view_from_world: Mat4x3,
-    projection_from_view: Mat4,
-    projection_from_world: Mat4,
+    view_from_world: mat4x3f,
+    projection_from_view: mat4x4f,
+    projection_from_world: mat4x4f,
 
     /// Camera position in world space.
-    camera_position: Vec3,
+    camera_position: vec3f,
 
     /// For perspective: Multiply this with a camera distance to get a measure of how wide a pixel is in world units.
     /// For orthographic: This is the world size value, independent of distance.
     pixel_world_size_from_camera_distance: f32,
 
     /// Camera direction in world space.
-    /// Same as -Vec3(view_from_world[0].z, view_from_world[1].z, view_from_world[2].z)
-    camera_forward: Vec3,
+    /// Same as -vec3f(view_from_world[0].z, view_from_world[1].z, view_from_world[2].z)
+    camera_forward: vec3f,
 
     /// How many pixels there are per point.
     /// I.e. the UI zoom factor.
@@ -20,7 +20,7 @@ struct FrameUniformBuffer {
 
     /// (tan(fov_y / 2) * aspect_ratio, tan(fov_y /2)), i.e. half ratio of screen dimension to screen distance in x & y.
     /// Both values are set to f32max for orthographic projection
-    tan_half_fov: Vec2,
+    tan_half_fov: vec2f,
 
     // Size used for all point radii given with Size::AUTO.
     auto_size_points: f32,

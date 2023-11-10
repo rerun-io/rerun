@@ -4,8 +4,8 @@
 #import <./screen_triangle_vertex.wgsl>
 
 struct CompositeUniformBuffer {
-    outline_color_layer_a: Vec4,
-    outline_color_layer_b: Vec4,
+    outline_color_layer_a: vec4f,
+    outline_color_layer_b: vec4f,
     outline_radius_pixel: f32,
 };
 @group(1) @binding(0)
@@ -18,8 +18,8 @@ var color_texture: texture_2d<f32>;
 var outline_voronoi_texture: texture_2d<f32>;
 
 @fragment
-fn main(in: FragmentInput) -> @location(0) Vec4 {
-    let resolution = Vec2(textureDimensions(color_texture).xy);
+fn main(in: FragmentInput) -> @location(0) vec4f {
+    let resolution = vec2f(textureDimensions(color_texture).xy);
     let pixel_coordinates = floor(resolution * in.texcoord);
 
     // Note that we can't use a simple textureLoad using @builtin(position) here despite the lack of filtering.
@@ -51,9 +51,9 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
         //color = outline_color_a.rgb;
 
         // Show the raw voronoi texture. Useful for debugging.
-        //color = Vec3(closest_positions.xy / resolution, 0.0);
+        //color = vec3f(closest_positions.xy / resolution, 0.0);
     }
 
     // Apply srgb gamma curve - this is necessary since the final eframe output does *not* have an srgb format.
-    return Vec4(srgb_from_linear(color), 1.0);
+    return vec4f(srgb_from_linear(color), 1.0);
 }
