@@ -105,6 +105,7 @@ impl DataQuery for SpaceViewContents {
         auto_properties: EntityPropertyMap,
         ctx: &ViewerContext<'_>,
     ) -> DataResultTree {
+        re_tracing::profile_function!();
         let overrides = lookup_entity_properties_for_id(self.space_view_id, auto_properties, ctx);
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
         let root_handle = self.root_group().add_to_data_results_recursive(
@@ -126,6 +127,7 @@ impl DataQuery for SpaceViewContents {
         ctx: &ViewerContext<'_>,
         entity_path: &EntityPath,
     ) -> DataResult {
+        re_tracing::profile_function!();
         let overrides = lookup_entity_properties_for_id(self.space_view_id, auto_properties, ctx);
 
         let view_parts = self
@@ -169,6 +171,7 @@ fn lookup_entity_properties_for_id(
     auto_properties: EntityPropertyMap,
     ctx: &ViewerContext<'_>,
 ) -> EntityPropertyMap {
+    re_tracing::profile_function!();
     let blueprint = ctx.store_context.blueprint;
     let mut prop_map = auto_properties;
     let props_path = space_view_id.as_entity_path().join(&"properties".into());

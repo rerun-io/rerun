@@ -433,6 +433,7 @@ impl SpaceViewContents {
     // TODO(jleibs): This inversion of data-structure is not great, but I believe this goes away as we
     // implement a more direct heuristic evaluation in the future.
     pub fn view_parts_for_entity_path(&self, entity_path: &EntityPath) -> Vec<ViewSystemName> {
+        re_tracing::profile_function!();
         self.per_system_entities()
             .iter()
             .filter_map(|(part, ents)| {

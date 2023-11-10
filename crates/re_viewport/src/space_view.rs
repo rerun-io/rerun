@@ -226,21 +226,25 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let mut per_system_data_results = PerSystemDataResults::default();
-
         let data_results = self
             .contents
             .execute_query(self.auto_properties.clone(), ctx);
-        data_results.visit(&mut |handle| {
-            if let Some(result) = data_results.lookup(handle) {
-                for system in &result.view_parts {
-                    per_system_data_results
-                        .entry(*system)
-                        .or_default()
-                        .push(result);
+
+        let mut per_system_data_results = PerSystemDataResults::default();
+        {
+            re_tracing::profile_scope!("per_system_data_results");
+
+            data_results.visit(&mut |handle| {
+                if let Some(result) = data_results.lookup(handle) {
+                    for system in &result.view_parts {
+                        per_system_data_results
+                            .entry(*system)
+                            .or_default()
+                            .push(result);
+                    }
                 }
-            }
-        });
+            });
+        }
 
         let system_registry = self.class_system_registry(ctx.space_view_class_registry);
         let query = re_viewer_context::ViewQuery {
