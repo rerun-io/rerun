@@ -63,7 +63,7 @@ where
                 .per_entity
                 .get(&ent_path.hash())
                 .unwrap_or(&default_depth_offset),
-            radii_scale_factor: get_radii_scale_factor(ctx, query, transforms, ent_path),
+            radii_scale_factor: radii_scale_factor(ctx, query, transforms, ent_path),
             annotations: annotations.0.find(ent_path),
             shared_render_builders,
             highlight: query.highlights.entity_outline_mask(ent_path.hash()),
@@ -98,7 +98,7 @@ where
     Ok(())
 }
 
-fn get_radii_scale_factor(
+fn radii_scale_factor(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,
     transforms: &TransformContext,

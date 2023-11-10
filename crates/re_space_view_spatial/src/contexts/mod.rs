@@ -23,6 +23,12 @@ use re_viewer_context::{
 /// Context objects for a single entity in a spatial scene.
 pub struct SpatialSceneEntityContext<'a> {
     pub world_from_entity: glam::Affine3A,
+
+    /// Scale factor to be applied on radii for 2D object drawn on a 3D space view's pinhole camera.
+    ///
+    /// `Some` when a parent pinhole transform exists for the entity (that isn't the space origin).
+    /// In this case the factor converts from the "pixel" unit of pinhole to the 3D pinhole widget
+    /// actual pixel size (taking into account the image plane distance).
     pub radii_scale_factor: Option<f32>,
     pub depth_offset: DepthOffset,
     pub annotations: std::sync::Arc<Annotations>,
