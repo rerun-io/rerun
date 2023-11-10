@@ -33,7 +33,7 @@ pub use command_sender::{
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathPart, Index};
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
@@ -119,8 +119,11 @@ impl SpaceViewId {
         re_log_types::hash::Hash64::hash(self).hash64()
     }
 
+    #[inline]
     pub fn as_entity_path(&self) -> EntityPath {
-        EntityPath::from(format!("{}/{}", Self::SPACEVIEW_PREFIX, self))
+        let prefix = EntityPathPart::Name(Self::SPACEVIEW_PREFIX.into());
+        let uuid = EntityPathPart::Index(Index::Uuid(self.0));
+        EntityPath::from([prefix, uuid].as_slice())
     }
 }
 

@@ -4833,6 +4833,7 @@ dependencies = [
  "re_ui",
  "serde",
  "slotmap",
+ "smallvec",
  "thiserror",
  "uuid",
  "wgpu",

@@ -366,7 +366,7 @@ impl SpaceViewBlueprint {
 
         DataResult {
             entity_path: entity_path.clone(),
-            view_parts: vec![],
+            view_parts: Default::default(),
             resolved_properties: props,
             override_path: entity_path,
         }

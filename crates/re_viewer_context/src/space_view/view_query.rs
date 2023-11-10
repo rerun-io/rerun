@@ -4,6 +4,7 @@ use itertools::Itertools;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
 use re_log_types::{DataRow, RowId, TimePoint};
+use smallvec::SmallVec;
 
 use crate::{
     SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewSystemName,
@@ -25,7 +26,7 @@ pub struct DataResult {
     pub entity_path: EntityPath,
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
-    pub view_parts: Vec<ViewSystemName>,
+    pub view_parts: SmallVec<[ViewSystemName; 4]>,
 
     /// The resolved properties (including any hierarchical flattening) to apply.
     // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.

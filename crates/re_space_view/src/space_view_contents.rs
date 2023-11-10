@@ -425,6 +425,7 @@ impl SpaceViewContents {
         }
     }
 
+    #[inline]
     pub fn entity_path(&self) -> EntityPath {
         self.space_view_id.as_entity_path()
     }
@@ -432,7 +433,10 @@ impl SpaceViewContents {
     /// Find all `ViewParts` that this [`SpaceViewContents`] thinks are relevant for the given entity path.
     // TODO(jleibs): This inversion of data-structure is not great, but I believe this goes away as we
     // implement a more direct heuristic evaluation in the future.
-    pub fn view_parts_for_entity_path(&self, entity_path: &EntityPath) -> Vec<ViewSystemName> {
+    pub fn view_parts_for_entity_path(
+        &self,
+        entity_path: &EntityPath,
+    ) -> SmallVec<[ViewSystemName; 4]> {
         re_tracing::profile_function!();
         self.per_system_entities()
             .iter()

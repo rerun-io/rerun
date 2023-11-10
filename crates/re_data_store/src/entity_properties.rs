@@ -23,6 +23,11 @@ impl EntityPropertyMap {
     }
 
     #[inline]
+    pub fn get_opt(&self, entity_path: &EntityPath) -> Option<&EntityProperties> {
+        self.props.get(entity_path)
+    }
+
+    #[inline]
     pub fn set(&mut self, entity_path: EntityPath, prop: EntityProperties) {
         if prop == EntityProperties::default() {
             self.props.remove(&entity_path); // save space

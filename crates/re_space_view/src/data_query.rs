@@ -50,16 +50,21 @@ pub struct DataResultNode {
     children: BTreeSet<DataResultHandle>,
 }
 
+/// Trait for resolving properties needed by most implementations of [`DataQuery`]
+///
+/// The `SpaceViewBlueprint` is the only thing that likely implements this today
+/// but we use a trait here so we don't have to pick up a full dependency on `re_viewport`.
 pub trait PropertyResolver {
     fn resolve_entity_overrides(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap;
     fn resolve_root_override(&self, ctx: &ViewerContext<'_>) -> EntityProperties;
 }
+
 /// The common trait implemented for data queries
 ///
 /// Both interfaces return [`DataResult`]s, which are self-contained description of the data
 /// to be added to a `SpaceView` including both the [`EntityPath`] and context for any overrides.
 pub trait DataQuery {
-    /// Execute a full query, returning a [`DataResultTree`] containing all results.
+    /// Execute a full query, returning a `DataResultTree` containing all results.
     ///
     /// `auto_properties` is a map containing any heuristic-derived auto properties for the given `SpaceView`.
     ///
@@ -91,6 +96,7 @@ fn incremental_walk<'a>(
     start: Option<&'_ EntityPath>,
     end: &'a EntityPath,
 ) -> impl Iterator<Item = EntityPath> + 'a {
+    re_tracing::profile_function!();
     if start.map_or(true, |start| end.is_descendant_of(start)) {
         let first_ind = start.map_or(0, |start| start.len() + 1);
         let parts = end.as_slice();
@@ -185,14 +191,15 @@ impl DataBlueprintGroup {
         let mut group_resolved_properties = inherited.clone();
 
         for prefix in incremental_walk(inherited_base, &group_path) {
-            group_resolved_properties =
-                group_resolved_properties.with_child(&overrides.get(&prefix));
+            if let Some(props) = overrides.get_opt(&prefix) {
+                group_resolved_properties = group_resolved_properties.with_child(props);
+            }
         }
 
-        let group_override_path = contents
-            .entity_path()
-            .join(&"properties".into())
-            .join(&group_path);
+        let base_entity_path = contents.entity_path();
+        let props_path = EntityPath::from("properties");
+
+        let group_override_path = base_entity_path.join(&props_path).join(&group_path);
 
         // First build up the direct children
         let mut children: BTreeSet<DataResultHandle> = self
@@ -206,13 +213,12 @@ impl DataBlueprintGroup {
                 let mut resolved_properties = group_resolved_properties.clone();
 
                 for prefix in incremental_walk(inherited_base, &entity_path) {
-                    resolved_properties = resolved_properties.with_child(&overrides.get(&prefix));
+                    if let Some(props) = overrides.get_opt(&prefix) {
+                        resolved_properties = resolved_properties.with_child(props);
+                    }
                 }
 
-                let override_path = contents
-                    .entity_path()
-                    .join(&"properties".into())
-                    .join(&entity_path);
+                let override_path = base_entity_path.join(&props_path).join(&entity_path);
 
                 data_results.insert(DataResultNode {
                     data_result: DataResult {
