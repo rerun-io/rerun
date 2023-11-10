@@ -21,9 +21,6 @@ const X = vec3f(1.0, 0.0, 0.0);
 const Y = vec3f(0.0, 1.0, 0.0);
 const Z = vec3f(0.0, 0.0, 1.0);
 
-const ZERO = vec4f(0.0, 0.0, 0.0, 0.0);
-const ONE  = vec4f(1.0, 1.0, 1.0, 1.0);
-
 
 // Do NOT use inf() or nan() in your WGSL shaders. Ever.
 // The WGSL spec allows implementations to assume that neither Inf or NaN are ever occurring:
