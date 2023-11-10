@@ -62,6 +62,9 @@ pub struct PlotSeries {
 pub struct TimeSeriesSystem {
     pub annotation_map: AnnotationMap,
     pub lines: Vec<PlotSeries>,
+
+    /// Earliest time an entity was recorded at on the current timeline.
+    pub min_time: Option<i64>,
 }
 
 impl NamedViewSystem for TimeSeriesSystem {
@@ -127,10 +130,25 @@ impl TimeSeriesSystem {
                 .annotation_info();
             let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
-            let query = re_arrow_store::RangeQuery::new(
-                query.timeline,
-                TimeRange::new(i64::MIN.into(), i64::MAX.into()),
-            );
+            let visible_history = match query.timeline.typ() {
+                re_log_types::TimeType::Time => {
+                    data_result.resolved_properties.visible_history.nanos
+                }
+                re_log_types::TimeType::Sequence => {
+                    data_result.resolved_properties.visible_history.sequences
+                }
+            };
+
+            let (from, to) = if data_result.resolved_properties.visible_history.enabled {
+                (
+                    visible_history.from(query.latest_at),
+                    visible_history.to(query.latest_at),
+                )
+            } else {
+                (i64::MIN.into(), i64::MAX.into())
+            };
+
+            let query = re_arrow_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
             let arch_views = range_archetype::<
                 TimeSeriesScalar,
@@ -172,6 +190,12 @@ impl TimeSeriesSystem {
             if points.is_empty() {
                 continue;
             }
+
+            let min_time = store
+                .entity_min_time(&query.timeline, &data_result.entity_path)
+                .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+
+            self.min_time = Some(self.min_time.map_or(min_time, |time| time.min(min_time)));
 
             // If all points within a line share the label (and it isn't `None`), then we use it
             // as the whole line label for the plot legend.

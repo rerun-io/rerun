@@ -24,7 +24,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple Pinhole Camera
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm> // std::generate
@@ -198,9 +200,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Pinhole> {
         /// Serialize all set component batches.

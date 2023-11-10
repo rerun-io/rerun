@@ -32,14 +32,14 @@ namespace rerun {
                 return "text/markdown";
             }
 
-            /// [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
+            /// `glTF`(https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
             ///
             /// <https://www.iana.org/assignments/media-types/model/gltf+json>
             static MediaType gltf() {
                 return "model/gltf+json";
             }
 
-            /// Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
+            /// Binary `glTF`(https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
             ///
             /// <https://www.iana.org/assignments/media-types/model/gltf-binary>
             static MediaType glb() {

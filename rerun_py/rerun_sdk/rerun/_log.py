@@ -88,8 +88,8 @@ def log(
     # and a custom "confidence" component.
     rr.log(
         "my/points",
-        rr.Points2D([[0.2, 0.5], [0.9, 1.2], [1.0, 4.2]], radii=[0.1, 0.2, 0.3]),
-        rr.Arrows3D(vectors=[[0.3, 2.1], [0.2, -1.1], [-0.4, 0.1]]),
+        rr.Points3D([[0.2, 0.5, 0.3], [0.9, 1.2, 0.1], [1.0, 4.2, 0.3]], radii=[0.1, 0.2, 0.3]),
+        rr.Arrows3D(vectors=[[0.3, 2.1, 0.2], [0.9, -1.1, 2.3], [-0.4, 0.5, 2.9]]),
         rr.AnyValues(confidence=[0.3, 0.4, 0.9]),
     )
     ```
@@ -103,7 +103,7 @@ def log(
     *extra:
         An arbitrary number of additional component bundles implementing the [`rerun.AsComponents`][] interface, that are logged to the same entity path.
     timeless:
-        If true, the entity will be timeless.
+        If true, the logged components will be timeless.
 
         Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
         Additional timelines set by [`rerun.set_time_sequence`][], [`rerun.set_time_seconds`][] or

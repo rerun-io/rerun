@@ -29,7 +29,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple segmentation image
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm> // std::fill_n
@@ -115,9 +117,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::SegmentationImage> {
         /// Serialize all set component batches.

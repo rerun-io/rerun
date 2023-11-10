@@ -22,7 +22,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple bar chart
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/barchart_simple/cf6014b18265edfcaa562c06526c0716b296b193/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// int main() {
@@ -170,9 +172,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::BarChart> {
         /// Serialize all set component batches.

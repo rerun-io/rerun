@@ -25,7 +25,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Markdown text document
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// int main() {
@@ -118,9 +120,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::TextDocument> {
         /// Serialize all set component batches.

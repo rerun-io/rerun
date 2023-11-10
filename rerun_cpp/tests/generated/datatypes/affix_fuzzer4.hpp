@@ -23,6 +23,7 @@ namespace arrow {
 namespace rerun {
     namespace datatypes {
         namespace detail {
+            /// \private
             enum class AffixFuzzer4Tag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 None = 0,
@@ -31,6 +32,7 @@ namespace rerun {
                 many_optional,
             };
 
+            /// \private
             union AffixFuzzer4Data {
                 rerun::datatypes::AffixFuzzer3 single_required;
 

@@ -21,6 +21,7 @@ namespace arrow {
 namespace rerun {
     namespace datatypes {
         namespace detail {
+            /// \private
             enum class Scale3DTag : uint8_t {
                 /// Having a special empty state makes it possible to implement move-semantics. We need to be able to leave the object in a state which we can run the destructor on.
                 None = 0,
@@ -28,6 +29,7 @@ namespace rerun {
                 Uniform,
             };
 
+            /// \private
             union Scale3DData {
                 /// Individual scaling factors for each axis, distorting the original object.
                 rerun::datatypes::Vec3D three_d;

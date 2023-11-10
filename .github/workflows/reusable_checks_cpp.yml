@@ -90,3 +90,4 @@ jobs:
           pixi run cpp-clean
           ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-build-all
           ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-test
+          ${{ matrix.additional_commands }}

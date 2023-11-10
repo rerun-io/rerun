@@ -4857,6 +4857,7 @@ dependencies = [
  "re_log_types",
  "re_renderer",
  "re_space_view",
+ "re_space_view_time_series",
  "re_tracing",
  "re_types",
  "re_types_core",

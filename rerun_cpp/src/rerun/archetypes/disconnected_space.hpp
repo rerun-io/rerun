@@ -25,7 +25,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Disconnected Space
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// int main() {
@@ -64,9 +66,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::DisconnectedSpace> {
         /// Serialize all set component batches.

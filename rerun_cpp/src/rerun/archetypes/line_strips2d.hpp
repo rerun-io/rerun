@@ -28,7 +28,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### `line_strip2d_batch`:
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/line_strip2d_batch/d8aae7ca3d6c3b0e3b636de60b8067fa2f0b6db9/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <vector>
@@ -146,9 +148,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::LineStrips2D> {
         /// Serialize all set component batches.

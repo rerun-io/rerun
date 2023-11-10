@@ -1,12 +1,15 @@
-use egui::{NumExt as _, Ui};
+use egui::NumExt as _;
+use std::collections::HashSet;
 use std::ops::RangeInclusive;
 
 use re_data_store::{
-    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistoryBoundary,
+    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, ExtraQueryHistory,
+    VisibleHistoryBoundary,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_log_types::TimeType;
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
+use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
@@ -275,6 +278,7 @@ fn blueprint_ui(
             ui.add_space(ui.spacing().item_spacing.y);
 
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+                let space_view_class = *space_view.class_name();
                 let space_view_state = viewport.state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
@@ -290,6 +294,14 @@ fn blueprint_ui(
                         &space_view.space_origin,
                         space_view.id,
                     );
+
+                visible_history_ui(
+                    ctx,
+                    ui,
+                    &space_view_class,
+                    None,
+                    &mut space_view.root_entity_properties.visible_history,
+                );
             }
         }
 
@@ -389,7 +401,7 @@ fn list_existing_data_blueprints(
 fn entity_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view_class_name: &SpaceViewClassName,
+    space_view_class: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
 ) {
@@ -399,7 +411,13 @@ fn entity_props_ui(
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
 
-    visible_history_ui(ctx, ui, space_view_class_name, entity_path, entity_props);
+    visible_history_ui(
+        ctx,
+        ui,
+        space_view_class,
+        entity_path,
+        &mut entity_props.visible_history,
+    );
 
     egui::Grid::new("entity_properties")
         .num_columns(2)
@@ -414,32 +432,80 @@ fn entity_props_ui(
         });
 }
 
-fn visible_history_ui(
+/// These space views support the Visible History feature.
+static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<SpaceViewClassName>> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            SpatialSpaceView3D::NAME,
+            SpatialSpaceView2D::NAME,
+            TimeSeriesSpaceView::NAME,
+        ]
+        .map(Into::into)
+        .into()
+    });
+
+/// Entities containing one of these components support the Visible History feature.
+static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.HalfSizes2D",
+            "rerun.components.HalfSizes3D",
+            "rerun.components.LineStrip2D",
+            "rerun.components.LineStrip3D",
+            "rerun.components.Position2D",
+            "rerun.components.Position3D",
+            "rerun.components.Scalar",
+            "rerun.components.TensorData",
+            "rerun.components.Vector3D",
+        ]
+        .map(Into::into)
+        .into()
+    });
+
+// TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the ViewPart
+// system is able to report its ability to handle the visible history feature.
+fn should_display_visible_history(
     ctx: &mut ViewerContext<'_>,
-    ui: &mut Ui,
-    space_view_class_name: &SpaceViewClassName,
+    space_view_class: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
-    entity_props: &mut EntityProperties,
-) {
-    //TODO(#4107): support more space view types.
-    if space_view_class_name != SpatialSpaceView3D::NAME
-        && space_view_class_name != SpatialSpaceView2D::NAME
-    {
-        return;
+) -> bool {
+    if !VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(space_view_class) {
+        return false;
     }
 
-    if !should_display_visible_history(ctx, entity_path) {
+    if let Some(entity_path) = entity_path {
+        let store = ctx.store_db.store();
+        let component_names = store.all_components(ctx.rec_cfg.time_ctrl.timeline(), entity_path);
+        if let Some(component_names) = component_names {
+            if !component_names
+                .iter()
+                .any(|name| VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES.contains(name))
+            {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    true
+}
+
+pub fn visible_history_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    space_view_class: &SpaceViewClassName,
+    entity_path: Option<&EntityPath>,
+    visible_history_prop: &mut ExtraQueryHistory,
+) {
+    if !should_display_visible_history(ctx, space_view_class, entity_path) {
         return;
     }
 
     let re_ui = ctx.re_ui;
 
     re_ui
-        .checkbox(
-            ui,
-            &mut entity_props.visible_history.enabled,
-            "Visible history",
-        )
+        .checkbox(ui, &mut visible_history_prop.enabled, "Visible history")
         .on_hover_text(
             "Enable Visible History.\n\nBy default, only the last state before the \
             current time is shown. By activating Visible History, all data within a \
@@ -465,15 +531,15 @@ fn visible_history_ui(
     let sequence_timeline = matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
 
     let visible_history = if sequence_timeline {
-        &mut entity_props.visible_history.sequences
+        &mut visible_history_prop.sequences
     } else {
-        &mut entity_props.visible_history.nanos
+        &mut visible_history_prop.nanos
     };
 
     let visible_history_time_range = visible_history.from(current_time.into()).as_i64()
         ..=visible_history.to(current_time.into()).as_i64();
 
-    ui.add_enabled_ui(entity_props.visible_history.enabled, |ui| {
+    ui.add_enabled_ui(visible_history_prop.enabled, |ui| {
         egui::Grid::new("visible_history_boundaries")
             .num_columns(4)
             .show(ui, |ui| {
@@ -518,45 +584,6 @@ fn visible_history_ui(
         )
         .wrap(true),
     );
-}
-
-static VISIBLE_HISTORY_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            ComponentName::from("rerun.components.Position2D"),
-            ComponentName::from("rerun.components.Position3D"),
-            ComponentName::from("rerun.components.LineStrip2D"),
-            ComponentName::from("rerun.components.LineStrip3D"),
-            ComponentName::from("rerun.components.TensorData"),
-            ComponentName::from("rerun.components.Vector3D"),
-            ComponentName::from("rerun.components.HalfSizes2D"),
-            ComponentName::from("rerun.components.HalfSizes3D"),
-        ]
-        .into()
-    });
-
-// TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the ViewPart
-// system is able to report its ability to handle the visible history feature.
-fn should_display_visible_history(
-    ctx: &mut ViewerContext<'_>,
-    entity_path: Option<&EntityPath>,
-) -> bool {
-    if let Some(entity_path) = entity_path {
-        let store = ctx.store_db.store();
-        let component_names = store.all_components(ctx.rec_cfg.time_ctrl.timeline(), entity_path);
-        if let Some(component_names) = component_names {
-            if !component_names
-                .iter()
-                .any(|name| VISIBLE_HISTORY_COMPONENT_NAMES.contains(name))
-            {
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-
-    true
 }
 
 #[allow(clippy::too_many_arguments)]

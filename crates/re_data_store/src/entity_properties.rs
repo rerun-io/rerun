@@ -254,6 +254,11 @@ impl VisibleHistory {
         to: VisibleHistoryBoundary::AT_CURSOR,
     };
 
+    pub const ALL: Self = Self {
+        from: VisibleHistoryBoundary::Infinite,
+        to: VisibleHistoryBoundary::Infinite,
+    };
+
     pub fn from(&self, cursor: TimeInt) -> TimeInt {
         match self.from {
             VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),

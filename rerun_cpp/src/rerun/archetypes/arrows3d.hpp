@@ -28,7 +28,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Simple batch of 3D Arrows
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>
@@ -169,9 +171,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Arrows3D> {
         /// Serialize all set component batches.

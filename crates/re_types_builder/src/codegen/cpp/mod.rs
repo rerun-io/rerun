@@ -46,6 +46,14 @@ fn quote_doc_comment(text: &str) -> TokenStream {
     quote! { #DOC_COMMENT_PREFIX_TOKEN #text #DOC_COMMENT_SUFFIX_TOKEN }
 }
 
+fn quote_hide_from_docs() -> TokenStream {
+    let comment = quote_doc_comment("\\private");
+    quote! {
+        #NEWLINE_TOKEN
+        #comment
+    }
+}
+
 fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
@@ -479,6 +487,7 @@ impl QuotedObject {
         };
 
         let indicator_comment = quote_doc_comment("Indicator component, used to identify the archetype when converting to a list of components.");
+        let doc_hide_comment = quote_hide_from_docs();
 
         let hpp = quote! {
             #hpp_includes
@@ -505,10 +514,12 @@ impl QuotedObject {
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
 
-                // Instead of including as_components.hpp, simply re-declare the template since it's trivial.
+                // Instead of including as_components.hpp, simply re-declare the template since it's trivial
+                #doc_hide_comment
                 template<typename T>
                 struct AsComponents;
 
+                #doc_hide_comment
                 template<>
                 struct AsComponents<archetypes::#type_ident> {
                     #serialize_hpp
@@ -983,6 +994,7 @@ impl QuotedObject {
         };
 
         let swap_comment = quote_comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
+        let hide_from_docs_comment = quote_hide_from_docs();
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
         let hpp = quote! {
@@ -993,10 +1005,12 @@ impl QuotedObject {
             namespace rerun {
                 namespace #namespace_ident {
                     namespace detail {
+                        #hide_from_docs_comment
                         enum class #tag_typename : uint8_t {
                             #(#tag_fields)*
                         };
 
+                        #hide_from_docs_comment
                         union #data_typename {
                             #(#enum_data_declarations;)*
 
@@ -2076,10 +2090,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             let ExampleInfo {
-                name,
-                title,
-                image: _, // TODO(andreas): Include images in doc
-                ..
+                name, title, image, ..
             } = &example.base;
 
             for line in &example.lines {
@@ -2091,7 +2102,18 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
             } else {
                 lines.push(format!("### `{name}`:"));
             }
-            lines.push("```cpp,ignore".into());
+
+            if let Some(image) = image {
+                match image {
+                    super::common::ImageUrl::Rerun(image) => lines.push(image.markdown_tag()),
+                    super::common::ImageUrl::Other(url) => {
+                        lines.push(format!("![example image]({url})"));
+                    }
+                }
+                lines.push(String::new());
+            }
+
+            lines.push("```cpp".into());
             lines.extend(example.lines.iter().cloned());
             lines.push("```".into());
             if examples.peek().is_some() {

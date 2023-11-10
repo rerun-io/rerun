@@ -20,7 +20,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Flat
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <cmath>
@@ -102,9 +104,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::Clear> {
         /// Serialize all set component batches.

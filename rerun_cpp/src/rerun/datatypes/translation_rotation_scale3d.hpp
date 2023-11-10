@@ -41,6 +41,10 @@ namespace rerun {
           public:
             // Extensions to generated type defined in 'translation_rotation_scale3d_ext.cpp'
 
+            /// Identity transformation.
+            ///
+            /// Applying this transform does not alter an entity's transformation.
+            /// It has all optional fields set to `std::nullopt`.
             static const TranslationRotationScale3D IDENTITY;
 
             // Need to disable the maybe-uninitialized here because the compiler gets confused by the combination
@@ -58,139 +62,138 @@ namespace rerun {
 
             /// Creates a new 3D transform from translation/rotation/scale.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
+            /// \param translation_ \copydoc TranslationRotationScale3D::translation
+            /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
+            /// \param scale_ \copydoc TranslationRotationScale3D::scale
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
             TranslationRotationScale3D(
-                const std::optional<Vec3D>& _translation,
-                const std::optional<Rotation3D>& _rotation, const std::optional<Scale3D>& _scale,
-                bool _from_parent = false
+                const std::optional<Vec3D>& translation_,
+                const std::optional<Rotation3D>& rotation_, const std::optional<Scale3D>& scale_,
+                bool from_parent_ = false
             )
-                : translation(_translation),
-                  rotation(_rotation),
-                  scale(_scale),
-                  from_parent(_from_parent) {}
+                : translation(translation_),
+                  rotation(rotation_),
+                  scale(scale_),
+                  from_parent(from_parent_) {}
 
             /// Creates a new 3D transform from translation/rotation/uniform-scale.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
+            /// \param translation_ \copydoc TranslationRotationScale3D::translation
+            /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
+            /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
             ///
-            /// Implementation note: This explicit overload prevents interpretation of the float as
+            /// _Implementation note:_ This explicit overload prevents interpretation of the float as
             /// bool, leading to a call to the wrong overload.
             TranslationRotationScale3D(
-                const Vec3D& _translation, const Rotation3D& _rotation, float uniform_scale,
-                bool _from_parent = false
+                const Vec3D& translation_, const Rotation3D& rotation_, float uniform_scale,
+                bool from_parent_ = false
             )
-                : translation(_translation),
-                  rotation(_rotation),
+                : translation(translation_),
+                  rotation(rotation_),
                   scale(uniform_scale),
-                  from_parent(_from_parent) {}
+                  from_parent(from_parent_) {}
 
             /// Creates a new rigid transform (translation & rotation only).
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
+            /// \param translation_ \copydoc TranslationRotationScale3D::translation
+            /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
             TranslationRotationScale3D(
-                const Vec3D& _translation, const Rotation3D& _rotation, bool _from_parent = false
+                const Vec3D& translation_, const Rotation3D& rotation_, bool from_parent_ = false
             )
-                : translation(_translation),
-                  rotation(_rotation),
+                : translation(translation_),
+                  rotation(rotation_),
                   scale(std::nullopt),
-                  from_parent(_from_parent) {}
+                  from_parent(from_parent_) {}
 
             /// From translation & scale only.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
+            /// \param translation_ \copydoc TranslationRotationScale3D::translation
+            /// \param scale_ \copydoc TranslationRotationScale3D::scale
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
             TranslationRotationScale3D(
-                const Vec3D& _translation, const Scale3D& _scale, bool _from_parent = false
+                const Vec3D& translation_, const Scale3D& scale_, bool from_parent_ = false
             )
-                : translation(_translation),
+                : translation(translation_),
                   rotation(std::nullopt),
-                  scale(_scale),
-                  from_parent(_from_parent) {}
+                  scale(scale_),
+                  from_parent(from_parent_) {}
 
-            /// From translation & uniform scale only.
+            /// From translation & uniform scale.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
+            /// \param translation_ \copydoc TranslationRotationScale3D::translation
+            /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
             ///
-            /// Implementation note: This explicit overload prevents interpretation of the float as
+            /// _Implementation note:_ This explicit overload prevents interpretation of the float as
             /// bool, leading to a call to the wrong overload.
             TranslationRotationScale3D(
-                const Vec3D& _translation, float uniform_scale, bool _from_parent = false
+                const Vec3D& translation_, float uniform_scale, bool from_parent_ = false
             )
-                : translation(_translation),
+                : translation(translation_),
                   rotation(std::nullopt),
                   scale(uniform_scale),
-                  from_parent(_from_parent) {}
+                  from_parent(from_parent_) {}
 
             /// From rotation & scale only.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
+            /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
+            /// \param scale_ \copydoc TranslationRotationScale3D::scale
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
             TranslationRotationScale3D(
-                const Rotation3D& _rotation, const Scale3D& _scale, bool _from_parent = false
+                const Rotation3D& rotation_, const Scale3D& scale_, bool from_parent_ = false
             )
                 : translation(std::nullopt),
-                  rotation(_rotation),
-                  scale(_scale),
-                  from_parent(_from_parent) {}
+                  rotation(rotation_),
+                  scale(scale_),
+                  from_parent(from_parent_) {}
 
-            /// From rotation & uniform scale only.
+            /// From rotation & uniform scale.
             ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
+            /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
+            /// \param uniform_scale Uniform scale factor that is applied to all axis equally.
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
             ///
-            /// Implementation note: This explicit overload prevents interpretation of the float as
+            /// _Implementation note:_ This explicit overload prevents interpretation of the float as
             /// bool, leading to a call to the wrong overload.
             TranslationRotationScale3D(
-                const Rotation3D& _rotation, float uniform_scale, bool _from_parent = false
+                const Rotation3D& rotation_, float uniform_scale, bool from_parent_ = false
             )
                 : translation(std::nullopt),
-                  rotation(_rotation),
+                  rotation(rotation_),
                   scale(uniform_scale),
-                  from_parent(_from_parent) {}
+                  from_parent(from_parent_) {}
 
             /// From translation only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
-            TranslationRotationScale3D(const Vec3D& _translation, bool _from_parent = false)
-                : translation(_translation),
+            /// \param translation_ 3D translation.
+            /// \param from_parent_
+            TranslationRotationScale3D(const Vec3D& translation_, bool from_parent_ = false)
+                : translation(translation_),
                   rotation(std::nullopt),
                   scale(std::nullopt),
-                  from_parent(_from_parent) {}
+                  from_parent(from_parent_) {}
 
             /// From rotation only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
-            TranslationRotationScale3D(const Rotation3D& _rotation, bool _from_parent = false)
+            /// \param rotation_ \copydoc TranslationRotationScale3D::rotation
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
+            TranslationRotationScale3D(const Rotation3D& rotation_, bool from_parent_ = false)
                 : translation(std::nullopt),
-                  rotation(_rotation),
+                  rotation(rotation_),
                   scale(std::nullopt),
-                  from_parent(_from_parent) {}
+                  from_parent(from_parent_) {}
 
             /// From scale only.
             ///
-            /// @param from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
-            TranslationRotationScale3D(const Scale3D& _scale, bool _from_parent = false)
+            /// \param scale_ \copydoc TranslationRotationScale3D::scale
+            /// \param from_parent_ \copydoc TranslationRotationScale3D::from_parent
+            TranslationRotationScale3D(const Scale3D& scale_, bool from_parent_ = false)
                 : translation(std::nullopt),
                   rotation(std::nullopt),
-                  scale(_scale),
-                  from_parent(_from_parent) {}
+                  scale(scale_),
+                  from_parent(from_parent_) {}
 
           public:
             TranslationRotationScale3D() = default;

@@ -27,7 +27,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Many strips
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <vector>
@@ -141,9 +143,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::LineStrips3D> {
         /// Serialize all set component batches.

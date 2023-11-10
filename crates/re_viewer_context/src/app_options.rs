@@ -26,6 +26,9 @@ pub struct AppOptions {
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
+    /// Includes the blueprint in the timeline view.
+    pub show_blueprint_in_timeline: bool,
+
     /// What time zone to display timestamps in.
     pub time_zone_for_timestamps: TimeZone,
 }
@@ -45,6 +48,8 @@ impl Default for AppOptions {
             experimental_space_view_screenshots: false,
 
             show_picking_debug_overlay: false,
+
+            show_blueprint_in_timeline: false,
 
             time_zone_for_timestamps: TimeZone::Utc,
         }

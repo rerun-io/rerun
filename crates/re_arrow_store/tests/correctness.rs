@@ -12,7 +12,7 @@ use re_arrow_store::{
 };
 use re_log_types::example_components::MyPoint;
 use re_log_types::{
-    build_frame_nr, build_log_time, DataCell, DataRow, Duration, EntityPath, RowId, Time,
+    build_frame_nr, build_log_time, DataCell, DataRow, Duration, EntityPath, RowId, Time, TimeInt,
     TimePoint, TimeType, Timeline,
 };
 use re_types::components::InstanceKey;
@@ -492,4 +492,125 @@ pub fn init_logs() {
     if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
         re_log::setup_native_logging();
     }
+}
+
+// ---
+
+#[test]
+fn entity_min_time_correct() -> anyhow::Result<()> {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        entity_min_time_correct_impl(&mut store)?;
+    }
+
+    Ok(())
+}
+
+fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
+    let ent_path = EntityPath::from("this/that");
+    let wrong_ent_path = EntityPath::from("this/that/other");
+
+    let point = MyPoint::new(1.0, 1.0);
+    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
+    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_log_time = Timeline::log_time();
+
+    let now = Time::now();
+    let now_plus_one = now + Duration::from_secs(1.0);
+    let now_minus_one = now - Duration::from_secs(1.0);
+
+    let row = DataRow::from_component_batches(
+        RowId::random(),
+        TimePoint::from_iter([
+            (timeline_log_time, now.into()),
+            (timeline_frame_nr, 42.into()),
+        ]),
+        ent_path.clone(),
+        [&[point] as _],
+    )?;
+
+    store.insert_row(&row).unwrap();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(42))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
+
+    // insert row in the future, these shouldn't be visible
+    let row = DataRow::from_component_batches(
+        RowId::random(),
+        TimePoint::from_iter([
+            (timeline_log_time, now_plus_one.into()),
+            (timeline_frame_nr, 54.into()),
+        ]),
+        ent_path.clone(),
+        [&[point] as _],
+    )?;
+    store.insert_row(&row).unwrap();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(42))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
+
+    // insert row in the past, these should be visible
+    let row = DataRow::from_component_batches(
+        RowId::random(),
+        TimePoint::from_iter([
+            (timeline_log_time, now_minus_one.into()),
+            (timeline_frame_nr, 32.into()),
+        ]),
+        ent_path.clone(),
+        [&[point] as _],
+    )?;
+    store.insert_row(&row).unwrap();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(32))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now_minus_one))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
+
+    Ok(())
 }

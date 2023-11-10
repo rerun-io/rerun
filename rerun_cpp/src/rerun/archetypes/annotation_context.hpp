@@ -26,7 +26,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### Segmentation
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/annotation_context_segmentation/0e21c0a04e456fec41d16b0deaa12c00cddf2d9b/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// #include <algorithm> // fill_n
@@ -83,9 +85,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::AnnotationContext> {
         /// Serialize all set component batches.

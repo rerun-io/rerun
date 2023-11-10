@@ -27,7 +27,9 @@ namespace rerun {
         /// ## Example
         ///
         /// ### View coordinates for adjusting the eye camera
-        /// ```cpp,ignore
+        /// ![image](https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/full.png)
+        ///
+        /// ```cpp
         /// #include <rerun.hpp>
         ///
         /// int main() {
@@ -136,9 +138,11 @@ namespace rerun {
 
     } // namespace archetypes
 
+    /// \private
     template <typename T>
     struct AsComponents;
 
+    /// \private
     template <>
     struct AsComponents<archetypes::ViewCoordinates> {
         /// Serialize all set component batches.

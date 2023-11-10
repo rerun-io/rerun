@@ -125,8 +125,8 @@ namespace rerun {
         ///
         /// The default will log to stderr, unless `RERUN_STRICT` is set to something truthy.
         ///
-        /// @param handler The handler to call, or `nullptr` to reset to the default.
-        /// @param userdata Userdata pointer that will be passed to each invocation of the handler.
+        /// \param handler The handler to call, or `nullptr` to reset to the default.
+        /// \param userdata Userdata pointer that will be passed to each invocation of the handler.
         ///
         /// @see log, log_on_failure
         static void set_log_handler(StatusLogHandler handler, void* userdata = nullptr);
