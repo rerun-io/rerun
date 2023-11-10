@@ -1,6 +1,7 @@
-use re_data_store::{EntityPath, EntityTree, TimeInt};
+use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{ScreenshotMode, SpaceViewContents};
+use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
     DynSpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
     SpaceViewSystemRegistry, ViewerContext,
@@ -35,6 +36,9 @@ pub struct SpaceViewBlueprint {
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
+
+    /// Top-level entity properties to be cascaded to all groups/entities contained in the space view.
+    pub root_entity_properties: EntityProperties,
 }
 
 // Default needed for deserialization when adding/changing fields.
@@ -47,6 +51,7 @@ impl Default for SpaceViewBlueprint {
             space_origin: EntityPath::root(),
             contents: Default::default(),
             entities_determined_by_user: Default::default(),
+            root_entity_properties: Default::default(),
         }
     }
 }
@@ -61,6 +66,7 @@ impl SpaceViewBlueprint {
             space_origin,
             contents,
             entities_determined_by_user,
+            root_entity_properties,
         } = self;
 
         id != &other.id
@@ -69,6 +75,7 @@ impl SpaceViewBlueprint {
             || space_origin != &other.space_origin
             || contents.has_edits(&other.contents)
             || entities_determined_by_user != &other.entities_determined_by_user
+            || root_entity_properties != &other.root_entity_properties
     }
 }
 
@@ -92,6 +99,15 @@ impl SpaceViewBlueprint {
         let mut contents = SpaceViewContents::default();
         contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
+        let mut root_entity_properties = EntityProperties::default();
+
+        // better defaults for the time series space view
+        // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
+        if space_view_class == TimeSeriesSpaceView::NAME {
+            root_entity_properties.visible_history.nanos = VisibleHistory::ALL;
+            root_entity_properties.visible_history.sequences = VisibleHistory::ALL;
+        }
+
         Self {
             display_name,
             class_name: space_view_class,
@@ -99,6 +115,7 @@ impl SpaceViewBlueprint {
             space_origin: space_path.clone(),
             contents,
             entities_determined_by_user: false,
+            root_entity_properties,
         }
     }
 
@@ -157,7 +174,8 @@ impl SpaceViewBlueprint {
         );
 
         // Propagate any heuristic changes that may have been in `on_frame_start` made to blueprints right away.
-        self.contents.propagate_individual_to_tree();
+        self.contents
+            .propagate_individual_to_tree(&self.root_entity_properties);
     }
 
     fn handle_pending_screenshots(&self, data: &[u8], extent: glam::UVec2, mode: ScreenshotMode) {
@@ -225,6 +243,7 @@ impl SpaceViewBlueprint {
             timeline: *ctx.rec_cfg.time_ctrl.timeline(),
             latest_at,
             entity_props_map: self.contents.data_blueprints_projected(),
+            root_entity_props: &self.root_entity_properties,
             highlights,
         };
 

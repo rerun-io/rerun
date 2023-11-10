@@ -5,21 +5,41 @@ use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
     ViewerContext,
 };
 
 use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
 
+#[derive(Clone, Default)]
+pub struct TimeSeriesSpaceViewState {
+    /// track across frames when the user moves the time cursor
+    is_dragging_time_cursor: bool,
+}
+
+impl SpaceViewState for TimeSeriesSpaceViewState {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;
 
+impl TimeSeriesSpaceView {
+    pub const NAME: &'static str = "Time Series";
+}
+
 impl SpaceViewClass for TimeSeriesSpaceView {
-    type State = ();
+    type State = TimeSeriesSpaceViewState;
 
     fn name(&self) -> SpaceViewClassName {
-        "Time Series".into()
+        Self::NAME.into()
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -84,7 +104,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         &self,
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut Self::State,
+        state: &mut Self::State,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
@@ -101,16 +121,11 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_series = parts.get::<TimeSeriesSystem>()?;
 
-        // Compute the minimum time/X value for the entire plot…
-        let min_time = time_series
-            .lines
-            .iter()
-            .flat_map(|line| line.points.iter().map(|p| p.0))
-            .min()
-            .unwrap_or(0);
+        // Get the minimum time/X value for the entire plot…
+        let min_time = time_series.min_time.unwrap_or(0);
 
         // …then use that as an offset to avoid nasty precision issues with
-        // large times (nanos since epoch does not fit into an f64).
+        // large times (nanos since epoch does not fit into a f64).
         let time_offset = if timeline.typ() == TimeType::Time {
             // In order to make the tick-marks on the time axis fall on whole days, hours, minutes etc,
             // we need to round to a whole day:
@@ -200,10 +215,20 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 }
             }
 
-            current_time.map(|current_time| {
-                let time_x = (current_time - time_offset) as f64;
-                plot_ui.screen_from_plot([time_x, 0.0].into()).x
-            })
+            if state.is_dragging_time_cursor {
+                // Freeze any change to the plot boundaries to avoid weird interaction with the time
+                // cursor.
+                plot_ui.set_plot_bounds(plot_ui.plot_bounds());
+            }
+
+            // decide if the time cursor should be displayed, and if where
+            current_time
+                .map(|current_time| (current_time - time_offset) as f64)
+                .filter(|&x| {
+                    // only display the time cursor when it's actually above the plot area
+                    plot_ui.plot_bounds().min()[0] <= x && x <= plot_ui.plot_bounds().max()[0]
+                })
+                .map(|x| plot_ui.screen_from_plot([x, 0.0].into()).x)
         });
 
         if let Some(time_x) = time_x {
@@ -216,6 +241,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 .interact(line_rect, time_drag_id, egui::Sense::drag())
                 .on_hover_and_drag_cursor(egui::CursorIcon::ResizeHorizontal);
 
+            state.is_dragging_time_cursor = false;
             if response.dragged() {
                 if let Some(pointer_pos) = ui.input(|i| i.pointer.hover_pos()) {
                     let time =
@@ -224,6 +250,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     time_ctrl.set_time(time);
                     time_ctrl.pause();
+
+                    state.is_dragging_time_cursor = true;
                 }
             }
 
