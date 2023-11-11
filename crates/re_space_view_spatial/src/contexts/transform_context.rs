@@ -104,8 +104,6 @@ impl ViewContextSystem for TransformContext {
             })
             .unwrap_or_default();
 
-        //query.entity_props_map;
-
         self.space_origin = query.space_origin.clone();
 
         // Find the entity path tree for the root.
