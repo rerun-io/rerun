@@ -20,6 +20,7 @@ impl std::fmt::Display for DataStore {
             insert_id: _,
             query_id: _,
             gc_id: _,
+            event_id: _,
         } = self;
 
         f.write_str("DataStore {\n")?;
