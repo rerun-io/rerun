@@ -456,6 +456,39 @@ mod tests {
             view,
         );
 
+        view.on_events(&store.gc(GarbageCollectionOptions::gc_everything()).0);
+
+        similar_asserts::assert_eq!(
+            GlobalCounts::new(
+                [
+                    (row_id1, 0), //
+                    (row_id2, 0),
+                    (row_id3, 0),
+                ],
+                [
+                    (timeline_frame, 0),
+                    (timeline_other, 0),
+                    (timeline_yet_another, 0),
+                ],
+                [
+                    (entity_path1.clone(), 0), //
+                    (entity_path2.clone(), 0), //
+                ],
+                [
+                    (InstanceKey::name(), 0), //
+                    (MyPoint::name(), 0),     //
+                    (MyColor::name(), 0),     //
+                ],
+                [
+                    (42.into(), 0), //
+                    (666.into(), 0),
+                    (1.into(), 0),
+                ],
+                0,
+            ),
+            view,
+        );
+
         Ok(())
     }
 }
