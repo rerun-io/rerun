@@ -246,6 +246,9 @@ mod tests {
 
         expected_events.extend(store1.insert_row(&row));
 
+        expected_events.extend(store1.gc(GarbageCollectionOptions::gc_everything()).0);
+        expected_events.extend(store2.gc(GarbageCollectionOptions::gc_everything()).0);
+
         DataStore::with_view::<AllEvents, _, _>(view_handle, |got| {
             similar_asserts::assert_eq!(expected_events, got.events);
         });
