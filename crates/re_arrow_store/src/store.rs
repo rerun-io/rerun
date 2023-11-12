@@ -5,13 +5,13 @@ use ahash::HashMap;
 use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 use smallvec::SmallVec;
 
 use re_log_types::{
     DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
     RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
 };
+use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 
 // --- Data store ---
 
@@ -229,6 +229,9 @@ pub struct DataStore {
 
     /// Monotonically increasing ID for GCs.
     pub(crate) gc_id: u64,
+
+    /// Monotonically increasing ID for store events.
+    pub(crate) event_id: AtomicU64,
 }
 
 impl Clone for DataStore {
@@ -245,6 +248,7 @@ impl Clone for DataStore {
             insert_id: Default::default(),
             query_id: Default::default(),
             gc_id: Default::default(),
+            event_id: Default::default(),
         }
     }
 }
@@ -264,6 +268,7 @@ impl DataStore {
             insert_id: 0,
             query_id: AtomicU64::new(0),
             gc_id: 0,
+            event_id: AtomicU64::new(0),
         }
     }
 
