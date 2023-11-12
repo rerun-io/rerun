@@ -10,7 +10,7 @@ use smallvec::SmallVec;
 
 use re_log_types::{
     DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
-    RowIdVec, TimeInt, TimePoint, TimeRange, Timeline,
+    RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
 };
 
 // --- Data store ---
@@ -172,6 +172,8 @@ pub struct StoreGeneration(u64);
 /// Additionally, if the `polars` feature is enabled, you can dump the entire datastore as a
 /// flat denormalized dataframe using [`Self::to_dataframe`].
 pub struct DataStore {
+    pub(crate) id: StoreId,
+
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
     ///
@@ -193,6 +195,8 @@ pub struct DataStore {
     /// the store so far.
     ///
     /// See also [`Self::lookup_datatype`].
+    //
+    // TODO(#1809): replace this with a centralized Arrow registry.
     pub(crate) type_registry: DataTypeRegistry,
 
     /// Keeps track of arbitrary per-row metadata.
@@ -227,6 +231,7 @@ pub struct DataStore {
 impl Clone for DataStore {
     fn clone(&self) -> Self {
         Self {
+            id: self.id.clone(),
             cluster_key: self.cluster_key,
             config: self.config.clone(),
             type_registry: self.type_registry.clone(),
@@ -234,25 +239,23 @@ impl Clone for DataStore {
             cluster_cell_cache: self.cluster_cell_cache.clone(),
             tables: self.tables.clone(),
             timeless_tables: self.timeless_tables.clone(),
-            insert_id: self.insert_id,
-            query_id: self
-                .query_id
-                .load(std::sync::atomic::Ordering::Relaxed)
-                .into(),
-            gc_id: self.gc_id,
+            insert_id: Default::default(),
+            query_id: Default::default(),
+            gc_id: Default::default(),
         }
     }
 }
 
 impl DataStore {
     /// See [`Self::cluster_key`] for more information about the cluster key.
-    pub fn new(cluster_key: ComponentName, config: DataStoreConfig) -> Self {
+    pub fn new(id: StoreId, cluster_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
+            id,
             cluster_key,
             config,
             cluster_cell_cache: Default::default(),
-            metadata_registry: Default::default(),
             type_registry: Default::default(),
+            metadata_registry: Default::default(),
             tables: Default::default(),
             timeless_tables: Default::default(),
             insert_id: 0,
@@ -340,6 +343,7 @@ fn datastore_internal_repr() {
     use re_types_core::Loggable as _;
 
     let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         re_types::components::InstanceKey::name(),
         DataStoreConfig {
             indexed_bucket_num_rows: 0,
