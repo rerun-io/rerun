@@ -4056,6 +4056,7 @@ dependencies = [
  "itertools 0.11.0",
  "mimalloc",
  "nohash-hasher",
+ "once_cell",
  "parking_lot 0.12.1",
  "polars-core",
  "polars-ops",
