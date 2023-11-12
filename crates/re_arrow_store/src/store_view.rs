@@ -138,3 +138,118 @@ impl DataStore {
         }
     }
 }
+
+#[cfg(tests)]
+mod tests {
+    use std::collections::BTreeMap;
+
+    use re_log_types::{
+        example_components::{MyColor, MyPoint, MyPoints},
+        DataRow, DataTable, EntityPath, RowId, TableId, Time, TimePoint, Timeline,
+    };
+    use re_types_core::{components::InstanceKey, Loggable as _};
+
+    use crate::{DataStore, GarbageCollectionOptions, StoreView, StoreViewHandle};
+
+    use super::*;
+
+    /// A simple [`StoreView`] for test purposes that just accumulates [`StoreEvent`]s.
+    #[derive(Default, Debug)]
+    struct AllEvents {
+        events: Vec<StoreEvent>,
+    }
+
+    impl StoreView for AllEvents {
+        fn name(&self) -> String {
+            "rerun.testing.store_views.AllEvents".into()
+        }
+
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+
+        fn on_events(&mut self, events: &[StoreEvent]) {
+            self.events.extend(events.to_owned());
+        }
+    }
+
+    #[test]
+    fn store_view() -> anyhow::Result<()> {
+        let mut store1 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
+        let mut store2 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
+
+        let mut expected_events = Vec::new();
+
+        let view_handle = DataStore::register_view(Box::<AllEvents>::default());
+
+        let timeline_frame = Timeline::new_sequence("frame");
+        let timeline_other = Timeline::new_temporal("other");
+        let timeline_yet_another = Timeline::new_sequence("yet_another");
+
+        let row = DataRow::from_component_batches(
+            RowId::random(),
+            TimePoint::from_iter([
+                (timeline_frame, 42.into()),      //
+                (timeline_other, 666.into()),     //
+                (timeline_yet_another, 1.into()), //
+            ]),
+            "entity_a".into(),
+            [&InstanceKey::from_iter(0..10) as _],
+        )?;
+
+        expected_events.extend(store1.insert_row(&row));
+
+        let row = {
+            let num_instances = 3;
+            let points: Vec<_> = (0..num_instances)
+                .map(|i| MyPoint::new(0.0, i as f32))
+                .collect();
+            let colors = vec![MyColor::from(0xFF0000FF)];
+            DataRow::from_component_batches(
+                RowId::random(),
+                TimePoint::from_iter([
+                    (timeline_frame, 42.into()),      //
+                    (timeline_yet_another, 1.into()), //
+                ]),
+                "entity_b".into(),
+                [&points as _, &colors as _],
+            )?
+        };
+
+        expected_events.extend(store2.insert_row(&row));
+
+        let row = {
+            let num_instances = 6;
+            let colors = vec![MyColor::from(0x00DD00FF); num_instances];
+            DataRow::from_component_batches(
+                RowId::random(),
+                TimePoint::timeless(),
+                "entity_b".into(),
+                [
+                    &InstanceKey::from_iter(0..num_instances as _) as _,
+                    &colors as _,
+                ],
+            )?
+        };
+
+        expected_events.extend(store1.insert_row(&row));
+
+        DataStore::with_view::<AllEvents, _, _>(view_handle, |got| {
+            similar_asserts::assert_eq!(expected_events, got.events);
+        });
+
+        Ok(())
+    }
+}

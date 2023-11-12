@@ -14,7 +14,7 @@ use re_types_core::{
 
 use crate::{
     DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
-    PersistentIndexedTable, StoreDiff, StoreEvent,
+    PersistentIndexedTable, StoreDiff, StoreDiffKind, StoreEvent,
 };
 
 // --- Data store ---
@@ -201,6 +201,18 @@ impl DataStore {
                 .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             diff,
         };
+
+        {
+            let events = &[event.clone()];
+
+            if cfg!(debug_assertions) {
+                let any_event_other_than_addition =
+                    events.iter().any(|e| e.kind != StoreDiffKind::Addition);
+                assert!(!any_event_other_than_addition);
+            }
+
+            Self::on_events(events);
+        }
 
         Ok(event)
     }
