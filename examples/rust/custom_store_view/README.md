@@ -1,7 +1,7 @@
 ---
 title: Custom Store View
 tags: [store-event, store-diff, store-view]
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_store_view/src/main.rs
+rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_store_view/src/main.rs?speculative-link
 ---
 
 <picture>
