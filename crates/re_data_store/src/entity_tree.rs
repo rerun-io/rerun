@@ -1,12 +1,17 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
+use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
+use re_arrow_store::StoreEvent;
 use re_log_types::{
-    ComponentPath, EntityPath, EntityPathPart, PathOp, RowId, TimeInt, TimePoint, Timeline,
+    ComponentPath, EntityPath, EntityPathHash, EntityPathPart, PathOp, RowId, TimeInt, TimePoint,
+    Timeline,
 };
 use re_types_core::{ComponentName, Loggable};
+
+use crate::TimeHistogramPerTimeline;
 
 // ----------------------------------------------------------------------------
 
@@ -32,99 +37,6 @@ impl ActuallyDeleted {
 
 // ----------------------------------------------------------------------------
 
-/// Number of messages per time
-pub type TimeHistogram = re_int_histogram::Int64Histogram;
-
-/// Number of messages per time per timeline.
-///
-/// Does NOT include timeless.
-#[derive(Default)]
-pub struct TimeHistogramPerTimeline(BTreeMap<Timeline, TimeHistogram>);
-
-impl TimeHistogramPerTimeline {
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.0.keys()
-    }
-
-    pub fn get(&self, timeline: &Timeline) -> Option<&TimeHistogram> {
-        self.0.get(timeline)
-    }
-
-    pub fn has_timeline(&self, timeline: &Timeline) -> bool {
-        self.0.contains_key(timeline)
-    }
-
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &TimeHistogram)> {
-        self.0.iter()
-    }
-
-    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (&Timeline, &mut TimeHistogram)> {
-        self.0.iter_mut()
-    }
-
-    pub fn purge(&mut self, deleted: &ActuallyDeleted) {
-        re_tracing::profile_function!();
-
-        for (timeline, histogram) in &mut self.0 {
-            if let Some(times) = deleted.timeful.get(timeline) {
-                for &time in times {
-                    histogram.decrement(time.as_i64(), 1);
-                }
-            }
-
-            // NOTE: we don't include timeless in the histogram.
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Number of messages per time per timeline.
-///
-/// Does NOT include timeless.
-pub struct TimesPerTimeline(BTreeMap<Timeline, BTreeSet<TimeInt>>);
-
-impl TimesPerTimeline {
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.0.keys()
-    }
-
-    pub fn get(&self, timeline: &Timeline) -> Option<&BTreeSet<TimeInt>> {
-        self.0.get(timeline)
-    }
-
-    pub fn get_mut(&mut self, timeline: &Timeline) -> Option<&mut BTreeSet<TimeInt>> {
-        self.0.get_mut(timeline)
-    }
-
-    pub fn insert(&mut self, timeline: Timeline, time: TimeInt) {
-        self.0.entry(timeline).or_default().insert(time);
-    }
-
-    pub fn has_timeline(&self, timeline: &Timeline) -> bool {
-        self.0.contains_key(timeline)
-    }
-
-    pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &BTreeSet<TimeInt>)> {
-        self.0.iter()
-    }
-
-    pub fn iter_mut(
-        &mut self,
-    ) -> impl ExactSizeIterator<Item = (&Timeline, &mut BTreeSet<TimeInt>)> {
-        self.0.iter_mut()
-    }
-}
-
-// Always ensure we have a default "log_time" timeline.
-impl Default for TimesPerTimeline {
-    fn default() -> Self {
-        Self(BTreeMap::from([(Timeline::log_time(), Default::default())]))
-    }
-}
-
-// ----------------------------------------------------------------------------
-
 /// Tree of entity paths, plus components at the leaves.
 pub struct EntityTree {
     /// Full path to the root of this tree.
@@ -139,10 +51,7 @@ pub struct EntityTree {
     /// A component logged twice at the same timestamp is counted twice.
     ///
     /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub prefix_times: TimeHistogramPerTimeline,
-
-    /// Extra book-keeping used to seed any timelines that include timeless msgs
-    num_timeless_messages: usize,
+    pub recursive_time_histogram: TimeHistogramPerTimeline,
 
     /// Book-keeping around whether we should clear fields when data is added
     pub nonrecursive_clears: BTreeMap<RowId, TimePoint>,
@@ -157,7 +66,51 @@ pub struct EntityTree {
     /// A component logged twice at the same timestamp is counted twice.
     ///
     /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
-    pub components: BTreeMap<ComponentName, ComponentStats>,
+    pub time_histograms_per_component: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
+}
+
+/// Maintains an optimized representation of a batch of [`StoreEvent`]s specifically designed to
+/// accelerate garbage collection of [`EntityTree`]s.
+#[derive(Default)]
+pub struct CompactedStoreEvents {
+    /// What rows were deleted?
+    pub row_ids: HashSet<RowId>,
+
+    /// What time points were deleted for each entity+timeline+component?
+    pub timeful: IntMap<EntityPathHash, IntMap<Timeline, IntMap<ComponentName, Vec<TimeInt>>>>,
+
+    /// For each entity+component, how many timeless entries were deleted?
+    pub timeless: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
+}
+
+impl CompactedStoreEvents {
+    pub fn new(store_events: &[StoreEvent]) -> Self {
+        let mut this = CompactedStoreEvents {
+            row_ids: store_events.iter().map(|event| event.row_id).collect(),
+            timeful: Default::default(),
+            timeless: Default::default(),
+        };
+
+        for event in store_events {
+            if event.is_timeless() {
+                let per_component = this.timeless.entry(event.entity_path.hash()).or_default();
+                for component_name in event.cells.keys() {
+                    *per_component.entry(*component_name).or_default() +=
+                        event.delta().unsigned_abs();
+                }
+            } else {
+                for (&timeline, &time) in &event.timepoint {
+                    let per_timeline = this.timeful.entry(event.entity_path.hash()).or_default();
+                    let per_component = per_timeline.entry(timeline).or_default();
+                    for component_name in event.cells.keys() {
+                        per_component.entry(*component_name).or_default().push(time);
+                    }
+                }
+            }
+        }
+
+        this
+    }
 }
 
 impl EntityTree {
@@ -169,11 +122,10 @@ impl EntityTree {
         Self {
             path,
             children: Default::default(),
-            prefix_times: Default::default(),
-            num_timeless_messages: 0,
+            recursive_time_histogram: Default::default(),
             nonrecursive_clears: recursive_clears.clone(),
             recursive_clears,
-            components: Default::default(),
+            time_histograms_per_component: Default::default(),
         }
     }
 
@@ -183,11 +135,11 @@ impl EntityTree {
     }
 
     pub fn num_children_and_fields(&self) -> usize {
-        self.children.len() + self.components.len()
+        self.children.len() + self.time_histograms_per_component.len()
     }
 
-    pub fn num_timeless_messages(&self) -> usize {
-        self.num_timeless_messages
+    pub fn num_timeless_messages(&self) -> u64 {
+        self.recursive_time_histogram.num_timeless_messages()
     }
 
     pub fn time_histogram_for_component(
@@ -195,9 +147,9 @@ impl EntityTree {
         timeline: &Timeline,
         component_name: impl Into<ComponentName>,
     ) -> Option<&crate::TimeHistogram> {
-        self.components
+        self.time_histograms_per_component
             .get(&component_name.into())
-            .and_then(|stats| stats.times.get(timeline))
+            .and_then(|per_timeline| per_timeline.get(timeline))
     }
 
     /// Returns a collection of pending clear operations
@@ -214,7 +166,7 @@ impl EntityTree {
         let mut pending_clears = vec![];
 
         let fields = leaf
-            .components
+            .time_histograms_per_component
             .entry(component_path.component_name)
             .or_insert_with(|| {
                 // If we needed to create a new leaf to hold this data, we also want to
@@ -268,7 +220,7 @@ impl EntityTree {
                     .or_insert_with(|| time_point.clone());
 
                 // For every existing field return a clear event
-                leaf.components
+                leaf.time_histograms_per_component
                     .keys()
                     .filter(|comp_name| filter_out_clear_components(comp_name))
                     .map(|component_name| ComponentPath::new(entity_path.clone(), *component_name))
@@ -296,7 +248,7 @@ impl EntityTree {
                     // For every existing field append a clear event into the
                     // results
                     results.extend(
-                        next.components
+                        next.time_histograms_per_component
                             .keys()
                             .filter(|comp_name| filter_out_clear_components(comp_name))
                             .map(|component_name| {
@@ -315,18 +267,7 @@ impl EntityTree {
         depth: usize,
         time_point: &TimePoint,
     ) -> &mut Self {
-        // If the time_point is timeless…
-        if time_point.is_timeless() {
-            self.num_timeless_messages += 1;
-        } else {
-            for (timeline, time_value) in time_point.iter() {
-                self.prefix_times
-                    .0
-                    .entry(*timeline)
-                    .or_default()
-                    .increment(time_value.as_i64(), 1);
-            }
-        }
+        self.recursive_time_histogram.add(time_point);
 
         match full_path.get(depth) {
             None => {
@@ -359,17 +300,16 @@ impl EntityTree {
     /// Purge all times before the cutoff, or in the given set
     pub fn purge(
         &mut self,
-        deleted: &re_arrow_store::Deleted,
+        deleted: &CompactedStoreEvents,
         deleted_by_us_and_children: &mut ActuallyDeleted,
     ) {
         let Self {
             path,
             children,
-            prefix_times,
-            num_timeless_messages,
+            recursive_time_histogram,
             nonrecursive_clears,
             recursive_clears,
-            components,
+            time_histograms_per_component,
         } = self;
 
         {
@@ -388,17 +328,12 @@ impl EntityTree {
         }
 
         {
-            re_tracing::profile_scope!("ComponentStats");
+            re_tracing::profile_scope!("components");
 
             // The `deleted` stats are per component, so start here:
 
-            for (comp_name, stats) in components {
-                let ComponentStats {
-                    times,
-                    num_timeless_messages,
-                } = stats;
-
-                for (timeline, histogram) in &mut times.0 {
+            for (comp_name, times) in time_histograms_per_component {
+                for (timeline, histogram) in times.iter_mut() {
                     if let Some(times) = deleted
                         .timeful
                         .get(&path.hash())
@@ -424,8 +359,9 @@ impl EntityTree {
                     .get(&path.hash())
                     .and_then(|map| map.get(comp_name))
                 {
-                    *num_timeless_messages =
-                        num_timeless_messages.saturating_sub(*num_deleted as _);
+                    recursive_time_histogram.num_timeless_messages = recursive_time_histogram
+                        .num_timeless_messages
+                        .saturating_sub(*num_deleted);
                     deleted_by_children.timeless += num_deleted;
                 }
             }
@@ -433,10 +369,19 @@ impl EntityTree {
 
         {
             // Apply what was deleted by children and by our components:
-            *num_timeless_messages =
-                num_timeless_messages.saturating_sub(deleted_by_us_and_children.timeless as _);
+            recursive_time_histogram.num_timeless_messages = recursive_time_histogram
+                .num_timeless_messages
+                .saturating_sub(deleted_by_us_and_children.timeless);
 
-            prefix_times.purge(&deleted_by_children);
+            for (timeline, histogram) in recursive_time_histogram.iter_mut() {
+                if let Some(times) = deleted_by_children.timeful.get(timeline) {
+                    for &time in times {
+                        histogram.decrement(time.as_i64(), 1);
+                    }
+                }
+
+                // NOTE: we don't include timeless in the histogram.
+            }
         }
 
         deleted_by_us_and_children.append(deleted_by_children);
@@ -447,36 +392,6 @@ impl EntityTree {
         visitor(&self.path);
         for child in self.children.values() {
             child.visit_children_recursively(visitor);
-        }
-    }
-}
-
-#[derive(Default)]
-pub struct ComponentStats {
-    /// When do we have data? Ignored timeless.
-    pub times: TimeHistogramPerTimeline,
-
-    /// Extra book-keeping used to seed any timelines that include timeless msgs
-    num_timeless_messages: usize,
-}
-
-impl ComponentStats {
-    pub fn num_timeless_messages(&self) -> usize {
-        self.num_timeless_messages
-    }
-
-    pub fn add(&mut self, time_point: &TimePoint) {
-        // If the `time_point` is timeless…
-        if time_point.is_timeless() {
-            self.num_timeless_messages += 1;
-        } else {
-            for (timeline, time_value) in time_point.iter() {
-                self.times
-                    .0
-                    .entry(*timeline)
-                    .or_default()
-                    .increment(time_value.as_i64(), 1);
-            }
         }
     }
 }
