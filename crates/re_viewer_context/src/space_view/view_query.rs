@@ -92,7 +92,7 @@ pub struct ViewQuery<'s> {
 }
 
 impl<'s> ViewQuery<'s> {
-    /// Iter over all of the currently visible [`DataResults`]s for a given `ViewSystem`
+    /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
     pub fn iter_visible_data_results(
         &self,
         system: ViewSystemName,
