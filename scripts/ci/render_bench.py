@@ -7,10 +7,20 @@ To use this script, you must be authenticated with GCS,
 see https://cloud.google.com/docs/authentication/client-libraries for more information.
 
 Install dependencies:
-    GitPython==3.1.37 google-cloud-storage==2.9.0
+    google-cloud-storage==2.9.0
 
 Use the script:
-    python3 scripts/ci/render_bench.py
+    python3 scripts/ci/render_bench.py --help
+
+    python3 scripts/ci/render_bench.py \
+      crates \
+      --num-days 30 \
+      --output ./benchmarks
+
+    python3 scripts/ci/render_bench.py \
+      sizes \
+      --num-days $((30*6)) \
+      --output gs://rerun-builds/graphs
 """
 from __future__ import annotations
 
