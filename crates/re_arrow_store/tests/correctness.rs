@@ -485,10 +485,9 @@ fn gc_correct() {
 
     let stats = DataStoreStats::from_store(&store);
 
-    let (deleted, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    let (store_events, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
     let stats_diff = stats_diff + stats_empty; // account for fixed overhead
 
-    assert_eq!(deleted.row_ids.len() as u64, stats.total.num_rows);
     assert_eq!(
         stats.metadata_registry.num_rows,
         stats_diff.metadata_registry.num_rows
@@ -501,12 +500,12 @@ fn gc_correct() {
 
     sanity_unwrap(&mut store);
     check_still_readable(&store);
-    for row_id in &deleted.row_ids {
-        assert!(store.get_msg_metadata(row_id).is_none());
+    for event in store_events {
+        assert!(store.get_msg_metadata(&event.row_id).is_none());
     }
 
-    let (deleted, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
-    assert!(deleted.row_ids.is_empty());
+    let (store_events, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    assert!(store_events.is_empty());
     assert_eq!(DataStoreStats::default(), stats_diff);
 
     sanity_unwrap(&mut store);

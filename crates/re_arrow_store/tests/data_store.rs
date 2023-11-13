@@ -926,14 +926,14 @@ fn gc_impl(store: &mut DataStore) {
 
         let stats = DataStoreStats::from_store(store);
 
-        let (deleted, stats_diff) = store.gc(GarbageCollectionOptions {
+        let (store_events, stats_diff) = store.gc(GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             gc_timeless: false,
             protect_latest: 0,
             purge_empty_tables: false,
         });
-        for row_id in &deleted.row_ids {
-            assert!(store.get_msg_metadata(row_id).is_none());
+        for event in store_events {
+            assert!(store.get_msg_metadata(&event.row_id).is_none());
         }
 
         // NOTE: only temporal data and row metadata get purged!
