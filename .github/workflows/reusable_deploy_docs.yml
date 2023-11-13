@@ -9,7 +9,7 @@ on:
       PY_DOCS_VERSION_NAME:
         required: true
         type: string
-      RS_DOCS_VERSION_NAME:
+      RS_AND_CPP_DOCS_VERSION_NAME:
         required: false
         type: string
         default: "head"
@@ -163,10 +163,10 @@ jobs:
       - name: Deploy the docs
         run: |
           git fetch
-          python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
+          python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_AND_CPP_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
 
   cpp-deploy-docs:
-    name: Rust
+    name: Cpp
     runs-on: ubuntu-latest
     steps:
       - name: Show context
@@ -205,16 +205,17 @@ jobs:
       - name: Set up ghp-import
         run: pip install ghp-import
 
-      - name: Patch in a redirect page
-        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
-        env:
-          REDIRECT_CRATE: rerun
+        # TODO(andreas): Do we need this?
+      # - name: Patch in a redirect page
+      #   run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
+      #   env:
+      #     REDIRECT_CRATE: rerun
 
       # See: https://github.com/c-w/ghp-import
       - name: Deploy the docs
         run: |
           git fetch
-          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.RS_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
+          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.RS_AND_CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
 
   redeploy-rerun-io:
     runs-on: ubuntu-latest
