@@ -5,10 +5,11 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char Tensor::INDICATOR_COMPONENT_NAME[] = "rerun.components.TensorIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char Tensor::INDICATOR_COMPONENT_NAME[] = "rerun.components.TensorIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Tensor>::serialize(
         const archetypes::Tensor& archetype

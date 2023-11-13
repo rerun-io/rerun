@@ -3,9 +3,9 @@
 @group(0) @binding(0)
 var mask_texture: texture_multisampled_2d<u32>;
 
-fn has_edge(closest_center_sample: UVec2, sample_coord: IVec2, sample_idx: i32) -> Vec2 {
+fn has_edge(closest_center_sample: vec2u, sample_coord: vec2i, sample_idx: i32) -> vec2f {
     let mask_neighbor = textureLoad(mask_texture, sample_coord, sample_idx).xy;
-    return Vec2(closest_center_sample != mask_neighbor);
+    return vec2f(closest_center_sample != mask_neighbor);
 }
 
 
@@ -37,18 +37,18 @@ fn has_edge(closest_center_sample: UVec2, sample_coord: IVec2, sample_idx: i32) 
 //       |        3   |
 //        ‾‾‾‾‾‾‾‾‾‾‾‾(1, 1)
 //
-// var<private> subsample_positions: array<Vec2, 4> = array<Vec2, 4>(
-//     Vec2(0.375, 0.125),
-//     Vec2(0.875, 0.375),
-//     Vec2(0.125, 0.625),
-//     Vec2(0.625, 0.875)
+// var<private> subsample_positions: array<vec2f, 4> = array<vec2f, 4>(
+//     vec2f(0.375, 0.125),
+//     vec2f(0.875, 0.375),
+//     vec2f(0.125, 0.625),
+//     vec2f(0.625, 0.875)
 // );
 //
 // Note that the algorithm should still produce _some_ edges if this is not the case!
 @fragment
-fn main(in: FragmentInput) -> @location(0) Vec4 {
+fn main(in: FragmentInput) -> @location(0) vec4f {
     let resolution = textureDimensions(mask_texture).xy;
-    let center_coord = IVec2(Vec2(resolution) * in.texcoord);
+    let center_coord = vec2i(vec2f(resolution) * in.texcoord);
 
     //let num_samples = textureNumSamples(mask_texture);
     // TODO(andreas): Should we assert somehow on textureNumSamples here?
@@ -58,13 +58,13 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
     let mask_left_bottom = textureLoad(mask_texture, center_coord, 2).xy;
     let mask_bottom_right = textureLoad(mask_texture, center_coord, 3).xy;
 
-    var edge_pos_a_and_b = Vec4(0.0);
-    var num_edges_a_and_b = Vec2(0.0);
+    var edge_pos_a_and_b = vec4f(0.0);
+    var num_edges_a_and_b = vec2f(0.0);
 
     // Internal samples across the center point
     // Tried weighting this higher, didn't make a difference in quality since we almost always have only a single edge.
     {
-        let edge = Vec2(mask_top_left != mask_bottom_right) + Vec2(mask_right_top != mask_left_bottom);
+        let edge = vec2f(mask_top_left != mask_bottom_right) + vec2f(mask_right_top != mask_left_bottom);
         num_edges_a_and_b += edge;
         edge_pos_a_and_b += edge.xxyy * 0.5;
     }
@@ -73,54 +73,54 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
 
     // Sample closest neighbors top/bottom/left/right
     { // right
-        let edge = has_edge(mask_right_top, center_coord + IVec2(1, 0), 2);
-        let edge_pos = Vec2(1.0, 0.5);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        let edge = has_edge(mask_right_top, center_coord + vec2i(1, 0), 2);
+        let edge_pos = vec2f(1.0, 0.5);
+        edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // bottom
-        let edge = has_edge(mask_bottom_right, center_coord + IVec2(0, 1), 0);
-        let edge_pos = Vec2(0.5, 1.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        let edge = has_edge(mask_bottom_right, center_coord + vec2i(0, 1), 0);
+        let edge_pos = vec2f(0.5, 1.0);
+        edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // left
-        let edge = has_edge(mask_left_bottom, center_coord + IVec2(-1, 0), 1);
-        let edge_pos = Vec2(0.0, 0.5);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        let edge = has_edge(mask_left_bottom, center_coord + vec2i(-1, 0), 1);
+        let edge_pos = vec2f(0.0, 0.5);
+        edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // top
-        let edge = has_edge(mask_top_left, center_coord + IVec2(0, -1), 3);
-        let edge_pos = Vec2(0.5, 0.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        let edge = has_edge(mask_top_left, center_coord + vec2i(0, -1), 3);
+        let edge_pos = vec2f(0.5, 0.0);
+        edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
 
     // Sample closest neighbors diagonally.
     // This is not strictly necessary, but empirically the result looks a lot better!
     { // top-right
-        let edge = has_edge(mask_right_top, center_coord + IVec2(1, -1), 2);
-        let edge_pos = Vec2(1.0, 0.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        let edge = has_edge(mask_right_top, center_coord + vec2i(1, -1), 2);
+        let edge_pos = vec2f(1.0, 0.0);
+        edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // bottom-right
-        let edge = has_edge(mask_bottom_right, center_coord + IVec2(1, 1), 0);
-        let edge_pos = Vec2(1.0, 1.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        let edge = has_edge(mask_bottom_right, center_coord + vec2i(1, 1), 0);
+        let edge_pos = vec2f(1.0, 1.0);
+        edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // bottom-left
-        let edge = has_edge(mask_left_bottom, center_coord + IVec2(-1, 1), 1);
-        let edge_pos = Vec2(0.0, 1.0);
-        edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy;
+        let edge = has_edge(mask_left_bottom, center_coord + vec2i(-1, 1), 1);
+        let edge_pos = vec2f(0.0, 1.0);
+        edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy;
         num_edges_a_and_b += edge;
     }
     { // top-left
-        let edge = has_edge(mask_top_left, center_coord + IVec2(-1, -1), 3);
-        let edge_pos = Vec2(0.0, 0.0);
-        //edge_pos_a_and_b += Vec4(edge_pos, edge_pos) * edge.xxyy; // multiplied by zero, optimize out
+        let edge = has_edge(mask_top_left, center_coord + vec2i(-1, -1), 3);
+        let edge_pos = vec2f(0.0, 0.0);
+        //edge_pos_a_and_b += vec4f(edge_pos, edge_pos) * edge.xxyy; // multiplied by zero, optimize out
         num_edges_a_and_b += edge;
     }
 

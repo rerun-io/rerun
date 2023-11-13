@@ -16,9 +16,10 @@
 #include "rerun/sdk_info.hpp"
 #include "rerun/spawn.hpp"
 
-// Archetypes are the quick-and-easy default way of logging data to Rerun.
-// Make them available in the rerun namespace.
+/// All Rerun C++ types and functions are in the `rerun` namespace or one of its nested namespaces.
 namespace rerun {
+    // Archetypes are the quick-and-easy default way of logging data to Rerun.
+    // Make them available in the rerun namespace.
     using namespace archetypes;
 
     // Also import any component or datatype that has a unique name:

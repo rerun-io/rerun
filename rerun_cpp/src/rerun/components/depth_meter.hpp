@@ -20,42 +20,40 @@ namespace arrow {
     using FloatBuilder = NumericBuilder<FloatType>;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A component indicating how long a meter is, expressed in native units.
-        struct DepthMeter {
-            float value;
+namespace rerun::components {
+    /// **Component**: A component indicating how long a meter is, expressed in native units.
+    struct DepthMeter {
+        float value;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            DepthMeter() = default;
+      public:
+        DepthMeter() = default;
 
-            DepthMeter(float value_) : value(value_) {}
+        DepthMeter(float value_) : value(value_) {}
 
-            DepthMeter& operator=(float value_) {
-                value = value_;
-                return *this;
-            }
+        DepthMeter& operator=(float value_) {
+            value = value_;
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::FloatBuilder* builder, const DepthMeter* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::FloatBuilder* builder, const DepthMeter* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of DepthMeter components.
-            static Result<rerun::DataCell> to_data_cell(
-                const DepthMeter* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of DepthMeter components.
+        static Result<rerun::DataCell> to_data_cell(
+            const DepthMeter* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

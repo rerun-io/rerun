@@ -5,11 +5,12 @@
 
 #include <rerun/component_batch_adapter_builtins.hpp>
 
+namespace rerun::archetypes {
+    const char AffixFuzzer2::INDICATOR_COMPONENT_NAME[] =
+        "rerun.testing.components.AffixFuzzer2Indicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char AffixFuzzer2::INDICATOR_COMPONENT_NAME[] =
-            "rerun.testing.components.AffixFuzzer2Indicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::AffixFuzzer2>::serialize(
         const archetypes::AffixFuzzer2& archetype

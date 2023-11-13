@@ -5,11 +5,11 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char Transform3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Transform3DIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char Transform3D::INDICATOR_COMPONENT_NAME[] =
-            "rerun.components.Transform3DIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Transform3D>::serialize(
         const archetypes::Transform3D& archetype
