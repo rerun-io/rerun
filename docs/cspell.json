@@ -32,6 +32,7 @@
     "backbuffer",
     "backprojection",
     "barebone",
+    "Bazel",
     "Bgra",
     "Bhat",
     "bindgen",
