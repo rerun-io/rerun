@@ -27,7 +27,7 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // but are about the location of the texel in the target texture.
     var color = textureSample(color_texture, nearest_sampler, in.texcoord).rgb;
     // TODO(andreas): Do something meaningful with values above 1
-    color = clamp(color, vec3f(), vec3f(1.0));
+    color = clamp(color, vec3f(0.0), vec3f(1.0));
 
     // Outlines
     {
