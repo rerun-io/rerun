@@ -5,10 +5,11 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char Boxes3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Boxes3DIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char Boxes3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Boxes3DIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Boxes3D>::serialize(
         const archetypes::Boxes3D& archetype

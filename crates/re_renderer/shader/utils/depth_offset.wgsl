@@ -4,7 +4,7 @@
 /*
 We use reverse infinite depth, as promoted by https://developer.nvidia.com/content/depth-precision-visualized
 
-The projection matrix (from `glam::Mat4::perspective_infinite_reverse_rh`) looks like this:
+The projection matrix (from `glam::Mat::perspective_infinite_reverse_rh`) looks like this:
 
 f / aspect_ratio   0     0      0
 0                  f     0      0
@@ -70,7 +70,7 @@ The only reliable ways to mitigate this we found so far are:
 
 */
 
-fn apply_depth_offset(position: Vec4, offset: f32) -> Vec4 {
+fn apply_depth_offset(position: vec4f, offset: f32) -> vec4f {
     // On GLES/WebGL, the NDC clipspace range for depth is from -1 to 1 and y is flipped.
     // wgpu/Naga counteracts this by patching all vertex shaders with:
     // "gl_Position.yz = vec2(-gl_Position.y, gl_Position.z * 2.0 - gl_Position.w);",
@@ -91,7 +91,7 @@ fn apply_depth_offset(position: Vec4, offset: f32) -> Vec4 {
     }
     let w_scale = 1.0 - w_scale_bias;
 
-    return Vec4(
+    return vec4f(
         position.xyz,
         position.w * w_scale,
     );

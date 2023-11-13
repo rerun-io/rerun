@@ -19,34 +19,32 @@ namespace arrow {
     using UInt32Builder = NumericBuilder<UInt32Type>;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: A 32bit unsigned integer.
-        struct UInt32 {
-            uint32_t value;
+namespace rerun::datatypes {
+    /// **Datatype**: A 32bit unsigned integer.
+    struct UInt32 {
+        uint32_t value;
 
-          public:
-            UInt32() = default;
+      public:
+        UInt32() = default;
 
-            UInt32(uint32_t value_) : value(value_) {}
+        UInt32(uint32_t value_) : value(value_) {}
 
-            UInt32& operator=(uint32_t value_) {
-                value = value_;
-                return *this;
-            }
+        UInt32& operator=(uint32_t value_) {
+            value = value_;
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::UInt32Builder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::UInt32Builder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::UInt32Builder* builder, const UInt32* elements, size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::UInt32Builder* builder, const UInt32* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

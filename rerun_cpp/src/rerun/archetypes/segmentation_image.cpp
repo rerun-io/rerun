@@ -5,11 +5,12 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char SegmentationImage::INDICATOR_COMPONENT_NAME[] =
+        "rerun.components.SegmentationImageIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char SegmentationImage::INDICATOR_COMPONENT_NAME[] =
-            "rerun.components.SegmentationImageIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
         archetypes::SegmentationImage>::serialize(const archetypes::SegmentationImage& archetype) {

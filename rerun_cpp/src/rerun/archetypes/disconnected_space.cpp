@@ -5,11 +5,12 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char DisconnectedSpace::INDICATOR_COMPONENT_NAME[] =
+        "rerun.components.DisconnectedSpaceIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char DisconnectedSpace::INDICATOR_COMPONENT_NAME[] =
-            "rerun.components.DisconnectedSpaceIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
         archetypes::DisconnectedSpace>::serialize(const archetypes::DisconnectedSpace& archetype) {

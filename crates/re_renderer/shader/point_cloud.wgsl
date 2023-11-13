@@ -19,18 +19,18 @@ struct DrawDataUniformBuffer {
     // 256bytes in order to allow them to be buffer-suballocations.
     // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
     // if we wouldn't add padding here, which isn't available on WebGL.
-    _padding: Vec4,
+    _padding: vec4f,
 };
 @group(1) @binding(3)
 var<uniform> draw_data: DrawDataUniformBuffer;
 
 struct BatchUniformBuffer {
-    world_from_obj: Mat4,
+    world_from_obj: mat4x4f,
     flags: u32,
     depth_offset: f32,
-    _padding: UVec2,
-    outline_mask: UVec2,
-    picking_layer_object_id: UVec2,
+    _padding: vec2u,
+    outline_mask: vec2u,
+    picking_layer_object_id: vec2u,
 };
 @group(2) @binding(0)
 var<uniform> batch: BatchUniformBuffer;
@@ -44,16 +44,16 @@ const TEXTURE_SIZE: u32 = 2048u;
 
 struct VertexOut {
     @builtin(position)
-    position: Vec4,
+    position: vec4f,
 
     @location(0) @interpolate(perspective)
-    world_position: Vec3,
+    world_position: vec3f,
 
     @location(1) @interpolate(flat)
     radius: f32,
 
     @location(2) @interpolate(flat)
-    point_center: Vec3,
+    point_center: vec3f,
 
     // TODO(andreas): Color & picking layer instance are only used in some passes.
     // Once we have shader variant support we should remove the unused ones
@@ -62,27 +62,27 @@ struct VertexOut {
     // Yes, that's more fetches but all of these would be cache hits whereas vertex data pass through can be expensive, (especially on tiler architectures!)
 
     @location(3) @interpolate(flat)
-    color: Vec4, // linear RGBA with unmulitplied/separate alpha
+    color: vec4f, // linear RGBA with unmulitplied/separate alpha
 
     @location(4) @interpolate(flat)
-    picking_instance_id: UVec2,
+    picking_instance_id: vec2u,
 };
 
 struct PointData {
-    pos: Vec3,
+    pos: vec3f,
     unresolved_radius: f32,
-    color: Vec4,
-    picking_instance_id: UVec2,
+    color: vec4f,
+    picking_instance_id: vec2u,
 }
 
 // Read and unpack data at a given location
 fn read_data(idx: u32) -> PointData {
-    let coord = UVec2(idx % TEXTURE_SIZE, idx / TEXTURE_SIZE);
+    let coord = vec2u(idx % TEXTURE_SIZE, idx / TEXTURE_SIZE);
     let position_data = textureLoad(position_data_texture, coord, 0);
     let color = textureLoad(color_texture, coord, 0);
 
     var data: PointData;
-    let pos_4d = batch.world_from_obj * Vec4(position_data.xyz, 1.0);
+    let pos_4d = batch.world_from_obj * vec4f(position_data.xyz, 1.0);
     data.pos = pos_4d.xyz / pos_4d.w;
     data.unresolved_radius = position_data.w;
     data.color = color;
@@ -103,7 +103,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Output, transform to projection space and done.
     var out: VertexOut;
-    out.position = apply_depth_offset(frame.projection_from_world * Vec4(quad.pos_in_world, 1.0), batch.depth_offset);
+    out.position = apply_depth_offset(frame.projection_from_world * vec4f(quad.pos_in_world, 1.0), batch.depth_offset);
     out.color = point_data.color;
     out.radius = quad.point_resolved_radius;
     out.world_position = quad.pos_in_world;
@@ -120,13 +120,13 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 ///
 /// 2D primitives are always facing the camera - the difference to sphere_quad_coverage is that
 /// perspective projection is not taken into account.
-fn circle_quad_coverage(world_position: Vec3, radius: f32, circle_center: Vec3) -> f32 {
+fn circle_quad_coverage(world_position: vec3f, radius: f32, circle_center: vec3f) -> f32 {
     let distance = distance(circle_center, world_position);
     let feathering_radius = fwidth(distance) * 0.5;
     return smoothstep(radius + feathering_radius, radius - feathering_radius, distance);
 }
 
-fn coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
+fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
     if is_camera_orthographic() || has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES) {
         return circle_quad_coverage(world_position, radius, point_center);
     } else {
@@ -136,7 +136,7 @@ fn coverage(world_position: Vec3, radius: f32, point_center: Vec3) -> f32 {
 
 
 @fragment
-fn fs_main(in: VertexOut) -> @location(0) Vec4 {
+fn fs_main(in: VertexOut) -> @location(0) vec4f {
     let coverage = coverage(in.world_position, in.radius, in.point_center);
     if coverage < 0.001 {
         discard;
@@ -149,20 +149,20 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
     if has_any_flag(batch.flags, FLAG_ENABLE_SHADING) {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
-    return vec4(in.color.rgb * shading, coverage);
+    return vec4f(in.color.rgb * shading, coverage);
 }
 
 @fragment
-fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
+fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
     let coverage = coverage(in.world_position, in.radius, in.point_center);
     if coverage <= 0.5 {
         discard;
     }
-    return UVec4(batch.picking_layer_object_id, in.picking_instance_id);
+    return vec4u(batch.picking_layer_object_id, in.picking_instance_id);
 }
 
 @fragment
-fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
+fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target, can't use coverage therefore.
     // But we still want to discard fragments where coverage is low.
     // Since the outline extends a bit, a very low cut off tends to look better.

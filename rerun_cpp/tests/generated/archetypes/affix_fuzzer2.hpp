@@ -30,101 +30,101 @@
 #include <utility>
 #include <vector>
 
+namespace rerun::archetypes {
+    struct AffixFuzzer2 {
+        ComponentBatch<rerun::components::AffixFuzzer1> fuzz1101;
+
+        ComponentBatch<rerun::components::AffixFuzzer2> fuzz1102;
+
+        ComponentBatch<rerun::components::AffixFuzzer3> fuzz1103;
+
+        ComponentBatch<rerun::components::AffixFuzzer4> fuzz1104;
+
+        ComponentBatch<rerun::components::AffixFuzzer5> fuzz1105;
+
+        ComponentBatch<rerun::components::AffixFuzzer6> fuzz1106;
+
+        ComponentBatch<rerun::components::AffixFuzzer7> fuzz1107;
+
+        ComponentBatch<rerun::components::AffixFuzzer8> fuzz1108;
+
+        ComponentBatch<rerun::components::AffixFuzzer9> fuzz1109;
+
+        ComponentBatch<rerun::components::AffixFuzzer10> fuzz1110;
+
+        ComponentBatch<rerun::components::AffixFuzzer11> fuzz1111;
+
+        ComponentBatch<rerun::components::AffixFuzzer12> fuzz1112;
+
+        ComponentBatch<rerun::components::AffixFuzzer13> fuzz1113;
+
+        ComponentBatch<rerun::components::AffixFuzzer14> fuzz1114;
+
+        ComponentBatch<rerun::components::AffixFuzzer15> fuzz1115;
+
+        ComponentBatch<rerun::components::AffixFuzzer16> fuzz1116;
+
+        ComponentBatch<rerun::components::AffixFuzzer17> fuzz1117;
+
+        ComponentBatch<rerun::components::AffixFuzzer18> fuzz1118;
+
+        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
+        static const char INDICATOR_COMPONENT_NAME[];
+        /// Indicator component, used to identify the archetype when converting to a list of components.
+        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+
+      public:
+        AffixFuzzer2() = default;
+        AffixFuzzer2(AffixFuzzer2&& other) = default;
+
+        explicit AffixFuzzer2(
+            ComponentBatch<rerun::components::AffixFuzzer1> _fuzz1101,
+            ComponentBatch<rerun::components::AffixFuzzer2> _fuzz1102,
+            ComponentBatch<rerun::components::AffixFuzzer3> _fuzz1103,
+            ComponentBatch<rerun::components::AffixFuzzer4> _fuzz1104,
+            ComponentBatch<rerun::components::AffixFuzzer5> _fuzz1105,
+            ComponentBatch<rerun::components::AffixFuzzer6> _fuzz1106,
+            ComponentBatch<rerun::components::AffixFuzzer7> _fuzz1107,
+            ComponentBatch<rerun::components::AffixFuzzer8> _fuzz1108,
+            ComponentBatch<rerun::components::AffixFuzzer9> _fuzz1109,
+            ComponentBatch<rerun::components::AffixFuzzer10> _fuzz1110,
+            ComponentBatch<rerun::components::AffixFuzzer11> _fuzz1111,
+            ComponentBatch<rerun::components::AffixFuzzer12> _fuzz1112,
+            ComponentBatch<rerun::components::AffixFuzzer13> _fuzz1113,
+            ComponentBatch<rerun::components::AffixFuzzer14> _fuzz1114,
+            ComponentBatch<rerun::components::AffixFuzzer15> _fuzz1115,
+            ComponentBatch<rerun::components::AffixFuzzer16> _fuzz1116,
+            ComponentBatch<rerun::components::AffixFuzzer17> _fuzz1117,
+            ComponentBatch<rerun::components::AffixFuzzer18> _fuzz1118
+        )
+            : fuzz1101(std::move(_fuzz1101)),
+              fuzz1102(std::move(_fuzz1102)),
+              fuzz1103(std::move(_fuzz1103)),
+              fuzz1104(std::move(_fuzz1104)),
+              fuzz1105(std::move(_fuzz1105)),
+              fuzz1106(std::move(_fuzz1106)),
+              fuzz1107(std::move(_fuzz1107)),
+              fuzz1108(std::move(_fuzz1108)),
+              fuzz1109(std::move(_fuzz1109)),
+              fuzz1110(std::move(_fuzz1110)),
+              fuzz1111(std::move(_fuzz1111)),
+              fuzz1112(std::move(_fuzz1112)),
+              fuzz1113(std::move(_fuzz1113)),
+              fuzz1114(std::move(_fuzz1114)),
+              fuzz1115(std::move(_fuzz1115)),
+              fuzz1116(std::move(_fuzz1116)),
+              fuzz1117(std::move(_fuzz1117)),
+              fuzz1118(std::move(_fuzz1118)) {}
+
+        /// Returns the number of primary instances of this archetype.
+        size_t num_instances() const {
+            return fuzz1101.size();
+        }
+    };
+
+} // namespace rerun::archetypes
+
 namespace rerun {
-    namespace archetypes {
-        struct AffixFuzzer2 {
-            ComponentBatch<rerun::components::AffixFuzzer1> fuzz1101;
-
-            ComponentBatch<rerun::components::AffixFuzzer2> fuzz1102;
-
-            ComponentBatch<rerun::components::AffixFuzzer3> fuzz1103;
-
-            ComponentBatch<rerun::components::AffixFuzzer4> fuzz1104;
-
-            ComponentBatch<rerun::components::AffixFuzzer5> fuzz1105;
-
-            ComponentBatch<rerun::components::AffixFuzzer6> fuzz1106;
-
-            ComponentBatch<rerun::components::AffixFuzzer7> fuzz1107;
-
-            ComponentBatch<rerun::components::AffixFuzzer8> fuzz1108;
-
-            ComponentBatch<rerun::components::AffixFuzzer9> fuzz1109;
-
-            ComponentBatch<rerun::components::AffixFuzzer10> fuzz1110;
-
-            ComponentBatch<rerun::components::AffixFuzzer11> fuzz1111;
-
-            ComponentBatch<rerun::components::AffixFuzzer12> fuzz1112;
-
-            ComponentBatch<rerun::components::AffixFuzzer13> fuzz1113;
-
-            ComponentBatch<rerun::components::AffixFuzzer14> fuzz1114;
-
-            ComponentBatch<rerun::components::AffixFuzzer15> fuzz1115;
-
-            ComponentBatch<rerun::components::AffixFuzzer16> fuzz1116;
-
-            ComponentBatch<rerun::components::AffixFuzzer17> fuzz1117;
-
-            ComponentBatch<rerun::components::AffixFuzzer18> fuzz1118;
-
-            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-            static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of components.
-            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
-
-          public:
-            AffixFuzzer2() = default;
-            AffixFuzzer2(AffixFuzzer2&& other) = default;
-
-            explicit AffixFuzzer2(
-                ComponentBatch<rerun::components::AffixFuzzer1> _fuzz1101,
-                ComponentBatch<rerun::components::AffixFuzzer2> _fuzz1102,
-                ComponentBatch<rerun::components::AffixFuzzer3> _fuzz1103,
-                ComponentBatch<rerun::components::AffixFuzzer4> _fuzz1104,
-                ComponentBatch<rerun::components::AffixFuzzer5> _fuzz1105,
-                ComponentBatch<rerun::components::AffixFuzzer6> _fuzz1106,
-                ComponentBatch<rerun::components::AffixFuzzer7> _fuzz1107,
-                ComponentBatch<rerun::components::AffixFuzzer8> _fuzz1108,
-                ComponentBatch<rerun::components::AffixFuzzer9> _fuzz1109,
-                ComponentBatch<rerun::components::AffixFuzzer10> _fuzz1110,
-                ComponentBatch<rerun::components::AffixFuzzer11> _fuzz1111,
-                ComponentBatch<rerun::components::AffixFuzzer12> _fuzz1112,
-                ComponentBatch<rerun::components::AffixFuzzer13> _fuzz1113,
-                ComponentBatch<rerun::components::AffixFuzzer14> _fuzz1114,
-                ComponentBatch<rerun::components::AffixFuzzer15> _fuzz1115,
-                ComponentBatch<rerun::components::AffixFuzzer16> _fuzz1116,
-                ComponentBatch<rerun::components::AffixFuzzer17> _fuzz1117,
-                ComponentBatch<rerun::components::AffixFuzzer18> _fuzz1118
-            )
-                : fuzz1101(std::move(_fuzz1101)),
-                  fuzz1102(std::move(_fuzz1102)),
-                  fuzz1103(std::move(_fuzz1103)),
-                  fuzz1104(std::move(_fuzz1104)),
-                  fuzz1105(std::move(_fuzz1105)),
-                  fuzz1106(std::move(_fuzz1106)),
-                  fuzz1107(std::move(_fuzz1107)),
-                  fuzz1108(std::move(_fuzz1108)),
-                  fuzz1109(std::move(_fuzz1109)),
-                  fuzz1110(std::move(_fuzz1110)),
-                  fuzz1111(std::move(_fuzz1111)),
-                  fuzz1112(std::move(_fuzz1112)),
-                  fuzz1113(std::move(_fuzz1113)),
-                  fuzz1114(std::move(_fuzz1114)),
-                  fuzz1115(std::move(_fuzz1115)),
-                  fuzz1116(std::move(_fuzz1116)),
-                  fuzz1117(std::move(_fuzz1117)),
-                  fuzz1118(std::move(_fuzz1118)) {}
-
-            /// Returns the number of primary instances of this archetype.
-            size_t num_instances() const {
-                return fuzz1101.size();
-            }
-        };
-
-    } // namespace archetypes
-
     /// \private
     template <typename T>
     struct AsComponents;

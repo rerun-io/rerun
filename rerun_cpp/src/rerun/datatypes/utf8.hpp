@@ -16,44 +16,42 @@ namespace arrow {
     class StringBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: A string of text, encoded as UTF-8.
-        struct Utf8 {
-            std::string value;
+namespace rerun::datatypes {
+    /// **Datatype**: A string of text, encoded as UTF-8.
+    struct Utf8 {
+        std::string value;
 
-          public:
-            // Extensions to generated type defined in 'utf8_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'utf8_ext.cpp'
 
-            /// Construct a `Utf8` from null-terminated UTF-8.
-            Utf8(const char* str) : value(str) {}
+        /// Construct a `Utf8` from null-terminated UTF-8.
+        Utf8(const char* str) : value(str) {}
 
-            const char* c_str() const {
-                return value.c_str();
-            }
+        const char* c_str() const {
+            return value.c_str();
+        }
 
-          public:
-            Utf8() = default;
+      public:
+        Utf8() = default;
 
-            Utf8(std::string value_) : value(std::move(value_)) {}
+        Utf8(std::string value_) : value(std::move(value_)) {}
 
-            Utf8& operator=(std::string value_) {
-                value = std::move(value_);
-                return *this;
-            }
+        Utf8& operator=(std::string value_) {
+            value = std::move(value_);
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::StringBuilder* builder, const Utf8* elements, size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StringBuilder* builder, const Utf8* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

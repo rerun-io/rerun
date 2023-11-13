@@ -13,59 +13,59 @@
 #include <utility>
 #include <vector>
 
+namespace rerun::archetypes {
+    /// **Archetype**: Specifies that the entity path at which this is logged is disconnected from its parent.
+    ///
+    /// This is useful for specifying that a subgraph is independent of the rest of the scene.
+    ///
+    /// If a transform or pinhole is logged on the same path, this archetype's components
+    /// will be ignored.
+    ///
+    /// ## Example
+    ///
+    /// ### Disconnected Space
+    /// ![image](https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     // These two points can be projected into the same space..
+    ///     rec.log("world/room1/point", rerun::Points3D({{0.0f, 0.0f, 0.0f}}));
+    ///     rec.log("world/room2/point", rerun::Points3D({{1.0f, 1.0f, 1.0f}}));
+    ///
+    ///     // ..but this one lives in a completely separate space!
+    ///     rec.log("world/wormhole", rerun::DisconnectedSpace(true));
+    ///     rec.log("world/wormhole/point", rerun::Points3D({{2.0f, 2.0f, 2.0f}}));
+    /// }
+    /// ```
+    struct DisconnectedSpace {
+        rerun::components::DisconnectedSpace disconnected_space;
+
+        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
+        static const char INDICATOR_COMPONENT_NAME[];
+        /// Indicator component, used to identify the archetype when converting to a list of components.
+        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+
+      public:
+        DisconnectedSpace() = default;
+        DisconnectedSpace(DisconnectedSpace&& other) = default;
+
+        explicit DisconnectedSpace(rerun::components::DisconnectedSpace _disconnected_space)
+            : disconnected_space(std::move(_disconnected_space)) {}
+
+        /// Returns the number of primary instances of this archetype.
+        size_t num_instances() const {
+            return 1;
+        }
+    };
+
+} // namespace rerun::archetypes
+
 namespace rerun {
-    namespace archetypes {
-        /// **Archetype**: Specifies that the entity path at which this is logged is disconnected from its parent.
-        ///
-        /// This is useful for specifying that a subgraph is independent of the rest of the scene.
-        ///
-        /// If a transform or pinhole is logged on the same path, this archetype's components
-        /// will be ignored.
-        ///
-        /// ## Example
-        ///
-        /// ### Disconnected Space
-        /// ![image](https://static.rerun.io/disconnected_space/b8f95b0e32359de625a765247c84935146c1fba9/full.png)
-        ///
-        /// ```cpp
-        /// #include <rerun.hpp>
-        ///
-        /// int main() {
-        ///     const auto rec = rerun::RecordingStream("rerun_example_disconnected_space");
-        ///     rec.spawn().exit_on_failure();
-        ///
-        ///     // These two points can be projected into the same space..
-        ///     rec.log("world/room1/point", rerun::Points3D({{0.0f, 0.0f, 0.0f}}));
-        ///     rec.log("world/room2/point", rerun::Points3D({{1.0f, 1.0f, 1.0f}}));
-        ///
-        ///     // ..but this one lives in a completely separate space!
-        ///     rec.log("world/wormhole", rerun::DisconnectedSpace(true));
-        ///     rec.log("world/wormhole/point", rerun::Points3D({{2.0f, 2.0f, 2.0f}}));
-        /// }
-        /// ```
-        struct DisconnectedSpace {
-            rerun::components::DisconnectedSpace disconnected_space;
-
-            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-            static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of components.
-            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
-
-          public:
-            DisconnectedSpace() = default;
-            DisconnectedSpace(DisconnectedSpace&& other) = default;
-
-            explicit DisconnectedSpace(rerun::components::DisconnectedSpace _disconnected_space)
-                : disconnected_space(std::move(_disconnected_space)) {}
-
-            /// Returns the number of primary instances of this archetype.
-            size_t num_instances() const {
-                return 1;
-            }
-        };
-
-    } // namespace archetypes
-
     /// \private
     template <typename T>
     struct AsComponents;

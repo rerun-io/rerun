@@ -5,11 +5,12 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
+        "rerun.components.AnnotationContextIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
-            "rerun.components.AnnotationContextIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
         archetypes::AnnotationContext>::serialize(const archetypes::AnnotationContext& archetype) {

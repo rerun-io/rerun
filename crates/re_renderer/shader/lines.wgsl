@@ -20,15 +20,15 @@ struct DrawDataUniformBuffer {
     // 256bytes in order to allow them to be buffer-suballocations.
     // However, wgpu doesn't know this at this point and therefore requires `DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED`
     // if we wouldn't add padding here, which isn't available on WebGL.
-    _padding: Vec4,
+    _padding: vec4f,
 };
 @group(1) @binding(3)
 var<uniform> draw_data: DrawDataUniformBuffer;
 
 struct BatchUniformBuffer {
-    world_from_obj: Mat4,
-    outline_mask_ids: UVec2,
-    picking_layer_object_id: UVec2,
+    world_from_obj: mat4x4f,
+    outline_mask_ids: vec2u,
+    picking_layer_object_id: vec2u,
     depth_offset: f32,
     triangle_cap_length_factor: f32,
     triangle_cap_width_factor: f32,
@@ -55,41 +55,41 @@ const FLAG_FORCE_ORTHO_SPANNING: u32 = 128u;
 // (see https://www.w3.org/TR/WGSL/#interpolation)
 struct VertexOut {
     @builtin(position)
-    position: Vec4,
+    position: vec4f,
 
     @location(0) @interpolate(flat)
-    color: Vec4,
+    color: vec4f,
 
     @location(1) @interpolate(perspective)
-    position_world: Vec3,
+    position_world: vec3f,
 
     @location(2) @interpolate(perspective)
-    center_position: Vec3,
+    center_position: vec3f,
 
     @location(3) @interpolate(flat)
     active_radius: f32,
 
     @location(4) @interpolate(perspective)
-    round_cap_circle_center: Vec3,
+    round_cap_circle_center: vec3f,
 
     @location(5) @interpolate(flat)
     fragment_flags: u32,
 
     @location(6) @interpolate(flat)
-    picking_instance_id: UVec2,
+    picking_instance_id: vec2u,
 };
 
 struct LineStripData {
-    color: Vec4,
+    color: vec4f,
     unresolved_radius: f32,
     stippling: f32,
     flags: u32,
-    picking_instance_id: UVec2,
+    picking_instance_id: vec2u,
 }
 
 // Read and unpack line strip data at a given location
 fn read_strip_data(idx: u32) -> LineStripData {
-    let coord = UVec2(idx % LINE_STRIP_TEXTURE_SIZE, idx / LINE_STRIP_TEXTURE_SIZE);
+    let coord = vec2u(idx % LINE_STRIP_TEXTURE_SIZE, idx / LINE_STRIP_TEXTURE_SIZE);
     var raw_data = textureLoad(position_data_texture, coord, 0).xy;
 
     var data: LineStripData;
@@ -104,16 +104,16 @@ fn read_strip_data(idx: u32) -> LineStripData {
 }
 
 struct PositionData {
-    pos: Vec3,
+    pos: vec3f,
     strip_index: u32,
 }
 
 // Read and unpack position data at a given location
 fn read_position_data(idx: u32) -> PositionData {
-    var raw_data = textureLoad(line_strip_texture, UVec2(idx % POSITION_TEXTURE_SIZE, idx / POSITION_TEXTURE_SIZE), 0);
+    var raw_data = textureLoad(line_strip_texture, vec2u(idx % POSITION_TEXTURE_SIZE, idx / POSITION_TEXTURE_SIZE), 0);
 
     var data: PositionData;
-    let pos_4d = batch.world_from_obj * Vec4(raw_data.xyz, 1.0);
+    let pos_4d = batch.world_from_obj * vec4f(raw_data.xyz, 1.0);
     data.pos = pos_4d.xyz / pos_4d.w;
     data.strip_index = bitcast<u32>(raw_data.w);
     return data;
@@ -184,7 +184,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     let strip_data = read_strip_data(pos_data_current.strip_index);
 
     // Compute quad_dir & correct center_position for triangle caps.
-    var quad_dir: Vec3;
+    var quad_dir: vec3f;
     var is_at_pointy_end = false;
     let is_end_cap_triangle = is_cap_triangle && is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE | FLAG_CAP_END_ROUND);
     let is_start_cap_triangle = is_cap_triangle && !is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE | FLAG_CAP_START_ROUND);
@@ -196,7 +196,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         quad_dir = pos_data_quad_after.pos - pos_data_quad_end.pos; // Go one pos data forward.
     } else if is_cap_triangle {
         // Discard vertex.
-        center_position = Vec3(f32max);
+        center_position = vec3f(f32max);
     } else {
         quad_dir = pos_data_quad_end.pos - pos_data_quad_begin.pos;
     }
@@ -260,7 +260,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     let round_cap_circle_center = center_position;
 
-    var pos: Vec3;
+    var pos: vec3f;
     if is_cap_triangle && is_at_pointy_end {
         // We extend the cap triangle far enough to handle triangle caps,
         // and far enough to do rounded caps without any visible clipping.
@@ -274,7 +274,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Output, transform to projection space and done.
     var out: VertexOut;
-    out.position = apply_depth_offset(frame.projection_from_world * Vec4(pos, 1.0), batch.depth_offset);
+    out.position = apply_depth_offset(frame.projection_from_world * vec4f(pos, 1.0), batch.depth_offset);
     out.position_world = pos;
     out.center_position = center_position;
     out.round_cap_circle_center = round_cap_circle_center;
@@ -303,7 +303,7 @@ fn compute_coverage(in: VertexOut) -> f32 {
 }
 
 @fragment
-fn fs_main(in: VertexOut) -> @location(0) Vec4 {
+fn fs_main(in: VertexOut) -> @location(0) vec4f {
     var coverage = compute_coverage(in);
     if coverage < 0.001 {
         discard;
@@ -317,20 +317,20 @@ fn fs_main(in: VertexOut) -> @location(0) Vec4 {
         shading = max(0.2, 1.0 - relative_distance_to_center_sq) * 0.9;
     }
 
-    return Vec4(in.color.rgb * shading, coverage);
+    return vec4f(in.color.rgb * shading, coverage);
 }
 
 @fragment
-fn fs_main_picking_layer(in: VertexOut) -> @location(0) UVec4 {
+fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
     var coverage = compute_coverage(in);
     if coverage < 0.5 {
         discard;
     }
-    return UVec4(batch.picking_layer_object_id, in.picking_instance_id);
+    return vec4u(batch.picking_layer_object_id, in.picking_instance_id);
 }
 
 @fragment
-fn fs_main_outline_mask(in: VertexOut) -> @location(0) UVec2 {
+fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target, can't use coverage therefore.
     // But we still want to discard fragments where coverage is low.
     // Since the outline extends a bit, a very low cut off tends to look better.

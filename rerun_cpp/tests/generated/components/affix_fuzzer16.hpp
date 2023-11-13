@@ -18,44 +18,41 @@ namespace arrow {
     class MemoryPool;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        struct AffixFuzzer16 {
-            std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions;
+namespace rerun::components {
+    struct AffixFuzzer16 {
+        std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            AffixFuzzer16() = default;
+      public:
+        AffixFuzzer16() = default;
 
-            AffixFuzzer16(std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions_)
-                : many_required_unions(std::move(many_required_unions_)) {}
+        AffixFuzzer16(std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions_)
+            : many_required_unions(std::move(many_required_unions_)) {}
 
-            AffixFuzzer16& operator=(
-                std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions_
-            ) {
-                many_required_unions = std::move(many_required_unions_);
-                return *this;
-            }
+        AffixFuzzer16& operator=(std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions_
+        ) {
+            many_required_unions = std::move(many_required_unions_);
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::ListBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::ListBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::ListBuilder* builder, const AffixFuzzer16* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::ListBuilder* builder, const AffixFuzzer16* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of AffixFuzzer16 components.
-            static Result<rerun::DataCell> to_data_cell(
-                const AffixFuzzer16* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of AffixFuzzer16 components.
+        static Result<rerun::DataCell> to_data_cell(
+            const AffixFuzzer16* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

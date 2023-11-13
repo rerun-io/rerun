@@ -11,12 +11,12 @@ fn is_camera_perspective() -> bool {
 }
 
 struct Ray {
-    origin: Vec3,
-    direction: Vec3,
+    origin: vec3f,
+    direction: vec3f,
 }
 
 // Returns the ray from the camera to a given world position, assuming the camera is perspective
-fn camera_ray_to_world_pos_perspective(world_pos: Vec3) -> Ray {
+fn camera_ray_to_world_pos_perspective(world_pos: vec3f) -> Ray {
     var ray: Ray;
     ray.origin = frame.camera_position;
     ray.direction = normalize(world_pos - frame.camera_position);
@@ -24,7 +24,7 @@ fn camera_ray_to_world_pos_perspective(world_pos: Vec3) -> Ray {
 }
 
 // Returns the ray from the camera to a given world position, assuming the camera is orthographic
-fn camera_ray_to_world_pos_orthographic(world_pos: Vec3) -> Ray {
+fn camera_ray_to_world_pos_orthographic(world_pos: vec3f) -> Ray {
     var ray: Ray;
     // The ray originates on the camera plane, not from the camera position
     let to_pos = world_pos - frame.camera_position;
@@ -35,7 +35,7 @@ fn camera_ray_to_world_pos_orthographic(world_pos: Vec3) -> Ray {
 }
 
 // Returns the ray from the camera to a given world position.
-fn camera_ray_to_world_pos(world_pos: Vec3) -> Ray {
+fn camera_ray_to_world_pos(world_pos: vec3f) -> Ray {
     if is_camera_perspective() {
         return camera_ray_to_world_pos_perspective(world_pos);
     } else {
@@ -44,16 +44,16 @@ fn camera_ray_to_world_pos(world_pos: Vec3) -> Ray {
 }
 
 // Returns the camera ray direction through a given screen uv coordinates (ranging from 0 to 1, i.e. NOT ndc coordinates)
-fn camera_ray_direction_from_screenuv(texcoord: Vec2) -> Vec3 {
+fn camera_ray_direction_from_screenuv(texcoord: vec2f) -> vec3f {
     if is_camera_orthographic() {
         return frame.camera_forward;
     }
 
     // convert [0, 1] to [-1, +1 (Normalized Device Coordinates)
-    let ndc = Vec2(texcoord.x - 0.5, 0.5 - texcoord.y) * 2.0;
+    let ndc = vec2f(texcoord.x - 0.5, 0.5 - texcoord.y) * 2.0;
 
     // Negative z since z dir is towards viewer (by current RUB convention).
-    let view_space_dir = Vec3(ndc * frame.tan_half_fov, -1.0);
+    let view_space_dir = vec3f(ndc * frame.tan_half_fov, -1.0);
 
     // Note that since view_from_world is an orthonormal matrix, multiplying it from the right
     // means multiplying it with the transpose, meaning multiplying with the inverse!
@@ -65,14 +65,14 @@ fn camera_ray_direction_from_screenuv(texcoord: Vec2) -> Vec3 {
 
 // Returns distance to sphere surface (x) and distance to closest ray hit (y)
 // Via https://iquilezles.org/articles/spherefunctions/ but with more verbose names.
-fn ray_sphere_distance(ray: Ray, sphere_origin: Vec3, sphere_radius: f32) -> Vec2 {
+fn ray_sphere_distance(ray: Ray, sphere_origin: vec3f, sphere_radius: f32) -> vec2f {
     let sphere_radius_sq = sphere_radius * sphere_radius;
     let sphere_to_origin = ray.origin - sphere_origin;
     let b = dot(sphere_to_origin, ray.direction);
     let c = dot(sphere_to_origin, sphere_to_origin) - sphere_radius_sq;
     let h = b * b - c;
     let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
-    return Vec2(d, -b - sqrt(max(h, 0.0)));
+    return vec2f(d, -b - sqrt(max(h, 0.0)));
 }
 
 // Returns the projected size of a pixel at a given distance from the camera.
