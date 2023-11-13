@@ -41,6 +41,8 @@ Every CI job would in its ideal state consist of only two steps:
 
 In which the script is written and tested locally before being wrapped in a CI workflow file. This does not mean that scripts are merely _reproducible_ locally (though that is also true), it means that they must be written with a _local-first mindset_, as if they are not supposed to run on CI at all.
 
+Additionally, always output any artifacts produced by CI to GCS instead of GHA's own artifact storage. This can be a serious lifesaver when something breaks, as it allows anyone to download the output of a script and continue from where it failed, instead of being forced to start over from scratch.
+
 This approach has a number of benefits:
 - Instead of Bash embedded in YAML, scripts may be written in an Actual Programming Language™
 - Significantly lower iteration times when working on CI
@@ -58,8 +60,7 @@ The following should be documented in each script:
 - Environment variables
 - Usage examples
 
-Inputs should be passed in explicitly via arguments, and use sane defaults.
-If an input has a default value, it should be documented in its description.
+Inputs should be passed in explicitly via arguments, and use sane defaults. If an input has a default value, it should be documented in its description.
 
 Every input should be checked as early as possible. This includes:
 - Checking if authentication credentials are valid
@@ -71,17 +72,9 @@ Every input should be checked as early as possible. This includes:
   - etc.
 - Checking that input file paths are valid and the files they point to exist
 
-Be extra descriptive in error messages, it may be the only piece of information
-someone debugging a CI failure has available to figure out what went wrong.
-Print frequently to hint at what is going on and display progress to the user.
+Be extra descriptive in error messages, it may be the only piece of information someone debugging a CI failure has available to figure out what went wrong. Print frequently to hint at what is going on and display progress to the user.
 
-Environment variables should only be used for authentication with external services and configuring output (e.g. disabling color).
-Many SDKs support some form of persistent/default authentication, and scripts should take advantage of this where possible.
-For example, GCP has [Application Default Credentials](https://cloud.google.com/docs/authentication/client-libraries).
-
-Always output any intermediate artifacts to GCS. This can be a serious lifesaver when something breaks, as it allows
-anyone to download the output of a script and continue from where it failed, instead of being forced to start over
-from scratch.
+Environment variables should only be used for authentication with external services and configuring output (e.g. disabling color). Many SDKs support some form of persistent/default authentication, and scripts should take advantage of this where possible. For example, GCP has [Application Default Credentials](https://cloud.google.com/docs/authentication/client-libraries).
 
 If the script performs destructive or otherwise irreversible actions, then it should support a `--dry-run` option if possible.
 
