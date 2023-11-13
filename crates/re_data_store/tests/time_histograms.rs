@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use re_arrow_store::GarbageCollectionOptions;
 use re_data_store::StoreDb;
 use re_int_histogram::RangeI64;
 use re_log_types::{
@@ -20,68 +21,6 @@ use re_types_core::{
 // timeline widget.
 #[test]
 fn time_histograms() -> anyhow::Result<()> {
-    /// Checks the state of the global time tracker (at the `EntityDb` level).
-    fn assert_times_per_timeline<'a>(
-        db: &StoreDb,
-        expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [impl Into<TimeInt> + Copy + 'a]>)>,
-    ) {
-        for (timeline, expected_times) in expected {
-            let times = db.times_per_timeline().get(timeline);
-
-            if let Some(expected) = expected_times {
-                let times = times.unwrap();
-                let expected: BTreeSet<_> = expected.iter().map(|t| (*t).into()).collect();
-                similar_asserts::assert_eq!(&expected, times);
-            } else {
-                assert!(times.is_none());
-            }
-        }
-    }
-
-    /// Checks the state of the per-EntityTree recursive time tracker.
-    fn assert_recursive_histogram<'a>(
-        db: &StoreDb,
-        expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [(RangeI64, u64)]>)>,
-    ) {
-        for (timeline, expected_times) in expected {
-            let histo = db.time_histogram(timeline);
-
-            if let Some(expected) = expected_times {
-                let histo = histo.unwrap();
-                let ranges = histo.range(i64::MIN.., 0).collect::<Vec<_>>();
-                let expected: Vec<_> = expected.to_vec();
-                similar_asserts::assert_eq!(expected, ranges);
-            } else {
-                assert!(histo.is_none());
-            }
-        }
-    }
-
-    /// Checks the state of the per-`EntityTree` per-`ComponentName` flat time tracker.
-    fn assert_histogram_for_component<'a>(
-        db: &StoreDb,
-        entity_path: &EntityPath,
-        component_name: ComponentName,
-        expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [(RangeI64, u64)]>)>,
-    ) {
-        for (timeline, expected_times) in expected {
-            let histo = db
-                .entity_db()
-                .tree
-                .subtree(entity_path)
-                .and_then(|tree| tree.time_histogram_for_component(timeline, component_name));
-
-            if let Some(expected) = expected_times {
-                let histo = histo.unwrap();
-                let ranges = histo.range(i64::MIN.., 0).collect::<Vec<_>>();
-                let expected: Vec<_> = expected.to_vec();
-                similar_asserts::assert_eq!(expected, ranges);
-            } else {
-                assert!(histo.is_none());
-            }
-        }
-    }
-
     let mut db = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
 
     let timeline_frame = Timeline::new_sequence("frame");
@@ -626,5 +565,142 @@ fn time_histograms() -> anyhow::Result<()> {
         );
     }
 
+    // Full GC
+    {
+        db.gc(GarbageCollectionOptions::gc_everything());
+
+        // unchanged
+        assert_times_per_timeline(
+            &db,
+            [
+                (&Timeline::log_time(), Some(&[] as &[i64])),
+                (&timeline_frame, Some(&[])),
+                (&timeline_other, Some(&[])),
+                (&timeline_yet_another, Some(&[])),
+            ],
+        );
+
+        // histograms per timeline
+        assert_recursive_histogram(
+            &db,
+            [
+                (&Timeline::log_time(), None),
+                (&timeline_frame, Some(&[])),
+                (&timeline_other, Some(&[])),
+                (&timeline_yet_another, Some(&[])),
+            ] as [(_, Option<&[_]>); 4],
+        );
+
+        // histograms per component per timeline
+        assert_histogram_for_component(
+            &db,
+            &entity_parent,
+            InstanceKey::name(),
+            [
+                (&timeline_frame, Some(&[])),
+                (&timeline_other, Some(&[])),
+                (&timeline_yet_another, Some(&[])),
+            ] as [(_, Option<&[_]>); 3],
+        );
+
+        // histograms per component per timeline
+        assert_histogram_for_component(
+            &db,
+            &entity_grandchild,
+            InstanceKey::name(),
+            [
+                (&timeline_frame, None),
+                (&timeline_other, None),
+                (&timeline_yet_another, None),
+            ] as [(_, Option<&[_]>); 3],
+        );
+        assert_histogram_for_component(
+            &db,
+            &entity_grandchild,
+            InstanceKey::name(),
+            [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
+        );
+        assert_histogram_for_component(
+            &db,
+            &entity_grandchild,
+            MyPoint::name(),
+            [
+                (&timeline_frame, Some(&[])),
+                (&timeline_yet_another, Some(&[])),
+            ] as [(_, Option<&[_]>); 2],
+        );
+        assert_histogram_for_component(
+            &db,
+            &entity_grandchild,
+            MyColor::name(),
+            [
+                (&timeline_frame, Some(&[])),
+                (&timeline_yet_another, Some(&[])),
+            ] as [(_, Option<&[_]>); 2],
+        );
+    }
+
     Ok(())
+}
+
+/// Checks the state of the global time tracker (at the `EntityDb` level).
+fn assert_times_per_timeline<'a>(
+    db: &StoreDb,
+    expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [impl Into<TimeInt> + Copy + 'a]>)>,
+) {
+    for (timeline, expected_times) in expected {
+        let times = db.times_per_timeline().get(timeline);
+
+        if let Some(expected) = expected_times {
+            let times = times.unwrap();
+            let expected: BTreeSet<_> = expected.iter().map(|t| (*t).into()).collect();
+            similar_asserts::assert_eq!(&expected, times);
+        } else {
+            assert!(times.is_none());
+        }
+    }
+}
+
+/// Checks the state of the per-EntityTree recursive time tracker.
+fn assert_recursive_histogram<'a>(
+    db: &StoreDb,
+    expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [(RangeI64, u64)]>)>,
+) {
+    for (timeline, expected_times) in expected {
+        let histo = db.time_histogram(timeline);
+
+        if let Some(expected) = expected_times {
+            let histo = histo.unwrap();
+            let ranges = histo.range(i64::MIN.., 0).collect::<Vec<_>>();
+            let expected: Vec<_> = expected.to_vec();
+            similar_asserts::assert_eq!(expected, ranges);
+        } else {
+            assert!(histo.is_none());
+        }
+    }
+}
+
+/// Checks the state of the per-`EntityTree` per-`ComponentName` flat time tracker.
+fn assert_histogram_for_component<'a>(
+    db: &StoreDb,
+    entity_path: &EntityPath,
+    component_name: ComponentName,
+    expected: impl IntoIterator<Item = (&'a Timeline, Option<&'a [(RangeI64, u64)]>)>,
+) {
+    for (timeline, expected_times) in expected {
+        let histo = db
+            .entity_db()
+            .tree
+            .subtree(entity_path)
+            .and_then(|tree| tree.time_histogram_for_component(timeline, component_name));
+
+        if let Some(expected) = expected_times {
+            let histo = histo.unwrap();
+            let ranges = histo.range(i64::MIN.., 0).collect::<Vec<_>>();
+            let expected: Vec<_> = expected.to_vec();
+            similar_asserts::assert_eq!(expected, ranges);
+        } else {
+            assert!(histo.is_none());
+        }
+    }
 }
