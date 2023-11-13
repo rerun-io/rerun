@@ -1,17 +1,3 @@
-// Names chosen to match [`glam`](https://docs.rs/glam/latest/glam/)
-alias Vec2 = vec2<f32>;
-alias Vec3 = vec3<f32>;
-alias Vec4 = vec4<f32>;
-alias UVec2 = vec2<u32>;
-alias UVec3 = vec3<u32>;
-alias UVec4 = vec4<u32>;
-alias IVec2 = vec2<i32>;
-alias IVec3 = vec3<i32>;
-alias IVec4 = vec4<i32>;
-alias Mat3 = mat3x3<f32>;
-alias Mat4x3 = mat4x3<f32>;
-alias Mat4 = mat4x4<f32>;
-
 // Extreme values as documented by the spec:
 // https://www.w3.org/TR/WGSL/#floating-point-types
 //const f32max = 0x1.fffffep+127f;  // Largest positive float value.
@@ -31,12 +17,9 @@ const u32max = 0xffffffffu;
 // Difference between `1.0` and the next larger representable number.
 const f32eps = 0.00000011920928955078125;
 
-const X = Vec3(1.0, 0.0, 0.0);
-const Y = Vec3(0.0, 1.0, 0.0);
-const Z = Vec3(0.0, 0.0, 1.0);
-
-const ZERO = Vec4(0.0, 0.0, 0.0, 0.0);
-const ONE  = Vec4(1.0, 1.0, 1.0, 1.0);
+const X = vec3f(1.0, 0.0, 0.0);
+const Y = vec3f(0.0, 1.0, 0.0);
+const Z = vec3f(0.0, 0.0, 1.0);
 
 
 // Do NOT use inf() or nan() in your WGSL shaders. Ever.
@@ -52,4 +35,4 @@ const ONE  = Vec4(1.0, 1.0, 1.0, 1.0);
 
 
 /// The color to use when we encounter an error.
-const ERROR_RGBA = Vec4(1.0, 0.0, 1.0, 1.0);
+const ERROR_RGBA = vec4f(1.0, 0.0, 1.0, 1.0);
