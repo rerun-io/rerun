@@ -6,7 +6,10 @@ use re_log_types::{
     example_components::{MyColor, MyPoint},
     DataRow, EntityPath, RowId, StoreId, TimeInt, TimePoint, Timeline,
 };
-use re_types_core::{components::InstanceKey, ComponentName, Loggable};
+use re_types_core::{
+    components::{ClearIsRecursive, InstanceKey},
+    ComponentName, Loggable,
+};
 
 // TODO(cmc): This should also test for the timeless counts but right now they're a bit all over
 // the place, so need to land new reworked EntityTree etc first.
@@ -510,6 +513,116 @@ fn time_histograms() -> anyhow::Result<()> {
                     Some(&[(RangeI64::new(1236, 1236), 1)]),
                 ),
             ] as [(_, Option<&[_]>); 3],
+        );
+    }
+
+    // Immediate clear.
+    {
+        let row = {
+            DataRow::from_component_batches(
+                RowId::random(),
+                TimePoint::from_iter([
+                    (timeline_frame, 1000.into()), //
+                ]),
+                entity_parent.clone(),
+                [&[ClearIsRecursive(true)] as _],
+            )?
+        };
+
+        db.add_data_row(row)?;
+
+        // unchanged
+        assert_times_per_timeline(
+            &db,
+            [
+                (&Timeline::log_time(), Some(&[] as &[i64])),
+                (&timeline_frame, Some(&[42, 1000, 1234])),
+                (&timeline_other, Some(&[666, 1235])),
+                (&timeline_yet_another, Some(&[1, 1236])),
+            ],
+        );
+
+        // histograms per timeline
+        assert_recursive_histogram(
+            &db,
+            [
+                (&Timeline::log_time(), None),
+                (
+                    &timeline_frame,
+                    Some(&[
+                        (RangeI64::new(42, 42), 5),
+                        (RangeI64::new(1000, 1000), 5),
+                        (RangeI64::new(1234, 1234), 3),
+                    ]),
+                ),
+                (
+                    &timeline_other,
+                    Some(&[(RangeI64::new(666, 666), 1), (RangeI64::new(1235, 1235), 3)]),
+                ),
+                (
+                    &timeline_yet_another,
+                    Some(&[(RangeI64::new(1, 1), 5), (RangeI64::new(1236, 1236), 3)]),
+                ),
+            ] as [(_, Option<&[_]>); 4],
+        );
+
+        // histograms per component per timeline
+        assert_histogram_for_component(
+            &db,
+            &entity_parent,
+            InstanceKey::name(),
+            [
+                (
+                    &timeline_frame,
+                    Some(&[(RangeI64::new(42, 42), 1), (RangeI64::new(1000, 1000), 1)]),
+                ),
+                (&timeline_other, Some(&[(RangeI64::new(666, 666), 1)])),
+                (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 1)])),
+            ] as [(_, Option<&[_]>); 3],
+        );
+
+        // histograms per component per timeline
+        assert_histogram_for_component(
+            &db,
+            &entity_grandchild,
+            InstanceKey::name(),
+            [
+                (&timeline_frame, None),
+                (&timeline_other, None),
+                (&timeline_yet_another, None),
+            ] as [(_, Option<&[_]>); 3],
+        );
+        assert_histogram_for_component(
+            &db,
+            &entity_grandchild,
+            InstanceKey::name(),
+            [(&timeline_frame, None), (&timeline_yet_another, None)] as [(_, Option<&[_]>); 2],
+        );
+        // NOTE: even though the component was logged twice at the same timestamp, the clear will
+        // only inject once!
+        assert_histogram_for_component(
+            &db,
+            &entity_grandchild,
+            MyPoint::name(),
+            [
+                (
+                    &timeline_frame,
+                    Some(&[(RangeI64::new(42, 42), 2), (RangeI64::new(1000, 1000), 1)]),
+                ),
+                (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 2)])),
+            ] as [(_, Option<&[_]>); 2],
+        );
+        assert_histogram_for_component(
+            &db,
+            &entity_grandchild,
+            MyColor::name(),
+            [
+                (
+                    &timeline_frame,
+                    Some(&[(RangeI64::new(42, 42), 2), (RangeI64::new(1000, 1000), 1)]),
+                ),
+                (&timeline_yet_another, Some(&[(RangeI64::new(1, 1), 2)])),
+            ] as [(_, Option<&[_]>); 2],
         );
     }
 
