@@ -57,7 +57,7 @@ Check the [general doc page on types](https://www.rerun.io/docs/reference/types)
 
 ## Build & Distribution
 
-### Overview  ioeb 
+### Overview
 
 To avoid compatibility issues across different platforms, compiler versions and C++ standard library versions
 the C++ SDK is expected to be built from source.
