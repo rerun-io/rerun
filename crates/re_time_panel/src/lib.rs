@@ -392,6 +392,7 @@ impl TimePanel {
                         None,
                         &ctx.store_db.entity_db().tree,
                         ui,
+                        "/",
                     );
                 } else {
                     self.show_children(
@@ -401,6 +402,18 @@ impl TimePanel {
                         tree_max_y,
                         &ctx.store_db.entity_db().tree,
                         ui,
+                    );
+                }
+                if ctx.app_options.show_blueprint_in_timeline {
+                    self.show_tree(
+                        ctx,
+                        time_area_response,
+                        time_area_painter,
+                        tree_max_y,
+                        None,
+                        &ctx.store_context.blueprint.entity_db().tree,
+                        ui,
+                        "/ (blueprint)",
                     );
                 }
             });
@@ -416,6 +429,7 @@ impl TimePanel {
         last_path_part: Option<&EntityPathPart>,
         tree: &EntityTree,
         ui: &mut egui::Ui,
+        show_root_as: &str,
     ) {
         let tree_has_data_in_current_timeline = ctx.tree_has_data_in_current_timeline(tree);
 
@@ -427,7 +441,7 @@ impl TimePanel {
                 format!("{last_path_part}/") // show we have children with a /
             }
         } else {
-            "/".to_owned()
+            show_root_as.to_owned()
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
@@ -531,6 +545,7 @@ impl TimePanel {
                 Some(last_component),
                 child,
                 ui,
+                "/",
             );
         }
 

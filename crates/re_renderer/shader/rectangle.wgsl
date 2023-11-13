@@ -19,30 +19,30 @@ const FILTER_BILINEAR = 2u;
 
 struct UniformBuffer {
     /// Top left corner position in world space.
-    top_left_corner_position: Vec3,
+    top_left_corner_position: vec3f,
 
     /// Which colormap to use, if any
     colormap_function: u32,
 
     /// Vector that spans up the rectangle from its top left corner along the u axis of the texture.
-    extent_u: Vec3,
+    extent_u: vec3f,
 
     /// Which texture sample to use
     sample_type: u32,
 
     /// Vector that spans up the rectangle from its top left corner along the v axis of the texture.
-    extent_v: Vec3,
+    extent_v: vec3f,
 
     depth_offset: f32,
 
     /// Tint multiplied with the texture color.
-    multiplicative_tint: Vec4,
+    multiplicative_tint: vec4f,
 
-    outline_mask: UVec2,
+    outline_mask: vec2u,
 
     /// Range of the texture values.
     /// Will be mapped to the [0, 1] range before we colormap.
-    range_min_max: Vec2,
+    range_min_max: vec2f,
 
     color_mapper: u32,
 
@@ -79,8 +79,8 @@ var colormap_texture: texture_2d<f32>;
 var texture_float_filterable: texture_2d<f32>;
 
 struct VertexOut {
-    @builtin(position) position: Vec4,
-    @location(0) texcoord: Vec2,
+    @builtin(position) position: vec4f,
+    @location(0) texcoord: vec2f,
 };
 
 // The fragment and vertex shaders are in two separate files in order
