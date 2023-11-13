@@ -41,7 +41,7 @@ Every CI job would in its ideal state consist of only two steps:
 
 In which the script is written and tested locally before being wrapped in a CI workflow file. This does not mean that scripts are merely _reproducible_ locally (though that is also true), it means that they must be written with a _local-first mindset_, as if they are not supposed to run on CI at all.
 
-Additionally, always output any artifacts produced by CI to GCS instead of GHA's own artifact storage. This can be a serious lifesaver when something breaks, as it allows anyone to download the output of a script and continue from where it failed, instead of being forced to start over from scratch.
+Additionally, always output any artifacts produced by CI to GCS instead of the GHA artifact storage. This can be a serious lifesaver when something breaks, as it allows anyone to download the output of a script and continue from where it failed, instead of being forced to start over from scratch.
 
 This approach has a number of benefits:
 - Instead of Bash embedded in YAML, scripts may be written in an Actual Programming Language™
