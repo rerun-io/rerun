@@ -384,7 +384,9 @@ impl PropertyResolver for SpaceViewBlueprint {
 
         let mut prop_map = self.auto_properties.clone();
 
-        let props_path = self.entity_path().join(&"properties".into());
+        let props_path = self
+            .entity_path()
+            .join(&SpaceViewContents::PROPERTIES_PREFIX.into());
         if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint

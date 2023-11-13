@@ -164,7 +164,7 @@ impl DataQuery for SpaceViewContents {
             resolved_properties,
             override_path: self
                 .entity_path()
-                .join(&"properties".into())
+                .join(&SpaceViewContents::PROPERTIES_PREFIX.into())
                 .join(entity_path),
         }
     }
@@ -197,7 +197,7 @@ impl DataBlueprintGroup {
         }
 
         let base_entity_path = contents.entity_path();
-        let props_path = EntityPath::from("properties");
+        let props_path = EntityPath::from(SpaceViewContents::PROPERTIES_PREFIX);
 
         let group_override_path = base_entity_path.join(&props_path).join(&group_path);
 

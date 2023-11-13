@@ -85,6 +85,8 @@ pub struct SpaceViewContents {
 
 /// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
 impl SpaceViewContents {
+    pub const PROPERTIES_PREFIX: &str = "properties";
+
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
             space_view_id: _,
