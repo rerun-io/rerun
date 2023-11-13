@@ -17,76 +17,73 @@ namespace arrow {
     class MemoryPool;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
-        ///
-        /// The box extends both in negative and positive direction along each axis.
-        /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
-        struct HalfSizes3D {
-            rerun::datatypes::Vec3D xyz;
+namespace rerun::components {
+    /// **Component**: Half-sizes (extents) of a 3D box along its local axis, starting at its local origin/center.
+    ///
+    /// The box extends both in negative and positive direction along each axis.
+    /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
+    struct HalfSizes3D {
+        rerun::datatypes::Vec3D xyz;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            // Extensions to generated type defined in 'half_sizes3d_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'half_sizes3d_ext.cpp'
 
-            /// Construct HalfSizes3D from x/y/z values.
-            HalfSizes3D(float x, float y, float z) : xyz{x, y, z} {}
+        /// Construct HalfSizes3D from x/y/z values.
+        HalfSizes3D(float x, float y, float z) : xyz{x, y, z} {}
 
-            float x() const {
-                return xyz.x();
-            }
+        float x() const {
+            return xyz.x();
+        }
 
-            float y() const {
-                return xyz.y();
-            }
+        float y() const {
+            return xyz.y();
+        }
 
-            float z() const {
-                return xyz.z();
-            }
+        float z() const {
+            return xyz.z();
+        }
 
-          public:
-            HalfSizes3D() = default;
+      public:
+        HalfSizes3D() = default;
 
-            HalfSizes3D(rerun::datatypes::Vec3D xyz_) : xyz(xyz_) {}
+        HalfSizes3D(rerun::datatypes::Vec3D xyz_) : xyz(xyz_) {}
 
-            HalfSizes3D& operator=(rerun::datatypes::Vec3D xyz_) {
-                xyz = xyz_;
-                return *this;
-            }
+        HalfSizes3D& operator=(rerun::datatypes::Vec3D xyz_) {
+            xyz = xyz_;
+            return *this;
+        }
 
-            HalfSizes3D(std::array<float, 3> xyz_) : xyz(xyz_) {}
+        HalfSizes3D(std::array<float, 3> xyz_) : xyz(xyz_) {}
 
-            HalfSizes3D& operator=(std::array<float, 3> xyz_) {
-                xyz = xyz_;
-                return *this;
-            }
+        HalfSizes3D& operator=(std::array<float, 3> xyz_) {
+            xyz = xyz_;
+            return *this;
+        }
 
-            /// Cast to the underlying Vec3D datatype
-            operator rerun::datatypes::Vec3D() const {
-                return xyz;
-            }
+        /// Cast to the underlying Vec3D datatype
+        operator rerun::datatypes::Vec3D() const {
+            return xyz;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::FixedSizeListBuilder* builder, const HalfSizes3D* elements,
-                size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::FixedSizeListBuilder* builder, const HalfSizes3D* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of HalfSizes3D components.
-            static Result<rerun::DataCell> to_data_cell(
-                const HalfSizes3D* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of HalfSizes3D components.
+        static Result<rerun::DataCell> to_data_cell(
+            const HalfSizes3D* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

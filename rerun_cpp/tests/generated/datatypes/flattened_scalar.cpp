@@ -6,57 +6,52 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun {
-    namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& FlattenedScalar::arrow_datatype() {
-            static const auto datatype = arrow::struct_({
-                arrow::field("value", arrow::float32(), false),
-            });
-            return datatype;
+namespace rerun::datatypes {
+    const std::shared_ptr<arrow::DataType>& FlattenedScalar::arrow_datatype() {
+        static const auto datatype = arrow::struct_({
+            arrow::field("value", arrow::float32(), false),
+        });
+        return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::StructBuilder>> FlattenedScalar::new_arrow_array_builder(
+        arrow::MemoryPool* memory_pool
+    ) {
+        if (memory_pool == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
         }
 
-        Result<std::shared_ptr<arrow::StructBuilder>> FlattenedScalar::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        ) {
-            if (memory_pool == nullptr) {
-                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-            }
+        return Result(std::make_shared<arrow::StructBuilder>(
+            arrow_datatype(),
+            memory_pool,
+            std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                std::make_shared<arrow::FloatBuilder>(memory_pool),
+            })
+        ));
+    }
 
-            return Result(std::make_shared<arrow::StructBuilder>(
-                arrow_datatype(),
-                memory_pool,
-                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    std::make_shared<arrow::FloatBuilder>(memory_pool),
-                })
-            ));
+    rerun::Error FlattenedScalar::fill_arrow_array_builder(
+        arrow::StructBuilder* builder, const FlattenedScalar* elements, size_t num_elements
+    ) {
+        if (builder == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+        }
+        if (elements == nullptr) {
+            return rerun::Error(
+                ErrorCode::UnexpectedNullArgument,
+                "Cannot serialize null pointer to arrow array."
+            );
         }
 
-        rerun::Error FlattenedScalar::fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const FlattenedScalar* elements, size_t num_elements
-        ) {
-            if (builder == nullptr) {
-                return rerun::Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Passed array builder is null."
-                );
+        {
+            auto field_builder = static_cast<arrow::FloatBuilder*>(builder->field_builder(0));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].value));
             }
-            if (elements == nullptr) {
-                return rerun::Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Cannot serialize null pointer to arrow array."
-                );
-            }
-
-            {
-                auto field_builder = static_cast<arrow::FloatBuilder*>(builder->field_builder(0));
-                ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].value));
-                }
-            }
-            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
-
-            return Error::ok();
         }
-    } // namespace datatypes
-} // namespace rerun
+        ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
+
+        return Error::ok();
+    }
+} // namespace rerun::datatypes

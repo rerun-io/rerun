@@ -5,10 +5,11 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char Points2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points2DIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char Points2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points2DIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Points2D>::serialize(
         const archetypes::Points2D& archetype

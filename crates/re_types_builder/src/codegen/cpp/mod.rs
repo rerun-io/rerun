@@ -492,28 +492,26 @@ impl QuotedObject {
         let hpp = quote! {
             #hpp_includes
 
+            namespace rerun::archetypes {
+                #quoted_docs
+                struct #type_ident {
+                    #(#field_declarations;)*
+
+                    #(#constants_hpp;)*
+
+                    #NEWLINE_TOKEN
+                    #indicator_comment
+                    using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+
+                    #hpp_type_extensions
+
+                    #hpp_method_section
+                };
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
+            }
+
             namespace rerun {
-                namespace archetypes {
-                    #quoted_docs
-                    struct #type_ident {
-                        #(#field_declarations;)*
-
-                        #(#constants_hpp;)*
-
-                        #NEWLINE_TOKEN
-                        #indicator_comment
-                        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
-
-                        #hpp_type_extensions
-
-                        #hpp_method_section
-                    };
-                    #NEWLINE_TOKEN
-                    #NEWLINE_TOKEN
-                }
-                #NEWLINE_TOKEN
-                #NEWLINE_TOKEN
-
                 // Instead of including as_components.hpp, simply re-declare the template since it's trivial
                 #doc_hide_comment
                 template<typename T>
@@ -533,12 +531,13 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            namespace rerun {
-                namespace archetypes {
-                    #(#constants_cpp;)*
+            namespace rerun::archetypes {
+                #(#constants_cpp;)*
 
-                    #(#methods_cpp)*
-                }
+                #(#methods_cpp)*
+            }
+
+            namespace rerun {
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 #serialize_cpp
@@ -663,19 +662,17 @@ impl QuotedObject {
 
             #hpp_declarations
 
-            namespace rerun {
-                namespace #namespace_ident {
-                    #quoted_docs
-                    struct #type_ident {
-                        #(#field_declarations;)*
+            namespace rerun::#namespace_ident {
+                #quoted_docs
+                struct #type_ident {
+                    #(#field_declarations;)*
 
-                        #(#constants_hpp;)*
+                    #(#constants_hpp;)*
 
-                        #hpp_type_extensions
+                    #hpp_type_extensions
 
-                        #hpp_method_section
-                    };
-                }
+                    #hpp_method_section
+                };
             }
         };
 
@@ -685,12 +682,10 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            namespace rerun {
-                namespace #namespace_ident {
-                    #(#constants_cpp;)*
+            namespace rerun::#namespace_ident {
+                #(#constants_cpp;)*
 
-                    #(#methods_cpp)*
-                }
+                #(#methods_cpp)*
             }
         };
 
@@ -1002,86 +997,83 @@ impl QuotedObject {
 
             #hpp_declarations
 
-            namespace rerun {
-                namespace #namespace_ident {
-                    namespace detail {
-                        #hide_from_docs_comment
-                        enum class #tag_typename : uint8_t {
-                            #(#tag_fields)*
-                        };
+            namespace rerun::#namespace_ident {
+                namespace detail {
+                    #hide_from_docs_comment
+                    enum class #tag_typename : uint8_t {
+                        #(#tag_fields)*
+                    };
 
-                        #hide_from_docs_comment
-                        union #data_typename {
-                            #(#enum_data_declarations;)*
+                    #hide_from_docs_comment
+                    union #data_typename {
+                        #(#enum_data_declarations;)*
 
-                            // Required by static constructors
-                            #data_typename() {
-                                std::memset(reinterpret_cast<void*>(this), 0, sizeof(#data_typename));
-                            }
-                            ~#data_typename() { }
-
-                            // Note that this type is *not* copyable unless all enum fields are trivially destructable.
-
-                            void swap(#data_typename& other) noexcept {
-                                #NEWLINE_TOKEN
-                                #swap_comment
-                                char temp[sizeof(#data_typename)];
-                                void* otherbytes = reinterpret_cast<void*>(&other);
-                                void* thisbytes = reinterpret_cast<void*>(this);
-                                std::memcpy(temp, thisbytes, sizeof(#data_typename));
-                                std::memcpy(thisbytes, otherbytes, sizeof(#data_typename));
-                                std::memcpy(otherbytes, temp, sizeof(#data_typename));
-                            }
-                        };
-
-                    }
-
-                    #quoted_docs
-                    struct #pascal_case_ident {
-                        #(#constants_hpp;)*
-
-                        #pascal_case_ident() : _tag(detail::#tag_typename::None) {}
-
-                        #copy_constructor
-
-                        // Copy-assignment
-                        #pascal_case_ident& operator=(const #pascal_case_ident& other) noexcept {
-                            #pascal_case_ident tmp(other);
-                            this->swap(tmp);
-                            return *this;
+                        // Required by static constructors
+                        #data_typename() {
+                            std::memset(reinterpret_cast<void*>(this), 0, sizeof(#data_typename));
                         }
+                        ~#data_typename() { }
 
-                        // Move-constructor:
-                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : #pascal_case_ident() {
-                            this->swap(other);
+                        // Note that this type is *not* copyable unless all enum fields are trivially destructable.
+
+                        void swap(#data_typename& other) noexcept {
+                            #NEWLINE_TOKEN
+                            #swap_comment
+                            char temp[sizeof(#data_typename)];
+                            void* otherbytes = reinterpret_cast<void*>(&other);
+                            void* thisbytes = reinterpret_cast<void*>(this);
+                            std::memcpy(temp, thisbytes, sizeof(#data_typename));
+                            std::memcpy(thisbytes, otherbytes, sizeof(#data_typename));
+                            std::memcpy(otherbytes, temp, sizeof(#data_typename));
                         }
-
-                        // Move-assignment:
-                        #pascal_case_ident& operator=(#pascal_case_ident&& other) noexcept {
-                            this->swap(other);
-                            return *this;
-                        }
-
-                        #destructor
-
-                        #hpp_type_extensions
-
-                        // This is useful for easily implementing the move constructor and assignment operators:
-                        void swap(#pascal_case_ident& other) noexcept {
-                            // Swap tags: Not using std::swap here causes a warning for some gcc version about potentially uninitialized data.
-                            std::swap(this->_tag, other._tag);
-
-                            // Swap data:
-                            this->_data.swap(other._data);
-                        }
-
-                        #(#methods_hpp)*
-
-                    private:
-                        detail::#tag_typename _tag;
-                        detail::#data_typename _data;
                     };
                 }
+
+                #quoted_docs
+                struct #pascal_case_ident {
+                    #(#constants_hpp;)*
+
+                    #pascal_case_ident() : _tag(detail::#tag_typename::None) {}
+
+                    #copy_constructor
+
+                    // Copy-assignment
+                    #pascal_case_ident& operator=(const #pascal_case_ident& other) noexcept {
+                        #pascal_case_ident tmp(other);
+                        this->swap(tmp);
+                        return *this;
+                    }
+
+                    // Move-constructor:
+                    #pascal_case_ident(#pascal_case_ident&& other) noexcept : #pascal_case_ident() {
+                        this->swap(other);
+                    }
+
+                    // Move-assignment:
+                    #pascal_case_ident& operator=(#pascal_case_ident&& other) noexcept {
+                        this->swap(other);
+                        return *this;
+                    }
+
+                    #destructor
+
+                    #hpp_type_extensions
+
+                    // This is useful for easily implementing the move constructor and assignment operators:
+                    void swap(#pascal_case_ident& other) noexcept {
+                        // Swap tags: Not using std::swap here causes a warning for some gcc version about potentially uninitialized data.
+                        std::swap(this->_tag, other._tag);
+
+                        // Swap data:
+                        this->_data.swap(other._data);
+                    }
+
+                    #(#methods_hpp)*
+
+                private:
+                    detail::#tag_typename _tag;
+                    detail::#data_typename _data;
+                };
             }
         };
 
@@ -1093,10 +1085,8 @@ impl QuotedObject {
 
             #(#constants_cpp;)*
 
-            namespace rerun {
-                namespace #namespace_ident {
-                    #(#cpp_methods)*
-                }
+            namespace rerun::#namespace_ident {
+                #(#cpp_methods)*
             }
         };
 

@@ -20,129 +20,129 @@
 #include <utility>
 #include <vector>
 
+namespace rerun::archetypes {
+    /// **Archetype**: 3D line strips with positions and optional colors, radii, labels, etc.
+    ///
+    /// ## Example
+    ///
+    /// ### Many strips
+    /// ![image](https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// #include <vector>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     std::vector<rerun::Vec3D> strip1 = {
+    ///         {0.f, 0.f, 2.f},
+    ///         {1.f, 0.f, 2.f},
+    ///         {1.f, 1.f, 2.f},
+    ///         {0.f, 1.f, 2.f},
+    ///     };
+    ///     std::vector<rerun::Vec3D> strip2 = {
+    ///         {0.f, 0.f, 0.f},
+    ///         {0.f, 0.f, 1.f},
+    ///         {1.f, 0.f, 0.f},
+    ///         {1.f, 0.f, 1.f},
+    ///         {1.f, 1.f, 0.f},
+    ///         {1.f, 1.f, 1.f},
+    ///         {0.f, 1.f, 0.f},
+    ///         {0.f, 1.f, 1.f},
+    ///     };
+    ///     rec.log(
+    ///         "strips",
+    ///         rerun::LineStrips3D({strip1, strip2})
+    ///             .with_colors({0xFF0000FF, 0x00FF00FF})
+    ///             .with_radii({0.025f, 0.005f})
+    ///             .with_labels({"one strip here", "and one strip there"})
+    ///     );
+    /// }
+    /// ```
+    struct LineStrips3D {
+        /// All the actual 3D line strips that make up the batch.
+        ComponentBatch<rerun::components::LineStrip3D> strips;
+
+        /// Optional radii for the line strips.
+        std::optional<ComponentBatch<rerun::components::Radius>> radii;
+
+        /// Optional colors for the line strips.
+        std::optional<ComponentBatch<rerun::components::Color>> colors;
+
+        /// Optional text labels for the line strips.
+        std::optional<ComponentBatch<rerun::components::Text>> labels;
+
+        /// Optional `ClassId`s for the lines.
+        ///
+        /// The class ID provides colors and labels if not specified explicitly.
+        std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
+
+        /// Unique identifiers for each individual line strip in the batch.
+        std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
+
+        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
+        static const char INDICATOR_COMPONENT_NAME[];
+        /// Indicator component, used to identify the archetype when converting to a list of components.
+        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+
+      public:
+        LineStrips3D() = default;
+        LineStrips3D(LineStrips3D&& other) = default;
+
+        explicit LineStrips3D(ComponentBatch<rerun::components::LineStrip3D> _strips)
+            : strips(std::move(_strips)) {}
+
+        /// Optional radii for the line strips.
+        LineStrips3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
+            radii = std::move(_radii);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional colors for the line strips.
+        LineStrips3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
+            colors = std::move(_colors);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional text labels for the line strips.
+        LineStrips3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
+            labels = std::move(_labels);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional `ClassId`s for the lines.
+        ///
+        /// The class ID provides colors and labels if not specified explicitly.
+        LineStrips3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
+            class_ids = std::move(_class_ids);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Unique identifiers for each individual line strip in the batch.
+        LineStrips3D with_instance_keys(
+            ComponentBatch<rerun::components::InstanceKey> _instance_keys
+        ) && {
+            instance_keys = std::move(_instance_keys);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Returns the number of primary instances of this archetype.
+        size_t num_instances() const {
+            return strips.size();
+        }
+    };
+
+} // namespace rerun::archetypes
+
 namespace rerun {
-    namespace archetypes {
-        /// **Archetype**: 3D line strips with positions and optional colors, radii, labels, etc.
-        ///
-        /// ## Example
-        ///
-        /// ### Many strips
-        /// ![image](https://static.rerun.io/line_strip3d_batch/102e5ec5271475657fbc76b469267e4ec8e84337/full.png)
-        ///
-        /// ```cpp
-        /// #include <rerun.hpp>
-        ///
-        /// #include <vector>
-        ///
-        /// int main() {
-        ///     const auto rec = rerun::RecordingStream("rerun_example_line_strip3d");
-        ///     rec.spawn().exit_on_failure();
-        ///
-        ///     std::vector<rerun::Vec3D> strip1 = {
-        ///         {0.f, 0.f, 2.f},
-        ///         {1.f, 0.f, 2.f},
-        ///         {1.f, 1.f, 2.f},
-        ///         {0.f, 1.f, 2.f},
-        ///     };
-        ///     std::vector<rerun::Vec3D> strip2 = {
-        ///         {0.f, 0.f, 0.f},
-        ///         {0.f, 0.f, 1.f},
-        ///         {1.f, 0.f, 0.f},
-        ///         {1.f, 0.f, 1.f},
-        ///         {1.f, 1.f, 0.f},
-        ///         {1.f, 1.f, 1.f},
-        ///         {0.f, 1.f, 0.f},
-        ///         {0.f, 1.f, 1.f},
-        ///     };
-        ///     rec.log(
-        ///         "strips",
-        ///         rerun::LineStrips3D({strip1, strip2})
-        ///             .with_colors({0xFF0000FF, 0x00FF00FF})
-        ///             .with_radii({0.025f, 0.005f})
-        ///             .with_labels({"one strip here", "and one strip there"})
-        ///     );
-        /// }
-        /// ```
-        struct LineStrips3D {
-            /// All the actual 3D line strips that make up the batch.
-            ComponentBatch<rerun::components::LineStrip3D> strips;
-
-            /// Optional radii for the line strips.
-            std::optional<ComponentBatch<rerun::components::Radius>> radii;
-
-            /// Optional colors for the line strips.
-            std::optional<ComponentBatch<rerun::components::Color>> colors;
-
-            /// Optional text labels for the line strips.
-            std::optional<ComponentBatch<rerun::components::Text>> labels;
-
-            /// Optional `ClassId`s for the lines.
-            ///
-            /// The class ID provides colors and labels if not specified explicitly.
-            std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
-
-            /// Unique identifiers for each individual line strip in the batch.
-            std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
-
-            /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-            static const char INDICATOR_COMPONENT_NAME[];
-            /// Indicator component, used to identify the archetype when converting to a list of components.
-            using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
-
-          public:
-            LineStrips3D() = default;
-            LineStrips3D(LineStrips3D&& other) = default;
-
-            explicit LineStrips3D(ComponentBatch<rerun::components::LineStrip3D> _strips)
-                : strips(std::move(_strips)) {}
-
-            /// Optional radii for the line strips.
-            LineStrips3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
-                radii = std::move(_radii);
-                // See: https://github.com/rerun-io/rerun/issues/4027
-                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-            }
-
-            /// Optional colors for the line strips.
-            LineStrips3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
-                colors = std::move(_colors);
-                // See: https://github.com/rerun-io/rerun/issues/4027
-                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-            }
-
-            /// Optional text labels for the line strips.
-            LineStrips3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
-                labels = std::move(_labels);
-                // See: https://github.com/rerun-io/rerun/issues/4027
-                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-            }
-
-            /// Optional `ClassId`s for the lines.
-            ///
-            /// The class ID provides colors and labels if not specified explicitly.
-            LineStrips3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
-                class_ids = std::move(_class_ids);
-                // See: https://github.com/rerun-io/rerun/issues/4027
-                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-            }
-
-            /// Unique identifiers for each individual line strip in the batch.
-            LineStrips3D with_instance_keys(
-                ComponentBatch<rerun::components::InstanceKey> _instance_keys
-            ) && {
-                instance_keys = std::move(_instance_keys);
-                // See: https://github.com/rerun-io/rerun/issues/4027
-                WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-            }
-
-            /// Returns the number of primary instances of this archetype.
-            size_t num_instances() const {
-                return strips.size();
-            }
-        };
-
-    } // namespace archetypes
-
     /// \private
     template <typename T>
     struct AsComponents;

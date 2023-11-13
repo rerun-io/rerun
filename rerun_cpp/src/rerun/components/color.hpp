@@ -21,79 +21,75 @@ namespace arrow {
     using UInt32Builder = NumericBuilder<UInt32Type>;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
-        ///
-        /// The color is stored as a 32-bit integer, where the most significant
-        /// byte is `R` and the least significant byte is `A`.
-        struct Color {
-            rerun::datatypes::Rgba32 rgba;
+namespace rerun::components {
+    /// **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
+    ///
+    /// The color is stored as a 32-bit integer, where the most significant
+    /// byte is `R` and the least significant byte is `A`.
+    struct Color {
+        rerun::datatypes::Rgba32 rgba;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            // Extensions to generated type defined in 'color_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'color_ext.cpp'
 
-            /// Construct Color from unmultiplied RGBA values.
-            Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) : rgba(r, g, b, a) {}
+        /// Construct Color from unmultiplied RGBA values.
+        Color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) : rgba(r, g, b, a) {}
 
-            uint8_t r() const {
-                return rgba.r();
-            }
+        uint8_t r() const {
+            return rgba.r();
+        }
 
-            uint8_t g() const {
-                return rgba.g();
-            }
+        uint8_t g() const {
+            return rgba.g();
+        }
 
-            uint8_t b() const {
-                return rgba.b();
-            }
+        uint8_t b() const {
+            return rgba.b();
+        }
 
-            uint8_t a() const {
-                return rgba.a();
-            }
+        uint8_t a() const {
+            return rgba.a();
+        }
 
-          public:
-            Color() = default;
+      public:
+        Color() = default;
 
-            Color(rerun::datatypes::Rgba32 rgba_) : rgba(rgba_) {}
+        Color(rerun::datatypes::Rgba32 rgba_) : rgba(rgba_) {}
 
-            Color& operator=(rerun::datatypes::Rgba32 rgba_) {
-                rgba = rgba_;
-                return *this;
-            }
+        Color& operator=(rerun::datatypes::Rgba32 rgba_) {
+            rgba = rgba_;
+            return *this;
+        }
 
-            Color(uint32_t rgba_) : rgba(rgba_) {}
+        Color(uint32_t rgba_) : rgba(rgba_) {}
 
-            Color& operator=(uint32_t rgba_) {
-                rgba = rgba_;
-                return *this;
-            }
+        Color& operator=(uint32_t rgba_) {
+            rgba = rgba_;
+            return *this;
+        }
 
-            /// Cast to the underlying Rgba32 datatype
-            operator rerun::datatypes::Rgba32() const {
-                return rgba;
-            }
+        /// Cast to the underlying Rgba32 datatype
+        operator rerun::datatypes::Rgba32() const {
+            return rgba;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::UInt32Builder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::UInt32Builder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::UInt32Builder* builder, const Color* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::UInt32Builder* builder, const Color* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of Color components.
-            static Result<rerun::DataCell> to_data_cell(
-                const Color* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of Color components.
+        static Result<rerun::DataCell> to_data_cell(const Color* instances, size_t num_instances);
+    };
+} // namespace rerun::components
