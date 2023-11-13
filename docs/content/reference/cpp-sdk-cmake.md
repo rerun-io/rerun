@@ -3,7 +3,7 @@ title: C++ SDK CMake
 order: 8
 ---
 
-The Rerun C++ SDK is meant to be built from source.
+The Rerun C++ SDK is meant to be built from source and everything described on this page will do just that.
 Its [CMake build script](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/CMakeLists.txt)
 is ready to be used from outside of the Rerun repo.
 
