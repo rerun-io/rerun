@@ -9,6 +9,8 @@ mod welcome_screen;
 pub(crate) mod memory_panel;
 pub(crate) mod selection_panel;
 
+pub(crate) mod visible_history;
+
 pub use blueprint_panel::blueprint_panel_ui;
 pub use recordings_panel::recordings_panel_ui;
 // ----
