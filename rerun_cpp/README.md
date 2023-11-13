@@ -7,9 +7,7 @@ Read the [getting started guide](https://www.rerun.io/docs/getting-started/cpp) 
 ## Examples
 
 As general entry point for Rerun examples check the [examples page](https://www.rerun.io/examples) on our website.
-
 All C++ examples can be found [directly in the Rerun repository](https://github.com/rerun-io/rerun/tree/latest/examples/cpp).
-
 Additionally, each [archetype's documentation](https://www.rerun.io/docs/reference/types) comes with at least one small self-contained code example.
 
 
@@ -48,7 +46,7 @@ From a build system perspective, the SDK consists of three dependencies:
   * See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install) for how to install this library
 
 
-### SDK bundle `rerun_cpp_sdk.zip`
+### SDK bundle (rerun_cpp_sdk.zip)
 
 For convenience, Rerun provides a C++ SDK bundle with every release.
 (this includes our regular [Development Builds](https://github.com/rerun-io/rerun/releases/tag/prerelease)!)
