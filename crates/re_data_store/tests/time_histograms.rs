@@ -655,9 +655,9 @@ fn assert_times_per_timeline<'a>(
         let times = db.times_per_timeline().get(timeline);
 
         if let Some(expected) = expected_times {
-            let times = times.unwrap();
+            let times: BTreeSet<_> = times.unwrap().keys().copied().collect();
             let expected: BTreeSet<_> = expected.iter().map(|t| (*t).into()).collect();
-            similar_asserts::assert_eq!(&expected, times);
+            similar_asserts::assert_eq!(expected, times);
         } else {
             assert!(times.is_none());
         }
