@@ -30,11 +30,13 @@
       .chart-container {
         position: relative;
         width: 320px;
+        height: 320px;
       }
 
       @media only screen and (min-width: 1024px) {
         .chart-container {
           width: 640px;
+          height: 640px;
         }
       }
     </style>
@@ -60,30 +62,24 @@
         const container = document.createElement("div");
         container.className = "chart-container";
         parent.append(container);
-        const element = document.createElement("canvas");
-        container.append(element);
-        return element;
+        const canvas = document.createElement("canvas");
+        canvas.style.width = "100%";
+        canvas.style.height = "100%";
+        container.append(canvas);
+        return canvas;
       }
 
       document.title = TITLE;
       document.getElementById("title").innerText = TITLE;
 
-      // note: the `resize` and `responsive` is a hack to
-      // make chart.js respond to resizes properly
-      const resize = [];
       for (const name of Object.keys(CHARTS)) {
         const chart = new Chart(canvas(), {
           ...CHARTS[name],
-          responsive: false,
-          maintainAspectRatio: true,
+          responsive: true,
+          maintainAspectRatio: false,
+          aspectRatio: 1,
         });
-        resize.push(chart);
       }
-      window.addEventListener("resize", (e) => {
-        for (const chart of resize) {
-          chart.resize();
-        }
-      });
     </script>
   </body>
 </html>
