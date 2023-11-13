@@ -128,28 +128,6 @@ jobs:
           path: /tmp/data.json
           destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.short_sha }}"
 
-      - name: Store result
-        if: github.ref == 'refs/heads/main'
-        # https://github.com/benchmark-action/github-action-benchmark
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Sizes
-          tool: customSmallerIsBetter
-          output-file-path: /tmp/data.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Show alert with commit on detecting possible size regression
-          comment-on-alert: true
-          alert-threshold: "110%"
-          fail-on-alert: false
-          comment-always: false
-
-          save-data-file: true
-          auto-push: true
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/sizes
-          max-items-in-chart: 30
-
       - name: Create index file
         if: github.ref == 'refs/heads/main'
         run: |
@@ -173,3 +151,7 @@ jobs:
 
             ${{ steps.measure.outputs.comparison }}
 
+      - name: Render benchmark result
+        if: github.ref == 'refs/heads/main'
+        run: |
+          scripts/ci/render_bench.py sizes --num-days $((30*6)) --output "gs://rerun-builds/graphs"
