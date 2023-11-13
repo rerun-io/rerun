@@ -132,9 +132,13 @@ pub struct EntityTree {
 
     pub children: BTreeMap<EntityPathPart, EntityTree>,
 
-    /// When do we or a child have data?
+    /// Recursive time histogram for this [`EntityTree`].
     ///
-    /// Data logged at this exact path or any child path.
+    /// Keeps track of the _number of components logged_ per time per timeline, recursively across
+    /// all of the [`EntityTree`]'s children.
+    /// A component logged twice at the same timestamp is counted twice.
+    ///
+    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
     pub prefix_times: TimeHistogramPerTimeline,
 
     /// Extra book-keeping used to seed any timelines that include timeless msgs
@@ -146,7 +150,13 @@ pub struct EntityTree {
     /// Book-keeping around whether we should clear recursively when data is added
     pub recursive_clears: BTreeMap<RowId, TimePoint>,
 
-    /// Data logged at this entity path.
+    /// Flat time histograms for each component of this [`EntityTree`].
+    ///
+    /// Keeps track of the _number of times a component is logged_ per time per timeline, only for
+    /// this specific [`EntityTree`].
+    /// A component logged twice at the same timestamp is counted twice.
+    ///
+    /// ⚠ Auto-generated instance keys are _not_ accounted for. ⚠
     pub components: BTreeMap<ComponentName, ComponentStats>,
 }
 
@@ -178,6 +188,16 @@ impl EntityTree {
 
     pub fn num_timeless_messages(&self) -> usize {
         self.num_timeless_messages
+    }
+
+    pub fn time_histogram_for_component(
+        &self,
+        timeline: &Timeline,
+        component_name: impl Into<ComponentName>,
+    ) -> Option<&crate::TimeHistogram> {
+        self.components
+            .get(&component_name.into())
+            .and_then(|stats| stats.times.get(timeline))
     }
 
     /// Returns a collection of pending clear operations
