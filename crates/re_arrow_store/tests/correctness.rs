@@ -537,7 +537,11 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         entity_min_time_correct_impl(&mut store)?;
     }
 
