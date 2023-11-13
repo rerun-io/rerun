@@ -57,13 +57,19 @@ how to use the SDK's `CMakeLists.txt` and an overview over all CMake configurati
 
 ### Without CMake
 
-In order to build without CMake, you have to add all files from the [src/](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp/src/) folder
+We don't have first class support for other build systems yet,
+but it should be possible to setup Rerun C++ without CMake fairly easily:
+
+You have to add all files from the [src/](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp/src/) folder
 either directly to your project or a library.
 In addition, you need to link the `rerun_c` libraries and the [Arrow C++ library](https://arrow.apache.org/docs/cpp/index.html).
+For more information on how to install Arrow, see [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install).
 
 Make sure to compile with C++17 or newer.
 
-For more information on how to install Arrow, see [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install).
+#### Bazel
+
+There's a user provided minimal Bazel example here: https://github.com/kyle-figure/bazel-minimal-rerun/
 
 
 ## Development in the Rerun repository
