@@ -1,6 +1,6 @@
 #pragma once
 
-#include "component_batch.hpp"
+#include "collection.hpp"
 #include "indicator_component.hpp"
 
 namespace rerun {
@@ -28,11 +28,11 @@ namespace rerun {
     // Documenting the builtin generic `AsComponents` impls is too much clutter for the doc class overview.
     /// \cond private
 
-    /// AsComponents for a ComponentBatch.
+    /// AsComponents for a Collection of components.
     template <typename TComponent>
-    struct AsComponents<ComponentBatch<TComponent>> {
+    struct AsComponents<Collection<TComponent>> {
         static Result<std::vector<SerializedComponentBatch>> serialize(
-            const ComponentBatch<TComponent>& components
+            const Collection<TComponent>& components
         ) {
             const auto result = components.serialize();
             RR_RETURN_NOT_OK(result.error);
@@ -46,7 +46,7 @@ namespace rerun {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             const std::vector<TComponent>& components
         ) {
-            return AsComponents<ComponentBatch<TComponent>>::serialize(components);
+            return AsComponents<Collection<TComponent>>::serialize(components);
         }
     };
 
@@ -56,7 +56,7 @@ namespace rerun {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             std::initializer_list<TComponent> components
         ) {
-            return AsComponents<ComponentBatch<TComponent>>::serialize(components);
+            return AsComponents<Collection<TComponent>>::serialize(components);
         }
     };
 
@@ -66,7 +66,7 @@ namespace rerun {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             const std::array<TComponent, NumInstances>& components
         ) {
-            return AsComponents<ComponentBatch<TComponent>>::serialize(components);
+            return AsComponents<Collection<TComponent>>::serialize(components);
         }
     };
 
@@ -75,7 +75,7 @@ namespace rerun {
     struct AsComponents<TComponent[NumInstances]> {
         static Result<std::vector<SerializedComponentBatch>> serialize(const TComponent (&components
         )[NumInstances]) {
-            return AsComponents<ComponentBatch<TComponent>>::serialize(components);
+            return AsComponents<Collection<TComponent>>::serialize(components);
         }
     };
 
@@ -85,7 +85,7 @@ namespace rerun {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             const components::IndicatorComponent<Name>& indicator
         ) {
-            return AsComponents<ComponentBatch<components::IndicatorComponent<Name>>>::serialize(
+            return AsComponents<Collection<components::IndicatorComponent<Name>>>::serialize(
                 indicator
             );
         }

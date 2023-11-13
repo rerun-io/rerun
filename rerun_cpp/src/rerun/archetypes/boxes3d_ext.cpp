@@ -1,6 +1,6 @@
 #include "boxes3d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
 
 // #define EDIT_EXTENSION
 
@@ -11,7 +11,7 @@ namespace rerun {
         // <CODEGEN_COPY_TO_HEADER>
 
         /// Creates new `Boxes3D` with `half_sizes` centered around the local origin.
-        static Boxes3D from_half_sizes(ComponentBatch<components::HalfSizes3D> half_sizes) {
+        static Boxes3D from_half_sizes(Collection<components::HalfSizes3D> half_sizes) {
             Boxes3D boxes;
             boxes.half_sizes = std::move(half_sizes);
             return boxes;
@@ -19,8 +19,8 @@ namespace rerun {
 
         /// Creates new `Boxes3D` with `centers` and `half_sizes`.
         static Boxes3D from_centers_and_half_sizes(
-            ComponentBatch<components::Position3D> centers,
-            ComponentBatch<components::HalfSizes3D> half_sizes
+            Collection<components::Position3D> centers,
+            Collection<components::HalfSizes3D> half_sizes
         ) {
             Boxes3D boxes;
             boxes.half_sizes = std::move(half_sizes);
@@ -42,8 +42,7 @@ namespace rerun {
         /// from the input data.
         /// TODO(#3794): This should not take an std::vector.
         static Boxes3D from_centers_and_sizes(
-            ComponentBatch<components::Position3D> centers,
-            const std::vector<datatypes::Vec3D>& sizes
+            Collection<components::Position3D> centers, const std::vector<datatypes::Vec3D>& sizes
         ) {
             Boxes3D boxes = from_sizes(std::move(sizes));
             boxes.centers = std::move(centers);

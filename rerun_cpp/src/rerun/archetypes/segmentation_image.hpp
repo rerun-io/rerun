@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"

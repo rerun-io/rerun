@@ -3,7 +3,7 @@
 
 #include "view_coordinates.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
 
 namespace rerun::archetypes {
     const char ViewCoordinates::INDICATOR_COMPONENT_NAME[] =
@@ -19,13 +19,12 @@ namespace rerun {
         cells.reserve(1);
 
         {
-            auto result =
-                ComponentBatch<rerun::components::ViewCoordinates>(archetype.xyz).serialize();
+            auto result = Collection<rerun::components::ViewCoordinates>(archetype.xyz).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = ComponentBatch<ViewCoordinates::IndicatorComponent>(
+            auto result = Collection<ViewCoordinates::IndicatorComponent>(
                               ViewCoordinates::IndicatorComponent()
             )
                               .serialize();

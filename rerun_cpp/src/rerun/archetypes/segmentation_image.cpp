@@ -3,7 +3,7 @@
 
 #include "segmentation_image.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
 
 namespace rerun::archetypes {
     const char SegmentationImage::INDICATOR_COMPONENT_NAME[] =
@@ -19,18 +19,18 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = ComponentBatch<rerun::components::TensorData>(archetype.data).serialize();
+            auto result = Collection<rerun::components::TensorData>(archetype.data).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result = ComponentBatch<rerun::components::DrawOrder>(archetype.draw_order.value())
-                              .serialize();
+            auto result =
+                Collection<rerun::components::DrawOrder>(archetype.draw_order.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = ComponentBatch<SegmentationImage::IndicatorComponent>(
+            auto result = Collection<SegmentationImage::IndicatorComponent>(
                               SegmentationImage::IndicatorComponent()
             )
                               .serialize();
