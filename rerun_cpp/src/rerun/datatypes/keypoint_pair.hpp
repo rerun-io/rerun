@@ -15,40 +15,38 @@ namespace arrow {
     class StructBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: A connection between two `Keypoints`.
-        struct KeypointPair {
-            /// The first point of the pair.
-            rerun::datatypes::KeypointId keypoint0;
+namespace rerun::datatypes {
+    /// **Datatype**: A connection between two `Keypoints`.
+    struct KeypointPair {
+        /// The first point of the pair.
+        rerun::datatypes::KeypointId keypoint0;
 
-            /// The second point of the pair.
-            rerun::datatypes::KeypointId keypoint1;
+        /// The second point of the pair.
+        rerun::datatypes::KeypointId keypoint1;
 
-          public:
-            // Extensions to generated type defined in 'keypoint_pair_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'keypoint_pair_ext.cpp'
 
-            KeypointPair(uint16_t _keypoint0, uint16_t _keypoint1)
-                : keypoint0(_keypoint0), keypoint1(_keypoint1) {}
+        KeypointPair(uint16_t _keypoint0, uint16_t _keypoint1)
+            : keypoint0(_keypoint0), keypoint1(_keypoint1) {}
 
-            KeypointPair(std::pair<uint16_t, uint16_t> pair)
-                : keypoint0(pair.first), keypoint1(pair.second) {}
+        KeypointPair(std::pair<uint16_t, uint16_t> pair)
+            : keypoint0(pair.first), keypoint1(pair.second) {}
 
-          public:
-            KeypointPair() = default;
+      public:
+        KeypointPair() = default;
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::StructBuilder* builder, const KeypointPair* elements, size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StructBuilder* builder, const KeypointPair* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

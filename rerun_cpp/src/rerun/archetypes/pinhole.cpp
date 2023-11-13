@@ -5,10 +5,11 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Pinhole>::serialize(
         const archetypes::Pinhole& archetype

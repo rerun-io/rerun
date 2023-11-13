@@ -5,11 +5,12 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char TimeSeriesScalar::INDICATOR_COMPONENT_NAME[] =
+        "rerun.components.TimeSeriesScalarIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char TimeSeriesScalar::INDICATOR_COMPONENT_NAME[] =
-            "rerun.components.TimeSeriesScalarIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
         archetypes::TimeSeriesScalar>::serialize(const archetypes::TimeSeriesScalar& archetype) {

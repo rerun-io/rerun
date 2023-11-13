@@ -5,10 +5,11 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::BarChart>::serialize(
         const archetypes::BarChart& archetype
