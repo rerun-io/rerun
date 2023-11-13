@@ -19,6 +19,7 @@ use crate::{Error, TimesPerTimeline};
 pub struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
+
     /// The global-scope time tracker.
     ///
     /// For each timeline, keeps track of what times exist, recursively across all
