@@ -4,11 +4,17 @@ use re_log_types::{
     example_components::{MyColor, MyPoint},
     DataRow, EntityPath, RowId, StoreId, TimePoint, Timeline,
 };
-use re_types_core::{archetypes::Clear, components::InstanceKey, AsComponents};
+use re_types_core::{
+    archetypes::Clear,
+    components::{ClearIsRecursive, InstanceKey},
+    AsComponents,
+};
 
 /// Complete test suite for the clear & pending clear paths.
 #[test]
 fn clears() -> anyhow::Result<()> {
+    init_logs();
+
     let mut db = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
 
     let timeline_frame = Timeline::new_sequence("frame");
@@ -150,6 +156,13 @@ fn clears() -> anyhow::Result<()> {
                 .store()
                 .query_latest_component::<MyColor>(&entity_path_parent, &query)
                 .is_none());
+            // the `Clear` component itself doesn't get cleared!
+            let got_clear = db
+                .store()
+                .query_latest_component::<ClearIsRecursive>(&entity_path_parent, &query)
+                .unwrap()
+                .value;
+            similar_asserts::assert_eq!(clear.is_recursive, got_clear);
 
             // child1
             assert!(db
@@ -197,6 +210,13 @@ fn clears() -> anyhow::Result<()> {
                 .store()
                 .query_latest_component::<MyColor>(&entity_path_parent, &query)
                 .is_none());
+            // the `Clear` component itself doesn't get cleared!
+            let got_clear = db
+                .store()
+                .query_latest_component::<ClearIsRecursive>(&entity_path_parent, &query)
+                .unwrap()
+                .value;
+            similar_asserts::assert_eq!(clear.is_recursive, got_clear);
 
             // child1
             assert!(db
@@ -412,4 +432,17 @@ fn clears() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+// ---
+
+pub fn init_logs() {
+    use std::sync::atomic::AtomicBool;
+    use std::sync::atomic::Ordering::SeqCst;
+
+    static INIT: AtomicBool = AtomicBool::new(false);
+
+    if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
+        re_log::setup_native_logging();
+    }
 }
