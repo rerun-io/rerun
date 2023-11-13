@@ -15,14 +15,14 @@ Use the script:
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
 import json
 import os
-from pathlib import Path
 import re
 import textwrap
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
 from subprocess import run
 from typing import Any, Callable, Dict, Generator, List
 
@@ -370,17 +370,6 @@ def main() -> None:
         dir.mkdir(parents=True, exist_ok=True)
         for name, benchmark in benchmarks.items():
             (dir / f"{name}.html").write_text(benchmark)
-
-    # runtime = get_crates_benchmark_data(gcs, get_commits(datetime.today(), 30))
-    # with open(os.path.join(SCRIPT_PATH, "runtime.html"), "w") as f:
-    #     f.write(render_html("runtime benchmarks", runtime))
-
-    # sizes = get_size_benchmark_data(gcs, get_commits(datetime.today(), 30 * 6))
-    # with open(os.path.join(SCRIPT_PATH, "sizes.html"), "w") as f:
-    #     f.write(render_html("size benchmarks", sizes))
-
-    # TODO: upload to gcs
-    #       use on CI instead of github-action-benchmark
 
 
 if __name__ == "__main__":
