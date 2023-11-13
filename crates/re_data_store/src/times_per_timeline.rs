@@ -19,13 +19,6 @@ impl std::ops::Deref for TimesPerTimeline {
     }
 }
 
-// TODO(cmc): temporary while we turn StoreDb/EntityDb/EntityTree into event subscribers.
-impl std::ops::DerefMut for TimesPerTimeline {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 impl TimesPerTimeline {
     #[inline]
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {

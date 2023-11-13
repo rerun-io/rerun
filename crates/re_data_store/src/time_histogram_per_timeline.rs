@@ -16,9 +16,8 @@ pub struct TimeHistogramPerTimeline {
     /// When do we have data? Ignores timeless.
     times: BTreeMap<Timeline, TimeHistogram>,
 
-    // TODO(cmc): pub(crate) is temporary while we turn StoreDb/EntityDb/EntityTree into event subscribers.
     /// Extra book-keeping used to seed any timelines that include timeless msgs.
-    pub(crate) num_timeless_messages: u64,
+    num_timeless_messages: u64,
 }
 
 impl TimeHistogramPerTimeline {
@@ -40,12 +39,6 @@ impl TimeHistogramPerTimeline {
     #[inline]
     pub fn iter(&self) -> impl ExactSizeIterator<Item = (&Timeline, &TimeHistogram)> {
         self.times.iter()
-    }
-
-    // TODO(cmc): temporary while we turn StoreDb/EntityDb/EntityTree into event subscribers.
-    #[inline]
-    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (&Timeline, &mut TimeHistogram)> {
-        self.times.iter_mut()
     }
 
     #[inline]
