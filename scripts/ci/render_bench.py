@@ -186,7 +186,7 @@ UNITS = {
 }
 
 
-def normalize(base_unit: str, unit: str, value: float) -> float:
+def convert(base_unit: str, unit: str, value: float) -> float:
     """Convert `value` from `base_unit` to `unit`."""
     base_unit = base_unit.lower()
     unit = unit.lower()
@@ -215,7 +215,7 @@ def render_html(title: str, benchmarks: Benchmarks) -> str:
             chartjs[name] = None
         labels = [entry["date"] for entry in benchmark]
         base_unit = benchmark[0]["unit"]
-        data = [normalize(base_unit, entry["unit"], entry["value"]) for entry in benchmark]
+        data = [convert(base_unit, entry["unit"], entry["value"]) for entry in benchmark]
         min_value, max_value = min_and_max(data)
         y_scale = {"min": max(0, min_value - min_value / 3), "max": max_value + max_value / 3}
         chartjs[name] = {
@@ -275,9 +275,6 @@ class Target(Enum):
 
 
 def date_type(v: str) -> datetime:
-    if v is None:
-        raise Exception("asdfasdfasdfadsf")
-
     try:
         return datetime.strptime(v, DATE_FORMAT)
     except ValueError:
@@ -285,9 +282,6 @@ def date_type(v: str) -> datetime:
 
 
 def days_type(v: Any) -> int:
-    if v is None:
-        raise Exception("asdfasdfasdfadsf")
-
     try:
         num_days = int(v)
         if num_days < 1:
