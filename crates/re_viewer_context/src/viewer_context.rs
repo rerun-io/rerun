@@ -1,5 +1,5 @@
 use re_data_store::store_db::StoreDb;
-use re_data_store::{ComponentStats, EntityTree};
+use re_data_store::{EntityTree, TimeHistogramPerTimeline};
 
 use crate::{
     item::resolve_mono_instance_path_item, AppOptions, Caches, CommandSender, ComponentUiRegistry,
@@ -94,16 +94,17 @@ impl<'a> ViewerContext<'a> {
 
     /// Returns whether the given tree has any data logged in the current timeline.
     pub fn tree_has_data_in_current_timeline(&self, tree: &EntityTree) -> bool {
-        tree.prefix_times
+        tree.recursive_time_histogram
             .has_timeline(self.rec_cfg.time_ctrl.timeline())
             || tree.num_timeless_messages() > 0
     }
 
     /// Returns whether the given component has any data logged in the current timeline.
-    pub fn component_has_data_in_current_timeline(&self, component_stat: &ComponentStats) -> bool {
-        component_stat
-            .times
-            .has_timeline(self.rec_cfg.time_ctrl.timeline())
+    pub fn component_has_data_in_current_timeline(
+        &self,
+        component_stat: &TimeHistogramPerTimeline,
+    ) -> bool {
+        component_stat.has_timeline(self.rec_cfg.time_ctrl.timeline())
             || component_stat.num_timeless_messages() > 0
     }
 }

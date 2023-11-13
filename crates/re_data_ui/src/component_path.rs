@@ -41,7 +41,10 @@ impl DataUi for ComponentPath {
             }
             .data_ui(ctx, ui, verbosity, query);
         } else if let Some(entity_tree) = ctx.store_db.entity_db().tree.subtree(entity_path) {
-            if entity_tree.components.contains_key(component_name) {
+            if entity_tree
+                .time_histograms_per_component
+                .contains_key(component_name)
+            {
                 ui.label("<unset>");
             } else {
                 ui.label(format!(
