@@ -207,7 +207,7 @@ impl ViewPartSystem for Lines2DPart {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx, ent_path, arch_view, ent_context| {
+            |_ctx, ent_path, _ent_props, arch_view, ent_context| {
                 self.process_arch_view(query, &arch_view, ent_path, ent_context)
             },
         )?;

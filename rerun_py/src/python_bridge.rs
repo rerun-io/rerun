@@ -782,9 +782,7 @@ fn add_space_view(
     space_view.display_name = name.into();
     space_view.entities_determined_by_user = true;
 
-    let entity_path = parse_entity_path(
-        format!("{}/{}", SpaceViewComponent::SPACEVIEW_PREFIX, space_view.id).as_str(),
-    );
+    let entity_path = space_view.entity_path();
 
     let space_view = SpaceViewComponent { space_view };
 

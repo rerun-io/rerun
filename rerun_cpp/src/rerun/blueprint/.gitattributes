@@ -3,6 +3,8 @@
 .gitattributes linguist-generated=true
 auto_space_views.cpp linguist-generated=true
 auto_space_views.hpp linguist-generated=true
+entity_properties_component.cpp linguist-generated=true
+entity_properties_component.hpp linguist-generated=true
 panel_view.cpp linguist-generated=true
 panel_view.hpp linguist-generated=true
 space_view_component.cpp linguist-generated=true

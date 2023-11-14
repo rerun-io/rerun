@@ -21,6 +21,7 @@ re_tracing.workspace = true
 re_viewer_context.workspace = true
 
 egui.workspace = true
+itertools.workspace = true
 nohash-hasher.workspace = true
 serde = "1.0"
 slotmap.workspace = true

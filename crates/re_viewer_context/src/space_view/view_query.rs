@@ -1,8 +1,71 @@
+use std::collections::BTreeMap;
+
 use itertools::Itertools;
 use re_arrow_store::LatestAtQuery;
-use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap, TimeInt, Timeline};
+use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
+use re_log_types::{DataRow, RowId, TimePoint};
+use smallvec::SmallVec;
 
-use crate::{PerSystemEntities, SpaceViewHighlights, SpaceViewId, ViewSystemName};
+use crate::{
+    SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewSystemName,
+    ViewerContext,
+};
+
+/// This is the primary mechanism through which data is passed to a `SpaceView`.
+///
+/// It contains everything necessary to properly use this data in the context of the
+/// `ViewSystem`s that it is a part of.
+///
+/// In the future `resolved_properties` will be replaced by a `StoreView` that contains
+/// the relevant data overrides for the given query.
+#[derive(Debug)]
+pub struct DataResult {
+    /// Where to retrieve the data from.
+    // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
+    // multi-RRD or blueprint-static data references.
+    pub entity_path: EntityPath,
+
+    /// Which `ViewSystems`s to pass the `DataResult` to.
+    pub view_parts: SmallVec<[ViewSystemName; 4]>,
+
+    /// The resolved properties (including any hierarchical flattening) to apply.
+    // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
+    // For now, bundling this here acts as a good proxy for that future data-override mechanism.
+    pub resolved_properties: EntityProperties,
+
+    /// `EntityPath` in the Blueprint store where updated overrides should be written back.
+    pub override_path: EntityPath,
+}
+
+impl DataResult {
+    /// Write the [`EntityProperties`] for this result back to the Blueprint store.
+    pub fn save_override(&self, props: EntityProperties, ctx: &ViewerContext<'_>) {
+        if props.has_edits(&self.resolved_properties) {
+            let timepoint = TimePoint::timeless();
+
+            re_log::debug!("Overriding {:?} with {:?}", self.override_path, props);
+
+            let component = EntityPropertiesComponent { props };
+
+            let row = DataRow::from_cells1_sized(
+                RowId::random(),
+                self.override_path.clone(),
+                timepoint,
+                1,
+                [component],
+            )
+            .unwrap();
+
+            ctx.command_sender
+                .send_system(SystemCommand::UpdateBlueprint(
+                    ctx.store_context.blueprint.store_id().clone(),
+                    vec![row],
+                ));
+        }
+    }
+}
+
+pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemName, Vec<&'a DataResult>>;
 
 pub struct ViewQuery<'s> {
     /// The id of the space in which context the query happens.
@@ -11,23 +74,16 @@ pub struct ViewQuery<'s> {
     /// The root of the space in which context the query happens.
     pub space_origin: &'s EntityPath,
 
-    /// All queried entities.
+    /// All queried [`DataResult`]s.
     ///
     /// Contains also invisible objects, use `iter_entities` to iterate over visible ones.
-    pub per_system_entities: &'s PerSystemEntities,
+    pub per_system_data_results: &'s PerSystemDataResults<'s>,
 
     /// The timeline we're on.
     pub timeline: Timeline,
 
     /// The time on the timeline we're currently at.
     pub latest_at: TimeInt,
-
-    /// The entity properties for all queried entities.
-    /// TODO(jleibs, wumpf): This will be replaced by blueprint queries.
-    pub entity_props_map: &'s EntityPropertyMap,
-
-    /// Root entity properties (stored in the space view's blueprints).
-    pub root_entity_props: &'s EntityProperties,
 
     /// Hover/select highlighting information for this space view.
     ///
@@ -36,31 +92,35 @@ pub struct ViewQuery<'s> {
 }
 
 impl<'s> ViewQuery<'s> {
-    /// Iter over all of the currently visible [`EntityPath`]s in the [`ViewQuery`].
-    ///
-    /// Also includes the corresponding [`EntityProperties`].
-    pub fn iter_entities_for_system(
+    /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
+    pub fn iter_visible_data_results(
         &self,
         system: ViewSystemName,
-    ) -> impl Iterator<Item = (&EntityPath, EntityProperties)> {
-        self.per_system_entities.get(&system).map_or(
+    ) -> impl Iterator<Item = &DataResult> {
+        self.per_system_data_results.get(&system).map_or(
             itertools::Either::Left(std::iter::empty()),
-            |entities| {
+            |results| {
                 itertools::Either::Right(
-                    entities
+                    results
                         .iter()
-                        .map(|entity_path| (entity_path, self.entity_props_map.get(entity_path)))
-                        .filter(|(_entity_path, props)| props.visible),
+                        .filter(|result| result.resolved_properties.visible)
+                        .copied(),
                 )
             },
         )
     }
 
-    /// Iterates over all entities of the [`ViewQuery`].
-    pub fn iter_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
-        self.per_system_entities
+    /// Iterates over all [`DataResult`]s of the [`ViewQuery`].
+    pub fn iter_all_data_results(&self) -> impl Iterator<Item = &DataResult> + '_ {
+        self.per_system_data_results
             .values()
-            .flat_map(|entities| entities.iter())
+            .flat_map(|data_results| data_results.iter().copied())
+    }
+
+    /// Iterates over all entities of the [`ViewQuery`].
+    pub fn iter_all_entities(&self) -> impl Iterator<Item = &EntityPath> + '_ {
+        self.iter_all_data_results()
+            .map(|data_result| &data_result.entity_path)
             .unique()
     }
 

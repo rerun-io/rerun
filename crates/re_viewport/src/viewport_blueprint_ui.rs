@@ -3,7 +3,7 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_space_view::DataBlueprintGroup;
+use re_space_view::{DataBlueprintGroup, DataQuery as _};
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
@@ -222,7 +222,14 @@ impl ViewportBlueprint<'_> {
         let children = group.children.clone();
         let entities = group.entities.clone();
         let group_name = group.display_name.clone();
-        let group_is_visible = group.properties_projected.visible && space_view_visible;
+
+        // TODO(jleibs): We should use `query` instead of `resolve` in this function, but doing so
+        // requires changing the view layout a little bit, so holding off on that for now.
+        let top_data_result = space_view
+            .contents
+            .resolve(space_view, ctx, &group.group_path);
+
+        let group_is_visible = top_data_result.resolved_properties.visible && space_view_visible;
 
         for entity_path in &entities {
             if entity_path.is_root() {
@@ -241,10 +248,10 @@ impl ViewportBlueprint<'_> {
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-            let mut properties = space_view
-                .contents
-                .data_blueprints_individual()
-                .get(entity_path);
+            let data_result = space_view.contents.resolve(space_view, ctx, entity_path);
+
+            let mut properties = data_result.resolved_properties.clone();
+
             let name = entity_path.iter().last().unwrap().to_string();
             let label = format!("🔹 {name}");
             let response = ListItem::new(ctx.re_ui, label)
@@ -254,12 +261,7 @@ impl ViewportBlueprint<'_> {
                 .with_buttons(|re_ui, ui| {
                     let vis_response =
                         visibility_button_ui(re_ui, ui, group_is_visible, &mut properties.visible);
-                    if vis_response.changed() {
-                        space_view
-                            .contents
-                            .data_blueprints_individual()
-                            .set(entity_path.clone(), properties);
-                    }
+                    data_result.save_override(properties, ctx);
 
                     let response = remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                     if response.clicked() {
@@ -278,7 +280,7 @@ impl ViewportBlueprint<'_> {
         }
 
         for child_group_handle in &children {
-            let Some(child_group) = space_view.contents.group_mut(*child_group_handle) else {
+            let Some(child_group) = space_view.contents.group(*child_group_handle) else {
                 debug_assert!(
                     false,
                     "Data blueprint group {group_name} has an invalid child"
@@ -294,15 +296,25 @@ impl ViewportBlueprint<'_> {
             let mut remove_group = false;
             let default_open = Self::default_open_for_group(child_group);
 
-            let mut child_group_visible = child_group.properties_individual.visible;
+            let child_data_result =
+                space_view
+                    .contents
+                    .resolve(space_view, ctx, &child_group.group_path);
+
+            let mut child_properties = child_data_result.resolved_properties.clone();
+
             let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
                 .selected(is_selected)
-                .subdued(!child_group_visible || !group_is_visible)
+                .subdued(!child_properties.visible || !group_is_visible)
                 .force_hovered(is_item_hovered)
                 .with_icon(&re_ui::icons::CONTAINER)
                 .with_buttons(|re_ui, ui| {
-                    let vis_response =
-                        visibility_button_ui(re_ui, ui, group_is_visible, &mut child_group_visible);
+                    let vis_response = visibility_button_ui(
+                        re_ui,
+                        ui,
+                        group_is_visible,
+                        &mut child_properties.visible,
+                    );
 
                     let response = remove_button_ui(
                         re_ui,
@@ -332,13 +344,9 @@ impl ViewportBlueprint<'_> {
                 .item_response
                 .on_hover_text("Group");
 
-            item_ui::select_hovered_on_click(ctx, &response, &[item]);
+            child_data_result.save_override(child_properties, ctx);
 
-            // needed by the borrow checker
-            let Some(child_group) = space_view.contents.group_mut(*child_group_handle) else {
-                unreachable!("we did the same thing just above");
-            };
-            child_group.properties_individual.visible = child_group_visible;
+            item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
             if remove_group {
                 space_view.contents.remove_group(*child_group_handle);
