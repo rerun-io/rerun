@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import math
 
 import numpy as np
@@ -12,7 +13,6 @@ rr.script_add_args(parser)
 args = parser.parse_args()
 rr.script_setup(args, "rerun_example_visible_history_playground")
 
-
 rr.log("bbox", rr.Boxes2D(centers=[50, 3.5], half_sizes=[50, 4.5], colors=[255, 0, 0]), timeless=True)
 rr.log("transform", rr.Transform3D(translation=[0, 0, 0]))
 rr.log("some/nested/pinhole", rr.Pinhole(focal_length=3, width=3, height=3), timeless=True)
@@ -21,12 +21,28 @@ rr.log("3dworld/depthimage/pinhole", rr.Pinhole(focal_length=20, width=100, heig
 rr.log("3dworld/image", rr.Transform3D(translation=[0, 1, 0]), timeless=True)
 rr.log("3dworld/image/pinhole", rr.Pinhole(focal_length=20, width=100, height=10), timeless=True)
 
-for i in range(1, 100):
-    rr.set_time_seconds("seconds", i)
-    rr.set_time_seconds("ms", i / 1000)
-    rr.set_time_seconds("us", i / 1000000)
-    rr.set_time_sequence("frames_offset", 10000 + i)
-    rr.set_time_sequence("frames", i)
+date_offset = int(datetime.datetime(year=2023, month=1, day=1).timestamp())
+
+for i in range(0, 100):
+    rr.set_time_seconds("temporal_100day_span", i * 24 * 3600)
+    rr.set_time_seconds("temporal_100s_span", i)
+    rr.set_time_seconds("temporal_100ms_span", i / 1000)
+    rr.set_time_seconds("temporal_100us_span", i / 1000000)
+
+    rr.set_time_seconds("temporal_100day_span_date_offset", date_offset + i * 24 * 3600)
+    rr.set_time_seconds("temporal_100s_span_date_offset", date_offset + i)
+    rr.set_time_seconds("temporal_100ms_span_date_offset", date_offset + i / 1000)
+    rr.set_time_seconds("temporal_100us_span_date_offset", date_offset + i / 1000000)
+
+    rr.set_time_seconds("temporal_100day_span_zero_centered", (i - 50) * 24 * 3600)
+    rr.set_time_seconds("temporal_100s_zero_centered", i - 50)
+    rr.set_time_seconds("temporal_100ms_zero_centered", (i - 50) / 1000)
+    rr.set_time_seconds("temporal_100us_zero_centered", (i - 50) / 1000000)
+
+    rr.set_time_sequence("sequence", i)
+    rr.set_time_sequence("sequence_zero_centered", (i - 50))
+    rr.set_time_sequence("sequence_10k_offset", 10000 + i)
+    rr.set_time_sequence("sequence_10k_neg_offset", -10000 + i)
 
     rr.log("world/data/nested/point", rr.Points2D([[i, 0], [i, 1]], radii=0.4))
     rr.log("world/data/nested/point2", rr.Points2D([i, 2], radii=0.4))
