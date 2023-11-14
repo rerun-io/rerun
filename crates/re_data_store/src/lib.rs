@@ -25,7 +25,7 @@ pub use self::time_histogram_per_timeline::{TimeHistogram, TimeHistogramPerTimel
 pub use self::times_per_timeline::{TimeCounts, TimesPerTimeline};
 pub use self::versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash};
 
-pub(crate) use self::entity_tree::{CompactedStoreEvents, ClearCascade};
+pub(crate) use self::entity_tree::{ClearCascade, CompactedStoreEvents};
 
 use re_log_types::DataTableError;
 pub use re_log_types::{EntityPath, EntityPathPart, Index, TimeInt, Timeline};
