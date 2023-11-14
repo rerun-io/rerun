@@ -12,13 +12,14 @@ namespace rerun {
     /// Anything that implements `AsComponents` can be logged to a recording stream.
     template <typename T>
     struct AsComponents {
+        /// \private
+        /// `NoAsComponentsFor` always evaluates to false, but in a way that requires template instantiation.
         template <typename T2>
         struct NoAsComponentsFor : std::false_type {};
 
         // TODO(andreas): This should also mention an example of how to implement this.
         static_assert(
-            NoAsComponentsFor<T>::value, // Always evaluate to false, but in a way that requires
-                                         // template instantiation.
+            NoAsComponentsFor<T>::value,
             "AsComponents is not implemented for this type. "
             "It is implemented for all built-in archetypes as well as std::vector, std::array, and "
             "c-arrays of components. "
