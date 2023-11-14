@@ -46,30 +46,30 @@ impl TimeHistogramPerTimeline {
         self.num_timeless_messages
     }
 
-    pub fn add(&mut self, timepoint: &TimePoint) {
+    pub fn add(&mut self, timepoint: &TimePoint, n: u32) {
         // If the `timepoint` is timeless…
         if timepoint.is_timeless() {
-            self.num_timeless_messages += 1;
+            self.num_timeless_messages += n as u64;
         } else {
             for (timeline, time_value) in timepoint.iter() {
                 self.times
                     .entry(*timeline)
                     .or_default()
-                    .increment(time_value.as_i64(), 1);
+                    .increment(time_value.as_i64(), n);
             }
         }
     }
 
-    pub fn remove(&mut self, timepoint: &TimePoint) {
+    pub fn remove(&mut self, timepoint: &TimePoint, n: u32) {
         // If the `timepoint` is timeless…
         if timepoint.is_timeless() {
-            self.num_timeless_messages -= 1;
+            self.num_timeless_messages -= n as u64;
         } else {
             for (timeline, time_value) in timepoint.iter() {
                 self.times
                     .entry(*timeline)
                     .or_default()
-                    .decrement(time_value.as_i64(), 1);
+                    .decrement(time_value.as_i64(), n);
             }
         }
     }

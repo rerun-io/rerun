@@ -204,6 +204,7 @@ impl EntityTree {
                 event.diff.entity_path.as_slice(),
                 0,
                 &event.diff.timepoint,
+                event.num_components() as _,
             );
 
             leaf.on_added_data(&mut clear_cascade, &event.diff);
@@ -232,7 +233,7 @@ impl EntityTree {
                     pending_clears = self.flat_clears.clone().into_iter().collect_vec();
                     Default::default()
                 });
-            per_component.add(&store_diff.timepoint);
+            per_component.add(&store_diff.timepoint, 1);
 
             // Is the newly added component under the influence of previously logged `Clear`
             // component?
@@ -403,7 +404,7 @@ impl EntityTree {
         re_tracing::profile_function!();
 
         let Self {
-            path: _,
+            path,
             children,
             recursive_time_histogram,
             flat_clears,
@@ -423,12 +424,20 @@ impl EntityTree {
         // Only keep events relevant to this branch of the tree.
         let filtered_events = store_events
             .iter()
-            .filter(|e| e.entity_path == self.path || e.entity_path.is_descendant_of(&self.path))
+            .filter(|e| &e.entity_path == path || e.entity_path.is_descendant_of(path))
             .copied() // NOTE: not actually copying, just removing the superfluous ref layer
             .collect_vec();
 
+        for event in filtered_events.iter().filter(|e| &e.entity_path == path) {
+            for component_name in event.cells.keys() {
+                if let Some(histo) = self.time_histograms_per_component.get_mut(component_name) {
+                    histo.remove(&event.timepoint, 1);
+                }
+            }
+        }
+
         for event in &filtered_events {
-            recursive_time_histogram.remove(&event.timepoint);
+            recursive_time_histogram.remove(&event.timepoint, event.num_components() as _);
         }
 
         for child in children.values_mut() {
@@ -444,8 +453,9 @@ impl EntityTree {
         full_path: &[EntityPathPart],
         depth: usize,
         timepoint: &TimePoint,
+        num_components: u32,
     ) -> &mut Self {
-        self.recursive_time_histogram.add(timepoint);
+        self.recursive_time_histogram.add(timepoint, num_components);
 
         match full_path.get(depth) {
             None => {
@@ -457,7 +467,7 @@ impl EntityTree {
                 .or_insert_with(|| {
                     EntityTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
                 })
-                .create_subtrees_recursively(full_path, depth + 1, timepoint),
+                .create_subtrees_recursively(full_path, depth + 1, timepoint, num_components),
         }
     }
 
