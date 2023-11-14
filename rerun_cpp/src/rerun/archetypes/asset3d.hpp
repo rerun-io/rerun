@@ -93,10 +93,10 @@ namespace rerun::archetypes {
         /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
         /// at render-time. If it can't, rendering will fail with an error.
         static Asset3D from_bytes(
-            const std::vector<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type
+            rerun::Collection<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type
         ) {
             // TODO(cmc): we could try and guess using magic bytes here, like rust does.
-            Asset3D asset = Asset3D(bytes);
+            Asset3D asset = Asset3D(std::move(bytes));
             asset.media_type = media_type;
             return asset;
         }

@@ -8,13 +8,16 @@
 // Rerun API.
 #include "rerun/collection.hpp"
 #include "rerun/collection_adapter.hpp"
-#include "rerun/collection_adapter_builtins.hpp"
 #include "rerun/config.hpp"
 #include "rerun/error.hpp"
 #include "rerun/recording_stream.hpp"
 #include "rerun/result.hpp"
 #include "rerun/sdk_info.hpp"
 #include "rerun/spawn.hpp"
+
+// Builtin collection adapters.
+#include "rerun/annotation_context_adapters.hpp"
+#include "rerun/collection_adapter_builtins.hpp"
 
 /// All Rerun C++ types and functions are in the `rerun` namespace or one of its nested namespaces.
 namespace rerun {

@@ -1,6 +1,8 @@
 #include "../error_check.hpp"
 
 #include <rerun/archetypes/image.hpp>
+#include <rerun/collection_adapter_builtins.hpp>
+
 using namespace rerun::archetypes;
 
 #define TEST_TAG "[image][archetypes]"

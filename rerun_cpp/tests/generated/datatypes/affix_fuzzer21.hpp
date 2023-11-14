@@ -5,9 +5,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <rerun/collection.hpp>
 #include <rerun/half.hpp>
 #include <rerun/result.hpp>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -19,7 +19,7 @@ namespace rerun::datatypes {
     struct AffixFuzzer21 {
         rerun::half single_half;
 
-        std::vector<rerun::half> many_halves;
+        rerun::Collection<rerun::half> many_halves;
 
       public:
         AffixFuzzer21() = default;

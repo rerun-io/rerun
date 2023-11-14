@@ -1,8 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <cstring>
-
 #include <utility>
 #include <vector>
 
@@ -34,6 +32,10 @@ namespace rerun {
     /// or (most commonly in user code) implicitly using the `CollectionAdapter` trait
     /// (see documentation for `CollectionAdapter` for more information on how data can be adapted).
     ///
+    /// Other than being assignable, collections are generally immutable:
+    /// there is no mutable data access in order to not violate the contract with the borrower
+    /// and changes in size are not possible.
+    ///
     /// ## Implementation notes:
     ///
     /// Does intentionally not implement copy construction since this for the owned case this may
@@ -59,6 +61,50 @@ namespace rerun {
         template <typename T>
         Collection(T&& input) : Collection(Adapter<T>()(std::forward<T>(input))) {}
 
+        /// Copy constructor.
+        ///
+        /// If the data is owned, this will copy the data.
+        /// If the data is borrowed, this will copy the borrow,
+        /// meaning there's now (at least) two collections borrowing the same data.
+        Collection(const Collection<TElement>& other) : ownership(other.ownership) {
+            switch (other.ownership) {
+                case CollectionOwnership::Borrowed: {
+                    storage.borrowed = other.storage.borrowed;
+                    break;
+                }
+
+                case CollectionOwnership::VectorOwned: {
+                    storage.vector_owned = other.storage.vector_owned;
+                    break;
+                }
+            }
+        }
+
+        /// Copy assignment.
+        ///
+        /// If the data is owned, this will copy the data.
+        /// If the data is borrowed, this will copy the borrow,
+        /// meaning there's now (at least) two collections borrowing the same data.
+        void operator=(const Collection<TElement>& other) {
+            Collection<TElement>::~Collection();
+            new (this) Collection(other);
+        }
+
+        /// Move constructor.
+        Collection(Collection<TElement>&& other) : Collection() {
+            swap(other);
+        }
+
+        /// Move assignment.
+        void operator=(Collection<TElement>&& other) {
+            // Need to disable the maybe-uninitialized here.  It seems like the compiler may be confused in situations where
+            // we are assigning into an unused optional from a temporary. The fact that this hits the move-assignment without
+            // having called the move constructor is suspicious though and hints of an actual bug.
+            //
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
+        }
+
         /// Construct from a temporary list of elements.
         ///
         /// Takes ownership of the passed elements.
@@ -79,6 +125,9 @@ namespace rerun {
         /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
         /// resized.)
         /// The passed type must be binary compatible with the collection type.
+        ///
+        /// Since `Collection` does not provide write access, data is guaranteed to be unchanged by
+        /// any function or operation taking on a `Collection`.
         template <typename T>
         static Collection<TElement> borrow(const T* data, size_t num_instances) {
             static_assert(
@@ -104,6 +153,9 @@ namespace rerun {
         /// Borrowed data must outlive the collection!
         /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
         /// resized.)
+        ///
+        /// Since `Collection` does not provide write access, data is guaranteed to be unchanged by
+        /// any function or operation taking on a `Collection`.
         static Collection borrow(const void* data, size_t num_instances) {
             return borrow(reinterpret_cast<const TElement*>(data), num_instances);
         }
@@ -125,21 +177,6 @@ namespace rerun {
         static Collection<TElement> take_ownership(TElement&& data) {
             // TODO(andreas): there should be a special path here to avoid allocating a vector.
             return take_ownership(std::vector<TElement>{std::move(data)});
-        }
-
-        /// Move constructor.
-        Collection(Collection<TElement>&& other) : Collection() {
-            swap(other);
-        }
-
-        /// Move assignment.
-        void operator=(Collection<TElement>&& other) {
-            // Need to disable the maybe-uninitialized here.  It seems like the compiler may be confused in situations where
-            // we are assigning into an unused optional from a temporary. The fact that this hits the move-assignment without
-            // having called the move constructor is suspicious though and hints of an actual bug.
-            //
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
         }
 
         /// Swaps the content of this collection with another.
@@ -194,9 +231,6 @@ namespace rerun {
             }
         }
 
-        /// Copy constructor.
-        Collection(const Collection<TElement>&) = delete;
-
         /// Returns the number of instances in this collection.
         size_t size() const {
             switch (ownership) {
@@ -215,7 +249,7 @@ namespace rerun {
         ///
         /// The pointer is only valid as long as backing storage is alive
         /// which is either until the collection is destroyed the borrowed source is destroyed/moved.
-        TElement const* data() const {
+        const TElement* data() const {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     return storage.borrowed.data;
@@ -225,11 +259,35 @@ namespace rerun {
             return nullptr;
         }
 
+        /// TODO(andreas): Return proper iterator
+        const TElement* begin() const {
+            return data();
+        }
+
+        /// TODO(andreas): Return proper iterator
+        const TElement* end() const {
+            return data() + size();
+        }
+
+        /// Random read access to the underlying data.
+        const TElement& operator[](size_t i) const {
+            assert(i < size());
+            return data()[i];
+        }
+
         /// Returns the data ownership of collection.
         ///
         /// This is usually only needed for debugging and testing.
         CollectionOwnership get_ownership() const {
             return ownership;
+        }
+
+        /// Copies the data into a new `std::vector`.
+        std::vector<TElement> copy_to_vector() const {
+            std::vector<TElement> result;
+            result.resize(size());
+            std::copy(begin(), end(), result.begin());
+            return result;
         }
 
       private:

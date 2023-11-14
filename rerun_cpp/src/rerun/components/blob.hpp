@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -20,7 +20,7 @@ namespace arrow {
 namespace rerun::components {
     /// **Component**: A binary blob of data.
     struct Blob {
-        std::vector<uint8_t> data;
+        rerun::Collection<uint8_t> data;
 
         /// Name of the component, used for serialization.
         static const char NAME[];
@@ -28,9 +28,9 @@ namespace rerun::components {
       public:
         Blob() = default;
 
-        Blob(std::vector<uint8_t> data_) : data(std::move(data_)) {}
+        Blob(rerun::Collection<uint8_t> data_) : data(std::move(data_)) {}
 
-        Blob& operator=(std::vector<uint8_t> data_) {
+        Blob& operator=(rerun::Collection<uint8_t> data_) {
             data = std::move(data_);
             return *this;
         }

@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -21,10 +21,10 @@ namespace rerun::blueprint {
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct ViewportLayout {
         /// space_view_keys
-        std::vector<uint8_t> space_view_keys;
+        rerun::Collection<uint8_t> space_view_keys;
 
         /// tree
-        std::vector<uint8_t> tree;
+        rerun::Collection<uint8_t> tree;
 
         /// auto_layout
         bool auto_layout;

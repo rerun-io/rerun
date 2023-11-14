@@ -8,7 +8,7 @@ int main(int, char** argv) {
     rec.log(
         "annotation_context",
         rerun::archetypes::AnnotationContext({
-            rerun::datatypes::ClassDescription({1, "hello"}),
+            rerun::datatypes::ClassDescription(1, "hello"),
             rerun::datatypes::ClassDescription(
                 {2, "world", rerun::datatypes::Rgba32(3, 4, 5)},
                 {{17, "head"}, {42, "shoulders"}},

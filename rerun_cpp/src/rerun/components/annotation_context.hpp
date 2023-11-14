@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../data_cell.hpp"
 #include "../datatypes/class_description_map_elem.hpp"
 #include "../result.hpp"
@@ -10,7 +11,6 @@
 #include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -28,31 +28,25 @@ namespace rerun::components {
     /// path.
     struct AnnotationContext {
         /// List of class descriptions, mapping class indices to class names, colors etc.
-        std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map;
+        rerun::Collection<rerun::datatypes::ClassDescriptionMapElem> class_map;
 
         /// Name of the component, used for serialization.
         static const char NAME[];
 
       public:
-        // Extensions to generated type defined in 'annotation_context_ext.cpp'
-
-        AnnotationContext(
-            std::initializer_list<rerun::datatypes::ClassDescription> class_descriptions
-        ) {
-            class_map.reserve(class_descriptions.size());
-            for (const auto& class_description : class_descriptions) {
-                class_map.emplace_back(std::move(class_description));
-            }
-        }
-
-      public:
         AnnotationContext() = default;
 
-        AnnotationContext(std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map_)
+        // TODO:
+        AnnotationContext(
+            std::initializer_list<rerun::datatypes::ClassDescriptionMapElem> class_map_
+        )
+            : class_map(class_map_) {}
+
+        AnnotationContext(rerun::Collection<rerun::datatypes::ClassDescriptionMapElem> class_map_)
             : class_map(std::move(class_map_)) {}
 
         AnnotationContext& operator=(
-            std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map_
+            rerun::Collection<rerun::datatypes::ClassDescriptionMapElem> class_map_
         ) {
             class_map = std::move(class_map_);
             return *this;

@@ -92,7 +92,7 @@ namespace rerun::archetypes {
         ///
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
-        DepthImage(std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+        DepthImage(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
             : DepthImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// New depth image from tensor data.

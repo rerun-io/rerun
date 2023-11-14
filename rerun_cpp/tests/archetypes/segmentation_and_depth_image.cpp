@@ -2,6 +2,7 @@
 
 #include <rerun/archetypes/depth_image.hpp>
 #include <rerun/archetypes/segmentation_image.hpp>
+#include <rerun/collection_adapter_builtins.hpp>
 
 using namespace rerun::archetypes;
 
@@ -76,9 +77,9 @@ void run_image_tests() {
 
     GIVEN("tensor data with too low rank") {
         rerun::datatypes::TensorData data(
-            {{
+            {
                 rerun::datatypes::TensorDimension(1, "dr robotnik"),
-            }},
+            },
             std::vector<uint8_t>(1, 0)
         );
         THEN("a warning occurs on image construction") {

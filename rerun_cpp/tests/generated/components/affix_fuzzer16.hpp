@@ -7,10 +7,10 @@
 
 #include <cstdint>
 #include <memory>
+#include <rerun/collection.hpp>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -20,7 +20,7 @@ namespace arrow {
 
 namespace rerun::components {
     struct AffixFuzzer16 {
-        std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions;
+        rerun::Collection<rerun::datatypes::AffixFuzzer3> many_required_unions;
 
         /// Name of the component, used for serialization.
         static const char NAME[];
@@ -28,10 +28,11 @@ namespace rerun::components {
       public:
         AffixFuzzer16() = default;
 
-        AffixFuzzer16(std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions_)
+        AffixFuzzer16(rerun::Collection<rerun::datatypes::AffixFuzzer3> many_required_unions_)
             : many_required_unions(std::move(many_required_unions_)) {}
 
-        AffixFuzzer16& operator=(std::vector<rerun::datatypes::AffixFuzzer3> many_required_unions_
+        AffixFuzzer16& operator=(
+            rerun::Collection<rerun::datatypes::AffixFuzzer3> many_required_unions_
         ) {
             many_required_unions = std::move(many_required_unions_);
             return *this;

@@ -232,3 +232,6 @@ SCENARIO("Collection move behavior", TEST_TAG) {
     //std::vector<std::string> strings = {"a", "b", "c"};
     //rerun::Collection<Position2D> batch(strings);
 }
+
+// TODO: do one on copy behavior!
+// TODO: copy_to_vector

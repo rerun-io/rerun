@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../result.hpp"
 #include "annotation_info.hpp"
 #include "keypoint_pair.hpp"
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -37,21 +37,28 @@ namespace rerun::datatypes {
         rerun::datatypes::AnnotationInfo info;
 
         /// The `AnnotationInfo` for all of the keypoints.
-        std::vector<rerun::datatypes::AnnotationInfo> keypoint_annotations;
+        rerun::Collection<rerun::datatypes::AnnotationInfo> keypoint_annotations;
 
         /// The connections between keypoints.
-        std::vector<rerun::datatypes::KeypointPair> keypoint_connections;
+        rerun::Collection<rerun::datatypes::KeypointPair> keypoint_connections;
 
       public:
         // Extensions to generated type defined in 'class_description_ext.cpp'
 
+        /// Create a new `ClassDescription` from a single annotation info.
         ClassDescription(
-            AnnotationInfo _info, std::vector<AnnotationInfo> _keypoint_annotations = {},
-            std::vector<KeypointPair> _keypoint_connections = {}
+            uint16_t id, std::optional<std::string> label = std::nullopt,
+            std::optional<datatypes::Rgba32> color = std::nullopt
         )
-            : info(std::move(_info)),
-              keypoint_annotations(std::move(_keypoint_annotations)),
-              keypoint_connections(std::move(_keypoint_connections)) {}
+            : info(id, label, color) {}
+
+        ClassDescription(
+            AnnotationInfo info_, Collection<AnnotationInfo> keypoint_annotations_ = {},
+            Collection<KeypointPair> keypoint_connections_ = {}
+        )
+            : info(std::move(info_)),
+              keypoint_annotations(std::move(keypoint_annotations_)),
+              keypoint_connections(std::move(keypoint_connections_)) {}
 
       public:
         ClassDescription() = default;
