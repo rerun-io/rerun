@@ -10,7 +10,7 @@
 #include "collection_adapter.hpp"
 #include "warning_macros.hpp"
 
-// TODO: remove, needed for serialization.
+// TODO(#3794): remove, needed for serialization.
 #include "result.hpp"
 #include "serialized_component_batch.hpp"
 
@@ -32,7 +32,7 @@ namespace rerun {
     /// * Borrowed: If data is borrowed it *must* outlive its source (in particular, the pointer to
     /// the source musn't invalidate)
     /// * Owned: Owned data is copied into an internal std::vector
-    ///         TODO: don't do std::vector
+    ///         TODO(#3794): don't do std::vector
     ///
     /// Collection are either filled explicitly using `Collection::borrow` &`Collection::take_ownership`
     /// or (most commonly in user code) implicitly using the `CollectionAdapter` trait
