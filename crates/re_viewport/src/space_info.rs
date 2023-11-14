@@ -71,6 +71,10 @@ impl SpaceInfo {
             visitor(space_info);
 
             for (child_path, connection) in &space_info.child_spaces {
+                if matches!(connection, &SpaceInfoConnection::Disconnected) {
+                    continue;
+                }
+
                 let Some(child_space) = space_info_collection.spaces.get(child_path) else {
                     re_log::warn_once!(
                         "Child space info {} not part of space info collection",
