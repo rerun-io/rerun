@@ -2,6 +2,7 @@
 
 #include "collection.hpp"
 #include "indicator_component.hpp"
+#include "serialized_component_batch.hpp"
 
 namespace rerun {
     /// The AsComponents trait is used to convert a type into a list of serialized component.
@@ -34,9 +35,13 @@ namespace rerun {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             const Collection<TComponent>& components
         ) {
-            const auto result = components.serialize();
-            RR_RETURN_NOT_OK(result.error);
-            return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
+            // TODO: check if the method is there?
+            auto cell_result = TComponent::to_data_cell(components.data(), components.size());
+            RR_RETURN_NOT_OK(cell_result.error);
+
+            return Result<std::vector<SerializedComponentBatch>>(
+                {SerializedComponentBatch(std::move(cell_result.value), components.size())}
+            );
         }
     };
 

@@ -20,101 +20,172 @@ namespace rerun {
         cells.reserve(18);
 
         if (archetype.fuzz2101.has_value()) {
-            auto result = (archetype.fuzz2101.value()).serialize();
+            const size_t size = archetype.fuzz2101.value().size();
+            auto result = rerun::components::AffixFuzzer1::to_data_cell(
+                archetype.fuzz2101.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2102.has_value()) {
-            auto result = (archetype.fuzz2102.value()).serialize();
+            const size_t size = archetype.fuzz2102.value().size();
+            auto result = rerun::components::AffixFuzzer2::to_data_cell(
+                archetype.fuzz2102.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2103.has_value()) {
-            auto result = (archetype.fuzz2103.value()).serialize();
+            const size_t size = archetype.fuzz2103.value().size();
+            auto result = rerun::components::AffixFuzzer3::to_data_cell(
+                archetype.fuzz2103.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2104.has_value()) {
-            auto result = (archetype.fuzz2104.value()).serialize();
+            const size_t size = archetype.fuzz2104.value().size();
+            auto result = rerun::components::AffixFuzzer4::to_data_cell(
+                archetype.fuzz2104.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2105.has_value()) {
-            auto result = (archetype.fuzz2105.value()).serialize();
+            const size_t size = archetype.fuzz2105.value().size();
+            auto result = rerun::components::AffixFuzzer5::to_data_cell(
+                archetype.fuzz2105.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2106.has_value()) {
-            auto result = (archetype.fuzz2106.value()).serialize();
+            const size_t size = archetype.fuzz2106.value().size();
+            auto result = rerun::components::AffixFuzzer6::to_data_cell(
+                archetype.fuzz2106.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2107.has_value()) {
-            auto result = (archetype.fuzz2107.value()).serialize();
+            const size_t size = archetype.fuzz2107.value().size();
+            auto result = rerun::components::AffixFuzzer7::to_data_cell(
+                archetype.fuzz2107.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2108.has_value()) {
-            auto result = (archetype.fuzz2108.value()).serialize();
+            const size_t size = archetype.fuzz2108.value().size();
+            auto result = rerun::components::AffixFuzzer8::to_data_cell(
+                archetype.fuzz2108.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2109.has_value()) {
-            auto result = (archetype.fuzz2109.value()).serialize();
+            const size_t size = archetype.fuzz2109.value().size();
+            auto result = rerun::components::AffixFuzzer9::to_data_cell(
+                archetype.fuzz2109.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2110.has_value()) {
-            auto result = (archetype.fuzz2110.value()).serialize();
+            const size_t size = archetype.fuzz2110.value().size();
+            auto result = rerun::components::AffixFuzzer10::to_data_cell(
+                archetype.fuzz2110.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2111.has_value()) {
-            auto result = (archetype.fuzz2111.value()).serialize();
+            const size_t size = archetype.fuzz2111.value().size();
+            auto result = rerun::components::AffixFuzzer11::to_data_cell(
+                archetype.fuzz2111.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2112.has_value()) {
-            auto result = (archetype.fuzz2112.value()).serialize();
+            const size_t size = archetype.fuzz2112.value().size();
+            auto result = rerun::components::AffixFuzzer12::to_data_cell(
+                archetype.fuzz2112.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2113.has_value()) {
-            auto result = (archetype.fuzz2113.value()).serialize();
+            const size_t size = archetype.fuzz2113.value().size();
+            auto result = rerun::components::AffixFuzzer13::to_data_cell(
+                archetype.fuzz2113.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2114.has_value()) {
-            auto result = (archetype.fuzz2114.value()).serialize();
+            const size_t size = archetype.fuzz2114.value().size();
+            auto result = rerun::components::AffixFuzzer14::to_data_cell(
+                archetype.fuzz2114.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2115.has_value()) {
-            auto result = (archetype.fuzz2115.value()).serialize();
+            const size_t size = archetype.fuzz2115.value().size();
+            auto result = rerun::components::AffixFuzzer15::to_data_cell(
+                archetype.fuzz2115.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2116.has_value()) {
-            auto result = (archetype.fuzz2116.value()).serialize();
+            const size_t size = archetype.fuzz2116.value().size();
+            auto result = rerun::components::AffixFuzzer16::to_data_cell(
+                archetype.fuzz2116.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2117.has_value()) {
-            auto result = (archetype.fuzz2117.value()).serialize();
+            const size_t size = archetype.fuzz2117.value().size();
+            auto result = rerun::components::AffixFuzzer17::to_data_cell(
+                archetype.fuzz2117.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.fuzz2118.has_value()) {
-            auto result = (archetype.fuzz2118.value()).serialize();
+            const size_t size = archetype.fuzz2118.value().size();
+            auto result = rerun::components::AffixFuzzer18::to_data_cell(
+                archetype.fuzz2118.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result =
-                Collection<AffixFuzzer4::IndicatorComponent>(AffixFuzzer4::IndicatorComponent())
-                    .serialize();
+            auto indicator = AffixFuzzer4::IndicatorComponent();
+            auto result = AffixFuzzer4::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;

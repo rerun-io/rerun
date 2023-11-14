@@ -19,16 +19,17 @@ namespace rerun {
         cells.reserve(1);
 
         {
+            const size_t size = 1;
             auto result =
-                Collection<rerun::components::ClearIsRecursive>(archetype.is_recursive).serialize();
+                rerun::components::ClearIsRecursive::to_data_cell(&archetype.is_recursive, size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result =
-                Collection<Clear::IndicatorComponent>(Clear::IndicatorComponent()).serialize();
+            auto indicator = Clear::IndicatorComponent();
+            auto result = Clear::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;

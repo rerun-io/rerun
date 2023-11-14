@@ -19,41 +19,56 @@ namespace rerun {
         cells.reserve(6);
 
         {
-            auto result = (archetype.strips).serialize();
+            const size_t size = archetype.strips.size();
+            auto result = rerun::components::LineStrip3D::to_data_cell(
+                archetype.strips.data(),
+                archetype.strips.size()
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.radii.has_value()) {
-            auto result = (archetype.radii.value()).serialize();
+            const size_t size = archetype.radii.value().size();
+            auto result =
+                rerun::components::Radius::to_data_cell(archetype.radii.value().data(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.colors.has_value()) {
-            auto result = (archetype.colors.value()).serialize();
+            const size_t size = archetype.colors.value().size();
+            auto result =
+                rerun::components::Color::to_data_cell(archetype.colors.value().data(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.labels.has_value()) {
-            auto result = (archetype.labels.value()).serialize();
+            const size_t size = archetype.labels.value().size();
+            auto result =
+                rerun::components::Text::to_data_cell(archetype.labels.value().data(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.class_ids.has_value()) {
-            auto result = (archetype.class_ids.value()).serialize();
+            const size_t size = archetype.class_ids.value().size();
+            auto result =
+                rerun::components::ClassId::to_data_cell(archetype.class_ids.value().data(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.instance_keys.has_value()) {
-            auto result = (archetype.instance_keys.value()).serialize();
+            const size_t size = archetype.instance_keys.value().size();
+            auto result = rerun::components::InstanceKey::to_data_cell(
+                archetype.instance_keys.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result =
-                Collection<LineStrips3D::IndicatorComponent>(LineStrips3D::IndicatorComponent())
-                    .serialize();
+            auto indicator = LineStrips3D::IndicatorComponent();
+            auto result = LineStrips3D::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;

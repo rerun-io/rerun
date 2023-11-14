@@ -9,6 +9,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../serialized_component_batch.hpp"
 #include "../warning_macros.hpp"
 
 #include <cstdint>

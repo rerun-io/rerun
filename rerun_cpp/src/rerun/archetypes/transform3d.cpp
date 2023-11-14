@@ -19,17 +19,16 @@ namespace rerun {
         cells.reserve(1);
 
         {
-            auto result =
-                Collection<rerun::components::Transform3D>(archetype.transform).serialize();
+            const size_t size = 1;
+            auto result = rerun::components::Transform3D::to_data_cell(&archetype.transform, size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result =
-                Collection<Transform3D::IndicatorComponent>(Transform3D::IndicatorComponent())
-                    .serialize();
+            auto indicator = Transform3D::IndicatorComponent();
+            auto result = Transform3D::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;
