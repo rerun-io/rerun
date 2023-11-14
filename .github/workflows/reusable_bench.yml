@@ -153,5 +153,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           python3 -m pip install google-cloud-storage==2.9.0
-          scripts/ci/render_bench.py crates --num-days 30 --output "gs://rerun-builds/graphs"
+          scripts/ci/render_bench.py crates \
+            --after $(date -d"30 days ago" +%Y-%m-%d) \
+            --output "gs://rerun-builds/graphs"
 

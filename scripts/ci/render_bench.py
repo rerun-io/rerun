@@ -30,7 +30,7 @@ import os
 import re
 import textwrap
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from subprocess import run
@@ -50,118 +50,147 @@ def non_empty_lines(s: str) -> Generator[str, None]:
         yield line
 
 
-def git_log(date: datetime) -> list[str] | None:
+@dataclass
+class CommitWithDate:
+    date: datetime
+    commit: str
+
+
+def get_commits(after: datetime) -> list[CommitWithDate]:
+    # output of `git log` will be:
+    # 2023-11-08 18:26:53 +0100;d694bffebae662a4dcbdd452d3a1a1b53945f871
+    # 2023-11-08 18:23:02 +0100;6ce912e17c20b9d85bfe78c78a1a58bbbd2bcb29
+    # 2023-11-08 18:22:11 +0100;a36bafcb5491df69ecb25af0b04833a97ba412cb
+
     args = ["git", "log"]
-    args += [f'--after="{date.year}-{date.month}-{date.day} 00:00:00"']
-    args += [f'--before="{date.year}-{date.month}-{date.day} 23:59:59"']
-    args += ["--format=%H"]
-    commits = run(args, check=True, capture_output=True, text=True).stdout.strip()
-    if len(commits) == 0:
-        return None
-    else:
-        return commits.strip().splitlines()
+    args += [f'--after="{after.year}-{after.month}-{after.day} 00:00:00"']
+    args += ["--format=%cd;%H", "--date=iso-strict"]
+    log = run(args, check=True, capture_output=True, text=True).stdout.strip().splitlines()
+    commits = (commit.split(";", 1) for commit in log)
+    return [
+        CommitWithDate(date=datetime.fromisoformat(date).astimezone(timezone.utc), commit=commit)
+        for date, commit in commits
+    ]
 
 
-CommitsByDate = Dict[datetime, List[str]]
+@dataclass
+class Measurement:
+    name: str
+    value: float
+    unit: str
 
 
-def get_commits(end_date: datetime, num_days: int) -> CommitsByDate:
-    """Yields the list of commits for each day between `end_date - num_days` and `end_date`."""
+@dataclass
+class BenchmarkEntry:
+    name: str
+    value: float
+    unit: str
+    date: datetime
+    commit: str
+    is_duplicate: bool = False
 
-    start = (end_date - timedelta(days=num_days)).strftime("%Y-%m-%d")
-    end = (end_date).strftime("%Y-%m-%d")
-    print(f"Fetching commits between {start} and {end}")
-
-    commits_by_date = {}
-    previous_log = None
-
-    for offset in reversed(range(num_days)):
-        date = end_date - timedelta(days=offset)
-        log = git_log(date) or previous_log
-        if log is None:
-            continue
-        commits_by_date[date] = log
-        previous_log = log
-
-    return commits_by_date
+    def duplicate(self, date: datetime) -> BenchmarkEntry:
+        return BenchmarkEntry(
+            name=self.name,
+            value=self.value,
+            unit=self.unit,
+            date=date,
+            commit=self.commit,
+            is_duplicate=True,
+        )
 
 
-BenchmarkEntry = Dict[str, Any]
 Benchmarks = Dict[str, List[BenchmarkEntry]]
 
 
 FORMAT_BENCHER_RE = re.compile(r"test\s+(\S+).*bench:\s+(\d+)\s+ns\/iter")
 
 
-def parse_bencher_line(data: str) -> BenchmarkEntry:
+def parse_bencher_line(data: str) -> Measurement:
     name, ns_iter = FORMAT_BENCHER_RE.match(data).groups()
-    return {"name": name, "value": float(ns_iter), "unit": "ns/iter"}
+    return Measurement(name, float(ns_iter), "ns/iter")
 
 
-def parse_sizes_json(data: str) -> list[BenchmarkEntry]:
-    out = []
-    for entry in json.loads(data):
-        out.append({"name": entry["name"], "value": float(entry["value"]), "unit": entry["unit"]})
-    return out
+def parse_bencher_text(data: str) -> list[Measurement]:
+    return [parse_bencher_line(line) for line in non_empty_lines(data)]
 
 
-BucketPrefix = Dict[str, storage.Blob]
+def parse_sizes_json(data: str) -> list[Measurement]:
+    return [
+        Measurement(
+            name=entry["name"],
+            value=float(entry["value"]),
+            unit=entry["unit"],
+        )
+        for entry in json.loads(data)
+    ]
 
 
-def fetch_bucket(gcs: storage.Client, name: str, path_prefix: str) -> BucketPrefix:
-    bucket = gcs.bucket(name)
-    blobs = bucket.list_blobs(prefix=path_prefix)
+Blobs = Dict[str, storage.Blob]
+
+
+def fetch_blobs(gcs: storage.Client, bucket: str, path_prefix: str) -> Blobs:
+    blobs = gcs.bucket(bucket).list_blobs(prefix=path_prefix)
     return {blob.name: blob for blob in blobs}
 
 
 def collect_benchmark_data(
-    commits_by_date: CommitsByDate,
-    bucket: BucketPrefix,
+    commits: list[CommitWithDate],
+    bucket: Blobs,
     short_sha_to_path: Callable[[str], str],
-    entry_parser: Callable[[str], list[BenchmarkEntry]],
+    parser: Callable[[str], list[Measurement]],
 ) -> Benchmarks:
     benchmarks: Benchmarks = {}
 
-    def insert(name: str, entry: BenchmarkEntry) -> None:
-        if name not in benchmarks:
-            benchmarks[name] = []
-        benchmarks[name].append(entry)
+    def insert(entry: BenchmarkEntry) -> None:
+        if entry.name not in benchmarks:
+            benchmarks[entry.name] = []
+        benchmarks[entry.name].append(entry)
 
-    for date, commits in commits_by_date.items():
-        for commit in commits:
-            short_sha = commit[0:7]
-            path = short_sha_to_path(short_sha)
-            if path not in bucket:
-                continue
-            for entry in entry_parser(bucket[path].download_as_text()):
-                name = entry["name"]
-                entry["date"] = f"{date.year}-{date.month}-{date.day}"
-                entry["commit"] = short_sha
-                insert(name, entry)
-            break
+    previous_entry: BenchmarkEntry | None = None
+    for v in reversed(commits):
+        short_sha = v.commit[0:7]
+
+        path = short_sha_to_path(short_sha)
+        if path not in bucket:
+            # try to copy previous entry to maintain the graph
+            if previous_entry is not None:
+                insert(previous_entry.duplicate(date=v.date))
+            continue  # if there is no previous entry, we just skip this one
+
+        for measurement in parser(bucket[path].download_as_text()):
+            entry = BenchmarkEntry(
+                name=measurement.name,
+                value=measurement.value,
+                unit=measurement.unit,
+                date=v.date,
+                commit=v.commit,
+            )
+            previous_entry = entry
+            insert(entry)
 
     return benchmarks
 
 
-def get_crates_benchmark_data(gcs: storage.Client, commits_by_date: CommitsByDate) -> Benchmarks:
+def get_crates_benchmark_data(gcs: storage.Client, commits: list[CommitWithDate]) -> Benchmarks:
     print('Fetching benchmark data for "Rust Crates"…')
 
     return collect_benchmark_data(
-        commits_by_date,
-        bucket=fetch_bucket(gcs, "rerun-builds", "benches"),
+        commits,
+        bucket=fetch_blobs(gcs, "rerun-builds", "benches"),
         short_sha_to_path=lambda short_sha: f"benches/{short_sha}",
-        entry_parser=lambda data: [parse_bencher_line(line) for line in non_empty_lines(data)],
+        parser=parse_bencher_text,
     )
 
 
-def get_size_benchmark_data(gcs: storage.Client, commits_by_date: CommitsByDate) -> Benchmarks:
+def get_size_benchmark_data(gcs: storage.Client, commits: list[CommitWithDate]) -> Benchmarks:
     print('Fetching benchmark data for "Sizes"…')
 
     return collect_benchmark_data(
-        commits_by_date,
-        bucket=fetch_bucket(gcs, "rerun-builds", "sizes/commit"),
+        commits,
+        bucket=fetch_blobs(gcs, "rerun-builds", "sizes/commit"),
         short_sha_to_path=lambda short_sha: f"sizes/commit/{short_sha}/data.json",
-        entry_parser=parse_sizes_json,
+        parser=parse_sizes_json,
     )
 
 
@@ -209,38 +238,27 @@ def min_and_max(data: list[float]) -> (float, float):
 def render_html(title: str, benchmarks: Benchmarks) -> str:
     print(f'Rendering "{title}" benchmark…')
 
+    def label(entry: BenchmarkEntry) -> str:
+        date = entry.date.strftime("%Y-%m-%d")
+        if entry.is_duplicate:
+            return f"{date}"
+        else:
+            return f"{entry.commit[0:7]} {date}"
+
     chartjs = {}
     for name, benchmark in benchmarks.items():
         if len(benchmark) == 0:
             chartjs[name] = None
-        labels = [entry["date"] for entry in benchmark]
-        base_unit = benchmark[0]["unit"]
-        data = [convert(base_unit, entry["unit"], entry["value"]) for entry in benchmark]
+        labels = [label(entry) for entry in benchmark]
+        base_unit = benchmark[-1].unit
+        data = [convert(base_unit, entry.unit, entry.value) for entry in benchmark]
         min_value, max_value = min_and_max(data)
         y_scale = {"min": max(0, min_value - min_value / 3), "max": max_value + max_value / 3}
         chartjs[name] = {
-            "type": "line",
-            "data": {
-                "labels": labels,
-                "datasets": [
-                    {
-                        "label": name,
-                        "data": data,
-                        "borderColor": "#dea584",
-                        "backgroundColor": "#dea58460",
-                        "fill": True,
-                    }
-                ],
-            },
-            "options": {
-                "scales": {
-                    "x": {},
-                    "y": {
-                        "title": {"display": True, "text": base_unit},
-                        **y_scale,
-                    },
-                }
-            },
+            "y_scale": y_scale,
+            "unit": base_unit,
+            "labels": labels,
+            "data": data,
         }
 
     with open(os.path.join(SCRIPT_PATH, "templates/benchmark.html")) as template_file:
@@ -262,15 +280,18 @@ class Target(Enum):
     def includes(self, other: Target) -> bool:
         return self is Target.ALL or self is other
 
-    def render(self, gcs: storage.Client, end_date: datetime, num_days: int) -> dict[str, str]:
-        commits_by_date = get_commits(end_date, num_days)
+    def render(self, gcs: storage.Client, after: datetime) -> dict[str, str]:
+        commits = get_commits(after)
         out: dict[str, str] = {}
+
         if self.includes(Target.CRATES):
-            data = get_crates_benchmark_data(gcs, commits_by_date)
+            data = get_crates_benchmark_data(gcs, commits)
             out[str(Target.CRATES)] = render_html("Rust Crates", data)
+
         if self.includes(Target.SIZE):
-            data = get_size_benchmark_data(gcs, commits_by_date)
+            data = get_size_benchmark_data(gcs, commits)
             out[str(Target.SIZE)] = render_html("Sizes", data)
+
         return out
 
 
@@ -279,16 +300,6 @@ def date_type(v: str) -> datetime:
         return datetime.strptime(v, DATE_FORMAT)
     except ValueError:
         raise argparse.ArgumentTypeError(f"Date must be in {DATE_FORMAT} format")
-
-
-def days_type(v: Any) -> int:
-    try:
-        num_days = int(v)
-        if num_days < 1:
-            raise argparse.ArgumentTypeError(f"number of days must be greater than 1, got {v}")
-        return num_days
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"number of days must be a valid integer, got {v}")
 
 
 class Output(Enum):
@@ -327,12 +338,12 @@ def main() -> None:
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument("target", type=Target, choices=list(Target), help="Which benchmark to render")
+    _30_days_ago = datetime.today() - timedelta(days=30)
     parser.add_argument(
-        "--end-date",
+        "--after",
         type=date_type,
-        help=f"The last date to fetch, in {ESCAPED_DATE_FORMAT} format. Default: today ({datetime.today().strftime(DATE_FORMAT)})",
+        help=f"The last date to fetch, in {ESCAPED_DATE_FORMAT} format. Default: today ({_30_days_ago.strftime(DATE_FORMAT)})",
     )
-    parser.add_argument("--num-days", type=days_type, help="How many days before end-date to fetch. Default: 30")
     parser.add_argument(
         "-o",
         "--output",
@@ -350,14 +361,13 @@ def main() -> None:
 
     args = parser.parse_args()
     target: Target = args.target
-    end_date: datetime = args.end_date or datetime.today()
-    num_days: int = args.num_days or 30
+    after: datetime = args.after or _30_days_ago
     output: str = args.output
     output_kind: Output = Output.parse(output)
 
     gcs = storage.Client()
 
-    benchmarks = target.render(gcs, end_date, num_days)
+    benchmarks = target.render(gcs, after)
 
     if output_kind is Output.STDOUT:
         for benchmark in benchmarks.values():
@@ -368,6 +378,7 @@ def main() -> None:
         bucket = gcs.bucket(path.bucket)
         for name, benchmark in benchmarks.items():
             blob = bucket.blob(f"{path.blob}/{name}.html")
+            blob.cache_control = "no-cache, max-age=0"
             blob.upload_from_string(benchmark, content_type="text/html")
     elif output_kind is Output.FILE:
         dir = Path(output)
