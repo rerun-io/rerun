@@ -32,6 +32,54 @@ Members of the `rerun-io` organization and collaborators in the `rerun-io/rerun`
 
 ![PR comment with the text `@rerun-bot approve`](https://github.com/rerun-io/rerun/assets/1665677/b5f07f3f-ea95-44a4-8eb7-f07c905f96c3)
 
+## Contributing to CI
+
+Every CI job would in its ideal state consist of only two steps:
+
+1. Install tools and libraries[^1]
+2. Run a script
+
+In which the script is written and tested locally before being wrapped in a CI workflow file. This does not mean that scripts are merely _reproducible_ locally (though that is also true), it means that they must be written with a _local-first mindset_, as if they are not supposed to run on CI at all.
+
+This approach has a number of benefits:
+- Instead of Bash embedded in YAML, scripts may be written in an Actual Programming Language™
+- Significantly lower iteration times when working on CI
+- Ability to perform a job manually in case the CI fails
+
+Additionally, always output any artifacts produced by CI to GCS instead of the GHA artifact storage. This can be a serious lifesaver when something breaks, as it allows anyone to download the output of a script and continue from where it failed, instead of being forced to start over from scratch.
+
+[^1]: For some larger jobs, we prefer to use a [docker image](https://hub.docker.com/r/rerunio/ci_docker) to make managing dependencies simpler, and to keep everything locked to a specific version as much as possible. In this case, it's still good practice to install dependencies, because it ensures the job continues to work even if the docker image is out of date.
+
+Here are some guidelines to follow when writing such scripts:
+
+Local-first means easy for contributors to run.
+
+The following should be documented in each script:
+- Dependencies
+- Files and directories
+- Environment variables
+- Usage examples
+
+Inputs should be passed in explicitly via arguments, and use sane defaults. If an input has a default value, it should be documented in its description.
+
+Every input should be checked as early as possible. This includes:
+- Checking if authentication credentials are valid
+- Validating inputs and parsing into more specific types where possible:
+  - Numeric ranges
+  - String character sets/encodings
+  - Length limits
+  - Date formats
+  - etc.
+- Checking that input file paths are valid and the files they point to exist
+
+Input and output file paths should also accept GCS paths (`gs://bucket/blob/path`) and stdin/stdout (`-`), if it makes sense.
+
+Be extra descriptive in error messages, it may be the only piece of information someone debugging a CI failure has available to figure out what went wrong. Print frequently to hint at what is going on and display progress to the user.
+
+Environment variables should only be used for authentication with external services and configuring output (e.g. disabling color). Many SDKs support some form of persistent/default authentication, and scripts should take advantage of this where possible. For example, GCP has [Application Default Credentials](https://cloud.google.com/docs/authentication/client-libraries).
+
+If the script performs destructive or otherwise irreversible actions, then it should support a `--dry-run` option if possible.
+
 ### Adding dependencies
 Be thoughtful when adding dependencies. Each new dependency is a liability which lead to increased compile times, a bigger binary, more code that can break, a larger attack surface, etc. Sometimes it is better to write a hundred lines of code than to add a new dependency.
 
