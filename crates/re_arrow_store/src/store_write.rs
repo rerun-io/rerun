@@ -164,10 +164,7 @@ impl DataStore {
             let index = self
                 .timeless_tables
                 .entry(ent_path_hash)
-                .or_insert_with(|| {
-                    // diffs.push(TimelessEntityPathDiff::new(*row_id, ent_path_hash).added());
-                    PersistentIndexedTable::new(self.cluster_key, ent_path.clone())
-                });
+                .or_insert_with(|| PersistentIndexedTable::new(self.cluster_key, ent_path.clone()));
 
             index.insert_row(insert_id, generated_cluster_cell.clone(), row);
         } else {
@@ -176,10 +173,7 @@ impl DataStore {
                 let index = self
                     .tables
                     .entry((*timeline, ent_path_hash))
-                    .or_insert_with(|| {
-                        // diffs.push(EntityPathDiff::new(*row_id, *timeline, ent_path_hash).added());
-                        IndexedTable::new(self.cluster_key, *timeline, ent_path)
-                    });
+                    .or_insert_with(|| IndexedTable::new(self.cluster_key, *timeline, ent_path));
 
                 index.insert_row(
                     &self.config,
