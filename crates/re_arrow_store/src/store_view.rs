@@ -10,10 +10,6 @@ type SharedStoreView = RwLock<Box<dyn StoreView>>;
 /// A [`StoreView`] subscribes to atomic changes in one or more [`DataStore`]s through [`StoreEvent`]s.
 ///
 /// [`StoreView`]s can be used to build both secondary indices and trigger systems.
-///
-/// Check out our [`custom_store_view`] example to see it in action.
-///
-/// [`custom_store_view`]: https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_store_view?speculative-link
 //
 // TODO(#4204): StoreView should require SizeBytes so they can be part of memstats.
 pub trait StoreView: std::any::Any + Send + Sync {
