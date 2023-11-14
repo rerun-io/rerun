@@ -19,30 +19,35 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result =
-                Collection<rerun::components::PinholeProjection>(archetype.image_from_camera)
-                    .serialize();
+            const size_t size = 1;
+            auto result = rerun::components::PinholeProjection::to_data_cell(
+                &archetype.image_from_camera,
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.resolution.has_value()) {
+            const size_t size = 1;
             auto result =
-                Collection<rerun::components::Resolution>(archetype.resolution.value()).serialize();
+                rerun::components::Resolution::to_data_cell(&archetype.resolution.value(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.camera_xyz.has_value()) {
-            auto result =
-                Collection<rerun::components::ViewCoordinates>(archetype.camera_xyz.value())
-                    .serialize();
+            const size_t size = 1;
+            auto result = rerun::components::ViewCoordinates::to_data_cell(
+                &archetype.camera_xyz.value(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result =
-                Collection<Pinhole::IndicatorComponent>(Pinhole::IndicatorComponent()).serialize();
+            auto indicator = Pinhole::IndicatorComponent();
+            auto result = Pinhole::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;

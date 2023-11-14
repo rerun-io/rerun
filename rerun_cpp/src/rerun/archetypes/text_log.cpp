@@ -19,26 +19,29 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = Collection<rerun::components::Text>(archetype.text).serialize();
+            const size_t size = 1;
+            auto result = rerun::components::Text::to_data_cell(&archetype.text, size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.level.has_value()) {
+            const size_t size = 1;
             auto result =
-                Collection<rerun::components::TextLogLevel>(archetype.level.value()).serialize();
+                rerun::components::TextLogLevel::to_data_cell(&archetype.level.value(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.color.has_value()) {
-            auto result = Collection<rerun::components::Color>(archetype.color.value()).serialize();
+            const size_t size = 1;
+            auto result = rerun::components::Color::to_data_cell(&archetype.color.value(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result =
-                Collection<TextLog::IndicatorComponent>(TextLog::IndicatorComponent()).serialize();
+            auto indicator = TextLog::IndicatorComponent();
+            auto result = TextLog::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;

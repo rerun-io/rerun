@@ -10,10 +10,6 @@
 #include "collection_adapter.hpp"
 #include "warning_macros.hpp"
 
-// TODO(#3794): remove, needed for serialization.
-#include "result.hpp"
-#include "serialized_component_batch.hpp"
-
 namespace rerun {
     /// Type of ownership of a collection's data.
     ///
@@ -212,37 +208,21 @@ namespace rerun {
             return 0;
         }
 
-        /// Serializes the component batch into a rerun datacell that can be sent to a store.
-        Result<SerializedComponentBatch> serialize() const {
-            // TODO(#3794): Invert this relationship - a user of this *container* should call
-            // TElement::serialize (or similar) passing in this container.
-            switch (this->ownership) {
-                case CollectionOwnership::Borrowed: {
-                    auto cell_result = TElement::to_data_cell(
-                        this->storage.borrowed.data,
-                        this->storage.borrowed.num_instances
-                    );
-                    RR_RETURN_NOT_OK(cell_result.error);
-                    return SerializedComponentBatch(
-                        this->storage.borrowed.num_instances,
-                        std::move(cell_result.value)
-                    );
-                }
-
-                case CollectionOwnership::VectorOwned: {
-                    auto cell_result = TElement::to_data_cell(
-                        this->storage.vector_owned.data(),
-                        this->storage.vector_owned.size()
-                    );
-                    RR_RETURN_NOT_OK(cell_result.error);
-                    return SerializedComponentBatch(
-                        this->storage.vector_owned.size(),
-                        std::move(cell_result.value)
-                    );
-                }
+        /// Returns a raw pointer to the underlying data.
+        ///
+        /// Do not use this if the data is not continuous in memory!
+        /// TODO(#4225): So far it always is continuous, but in the future we want to support strides!
+        ///
+        /// The pointer is only valid as long as backing storage is alive
+        /// which is either until the collection is destroyed the borrowed source is destroyed/moved.
+        TElement const* data() const {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed:
+                    return storage.borrowed.data;
+                case CollectionOwnership::VectorOwned:
+                    return storage.vector_owned.data();
             }
-
-            return Error(ErrorCode::Unknown, "Invalid ownership state");
+            return nullptr;
         }
 
         /// Returns the data ownership of collection.

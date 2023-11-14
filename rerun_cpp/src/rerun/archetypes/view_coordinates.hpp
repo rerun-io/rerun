@@ -8,6 +8,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <utility>

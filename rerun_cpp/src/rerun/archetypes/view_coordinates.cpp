@@ -19,17 +19,16 @@ namespace rerun {
         cells.reserve(1);
 
         {
-            auto result = Collection<rerun::components::ViewCoordinates>(archetype.xyz).serialize();
+            const size_t size = 1;
+            auto result = rerun::components::ViewCoordinates::to_data_cell(&archetype.xyz, size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result = Collection<ViewCoordinates::IndicatorComponent>(
-                              ViewCoordinates::IndicatorComponent()
-            )
-                              .serialize();
+            auto indicator = ViewCoordinates::IndicatorComponent();
+            auto result = ViewCoordinates::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;
