@@ -207,8 +207,8 @@ fn visible_history_ui_impl(
         };
 
         if visible_history_prop.enabled {
-            let visible_history_time_range = visible_history.from(current_time.into()).as_i64()
-                ..=visible_history.to(current_time.into()).as_i64();
+            let current_low_boundary = visible_history.from(current_time.into()).as_i64();
+            let current_high_boundary = visible_history.to(current_time.into()).as_i64();
 
             ui.horizontal(|ui| {
                 visible_history_boundary_ui(
@@ -221,7 +221,7 @@ fn visible_history_ui_impl(
                     time_range.clone(),
                     min_time,
                     true,
-                    *visible_history_time_range.end(),
+                    current_high_boundary,
                 );
             });
 
@@ -236,7 +236,7 @@ fn visible_history_ui_impl(
                     time_range,
                     min_time,
                     false,
-                    *visible_history_time_range.start(),
+                    current_low_boundary,
                 );
             });
         } else {
@@ -318,6 +318,10 @@ fn projected_visible_history_boundary_ui(
                         if offset.abs() > 1 { "s" } else { "" }
                     );
                 } else {
+                    // This looks like it should be generically handled somewhere like re_format,
+                    // but this actually is rather ad hoc and works thanks to egui::DragValue
+                    // biasing towards round numbers and the auto-scaling feature of
+                    // `ReUi::time_drag_value()`.
                     let (unit, factor) = if offset % 1_000_000_000 == 0 {
                         ("s", 1_000_000_000.)
                     } else if offset % 1_000_000 == 0 {
@@ -581,7 +585,7 @@ fn time_drag_value(
     }
 }
 
-/// Wrapper over [`ReUi::time_drag_value`] that first subtract an offset to the edited time.
+/// Wrapper over [`re_ui::ReUi::time_drag_value`] that first subtract an offset to the edited time.
 fn time_drag_value_with_base_time(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
