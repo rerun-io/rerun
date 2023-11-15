@@ -57,7 +57,25 @@ impl StoreSubscriber for TimesPerTimeline {
             for (&timeline, &time) in &event.timepoint {
                 let per_time = self.0.entry(timeline).or_default();
                 let count = per_time.entry(time).or_default();
-                *count = count.saturating_add_signed(event.delta());
+
+                let delta = event.delta();
+
+                #[allow(clippy::collapsible_else_if)] // readability
+                if delta < 0 {
+                    if let Some(new) = count.checked_sub(delta.unsigned_abs()) {
+                        *count = new;
+                    } else {
+                        re_log::warn_once!("Time counter underflowed, store events are bugged!");
+                        *count = 0;
+                    }
+                } else {
+                    if let Some(new) = count.checked_add(delta.unsigned_abs()) {
+                        *count = new;
+                    } else {
+                        re_log::warn_once!("Time counter overflowed, store events are bugged!");
+                        *count = u64::MAX;
+                    }
+                }
 
                 if *count == 0 {
                     per_time.remove(&time);
