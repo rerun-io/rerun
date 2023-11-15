@@ -135,7 +135,7 @@ impl DataStore {
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
 
