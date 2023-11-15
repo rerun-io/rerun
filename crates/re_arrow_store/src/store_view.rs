@@ -7,7 +7,7 @@ use crate::{DataStore, StoreEvent};
 // TODO(cmc): Not sure why I need the extra Box here, RwLock should be `?Sized`.
 type SharedStoreView = RwLock<Box<dyn StoreView>>;
 
-/// A [`StoreView`] subscribes to atomic changes in one or more [`DataStore`]s through [`StoreEvent`]s.
+/// A [`StoreView`] subscribes to atomic changes from all [`DataStore`]s through [`StoreEvent`]s.
 ///
 /// [`StoreView`]s can be used to build both secondary indices and trigger systems.
 //
@@ -34,7 +34,7 @@ pub trait StoreView: std::any::Any + Send + Sync {
     /// ```
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 
-    /// The core of this trait: get notified of changes happening in one or more [`DataStore`]s.
+    /// The core of this trait: get notified of changes happening in all [`DataStore`]s.
     ///
     /// This will be called automatically by the [`DataStore`] itself if the view has been
     /// registered: [`DataStore::register_view`].

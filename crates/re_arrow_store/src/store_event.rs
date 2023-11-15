@@ -245,7 +245,7 @@ mod tests {
 
     use super::*;
 
-    /// A simple [`StoreView`] for test purposes that keeps track of the quantity of data available
+    /// A simple store subscriber for test purposes that keeps track of the quantity of data available
     /// in the store a the lowest level of detail.
     ///
     /// The counts represent numbers of rows: e.g. how many unique rows contain this entity path?
