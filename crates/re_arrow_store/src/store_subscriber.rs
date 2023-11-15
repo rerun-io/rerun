@@ -37,7 +37,7 @@ pub trait StoreSubscriber: std::any::Any + Send + Sync {
     /// The core of this trait: get notified of changes happening in all [`DataStore`]s.
     ///
     /// This will be called automatically by the [`DataStore`] itself if the view has been
-    /// registered: [`DataStore::register_view`].
+    /// registered: [`DataStore::register_subscriber`].
     /// Or you might want to feed it [`StoreEvent`]s manually, depending on your use case.
     ///
     /// ## Example
@@ -188,7 +188,7 @@ mod tests {
 
         let mut expected_events = Vec::new();
 
-        let view_handle = DataStore::register_view(Box::<AllEvents>::default());
+        let view_handle = DataStore::register_subscriber(Box::<AllEvents>::default());
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timeline_other = Timeline::new_temporal("other");
@@ -245,7 +245,7 @@ mod tests {
         expected_events.extend(store1.gc(GarbageCollectionOptions::gc_everything()).0);
         expected_events.extend(store2.gc(GarbageCollectionOptions::gc_everything()).0);
 
-        DataStore::with_view::<AllEvents, _, _>(view_handle, |got| {
+        DataStore::with_subscriber::<AllEvents, _, _>(view_handle, |got| {
             similar_asserts::assert_eq!(expected_events, got.events);
         });
 
