@@ -543,6 +543,89 @@ impl ReUi {
         .inner
     }
 
+    /// Replacement for [`egui::CollapsingHeader`] that respect our style.
+    ///
+    /// The layout is fine-tuned to fit well in inspector panels (such as Rerun's Selection Panel)
+    /// where the collapsing header should align nicely with checkboxes and other controls.
+    #[allow(clippy::unused_self)]
+    pub fn collapsing_header<R>(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        default_open: bool,
+        add_body: impl FnOnce(&mut egui::Ui) -> R,
+    ) {
+        let id = ui.make_persistent_id(label);
+        let button_padding = ui.spacing().button_padding;
+
+        let available = ui.available_rect_before_wrap();
+        // TODO(ab): use design token for indent — cannot use the global indent value as we must
+        // align with checkbox, etc.
+        let indent = 18.0;
+        let text_pos = available.min + egui::vec2(indent, 0.0);
+        let wrap_width = available.right() - text_pos.x;
+        let wrap = Some(false);
+        let text = egui::WidgetText::from(label).into_galley(
+            ui,
+            wrap,
+            wrap_width,
+            egui::TextStyle::Button,
+        );
+        let text_max_x = text_pos.x + text.size().x;
+
+        let mut desired_width = text_max_x + button_padding.x - available.left();
+        if ui.visuals().collapsing_header_frame {
+            desired_width = desired_width.max(available.width()); // fill full width
+        }
+
+        let mut desired_size = egui::vec2(desired_width, text.size().y + 2.0 * button_padding.y);
+        desired_size = desired_size.at_least(ui.spacing().interact_size);
+        let (_, rect) = ui.allocate_space(desired_size);
+
+        let mut header_response = ui.interact(rect, id, egui::Sense::click());
+        let text_pos = pos2(
+            text_pos.x,
+            header_response.rect.center().y - text.size().y / 2.0,
+        );
+
+        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            id,
+            default_open,
+        );
+        if header_response.clicked() {
+            state.toggle(ui);
+            header_response.mark_changed();
+        }
+
+        let openness = state.openness(ui.ctx());
+
+        if ui.is_rect_visible(rect) {
+            let visuals = ui.style().interact(&header_response);
+
+            {
+                let space_around_icon = 3.0;
+                let icon_width = ui.spacing().icon_width_inner;
+
+                let icon_rect = egui::Rect::from_center_size(
+                    header_response.rect.left_center()
+                        + egui::vec2(space_around_icon + icon_width / 2.0, 0.0),
+                    egui::Vec2::splat(icon_width),
+                );
+
+                let icon_response = header_response.clone().with_new_rect(icon_rect);
+                Self::paint_collapsing_triangle(ui, openness, icon_rect, &icon_response);
+            }
+
+            text.paint_with_visuals(ui.painter(), text_pos, visuals);
+        }
+
+        ui.vertical(|ui| {
+            ui.spacing_mut().indent = indent;
+            state.show_body_indented(&header_response, ui, add_body)
+        });
+    }
+
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
     ///
     /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.
