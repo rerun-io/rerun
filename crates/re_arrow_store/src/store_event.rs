@@ -95,6 +95,11 @@ pub struct StoreDiff {
     ///
     /// A [`StoreDiff`] answers a logical question: "does there exist a query path which can return
     /// data from that row?".
+    ///
+    /// An event of kind deletion only tells you that, from this point on, no query can return data from that row.
+    /// That doesn't necessarily mean that the data is actually gone, i.e. don't make assumptions of e.g. the size
+    /// in bytes of the store based on these events.
+    /// They are in "query-model space" and are not an accurate representation of what happens in storage space.
     pub kind: StoreDiffKind,
 
     /// What's the row's [`RowId`]?
@@ -172,7 +177,7 @@ impl StoreDiff {
 
     /// Returns the union of two [`StoreDiff`]s.
     ///
-    /// They must share the same [`RowId`] and [`EntityPath`].
+    /// They must share the same [`RowId`], [`EntityPath`] and [`StoreDiffKind`].
     #[inline]
     pub fn union(&self, rhs: &Self) -> Option<Self> {
         let Self {
