@@ -1,12 +1,14 @@
+use std::collections::BTreeMap;
+
 use ahash::{HashMap, HashSet};
 
 use nohash_hasher::IntMap;
-use re_log_types::{EntityPathHash, RowId, TimeInt, TimeRange, Timeline};
+use re_log_types::{EntityPath, EntityPathHash, RowId, TimeInt, TimeRange, Timeline};
 use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{
     store::{IndexedBucketInner, IndexedTable, PersistentIndexedTable},
-    DataStore, DataStoreStats,
+    DataStore, DataStoreStats, StoreDiff, StoreDiffKind, StoreEvent,
 };
 
 // ---
@@ -71,6 +73,36 @@ pub struct Deleted {
     pub timeless: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
 }
 
+impl Deleted {
+    pub fn new(store_events: &[StoreEvent]) -> Self {
+        let mut this = Deleted {
+            row_ids: store_events.iter().map(|event| event.row_id).collect(),
+            timeful: Default::default(),
+            timeless: Default::default(),
+        };
+
+        for event in store_events {
+            if event.is_timeless() {
+                let per_component = this.timeless.entry(event.entity_path.hash()).or_default();
+                for component_name in event.cells.keys() {
+                    *per_component.entry(*component_name).or_default() +=
+                        event.delta().unsigned_abs();
+                }
+            } else {
+                for (&timeline, &time) in &event.timepoint {
+                    let per_timeline = this.timeful.entry(event.entity_path.hash()).or_default();
+                    let per_component = per_timeline.entry(timeline).or_default();
+                    for component_name in event.cells.keys() {
+                        per_component.entry(*component_name).or_default().push(time);
+                    }
+                }
+            }
+        }
+
+        this
+    }
+}
+
 impl DataStore {
     /// Triggers a garbage collection according to the desired `target`.
     ///
@@ -87,8 +119,7 @@ impl DataStore {
     ///
     /// Garbage collection works on a row-level basis and is driven by [`RowId`] order,
     /// i.e. the order defined by the clients' wall-clocks, allowing it to drop data across
-    /// the different timelines
-    /// in a fair, deterministic manner.
+    /// the different timelines in a fair, deterministic manner.
     /// Similarly, out-of-order data is supported out of the box.
     ///
     /// The garbage collector doesn't deallocate data in and of itself: all it does is drop the
@@ -102,14 +133,6 @@ impl DataStore {
     /// component on each timeline. The only practical guarantee this gives is that a latest-at query
     /// with a value of max-int will be unchanged. However, latest-at queries from other arbitrary
     /// points in time may provide different results pre- and post- GC.
-    ///
-    /// NOTE: This configuration option is not yet enabled for the Rerun viewer GC pass.
-    ///
-    /// See <https://github.com/rerun-io/rerun/issues/1803>.
-    //
-    // TODO(#1804): There shouldn't be any need to return the purged `RowId`s, all secondary
-    // datastructures should be able to purge themselves based solely off of
-    // [`DataStore::oldest_time_per_timeline`].
     //
     // TODO(#1823): Workload specific optimizations.
     pub fn gc(&mut self, options: GarbageCollectionOptions) -> (Deleted, DataStoreStats) {
@@ -124,7 +147,7 @@ impl DataStore {
 
         let protected_rows = self.find_all_protected_rows(options.protect_latest);
 
-        let mut deleted = match options.target {
+        let mut diffs = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
                 assert!((0.0..=1.0).contains(&p));
 
@@ -163,7 +186,7 @@ impl DataStore {
         };
 
         if options.purge_empty_tables {
-            deleted.row_ids.extend(self.purge_empty_tables());
+            diffs.extend(self.purge_empty_tables());
         }
 
         #[cfg(debug_assertions)]
@@ -187,7 +210,26 @@ impl DataStore {
 
         let stats_diff = stats_before - stats_after;
 
-        (deleted, stats_diff)
+        let events: Vec<_> = diffs
+            .into_iter()
+            .map(|diff| StoreEvent {
+                store_id: self.id.clone(),
+                store_generation: self.generation(),
+                event_id: self
+                    .event_id
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+                diff,
+            })
+            .collect();
+
+        if cfg!(debug_assertions) {
+            let any_event_other_than_deletion =
+                events.iter().any(|e| e.kind != StoreDiffKind::Deletion);
+            assert!(!any_event_other_than_deletion);
+        }
+
+        // TODO(cmc): Temporary, we'll return raw events soon, but need to rework EntityTree first.
+        (Deleted::new(&events), stats_diff)
     }
 
     /// Tries to drop _at least_ `num_bytes_to_drop` bytes of data from the store.
@@ -204,10 +246,10 @@ impl DataStore {
         mut num_bytes_to_drop: f64,
         include_timeless: bool,
         protected_rows: &HashSet<RowId>,
-    ) -> Deleted {
+    ) -> Vec<StoreDiff> {
         re_tracing::profile_function!();
 
-        let mut deleted = Deleted::default();
+        let mut diffs = Vec::new();
 
         // The algorithm is straightforward:
         // 1. Find the oldest `RowId` that is not protected
@@ -228,40 +270,50 @@ impl DataStore {
             self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
             num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
 
-            deleted.row_ids.insert(*row_id);
+            let mut diff: Option<StoreDiff> = None;
 
             // find all tables that could possibly contain this `RowId`
-
-            for ((timeline, ent_path_hash), table) in &mut self.tables {
+            for ((timeline, _), table) in &mut self.tables {
                 if let Some(time) = timepoint.get(timeline) {
-                    let deleted_comps = deleted
-                        .timeful
-                        .entry(*ent_path_hash)
-                        .or_default()
-                        .entry(*timeline)
-                        .or_default();
-
-                    num_bytes_to_drop -=
-                        table.try_drop_row(*row_id, time.as_i64(), deleted_comps) as f64;
+                    let (removed, num_bytes_removed) = table.try_drop_row(*row_id, time.as_i64());
+                    if let Some(inner) = diff.as_mut() {
+                        if let Some(removed) = removed {
+                            diff = inner.union(&removed);
+                        }
+                    } else {
+                        diff = removed;
+                    }
+                    num_bytes_to_drop -= num_bytes_removed as f64;
                 }
             }
 
             // TODO(jleibs): This is a worst-case removal-order. Would be nice to collect all the rows
             // first and then remove them in one pass.
             if timepoint.is_timeless() && include_timeless {
-                for (ent_path_hash, table) in &mut self.timeless_tables {
-                    let deleted_comps = deleted.timeless.entry(*ent_path_hash).or_default();
-                    num_bytes_to_drop -= table.try_drop_row(*row_id, deleted_comps) as f64;
+                for table in self.timeless_tables.values_mut() {
+                    // let deleted_comps = deleted.timeless.entry(ent_path.clone()_hash).or_default();
+                    let (removed, num_bytes_removed) = table.try_drop_row(*row_id);
+                    if let Some(inner) = diff.as_mut() {
+                        if let Some(removed) = removed {
+                            diff = inner.union(&removed);
+                        }
+                    } else {
+                        diff = removed;
+                    }
+                    num_bytes_to_drop -= num_bytes_removed as f64;
                 }
             }
+
+            diffs.extend(diff);
         }
 
-        // Purge the removed rows from the metadata_registry
-        for row_id in &deleted.row_ids {
-            self.metadata_registry.remove(row_id);
+        // Purge the removed rows from the metadata_registry.
+        // This is safe because the entire GC process is driven by RowId-order.
+        for diff in &diffs {
+            self.metadata_registry.remove(&diff.row_id);
         }
 
-        deleted
+        diffs
     }
 
     /// For each `EntityPath`, `Timeline`, `Component` find the N latest [`RowId`]s.
@@ -276,6 +328,7 @@ impl DataStore {
     // TODO(jleibs): `RowId`s should never overlap between entities. Creating a single large
     // HashSet might actually be sub-optimal here. Consider switching to a map of
     // `EntityPath` -> `HashSet<RowId>`.
+    // Update: this is true-er than ever before now that RowIds are truly unique!
     fn find_all_protected_rows(&mut self, target_count: usize) -> HashSet<RowId> {
         re_tracing::profile_function!();
 
@@ -325,8 +378,7 @@ impl DataStore {
         }
 
         // Find all protected rows in timeless tables
-        // NOTE this is still based on insertion order.
-        // https://github.com/rerun-io/rerun/issues/1807
+        // TODO(#1807): this is still based on insertion order.
         for table in self.timeless_tables.values() {
             let mut components_to_find: HashMap<ComponentName, usize> = table
                 .columns
@@ -364,22 +416,42 @@ impl DataStore {
 
     /// Remove any tables which contain only components which are empty.
     // TODO(jleibs): We could optimize this further by also erasing empty columns.
-    fn purge_empty_tables(&mut self) -> Vec<RowId> {
+    fn purge_empty_tables(&mut self) -> impl Iterator<Item = StoreDiff> {
         re_tracing::profile_function!();
 
-        let mut row_ids = Vec::new();
+        let mut diffs: BTreeMap<RowId, StoreDiff> = BTreeMap::default();
 
         // Drop any empty timeless tables
         self.timeless_tables.retain(|_, table| {
-            // If any column is non-empty, we need to keep this table
+            // If any column is non-empty, we need to keep this table…
             for num in &table.col_num_instances {
                 if num.get() != 0 {
                     return true;
                 }
             }
 
-            // Otherwise we can drop it
-            row_ids.extend(table.col_row_id.iter());
+            // …otherwise we can drop it.
+
+            let entity_path = table.ent_path.clone();
+
+            for i in 0..table.col_row_id.len() {
+                let row_id = table.col_row_id[i];
+
+                let mut diff = StoreDiff::deletion(row_id, entity_path.clone());
+
+                for column in &mut table.columns.values_mut() {
+                    let cell = column[i].take();
+                    if let Some(cell) = cell {
+                        diff.cells.insert(cell.component_name(), cell);
+                    }
+                }
+
+                let previous_value = diffs.insert(row_id, diff);
+                // Reminder: this is a timeless table, therefore this `RowId` and the data associated
+                // with it cannot exist anywhere else.
+                debug_assert!(previous_value.is_none());
+            }
+
             false
         });
 
@@ -391,7 +463,7 @@ impl DataStore {
                 return true;
             }
 
-            // If any bucket has a non-empty component in any column, we keep it.
+            // If any bucket has a non-empty component in any column, we keep it…
             for bucket in table.buckets.values() {
                 let inner = bucket.inner.read();
                 for num in &inner.col_num_instances {
@@ -401,15 +473,36 @@ impl DataStore {
                 }
             }
 
-            // Otherwise we can drop it
+            // …otherwise we can drop it.
+
+            let entity_path = table.ent_path.clone();
+
             for bucket in table.buckets.values() {
-                let inner = bucket.inner.read();
-                row_ids.extend(inner.col_row_id.iter());
+                let mut inner = bucket.inner.write();
+
+                for i in 0..inner.col_row_id.len() {
+                    let row_id = inner.col_row_id[i];
+                    let time = inner.col_time[i];
+
+                    let diff = diffs
+                        .entry(row_id)
+                        .or_insert_with(|| StoreDiff::deletion(row_id, entity_path.clone()));
+
+                    diff.timepoint.insert(bucket.timeline, time.into());
+
+                    for column in &mut inner.columns.values_mut() {
+                        let cell = column[i].take();
+                        if let Some(cell) = cell {
+                            diff.cells.insert(cell.component_name(), cell);
+                        }
+                    }
+                }
             }
+
             false
         });
 
-        row_ids
+        diffs.into_values()
     }
 }
 
@@ -418,21 +511,20 @@ impl IndexedTable {
     /// specified `time`.
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(
-        &mut self,
-        row_id: RowId,
-        time: i64,
-        deleted_comps: &mut IntMap<ComponentName, Vec<TimeInt>>,
-    ) -> u64 {
+    fn try_drop_row(&mut self, row_id: RowId, time: i64) -> (Option<StoreDiff>, u64) {
         re_tracing::profile_function!();
+
+        let ent_path = self.ent_path.clone();
+        let timeline = self.timeline;
+
         let table_has_more_than_one_bucket = self.buckets.len() > 1;
 
         let (bucket_key, bucket) = self.find_bucket_mut(time.into());
         let bucket_num_bytes = bucket.total_size_bytes();
 
-        let mut dropped_num_bytes = {
+        let (diff, mut dropped_num_bytes) = {
             let inner = &mut *bucket.inner.write();
-            inner.try_drop_row(row_id, time, deleted_comps)
+            inner.try_drop_row(row_id, timeline, &ent_path, time)
         };
 
         // NOTE: We always need to keep at least one bucket alive, otherwise we have
@@ -459,7 +551,7 @@ impl IndexedTable {
         self.buckets_size_bytes -= dropped_num_bytes;
         self.buckets_num_rows -= (dropped_num_bytes > 0) as u64;
 
-        dropped_num_bytes
+        (diff, dropped_num_bytes)
     }
 }
 
@@ -471,9 +563,10 @@ impl IndexedBucketInner {
     fn try_drop_row(
         &mut self,
         row_id: RowId,
+        timeline: Timeline,
+        ent_path: &EntityPath,
         time: i64,
-        deleted_comps: &mut IntMap<ComponentName, Vec<TimeInt>>,
-    ) -> u64 {
+    ) -> (Option<StoreDiff>, u64) {
         self.sort();
 
         let IndexedBucketInner {
@@ -487,6 +580,7 @@ impl IndexedBucketInner {
             size_bytes,
         } = self;
 
+        let mut diff: Option<StoreDiff> = None;
         let mut dropped_num_bytes = 0u64;
 
         let mut row_index = col_time.partition_point(|&time2| time2 < time);
@@ -532,12 +626,19 @@ impl IndexedBucketInner {
             dropped_num_bytes += col_num_instances.swap_remove(row_index).total_size_bytes();
 
             // each data column
-            for (comp_name, column) in columns {
-                dropped_num_bytes += column.0.swap_remove(row_index).total_size_bytes();
-                deleted_comps
-                    .entry(*comp_name)
-                    .or_default()
-                    .push(time.into());
+            for column in columns.values_mut() {
+                let cell = column.0.swap_remove(row_index);
+                dropped_num_bytes += cell.total_size_bytes();
+                if let Some(cell) = cell {
+                    if let Some(inner) = diff.as_mut() {
+                        inner.cells.insert(cell.component_name(), cell);
+                    } else {
+                        diff = StoreDiff::deletion(removed_row_id, ent_path.clone())
+                            .at_timestamp(timeline, time)
+                            .with_cells([cell])
+                            .into();
+                    }
+                }
             }
 
             // NOTE: A single `RowId` cannot possibly have more than one datapoint for
@@ -547,7 +648,7 @@ impl IndexedBucketInner {
 
         *size_bytes -= dropped_num_bytes;
 
-        dropped_num_bytes
+        (diff, dropped_num_bytes)
     }
 }
 
@@ -555,17 +656,13 @@ impl PersistentIndexedTable {
     /// Tries to drop the given `row_id` from the table.
     ///
     /// Returns how many bytes were actually dropped, or zero if the row wasn't found.
-    fn try_drop_row(
-        &mut self,
-        row_id: RowId,
-        deleted_comps: &mut IntMap<ComponentName, u64>,
-    ) -> u64 {
+    fn try_drop_row(&mut self, row_id: RowId) -> (Option<StoreDiff>, u64) {
         re_tracing::profile_function!();
 
         let mut dropped_num_bytes = 0u64;
 
         let PersistentIndexedTable {
-            ent_path: _,
+            ent_path,
             cluster_key: _,
             col_insert_id,
             col_row_id,
@@ -573,8 +670,10 @@ impl PersistentIndexedTable {
             columns,
         } = self;
 
-        // TODO(jleibs) Timeless data isn't sorted, so we need to do a full scan here.
-        // Speed this up when we implement: https://github.com/rerun-io/rerun/issues/1807
+        let mut diff: Option<StoreDiff> = None;
+
+        // TODO(#1807): Timeless data isn't sorted, so we need to do a full scan here.
+        // Speed this up when we implement #1807.
         if let Some(row_index) = col_row_id
             .iter()
             .enumerate()
@@ -598,12 +697,22 @@ impl PersistentIndexedTable {
             dropped_num_bytes += col_num_instances.remove(row_index).total_size_bytes();
 
             // each data column
-            for (comp_name, column) in columns {
-                dropped_num_bytes += column.0.remove(row_index).total_size_bytes();
-                *deleted_comps.entry(*comp_name).or_default() += 1;
+            for column in columns.values_mut() {
+                let cell = column.0.remove(row_index);
+                dropped_num_bytes += cell.total_size_bytes();
+
+                if let Some(cell) = cell {
+                    if let Some(inner) = diff.as_mut() {
+                        inner.cells.insert(cell.component_name(), cell);
+                    } else {
+                        diff = StoreDiff::deletion(removed_row_id, ent_path.clone())
+                            .with_cells([cell])
+                            .into();
+                    }
+                }
             }
         }
 
-        dropped_num_bytes
+        (diff, dropped_num_bytes)
     }
 }

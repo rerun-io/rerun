@@ -40,7 +40,7 @@ fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
                 Err(WriteError::ReusedRowId(_)) => {
                     row.row_id = row.row_id.next();
                 }
-                err @ Err(_) => err.unwrap(),
+                err @ Err(_) => err.map(|_| ()).unwrap(),
             }
         }
     }
@@ -493,7 +493,6 @@ fn range_impl(store: &mut DataStore) {
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
             }
-            store2.wipe_timeless_data();
             store2.gc(GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);

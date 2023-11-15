@@ -96,12 +96,13 @@ fn pathological_bucket_topology() {
             })
             .collect::<Vec<_>>();
 
-        rows.iter()
-            .for_each(|row| store_forward.insert_row(row).unwrap());
+        for row in &rows {
+            store_forward.insert_row(row).unwrap();
+        }
 
-        rows.iter()
-            .rev()
-            .for_each(|row| store_backward.insert_row(row).unwrap());
+        rows.iter().rev().for_each(|row| {
+            store_backward.insert_row(row).unwrap();
+        });
     }
 
     store_repeated_frame(1000, 10, &mut store_forward, &mut store_backward);

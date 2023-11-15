@@ -25,7 +25,7 @@ fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
                 Err(WriteError::ReusedRowId(_)) => {
                     row.row_id = row.row_id.next();
                 }
-                err @ Err(_) => err.unwrap(),
+                err @ Err(_) => err.map(|_| ()).unwrap(),
             }
         }
     }
@@ -60,11 +60,8 @@ fn data_store_dump() {
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);
 
         // stress-test GC impl
-        store1.wipe_timeless_data();
         store1.gc(GarbageCollectionOptions::gc_everything());
-        store2.wipe_timeless_data();
         store2.gc(GarbageCollectionOptions::gc_everything());
-        store3.wipe_timeless_data();
         store3.gc(GarbageCollectionOptions::gc_everything());
 
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);

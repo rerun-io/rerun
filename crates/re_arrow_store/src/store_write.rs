@@ -13,12 +13,9 @@ use re_types_core::{
 };
 
 use crate::{
-    store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
-    IndexedTable, PersistentIndexedTable,
+    DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
+    PersistentIndexedTable, StoreDiff, StoreEvent,
 };
-
-// TODO(cmc): the store should insert column-per-column rather than row-per-row (purely a
-// performance matter).
 
 // --- Data store ---
 
@@ -38,6 +35,9 @@ pub enum WriteError {
             any duplicates, got {0:?}"
     )]
     InvalidClusteringComponent(DataCell),
+
+    #[error("The inserted data must contain at least one cell")]
+    Empty,
 
     #[error(
         "Component '{component}' failed to typecheck: expected {expected:#?} but got {got:#?}"
@@ -60,12 +60,12 @@ impl DataStore {
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
     /// based on the length of the components in the payload, in the form of an array of
     /// monotonically increasing `u64`s going from `0` to `N-1`.
-    pub fn insert_row(&mut self, row: &DataRow) -> WriteResult<()> {
+    pub fn insert_row(&mut self, row: &DataRow) -> WriteResult<StoreEvent> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
         if row.num_cells() == 0 {
-            return Ok(());
+            return Err(WriteError::Empty);
         }
 
         let DataRow {
@@ -81,6 +81,8 @@ impl DataStore {
         re_tracing::profile_function!();
 
         // Update type registry and do typechecking if enabled
+        // TODO(#1809): not only this should be replaced by a central arrow runtime registry, it should
+        // also be implemented as a changelog subscriber.
         if self.config.enable_typecheck {
             for cell in row.cells().iter() {
                 use std::collections::hash_map::Entry;
@@ -151,7 +153,9 @@ impl DataStore {
             // one… unless we've already generated one of this exact length in the past,
             // in which case we can simply re-use that cell.
 
-            Some(self.generate_cluster_cell(num_instances.into()))
+            let (cell, _) = self.generate_cluster_cell(num_instances.into());
+
+            Some(cell)
         };
 
         let insert_id = self.config.store_insert_ids.then_some(self.insert_id);
@@ -162,7 +166,7 @@ impl DataStore {
                 .entry(ent_path_hash)
                 .or_insert_with(|| PersistentIndexedTable::new(self.cluster_key, ent_path.clone()));
 
-            index.insert_row(insert_id, generated_cluster_cell, row);
+            index.insert_row(insert_id, generated_cluster_cell.clone(), row);
         } else {
             for (timeline, time) in timepoint.iter() {
                 let ent_path = ent_path.clone(); // shallow
@@ -181,26 +185,38 @@ impl DataStore {
             }
         }
 
-        Ok(())
-    }
+        let mut diff = StoreDiff::addition(*row_id, ent_path.clone())
+            .at_timepoint(timepoint.clone())
+            .with_cells(cells.iter().cloned());
 
-    /// Wipes all timeless data.
-    ///
-    /// Mostly useful for testing/debugging purposes.
-    pub fn wipe_timeless_data(&mut self) {
-        self.timeless_tables = Default::default();
+        if let Some(cell) = generated_cluster_cell {
+            diff = diff.with_cells([cell]);
+        }
+
+        let event = StoreEvent {
+            store_id: self.id.clone(),
+            store_generation: self.generation(),
+            event_id: self
+                .event_id
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            diff,
+        };
+
+        Ok(event)
     }
 
     /// Auto-generates an appropriate cluster cell for the specified number of instances and
     /// transparently handles caching.
+    ///
+    /// Returns `true` if the cell was returned from cache.
     // TODO(#1777): shared slices for auto generated keys
-    fn generate_cluster_cell(&mut self, num_instances: u32) -> DataCell {
+    fn generate_cluster_cell(&mut self, num_instances: u32) -> (DataCell, bool) {
         re_tracing::profile_function!();
 
         if let Some(cell) = self.cluster_cell_cache.get(&num_instances) {
             // Cache hit!
 
-            cell.clone() // shallow
+            (cell.clone(), true)
         } else {
             // Cache miss! Craft a new instance keys from the ground up.
 
@@ -214,7 +230,7 @@ impl DataStore {
             self.cluster_cell_cache
                 .insert(num_instances, cell.clone() /* shallow */);
 
-            cell
+            (cell, false)
         }
     }
 }
@@ -378,8 +394,9 @@ impl IndexedTable {
             "inserted into indexed tables"
         );
 
-        self.buckets_size_bytes +=
+        let size_bytes =
             bucket.insert_row(insert_id, time, generated_cluster_cell, row, &components);
+        self.buckets_size_bytes += size_bytes;
         self.buckets_num_rows += 1;
 
         // Insert components last, only if bucket-insert succeeded.
@@ -445,7 +462,7 @@ impl IndexedBucket {
                 column
             });
             size_bytes_added += cluster_cell.total_size_bytes();
-            column.0.push(Some(cluster_cell));
+            column.0.push(Some(cluster_cell.clone()));
         }
 
         // append components to their respective columns (2-way merge)
@@ -806,7 +823,7 @@ impl PersistentIndexedTable {
             let column = columns
                 .entry(cluster_cell.component_name())
                 .or_insert_with(|| DataCellColumn::empty(num_rows));
-            column.0.push(Some(cluster_cell));
+            column.0.push(Some(cluster_cell.clone()));
         }
 
         // 2-way merge, step 1: left-to-right
