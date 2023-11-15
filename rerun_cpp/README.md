@@ -2,7 +2,37 @@
 
 The Rerun C++ SDK allows logging data to Rerun directly from C++.
 
-Read the [getting started guide](https://www.rerun.io/docs/getting-started/cpp) for information on how to use the Rerun C++ SDK.
+## Getting Started
+
+Read the [getting started guide](https://www.rerun.io/docs/getting-started/cpp) on how to use the Rerun C++ SDK.
+
+### Logging
+
+After you've [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) and [added the SDK to your project](https://www.rerun.io/docs/reference/cpp-sdk-cmake), you can jump right in and try logging some data.
+
+You first create a `rerun::RecordingStream` stream and spawn a viewer. You then use it to log some archetypes to a given entity path using `rerun::RecordingStream::log`:
+
+\snippet{trimleft} readme_snippets.cpp Logging
+
+### Streaming to disk
+
+Streaming data to a file on disk using the .rrd format:
+
+\snippet{trimleft} readme_snippets.cpp Streaming
+
+### Connecting
+
+Instead of spawning a new viewer, you can also try to connect to an already open one.
+
+\snippet{trimleft} readme_snippets.cpp Connecting
+
+### Buffering
+
+As long as you haven't called `rerun::RecordingStream::save`/`rerun::RecordingStream::connect`/`rerun::RecordingStream::spawn`
+any data will be kept in memory until you call one of these.
+
+\snippet{trimleft} readme_snippets.cpp Buffering
+
 
 ## Examples
 
