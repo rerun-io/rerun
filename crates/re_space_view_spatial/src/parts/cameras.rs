@@ -204,20 +204,25 @@ impl ViewPartSystem for CamerasPart {
 
         let store = ctx.store_db.store();
 
-        for (ent_path, props) in query.iter_entities_for_system(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::name()) {
             let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
-            if let Some(pinhole) = query_pinhole(store, &time_query, ent_path) {
-                let entity_highlight = query.highlights.entity_outline_mask(ent_path.hash());
+            if let Some(pinhole) = query_pinhole(store, &time_query, &data_result.entity_path) {
+                let entity_highlight = query
+                    .highlights
+                    .entity_outline_mask(data_result.entity_path.hash());
 
                 self.visit_instance(
                     transforms,
                     shared_render_builders,
-                    ent_path,
-                    &props,
+                    &data_result.entity_path,
+                    &data_result.resolved_properties,
                     &pinhole,
                     store
-                        .query_latest_component::<Transform3D>(ent_path, &time_query)
+                        .query_latest_component::<Transform3D>(
+                            &data_result.entity_path,
+                            &time_query,
+                        )
                         .map(|c| c.value),
                     pinhole.camera_xyz.unwrap_or(ViewCoordinates::RDF), // TODO(#2641): This should come from archetype
                     entity_highlight,

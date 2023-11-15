@@ -363,7 +363,7 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
             .tree
             .children
             .get(&re_data_store::EntityPathPart::Name(
-                SpaceViewComponent::SPACEVIEW_PREFIX.into(),
+                SpaceViewId::SPACEVIEW_PREFIX.into(),
             )) {
         space_views
             .children
@@ -441,12 +441,6 @@ pub fn sync_space_view(
     snapshot: Option<&SpaceViewBlueprint>,
 ) {
     if snapshot.map_or(true, |snapshot| space_view.has_edits(snapshot)) {
-        let entity_path = EntityPath::from(format!(
-            "{}/{}",
-            SpaceViewComponent::SPACEVIEW_PREFIX,
-            space_view.id
-        ));
-
         // TODO(jleibs): Seq instead of timeless?
         let timepoint = TimePoint::timeless();
 
@@ -454,16 +448,12 @@ pub fn sync_space_view(
             space_view: space_view.clone(),
         };
 
-        add_delta_from_single_component(deltas, &entity_path, &timepoint, component);
+        add_delta_from_single_component(deltas, &space_view.entity_path(), &timepoint, component);
     }
 }
 
 pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
-    let entity_path = EntityPath::from(format!(
-        "{}/{}",
-        SpaceViewComponent::SPACEVIEW_PREFIX,
-        space_view_id
-    ));
+    let entity_path = space_view_id.as_entity_path();
 
     // TODO(jleibs): Seq instead of timeless?
     let timepoint = TimePoint::timeless();

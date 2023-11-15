@@ -11,7 +11,11 @@ use re_types_core::Loggable as _;
 
 #[test]
 fn simple_range() {
-    let mut store = DataStore::new(InstanceKey::name(), Default::default());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
 
     let ent_path: EntityPath = "point".into();
 
@@ -235,7 +239,11 @@ fn simple_range() {
 
 #[test]
 fn timeless_range() {
-    let mut store = DataStore::new(InstanceKey::name(), Default::default());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
 
     let ent_path: EntityPath = "point".into();
 
@@ -684,7 +692,11 @@ fn timeless_range() {
 
 #[test]
 fn simple_splatted_range() {
-    let mut store = DataStore::new(InstanceKey::name(), Default::default());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
 
     let ent_path: EntityPath = "point".into();
 

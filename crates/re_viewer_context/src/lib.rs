@@ -33,18 +33,19 @@ pub use command_sender::{
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathPart, Index};
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
     HoverHighlight, HoveredSpace, InteractionHighlight, SelectionHighlight, SelectionState,
 };
 pub use space_view::{
-    default_heuristic_filter, AutoSpawnHeuristic, DynSpaceViewClass, HeuristicFilterContext,
-    NamedViewSystem, PerSystemEntities, SpaceViewClass, SpaceViewClassLayoutPriority,
-    SpaceViewClassName, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewState,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistry, ViewContextCollection,
-    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery, ViewSystemName,
+    default_heuristic_filter, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
+    HeuristicFilterContext, NamedViewSystem, PerSystemDataResults, PerSystemEntities,
+    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewClassRegistry,
+    SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
+    SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
+    ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
+    ViewSystemName,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
@@ -72,6 +73,9 @@ pub mod external {
 pub struct SpaceViewId(uuid::Uuid);
 
 impl SpaceViewId {
+    // TODO(jleibs): Can we make this an EntityPath instead?
+    pub const SPACEVIEW_PREFIX: &str = "space_view";
+
     pub fn invalid() -> Self {
         Self(uuid::Uuid::nil())
     }
@@ -113,6 +117,13 @@ impl SpaceViewId {
 
     pub fn gpu_readback_id(self) -> re_renderer::GpuReadbackIdentifier {
         re_log_types::hash::Hash64::hash(self).hash64()
+    }
+
+    #[inline]
+    pub fn as_entity_path(&self) -> EntityPath {
+        let prefix = EntityPathPart::Name(Self::SPACEVIEW_PREFIX.into());
+        let uuid = EntityPathPart::Index(Index::Uuid(self.0));
+        EntityPath::from([prefix, uuid].as_slice())
     }
 }
 

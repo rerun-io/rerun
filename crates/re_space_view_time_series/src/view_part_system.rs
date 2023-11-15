@@ -96,7 +96,9 @@ impl ViewPartSystem for TimeSeriesSystem {
         self.annotation_map.load(
             ctx,
             &query.latest_at_query(),
-            query.iter_entities_for_system(Self::name()).map(|(p, _)| p),
+            query
+                .iter_visible_data_results(Self::name())
+                .map(|data| &data.entity_path),
         );
 
         match self.load_scalars(ctx, query) {
@@ -120,20 +122,24 @@ impl TimeSeriesSystem {
 
         let store = ctx.store_db.store();
 
-        for (ent_path, ent_props) in query.iter_entities_for_system(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::name()) {
             let mut points = Vec::new();
-            let annotations = self.annotation_map.find(ent_path);
+            let annotations = self.annotation_map.find(&data_result.entity_path);
             let annotation_info = annotations
                 .resolved_class_description(None)
                 .annotation_info();
-            let default_color = DefaultColor::EntityPath(ent_path);
+            let default_color = DefaultColor::EntityPath(&data_result.entity_path);
 
             let visible_history = match query.timeline.typ() {
-                re_log_types::TimeType::Time => ent_props.visible_history.nanos,
-                re_log_types::TimeType::Sequence => ent_props.visible_history.sequences,
+                re_log_types::TimeType::Time => {
+                    data_result.resolved_properties.visible_history.nanos
+                }
+                re_log_types::TimeType::Sequence => {
+                    data_result.resolved_properties.visible_history.sequences
+                }
             };
 
-            let (from, to) = if ent_props.visible_history.enabled {
+            let (from, to) = if data_result.resolved_properties.visible_history.enabled {
                 (
                     visible_history.from(query.latest_at),
                     visible_history.to(query.latest_at),
@@ -147,7 +153,7 @@ impl TimeSeriesSystem {
             let arch_views = range_archetype::<
                 TimeSeriesScalar,
                 { TimeSeriesScalar::NUM_COMPONENTS },
-            >(store, &query, ent_path);
+            >(store, &query, &data_result.entity_path);
 
             for (time, arch_view) in arch_views {
                 let Some(time) = time else {
@@ -186,7 +192,7 @@ impl TimeSeriesSystem {
             }
 
             let min_time = store
-                .entity_min_time(&query.timeline, ent_path)
+                .entity_min_time(&query.timeline, &data_result.entity_path)
                 .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
 
             self.min_time = Some(self.min_time.map_or(min_time, |time| time.min(min_time)));
@@ -199,7 +205,8 @@ impl TimeSeriesSystem {
                 (points.iter().all(|p| p.attrs.label.as_ref() == Some(label)))
                     .then(|| label.clone())
             };
-            let line_label = same_label(&points).unwrap_or_else(|| ent_path.to_string());
+            let line_label =
+                same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string());
 
             self.add_line_segments(&line_label, points);
         }

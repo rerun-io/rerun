@@ -10,26 +10,26 @@ struct FrameUniformBuffer {
     step_width: i32,
     // There is actually more padding here. We're only putting this to satisfy lack of
     // wgt::DownlevelFlags::BUFFER_BINDINGS_NOT_16_BYTE_ALIGNED
-    padding: IVec3,
+    padding: vec3i,
 };
 @group(0) @binding(2)
 var<uniform> uniforms: FrameUniformBuffer;
 
 
 @fragment
-fn main(in: FragmentInput) -> @location(0) Vec4 {
-    let resolution = Vec2(textureDimensions(voronoi_texture).xy);
-    let pixel_step = Vec2(f32(uniforms.step_width), f32(uniforms.step_width)) / resolution;
+fn main(in: FragmentInput) -> @location(0) vec4f {
+    let resolution = vec2f(textureDimensions(voronoi_texture).xy);
+    let pixel_step = vec2f(f32(uniforms.step_width), f32(uniforms.step_width)) / resolution;
     let pixel_coordinates = floor(resolution * in.texcoord);
 
-    var closest_positions_a = Vec2(f32min);
+    var closest_positions_a = vec2f(f32min);
     var closest_distance_sq_a = f32max;
-    var closest_positions_b = Vec2(f32min);
+    var closest_positions_b = vec2f(f32min);
     var closest_distance_sq_b = f32max;
 
     for (var y: i32 = -1; y <= 1; y += 1) {
         for (var x: i32 = -1; x <= 1; x += 1) {
-            let texcoord = in.texcoord + Vec2(f32(x), f32(y)) * pixel_step;
+            let texcoord = in.texcoord + vec2f(f32(x), f32(y)) * pixel_step;
             let positions_a_and_b = textureSampleLevel(voronoi_texture, voronoi_sampler, texcoord, 0.0);
             let to_positions_a_and_b = positions_a_and_b - pixel_coordinates.xyxy;
 
@@ -47,5 +47,5 @@ fn main(in: FragmentInput) -> @location(0) Vec4 {
         }
     }
 
-    return Vec4(closest_positions_a, closest_positions_b);
+    return vec4f(closest_positions_a, closest_positions_b);
 }

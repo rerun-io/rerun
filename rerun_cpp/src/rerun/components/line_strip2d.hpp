@@ -19,64 +19,61 @@ namespace arrow {
     class MemoryPool;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A line strip in 2D space.
-        ///
-        /// A line strip is a list of points connected by line segments. It can be used to draw
-        /// approximations of smooth curves.
-        ///
-        /// The points will be connected in order, like so:
-        /// ```text
-        ///        2------3     5
-        ///       /        \   /
-        /// 0----1          \ /
-        ///                  4
-        /// ```
-        struct LineStrip2D {
-            std::vector<rerun::datatypes::Vec2D> points;
+namespace rerun::components {
+    /// **Component**: A line strip in 2D space.
+    ///
+    /// A line strip is a list of points connected by line segments. It can be used to draw
+    /// approximations of smooth curves.
+    ///
+    /// The points will be connected in order, like so:
+    /// ```text
+    ///        2------3     5
+    ///       /        \   /
+    /// 0----1          \ /
+    ///                  4
+    /// ```
+    struct LineStrip2D {
+        std::vector<rerun::datatypes::Vec2D> points;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            // Extensions to generated type defined in 'line_strip2d_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'line_strip2d_ext.cpp'
 
-            template <typename T>
-            LineStrip2D(const std::vector<T>& points_) : points(points_.size()) {
-                std::transform(points_.begin(), points_.end(), points.begin(), [](const T& pt) {
-                    return rerun::datatypes::Vec2D(pt);
-                });
-            }
+        template <typename T>
+        LineStrip2D(const std::vector<T>& points_) : points(points_.size()) {
+            std::transform(points_.begin(), points_.end(), points.begin(), [](const T& pt) {
+                return rerun::datatypes::Vec2D(pt);
+            });
+        }
 
-          public:
-            LineStrip2D() = default;
+      public:
+        LineStrip2D() = default;
 
-            LineStrip2D(std::vector<rerun::datatypes::Vec2D> points_)
-                : points(std::move(points_)) {}
+        LineStrip2D(std::vector<rerun::datatypes::Vec2D> points_) : points(std::move(points_)) {}
 
-            LineStrip2D& operator=(std::vector<rerun::datatypes::Vec2D> points_) {
-                points = std::move(points_);
-                return *this;
-            }
+        LineStrip2D& operator=(std::vector<rerun::datatypes::Vec2D> points_) {
+            points = std::move(points_);
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::ListBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::ListBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::ListBuilder* builder, const LineStrip2D* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::ListBuilder* builder, const LineStrip2D* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of LineStrip2D components.
-            static Result<rerun::DataCell> to_data_cell(
-                const LineStrip2D* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of LineStrip2D components.
+        static Result<rerun::DataCell> to_data_cell(
+            const LineStrip2D* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

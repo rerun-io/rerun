@@ -40,7 +40,7 @@ fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
                 Err(WriteError::ReusedRowId(_)) => {
                     row.row_id = row.row_id.next();
                 }
-                err @ Err(_) => err.unwrap(),
+                err @ Err(_) => err.map(|_| ()).unwrap(),
             }
         }
     }
@@ -63,7 +63,11 @@ fn all_components() {
     let assert_latest_components_at =
         |store: &mut DataStore, ent_path: &EntityPath, expected: Option<&[ComponentName]>| {
             // Stress test save-to-disk & load-from-disk
-            let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
+            let mut store2 = DataStore::new(
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                store.cluster_key(),
+                store.config().clone(),
+            );
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
             }
@@ -100,6 +104,7 @@ fn all_components() {
     // One big bucket, demonstrating the easier-to-reason-about cases.
     {
         let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             DataStoreConfig {
                 indexed_bucket_num_rows: u64::MAX,
@@ -143,6 +148,7 @@ fn all_components() {
     // Tiny buckets, demonstrating the harder-to-reason-about cases.
     {
         let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             DataStoreConfig {
                 indexed_bucket_num_rows: 0,
@@ -203,6 +209,7 @@ fn all_components() {
     // reason about, it is technically incorrect.
     {
         let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             InstanceKey::name(),
             DataStoreConfig {
                 indexed_bucket_num_rows: 0,
@@ -276,7 +283,11 @@ fn latest_at() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         latest_at_impl(&mut store);
     }
 }
@@ -324,7 +335,11 @@ fn latest_at_impl(store: &mut DataStore) {
     );
 
     // Stress test save-to-disk & load-from-disk
-    let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
+    let mut store2 = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        store.cluster_key(),
+        store.config().clone(),
+    );
     for table in store.to_data_tables(None) {
         insert_table(&mut store2, &table);
     }
@@ -390,7 +405,11 @@ fn range() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         range_impl(&mut store);
     }
 }
@@ -466,11 +485,14 @@ fn range_impl(store: &mut DataStore) {
          components: [ComponentName; 2],
          rows_at_times: &[(Option<TimeInt>, &[(ComponentName, &DataRow)])]| {
             // Stress test save-to-disk & load-from-disk
-            let mut store2 = DataStore::new(store.cluster_key(), store.config().clone());
+            let mut store2 = DataStore::new(
+                re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+                store.cluster_key(),
+                store.config().clone(),
+            );
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
             }
-            store2.wipe_timeless_data();
             store2.gc(GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
@@ -869,7 +891,11 @@ fn gc() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         gc_impl(&mut store);
     }
 }
@@ -900,14 +926,14 @@ fn gc_impl(store: &mut DataStore) {
 
         let stats = DataStoreStats::from_store(store);
 
-        let (deleted, stats_diff) = store.gc(GarbageCollectionOptions {
+        let (store_events, stats_diff) = store.gc(GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             gc_timeless: false,
             protect_latest: 0,
             purge_empty_tables: false,
         });
-        for row_id in &deleted.row_ids {
-            assert!(store.get_msg_metadata(row_id).is_none());
+        for event in store_events {
+            assert!(store.get_msg_metadata(&event.row_id).is_none());
         }
 
         // NOTE: only temporal data and row metadata get purged!
@@ -933,7 +959,11 @@ fn protected_gc() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         protected_gc_impl(&mut store);
     }
 }
@@ -1029,7 +1059,11 @@ fn protected_gc_clear() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         protected_gc_clear_impl(&mut store);
     }
 }

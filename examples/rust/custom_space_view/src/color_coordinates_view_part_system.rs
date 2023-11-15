@@ -59,18 +59,18 @@ impl ViewPartSystem for InstanceColorSystem {
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         // For each entity in the space view that should be displayed with the `InstanceColorSystem`…
-        for (ent_path, _props) in query.iter_entities_for_system(InstanceColorSystem::name()) {
+        for data_result in query.iter_visible_data_results(Self::name()) {
             // ...gather all colors and their instance ids.
             if let Ok(arch_view) = query_archetype::<ColorArchetype>(
                 ctx.store_db.store(),
                 &ctx.current_query(),
-                ent_path,
+                &data_result.entity_path,
             ) {
                 if let Ok(colors) =
                     arch_view.iter_required_component::<re_types::components::Color>()
                 {
                     self.colors.push((
-                        ent_path.clone(),
+                        data_result.entity_path.clone(),
                         arch_view
                             .iter_instance_keys()
                             .zip(colors)

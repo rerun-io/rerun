@@ -17,46 +17,44 @@ namespace arrow {
     class StructBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: A multi-dimensional `Tensor` of data.
-        ///
-        /// The number of dimensions and their respective lengths is specified by the `shape` field.
-        /// The dimensions are ordered from outermost to innermost. For example, in the common case of
-        /// a 2D RGB Image, the shape would be `[height, width, channel]`.
-        ///
-        /// These dimensions are combined with an index to look up values from the `buffer` field,
-        /// which stores a contiguous array of typed values.
-        struct TensorData {
-            std::vector<rerun::datatypes::TensorDimension> shape;
+namespace rerun::datatypes {
+    /// **Datatype**: A multi-dimensional `Tensor` of data.
+    ///
+    /// The number of dimensions and their respective lengths is specified by the `shape` field.
+    /// The dimensions are ordered from outermost to innermost. For example, in the common case of
+    /// a 2D RGB Image, the shape would be `[height, width, channel]`.
+    ///
+    /// These dimensions are combined with an index to look up values from the `buffer` field,
+    /// which stores a contiguous array of typed values.
+    struct TensorData {
+        std::vector<rerun::datatypes::TensorDimension> shape;
 
-            rerun::datatypes::TensorBuffer buffer;
+        rerun::datatypes::TensorBuffer buffer;
 
-          public:
-            // Extensions to generated type defined in 'tensor_data_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'tensor_data_ext.cpp'
 
-            // TODO(#3794): There should be the option to not have TensorData take ownership of the buffer.
-            TensorData(
-                std::vector<rerun::datatypes::TensorDimension> shape_,
-                rerun::datatypes::TensorBuffer buffer_
-            )
-                : shape(std::move(shape_)), buffer(std::move(buffer_)) {}
+        // TODO(#3794): There should be the option to not have TensorData take ownership of the buffer.
+        TensorData(
+            std::vector<rerun::datatypes::TensorDimension> shape_,
+            rerun::datatypes::TensorBuffer buffer_
+        )
+            : shape(std::move(shape_)), buffer(std::move(buffer_)) {}
 
-          public:
-            TensorData() = default;
+      public:
+        TensorData() = default;
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::StructBuilder* builder, const TensorData* elements, size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StructBuilder* builder, const TensorData* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

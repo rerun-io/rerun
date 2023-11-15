@@ -12,7 +12,7 @@ use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
     ViewerContext,
 };
-use re_viewport::{Viewport, ViewportBlueprint};
+use re_viewport::{external::re_space_view::DataQuery as _, Viewport, ViewportBlueprint};
 
 use crate::ui::visible_history::visible_history_ui;
 
@@ -274,12 +274,13 @@ fn blueprint_ui(
 
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 let space_view_class = *space_view.class_name();
-
                 let space_view_state = viewport.state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
                     space_view.class_name(),
                 );
+                let root_data_result = space_view.root_data_result(ctx);
+                let mut props = root_data_result.resolved_properties.clone();
 
                 space_view
                     .class(ctx.space_view_class_registry)
@@ -303,6 +304,8 @@ fn blueprint_ui(
                     &projected_visible_history,
                     &mut space_view.root_entity_properties.visible_history,
                 );
+
+                root_data_result.save_override(props, ctx);
             }
         }
 
@@ -324,12 +327,13 @@ fn blueprint_ui(
                         // splat - the whole entity
                         let space_view_class = *space_view.class_name();
                         let entity_path = &instance_path.entity_path;
-                        let projected_props = space_view
-                            .contents
-                            .data_blueprints_projected()
-                            .get(entity_path);
-                        let data_blueprint = space_view.contents.data_blueprints_individual();
-                        let mut props = data_blueprint.get(&instance_path.entity_path);
+
+                        let data_result = space_view.contents.resolve(
+                            space_view,
+                            ctx,
+                            &instance_path.entity_path,
+                        );
+                        let mut props = data_result.resolved_properties.clone();
                         entity_props_ui(
                             ctx,
                             ui,
@@ -338,7 +342,7 @@ fn blueprint_ui(
                             &mut props,
                             &projected_props,
                         );
-                        data_blueprint.set(instance_path.entity_path.clone(), props);
+                        data_result.save_override(props, ctx);
                     }
                 }
             } else {
@@ -353,8 +357,15 @@ fn blueprint_ui(
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                let space_view_class = *space_view.class_name();
                 if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
+                    let data_result =
+                        space_view
+                            .contents
+                            .resolve(space_view, ctx, &group.group_path);
+
+                    let space_view_class = *space_view.class_name();
+                    let mut props = data_result.resolved_properties.clone();
+
                     entity_props_ui(
                         ctx,
                         ui,
@@ -363,6 +374,7 @@ fn blueprint_ui(
                         &mut group.properties_individual,
                         &group.properties_projected,
                     );
+                    data_result.save_override(props, ctx);
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }

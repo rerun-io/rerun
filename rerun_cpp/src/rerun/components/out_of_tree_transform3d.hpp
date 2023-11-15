@@ -16,51 +16,49 @@ namespace arrow {
     class MemoryPool;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: An out-of-tree affine transform between two 3D spaces, represented in a given direction.
-        ///
-        /// "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
-        struct OutOfTreeTransform3D {
-            /// Representation of the transform.
-            rerun::datatypes::Transform3D repr;
+namespace rerun::components {
+    /// **Component**: An out-of-tree affine transform between two 3D spaces, represented in a given direction.
+    ///
+    /// "Out-of-tree" means that the transform only affects its own entity: children don't inherit from it.
+    struct OutOfTreeTransform3D {
+        /// Representation of the transform.
+        rerun::datatypes::Transform3D repr;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            OutOfTreeTransform3D() = default;
+      public:
+        OutOfTreeTransform3D() = default;
 
-            OutOfTreeTransform3D(rerun::datatypes::Transform3D repr_) : repr(repr_) {}
+        OutOfTreeTransform3D(rerun::datatypes::Transform3D repr_) : repr(repr_) {}
 
-            OutOfTreeTransform3D& operator=(rerun::datatypes::Transform3D repr_) {
-                repr = repr_;
-                return *this;
-            }
+        OutOfTreeTransform3D& operator=(rerun::datatypes::Transform3D repr_) {
+            repr = repr_;
+            return *this;
+        }
 
-            /// Cast to the underlying Transform3D datatype
-            operator rerun::datatypes::Transform3D() const {
-                return repr;
-            }
+        /// Cast to the underlying Transform3D datatype
+        operator rerun::datatypes::Transform3D() const {
+            return repr;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static rerun::Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder* builder, const OutOfTreeTransform3D* elements,
-                size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const OutOfTreeTransform3D* elements,
+            size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of OutOfTreeTransform3D components.
-            static Result<rerun::DataCell> to_data_cell(
-                const OutOfTreeTransform3D* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of OutOfTreeTransform3D components.
+        static Result<rerun::DataCell> to_data_cell(
+            const OutOfTreeTransform3D* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

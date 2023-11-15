@@ -36,7 +36,11 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Query at frame #11 and make sure we get `point2` because random `RowId`s are monotonically
     //   increasing.
     {
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
 
         let row_id = RowId::random();
         let row = DataRow::from_component_batches(
@@ -73,7 +77,11 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Insert `point1` at frame #10 with a random `RowId`.
     // * Fail to insert `point2` at frame #10 using `point1`s `RowId` because it is illegal.
     {
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
 
         let row_id = RowId::random();
 
@@ -100,7 +108,11 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
     // * Insert `point2` at frame #10 using `point1`'s `RowId`, decremented by one.
     // * Query at frame #11 and make sure we get `point1` because of intra-timestamp tie-breaks.
     {
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
 
         let row_id1 = RowId::random();
         let row_id2 = row_id1.next();
@@ -151,7 +163,11 @@ fn write_errors() {
             DataCell::from_component_sparse::<InstanceKey>([Some(1), None, Some(3)])
         }
 
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
         let row = test_row!(ent_path @
             [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
                 build_sparse_instances(), build_some_positions2d(3)
@@ -171,7 +187,11 @@ fn write_errors() {
             DataCell::from_component::<InstanceKey>([1, 2, 2])
         }
 
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
         {
             let row = test_row!(ent_path @
                 [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
@@ -195,7 +215,11 @@ fn write_errors() {
     }
 
     {
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
 
         let mut row = test_row!(ent_path @ [
             build_frame_nr(1.into()),
@@ -228,7 +252,11 @@ fn latest_at_emptiness_edge_cases() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         latest_at_emptiness_edge_cases_impl(&mut store);
     }
 }
@@ -354,7 +382,11 @@ fn range_join_across_single_row() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         range_join_across_single_row_impl(&mut store);
     }
 }
@@ -422,7 +454,11 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 fn gc_correct() {
     init_logs();
 
-    let mut store = DataStore::new(InstanceKey::name(), DataStoreConfig::default());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        DataStoreConfig::default(),
+    );
 
     let stats_empty = DataStoreStats::from_store(&store);
 
@@ -449,10 +485,9 @@ fn gc_correct() {
 
     let stats = DataStoreStats::from_store(&store);
 
-    let (deleted, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    let (store_events, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
     let stats_diff = stats_diff + stats_empty; // account for fixed overhead
 
-    assert_eq!(deleted.row_ids.len() as u64, stats.total.num_rows);
     assert_eq!(
         stats.metadata_registry.num_rows,
         stats_diff.metadata_registry.num_rows
@@ -465,12 +500,12 @@ fn gc_correct() {
 
     sanity_unwrap(&mut store);
     check_still_readable(&store);
-    for row_id in &deleted.row_ids {
-        assert!(store.get_msg_metadata(row_id).is_none());
+    for event in store_events {
+        assert!(store.get_msg_metadata(&event.row_id).is_none());
     }
 
-    let (deleted, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
-    assert!(deleted.row_ids.is_empty());
+    let (store_events, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    assert!(store_events.is_empty());
     assert_eq!(DataStoreStats::default(), stats_diff);
 
     sanity_unwrap(&mut store);
@@ -501,7 +536,11 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         entity_min_time_correct_impl(&mut store)?;
     }
 

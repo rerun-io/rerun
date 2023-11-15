@@ -5,11 +5,11 @@
 
 #include "../component_batch_adapter_builtins.hpp"
 
+namespace rerun::archetypes {
+    const char TextDocument::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextDocumentIndicator";
+}
+
 namespace rerun {
-    namespace archetypes {
-        const char TextDocument::INDICATOR_COMPONENT_NAME[] =
-            "rerun.components.TextDocumentIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::TextDocument>::serialize(
         const archetypes::TextDocument& archetype

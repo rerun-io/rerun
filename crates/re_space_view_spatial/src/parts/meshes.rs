@@ -156,7 +156,7 @@ impl ViewPartSystem for Mesh3DPart {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |ctx, ent_path, arch_view, ent_context| {
+            |ctx, ent_path, _ent_props, arch_view, ent_context| {
                 self.process_arch_view(ctx, &mut instances, &arch_view, ent_path, ent_context)
             },
         )?;

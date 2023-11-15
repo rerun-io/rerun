@@ -6,71 +6,66 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun {
-    namespace components {
-        const char DrawOrder::NAME[] = "rerun.components.DrawOrder";
+namespace rerun::components {
+    const char DrawOrder::NAME[] = "rerun.components.DrawOrder";
 
-        const std::shared_ptr<arrow::DataType>& DrawOrder::arrow_datatype() {
-            static const auto datatype = arrow::float32();
-            return datatype;
+    const std::shared_ptr<arrow::DataType>& DrawOrder::arrow_datatype() {
+        static const auto datatype = arrow::float32();
+        return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::FloatBuilder>> DrawOrder::new_arrow_array_builder(
+        arrow::MemoryPool* memory_pool
+    ) {
+        if (memory_pool == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
         }
 
-        Result<std::shared_ptr<arrow::FloatBuilder>> DrawOrder::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        ) {
-            if (memory_pool == nullptr) {
-                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-            }
+        return Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
+    }
 
-            return Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
+    rerun::Error DrawOrder::fill_arrow_array_builder(
+        arrow::FloatBuilder* builder, const DrawOrder* elements, size_t num_elements
+    ) {
+        if (builder == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
         }
-
-        rerun::Error DrawOrder::fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const DrawOrder* elements, size_t num_elements
-        ) {
-            if (builder == nullptr) {
-                return rerun::Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Passed array builder is null."
-                );
-            }
-            if (elements == nullptr) {
-                return rerun::Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Cannot serialize null pointer to arrow array."
-                );
-            }
-
-            static_assert(sizeof(*elements) == sizeof(elements->value));
-            ARROW_RETURN_NOT_OK(
-                builder->AppendValues(&elements->value, static_cast<int64_t>(num_elements))
-            );
-
-            return Error::ok();
-        }
-
-        Result<rerun::DataCell> DrawOrder::to_data_cell(
-            const DrawOrder* instances, size_t num_instances
-        ) {
-            // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool* pool = arrow::default_memory_pool();
-
-            auto builder_result = DrawOrder::new_arrow_array_builder(pool);
-            RR_RETURN_NOT_OK(builder_result.error);
-            auto builder = std::move(builder_result.value);
-            if (instances && num_instances > 0) {
-                RR_RETURN_NOT_OK(
-                    DrawOrder::fill_arrow_array_builder(builder.get(), instances, num_instances)
-                );
-            }
-            std::shared_ptr<arrow::Array> array;
-            ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-            return rerun::DataCell::create(
-                DrawOrder::NAME,
-                DrawOrder::arrow_datatype(),
-                std::move(array)
+        if (elements == nullptr) {
+            return rerun::Error(
+                ErrorCode::UnexpectedNullArgument,
+                "Cannot serialize null pointer to arrow array."
             );
         }
-    } // namespace components
-} // namespace rerun
+
+        static_assert(sizeof(*elements) == sizeof(elements->value));
+        ARROW_RETURN_NOT_OK(
+            builder->AppendValues(&elements->value, static_cast<int64_t>(num_elements))
+        );
+
+        return Error::ok();
+    }
+
+    Result<rerun::DataCell> DrawOrder::to_data_cell(
+        const DrawOrder* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+
+        auto builder_result = DrawOrder::new_arrow_array_builder(pool);
+        RR_RETURN_NOT_OK(builder_result.error);
+        auto builder = std::move(builder_result.value);
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(
+                DrawOrder::fill_arrow_array_builder(builder.get(), instances, num_instances)
+            );
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+        return rerun::DataCell::create(
+            DrawOrder::NAME,
+            DrawOrder::arrow_datatype(),
+            std::move(array)
+        );
+    }
+} // namespace rerun::components

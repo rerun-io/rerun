@@ -197,7 +197,7 @@ jobs:
     with:
       CONCURRENCY: ${{ github.ref_name }}
       PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
-      RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
+      RS_AND_CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
       UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
@@ -270,7 +270,8 @@ jobs:
     if: inputs.release-type == 'final'
     needs:
       [
-        version, update-docs,
+        version,
+        update-docs,
         publish-crates,
         publish-wheels,
         publish-web,
@@ -296,7 +297,8 @@ jobs:
     if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
     needs:
       [
-        version, update-docs,
+        version,
+        update-docs,
         publish-crates,
         publish-wheels,
         publish-web,
@@ -353,7 +355,8 @@ jobs:
     name: "Link to artifacts"
     needs:
       [
-        version, update-docs,
+        version,
+        update-docs,
         publish-crates,
         publish-wheels,
         publish-web,

@@ -3,7 +3,7 @@ title: C++ SDK CMake
 order: 8
 ---
 
-The Rerun C++ SDK is meant to be built from source.
+The Rerun C++ SDK is meant to be built from source and everything described on this page will do just that.
 Its [CMake build script](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/CMakeLists.txt)
 is ready to be used from outside of the Rerun repo.
 
@@ -31,10 +31,10 @@ In this case you will also need to make sure the Rerun C static libraries are av
 Pre-built libraries can be downloaded from [the release pages](https://github.com/rerun-io/rerun/releases/latest).
 
 If you want to match the behavior of `rerun_cpp_sdk.zip`, these libraries should be placed in the folder `rerun_cpp/lib`, renamed as:
- - Linux: `librerun_c__linux_x64.a`
- - Windows: `rerun_c__win_x64.lib`
- - Mac: `librerun_c__macos_x64.a`
- - Mac Arm: `librerun_c__macos_arm64.a`
+ - Linux, x64: `librerun_c__linux_x64.a`
+ - Windows, x64: `rerun_c__win_x64.lib`
+ - Mac, Intel: `librerun_c__macos_x64.a`
+ - Mac, Apple Silicon: `librerun_c__macos_arm64.a`
 
 Or if you have a different build/download mechanism, you can point directly to the library by setting `RERUN_C_LIB`
 before adding the subdirectory.

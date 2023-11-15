@@ -5,13 +5,13 @@
 /// Span a quad in a way that guarantees that we'll be able to draw a perspective correct sphere
 /// on it.
 fn sphere_quad(
-    point_pos: Vec3,
+    point_pos: vec3f,
     point_radius: f32,
     top_bottom: f32,
     left_right: f32,
-    to_camera: Vec3,
+    to_camera: vec3f,
     camera_distance: f32
-) -> Vec3 {
+) -> vec3f {
     let distance_to_camera_sq = camera_distance * camera_distance; // (passing on micro-optimization here for splitting this out of earlier length calculation)
     let distance_to_camera_inv = 1.0 / camera_distance;
     let quad_normal = to_camera * distance_to_camera_inv;
@@ -42,7 +42,7 @@ fn sphere_quad(
 
 /// Span a quad in a way that guarantees that we'll be able to draw an orthographic correct sphere
 /// on it.
-fn circle_quad(point_pos: Vec3, point_radius: f32, top_bottom: f32, left_right: f32) -> Vec3 {
+fn circle_quad(point_pos: vec3f, point_radius: f32, top_bottom: f32, left_right: f32) -> vec3f {
     let quad_normal = frame.camera_forward;
     let quad_right = normalize(cross(quad_normal, frame.view_from_world[1].xyz)); // It's spheres so any orthogonal vector would do.
     let quad_up = cross(quad_right, quad_normal);
@@ -62,39 +62,34 @@ fn sphere_quad_index(vertex_idx: u32) -> u32 {
 }
 
 struct SphereQuadData {
-    pos_in_world: Vec3,
+    pos_in_world: vec3f,
     point_resolved_radius: f32,
 }
 
 /// Span a quad onto which circles or perspective correct spheres can be drawn.
 ///
 /// Note that in orthographic mode, spheres are always circles.
-fn sphere_or_circle_quad_span(vertex_idx: u32, point_pos: Vec3, point_unresolved_radius: f32,
-                                radius_boost_in_ui_points: f32, force_circle: bool) -> SphereQuadData {
-    // Resolve radius to a world size. We need the camera distance for this, which is useful later on.
-    let to_camera = frame.camera_position - point_pos;
-    let camera_distance = length(to_camera);
-    let radius = unresolved_size_to_world(point_unresolved_radius, camera_distance, frame.auto_size_points) +
-                 world_size_from_point_size(radius_boost_in_ui_points, camera_distance);
-
+fn sphere_or_circle_quad_span(vertex_idx: u32, point_pos: vec3f, world_radius: f32, force_circle: bool) -> SphereQuadData {
     // Basic properties of the vertex we're at.
     let local_idx = vertex_idx % 6u;
     let top_bottom = f32(local_idx <= 1u || local_idx == 5u) * 2.0 - 1.0; // 1 for a top vertex, -1 for a bottom vertex.
     let left_right = f32(vertex_idx % 2u) * 2.0 - 1.0; // 1 for a right vertex, -1 for a left vertex.
 
     // Span quad
-    var pos: Vec3;
+    var pos: vec3f;
     if is_camera_orthographic() || force_circle {
-        pos = circle_quad(point_pos, radius, top_bottom, left_right);
+        pos = circle_quad(point_pos, world_radius, top_bottom, left_right);
     } else {
-        pos = sphere_quad(point_pos, radius, top_bottom, left_right, to_camera, camera_distance);
+        let to_camera = frame.camera_position - point_pos;
+        let camera_distance = length(to_camera);
+        pos = sphere_quad(point_pos, world_radius, top_bottom, left_right, to_camera, camera_distance);
     }
 
-    return SphereQuadData(pos, radius);
+    return SphereQuadData(pos, world_radius);
 }
 
 /// Computes coverage of a 3D sphere placed at `sphere_center` in the fragment shader using the currently set camera.
-fn sphere_quad_coverage(world_position: Vec3, radius: f32, sphere_center: Vec3) -> f32 {
+fn sphere_quad_coverage(world_position: vec3f, radius: f32, sphere_center: vec3f) -> f32 {
     let ray = camera_ray_to_world_pos(world_position);
 
     // Sphere intersection with anti-aliasing as described by Iq here

@@ -23,6 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0 # we need full history
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Get context
@@ -128,28 +129,6 @@ jobs:
           path: /tmp/data.json
           destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.short_sha }}"
 
-      - name: Store result
-        if: github.ref == 'refs/heads/main'
-        # https://github.com/benchmark-action/github-action-benchmark
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Sizes
-          tool: customSmallerIsBetter
-          output-file-path: /tmp/data.json
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Show alert with commit on detecting possible size regression
-          comment-on-alert: true
-          alert-threshold: "110%"
-          fail-on-alert: false
-          comment-always: false
-
-          save-data-file: true
-          auto-push: true
-          gh-pages-branch: gh-pages
-          benchmark-data-dir-path: dev/sizes
-          max-items-in-chart: 30
-
       - name: Create index file
         if: github.ref == 'refs/heads/main'
         run: |
@@ -172,4 +151,32 @@ jobs:
             # Size changes
 
             ${{ steps.measure.outputs.comparison }}
+
+      - name: Alert on regression
+        if: github.ref == 'refs/heads/main'
+        # https://github.com/benchmark-action/github-action-benchmark
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Sizes
+          tool: customSmallerIsBetter
+          output-file-path: /tmp/data.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+          # Show alert with commit on detecting possible size regression
+          comment-on-alert: true
+          alert-threshold: "110%"
+          fail-on-alert: false
+          comment-always: false # Generates too much GitHub notification spam
+
+          # Don't push to gh-pages
+          save-data-file: false
+          auto-push: false
+
+      - name: Render benchmark result
+        if: github.ref == 'refs/heads/main'
+        run: |
+          python3 -m pip install google-cloud-storage==2.9.0
+          scripts/ci/render_bench.py sizes \
+            --after $(date -d"180 days ago" +%Y-%m-%d) \
+            --output "gs://rerun-builds/graphs"
 

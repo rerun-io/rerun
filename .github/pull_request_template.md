@@ -21,5 +21,5 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
 - [PR Build Summary](https://build.rerun.io/pr/{{ pr.number }})
 - [Docs preview](https://rerun.io/preview/{{ pr.commit }}/docs) <!--DOCS-PREVIEW-->
 - [Examples preview](https://rerun.io/preview/{{ pr.commit }}/examples) <!--EXAMPLES-PREVIEW-->
-- [Recent benchmark results](https://ref.rerun.io/dev/bench/)
-- [Wasm size tracking](https://ref.rerun.io/dev/sizes/)
+- [Recent benchmark results](https://build.rerun.io/graphs/crates.html)
+- [Wasm size tracking](https://build.rerun.io/graphs/sizes.html)
