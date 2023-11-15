@@ -75,6 +75,8 @@ impl TimeHistogramPerTimeline {
     }
 }
 
+// NOTE: This is only to let people know that this is in fact a [`StoreView`], so they A) don't try
+// to implement it on their own and B) don't try to register it.
 impl StoreView for TimeHistogramPerTimeline {
     #[inline]
     fn name(&self) -> String {
