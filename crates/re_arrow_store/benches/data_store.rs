@@ -357,7 +357,11 @@ fn insert_table(
     cluster_key: ComponentName,
     table: &DataTable,
 ) -> DataStore {
-    let mut store = DataStore::new(cluster_key, config);
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        cluster_key,
+        config,
+    );
     for row in table.to_rows() {
         store.insert_row(&row.unwrap()).unwrap();
     }

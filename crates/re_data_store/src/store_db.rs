@@ -35,13 +35,17 @@ pub struct EntityDb {
     pub data_store: DataStore,
 }
 
-impl Default for EntityDb {
-    fn default() -> Self {
+impl EntityDb {
+    pub fn new(store_id: StoreId) -> Self {
         Self {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
-            data_store: DataStore::new(InstanceKey::name(), DataStoreConfig::default()),
+            data_store: re_arrow_store::DataStore::new(
+                store_id,
+                InstanceKey::name(),
+                DataStoreConfig::default(),
+            ),
         }
     }
 }
@@ -331,10 +335,10 @@ pub struct StoreDb {
 impl StoreDb {
     pub fn new(store_id: StoreId) -> Self {
         Self {
-            store_id,
+            store_id: store_id.clone(),
             data_source: None,
             set_store_info: None,
-            entity_db: Default::default(),
+            entity_db: EntityDb::new(store_id),
             last_modified_at: web_time::Instant::now(),
         }
     }

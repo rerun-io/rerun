@@ -41,9 +41,21 @@ fn data_store_dump() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
         config.store_insert_ids = false;
 
-        let mut store1 = DataStore::new(InstanceKey::name(), config.clone());
-        let mut store2 = DataStore::new(InstanceKey::name(), config.clone());
-        let mut store3 = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store1 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
+        let mut store2 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
+        let mut store3 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
 
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);
 
@@ -137,8 +149,16 @@ fn data_store_dump_filtered() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
         config.store_insert_ids = false;
 
-        let mut store1 = DataStore::new(InstanceKey::name(), config.clone());
-        let mut store2 = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store1 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
+        let mut store2 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
 
         data_store_dump_filtered_impl(&mut store1, &mut store2);
 
@@ -271,7 +291,11 @@ fn data_store_dump_empty_column() {
     };
     config.store_insert_ids = false;
 
-    let mut store = DataStore::new(InstanceKey::name(), config);
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        config,
+    );
 
     data_store_dump_empty_column_impl(&mut store);
 }
