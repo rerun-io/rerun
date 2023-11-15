@@ -272,6 +272,11 @@ impl DataStore {
         }
     }
 
+    #[inline]
+    pub fn id(&self) -> &StoreId {
+        &self.id
+    }
+
     /// The column name used for storing insert requests' IDs alongside the data when manipulating
     /// dataframes.
     ///
