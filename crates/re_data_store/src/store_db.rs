@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreView};
+use re_arrow_store::{DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreSubscriber};
 use re_log_types::{
     ApplicationId, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg, RowId,
     SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,

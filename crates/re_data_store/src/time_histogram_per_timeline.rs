@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_arrow_store::{StoreEvent, StoreView};
+use re_arrow_store::{StoreEvent, StoreSubscriber};
 use re_log_types::{TimePoint, Timeline};
 
 // ---
@@ -75,12 +75,12 @@ impl TimeHistogramPerTimeline {
     }
 }
 
-// NOTE: This is only to let people know that this is in fact a [`StoreView`], so they A) don't try
+// NOTE: This is only to let people know that this is in fact a [`StoreSubscriber`], so they A) don't try
 // to implement it on their own and B) don't try to register it.
-impl StoreView for TimeHistogramPerTimeline {
+impl StoreSubscriber for TimeHistogramPerTimeline {
     #[inline]
     fn name(&self) -> String {
-        "rerun.store_view.TimeHistogramPerTimeline".into()
+        "rerun.store_subscriber.TimeHistogramPerTimeline".into()
     }
 
     #[inline]

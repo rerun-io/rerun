@@ -4,7 +4,7 @@ use ahash::HashSet;
 use itertools::Itertools;
 
 use nohash_hasher::IntMap;
-use re_arrow_store::{StoreDiff, StoreDiffKind, StoreEvent, StoreView};
+use re_arrow_store::{StoreDiff, StoreDiffKind, StoreEvent, StoreSubscriber};
 use re_log_types::{
     ComponentPath, EntityPath, EntityPathHash, EntityPathPart, RowId, TimeInt, TimePoint, Timeline,
 };
@@ -18,7 +18,7 @@ use crate::TimeHistogramPerTimeline;
 
 // ----------------------------------------------------------------------------
 
-/// A recursive, manually updated [`re_arrow_store::StoreView`] that maintains the entity hierarchy.
+/// A recursive, manually updated [`re_arrow_store::StoreSubscriber`] that maintains the entity hierarchy.
 pub struct EntityTree {
     /// Full path to the root of this tree.
     pub path: EntityPath,
@@ -50,11 +50,11 @@ pub struct EntityTree {
     pub time_histograms_per_component: BTreeMap<ComponentName, TimeHistogramPerTimeline>,
 }
 
-// NOTE: This is only to let people know that this is in fact a [`StoreView`], so they A) don't try
+// NOTE: This is only to let people know that this is in fact a [`StoreSubscriber`], so they A) don't try
 // to implement it on their own and B) don't try to register it.
-impl StoreView for EntityTree {
+impl StoreSubscriber for EntityTree {
     fn name(&self) -> String {
-        "rerun.store_views.EntityTree".into()
+        "rerun.store_subscribers.EntityTree".into()
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
