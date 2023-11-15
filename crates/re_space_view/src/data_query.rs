@@ -89,23 +89,6 @@ pub trait DataQuery {
     ) -> DataResult;
 }
 
-/// Helper function to iterate over all incremental [`EntityPath`]s from start to end, NOT including start itself.
-///
-/// For example `incremental_walk("foo", "foo/bar/baz")` returns: `["foo/bar", "foo/bar/baz"]`
-fn incremental_walk<'a>(
-    start: Option<&'_ EntityPath>,
-    end: &'a EntityPath,
-) -> impl Iterator<Item = EntityPath> + 'a {
-    re_tracing::profile_function!();
-    if start.map_or(true, |start| end.is_descendant_of(start)) {
-        let first_ind = start.map_or(0, |start| start.len() + 1);
-        let parts = end.as_slice();
-        itertools::Either::Left((first_ind..=end.len()).map(|i| EntityPath::from(&parts[0..i])))
-    } else {
-        itertools::Either::Right(std::iter::empty())
-    }
-}
-
 // ----------------------------------------------------------------------------
 // Implement the `DataQuery` interface for `SpaceViewContents`
 
@@ -154,7 +137,7 @@ impl DataQuery for SpaceViewContents {
             .collect();
 
         let mut resolved_properties = property_resolver.resolve_root_override(ctx);
-        for prefix in incremental_walk(None, entity_path) {
+        for prefix in EntityPath::incremental_walk(None, entity_path) {
             resolved_properties = resolved_properties.with_child(&entity_overrides.get(&prefix));
         }
 
@@ -190,7 +173,7 @@ impl DataBlueprintGroup {
 
         let mut group_resolved_properties = inherited.clone();
 
-        for prefix in incremental_walk(inherited_base, &group_path) {
+        for prefix in EntityPath::incremental_walk(inherited_base, &group_path) {
             if let Some(props) = overrides.get_opt(&prefix) {
                 group_resolved_properties = group_resolved_properties.with_child(props);
             }
@@ -212,7 +195,7 @@ impl DataBlueprintGroup {
 
                 let mut resolved_properties = group_resolved_properties.clone();
 
-                for prefix in incremental_walk(inherited_base, &entity_path) {
+                for prefix in EntityPath::incremental_walk(inherited_base, &entity_path) {
                     if let Some(props) = overrides.get_opt(&prefix) {
                         resolved_properties = resolved_properties.with_child(props);
                     }
@@ -261,42 +244,4 @@ impl DataBlueprintGroup {
             children,
         })
     }
-}
-
-// ----------------------------------------------------------------------------
-
-#[test]
-fn test_incremental_walk() {
-    assert_eq!(
-        incremental_walk(None, &EntityPath::root()).collect::<Vec<_>>(),
-        vec![EntityPath::root()]
-    );
-    assert_eq!(
-        incremental_walk(Some(&EntityPath::root()), &EntityPath::root()).collect::<Vec<_>>(),
-        vec![]
-    );
-    assert_eq!(
-        incremental_walk(None, &EntityPath::from("foo")).collect::<Vec<_>>(),
-        vec![EntityPath::root(), EntityPath::from("foo")]
-    );
-    assert_eq!(
-        incremental_walk(Some(&EntityPath::root()), &EntityPath::from("foo")).collect::<Vec<_>>(),
-        vec![EntityPath::from("foo")]
-    );
-    assert_eq!(
-        incremental_walk(None, &EntityPath::from("foo/bar")).collect::<Vec<_>>(),
-        vec![
-            EntityPath::root(),
-            EntityPath::from("foo"),
-            EntityPath::from("foo/bar")
-        ]
-    );
-    assert_eq!(
-        incremental_walk(
-            Some(&EntityPath::from("foo")),
-            &EntityPath::from("foo/bar/baz")
-        )
-        .collect::<Vec<_>>(),
-        vec![EntityPath::from("foo/bar"), EntityPath::from("foo/bar/baz")]
-    );
 }
