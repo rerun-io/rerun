@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.blueprint;
+
+// ---
+
+/// A set of expressions used for a `DataQueryBlueprint`.
+///
+/// Unstable. Used for the ongoing blueprint experimentations.
+table QueryExpressions (
+  "attr.rust.derive_only": "Clone",
+  "attr.rust.override_crate": "re_space_view"
+) {
+  /// A set of strings that can be parsed as `EntityPathExpression`s.
+  expressions: [string] (order: 100);
+}
