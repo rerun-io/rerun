@@ -3,8 +3,8 @@ use std::collections::{BTreeMap, BTreeSet};
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, DataResult, PerSystemEntities, SpaceViewId, ViewSystemName,
-    ViewerContext,
+    DataBlueprintGroupHandle, DataResult, EntitiesPerSystemPerClass, PerSystemEntities,
+    SpaceViewId, StoreContext, ViewSystemName,
 };
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
@@ -469,19 +469,20 @@ impl DataQuery for SpaceViewContents {
     fn execute_query(
         &self,
         property_resolver: &impl PropertyResolver,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreContext<'_>,
+        _entities_per_system_per_class: &EntitiesPerSystemPerClass,
     ) -> DataResultTree {
         re_tracing::profile_function!();
         let root_override = property_resolver.resolve_root_override(ctx);
         let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
-        let root_handle = self.root_group().add_to_data_results_recursive(
+        let root_handle = Some(self.root_group().add_to_data_results_recursive(
             self,
             &entity_overrides,
             None,
             &root_override,
             &mut data_results,
-        );
+        ));
         DataResultTree {
             data_results,
             root_handle,
@@ -491,7 +492,8 @@ impl DataQuery for SpaceViewContents {
     fn resolve(
         &self,
         property_resolver: &impl PropertyResolver,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreContext<'_>,
+        _entities_per_system_per_class: &EntitiesPerSystemPerClass,
         entity_path: &EntityPath,
     ) -> DataResult {
         re_tracing::profile_function!();
@@ -517,6 +519,7 @@ impl DataQuery for SpaceViewContents {
         DataResult {
             entity_path: entity_path.clone(),
             view_parts,
+            is_group: false,
             resolved_properties,
             override_path: self
                 .entity_path()
@@ -558,10 +561,9 @@ impl DataBlueprintGroup {
         let group_override_path = base_entity_path.join(&props_path).join(&group_path);
 
         // First build up the direct children
-        let mut children: BTreeSet<DataResultHandle> = self
+        let mut children: SmallVec<_> = self
             .entities
             .iter()
-            .filter(|entity| group_path != **entity)
             .cloned()
             .map(|entity_path| {
                 let view_parts = contents.view_parts_for_entity_path(&entity_path);
@@ -580,6 +582,7 @@ impl DataBlueprintGroup {
                     data_result: DataResult {
                         entity_path,
                         view_parts,
+                        is_group: false,
                         resolved_properties,
                         override_path,
                     },
@@ -589,7 +592,7 @@ impl DataBlueprintGroup {
             .collect();
 
         // And then append the recursive children
-        let mut recursive_children: BTreeSet<DataResultHandle> = self
+        let mut recursive_children: SmallVec<[DataResultHandle; 4]> = self
             .children
             .iter()
             .filter_map(|handle| {
@@ -611,6 +614,7 @@ impl DataBlueprintGroup {
             data_result: DataResult {
                 entity_path: group_path,
                 view_parts: group_view_parts,
+                is_group: true,
                 resolved_properties: group_resolved_properties,
                 override_path: group_override_path,
             },
@@ -618,3 +622,5 @@ impl DataBlueprintGroup {
         })
     }
 }
+
+// ----------------------------------------------------------------------------

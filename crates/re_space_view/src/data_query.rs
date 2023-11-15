@@ -1,8 +1,7 @@
-use std::collections::BTreeSet;
-
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataResult, ViewerContext};
+use re_viewer_context::{DataResult, EntitiesPerSystemPerClass, StoreContext};
 use slotmap::SlotMap;
+use smallvec::SmallVec;
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -12,13 +11,15 @@ slotmap::new_key_type! {
 /// A hierarchical tree of [`DataResult`]s
 pub struct DataResultTree {
     pub data_results: SlotMap<DataResultHandle, DataResultNode>,
-    pub root_handle: DataResultHandle,
+    pub root_handle: Option<DataResultHandle>,
 }
 
 impl DataResultTree {
     /// Depth-first traversal of the tree, calling `visitor` on each result.
     pub fn visit(&self, visitor: &mut impl FnMut(DataResultHandle)) {
-        self.visit_recursive(self.root_handle, visitor);
+        if let Some(root_handle) = self.root_handle {
+            self.visit_recursive(root_handle, visitor);
+        }
     }
 
     /// Look up a node in the tree based on its handle.
@@ -45,7 +46,7 @@ impl DataResultTree {
 #[derive(Debug)]
 pub struct DataResultNode {
     pub data_result: DataResult,
-    pub children: BTreeSet<DataResultHandle>,
+    pub children: SmallVec<[DataResultHandle; 4]>,
 }
 
 /// Trait for resolving properties needed by most implementations of [`DataQuery`]
@@ -53,8 +54,8 @@ pub struct DataResultNode {
 /// The `SpaceViewBlueprint` is the only thing that likely implements this today
 /// but we use a trait here so we don't have to pick up a full dependency on `re_viewport`.
 pub trait PropertyResolver {
-    fn resolve_entity_overrides(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap;
-    fn resolve_root_override(&self, ctx: &ViewerContext<'_>) -> EntityProperties;
+    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityPropertyMap;
+    fn resolve_root_override(&self, ctx: &StoreContext<'_>) -> EntityProperties;
 }
 
 /// The common trait implemented for data queries
@@ -70,7 +71,8 @@ pub trait DataQuery {
     fn execute_query(
         &self,
         property_resolver: &impl PropertyResolver,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreContext<'_>,
+        entities_per_system_per_class: &EntitiesPerSystemPerClass,
     ) -> DataResultTree;
 
     /// Find a single [`DataResult`] within the context of the query.
@@ -82,7 +84,8 @@ pub trait DataQuery {
     fn resolve(
         &self,
         property_resolver: &impl PropertyResolver,
-        ctx: &ViewerContext<'_>,
+        ctx: &StoreContext<'_>,
+        entities_per_system_per_class: &EntitiesPerSystemPerClass,
         entity_path: &EntityPath,
     ) -> DataResult;
 }

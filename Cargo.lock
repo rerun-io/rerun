@@ -4875,6 +4875,7 @@ dependencies = [
  "re_viewer_context",
  "rmp-serde",
  "serde",
+ "slotmap",
  "tinyvec",
 ]
 
