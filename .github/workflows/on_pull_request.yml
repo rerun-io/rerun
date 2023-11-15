@@ -158,7 +158,7 @@ jobs:
   run-notebook:
     name: "Run Notebook"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [min-wheel-test]
+    needs: [min-wheel-build]
     uses: ./.github/workflows/reusable_run_notebook.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
