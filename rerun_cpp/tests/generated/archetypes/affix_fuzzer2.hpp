@@ -23,7 +23,7 @@
 #include "../components/affix_fuzzer9.hpp"
 
 #include <cstdint>
-#include <rerun/component_batch.hpp>
+#include <rerun/collection.hpp>
 #include <rerun/data_cell.hpp>
 #include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
@@ -32,41 +32,41 @@
 
 namespace rerun::archetypes {
     struct AffixFuzzer2 {
-        ComponentBatch<rerun::components::AffixFuzzer1> fuzz1101;
+        Collection<rerun::components::AffixFuzzer1> fuzz1101;
 
-        ComponentBatch<rerun::components::AffixFuzzer2> fuzz1102;
+        Collection<rerun::components::AffixFuzzer2> fuzz1102;
 
-        ComponentBatch<rerun::components::AffixFuzzer3> fuzz1103;
+        Collection<rerun::components::AffixFuzzer3> fuzz1103;
 
-        ComponentBatch<rerun::components::AffixFuzzer4> fuzz1104;
+        Collection<rerun::components::AffixFuzzer4> fuzz1104;
 
-        ComponentBatch<rerun::components::AffixFuzzer5> fuzz1105;
+        Collection<rerun::components::AffixFuzzer5> fuzz1105;
 
-        ComponentBatch<rerun::components::AffixFuzzer6> fuzz1106;
+        Collection<rerun::components::AffixFuzzer6> fuzz1106;
 
-        ComponentBatch<rerun::components::AffixFuzzer7> fuzz1107;
+        Collection<rerun::components::AffixFuzzer7> fuzz1107;
 
-        ComponentBatch<rerun::components::AffixFuzzer8> fuzz1108;
+        Collection<rerun::components::AffixFuzzer8> fuzz1108;
 
-        ComponentBatch<rerun::components::AffixFuzzer9> fuzz1109;
+        Collection<rerun::components::AffixFuzzer9> fuzz1109;
 
-        ComponentBatch<rerun::components::AffixFuzzer10> fuzz1110;
+        Collection<rerun::components::AffixFuzzer10> fuzz1110;
 
-        ComponentBatch<rerun::components::AffixFuzzer11> fuzz1111;
+        Collection<rerun::components::AffixFuzzer11> fuzz1111;
 
-        ComponentBatch<rerun::components::AffixFuzzer12> fuzz1112;
+        Collection<rerun::components::AffixFuzzer12> fuzz1112;
 
-        ComponentBatch<rerun::components::AffixFuzzer13> fuzz1113;
+        Collection<rerun::components::AffixFuzzer13> fuzz1113;
 
-        ComponentBatch<rerun::components::AffixFuzzer14> fuzz1114;
+        Collection<rerun::components::AffixFuzzer14> fuzz1114;
 
-        ComponentBatch<rerun::components::AffixFuzzer15> fuzz1115;
+        Collection<rerun::components::AffixFuzzer15> fuzz1115;
 
-        ComponentBatch<rerun::components::AffixFuzzer16> fuzz1116;
+        Collection<rerun::components::AffixFuzzer16> fuzz1116;
 
-        ComponentBatch<rerun::components::AffixFuzzer17> fuzz1117;
+        Collection<rerun::components::AffixFuzzer17> fuzz1117;
 
-        ComponentBatch<rerun::components::AffixFuzzer18> fuzz1118;
+        Collection<rerun::components::AffixFuzzer18> fuzz1118;
 
         /// Name of the indicator component, used to identify the archetype when converting to a list of components.
         static const char INDICATOR_COMPONENT_NAME[];
@@ -78,24 +78,24 @@ namespace rerun::archetypes {
         AffixFuzzer2(AffixFuzzer2&& other) = default;
 
         explicit AffixFuzzer2(
-            ComponentBatch<rerun::components::AffixFuzzer1> _fuzz1101,
-            ComponentBatch<rerun::components::AffixFuzzer2> _fuzz1102,
-            ComponentBatch<rerun::components::AffixFuzzer3> _fuzz1103,
-            ComponentBatch<rerun::components::AffixFuzzer4> _fuzz1104,
-            ComponentBatch<rerun::components::AffixFuzzer5> _fuzz1105,
-            ComponentBatch<rerun::components::AffixFuzzer6> _fuzz1106,
-            ComponentBatch<rerun::components::AffixFuzzer7> _fuzz1107,
-            ComponentBatch<rerun::components::AffixFuzzer8> _fuzz1108,
-            ComponentBatch<rerun::components::AffixFuzzer9> _fuzz1109,
-            ComponentBatch<rerun::components::AffixFuzzer10> _fuzz1110,
-            ComponentBatch<rerun::components::AffixFuzzer11> _fuzz1111,
-            ComponentBatch<rerun::components::AffixFuzzer12> _fuzz1112,
-            ComponentBatch<rerun::components::AffixFuzzer13> _fuzz1113,
-            ComponentBatch<rerun::components::AffixFuzzer14> _fuzz1114,
-            ComponentBatch<rerun::components::AffixFuzzer15> _fuzz1115,
-            ComponentBatch<rerun::components::AffixFuzzer16> _fuzz1116,
-            ComponentBatch<rerun::components::AffixFuzzer17> _fuzz1117,
-            ComponentBatch<rerun::components::AffixFuzzer18> _fuzz1118
+            Collection<rerun::components::AffixFuzzer1> _fuzz1101,
+            Collection<rerun::components::AffixFuzzer2> _fuzz1102,
+            Collection<rerun::components::AffixFuzzer3> _fuzz1103,
+            Collection<rerun::components::AffixFuzzer4> _fuzz1104,
+            Collection<rerun::components::AffixFuzzer5> _fuzz1105,
+            Collection<rerun::components::AffixFuzzer6> _fuzz1106,
+            Collection<rerun::components::AffixFuzzer7> _fuzz1107,
+            Collection<rerun::components::AffixFuzzer8> _fuzz1108,
+            Collection<rerun::components::AffixFuzzer9> _fuzz1109,
+            Collection<rerun::components::AffixFuzzer10> _fuzz1110,
+            Collection<rerun::components::AffixFuzzer11> _fuzz1111,
+            Collection<rerun::components::AffixFuzzer12> _fuzz1112,
+            Collection<rerun::components::AffixFuzzer13> _fuzz1113,
+            Collection<rerun::components::AffixFuzzer14> _fuzz1114,
+            Collection<rerun::components::AffixFuzzer15> _fuzz1115,
+            Collection<rerun::components::AffixFuzzer16> _fuzz1116,
+            Collection<rerun::components::AffixFuzzer17> _fuzz1117,
+            Collection<rerun::components::AffixFuzzer18> _fuzz1118
         )
             : fuzz1101(std::move(_fuzz1101)),
               fuzz1102(std::move(_fuzz1102)),

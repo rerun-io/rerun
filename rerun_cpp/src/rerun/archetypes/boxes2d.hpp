@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"
@@ -45,19 +45,19 @@ namespace rerun::archetypes {
     /// ```
     struct Boxes2D {
         /// All half-extents that make up the batch of boxes.
-        ComponentBatch<rerun::components::HalfSizes2D> half_sizes;
+        Collection<rerun::components::HalfSizes2D> half_sizes;
 
         /// Optional center positions of the boxes.
-        std::optional<ComponentBatch<rerun::components::Position2D>> centers;
+        std::optional<Collection<rerun::components::Position2D>> centers;
 
         /// Optional colors for the boxes.
-        std::optional<ComponentBatch<rerun::components::Color>> colors;
+        std::optional<Collection<rerun::components::Color>> colors;
 
         /// Optional radii for the lines that make up the boxes.
-        std::optional<ComponentBatch<rerun::components::Radius>> radii;
+        std::optional<Collection<rerun::components::Radius>> radii;
 
         /// Optional text labels for the boxes.
-        std::optional<ComponentBatch<rerun::components::Text>> labels;
+        std::optional<Collection<rerun::components::Text>> labels;
 
         /// An optional floating point value that specifies the 2D drawing order.
         ///
@@ -69,10 +69,10 @@ namespace rerun::archetypes {
         /// Optional `ClassId`s for the boxes.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
+        std::optional<Collection<rerun::components::ClassId>> class_ids;
 
         /// Unique identifiers for each individual boxes in the batch.
-        std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
+        std::optional<Collection<rerun::components::InstanceKey>> instance_keys;
 
         /// Name of the indicator component, used to identify the archetype when converting to a list of components.
         static const char INDICATOR_COMPONENT_NAME[];
@@ -83,7 +83,7 @@ namespace rerun::archetypes {
         // Extensions to generated type defined in 'boxes2d_ext.cpp'
 
         /// Creates new `Boxes2D` with `half_sizes` centered around the local origin.
-        static Boxes2D from_half_sizes(ComponentBatch<components::HalfSizes2D> half_sizes) {
+        static Boxes2D from_half_sizes(Collection<components::HalfSizes2D> half_sizes) {
             Boxes2D boxes;
             boxes.half_sizes = std::move(half_sizes);
             return boxes;
@@ -91,8 +91,8 @@ namespace rerun::archetypes {
 
         /// Creates new `Boxes2D` with `centers` and `half_sizes`.
         static Boxes2D from_centers_and_half_sizes(
-            ComponentBatch<components::Position2D> centers,
-            ComponentBatch<components::HalfSizes2D> half_sizes
+            Collection<components::Position2D> centers,
+            Collection<components::HalfSizes2D> half_sizes
         ) {
             Boxes2D boxes;
             boxes.half_sizes = std::move(half_sizes);
@@ -112,8 +112,7 @@ namespace rerun::archetypes {
         /// TODO(#3285): Does *not* preserve data as-is and instead creates centers and half-sizes
         /// from the input data.
         static Boxes2D from_centers_and_sizes(
-            ComponentBatch<components::Position2D> centers,
-            const std::vector<datatypes::Vec2D>& sizes
+            Collection<components::Position2D> centers, const std::vector<datatypes::Vec2D>& sizes
         ) {
             Boxes2D boxes = from_sizes(std::move(sizes));
             boxes.centers = std::move(centers);
@@ -134,28 +133,28 @@ namespace rerun::archetypes {
         Boxes2D(Boxes2D&& other) = default;
 
         /// Optional center positions of the boxes.
-        Boxes2D with_centers(ComponentBatch<rerun::components::Position2D> _centers) && {
+        Boxes2D with_centers(Collection<rerun::components::Position2D> _centers) && {
             centers = std::move(_centers);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the boxes.
-        Boxes2D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
+        Boxes2D with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional radii for the lines that make up the boxes.
-        Boxes2D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
+        Boxes2D with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the boxes.
-        Boxes2D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
+        Boxes2D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -175,15 +174,14 @@ namespace rerun::archetypes {
         /// Optional `ClassId`s for the boxes.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        Boxes2D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
+        Boxes2D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Unique identifiers for each individual boxes in the batch.
-        Boxes2D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
-        ) && {
+        Boxes2D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys) && {
             instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

@@ -4,7 +4,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <rerun/as_components.hpp>
-#include <rerun/component_batch.hpp>
+#include <rerun/collection.hpp>
 #include <rerun/data_cell.hpp>
 
 template <typename T>

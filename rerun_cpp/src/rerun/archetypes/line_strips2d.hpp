@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/draw_order.hpp"
@@ -55,16 +55,16 @@ namespace rerun::archetypes {
     /// ```
     struct LineStrips2D {
         /// All the actual 2D line strips that make up the batch.
-        ComponentBatch<rerun::components::LineStrip2D> strips;
+        Collection<rerun::components::LineStrip2D> strips;
 
         /// Optional radii for the line strips.
-        std::optional<ComponentBatch<rerun::components::Radius>> radii;
+        std::optional<Collection<rerun::components::Radius>> radii;
 
         /// Optional colors for the line strips.
-        std::optional<ComponentBatch<rerun::components::Color>> colors;
+        std::optional<Collection<rerun::components::Color>> colors;
 
         /// Optional text labels for the line strips.
-        std::optional<ComponentBatch<rerun::components::Text>> labels;
+        std::optional<Collection<rerun::components::Text>> labels;
 
         /// An optional floating point value that specifies the 2D drawing order of each line strip.
         ///
@@ -74,10 +74,10 @@ namespace rerun::archetypes {
         /// Optional `ClassId`s for the lines.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
+        std::optional<Collection<rerun::components::ClassId>> class_ids;
 
         /// Unique identifiers for each individual line strip in the batch.
-        std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
+        std::optional<Collection<rerun::components::InstanceKey>> instance_keys;
 
         /// Name of the indicator component, used to identify the archetype when converting to a list of components.
         static const char INDICATOR_COMPONENT_NAME[];
@@ -88,25 +88,25 @@ namespace rerun::archetypes {
         LineStrips2D() = default;
         LineStrips2D(LineStrips2D&& other) = default;
 
-        explicit LineStrips2D(ComponentBatch<rerun::components::LineStrip2D> _strips)
+        explicit LineStrips2D(Collection<rerun::components::LineStrip2D> _strips)
             : strips(std::move(_strips)) {}
 
         /// Optional radii for the line strips.
-        LineStrips2D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
+        LineStrips2D with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the line strips.
-        LineStrips2D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
+        LineStrips2D with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the line strips.
-        LineStrips2D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
+        LineStrips2D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -124,15 +124,14 @@ namespace rerun::archetypes {
         /// Optional `ClassId`s for the lines.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        LineStrips2D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
+        LineStrips2D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Unique identifiers for each individual line strip in the batch.
-        LineStrips2D with_instance_keys(
-            ComponentBatch<rerun::components::InstanceKey> _instance_keys
+        LineStrips2D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys
         ) && {
             instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027

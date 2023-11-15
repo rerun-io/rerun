@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
 #include "../components/out_of_tree_transform3d.hpp"

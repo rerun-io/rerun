@@ -346,7 +346,7 @@ impl QuotedObject {
         let quoted_docs = quote_obj_docs(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone());
-        cpp_includes.insert_rerun("component_batch_adapter_builtins.hpp");
+        cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
 
@@ -1342,7 +1342,7 @@ fn component_to_data_cell_method(type_ident: &Ident, hpp_includes: &mut Includes
 
 fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Includes) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
-    hpp_includes.insert_rerun("component_batch.hpp");
+    hpp_includes.insert_rerun("collection.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
     let num_fields = quote_integer(obj.fields.len());
@@ -1350,7 +1350,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         let field_name = format_ident!("{}", field.name);
         let field_accessor = quote!(archetype.#field_name);
 
-        // TODO(andreas): Introducing MonoComponentBatch will remove the need for this.
+        // TODO(andreas): Introducing MonoCollection will remove the need for this.
         let wrapping_type = if field.typ.is_plural() {
             quote!()
         } else {
@@ -1361,7 +1361,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
                     .fqname()
                     .expect("Archetypes only have components and vectors of components."),
             );
-            quote!(ComponentBatch<#field_type>)
+            quote!(Collection<#field_type>)
         };
 
         if field.is_nullable {
@@ -1399,7 +1399,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #NEWLINE_TOKEN
             #(#push_batches)*
             {
-                auto result = ComponentBatch<#type_ident::IndicatorComponent>(#type_ident::IndicatorComponent()).serialize();
+                auto result = Collection<#type_ident::IndicatorComponent>(#type_ident::IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
@@ -1924,13 +1924,13 @@ fn are_types_disjoint(fields: &[ObjectField]) -> bool {
 fn quote_archetype_field_type(hpp_includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
     match &obj_field.typ {
         Type::Vector { elem_type } => {
-            hpp_includes.insert_rerun("component_batch.hpp");
+            hpp_includes.insert_rerun("collection.hpp");
             let elem_type = quote_element_type(hpp_includes, elem_type);
-            quote! { ComponentBatch<#elem_type> }
+            quote! { Collection<#elem_type> }
         }
-        // TODO(andreas): This should emit `MonoComponentBatch` which will be a constrained version of `ComponentBatch`.
-        // (simply adapting `MonoComponentBatch` breaks some existing code, so this not entirely trivial to do.
-        //  Designing constraints for `MonoComponentBatch` is harder still)
+        // TODO(andreas): This should emit `MonoCollection` which will be a constrained version of `Collection`.
+        // (simply adapting `MonoCollection` breaks some existing code, so this not entirely trivial to do.
+        //  Designing constraints for `MonoCollection` is harder still)
         Type::Object(fqname) => quote_fqname_as_type_path(hpp_includes, fqname),
         _ => panic!("Only vectors and objects are allowed in archetypes."),
     }

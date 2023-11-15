@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
@@ -64,32 +64,32 @@ namespace rerun::archetypes {
     /// ```
     struct Arrows3D {
         /// All the vectors for each arrow in the batch.
-        ComponentBatch<rerun::components::Vector3D> vectors;
+        Collection<rerun::components::Vector3D> vectors;
 
         /// All the origin (base) positions for each arrow in the batch.
         ///
         /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
-        std::optional<ComponentBatch<rerun::components::Position3D>> origins;
+        std::optional<Collection<rerun::components::Position3D>> origins;
 
         /// Optional radii for the arrows.
         ///
         /// The shaft is rendered as a line with `radius = 0.5 * radius`.
         /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
-        std::optional<ComponentBatch<rerun::components::Radius>> radii;
+        std::optional<Collection<rerun::components::Radius>> radii;
 
         /// Optional colors for the points.
-        std::optional<ComponentBatch<rerun::components::Color>> colors;
+        std::optional<Collection<rerun::components::Color>> colors;
 
         /// Optional text labels for the arrows.
-        std::optional<ComponentBatch<rerun::components::Text>> labels;
+        std::optional<Collection<rerun::components::Text>> labels;
 
         /// Optional class Ids for the points.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
+        std::optional<Collection<rerun::components::ClassId>> class_ids;
 
         /// Unique identifiers for each individual point in the batch.
-        std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
+        std::optional<Collection<rerun::components::InstanceKey>> instance_keys;
 
         /// Name of the indicator component, used to identify the archetype when converting to a list of components.
         static const char INDICATOR_COMPONENT_NAME[];
@@ -101,7 +101,7 @@ namespace rerun::archetypes {
 
         /// Creates new 3D arrows pointing in the given directions, with a base at the origin (0, 0,
         /// 0).
-        static Arrows3D from_vectors(ComponentBatch<components::Vector3D> vectors_) {
+        static Arrows3D from_vectors(Collection<components::Vector3D> vectors_) {
             Arrows3D arrows;
             arrows.vectors = std::move(vectors_);
             return arrows;
@@ -114,7 +114,7 @@ namespace rerun::archetypes {
         /// All the origin (base) positions for each arrow in the batch.
         ///
         /// If no origins are set, (0, 0, 0) is used as the origin for each arrow.
-        Arrows3D with_origins(ComponentBatch<rerun::components::Position3D> _origins) && {
+        Arrows3D with_origins(Collection<rerun::components::Position3D> _origins) && {
             origins = std::move(_origins);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -124,21 +124,21 @@ namespace rerun::archetypes {
         ///
         /// The shaft is rendered as a line with `radius = 0.5 * radius`.
         /// The tip is rendered with `height = 2.0 * radius` and `radius = 1.0 * radius`.
-        Arrows3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
+        Arrows3D with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the points.
-        Arrows3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
+        Arrows3D with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the arrows.
-        Arrows3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
+        Arrows3D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -147,15 +147,14 @@ namespace rerun::archetypes {
         /// Optional class Ids for the points.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        Arrows3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
+        Arrows3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Unique identifiers for each individual point in the batch.
-        Arrows3D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
-        ) && {
+        Arrows3D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys) && {
             instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

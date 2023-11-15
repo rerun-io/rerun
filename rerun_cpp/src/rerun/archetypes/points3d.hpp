@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
@@ -66,21 +66,21 @@ namespace rerun::archetypes {
     /// ```
     struct Points3D {
         /// All the 3D positions at which the point cloud shows points.
-        ComponentBatch<rerun::components::Position3D> positions;
+        Collection<rerun::components::Position3D> positions;
 
         /// Optional radii for the points, effectively turning them into circles.
-        std::optional<ComponentBatch<rerun::components::Radius>> radii;
+        std::optional<Collection<rerun::components::Radius>> radii;
 
         /// Optional colors for the points.
-        std::optional<ComponentBatch<rerun::components::Color>> colors;
+        std::optional<Collection<rerun::components::Color>> colors;
 
         /// Optional text labels for the points.
-        std::optional<ComponentBatch<rerun::components::Text>> labels;
+        std::optional<Collection<rerun::components::Text>> labels;
 
         /// Optional class Ids for the points.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        std::optional<ComponentBatch<rerun::components::ClassId>> class_ids;
+        std::optional<Collection<rerun::components::ClassId>> class_ids;
 
         /// Optional keypoint IDs for the points, identifying them within a class.
         ///
@@ -90,10 +90,10 @@ namespace rerun::archetypes {
         /// with `class_id`).
         /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
         /// detected skeleton.
-        std::optional<ComponentBatch<rerun::components::KeypointId>> keypoint_ids;
+        std::optional<Collection<rerun::components::KeypointId>> keypoint_ids;
 
         /// Unique identifiers for each individual point in the batch.
-        std::optional<ComponentBatch<rerun::components::InstanceKey>> instance_keys;
+        std::optional<Collection<rerun::components::InstanceKey>> instance_keys;
 
         /// Name of the indicator component, used to identify the archetype when converting to a list of components.
         static const char INDICATOR_COMPONENT_NAME[];
@@ -104,25 +104,25 @@ namespace rerun::archetypes {
         Points3D() = default;
         Points3D(Points3D&& other) = default;
 
-        explicit Points3D(ComponentBatch<rerun::components::Position3D> _positions)
+        explicit Points3D(Collection<rerun::components::Position3D> _positions)
             : positions(std::move(_positions)) {}
 
         /// Optional radii for the points, effectively turning them into circles.
-        Points3D with_radii(ComponentBatch<rerun::components::Radius> _radii) && {
+        Points3D with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the points.
-        Points3D with_colors(ComponentBatch<rerun::components::Color> _colors) && {
+        Points3D with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the points.
-        Points3D with_labels(ComponentBatch<rerun::components::Text> _labels) && {
+        Points3D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -131,7 +131,7 @@ namespace rerun::archetypes {
         /// Optional class Ids for the points.
         ///
         /// The class ID provides colors and labels if not specified explicitly.
-        Points3D with_class_ids(ComponentBatch<rerun::components::ClassId> _class_ids) && {
+        Points3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
@@ -145,15 +145,14 @@ namespace rerun::archetypes {
         /// with `class_id`).
         /// E.g. the classification might be 'Person' and the keypoints refer to joints on a
         /// detected skeleton.
-        Points3D with_keypoint_ids(ComponentBatch<rerun::components::KeypointId> _keypoint_ids) && {
+        Points3D with_keypoint_ids(Collection<rerun::components::KeypointId> _keypoint_ids) && {
             keypoint_ids = std::move(_keypoint_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Unique identifiers for each individual point in the batch.
-        Points3D with_instance_keys(ComponentBatch<rerun::components::InstanceKey> _instance_keys
-        ) && {
+        Points3D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys) && {
             instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027
             WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

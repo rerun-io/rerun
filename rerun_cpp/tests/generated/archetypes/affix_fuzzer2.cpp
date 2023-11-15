@@ -3,7 +3,7 @@
 
 #include "affix_fuzzer2.hpp"
 
-#include <rerun/component_batch_adapter_builtins.hpp>
+#include <rerun/collection_adapter_builtins.hpp>
 
 namespace rerun::archetypes {
     const char AffixFuzzer2::INDICATOR_COMPONENT_NAME[] =
@@ -111,7 +111,7 @@ namespace rerun {
         }
         {
             auto result =
-                ComponentBatch<AffixFuzzer2::IndicatorComponent>(AffixFuzzer2::IndicatorComponent())
+                Collection<AffixFuzzer2::IndicatorComponent>(AffixFuzzer2::IndicatorComponent())
                     .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));

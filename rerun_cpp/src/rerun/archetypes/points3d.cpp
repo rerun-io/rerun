@@ -3,7 +3,7 @@
 
 #include "points3d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
 
 namespace rerun::archetypes {
     const char Points3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points3DIndicator";
@@ -54,9 +54,8 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result =
-                ComponentBatch<Points3D::IndicatorComponent>(Points3D::IndicatorComponent())
-                    .serialize();
+            auto result = Collection<Points3D::IndicatorComponent>(Points3D::IndicatorComponent())
+                              .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
