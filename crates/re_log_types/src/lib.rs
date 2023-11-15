@@ -360,35 +360,6 @@ impl std::fmt::Display for StoreSource {
     }
 }
 
-// ----------------------------------------------------------------------------
-
-/// Operation to perform on an [`EntityPath`], e.g. clearing all components.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum PathOp {
-    /// Clear all the components stored at an [`EntityPath`]
-    ClearComponents(EntityPath),
-
-    /// Clear all the components of an `[EntityPath]` and any descendants.
-    ClearRecursive(EntityPath),
-}
-
-impl PathOp {
-    pub fn clear(recursive: bool, entity_path: EntityPath) -> Self {
-        if recursive {
-            PathOp::ClearRecursive(entity_path)
-        } else {
-            PathOp::ClearComponents(entity_path)
-        }
-    }
-
-    pub fn entity_path(&self) -> &EntityPath {
-        match &self {
-            PathOp::ClearComponents(path) | PathOp::ClearRecursive(path) => path,
-        }
-    }
-}
-
 // ---
 
 /// Build a ([`Timeline`], [`TimeInt`]) tuple from `log_time` suitable for inserting in a [`TimePoint`].

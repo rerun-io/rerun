@@ -185,13 +185,14 @@ impl DataStore {
             }
         }
 
-        let mut diff = StoreDiff::addition(*row_id, ent_path.clone())
+        let diff = StoreDiff::addition(*row_id, ent_path.clone())
             .at_timepoint(timepoint.clone())
             .with_cells(cells.iter().cloned());
 
-        if let Some(cell) = generated_cluster_cell {
-            diff = diff.with_cells([cell]);
-        }
+        // TODO(#4220): should we fire for auto-generated data?
+        // if let Some(cell) = generated_cluster_cell {
+        //     diff = diff.with_cells([cell]);
+        // }
 
         let event = StoreEvent {
             store_id: self.id.clone(),

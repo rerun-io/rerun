@@ -487,14 +487,9 @@ fn time_histograms() -> anyhow::Result<()> {
                     &timeline_frame,
                     Some(&[
                         (RangeI64::new(42, 42), 5),
-                        // TODO(cmc): This is wrong, it should be `4`.
-                        //
                         // We're clearing the parent's `InstanceKey` as well as the grandchild's
                         // `MyPoint`, `MyColor` and `InstanceKey`. That's four.
-                        //
-                        // I have no idea where the extra increment comes from, but it doesn't
-                        // really matter, the new event-driven EntityTree fixes it.
-                        (RangeI64::new(1000, 1000), 5),
+                        (RangeI64::new(1000, 1000), 4),
                         (RangeI64::new(1234, 1234), 3),
                     ]),
                 ),

@@ -16,9 +16,8 @@ pub struct TimeHistogramPerTimeline {
     /// When do we have data? Ignores timeless.
     times: BTreeMap<Timeline, TimeHistogram>,
 
-    // TODO(cmc): pub(crate) is temporary while we turn StoreDb/EntityDb/EntityTree into event subscribers.
     /// Extra book-keeping used to seed any timelines that include timeless msgs.
-    pub(crate) num_timeless_messages: u64,
+    num_timeless_messages: u64,
 }
 
 impl TimeHistogramPerTimeline {
@@ -42,46 +41,42 @@ impl TimeHistogramPerTimeline {
         self.times.iter()
     }
 
-    // TODO(cmc): temporary while we turn StoreDb/EntityDb/EntityTree into event subscribers.
-    #[inline]
-    pub fn iter_mut(&mut self) -> impl ExactSizeIterator<Item = (&Timeline, &mut TimeHistogram)> {
-        self.times.iter_mut()
-    }
-
     #[inline]
     pub fn num_timeless_messages(&self) -> u64 {
         self.num_timeless_messages
     }
 
-    pub fn add(&mut self, timepoint: &TimePoint) {
+    pub fn add(&mut self, timepoint: &TimePoint, n: u32) {
         // If the `timepoint` is timeless…
         if timepoint.is_timeless() {
-            self.num_timeless_messages += 1;
+            self.num_timeless_messages += n as u64;
         } else {
             for (timeline, time_value) in timepoint.iter() {
                 self.times
                     .entry(*timeline)
                     .or_default()
-                    .increment(time_value.as_i64(), 1);
+                    .increment(time_value.as_i64(), n);
             }
         }
     }
 
-    pub fn remove(&mut self, timepoint: &TimePoint) {
+    pub fn remove(&mut self, timepoint: &TimePoint, n: u32) {
         // If the `timepoint` is timeless…
         if timepoint.is_timeless() {
-            self.num_timeless_messages -= 1;
+            self.num_timeless_messages -= n as u64;
         } else {
             for (timeline, time_value) in timepoint.iter() {
                 self.times
                     .entry(*timeline)
                     .or_default()
-                    .decrement(time_value.as_i64(), 1);
+                    .decrement(time_value.as_i64(), n);
             }
         }
     }
 }
 
+// NOTE: This is only to let people know that this is in fact a [`StoreView`], so they A) don't try
+// to implement it on their own and B) don't try to register it.
 impl StoreView for TimeHistogramPerTimeline {
     #[inline]
     fn name(&self) -> String {
