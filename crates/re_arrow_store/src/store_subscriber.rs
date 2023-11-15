@@ -137,17 +137,15 @@ impl DataStore {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
     use ahash::HashSet;
 
     use re_log_types::{
-        example_components::{MyColor, MyPoint, MyPoints},
-        DataRow, DataTable, EntityPath, RowId, StoreId, TableId, Time, TimePoint, Timeline,
+        example_components::{MyColor, MyPoint},
+        DataRow, RowId, StoreId, TimePoint, Timeline,
     };
     use re_types_core::{components::InstanceKey, Loggable as _};
 
-    use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber, StoreSubscriberHandle};
+    use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber};
 
     use super::*;
 
@@ -265,7 +263,6 @@ mod tests {
         expected_events.extend(store2.gc(GarbageCollectionOptions::gc_everything()).0);
 
         DataStore::with_subscriber::<AllEvents, _, _>(view_handle, |got| {
-            dbg!(got.events.iter().map(|e| e.row_id).collect::<Vec<_>>());
             similar_asserts::assert_eq!(expected_events.len(), got.events.len());
             similar_asserts::assert_eq!(expected_events, got.events);
         });

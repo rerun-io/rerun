@@ -236,12 +236,12 @@ mod tests {
     use std::collections::BTreeMap;
 
     use re_log_types::{
-        example_components::{MyColor, MyPoint, MyPoints},
-        DataRow, DataTable, RowId, TableId, Time, TimePoint, Timeline,
+        example_components::{MyColor, MyPoint},
+        DataRow, RowId, TimePoint, Timeline,
     };
     use re_types_core::{components::InstanceKey, Loggable as _};
 
-    use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber, StoreSubscriberHandle};
+    use crate::{DataStore, GarbageCollectionOptions};
 
     use super::*;
 
