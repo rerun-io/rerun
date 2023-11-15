@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/disconnected_space.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"

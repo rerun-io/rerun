@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/color.hpp"
 #include "../components/radius.hpp"
 #include "../components/scalar.hpp"

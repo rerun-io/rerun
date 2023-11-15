@@ -3,7 +3,7 @@
 #include "data_cell.hpp"
 
 namespace rerun {
-    /// A `ComponentBatch` serialized using Apache Arrow.
+    /// A `Collection` serialized using Apache Arrow.
     struct SerializedComponentBatch {
         SerializedComponentBatch() = default;
 
