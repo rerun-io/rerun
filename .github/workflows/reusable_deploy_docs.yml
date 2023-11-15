@@ -104,6 +104,7 @@ jobs:
 
   rs-deploy-docs:
     name: Rust
+    needs: [py-deploy-docs]
     runs-on: ubuntu-latest-16-cores
     container:
       image: rerunio/ci_docker:0.10.0
@@ -167,6 +168,7 @@ jobs:
 
   cpp-deploy-docs:
     name: Cpp
+    needs: [rs-deploy-docs]
     runs-on: ubuntu-latest
     steps:
       - name: Show context
@@ -232,3 +234,4 @@ jobs:
           vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
           release_commit: ${{ inputs.RELEASE_COMMIT }}
+
