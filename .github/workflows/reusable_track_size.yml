@@ -23,6 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0 # we need full history
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
       - name: Get context
@@ -172,6 +173,7 @@ jobs:
           auto-push: false
 
       - name: Render benchmark result
+        if: github.ref == 'refs/heads/main'
         run: |
           python3 -m pip install google-cloud-storage==2.9.0
           scripts/ci/render_bench.py sizes \
