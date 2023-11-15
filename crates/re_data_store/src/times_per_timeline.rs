@@ -60,21 +60,16 @@ impl StoreSubscriber for TimesPerTimeline {
 
                 let delta = event.delta();
 
-                #[allow(clippy::collapsible_else_if)] // readability
                 if delta < 0 {
-                    if let Some(new) = count.checked_sub(delta.unsigned_abs()) {
-                        *count = new;
-                    } else {
+                    *count = count.checked_sub(delta.unsigned_abs()).unwrap_or_else(|| {
                         re_log::warn_once!("Time counter underflowed, store events are bugged!");
-                        *count = 0;
-                    }
+                        0
+                    });
                 } else {
-                    if let Some(new) = count.checked_add(delta.unsigned_abs()) {
-                        *count = new;
-                    } else {
+                    *count = count.checked_add(delta.unsigned_abs()).unwrap_or_else(|| {
                         re_log::warn_once!("Time counter overflowed, store events are bugged!");
-                        *count = u64::MAX;
-                    }
+                        u64::MAX
+                    });
                 }
 
                 if *count == 0 {
