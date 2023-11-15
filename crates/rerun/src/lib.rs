@@ -132,12 +132,25 @@ pub use run::{run, CallSource};
 #[cfg(feature = "sdk")]
 pub use sdk::*;
 
+/// Everything needed to build custom `StoreView`s.
+pub use re_data_store::external::re_arrow_store::{
+    DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreView,
+};
+
 /// Re-exports of other crates.
 pub mod external {
     pub use anyhow;
 
+    pub use re_build_info;
+    pub use re_data_store;
+    pub use re_data_store::external::*;
+    pub use re_format;
+
     #[cfg(all(feature = "sdk", not(target_arch = "wasm32")))]
     pub use clap;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub use tokio;
 
     #[cfg(feature = "native_viewer")]
     pub use re_viewer;
