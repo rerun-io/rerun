@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../component_batch.hpp"
+#include "../collection.hpp"
 #include "../components/transform3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"

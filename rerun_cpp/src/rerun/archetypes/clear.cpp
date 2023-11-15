@@ -3,7 +3,7 @@
 
 #include "clear.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
 
 namespace rerun::archetypes {
     const char Clear::INDICATOR_COMPONENT_NAME[] = "rerun.components.ClearIndicator";
@@ -20,14 +20,13 @@ namespace rerun {
 
         {
             auto result =
-                ComponentBatch<rerun::components::ClearIsRecursive>(archetype.is_recursive)
-                    .serialize();
+                Collection<rerun::components::ClearIsRecursive>(archetype.is_recursive).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
             auto result =
-                ComponentBatch<Clear::IndicatorComponent>(Clear::IndicatorComponent()).serialize();
+                Collection<Clear::IndicatorComponent>(Clear::IndicatorComponent()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

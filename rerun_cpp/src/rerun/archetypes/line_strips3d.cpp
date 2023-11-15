@@ -3,7 +3,7 @@
 
 #include "line_strips3d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
 
 namespace rerun::archetypes {
     const char LineStrips3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.LineStrips3DIndicator";
@@ -50,7 +50,7 @@ namespace rerun {
         }
         {
             auto result =
-                ComponentBatch<LineStrips3D::IndicatorComponent>(LineStrips3D::IndicatorComponent())
+                Collection<LineStrips3D::IndicatorComponent>(LineStrips3D::IndicatorComponent())
                     .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));

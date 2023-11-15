@@ -48,34 +48,34 @@ inline Point3DInput prepare_points3d(int64_t lcg_state, size_t num_points) {
 // TODO(andreas): We want this adapter in rerun, ideally in a generated manner.
 //                Can we do something like a `binary compatible` attribute on fbs that will generate this as well as ctors?
 template <>
-struct rerun::ComponentBatchAdapter<rerun::Color, std::vector<uint32_t>> {
-    ComponentBatch<Color> operator()(const std::vector<uint32_t>& container) {
-        return ComponentBatch<Color>::borrow(container.data(), container.size());
+struct rerun::CollectionAdapter<rerun::Color, std::vector<uint32_t>> {
+    Collection<Color> operator()(const std::vector<uint32_t>& container) {
+        return Collection<Color>::borrow(container.data(), container.size());
     }
 
-    ComponentBatch<Color> operator()(std::vector<uint32_t>&&) {
+    Collection<Color> operator()(std::vector<uint32_t>&&) {
         throw std::runtime_error("Not implemented for temporaries");
     }
 };
 
 template <>
-struct rerun::ComponentBatchAdapter<rerun::Position3D, std::vector<MyPoint3D>> {
-    ComponentBatch<rerun::Position3D> operator()(const std::vector<MyPoint3D>& container) {
-        return ComponentBatch<rerun::Position3D>::borrow(container.data(), container.size());
+struct rerun::CollectionAdapter<rerun::Position3D, std::vector<MyPoint3D>> {
+    Collection<rerun::Position3D> operator()(const std::vector<MyPoint3D>& container) {
+        return Collection<rerun::Position3D>::borrow(container.data(), container.size());
     }
 
-    ComponentBatch<rerun::Position3D> operator()(std::vector<MyPoint3D>&&) {
+    Collection<rerun::Position3D> operator()(std::vector<MyPoint3D>&&) {
         throw std::runtime_error("Not implemented for temporaries");
     }
 };
 
 template <>
-struct rerun::ComponentBatchAdapter<rerun::Position3D, MyPoint3D> {
-    ComponentBatch<rerun::Position3D> operator()(const MyPoint3D& single) {
-        return ComponentBatch<rerun::Position3D>::borrow(&single, 1);
+struct rerun::CollectionAdapter<rerun::Position3D, MyPoint3D> {
+    Collection<rerun::Position3D> operator()(const MyPoint3D& single) {
+        return Collection<rerun::Position3D>::borrow(&single, 1);
     }
 
-    ComponentBatch<rerun::Position3D> operator()(MyPoint3D&&) {
+    Collection<rerun::Position3D> operator()(MyPoint3D&&) {
         throw std::runtime_error("Not implemented for temporaries");
     }
 };

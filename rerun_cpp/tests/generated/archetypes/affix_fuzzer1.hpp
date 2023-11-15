@@ -26,7 +26,7 @@
 #include "../components/affix_fuzzer9.hpp"
 
 #include <cstdint>
-#include <rerun/component_batch.hpp>
+#include <rerun/collection.hpp>
 #include <rerun/data_cell.hpp>
 #include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>

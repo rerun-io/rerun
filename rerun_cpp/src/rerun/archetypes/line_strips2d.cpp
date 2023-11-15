@@ -3,7 +3,7 @@
 
 #include "line_strips2d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
 
 namespace rerun::archetypes {
     const char LineStrips2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.LineStrips2DIndicator";
@@ -39,8 +39,8 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result = ComponentBatch<rerun::components::DrawOrder>(archetype.draw_order.value())
-                              .serialize();
+            auto result =
+                Collection<rerun::components::DrawOrder>(archetype.draw_order.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
@@ -56,7 +56,7 @@ namespace rerun {
         }
         {
             auto result =
-                ComponentBatch<LineStrips2D::IndicatorComponent>(LineStrips2D::IndicatorComponent())
+                Collection<LineStrips2D::IndicatorComponent>(LineStrips2D::IndicatorComponent())
                     .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));

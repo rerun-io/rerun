@@ -3,7 +3,7 @@
 
 #include "boxes2d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
 
 namespace rerun::archetypes {
     const char Boxes2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Boxes2DIndicator";
@@ -44,8 +44,8 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result = ComponentBatch<rerun::components::DrawOrder>(archetype.draw_order.value())
-                              .serialize();
+            auto result =
+                Collection<rerun::components::DrawOrder>(archetype.draw_order.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
@@ -60,8 +60,8 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = ComponentBatch<Boxes2D::IndicatorComponent>(Boxes2D::IndicatorComponent())
-                              .serialize();
+            auto result =
+                Collection<Boxes2D::IndicatorComponent>(Boxes2D::IndicatorComponent()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

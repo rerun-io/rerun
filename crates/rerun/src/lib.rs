@@ -132,9 +132,9 @@ pub use run::{run, CallSource};
 #[cfg(feature = "sdk")]
 pub use sdk::*;
 
-/// Everything needed to build custom `StoreView`s.
+/// Everything needed to build custom `StoreSubscriber`s.
 pub use re_data_store::external::re_arrow_store::{
-    DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreView,
+    DataStore, StoreDiff, StoreDiffKind, StoreEvent, StoreGeneration, StoreSubscriber,
 };
 
 /// Re-exports of other crates.

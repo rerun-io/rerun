@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "as_components.hpp"
-#include "component_batch.hpp"
+#include "collection.hpp"
 #include "error.hpp"
 #include "spawn_options.hpp"
 
@@ -312,16 +312,16 @@ namespace rerun {
         /// Any failures that may occur during serialization are handled with `Error::handle`.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// \param archetypes_or_collectiones Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         ///
         /// @see try_log, log_timeless, try_log_with_timeless
         template <typename... Ts>
-        void log(std::string_view entity_path, const Ts&... archetypes_or_component_batches) const {
+        void log(std::string_view entity_path, const Ts&... archetypes_or_collectiones) const {
             if (!is_enabled()) {
                 return;
             }
-            try_log_with_timeless(entity_path, false, archetypes_or_component_batches...).handle();
+            try_log_with_timeless(entity_path, false, archetypes_or_collectiones...).handle();
         }
 
         /// Logs one or more archetype and/or component batches as timeless data.
@@ -333,18 +333,17 @@ namespace rerun {
         /// Failures are handled with `Error::handle`.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// \param archetypes_or_collectiones Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         ///
         /// @see log, try_log_timeless, try_log_with_timeless
         template <typename... Ts>
-        void log_timeless(
-            std::string_view entity_path, const Ts&... archetypes_or_component_batches
-        ) const {
+        void log_timeless(std::string_view entity_path, const Ts&... archetypes_or_collectiones)
+            const {
             if (!is_enabled()) {
                 return;
             }
-            try_log_with_timeless(entity_path, true, archetypes_or_component_batches...).handle();
+            try_log_with_timeless(entity_path, true, archetypes_or_collectiones...).handle();
         }
 
         /// Logs one or more archetype and/or component batches.
@@ -353,17 +352,16 @@ namespace rerun {
         /// Unlike `log` this method returns an error if an error occurs during serialization or logging.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// \param archetypes_or_collectiones Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         ///
         /// @see log, try_log_timeless, try_log_with_timeless
         template <typename... Ts>
-        Error try_log(std::string_view entity_path, const Ts&... archetypes_or_component_batches)
-            const {
+        Error try_log(std::string_view entity_path, const Ts&... archetypes_or_collectiones) const {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            return try_log_with_timeless(entity_path, false, archetypes_or_component_batches...);
+            return try_log_with_timeless(entity_path, false, archetypes_or_collectiones...);
         }
 
         /// Logs one or more archetype and/or component batches as timeless data, returning an error.
@@ -372,19 +370,19 @@ namespace rerun {
         /// Unlike `log_timeless` this method returns if an error occurs during serialization or logging.
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
-        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// \param archetypes_or_collectiones Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         /// \returns An error if an error occurs during serialization or logging.
         ///
         /// @see log_timeless, try_log, try_log_with_timeless
         template <typename... Ts>
         Error try_log_timeless(
-            std::string_view entity_path, const Ts&... archetypes_or_component_batches
+            std::string_view entity_path, const Ts&... archetypes_or_collectiones
         ) const {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            return try_log_with_timeless(entity_path, true, archetypes_or_component_batches...);
+            return try_log_with_timeless(entity_path, true, archetypes_or_collectiones...);
         }
 
         /// Logs one or more archetype and/or component batches optionally timeless, returning an error.
@@ -396,15 +394,14 @@ namespace rerun {
         /// \param timeless If true, the logged components will be timeless.
         /// Otherwise, the data will be timestamped automatically with `log_time` and `log_tick`.
         /// Additional timelines set by `set_time_sequence` or `set_time` will also be included.
-        /// \param archetypes_or_component_batches Any type for which the `AsComponents<T>` trait is implemented.
+        /// \param archetypes_or_collectiones Any type for which the `AsComponents<T>` trait is implemented.
         /// This is the case for any archetype or `std::vector`/`std::array`/C-array of components implements.
         /// \returns An error if an error occurs during serialization or logging.
         ///
         /// @see log, try_log, log_timeless, try_log_timeless
         template <typename... Ts>
         Error try_log_with_timeless(
-            std::string_view entity_path, bool timeless,
-            const Ts&... archetypes_or_component_batches
+            std::string_view entity_path, bool timeless, const Ts&... archetypes_or_collectiones
         ) const {
             if (!is_enabled()) {
                 return Error::ok();
@@ -418,7 +415,7 @@ namespace rerun {
                     }
 
                     const Result<std::vector<SerializedComponentBatch>> serialization_result =
-                        AsComponents<Ts>().serialize(archetypes_or_component_batches);
+                        AsComponents<Ts>().serialize(archetypes_or_collectiones);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
                         return;

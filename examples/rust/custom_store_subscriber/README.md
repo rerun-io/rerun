@@ -1,7 +1,7 @@
 ---
-title: Custom Store View
-tags: [store-event, store-diff, store-view]
-rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_store_view/src/main.rs?speculative-link
+title: Custom Store Subscriber
+tags: [store-event, store-diff, store-subscriber]
+rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_store_subscriber/src/main.rs?speculative-link
 ---
 
 <picture>
@@ -12,12 +12,12 @@ rust: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_store_v
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/custom_store_view/f7258673486f91d944180bd4a83307bce09b741e/1200w.png">
 </picture>
 
-This example demonstrates how to use [`StoreView`]s and [`StoreEvent`]s to implement both custom secondary indices and trigger systems.
+This example demonstrates how to use [`StoreSubscriber`]s and [`StoreEvent`]s to implement both custom secondary indices and trigger systems.
 
 Usage:
 ```sh
 # Start the Rerun Viewer with our custom view in a terminal:
-$ cargo r -p custom_store_view
+$ cargo r -p custom_store_subscriber
 
 # Log any kind of data from another terminal:
 $ cargo r -p objectron -- --connect

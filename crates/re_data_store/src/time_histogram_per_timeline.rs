@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_arrow_store::{StoreEvent, StoreView};
+use re_arrow_store::{StoreEvent, StoreSubscriber};
 use re_log_types::{TimePoint, Timeline};
 
 // ---
@@ -47,9 +47,14 @@ impl TimeHistogramPerTimeline {
     }
 
     pub fn add(&mut self, timepoint: &TimePoint, n: u32) {
-        // If the `timepoint` is timeless…
         if timepoint.is_timeless() {
-            self.num_timeless_messages += n as u64;
+            self.num_timeless_messages = self
+                .num_timeless_messages
+                .checked_add(n as u64)
+                .unwrap_or_else(|| {
+                    re_log::warn_once!("Timeless counter overflowed, store events are bugged!");
+                    u64::MAX
+                });
         } else {
             for (timeline, time_value) in timepoint.iter() {
                 self.times
@@ -61,9 +66,14 @@ impl TimeHistogramPerTimeline {
     }
 
     pub fn remove(&mut self, timepoint: &TimePoint, n: u32) {
-        // If the `timepoint` is timeless…
         if timepoint.is_timeless() {
-            self.num_timeless_messages -= n as u64;
+            self.num_timeless_messages = self
+                .num_timeless_messages
+                .checked_sub(n as u64)
+                .unwrap_or_else(|| {
+                    re_log::warn_once!("Timeless counter underflowed, store events are bugged!");
+                    0
+                });
         } else {
             for (timeline, time_value) in timepoint.iter() {
                 self.times
@@ -75,12 +85,12 @@ impl TimeHistogramPerTimeline {
     }
 }
 
-// NOTE: This is only to let people know that this is in fact a [`StoreView`], so they A) don't try
+// NOTE: This is only to let people know that this is in fact a [`StoreSubscriber`], so they A) don't try
 // to implement it on their own and B) don't try to register it.
-impl StoreView for TimeHistogramPerTimeline {
+impl StoreSubscriber for TimeHistogramPerTimeline {
     #[inline]
     fn name(&self) -> String {
-        "rerun.store_view.TimeHistogramPerTimeline".into()
+        "rerun.store_subscriber.TimeHistogramPerTimeline".into()
     }
 
     #[inline]
