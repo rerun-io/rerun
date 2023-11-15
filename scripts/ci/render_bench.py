@@ -282,6 +282,7 @@ class Target(Enum):
 
     def render(self, gcs: storage.Client, after: datetime) -> dict[str, str]:
         commits = get_commits(after)
+        print("commits", commits)
         out: dict[str, str] = {}
 
         if self.includes(Target.CRATES):
@@ -365,9 +366,13 @@ def main() -> None:
     output: str = args.output
     output_kind: Output = Output.parse(output)
 
+    print({"target": str(target), "after": str(after), "output": output, "output_kind": str(output_kind)})
+
     gcs = storage.Client()
 
     benchmarks = target.render(gcs, after)
+
+    print("benchmarks", benchmarks)
 
     if output_kind is Output.STDOUT:
         for benchmark in benchmarks.values():
