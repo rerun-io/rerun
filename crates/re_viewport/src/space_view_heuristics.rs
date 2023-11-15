@@ -11,17 +11,13 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    AutoSpawnHeuristic, HeuristicFilterContext, SpaceViewClassName, ViewContextCollection,
-    ViewPartCollection, ViewSystemName, ViewerContext,
+    AutoSpawnHeuristic, EntitiesPerSystem, EntitiesPerSystemPerClass, HeuristicFilterContext,
+    SpaceViewClassName, ViewContextCollection, ViewPartCollection, ViewSystemName, ViewerContext,
 };
 use tinyvec::TinyVec;
 
 use crate::query_pinhole;
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
-
-pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
-
-pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
 
 // ---------------------------------------------------------------------------
 // TODO(#3079): Knowledge of specific space view classes should not leak here.
@@ -456,7 +452,7 @@ fn is_entity_processed_by_part_collection(
 pub type HeuristicFilterContextPerEntity = IntMap<EntityPath, HeuristicFilterContext>;
 
 pub fn compute_heuristic_context_for_entities(
-    ctx: &ViewerContext<'_>,
+    store_db: &re_data_store::store_db::StoreDb,
 ) -> HeuristicFilterContextPerEntity {
     let mut heuristic_context = IntMap::default();
 
@@ -465,7 +461,7 @@ pub fn compute_heuristic_context_for_entities(
     let query_time = TimeInt::MAX;
     let query = LatestAtQuery::new(timeline, query_time);
 
-    let tree = &ctx.store_db.entity_db().tree;
+    let tree = &store_db.entity_db().tree;
 
     fn visit_children_recursively(
         has_parent_pinhole: bool,
@@ -493,7 +489,7 @@ pub fn compute_heuristic_context_for_entities(
     visit_children_recursively(
         false,
         tree,
-        &ctx.store_db.entity_db().data_store,
+        &store_db.entity_db().data_store,
         &query,
         &mut heuristic_context,
     );
@@ -501,15 +497,16 @@ pub fn compute_heuristic_context_for_entities(
 }
 
 pub fn identify_entities_per_system_per_class(
-    ctx: &ViewerContext<'_>,
+    space_view_class_registry: &re_viewer_context::SpaceViewClassRegistry,
+    store_db: &re_data_store::store_db::StoreDb,
+    current_query: &re_arrow_store::LatestAtQuery,
 ) -> EntitiesPerSystemPerClass {
     re_tracing::profile_function!();
 
     let system_collections_per_class: IntMap<
         SpaceViewClassName,
         (ViewContextCollection, ViewPartCollection),
-    > = ctx
-        .space_view_class_registry
+    > = space_view_class_registry
         .iter_system_registries()
         .map(|(class_name, entry)| {
             (
@@ -554,9 +551,9 @@ pub fn identify_entities_per_system_per_class(
 
     let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
 
-    let heuristic_context = compute_heuristic_context_for_entities(ctx);
-    let store = ctx.store_db.store();
-    for ent_path in ctx.store_db.entity_db().entity_paths() {
+    let heuristic_context = compute_heuristic_context_for_entities(store_db);
+    let store = store_db.store();
+    for ent_path in store_db.entity_db().entity_paths() {
         let Some(components) = store.all_components(&re_log_types::Timeline::log_time(), ent_path)
         else {
             continue;
@@ -584,7 +581,7 @@ pub fn identify_entities_per_system_per_class(
                                 .copied()
                                 .unwrap_or_default()
                                 .with_class(*class),
-                            &ctx.current_query(),
+                            current_query,
                             &all_components,
                         ) {
                             continue;

@@ -7,7 +7,9 @@ use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SelectionState, SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
-use re_viewport::{SpaceInfoCollection, Viewport, ViewportState};
+use re_viewport::{
+    identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportState,
+};
 
 use crate::ui::recordings_panel_ui;
 use crate::{app_blueprint::AppBlueprint, store_hub::StoreHub, ui::blueprint_panel_ui};
@@ -106,6 +108,12 @@ impl AppState {
         let rec_cfg =
             recording_config_entry(recording_configs, store_db.store_id().clone(), store_db);
 
+        let entities_per_system_per_class = identify_entities_per_system_per_class(
+            space_view_class_registry,
+            store_db,
+            &rec_cfg.time_ctrl.current_query(),
+        );
+
         let mut ctx = ViewerContext {
             app_options,
             cache,
@@ -113,6 +121,7 @@ impl AppState {
             component_ui_registry,
             store_db,
             store_context,
+            entities_per_system_per_class: &entities_per_system_per_class,
             rec_cfg,
             re_ui,
             render_ctx,

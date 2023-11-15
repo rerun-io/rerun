@@ -88,7 +88,7 @@ fn add_entities_ui(
 ) {
     let spaces_info = SpaceInfoCollection::new(ctx.store_db.entity_db());
     let tree = &ctx.store_db.entity_db().tree;
-    let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx);
+    let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx.store_db);
     let entities_add_info = create_entity_add_info(
         ctx,
         tree,
