@@ -34,7 +34,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
 from subprocess import run
-from typing import Any, Callable, Dict, Generator, List
+from typing import Callable, Dict, Generator, List
 
 from google.cloud import storage
 
