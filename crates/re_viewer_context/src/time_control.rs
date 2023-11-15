@@ -1,6 +1,6 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
-use re_data_store::{EditableAutoValue, TimesPerTimeline};
+use re_data_store::{EditableAutoValue, TimeCounts, TimesPerTimeline};
 use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType, Timeline};
 
 use crate::NeedsRepaint;
@@ -535,15 +535,15 @@ impl TimeControl {
     }
 }
 
-fn min(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().next().unwrap_or(&TimeInt::BEGINNING)
+fn min(values: &TimeCounts) -> TimeInt {
+    *values.keys().next().unwrap_or(&TimeInt::BEGINNING)
 }
 
-fn max(values: &BTreeSet<TimeInt>) -> TimeInt {
-    *values.iter().next_back().unwrap_or(&TimeInt::BEGINNING)
+fn max(values: &TimeCounts) -> TimeInt {
+    *values.keys().next_back().unwrap_or(&TimeInt::BEGINNING)
 }
 
-fn range(values: &BTreeSet<TimeInt>) -> TimeRange {
+fn range(values: &TimeCounts) -> TimeRange {
     TimeRange::new(min(values), max(values))
 }
 
@@ -562,8 +562,8 @@ fn default_timeline<'a>(timelines: impl Iterator<Item = &'a Timeline>) -> Option
     log_time_timeline
 }
 
-fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
-    if let Some(next) = values
+fn step_fwd_time(time: TimeReal, values: &TimeCounts) -> TimeInt {
+    if let Some((next, _)) = values
         .range((
             std::ops::Bound::Excluded(time.floor()),
             std::ops::Bound::Unbounded,
@@ -576,22 +576,18 @@ fn step_fwd_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
     }
 }
 
-fn step_back_time(time: TimeReal, values: &BTreeSet<TimeInt>) -> TimeInt {
-    if let Some(previous) = values.range(..time.ceil()).next_back() {
+fn step_back_time(time: TimeReal, values: &TimeCounts) -> TimeInt {
+    if let Some((previous, _)) = values.range(..time.ceil()).next_back() {
         *previous
     } else {
         max(values)
     }
 }
 
-fn step_fwd_time_looped(
-    time: TimeReal,
-    values: &BTreeSet<TimeInt>,
-    loop_range: &TimeRangeF,
-) -> TimeReal {
+fn step_fwd_time_looped(time: TimeReal, values: &TimeCounts, loop_range: &TimeRangeF) -> TimeReal {
     if time < loop_range.min || loop_range.max <= time {
         loop_range.min
-    } else if let Some(next) = values
+    } else if let Some((next, _)) = values
         .range((
             std::ops::Bound::Excluded(time.floor()),
             std::ops::Bound::Included(loop_range.max.floor()),
@@ -604,14 +600,11 @@ fn step_fwd_time_looped(
     }
 }
 
-fn step_back_time_looped(
-    time: TimeReal,
-    values: &BTreeSet<TimeInt>,
-    loop_range: &TimeRangeF,
-) -> TimeReal {
+fn step_back_time_looped(time: TimeReal, values: &TimeCounts, loop_range: &TimeRangeF) -> TimeReal {
     if time <= loop_range.min || loop_range.max < time {
         loop_range.max
-    } else if let Some(previous) = values.range(loop_range.min.ceil()..time.ceil()).next_back() {
+    } else if let Some((previous, _)) = values.range(loop_range.min.ceil()..time.ceil()).next_back()
+    {
         TimeReal::from(*previous)
     } else {
         step_back_time(time, values).into()

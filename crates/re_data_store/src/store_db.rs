@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use nohash_hasher::IntMap;
 
-use re_arrow_store::{DataStore, DataStoreConfig, GarbageCollectionOptions};
+use re_arrow_store::{DataStore, DataStoreConfig, GarbageCollectionOptions, StoreEvent, StoreView};
 use re_log_types::{
     ApplicationId, ComponentPath, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg,
     PathOp, RowId, SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
@@ -150,7 +150,12 @@ impl EntityDb {
         self.register_entity_path(&row.entity_path);
 
         for (&timeline, &time_int) in row.timepoint().iter() {
-            self.times_per_timeline.insert(timeline, time_int);
+            *self
+                .times_per_timeline
+                .entry(timeline)
+                .or_default()
+                .entry(time_int)
+                .or_default() += 1;
         }
 
         for cell in row.cells().iter() {
@@ -280,7 +285,7 @@ impl EntityDb {
         }
     }
 
-    pub fn purge(&mut self, deleted: &re_arrow_store::Deleted) {
+    pub fn purge(&mut self, store_events: &[StoreEvent]) {
         re_tracing::profile_function!();
 
         let Self {
@@ -290,23 +295,15 @@ impl EntityDb {
             data_store: _, // purged before this function is called
         } = self;
 
+        let deleted = crate::CompactedStoreEvents::new(store_events);
         let mut actually_deleted = Default::default();
 
         {
             re_tracing::profile_scope!("tree");
-            tree.purge(deleted, &mut actually_deleted);
+            tree.purge(&deleted, &mut actually_deleted);
         }
 
-        {
-            re_tracing::profile_scope!("times_per_timeline");
-            for (timeline, times) in actually_deleted.timeful {
-                if let Some(time_set) = times_per_timeline.get_mut(&timeline) {
-                    for time in times {
-                        time_set.remove(&time);
-                    }
-                }
-            }
-        }
+        times_per_timeline.on_events(store_events);
     }
 }
 
@@ -403,10 +400,10 @@ impl StoreDb {
     }
 
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
-        self.entity_db().tree.prefix_times.get(timeline)
+        self.entity_db().tree.recursive_time_histogram.get(timeline)
     }
 
-    pub fn num_timeless_messages(&self) -> usize {
+    pub fn num_timeless_messages(&self) -> u64 {
         self.entity_db.tree.num_timeless_messages()
     }
 
@@ -496,9 +493,9 @@ impl StoreDb {
     pub fn gc(&mut self, gc_options: GarbageCollectionOptions) {
         re_tracing::profile_function!();
 
-        let (deleted, stats_diff) = self.entity_db.data_store.gc(gc_options);
+        let (store_events, stats_diff) = self.entity_db.data_store.gc(gc_options);
         re_log::trace!(
-            num_row_ids_dropped = deleted.row_ids.len(),
+            num_row_ids_dropped = store_events.len(),
             size_bytes_dropped = re_format::format_bytes(stats_diff.total.num_bytes as _),
             "purged datastore"
         );
@@ -511,7 +508,7 @@ impl StoreDb {
             last_modified_at: _,
         } = self;
 
-        entity_db.purge(&deleted);
+        entity_db.purge(&store_events);
     }
 
     /// Key used for sorting recordings in the UI.

@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 
 use ahash::{HashMap, HashSet};
 
-use nohash_hasher::IntMap;
-use re_log_types::{EntityPath, EntityPathHash, RowId, TimeInt, TimeRange, Timeline};
+use re_log_types::{EntityPath, RowId, TimeInt, TimeRange, Timeline};
 use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{
@@ -61,48 +60,6 @@ impl std::fmt::Display for GarbageCollectionTarget {
     }
 }
 
-#[derive(Default)]
-pub struct Deleted {
-    /// What rows where deleted?
-    pub row_ids: HashSet<RowId>,
-
-    /// What time points where deleted for each entity+timeline+component?
-    pub timeful: IntMap<EntityPathHash, IntMap<Timeline, IntMap<ComponentName, Vec<TimeInt>>>>,
-
-    /// For each entity+component, how many timeless entries were deleted?
-    pub timeless: IntMap<EntityPathHash, IntMap<ComponentName, u64>>,
-}
-
-impl Deleted {
-    pub fn new(store_events: &[StoreEvent]) -> Self {
-        let mut this = Deleted {
-            row_ids: store_events.iter().map(|event| event.row_id).collect(),
-            timeful: Default::default(),
-            timeless: Default::default(),
-        };
-
-        for event in store_events {
-            if event.is_timeless() {
-                let per_component = this.timeless.entry(event.entity_path.hash()).or_default();
-                for component_name in event.cells.keys() {
-                    *per_component.entry(*component_name).or_default() +=
-                        event.delta().unsigned_abs();
-                }
-            } else {
-                for (&timeline, &time) in &event.timepoint {
-                    let per_timeline = this.timeful.entry(event.entity_path.hash()).or_default();
-                    let per_component = per_timeline.entry(timeline).or_default();
-                    for component_name in event.cells.keys() {
-                        per_component.entry(*component_name).or_default().push(time);
-                    }
-                }
-            }
-        }
-
-        this
-    }
-}
-
 impl DataStore {
     /// Triggers a garbage collection according to the desired `target`.
     ///
@@ -135,7 +92,7 @@ impl DataStore {
     /// points in time may provide different results pre- and post- GC.
     //
     // TODO(#1823): Workload specific optimizations.
-    pub fn gc(&mut self, options: GarbageCollectionOptions) -> (Deleted, DataStoreStats) {
+    pub fn gc(&mut self, options: GarbageCollectionOptions) -> (Vec<StoreEvent>, DataStoreStats) {
         re_tracing::profile_function!();
 
         self.gc_id += 1;
@@ -232,8 +189,7 @@ impl DataStore {
             Self::on_events(&events);
         }
 
-        // TODO(cmc): Temporary, we'll return raw events soon, but need to rework EntityTree first.
-        (Deleted::new(&events), stats_diff)
+        (events, stats_diff)
     }
 
     /// Tries to drop _at least_ `num_bytes_to_drop` bytes of data from the store.
