@@ -6,11 +6,11 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <rerun/collection.hpp>
 #include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <string>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -20,7 +20,7 @@ namespace arrow {
 
 namespace rerun::components {
     struct AffixFuzzer13 {
-        std::optional<std::vector<std::string>> many_strings_optional;
+        std::optional<rerun::Collection<std::string>> many_strings_optional;
 
         /// Name of the component, used for serialization.
         static const char NAME[];
@@ -28,10 +28,12 @@ namespace rerun::components {
       public:
         AffixFuzzer13() = default;
 
-        AffixFuzzer13(std::optional<std::vector<std::string>> many_strings_optional_)
+        AffixFuzzer13(std::optional<rerun::Collection<std::string>> many_strings_optional_)
             : many_strings_optional(std::move(many_strings_optional_)) {}
 
-        AffixFuzzer13& operator=(std::optional<std::vector<std::string>> many_strings_optional_) {
+        AffixFuzzer13& operator=(
+            std::optional<rerun::Collection<std::string>> many_strings_optional_
+        ) {
             many_strings_optional = std::move(many_strings_optional_);
             return *this;
         }

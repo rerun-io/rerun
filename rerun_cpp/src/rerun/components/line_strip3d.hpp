@@ -3,15 +3,14 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../data_cell.hpp"
 #include "../datatypes/vec3d.hpp"
 #include "../result.hpp"
 
-#include <algorithm>
 #include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -33,27 +32,18 @@ namespace rerun::components {
     ///                  4
     /// ```
     struct LineStrip3D {
-        std::vector<rerun::datatypes::Vec3D> points;
+        rerun::Collection<rerun::datatypes::Vec3D> points;
 
         /// Name of the component, used for serialization.
         static const char NAME[];
 
       public:
-        // Extensions to generated type defined in 'line_strip3d_ext.cpp'
-
-        template <typename T>
-        LineStrip3D(const std::vector<T>& points_) : points(points_.size()) {
-            std::transform(points_.begin(), points_.end(), points.begin(), [](const T& pt) {
-                return rerun::datatypes::Vec3D(pt);
-            });
-        }
-
-      public:
         LineStrip3D() = default;
 
-        LineStrip3D(std::vector<rerun::datatypes::Vec3D> points_) : points(std::move(points_)) {}
+        LineStrip3D(rerun::Collection<rerun::datatypes::Vec3D> points_)
+            : points(std::move(points_)) {}
 
-        LineStrip3D& operator=(std::vector<rerun::datatypes::Vec3D> points_) {
+        LineStrip3D& operator=(rerun::Collection<rerun::datatypes::Vec3D> points_) {
             points = std::move(points_);
             return *this;
         }

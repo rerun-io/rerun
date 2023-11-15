@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../data_cell.hpp"
 #include "../datatypes/mesh_properties.hpp"
 #include "../result.hpp"
@@ -11,7 +12,6 @@
 #include <memory>
 #include <optional>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -30,8 +30,8 @@ namespace rerun::components {
       public:
         // Extensions to generated type defined in 'mesh_properties_ext.cpp'
 
-        static MeshProperties from_triangle_indices(std::vector<uint32_t> indices) {
-            return MeshProperties(indices);
+        static MeshProperties from_triangle_indices(Collection<uint32_t> indices) {
+            return MeshProperties(std::move(indices));
         }
 
       public:
@@ -44,10 +44,10 @@ namespace rerun::components {
             return *this;
         }
 
-        MeshProperties(std::optional<std::vector<uint32_t>> indices_)
+        MeshProperties(std::optional<rerun::Collection<uint32_t>> indices_)
             : props(std::move(indices_)) {}
 
-        MeshProperties& operator=(std::optional<std::vector<uint32_t>> indices_) {
+        MeshProperties& operator=(std::optional<rerun::Collection<uint32_t>> indices_) {
             props = std::move(indices_);
             return *this;
         }

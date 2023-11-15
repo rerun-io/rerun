@@ -2003,8 +2003,8 @@ fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenSt
         }
         Type::Vector { elem_type } => {
             let elem_type = quote_element_type(includes, elem_type);
-            includes.insert_system("vector");
-            quote! { std::vector<#elem_type>  }
+            includes.insert_rerun("collection.hpp");
+            quote! { rerun::Collection<#elem_type>  }
         }
         Type::Object(fqname) => {
             let type_name = quote_fqname_as_type_path(includes, fqname);

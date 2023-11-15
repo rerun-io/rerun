@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -23,15 +23,15 @@ namespace rerun::datatypes {
         /// A flattened array of vertex indices that describe the mesh's triangles.
         ///
         /// Its length must be divisible by 3.
-        std::optional<std::vector<uint32_t>> indices;
+        std::optional<rerun::Collection<uint32_t>> indices;
 
       public:
         MeshProperties() = default;
 
-        MeshProperties(std::optional<std::vector<uint32_t>> indices_)
+        MeshProperties(std::optional<rerun::Collection<uint32_t>> indices_)
             : indices(std::move(indices_)) {}
 
-        MeshProperties& operator=(std::optional<std::vector<uint32_t>> indices_) {
+        MeshProperties& operator=(std::optional<rerun::Collection<uint32_t>> indices_) {
             indices = std::move(indices_);
             return *this;
         }

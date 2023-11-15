@@ -2,12 +2,13 @@
 
 #include "collection.hpp"
 #include "collection_adapter.hpp"
+#include "type_traits.hpp"
 
 // Documenting the builtin adapters is too much clutter for the doc class overview.
 /// \cond private
 
 namespace rerun {
-    /// Adapter from std::vector of components.
+    /// Adapter from `std::vector` of elements.
     ///
     /// Only takes ownership if a temporary is passed.
     template <typename TElement>
@@ -21,31 +22,36 @@ namespace rerun {
         }
     };
 
-    /// Adapter from std::vector<T> where T can be converted to TElement
-    template <typename TElement, typename T>
+    /// Adapter from a generic std compatible container (see `rerun::is_iterable_and_has_size_v`) which
+    /// has a value type from which `TElement` can be constructed.
+    ///
+    /// Since this needs to do a conversion, this will always need to allocate space.
+    /// However, if a temporary is passed, elements will be moved instead of copied upon construction of `TElement`.
+    template <typename TElement, typename TContainer>
     struct CollectionAdapter<
-        TElement, std::vector<T>,
+        TElement, TContainer,
         std::enable_if_t<
-            !std::is_same_v<TElement, T> && std::is_constructible_v<TElement, const T&>>> {
-        Collection<TElement> operator()(const std::vector<T>& input) {
-            std::vector<TElement> transformed(input.size());
-
-            std::transform(input.begin(), input.end(), transformed.begin(), [](const T& datum) {
-                return TElement(datum);
-            });
-
+            !std::is_same_v<TElement, value_type_of_t<TContainer>> && //
+            is_iterable_and_has_size_v<TContainer> &&                 //
+            std::is_constructible_v<
+                TElement,
+                value_type_of_t<TContainer>> //
+            >> {
+        Collection<TElement> operator()(const TContainer& input) {
+            std::vector<TElement> transformed;
+            transformed.reserve(std::size(input));
+            for (const auto& element : input) {
+                transformed.emplace_back(element);
+            }
             return Collection<TElement>::take_ownership(std::move(transformed));
         }
 
-        Collection<TElement> operator()(std::vector<T>&& input) {
-            std::vector<TElement> transformed(input.size());
-
-            std::transform(
-                std::make_move_iterator(input.begin()),
-                std::make_move_iterator(input.end()),
-                transformed.begin(),
-                [](T&& datum) { return TElement(std::move(datum)); }
-            );
+        Collection<TElement> operator()(TContainer&& input) {
+            std::vector<TElement> transformed;
+            transformed.reserve(std::size(input));
+            for (auto& element : input) {
+                transformed.emplace_back(std::move(element));
+            }
 
             return Collection<TElement>::take_ownership(std::move(transformed));
         }
@@ -54,6 +60,8 @@ namespace rerun {
     /// Adapter from std::array of components.
     ///
     /// Only takes ownership if a temporary is passed.
+    /// TODO(andreas): change this to adapt anything that takes data() and size() but isn't a vector
+    /// (vectors are special since we can take ownership directly)
     template <typename TElement, size_t NumInstances>
     struct CollectionAdapter<TElement, std::array<TElement, NumInstances>> {
         Collection<TElement> operator()(const std::array<TElement, NumInstances>& array) {
@@ -69,8 +77,7 @@ namespace rerun {
 
     /// Adapter from a C-Array reference.
     ///
-    /// *Attention*: Does *not* take ownership of the data,
-    /// you need to ensure that the data outlives the component batch.
+    /// Only takes ownership if a temporary is passed, borrows otherwise.
     template <typename TElement, size_t NumInstances>
     struct CollectionAdapter<TElement, TElement[NumInstances]> {
         Collection<TElement> operator()(const TElement (&array)[NumInstances]) {
@@ -89,7 +96,9 @@ namespace rerun {
         }
     };
 
-    /// Adapter for a single component, temporary or reference.
+    /// Adapter for a single element from which `TElement`, temporary or reference.
+    ///
+    /// Only takes ownership if a temporary is passed, borrows otherwise.
     template <typename TElement>
     struct CollectionAdapter<TElement, TElement> {
         Collection<TElement> operator()(const TElement& one_and_only) {

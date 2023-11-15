@@ -56,7 +56,8 @@ namespace rerun::archetypes {
     ///     };
     ///     rec.log(
     ///         "strips",
-    ///         rerun::LineStrips3D({strip1, strip2})
+    ///         // TODO: Figure out how to avoid the extra vector
+    ///         rerun::LineStrips3D(std::vector{strip1, strip2})
     ///             .with_colors({0xFF0000FF, 0x00FF00FF})
     ///             .with_radii({0.025f, 0.005f})
     ///             .with_labels({"one strip here", "and one strip there"})

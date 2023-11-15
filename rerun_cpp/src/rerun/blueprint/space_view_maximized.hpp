@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -22,14 +22,14 @@ namespace rerun::blueprint {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct SpaceViewMaximized {
-        std::optional<std::vector<uint8_t>> id;
+        std::optional<rerun::Collection<uint8_t>> id;
 
       public:
         SpaceViewMaximized() = default;
 
-        SpaceViewMaximized(std::optional<std::vector<uint8_t>> id_) : id(std::move(id_)) {}
+        SpaceViewMaximized(std::optional<rerun::Collection<uint8_t>> id_) : id(std::move(id_)) {}
 
-        SpaceViewMaximized& operator=(std::optional<std::vector<uint8_t>> id_) {
+        SpaceViewMaximized& operator=(std::optional<rerun::Collection<uint8_t>> id_) {
             id = std::move(id_);
             return *this;
         }
