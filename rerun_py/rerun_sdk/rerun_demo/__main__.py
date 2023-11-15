@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import pathlib
-import sys
 
 
 def run_cube(args: argparse.Namespace):
