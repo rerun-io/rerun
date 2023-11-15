@@ -102,7 +102,6 @@ fn time_histograms() -> anyhow::Result<()> {
 
         db.add_data_row(row.clone())?;
 
-        // unchanged
         assert_times_per_timeline(
             &db,
             [
@@ -187,7 +186,7 @@ fn time_histograms() -> anyhow::Result<()> {
 
         db.add_data_row(row)?; // same row a second time!
 
-        // times per timeline (unchanged)
+        // times per timeline
         assert_times_per_timeline(
             &db,
             [
@@ -254,7 +253,7 @@ fn time_histograms() -> anyhow::Result<()> {
 
         db.add_data_row(row)?;
 
-        // times per timeline (unchanged)
+        // times per timeline
         assert_times_per_timeline(
             &db,
             [
@@ -265,7 +264,7 @@ fn time_histograms() -> anyhow::Result<()> {
             ],
         );
 
-        // histograms per timeline (unchanged)
+        // histograms per timeline
         assert_recursive_histogram(
             &db,
             [
@@ -276,7 +275,7 @@ fn time_histograms() -> anyhow::Result<()> {
             ] as [(_, Option<&[_]>); 4],
         );
 
-        // histograms per component per timeline (unchanged)
+        // histograms per component per timeline
         assert_histogram_for_component(
             &db,
             &entity_parent,
@@ -349,7 +348,6 @@ fn time_histograms() -> anyhow::Result<()> {
 
         db.add_data_row(row)?;
 
-        // unchanged
         assert_times_per_timeline(
             &db,
             [
@@ -470,7 +468,6 @@ fn time_histograms() -> anyhow::Result<()> {
 
         db.add_data_row(row)?;
 
-        // unchanged
         assert_times_per_timeline(
             &db,
             [
@@ -576,7 +573,6 @@ fn time_histograms() -> anyhow::Result<()> {
     {
         db.gc(GarbageCollectionOptions::gc_everything());
 
-        // unchanged
         assert_times_per_timeline(
             &db,
             [
