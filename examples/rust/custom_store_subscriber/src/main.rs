@@ -1,10 +1,10 @@
-//! This example demonstrates how to use [`StoreView`]s and [`StoreEvent`]s to implement both
+//! This example demonstrates how to use [`StoreSubscriber`]s and [`StoreEvent`]s to implement both
 //! custom secondary indices and trigger systems.
 //!
 //! Usage:
 //! ```sh
 //! # Start the Rerun Viewer with our custom view in a terminal:
-//! $ cargo r -p custom_store_view
+//! $ cargo r -p custom_store_subscriber
 //!
 //! # Log any kind of data from another terminal:
 //! $ cargo r -p objectron -- --connect
@@ -15,14 +15,14 @@ use std::collections::BTreeMap;
 use rerun::{
     external::{anyhow, re_arrow_store, re_build_info, re_log, re_log_types::TimeRange, tokio},
     time::TimeInt,
-    ComponentName, EntityPath, StoreEvent, StoreId, StoreView, Timeline,
+    ComponentName, EntityPath, StoreEvent, StoreId, StoreSubscriber, Timeline,
 };
 
 #[tokio::main]
 async fn main() -> anyhow::Result<std::process::ExitCode> {
     re_log::setup_native_logging();
 
-    let _handle = re_arrow_store::DataStore::register_view(Box::<Orchestrator>::default());
+    let _handle = re_arrow_store::DataStore::register_subscriber(Box::<Orchestrator>::default());
     // Could use the returned handle to get a reference to the view if needed.
 
     let build_info = re_build_info::build_info!();
@@ -33,7 +33,7 @@ async fn main() -> anyhow::Result<std::process::ExitCode> {
 
 // ---
 
-/// A meta [`StoreView`] that distributes work to our other views.
+/// A meta [`StoreSubscriber`] that distributes work to our other views.
 ///
 /// The order is which registered views are executed is undefined: if you rely on a specific order
 /// of execution between your views, orchestrate it yourself!
@@ -45,9 +45,9 @@ struct Orchestrator {
     time_ranges_per_entity: TimeRangesPerEntity,
 }
 
-impl StoreView for Orchestrator {
+impl StoreSubscriber for Orchestrator {
     fn name(&self) -> String {
-        "rerun.store_view.ScreenClearer".into()
+        "rerun.store_subscriber.ScreenClearer".into()
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -68,7 +68,7 @@ impl StoreView for Orchestrator {
 
 // ---
 
-/// A [`StoreView`] that maintains a secondary index that keeps count of the number of occurrences
+/// A [`StoreSubscriber`] that maintains a secondary index that keeps count of the number of occurrences
 /// of each component in each [`rerun::DataStore`].
 ///
 /// It also implements a trigger that prints to the console each time a component is first introduced
@@ -80,9 +80,9 @@ struct ComponentsPerRecording {
     counters: BTreeMap<StoreId, BTreeMap<ComponentName, u64>>,
 }
 
-impl StoreView for ComponentsPerRecording {
+impl StoreSubscriber for ComponentsPerRecording {
     fn name(&self) -> String {
-        "rerun.store_view.ComponentsPerRecording".into()
+        "rerun.store_subscriber.ComponentsPerRecording".into()
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -137,7 +137,7 @@ impl StoreView for ComponentsPerRecording {
 
 // ---
 
-/// A [`StoreView`] that maintains a secondary index of the time ranges covered by each entity,
+/// A [`StoreSubscriber`] that maintains a secondary index of the time ranges covered by each entity,
 /// on every timeline, across all recordings (i.e. [`rerun::DataStore`]s).
 ///
 /// For every [`StoreEvent`], it displays the state of the secondary index to the terminal.
@@ -146,9 +146,9 @@ struct TimeRangesPerEntity {
     times: BTreeMap<EntityPath, BTreeMap<Timeline, BTreeMap<TimeInt, u64>>>,
 }
 
-impl StoreView for TimeRangesPerEntity {
+impl StoreSubscriber for TimeRangesPerEntity {
     fn name(&self) -> String {
-        "rerun.store_view.TimeRangesPerEntity".into()
+        "rerun.store_subscriber.TimeRangesPerEntity".into()
     }
 
     fn as_any(&self) -> &dyn std::any::Any {

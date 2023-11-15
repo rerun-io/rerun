@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
-use re_arrow_store::{StoreEvent, StoreView};
+use re_arrow_store::{StoreEvent, StoreSubscriber};
 use re_log_types::{TimeInt, Timeline};
 
 // ---
 
 pub type TimeCounts = BTreeMap<TimeInt, u64>;
 
-/// A [`StoreView`] that keeps track of all unique timestamps on each [`Timeline`].
+/// A [`StoreSubscriber`] that keeps track of all unique timestamps on each [`Timeline`].
 pub struct TimesPerTimeline(BTreeMap<Timeline, TimeCounts>);
 
 impl std::ops::Deref for TimesPerTimeline {
@@ -33,10 +33,10 @@ impl Default for TimesPerTimeline {
     }
 }
 
-impl StoreView for TimesPerTimeline {
+impl StoreSubscriber for TimesPerTimeline {
     #[inline]
     fn name(&self) -> String {
-        "rerun.store_view.TimesPerTimeline".into()
+        "rerun.store_subscriber.TimesPerTimeline".into()
     }
 
     #[inline]

@@ -7,7 +7,7 @@ use crate::StoreGeneration;
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
-use crate::{DataStore, StoreView};
+use crate::{DataStore, StoreSubscriber};
 
 // ---
 
@@ -18,7 +18,7 @@ use crate::{DataStore, StoreView};
 ///
 /// Methods that mutate the [`DataStore`], such as [`DataStore::insert_row`] and [`DataStore::gc`],
 /// return [`StoreEvent`]s that describe the changes.
-/// You can also register your own [`StoreView`] in order to be notified of changes as soon as they
+/// You can also register your own [`StoreSubscriber`] in order to be notified of changes as soon as they
 /// happen.
 ///
 /// Refer to field-level documentation for more details and check out [`StoreDiff`] for a precise
@@ -241,7 +241,7 @@ mod tests {
     };
     use re_types_core::{components::InstanceKey, Loggable as _};
 
-    use crate::{DataStore, GarbageCollectionOptions, StoreView, StoreViewHandle};
+    use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber, StoreSubscriberHandle};
 
     use super::*;
 
