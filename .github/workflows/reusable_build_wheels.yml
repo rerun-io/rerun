@@ -55,7 +55,6 @@ jobs:
     outputs:
       RUNNER: ${{ steps.set-config.outputs.runner }}
       TARGET: ${{ steps.set-config.outputs.target }}
-      RUN_TESTS: ${{ steps.set-config.outputs.run_tests }}
       CONTAINER: ${{ steps.set-config.outputs.container }}
     steps:
       - name: Set runner and target based on platform
@@ -65,32 +64,27 @@ jobs:
             linux)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              run_tests="true"
               container="{'image': 'rerunio/ci_docker:0.10.0'}"
               ;;
             windows)
               runner="windows-latest-8-cores"
               target="x86_64-pc-windows-msvc"
-              run_tests="true"
               container="null"
               ;;
             macos-arm)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="aarch64-apple-darwin"
-              run_tests="false"
               container="null"
               ;;
             macos-intel)
               runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
               target="x86_64-apple-darwin"
-              run_tests="false"
               container="null"
               ;;
             *) echo "Invalid platform" && exit 1 ;;
           esac
           echo "runner=$runner" >> "$GITHUB_OUTPUT"
           echo "target=$target" >> "$GITHUB_OUTPUT"
-          echo "run_tests=$run_tests" >> "$GITHUB_OUTPUT"
           echo "container=$container" >> "$GITHUB_OUTPUT"
 
   # ---------------------------------------------------------------------------
