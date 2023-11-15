@@ -25,6 +25,7 @@ mod store_helpers;
 mod store_read;
 mod store_sanity;
 mod store_stats;
+mod store_view;
 mod store_write;
 
 #[cfg(feature = "polars")]
@@ -43,6 +44,7 @@ pub use self::store_gc::{Deleted, GarbageCollectionOptions, GarbageCollectionTar
 pub use self::store_helpers::VersionedComponent;
 pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_stats::{DataStoreRowStats, DataStoreStats, EntityStats};
+pub use self::store_view::{StoreView, StoreViewHandle};
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{

@@ -222,10 +222,14 @@ impl DataStore {
             })
             .collect();
 
-        if cfg!(debug_assertions) {
-            let any_event_other_than_deletion =
-                events.iter().any(|e| e.kind != StoreDiffKind::Deletion);
-            assert!(!any_event_other_than_deletion);
+        {
+            if cfg!(debug_assertions) {
+                let any_event_other_than_deletion =
+                    events.iter().any(|e| e.kind != StoreDiffKind::Deletion);
+                assert!(!any_event_other_than_deletion);
+            }
+
+            Self::on_events(&events);
         }
 
         // TODO(cmc): Temporary, we'll return raw events soon, but need to rework EntityTree first.

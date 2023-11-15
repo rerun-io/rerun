@@ -49,6 +49,7 @@ document-features.workspace = true
 indent.workspace = true
 itertools = { workspace = true }
 nohash-hasher.workspace = true
+once_cell.workspace = true
 parking_lot.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true

@@ -7,7 +7,7 @@ use crate::StoreGeneration;
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
-use crate::DataStore;
+use crate::{DataStore, StoreView};
 
 // ---
 
@@ -18,6 +18,8 @@ use crate::DataStore;
 ///
 /// Methods that mutate the [`DataStore`], such as [`DataStore::insert_row`] and [`DataStore::gc`],
 /// return [`StoreEvent`]s that describe the changes.
+/// You can also register your own [`StoreView`] in order to be notified of changes as soon as they
+/// happen.
 ///
 /// Refer to field-level documentation for more details and check out [`StoreDiff`] for a precise
 /// definition of what an event involves.
@@ -239,11 +241,11 @@ mod tests {
     };
     use re_types_core::{components::InstanceKey, Loggable as _};
 
-    use crate::{DataStore, GarbageCollectionOptions};
+    use crate::{DataStore, GarbageCollectionOptions, StoreView, StoreViewHandle};
 
     use super::*;
 
-    /// A simple store view for test purposes that keeps track of the quantity of data available
+    /// A simple store subscriber for test purposes that keeps track of the quantity of data available
     /// in the store a the lowest level of detail.
     ///
     /// The counts represent numbers of rows: e.g. how many unique rows contain this entity path?
