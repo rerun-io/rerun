@@ -1,22 +1,26 @@
 use egui::NumExt as _;
 
-use crate::ui::visible_history::visible_history_section_ui;
-use re_data_store::{ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties};
+use re_data_store::{
+    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, ExtraQueryHistory,
+};
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
 use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewId, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
+    ViewerContext,
 };
 use re_viewport::{Viewport, ViewportBlueprint};
+
+use crate::ui::visible_history::visible_history_ui;
 
 use super::selection_history_ui::SelectionHistoryUi;
 
 // ---
 
-/// The "Selection View" side-bar.
+/// The "Selection View" sidebar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct SelectionPanel {
@@ -108,8 +112,6 @@ impl SelectionPanel {
                     .large_collapsing_header(ui, "Blueprint", true, |ui| {
                         blueprint_ui(ui, ctx, viewport, item);
                     });
-
-                visible_history_section_ui(ui, ctx, viewport, item);
 
                 if i + 1 < num_selections {
                     // Add space some space between selections
@@ -271,6 +273,8 @@ fn blueprint_ui(
             ui.add_space(ui.spacing().item_spacing.y);
 
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+                let space_view_class = *space_view.class_name();
+
                 let space_view_state = viewport.state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
@@ -286,6 +290,19 @@ fn blueprint_ui(
                         &space_view.space_origin,
                         space_view.id,
                     );
+
+                // Space Views don't inherit properties
+                let projected_visible_history = ExtraQueryHistory::default();
+
+                visible_history_ui(
+                    ctx,
+                    ui,
+                    &space_view_class,
+                    true,
+                    None,
+                    &projected_visible_history,
+                    &mut space_view.root_entity_properties.visible_history,
+                );
             }
         }
 
@@ -305,9 +322,22 @@ fn blueprint_ui(
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
                         // splat - the whole entity
+                        let space_view_class = *space_view.class_name();
+                        let entity_path = &instance_path.entity_path;
+                        let projected_props = space_view
+                            .contents
+                            .data_blueprints_projected()
+                            .get(entity_path);
                         let data_blueprint = space_view.contents.data_blueprints_individual();
                         let mut props = data_blueprint.get(&instance_path.entity_path);
-                        entity_props_ui(ctx, ui, Some(&instance_path.entity_path), &mut props);
+                        entity_props_ui(
+                            ctx,
+                            ui,
+                            &space_view_class,
+                            Some(entity_path),
+                            &mut props,
+                            &projected_props,
+                        );
                         data_blueprint.set(instance_path.entity_path.clone(), props);
                     }
                 }
@@ -323,8 +353,16 @@ fn blueprint_ui(
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+                let space_view_class = *space_view.class_name();
                 if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
-                    entity_props_ui(ctx, ui, None, &mut group.properties_individual);
+                    entity_props_ui(
+                        ctx,
+                        ui,
+                        &space_view_class,
+                        None,
+                        &mut group.properties_individual,
+                        &group.properties_projected,
+                    );
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }
@@ -366,14 +404,26 @@ fn list_existing_data_blueprints(
 fn entity_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
+    space_view_class: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
+    projected_entity_props: &EntityProperties,
 ) {
     let re_ui = ctx.re_ui;
     re_ui.checkbox(ui, &mut entity_props.visible, "Visible");
     re_ui
         .checkbox(ui, &mut entity_props.interactive, "Interactive")
         .on_hover_text("If disabled, the entity will not react to any mouse interaction");
+
+    visible_history_ui(
+        ctx,
+        ui,
+        space_view_class,
+        false,
+        entity_path,
+        &projected_entity_props.visible_history,
+        &mut entity_props.visible_history,
+    );
 
     egui::Grid::new("entity_properties")
         .num_columns(2)

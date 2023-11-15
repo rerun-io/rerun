@@ -8,8 +8,7 @@ use re_log_types::{EntityPath, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
-use re_viewer_context::{Item, SpaceViewClassName, ViewerContext};
-use re_viewport::Viewport;
+use re_viewer_context::{SpaceViewClassName, ViewerContext};
 
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<SpaceViewClassName>> =
@@ -43,7 +42,7 @@ static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<Comp
 
 // TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the ViewPart
 // system is able to report its ability to handle the visible history feature.
-pub fn has_visible_history_section(
+fn has_visible_history_section(
     ctx: &mut ViewerContext<'_>,
     space_view_class: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
@@ -70,82 +69,7 @@ pub fn has_visible_history_section(
     true
 }
 
-pub fn visible_history_section_ui(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    viewport: &mut Viewport<'_, '_>,
-    item: &Item,
-) {
-    match item {
-        Item::ComponentPath(_) => {}
-        Item::SpaceView(space_view_id) => {
-            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                let space_view_class = *space_view.class_name();
-
-                // Space Views don't inherit properties
-                let projected_visible_history = ExtraQueryHistory::default();
-
-                visible_history_ui_impl(
-                    ctx,
-                    ui,
-                    &space_view_class,
-                    true,
-                    None,
-                    &projected_visible_history,
-                    &mut space_view.root_entity_properties.visible_history,
-                );
-            }
-        }
-
-        Item::InstancePath(space_view_id, instance_path) => {
-            if let Some(space_view_id) = space_view_id {
-                if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                    if !instance_path.instance_key.is_specific() {
-                        let space_view_class = *space_view.class_name();
-                        let entity_path = &instance_path.entity_path;
-                        let projected_props = space_view
-                            .contents
-                            .data_blueprints_projected()
-                            .get(entity_path);
-                        let data_blueprint = space_view.contents.data_blueprints_individual();
-                        let mut props = data_blueprint.get(entity_path);
-
-                        visible_history_ui_impl(
-                            ctx,
-                            ui,
-                            &space_view_class,
-                            false,
-                            Some(&instance_path.entity_path),
-                            &projected_props.visible_history,
-                            &mut props.visible_history,
-                        );
-
-                        data_blueprint.set(instance_path.entity_path.clone(), props);
-                    }
-                }
-            }
-        }
-
-        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                let space_view_class = *space_view.class_name();
-                if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
-                    visible_history_ui_impl(
-                        ctx,
-                        ui,
-                        &space_view_class,
-                        false,
-                        None,
-                        &group.properties_projected.visible_history,
-                        &mut group.properties_individual.visible_history,
-                    );
-                }
-            }
-        }
-    }
-}
-
-fn visible_history_ui_impl(
+pub fn visible_history_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_class: &SpaceViewClassName,
@@ -160,7 +84,7 @@ fn visible_history_ui_impl(
 
     let re_ui = ctx.re_ui;
 
-    re_ui.large_collapsing_header(ui, "Visible Time Range", true, |ui| {
+    re_ui.collapsing_header(ui, "Visible Time Range", true, |ui| {
         ui.horizontal(|ui| {
             re_ui.radio_value(
                 ui,
