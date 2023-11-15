@@ -4,8 +4,6 @@ use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
 use re_viewer_context::{DataResult, ViewerContext};
 use slotmap::SlotMap;
 
-use crate::{DataBlueprintGroup, SpaceViewContents};
-
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
     pub struct DataResultHandle;
@@ -13,8 +11,8 @@ slotmap::new_key_type! {
 
 /// A hierarchical tree of [`DataResult`]s
 pub struct DataResultTree {
-    data_results: SlotMap<DataResultHandle, DataResultNode>,
-    root_handle: DataResultHandle,
+    pub data_results: SlotMap<DataResultHandle, DataResultNode>,
+    pub root_handle: DataResultHandle,
 }
 
 impl DataResultTree {
@@ -47,7 +45,7 @@ impl DataResultTree {
 #[derive(Debug)]
 pub struct DataResultNode {
     pub data_result: DataResult,
-    children: BTreeSet<DataResultHandle>,
+    pub children: BTreeSet<DataResultHandle>,
 }
 
 /// Trait for resolving properties needed by most implementations of [`DataQuery`]
@@ -87,161 +85,4 @@ pub trait DataQuery {
         ctx: &ViewerContext<'_>,
         entity_path: &EntityPath,
     ) -> DataResult;
-}
-
-// ----------------------------------------------------------------------------
-// Implement the `DataQuery` interface for `SpaceViewContents`
-
-impl DataQuery for SpaceViewContents {
-    fn execute_query(
-        &self,
-        property_resolver: &impl PropertyResolver,
-        ctx: &ViewerContext<'_>,
-    ) -> DataResultTree {
-        re_tracing::profile_function!();
-        let root_override = property_resolver.resolve_root_override(ctx);
-        let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
-        let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
-        let root_handle = self.root_group().add_to_data_results_recursive(
-            self,
-            &entity_overrides,
-            None,
-            &root_override,
-            &mut data_results,
-        );
-        DataResultTree {
-            data_results,
-            root_handle,
-        }
-    }
-
-    fn resolve(
-        &self,
-        property_resolver: &impl PropertyResolver,
-        ctx: &ViewerContext<'_>,
-        entity_path: &EntityPath,
-    ) -> DataResult {
-        re_tracing::profile_function!();
-        let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
-
-        let view_parts = self
-            .per_system_entities()
-            .iter()
-            .filter_map(|(part, ents)| {
-                if ents.contains(entity_path) {
-                    Some(*part)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        let mut resolved_properties = property_resolver.resolve_root_override(ctx);
-        for prefix in EntityPath::incremental_walk(None, entity_path) {
-            resolved_properties = resolved_properties.with_child(&entity_overrides.get(&prefix));
-        }
-
-        DataResult {
-            entity_path: entity_path.clone(),
-            view_parts,
-            resolved_properties,
-            override_path: self
-                .entity_path()
-                .join(&SpaceViewContents::PROPERTIES_PREFIX.into())
-                .join(entity_path),
-        }
-    }
-}
-
-impl DataBlueprintGroup {
-    /// This recursively walks a `DataBlueprintGroup` and adds every entity / group to the tree.
-    ///
-    /// Properties are resolved hierarchically from an [`EntityPropertyMap`] containing all the
-    /// overrides. As we walk down the tree.
-    fn add_to_data_results_recursive(
-        &self,
-        contents: &SpaceViewContents,
-        overrides: &EntityPropertyMap,
-        inherited_base: Option<&EntityPath>,
-        inherited: &EntityProperties,
-        data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
-    ) -> DataResultHandle {
-        let group_path = self.group_path.clone();
-
-        // TODO(jleibs): This remapping isn't great when a view has a bunch of entity-types.
-        let group_view_parts = contents.view_parts_for_entity_path(&group_path);
-
-        let mut group_resolved_properties = inherited.clone();
-
-        for prefix in EntityPath::incremental_walk(inherited_base, &group_path) {
-            if let Some(props) = overrides.get_opt(&prefix) {
-                group_resolved_properties = group_resolved_properties.with_child(props);
-            }
-        }
-
-        let base_entity_path = contents.entity_path();
-        let props_path = EntityPath::from(SpaceViewContents::PROPERTIES_PREFIX);
-
-        let group_override_path = base_entity_path.join(&props_path).join(&group_path);
-
-        // First build up the direct children
-        let mut children: BTreeSet<DataResultHandle> = self
-            .entities
-            .iter()
-            .filter(|entity| group_path != **entity)
-            .cloned()
-            .map(|entity_path| {
-                let view_parts = contents.view_parts_for_entity_path(&entity_path);
-
-                let mut resolved_properties = group_resolved_properties.clone();
-
-                for prefix in EntityPath::incremental_walk(inherited_base, &entity_path) {
-                    if let Some(props) = overrides.get_opt(&prefix) {
-                        resolved_properties = resolved_properties.with_child(props);
-                    }
-                }
-
-                let override_path = base_entity_path.join(&props_path).join(&entity_path);
-
-                data_results.insert(DataResultNode {
-                    data_result: DataResult {
-                        entity_path,
-                        view_parts,
-                        resolved_properties,
-                        override_path,
-                    },
-                    children: Default::default(),
-                })
-            })
-            .collect();
-
-        // And then append the recursive children
-        let mut recursive_children: BTreeSet<DataResultHandle> = self
-            .children
-            .iter()
-            .filter_map(|handle| {
-                contents.group(*handle).map(|group| {
-                    group.add_to_data_results_recursive(
-                        contents,
-                        overrides,
-                        inherited_base,
-                        inherited,
-                        data_results,
-                    )
-                })
-            })
-            .collect();
-
-        children.append(&mut recursive_children);
-
-        data_results.insert(DataResultNode {
-            data_result: DataResult {
-                entity_path: group_path,
-                view_parts: group_view_parts,
-                resolved_properties: group_resolved_properties,
-                override_path: group_override_path,
-            },
-            children,
-        })
-    }
 }
