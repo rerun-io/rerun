@@ -161,7 +161,8 @@ jobs:
         # find the dependencies to reinstall them.
         shell: bash
         run: |
-          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
+          pip uninstall rerun-sdk
+          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
       - name: Verify built wheel version
         shell: bash
