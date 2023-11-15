@@ -57,7 +57,20 @@ impl StoreSubscriber for TimesPerTimeline {
             for (&timeline, &time) in &event.timepoint {
                 let per_time = self.0.entry(timeline).or_default();
                 let count = per_time.entry(time).or_default();
-                *count = count.saturating_add_signed(event.delta());
+
+                let delta = event.delta();
+
+                if delta < 0 {
+                    *count = count.checked_sub(delta.unsigned_abs()).unwrap_or_else(|| {
+                        re_log::warn_once!("Time counter underflowed, store events are bugged!");
+                        0
+                    });
+                } else {
+                    *count = count.checked_add(delta.unsigned_abs()).unwrap_or_else(|| {
+                        re_log::warn_once!("Time counter overflowed, store events are bugged!");
+                        u64::MAX
+                    });
+                }
 
                 if *count == 0 {
                     per_time.remove(&time);

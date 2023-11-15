@@ -47,9 +47,14 @@ impl TimeHistogramPerTimeline {
     }
 
     pub fn add(&mut self, timepoint: &TimePoint, n: u32) {
-        // If the `timepoint` is timeless…
         if timepoint.is_timeless() {
-            self.num_timeless_messages += n as u64;
+            self.num_timeless_messages = self
+                .num_timeless_messages
+                .checked_add(n as u64)
+                .unwrap_or_else(|| {
+                    re_log::warn_once!("Timeless counter overflowed, store events are bugged!");
+                    u64::MAX
+                });
         } else {
             for (timeline, time_value) in timepoint.iter() {
                 self.times
@@ -61,9 +66,14 @@ impl TimeHistogramPerTimeline {
     }
 
     pub fn remove(&mut self, timepoint: &TimePoint, n: u32) {
-        // If the `timepoint` is timeless…
         if timepoint.is_timeless() {
-            self.num_timeless_messages -= n as u64;
+            self.num_timeless_messages = self
+                .num_timeless_messages
+                .checked_sub(n as u64)
+                .unwrap_or_else(|| {
+                    re_log::warn_once!("Timeless counter underflowed, store events are bugged!");
+                    0
+                });
         } else {
             for (timeline, time_value) in timepoint.iter() {
                 self.times
