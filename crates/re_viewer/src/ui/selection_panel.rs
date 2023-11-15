@@ -280,7 +280,10 @@ fn blueprint_ui(
                     space_view.class_name(),
                 );
                 let root_data_result = space_view.root_data_result(ctx);
-                let mut props = root_data_result.resolved_properties.clone();
+                let mut props = root_data_result
+                    .individual_properties
+                    .clone()
+                    .unwrap_or_default();
 
                 space_view
                     .class(ctx.space_view_class_registry)
@@ -302,10 +305,10 @@ fn blueprint_ui(
                     true,
                     None,
                     &projected_visible_history,
-                    &mut space_view.root_entity_properties.visible_history,
+                    &mut props.visible_history,
                 );
 
-                root_data_result.save_override(props, ctx);
+                root_data_result.save_override(Some(props), ctx);
             }
         }
 
@@ -333,16 +336,20 @@ fn blueprint_ui(
                             ctx,
                             &instance_path.entity_path,
                         );
-                        let mut props = data_result.resolved_properties.clone();
+
+                        let mut props = data_result
+                            .individual_properties
+                            .clone()
+                            .unwrap_or_default();
                         entity_props_ui(
                             ctx,
                             ui,
                             &space_view_class,
                             Some(entity_path),
                             &mut props,
-                            &projected_props,
+                            &data_result.resolved_properties,
                         );
-                        data_result.save_override(props, ctx);
+                        data_result.save_override(Some(props), ctx);
                     }
                 }
             } else {
@@ -358,23 +365,24 @@ fn blueprint_ui(
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
-                    let data_result =
-                        space_view
-                            .contents
-                            .resolve(space_view, ctx, &group.group_path);
+                    let group_path = group.group_path.clone();
+                    let data_result = space_view.contents.resolve(space_view, ctx, &group_path);
 
                     let space_view_class = *space_view.class_name();
-                    let mut props = data_result.resolved_properties.clone();
+                    let mut props = data_result
+                        .individual_properties
+                        .clone()
+                        .unwrap_or_default();
 
                     entity_props_ui(
                         ctx,
                         ui,
                         &space_view_class,
                         None,
-                        &mut group.properties_individual,
-                        &group.properties_projected,
+                        &mut props,
+                        &data_result.resolved_properties,
                     );
-                    data_result.save_override(props, ctx);
+                    data_result.save_override(Some(props), ctx);
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }

@@ -261,7 +261,7 @@ impl ViewportBlueprint<'_> {
                 .with_buttons(|re_ui, ui| {
                     let vis_response =
                         visibility_button_ui(re_ui, ui, group_is_visible, &mut properties.visible);
-                    data_result.save_override(properties, ctx);
+                    data_result.save_override(Some(properties), ctx);
 
                     let response = remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                     if response.clicked() {
@@ -344,7 +344,7 @@ impl ViewportBlueprint<'_> {
                 .item_response
                 .on_hover_text("Group");
 
-            child_data_result.save_override(child_properties, ctx);
+            child_data_result.save_override(Some(child_properties), ctx);
 
             item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
