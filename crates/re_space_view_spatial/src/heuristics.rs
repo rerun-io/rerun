@@ -132,7 +132,7 @@ fn update_pinhole_property_heuristics(
             };
             properties.pinhole_image_plane_distance =
                 EditableAutoValue::Auto(default_image_plane_distance);
-            entity_properties.set(ent_path.clone(), properties);
+            entity_properties.update(ent_path.clone(), properties);
         }
     }
 }
@@ -184,7 +184,7 @@ fn update_depth_cloud_property_heuristics(
                 properties.backproject_radius_scale = EditableAutoValue::Auto(1.0);
             }
 
-            entity_properties.set(ent_path.clone(), properties);
+            entity_properties.update(ent_path.clone(), properties);
         }
     }
 }
@@ -254,6 +254,6 @@ fn update_transform3d_lines_heuristics(
             }
         }
 
-        entity_properties.set(ent_path.clone(), properties);
+        entity_properties.update(ent_path.clone(), properties);
     }
 }

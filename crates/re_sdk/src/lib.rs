@@ -64,8 +64,8 @@ pub mod sink {
 /// Things directly related to logging.
 pub mod log {
     pub use re_log_types::{
-        DataCell, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig, LogMsg, PathOp,
-        RowId, TableId,
+        DataCell, DataRow, DataTable, DataTableBatcher, DataTableBatcherConfig, LogMsg, RowId,
+        TableId,
     };
 }
 

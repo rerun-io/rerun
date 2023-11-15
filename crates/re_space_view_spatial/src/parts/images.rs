@@ -722,12 +722,11 @@ impl ViewPartSystem for ImagesPart {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.image,
-            |ctx, ent_path, ent_view, ent_context| {
-                let ent_props = query.entity_props_map.get(ent_path);
+            |ctx, ent_path, ent_props, ent_view, ent_context| {
                 self.process_image_arch_view(
                     ctx,
                     transforms,
-                    &ent_props,
+                    ent_props,
                     &ent_view,
                     ent_path,
                     ent_context,
@@ -745,12 +744,11 @@ impl ViewPartSystem for ImagesPart {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.image,
-            |ctx, ent_path, ent_view, ent_context| {
-                let ent_props = query.entity_props_map.get(ent_path);
+            |ctx, ent_path, ent_props, ent_view, ent_context| {
                 self.process_segmentation_image_arch_view(
                     ctx,
                     transforms,
-                    &ent_props,
+                    ent_props,
                     &ent_view,
                     ent_path,
                     ent_context,
@@ -763,13 +761,12 @@ impl ViewPartSystem for ImagesPart {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.image,
-            |ctx, ent_path, ent_view, ent_context| {
-                let ent_props = query.entity_props_map.get(ent_path);
+            |ctx, ent_path, ent_props, ent_view, ent_context| {
                 self.process_depth_image_arch_view(
                     ctx,
                     &mut depth_clouds,
                     transforms,
-                    &ent_props,
+                    ent_props,
                     &ent_view,
                     ent_path,
                     ent_context,

@@ -1271,6 +1271,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "custom_store_view"
+version = "0.11.0-alpha.1+dev"
+dependencies = [
+ "re_build_tools",
+ "rerun",
+]
+
+[[package]]
 name = "d3d12"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4056,6 +4064,7 @@ dependencies = [
  "itertools 0.11.0",
  "mimalloc",
  "nohash-hasher",
+ "once_cell",
  "parking_lot 0.12.1",
  "polars-core",
  "polars-ops",
@@ -4135,6 +4144,7 @@ dependencies = [
 name = "re_data_store"
 version = "0.11.0-alpha.1+dev"
 dependencies = [
+ "ahash 0.8.5",
  "anyhow",
  "criterion",
  "document-features",
@@ -4153,6 +4163,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_types_core",
+ "rmp-serde",
  "serde",
  "similar-asserts",
  "thiserror",
@@ -4444,6 +4455,7 @@ name = "re_space_view"
 version = "0.11.0-alpha.1+dev"
 dependencies = [
  "egui",
+ "itertools 0.11.0",
  "nohash-hasher",
  "re_data_store",
  "re_tracing",
@@ -4830,6 +4842,7 @@ dependencies = [
  "re_ui",
  "serde",
  "slotmap",
+ "smallvec",
  "thiserror",
  "uuid",
  "wgpu",

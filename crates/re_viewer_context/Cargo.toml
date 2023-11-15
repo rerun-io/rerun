@@ -43,6 +43,7 @@ nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde = "1"
 slotmap.workspace = true
+smallvec.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 wgpu.workspace = true

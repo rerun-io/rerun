@@ -9,6 +9,9 @@ use crate::{
 
 // ---
 
+// NOTE: Not implemented as a StoreView because it also measures implementation details of the
+// store (buckets etc), while StoreEvents work at a data-model level.
+
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct DataStoreRowStats {
     pub num_rows: u64,

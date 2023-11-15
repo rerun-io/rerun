@@ -316,6 +316,7 @@
     "trackpad",
     "trimesh",
     "Trimesh",
+    "trimleft", // doxygen command
     "TUID",
     "turtlebot",
     "TURTLEBOT",

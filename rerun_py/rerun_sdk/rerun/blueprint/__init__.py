@@ -9,6 +9,13 @@ from .auto_space_views import (
     AutoSpaceViewsLike,
     AutoSpaceViewsType,
 )
+from .entity_properties_component import (
+    EntityPropertiesComponent,
+    EntityPropertiesComponentArrayLike,
+    EntityPropertiesComponentBatch,
+    EntityPropertiesComponentLike,
+    EntityPropertiesComponentType,
+)
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
 from .space_view_component import (
     SpaceViewComponent,
@@ -38,6 +45,11 @@ __all__ = [
     "AutoSpaceViewsBatch",
     "AutoSpaceViewsLike",
     "AutoSpaceViewsType",
+    "EntityPropertiesComponent",
+    "EntityPropertiesComponentArrayLike",
+    "EntityPropertiesComponentBatch",
+    "EntityPropertiesComponentLike",
+    "EntityPropertiesComponentType",
     "PanelView",
     "PanelViewArrayLike",
     "PanelViewBatch",

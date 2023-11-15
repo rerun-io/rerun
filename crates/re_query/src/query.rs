@@ -169,7 +169,11 @@ pub fn __populate_example_store() -> DataStore {
     use re_log_types::example_components::{MyColor, MyPoint};
     use re_log_types::{build_frame_nr, DataRow};
 
-    let mut store = DataStore::new(InstanceKey::name(), Default::default());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
