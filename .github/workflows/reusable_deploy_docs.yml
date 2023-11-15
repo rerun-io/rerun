@@ -66,7 +66,13 @@ jobs:
           fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
           ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-      # Note: Python is already installed
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
+
       - name: Install Python dependencies
         run: |
           pip install --upgrade pip
@@ -214,4 +220,3 @@ jobs:
           vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
           release_commit: ${{ inputs.RELEASE_COMMIT }}
-
