@@ -1,13 +1,15 @@
+use std::collections::HashSet;
+use std::ops::RangeInclusive;
+
 use egui::NumExt as _;
-use re_data_store::{ExtraQueryHistory, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{EntityPath, TimeType};
+
+use re_data_store::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
+use re_log_types::{EntityPath, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
 use re_viewer_context::{Item, SpaceViewClassName, ViewerContext};
 use re_viewport::Viewport;
-use std::collections::HashSet;
-use std::ops::RangeInclusive;
 
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<SpaceViewClassName>> =
@@ -173,13 +175,13 @@ fn visible_history_ui_impl(
             re_ui.radio_value(ui, &mut visible_history_prop.enabled, true, "Override");
         });
 
-        let time_range = if let Some(times) = ctx
+        let timeline_spec = if let Some(times) = ctx
             .store_db
             .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
         {
-            times.min_key().unwrap_or_default()..=times.max_key().unwrap_or_default()
+            TimelineSpec::from_time_histogram(times)
         } else {
-            0..=0
+            TimelineSpec::from_time_range(0..=0)
         };
 
         let current_time = ctx
@@ -187,9 +189,7 @@ fn visible_history_ui_impl(
             .time_ctrl
             .time_i64()
             .unwrap_or_default()
-            .at_least(*time_range.start()); // accounts for timeless time (TimeInt::BEGINNING)
-
-        let min_time = *time_range.start();
+            .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::BEGINNING)
 
         let sequence_timeline =
             matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
@@ -213,13 +213,11 @@ fn visible_history_ui_impl(
             ui.horizontal(|ui| {
                 visible_history_boundary_ui(
                     ctx,
-                    re_ui,
                     ui,
                     &mut visible_history.from,
                     sequence_timeline,
                     current_time,
-                    time_range.clone(),
-                    min_time,
+                    &timeline_spec,
                     true,
                     current_high_boundary,
                 );
@@ -228,13 +226,11 @@ fn visible_history_ui_impl(
             ui.horizontal(|ui| {
                 visible_history_boundary_ui(
                     ctx,
-                    re_ui,
                     ui,
                     &mut visible_history.to,
                     sequence_timeline,
                     current_time,
-                    time_range,
-                    min_time,
+                    &timeline_spec,
                     false,
                     current_low_boundary,
                 );
@@ -314,14 +310,14 @@ fn projected_visible_history_boundary_ui(
             if *offset != 0 {
                 if sequence_timeline {
                     label += &format!(
-                        "with {offset} frame{} offset",
+                        " with {offset} frame{} offset",
                         if offset.abs() > 1 { "s" } else { "" }
                     );
                 } else {
                     // This looks like it should be generically handled somewhere like re_format,
                     // but this actually is rather ad hoc and works thanks to egui::DragValue
                     // biasing towards round numbers and the auto-scaling feature of
-                    // `ReUi::time_drag_value()`.
+                    // `time_drag_value()`.
                     let (unit, factor) = if offset % 1_000_000_000 == 0 {
                         ("s", 1_000_000_000.)
                     } else if offset % 1_000_000 == 0 {
@@ -387,13 +383,11 @@ fn visible_history_boundary_combo_label(
 #[allow(clippy::too_many_arguments)]
 fn visible_history_boundary_ui(
     ctx: &mut ViewerContext<'_>,
-    re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
     visible_history_boundary: &mut VisibleHistoryBoundary,
     sequence_timeline: bool,
     current_time: i64,
-    mut time_range: RangeInclusive<i64>,
-    min_time: i64,
+    timeline_spec: &TimelineSpec,
     low_bound: bool,
     other_boundary_absolute: i64,
 ) {
@@ -456,83 +450,207 @@ fn visible_history_boundary_ui(
         });
     });
 
-    let span = time_range.end() - time_range.start();
-
-    // Hot "usability" area! This achieves two things:
-    // 1) It makes sure the time range in relative mode has enough margin beyond the current
-    //    timeline's span to avoid the boundary value to be modified by changing the current time
-    //    cursor
-    // 2) It makes sure the two boundaries don't cross in time (i.e. low > high). It does so by
-    //    prioritizing the low boundary. Moving the low boundary against the high boundary will
-    //    displace the high boundary. On the other hand, the high boundary cannot be moved against
-    //    the low boundary. This asymmetry is intentional, and avoids both boundaries fighting each
-    //    other in some corner cases (when the user interacts with the current time cursor).
-    #[allow(clippy::collapsible_else_if)] // for readability
-    if matches!(
-        visible_history_boundary,
-        VisibleHistoryBoundary::RelativeToTimeCursor(_)
-    ) {
-        if low_bound {
-            time_range = -span..=2 * span;
-        } else {
-            time_range =
-                (other_boundary_absolute.saturating_sub(current_time)).at_least(-span)..=2 * span;
-        }
-    } else {
-        if !low_bound {
-            time_range = other_boundary_absolute.at_least(*time_range.start())..=*time_range.end();
-        }
-    }
+    // Note: the time range adjustment below makes sure the two boundaries don't cross in time
+    // (i.e. low > high). It does so by prioritizing the low boundary. Moving the low boundary
+    // against the high boundary will displace the high boundary. On the other hand, the high
+    // boundary cannot be moved against the low boundary. This asymmetry is intentional, and avoids
+    // both boundaries fighting each other in some corner cases (when the user interacts with the
+    // current time cursor)
 
     match visible_history_boundary {
-        VisibleHistoryBoundary::RelativeToTimeCursor(value) => editable_boundary_ui(
-            ctx,
-            re_ui,
-            ui,
-            value,
-            sequence_timeline,
-            false,
-            time_range,
-            min_time,
-        ),
-        VisibleHistoryBoundary::Absolute(value) => editable_boundary_ui(
-            ctx,
-            re_ui,
-            ui,
-            value,
-            sequence_timeline,
-            true,
-            time_range,
-            min_time,
-        ),
+        VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
+            // see note above
+            let low_bound_override = if !low_bound {
+                Some(other_boundary_absolute.saturating_sub(current_time))
+            } else {
+                None
+            };
+
+            if sequence_timeline {
+                timeline_spec.sequence_drag_value(ui, value, false, low_bound_override);
+            } else {
+                timeline_spec.temporal_drag_value(
+                    ui,
+                    value,
+                    false,
+                    low_bound_override,
+                    ctx.app_options.time_zone_for_timestamps,
+                );
+            }
+        }
+        VisibleHistoryBoundary::Absolute(value) => {
+            // see note above
+            let low_bound_override = if !low_bound {
+                Some(other_boundary_absolute)
+            } else {
+                None
+            };
+
+            if sequence_timeline {
+                timeline_spec.sequence_drag_value(ui, value, true, low_bound_override);
+            } else {
+                timeline_spec.temporal_drag_value(
+                    ui,
+                    value,
+                    true,
+                    low_bound_override,
+                    ctx.app_options.time_zone_for_timestamps,
+                );
+            }
+        }
         VisibleHistoryBoundary::Infinite => {}
     }
 }
 
 // ---
 
-#[allow(clippy::too_many_arguments)]
-fn editable_boundary_ui(
-    ctx: &mut ViewerContext<'_>,
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    value: &mut i64,
-    sequence_timeline: bool,
-    absolute: bool,
-    time_range: RangeInclusive<i64>,
-    min_time: i64,
-) {
-    if sequence_timeline {
+/// Compute and store various information about a timeline related to how the UI should behave.
+#[derive(Debug)]
+struct TimelineSpec {
+    /// Actual range of logged data on the timelines (excluding timeless data).
+    range: RangeInclusive<i64>,
+
+    /// For timelines with large offsets (e.g. `log_time`), this is a rounded time just before the
+    /// first logged data, which can be used as offset in the UI.
+    base_time: Option<i64>,
+
+    // used only for temporal timelines
+    /// For temporal timelines, this is a nice unit factor to use.
+    unit_factor: i64,
+
+    /// For temporal timelines, this is the unit symbol to display.
+    unit_symbol: &'static str,
+
+    /// This is a nice range of absolute times to use when editing an absolute time. The boundaries
+    /// are extended to the nearest rounded unit to minimize glitches.
+    abs_range: RangeInclusive<i64>,
+
+    /// This is a nice range of relative times to use when editing an absolute time. The boundaries
+    /// are extended to the nearest rounded unit to minimize glitches.
+    rel_range: RangeInclusive<i64>,
+}
+
+impl TimelineSpec {
+    fn from_time_histogram(times: &TimeHistogram) -> Self {
+        Self::from_time_range(
+            times.min_key().unwrap_or_default()..=times.max_key().unwrap_or_default(),
+        )
+    }
+
+    fn from_time_range(range: RangeInclusive<i64>) -> Self {
+        let span = range.end() - range.start();
+        let base_time = time_range_base_time(*range.start(), span);
+        let (unit_symbol, unit_factor) = unit_from_span(span);
+
+        // `abs_range` is used by the DragValue when editing an absolute time, its bound expended to
+        // nearest unit to minimize glitches.
+        let abs_range =
+            round_down(*range.start(), unit_factor)..=round_up(*range.end(), unit_factor);
+
+        // `rel_range` is used by the DragValue when editing a relative time offset. It must have
+        // enough margin either side to accommodate for all possible values of current time.
+        let rel_range = round_down(-span, unit_factor)..=round_up(2 * span, unit_factor);
+
+        Self {
+            range,
+            base_time,
+            unit_factor,
+            unit_symbol,
+            abs_range,
+            rel_range,
+        }
+    }
+
+    fn sequence_drag_value(
+        &self,
+        ui: &mut egui::Ui,
+        value: &mut i64,
+        absolute: bool,
+        low_bound_override: Option<i64>,
+    ) {
+        let mut time_range = if absolute {
+            self.abs_range.clone()
+        } else {
+            self.rel_range.clone()
+        };
+
+        // speed must be computed before messing with time_range for consistency
         let span = time_range.end() - time_range.start();
         let speed = (span as f32 * 0.005).at_least(1.0);
+
+        if let Some(low_bound_override) = low_bound_override {
+            time_range = low_bound_override.at_least(*time_range.start())..=*time_range.end();
+        }
 
         ui.add(
             egui::DragValue::new(value)
                 .clamp_range(time_range)
                 .speed(speed),
         );
+    }
+
+    fn temporal_drag_value(
+        &self,
+        ui: &mut egui::Ui,
+        value: &mut i64,
+        absolute: bool,
+        low_bound_override: Option<i64>,
+        time_zone_for_timestamps: TimeZone,
+    ) {
+        let mut time_range = if absolute {
+            self.abs_range.clone()
+        } else {
+            self.rel_range.clone()
+        };
+
+        let factor = self.unit_factor as f32;
+        let offset = if absolute {
+            self.base_time.unwrap_or(0)
+        } else {
+            0
+        };
+
+        // speed must be computed before messing with time_range for consistency
+        let speed = (time_range.end() - time_range.start()) as f32 / factor * 0.005;
+
+        if let Some(low_bound_override) = low_bound_override {
+            time_range = low_bound_override.at_least(*time_range.start())..=*time_range.end();
+        }
+
+        let mut time_unit = (*value - offset) as f32 / factor;
+
+        let time_range = (*time_range.start() - offset) as f32 / factor
+            ..=(*time_range.end() - offset) as f32 / factor;
+
+        if absolute {
+            if let Some(base_time) = self.base_time {
+                ui.label(format!(
+                    "{} + ",
+                    TimeType::Time.format(base_time.into(), time_zone_for_timestamps)
+                ));
+            }
+        }
+
+        ui.add(
+            egui::DragValue::new(&mut time_unit)
+                .clamp_range(time_range)
+                .speed(speed)
+                .suffix(self.unit_symbol),
+        );
+
+        *value = (time_unit * factor).round() as i64 + offset;
+    }
+}
+
+fn unit_from_span(span: i64) -> (&'static str, i64) {
+    if span / 1_000_000_000 > 0 {
+        ("s", 1_000_000_000)
+    } else if span / 1_000_000 > 0 {
+        ("ms", 1_000_000)
+    } else if span / 1_000 > 0 {
+        ("μs", 1_000)
     } else {
-        time_drag_value(ctx, re_ui, ui, value, absolute, &time_range, min_time);
+        ("ns", 1)
     }
 }
 
@@ -559,42 +677,39 @@ fn time_range_base_time(min_time: i64, span: i64) -> Option<i64> {
     }
 }
 
-fn time_drag_value(
-    ctx: &mut ViewerContext<'_>,
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    value: &mut i64,
-    absolute: bool,
-    time_range: &RangeInclusive<i64>,
-    min_time: i64,
-) {
-    let base_time = if absolute {
-        time_range_base_time(min_time, *time_range.end() - *time_range.start())
-    } else {
-        None
-    };
+fn round_down(value: i64, factor: i64) -> i64 {
+    value - (value.rem_euclid(factor))
+}
 
-    if let Some(base_time) = base_time {
-        ui.label(format!(
-            "{} + ",
-            TimeType::Time.format(base_time.into(), ctx.app_options.time_zone_for_timestamps)
-        ));
-        time_drag_value_with_base_time(re_ui, ui, value, time_range, base_time);
+fn round_up(value: i64, factor: i64) -> i64 {
+    let val = round_down(value, factor);
+
+    if val == value {
+        val
     } else {
-        re_ui.time_drag_value(ui, value, time_range);
+        val + factor
     }
 }
 
-/// Wrapper over [`re_ui::ReUi::time_drag_value`] that first subtract an offset to the edited time.
-fn time_drag_value_with_base_time(
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    value: &mut i64,
-    time_range: &RangeInclusive<i64>,
-    base_time: i64,
-) {
-    let time_range = time_range.start() - base_time..=time_range.end() - base_time;
-    let mut offset_value = *value - base_time;
-    re_ui.time_drag_value(ui, &mut offset_value, &time_range);
-    *value = offset_value + base_time;
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_round_down() {
+        assert_eq!(round_down(2200, 1000), 2000);
+        assert_eq!(round_down(2000, 1000), 2000);
+        assert_eq!(round_down(-2200, 1000), -3000);
+        assert_eq!(round_down(-3000, 1000), -3000);
+        assert_eq!(round_down(0, 1000), 0);
+    }
+
+    #[test]
+    fn test_round_up() {
+        assert_eq!(round_up(2200, 1000), 3000);
+        assert_eq!(round_up(2000, 1000), 2000);
+        assert_eq!(round_up(-2200, 1000), -2000);
+        assert_eq!(round_up(-3000, 1000), -3000);
+        assert_eq!(round_up(0, 1000), 0);
+    }
 }
