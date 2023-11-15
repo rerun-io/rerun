@@ -126,6 +126,8 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "scripts/ci/requirements.txt"
 
       # These should already be in the docker container, but run for good measure. A no-op install
       # should be fast, and this way things don't break if we add new packages without rebuilding
