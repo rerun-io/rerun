@@ -39,7 +39,8 @@ jobs:
         id: get-full-sha
         run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
-  ### Linux
+  ## Build
+
   build-linux:
     name: "Linux: Build Wheels"
     needs: [get-commit-sha]
@@ -48,6 +49,52 @@ jobs:
       CONCURRENCY: wheels-build-linux-${{ inputs.concurrency }}
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
+    secrets: inherit
+
+  build-windows:
+    name: "Windows: Build Wheels"
+    needs: [get-commit-sha]
+    uses: ./.github/workflows/reusable_build_wheels.yml
+    with:
+      CONCURRENCY: wheels-build-windows-${{ inputs.concurrency }}
+      PLATFORM: windows
+      WHEEL_ARTIFACT_NAME: windows-wheel
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
+    secrets: inherit
+
+  build-macos-arm:
+    name: "Macos-Arm: Build Wheels"
+    needs: [get-commit-sha]
+    uses: ./.github/workflows/reusable_build_wheels.yml
+    with:
+      CONCURRENCY: wheels-build-macos-arm-${{ inputs.concurrency }}
+      PLATFORM: macos-arm
+      WHEEL_ARTIFACT_NAME: macos-arm-wheel
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
+    secrets: inherit
+
+  build-macos-intel:
+    name: "Macos-Intel: Build Wheels"
+    needs: [get-commit-sha]
+    uses: ./.github/workflows/reusable_build_wheels.yml
+    with:
+      CONCURRENCY: wheels-build-macos-intel-${{ inputs.concurrency }}
+      PLATFORM: macos-intel
+      WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
+      RELEASE_COMMIT: ${{ inputs.release-commit }}
+    secrets: inherit
+
+  ## Test
+
+  test-windows:
+    name: "Windows: Test Wheels"
+    needs: [build-windows]
+    uses: ./.github/workflows/reusable_test_wheels.yml
+    with:
+      CONCURRENCY: wheels-test-windows-${{ inputs.concurrency }}
+      PLATFORM: windows
+      WHEEL_ARTIFACT_NAME: windows-wheel
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
@@ -62,6 +109,8 @@ jobs:
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
+  ## Upload
+
   upload-wheels-linux:
     name: "Linux: Upload Wheels"
     needs: [test-linux]
@@ -72,32 +121,9 @@ jobs:
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  ### Windows
-  build-windows:
-    name: "Windows: Build Wheels"
-    needs: [get-commit-sha]
-    uses: ./.github/workflows/reusable_build_wheels.yml
-    with:
-      CONCURRENCY: wheels-build-windows-${{ inputs.concurrency }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  test-windows:
-    name: "Windows: Test Wheels"
-    needs: [build-windows]
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: wheels-test-windows-${{ inputs.concurrency }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
   upload-wheels-windows:
     name: "Windows: Upload Wheels"
-    needs: [build-linux, test-windows]
+    needs: [test-windows]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       CONCURRENCY: wheels-upload-windows-${{ inputs.concurrency }}
@@ -105,32 +131,9 @@ jobs:
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  ### macOS (arm)
-  build-macos-arm:
-    name: "Macos-Arm: Build Wheels"
-    needs: [get-commit-sha]
-    uses: ./.github/workflows/reusable_build_wheels.yml
-    with:
-      CONCURRENCY: wheels-build-macos-arm-${{ inputs.concurrency }}
-      PLATFORM: macos-arm
-      WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  test-macos-arm:
-    name: "Macos-Arm: Test Wheels"
-    needs: [build-macos-arm]
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: wheels-test-macos-arm-${{ inputs.concurrency }}
-      PLATFORM: macos-arm
-      WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
   upload-wheels-macos-arm:
     name: "Macos-Arm: Upload Wheels"
-    needs: [build-linux, test-macos-arm]
+    needs: [build-macos-arm]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       CONCURRENCY: wheels-upload-macos-arm-${{ inputs.concurrency }}
@@ -138,32 +141,9 @@ jobs:
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
 
-  ### macOS (intel)
-  build-macos-intel:
-    name: "Macos-Intel: Build Wheels"
-    needs: [get-commit-sha]
-    uses: ./.github/workflows/reusable_build_wheels.yml
-    with:
-      CONCURRENCY: wheels-build-macos-intel-${{ inputs.concurrency }}
-      PLATFORM: macos-intel
-      WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  test-macos-intel:
-    name: "Macos-Arm: Test Wheels"
-    needs: [build-macos-intel]
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: wheels-test-macos-intel-${{ inputs.concurrency }}
-      PLATFORM: macos-intel
-      WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
   upload-wheels-macos-intel:
     name: "Macos-Intel: Upload Wheels"
-    needs: [build-linux, test-macos-intel]
+    needs: [build-macos-intel]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       CONCURRENCY: wheels-upload-macos-intel-${{ inputs.concurrency }}
