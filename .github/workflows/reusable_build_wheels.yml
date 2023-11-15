@@ -1,4 +1,4 @@
-name: Reusable Build and Test Wheels
+name: Reusable Build Wheels
 
 on:
   workflow_call:

@@ -1,4 +1,4 @@
-name: Reusable Build and Test Wheels
+name: Reusable Test Wheels
 
 on:
   workflow_call:
@@ -85,8 +85,8 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
-  build-wheels:
-    name: Build Wheels (${{ needs.set-config.outputs.RUNNER }})
+  test-wheels:
+    name: Test Wheels (${{ needs.set-config.outputs.RUNNER }})
 
     needs: [set-config]
 
@@ -126,8 +126,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "scripts/ci/requirements.txt"
 
       # These should already be in the docker container, but run for good measure. A no-op install
       # should be fast, and this way things don't break if we add new packages without rebuilding
@@ -161,7 +159,6 @@ jobs:
         # find the dependencies to reinstall them.
         shell: bash
         run: |
-          pip uninstall rerun-sdk
           pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
 
       - name: Verify built wheel version
