@@ -12,7 +12,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
-  # Must match list in `.github/workflows/reusable_build_and_test_wheels.yml`
+  # Must match list in `.github/workflows/reusable_test_wheels.yml`
   "attrs>=23.1.0",
   "numpy>=1.23",
   "pillow",                 # Used for JPEG encoding
