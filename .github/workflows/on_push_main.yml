@@ -232,12 +232,12 @@ jobs:
 
   test-wheel-windows:
     needs: [checks, build-wheel-windows]
-    name: "Linux: Test Wheels"
+    name: "Windows: Test Wheels"
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: linux-wheel
+      CONCURRENCY: push-windows-${{ github.ref_name }}
+      PLATFORM: windows
+      WHEEL_ARTIFACT_NAME: windows-wheel
     secrets: inherit
 
   # NOTE: We currently don't test wheels on macos-arm/macos-intel
