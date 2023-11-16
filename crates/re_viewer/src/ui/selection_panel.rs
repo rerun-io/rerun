@@ -1,9 +1,10 @@
 use egui::NumExt as _;
 
 use re_data_store::{
-    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, ExtraQueryHistory,
+    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
+use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
@@ -279,11 +280,23 @@ fn blueprint_ui(
                     space_view.id,
                     space_view.class_name(),
                 );
+
+                // Space View don't inherit properties.
+                // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
+                let resolved_entity_props = if space_view_class == TimeSeriesSpaceView::NAME {
+                    let mut resolved_entity_props = EntityProperties::default();
+                    resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
+                    resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
+                    resolved_entity_props
+                } else {
+                    EntityProperties::default()
+                };
+
                 let root_data_result = space_view.root_data_result(ctx);
                 let mut props = root_data_result
                     .individual_properties
                     .clone()
-                    .unwrap_or_default();
+                    .unwrap_or(resolved_entity_props.clone());
 
                 space_view
                     .class(ctx.space_view_class_registry)
@@ -295,16 +308,13 @@ fn blueprint_ui(
                         space_view.id,
                     );
 
-                // Space Views don't inherit properties
-                let resolved_visible_history = ExtraQueryHistory::default();
-
                 visible_history_ui(
                     ctx,
                     ui,
                     &space_view_class,
                     true,
                     None,
-                    &resolved_visible_history,
+                    &resolved_entity_props.visible_history,
                     &mut props.visible_history,
                 );
 

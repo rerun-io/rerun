@@ -167,29 +167,17 @@ pub fn visible_history_ui(
                     );
                 });
             } else {
-                // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-                let (from_boundary, to_boundary) = if !resolved_visible_history_prop.enabled
-                    && space_view_class == TimeSeriesSpaceView::NAME
-                {
-                    // Contrary to other space views, Timeseries space view do not act like
-                    // `VisibleHistory::default()` when its disabled. Instead, behaves like
-                    // `VisibleHistory::ALL` instead.
-                    (&VisibleHistory::ALL.from, &VisibleHistory::ALL.to)
-                } else {
-                    (&resolved_visible_history.from, &resolved_visible_history.to)
-                };
-
                 resolved_visible_history_boundary_ui(
                     ctx,
                     ui,
-                    from_boundary,
+                    &resolved_visible_history.from,
                     sequence_timeline,
                     true,
                 );
                 resolved_visible_history_boundary_ui(
                     ctx,
                     ui,
-                    to_boundary,
+                    &resolved_visible_history.to,
                     sequence_timeline,
                     false,
                 );
