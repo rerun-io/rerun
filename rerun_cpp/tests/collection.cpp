@@ -16,6 +16,7 @@ struct ConvertibleElement {
     ConvertibleElement(int v) : value(v) {}
 
     ConvertibleElement(const ConvertibleElement& e) = default;
+
     ConvertibleElement& operator=(const ConvertibleElement& e) = default;
 
     int value = 99999;
@@ -25,19 +26,81 @@ struct ConvertibleElement {
 struct Element {
     Element(int v) : value(v) {}
 
-    Element(const Element& e) = default;
+    Element(const Element& e) : value(e.value) {
+        ++copy_count;
+    }
+
+    Element(Element&& e) : value(e.value) {
+        ++move_count;
+    }
+
     Element& operator=(const Element& e) = default;
 
-    Element(const ConvertibleElement& e) : value(e.value) {}
+    Element(const ConvertibleElement& e) : value(e.value) {
+        ++move_convertible_count;
+    }
 
-    // TODO: measure
-    Element(ConvertibleElement&& e) : value(e.value) {}
+    Element(ConvertibleElement&& e) : value(e.value) {
+        ++copy_convertible_count;
+    }
 
     bool operator==(const Element& other) const {
         return value == other.value;
     }
 
     int value = 99999;
+
+    static int move_count;
+    static int copy_count;
+    static int move_convertible_count;
+    static int copy_convertible_count;
+};
+
+int Element::move_count = 0;
+int Element::copy_count = 0;
+int Element::move_convertible_count = 0;
+int Element::copy_convertible_count = 0;
+
+struct CheckElementMoveAndCopyCount {
+    CheckElementMoveAndCopyCount()
+        : copy_count_before(Element::copy_count),
+          move_count_before(Element::move_count),
+          copy_convertible_count_before(Element::copy_convertible_count),
+          move_convertible_count_before(Element::move_convertible_count) {}
+
+    ~CheckElementMoveAndCopyCount() {
+        // Both moves and copies can be elided, so we can only check for a minimum.
+        CHECK(Element::copy_count - copy_count_before <= expected_copy_increase);
+        CHECK(Element::move_count - move_count_before <= expected_move_increase);
+        CHECK(
+            Element::copy_convertible_count - copy_convertible_count_before <=
+            expected_copy_convertible_increase
+        );
+        CHECK(
+            Element::move_convertible_count - move_convertible_count_before <=
+            expected_move_convertible_increase
+        );
+    }
+
+    CheckElementMoveAndCopyCount(const CheckElementMoveAndCopyCount&) = delete;
+
+    CheckElementMoveAndCopyCount& expect_move(int i) {
+        expected_move_increase = i;
+        return *this;
+    }
+
+    CheckElementMoveAndCopyCount& expect_copy(int i) {
+        expected_copy_increase = i;
+        return *this;
+    }
+
+    int expected_copy_increase = 0;
+    int expected_move_increase = 0;
+    int expected_copy_convertible_increase = 0;
+    int expected_move_convertible_increase = 0;
+
+    int copy_count_before, move_count_before;
+    int copy_convertible_count_before, move_convertible_count_before;
 };
 
 #define EXPECTED_ELEMENT_LIST \
@@ -67,11 +130,16 @@ SCENARIO(
         std::vector<Element> elements = EXPECTED_ELEMENT_LIST;
 
         THEN("a collection created from it borrows its data") {
+            CheckElementMoveAndCopyCount check; // No copies or moves.
+
             const rerun::Collection<Element> collection(elements);
             check_for_expected_list(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
         }
-        THEN("a collection created from it moving it owns the data") {
+        THEN("a collection created from moving it owns the data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(2);
+
             const rerun::Collection<Element> collection(std::move(elements));
             check_for_expected_list(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
@@ -80,6 +148,10 @@ SCENARIO(
 
     GIVEN("a temporary vector of elements") {
         THEN("a collection created from it owns its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(2);
+            check.expect_copy(2); // for constructing the temporary vector.
+
             const rerun::Collection<Element> collection(std::vector<Element> EXPECTED_ELEMENT_LIST);
             check_for_expected_list(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
@@ -90,11 +162,16 @@ SCENARIO(
         std::array<Element, 2> elements = EXPECTED_ELEMENT_LIST;
 
         THEN("a collection created from it borrows its data") {
+            CheckElementMoveAndCopyCount check; // No copies or moves.
+
             const rerun::Collection<Element> collection(elements);
             check_for_expected_list(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
         }
         THEN("a collection created from it moving it owns the data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(2);
+
             const rerun::Collection<Element> collection(std::move(elements));
             check_for_expected_list(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
@@ -102,6 +179,10 @@ SCENARIO(
     }
     GIVEN("a temporary std::array of elements") {
         THEN("a collection created from it owns its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(2);
+            check.expect_copy(2); // for constructing the temporary array.
+
             const rerun::Collection<Element> collection(std::array<Element, 2> EXPECTED_ELEMENT_LIST
             );
             check_for_expected_list(collection);
@@ -113,33 +194,46 @@ SCENARIO(
         Element elements[] = EXPECTED_ELEMENT_LIST;
 
         THEN("a collection created from it borrows its data") {
+            CheckElementMoveAndCopyCount check; // No copies or moves.
+
             const rerun::Collection<Element> collection(elements);
             check_for_expected_list(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
         }
         THEN("a collection created from moving it owns the data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(2);
+
             const rerun::Collection<Element> collection(std::move(elements));
             check_for_expected_list(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
         }
     }
 
-    GIVEN("a single elements") {
+    GIVEN("a single element") {
         Element component = EXPECTED_SINGLE;
 
         THEN("a collection created from it borrows its data") {
+            CheckElementMoveAndCopyCount check; // No copies or moves.
+
             const rerun::Collection<Element> collection(component);
             check_for_expected_single(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
         }
-        THEN("a collection created from it moving it owns the data") {
+        THEN("a collection created from moving it owns the data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(1);
+
             const rerun::Collection<Element> collection(std::move(component));
             check_for_expected_single(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
         }
     }
     GIVEN("a single temporary component") {
-        THEN("a collection created from it borrows its data") {
+        THEN("a collection created from it owns the data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(1);
+
             const rerun::Collection<Element> collection(Element(EXPECTED_SINGLE));
             check_for_expected_single(collection);
             CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);

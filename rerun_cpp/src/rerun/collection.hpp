@@ -186,7 +186,9 @@ namespace rerun {
         /// Takes ownership of a single element, moving it into the collection.
         static Collection<TElement> take_ownership(TElement&& data) {
             // TODO(andreas): there should be a special path here to avoid allocating a vector.
-            return take_ownership(std::vector<TElement>{std::move(data)});
+            std::vector<TElement> elements;
+            elements.emplace_back(std::move(data));
+            return take_ownership(std::move(elements));
         }
 
         /// Swaps the content of this collection with another.

@@ -17,25 +17,24 @@ namespace rerun::traits {
 
     /// \private
     namespace details {
-        /// False type if a given type is not iterable and has a size (has `begin`, `end` and `size` implemented).
+        /// False type if a given type is not iterable and has a size (has `begin` and `end`).
         template <typename T, typename = void>
-        struct is_iterable_and_has_size : std::false_type {};
+        struct is_iterable : std::false_type {};
 
-        /// True type if a given type is iterable and has a size (has `begin`, `end` and `size` implemented).
+        /// True type if a given type is iterable and has a size (has `begin` and `end` implemented).
         ///
-        /// Makes no restrictions on the type returned by `begin`/`end`/`size`.
+        /// Makes no restrictions on the type returned by `begin`/`end`.
         template <typename T>
-        struct is_iterable_and_has_size<
+        struct is_iterable<
             T, std::void_t<
                    decltype(std::begin(std::declval<T&>())), //
-                   decltype(std::end(std::declval<T&>())),   //
-                   decltype(std::size(std::declval<T&>()))   //
+                   decltype(std::end(std::declval<T&>()))    //
                    >> : std::true_type {};
     } // namespace details
 
-    /// True if a given type is iterable (has `begin` & `end`) and has a `size` member function.
+    /// True if a given type is iterable, meaning there is a `begin` & `end` implementation.
     ///
-    /// Makes no restrictions on the type returned by `begin`/`end`/`size`.
+    /// Makes no restrictions on the type returned by `begin`/`end`.
     template <typename T>
-    constexpr bool is_iterable_and_has_size_v = details::is_iterable_and_has_size<T>::value;
+    constexpr bool is_iterable_v = details::is_iterable<T>::value;
 } // namespace rerun::traits
