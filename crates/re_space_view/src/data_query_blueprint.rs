@@ -17,7 +17,7 @@ use crate::{
 /// During execution it will walk an [`EntityTree`] and return a [`DataResultTree`]
 /// containing any entities that match the input list of [`EntityPathExpr`]s.
 ///
-/// Any exact expressions are included in the [`ResultTree`] regardless of whether or not they are found
+/// Any exact expressions are included in the [`DataResultTree`] regardless of whether or not they are found
 /// this allows UI to show a "no data" message for entities that are being explicitly looked for but
 /// not found.
 ///

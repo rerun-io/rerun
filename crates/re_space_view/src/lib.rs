@@ -10,6 +10,7 @@ mod screenshot;
 mod space_view_contents;
 mod unreachable_transform_reason;
 
+pub use blueprint::QueryExpressions;
 pub use data_query::{
     DataQuery, DataResultHandle, DataResultNode, DataResultTree, PropertyResolver,
 };
