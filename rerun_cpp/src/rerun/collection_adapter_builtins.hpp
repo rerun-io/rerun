@@ -22,7 +22,7 @@ namespace rerun {
         }
     };
 
-    /// Adapter from a generic std compatible container (see `rerun::is_iterable_and_has_size_v`) which
+    /// Adapter from a generic std compatible container (see `rerun::traits::is_iterable_and_has_size_v`) which
     /// has a value type from which `TElement` can be constructed.
     ///
     /// Since this needs to do a conversion, this will always need to allocate space.
@@ -31,11 +31,11 @@ namespace rerun {
     struct CollectionAdapter<
         TElement, TContainer,
         std::enable_if_t<
-            !std::is_same_v<TElement, value_type_of_t<TContainer>> && //
-            is_iterable_and_has_size_v<TContainer> &&                 //
+            !std::is_same_v<TElement, traits::value_type_of_t<TContainer>> && //
+            traits::is_iterable_and_has_size_v<TContainer> &&                 //
             std::is_constructible_v<
                 TElement,
-                value_type_of_t<TContainer>> //
+                traits::value_type_of_t<TContainer>> //
             >> {
         Collection<TElement> operator()(const TContainer& input) {
             std::vector<TElement> transformed;

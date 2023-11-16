@@ -271,9 +271,7 @@ namespace rerun::datatypes {
         /// This constructor assumes the type of tensor buffer you want to use is defined by `TContainer::value_type`
         /// and then forwards the argument as-is to the appropriate `rerun::Container` constructor.
         /// \see rerun::ContainerAdapter, rerun::Container
-        template <
-            typename TContainer,
-            typename value_type = typename std::remove_reference_t<TContainer>::value_type>
+        template <typename TContainer, typename value_type = traits::value_type_of_t<TContainer>>
         TensorBuffer(TContainer&& container)
             : TensorBuffer(Collection<value_type>(std::forward<TContainer>(container))) {}
 
