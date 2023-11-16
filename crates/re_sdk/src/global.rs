@@ -44,24 +44,25 @@ impl ThreadLocalRecording {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
-impl Drop for ThreadLocalRecording {
-    fn drop(&mut self) {
-        if let Some(stream) = self.stream.take() {
-            // Work-around for https://github.com/rerun-io/rerun/issues/2889
-            // Calling drop on `self.stream` will panic the calling thread.
-            // But we want to make sure we don't loose the data in the stream.
-            // So how?
-            re_log::warn!("Using thread-local RecordingStream on macOS & Windows can result in data loss because of https://github.com/rerun-io/rerun/issues/3937");
+// TODO: re-enable! THis is just to test that CI is working!
+// #[cfg(any(target_os = "macos", target_os = "windows"))]
+// impl Drop for ThreadLocalRecording {
+//     fn drop(&mut self) {
+//         if let Some(stream) = self.stream.take() {
+//             // Work-around for https://github.com/rerun-io/rerun/issues/2889
+//             // Calling drop on `self.stream` will panic the calling thread.
+//             // But we want to make sure we don't loose the data in the stream.
+//             // So how?
+//             re_log::warn!("Using thread-local RecordingStream on macOS & Windows can result in data loss because of https://github.com/rerun-io/rerun/issues/3937");
 
-            // Give the batcher and sink threads a chance to process the data.
-            std::thread::sleep(std::time::Duration::from_millis(500));
+//             // Give the batcher and sink threads a chance to process the data.
+//             std::thread::sleep(std::time::Duration::from_millis(500));
 
-            #[allow(clippy::mem_forget)] // Intentionally not calling `drop`
-            std::mem::forget(stream);
-        }
-    }
-}
+//             #[allow(clippy::mem_forget)] // Intentionally not calling `drop`
+//             std::mem::forget(stream);
+//         }
+//     }
+// }
 
 static GLOBAL_DATA_RECORDING: OnceCell<RwLock<Option<RecordingStream>>> = OnceCell::new();
 thread_local! {
