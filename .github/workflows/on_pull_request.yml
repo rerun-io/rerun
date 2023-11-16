@@ -27,17 +27,17 @@ jobs:
     outputs:
       cpp_changes: ${{ steps.filter.outputs.cpp_changes }}
     steps:
-    - uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-    - uses: dorny/paths-filter@v2
-      id: filter
-      with:
-        filters: |
-          cpp_changes:
-            - '**/*.hpp'
-            - '**/.cpp'
-            - '**/CMakeLists.txt'
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            cpp_changes:
+              - '**/*.hpp'
+              - '**/.cpp'
+              - '**/CMakeLists.txt'
 
   cpp-tests:
     name: "C++ tests"
@@ -49,16 +49,26 @@ jobs:
       FULL: "${{ needs.cpp-paths-filter.outputs.cpp_changes }}"
     secrets: inherit
 
-  min-test-wheel:
-    name: "Minimum Wheel"
+  min-wheel-build:
+    name: "Minimum Wheel Build"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    uses: ./.github/workflows/reusable_build_wheels.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PLATFORM: linux
       MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
       WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
-      RRD_ARTIFACT_NAME: linux-rrd-fast
+    secrets: inherit
+
+  min-wheel-test:
+    name: "Minimum Wheel Test"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [min-wheel-build]
+    uses: ./.github/workflows/reusable_test_wheels.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PLATFORM: linux
+      WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
     secrets: inherit
 
   build-js:
@@ -106,18 +116,17 @@ jobs:
   upload-web:
     name: "Upload Web"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [min-test-wheel, build-web]
+    needs: [build-web]
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      RRD_ARTIFACT_NAME: linux-rrd-fast
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   build-web-demo:
     name: "Build Web Demo"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [min-test-wheel, build-web]
+    needs: [min-wheel-build, build-web]
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -149,7 +158,7 @@ jobs:
   run-notebook:
     name: "Run Notebook"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [min-test-wheel]
+    needs: [min-wheel-build]
     uses: ./.github/workflows/reusable_run_notebook.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -175,3 +184,4 @@ jobs:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
+
