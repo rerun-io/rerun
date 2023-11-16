@@ -49,7 +49,18 @@ class UuidType(BaseExtensionType):
 
     def __init__(self) -> None:
         pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16), self._TYPE_NAME
+            self,
+            pa.struct(
+                [
+                    pa.field(
+                        "bytes",
+                        pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16),
+                        nullable=False,
+                        metadata={},
+                    )
+                ]
+            ),
+            self._TYPE_NAME,
         )
 
 

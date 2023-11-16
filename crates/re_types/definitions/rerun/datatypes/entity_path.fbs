@@ -12,7 +12,7 @@ namespace rerun.datatypes;
 /// A path to an entity in the `DataStore`.
 table EntityPath  (
   "attr.arrow.transparent",
-  "attr.rust.derive_only": "Clone",
+  "attr.rust.derive": "Default",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct"
 ) {

@@ -22,7 +22,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A path to an entity in the `DataStore`.
-#[derive(Clone)]
+#[derive(Clone, Debug, Default)]
 #[repr(transparent)]
 pub struct EntityPath(pub ::re_types_core::ArrowString);
 

@@ -11,10 +11,11 @@ namespace rerun.datatypes;
 
 /// A 16-byte uuid.
 struct Uuid  (
-  "attr.arrow.transparent",
-  "attr.rust.derive_only": "Clone",
-  "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct"
+  // TODO(jleibs): Figure out why we can't make this transparent.
+  // The deserializer barfs on list of fixed-sized-list.
+  //"attr.arrow.transparent",
+  "attr.rust.derive": "Default",
+  "attr.rust.repr": "transparent"
 ) {
   bytes: [ubyte: 16] (order: 100);
 }

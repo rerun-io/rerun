@@ -324,53 +324,8 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                                 })),
                                 offsets,
                                 {
-                                    use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                                    let contents_inner_data_inner_data: Vec<_> =
-                                        contents_inner_data
-                                            .iter()
-                                            .map(|datum| {
-                                                datum
-                                                    .map(|datum| {
-                                                        let crate::datatypes::Uuid(data0) = datum;
-                                                        data0
-                                                    })
-                                                    .unwrap_or_default()
-                                            })
-                                            .flatten()
-                                            .map(Some)
-                                            .collect();
-                                    let contents_inner_data_inner_bitmap: Option<
-                                        arrow2::bitmap::Bitmap,
-                                    > = contents_inner_bitmap.as_ref().map(|bitmap| {
-                                        bitmap
-                                            .iter()
-                                            .map(|i| std::iter::repeat(i).take(16usize))
-                                            .flatten()
-                                            .collect::<Vec<_>>()
-                                            .into()
-                                    });
-                                    FixedSizeListArray::new(
-                                        DataType::FixedSizeList(
-                                            Box::new(Field {
-                                                name: "item".to_owned(),
-                                                data_type: DataType::UInt8,
-                                                is_nullable: false,
-                                                metadata: [].into(),
-                                            }),
-                                            16usize,
-                                        ),
-                                        PrimitiveArray::new(
-                                            DataType::UInt8,
-                                            contents_inner_data_inner_data
-                                                .into_iter()
-                                                .map(|v| v.unwrap_or_default())
-                                                .collect(),
-                                            contents_inner_data_inner_bitmap,
-                                        )
-                                        .boxed(),
-                                        contents_inner_bitmap,
-                                    )
-                                    .boxed()
+                                    _ = contents_inner_bitmap;
+                                    crate::datatypes::Uuid::to_arrow_opt(contents_inner_data)?
                                 },
                                 contents_bitmap,
                             )
@@ -668,97 +623,10 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                {
-                                    let arrow_data_inner = arrow_data_inner
-                                        .as_any()
-                                        .downcast_ref::<arrow2::array::FixedSizeListArray>()
-                                        .ok_or_else(|| {
-                                            DeserializationError::datatype_mismatch(
-                                                DataType::FixedSizeList(
-                                                    Box::new(Field {
-                                                        name: "item".to_owned(),
-                                                        data_type: DataType::UInt8,
-                                                        is_nullable: false,
-                                                        metadata: [].into(),
-                                                    }),
-                                                    16usize,
-                                                ),
-                                                arrow_data_inner.data_type().clone(),
-                                            )
-                                        })
-                                        .with_context(
-                                            "rerun.blueprint.SpaceViewComponent#contents",
-                                        )?;
-                                    if arrow_data_inner.is_empty() {
-                                        Vec::new()
-                                    } else {
-                                        let offsets = (0..).step_by(16usize).zip(
-                                            (16usize..)
-                                                .step_by(16usize)
-                                                .take(arrow_data_inner.len()),
-                                        );
-                                        let arrow_data_inner_inner = {
-                                            let arrow_data_inner_inner =
-                                                &**arrow_data_inner.values();
-                                            arrow_data_inner_inner
-                                                .as_any()
-                                                .downcast_ref::<UInt8Array>()
-                                                .ok_or_else(|| {
-                                                    DeserializationError::datatype_mismatch(
-                                                        DataType::UInt8,
-                                                        arrow_data_inner_inner.data_type().clone(),
-                                                    )
-                                                })
-                                                .with_context(
-                                                    "rerun.blueprint.SpaceViewComponent#contents",
-                                                )?
-                                                .into_iter()
-                                                .map(|opt| opt.copied())
-                                                .collect::<Vec<_>>()
-                                        };
-                                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                                            offsets,
-                                            arrow_data_inner.validity(),
-                                        )
-                                        .map(|elem| {
-                                            elem.map(|(start, end)| {
-                                                debug_assert!(end - start == 16usize);
-                                                if end as usize > arrow_data_inner_inner.len() {
-                                                    return Err(
-                                                        DeserializationError::offset_slice_oob(
-                                                            (start, end),
-                                                            arrow_data_inner_inner.len(),
-                                                        ),
-                                                    );
-                                                }
-
-                                                #[allow(
-                                                    unsafe_code,
-                                                    clippy::undocumented_unsafe_blocks
-                                                )]
-                                                let data = unsafe {
-                                                    arrow_data_inner_inner
-                                                        .get_unchecked(start as usize..end as usize)
-                                                };
-                                                let data = data
-                                                    .iter()
-                                                    .cloned()
-                                                    .map(Option::unwrap_or_default);
-                                                let arr = array_init::from_iter(data).unwrap();
-                                                Ok(arr)
-                                            })
-                                            .transpose()
-                                        })
-                                        .map(|res_or_opt| {
-                                            res_or_opt.map(|res_or_opt| {
-                                                res_or_opt.map(|v| crate::datatypes::Uuid(v))
-                                            })
-                                        })
-                                        .collect::<DeserializationResult<Vec<Option<_>>>>()?
-                                    }
+                                crate::datatypes::Uuid::from_arrow_opt(arrow_data_inner)
+                                    .with_context("rerun.blueprint.SpaceViewComponent#contents")?
                                     .into_iter()
-                                }
-                                .collect::<Vec<_>>()
+                                    .collect::<Vec<_>>()
                             };
                             let offsets = arrow_data.offsets();
                             arrow2::bitmap::utils::ZipValidity::new_with_validity(
