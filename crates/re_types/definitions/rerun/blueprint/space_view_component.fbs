@@ -13,8 +13,7 @@ namespace rerun.blueprint;
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 table SpaceViewComponent (
-  "attr.rust.derive_only": "Clone",
-  "attr.rust.override_crate": "re_viewport"
+  "attr.rust.derive_only": "Clone"
 ) {
     /// The name of the view.
     display_name: string (order: 100);
