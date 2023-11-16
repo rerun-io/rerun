@@ -123,6 +123,7 @@ macro_rules! define_blueprint_id_type {
                 &REGISTRY_PATH
             }
         }
+
         pub type $type = BlueprintId<$registry>;
     };
 }
