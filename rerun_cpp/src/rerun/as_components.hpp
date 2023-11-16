@@ -36,7 +36,6 @@ namespace rerun {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             const Collection<TComponent>& components
         ) {
-            // TODO: check if the method is there?
             auto cell_result = TComponent::to_data_cell(components.data(), components.size());
             RR_RETURN_NOT_OK(cell_result.error);
 
