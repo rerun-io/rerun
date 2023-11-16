@@ -416,7 +416,7 @@ impl QuotedObject {
             let method_ident = format_ident!("with_{}", obj_field.name);
             let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
 
-            hpp_includes.insert_rerun("warning_macros.hpp");
+            hpp_includes.insert_rerun("compiler_utils.hpp");
             let gcc_ignore_comment =
                 quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
 
@@ -433,7 +433,7 @@ impl QuotedObject {
                     #field_ident = std::move(#parameter_ident);
                     #NEWLINE_TOKEN
                     #gcc_ignore_comment
-                    WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+                    RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
                 },
                 inline: true,
             });

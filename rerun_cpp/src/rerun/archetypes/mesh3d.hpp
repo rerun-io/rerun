@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/instance_key.hpp"
@@ -15,7 +16,6 @@
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 #include "../serialized_component_batch.hpp"
-#include "../warning_macros.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -105,7 +105,7 @@ namespace rerun::archetypes {
         Mesh3D with_mesh_properties(rerun::components::MeshProperties _mesh_properties) && {
             mesh_properties = std::move(_mesh_properties);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional normal for each vertex.
@@ -114,21 +114,21 @@ namespace rerun::archetypes {
         Mesh3D with_vertex_normals(Collection<rerun::components::Vector3D> _vertex_normals) && {
             vertex_normals = std::move(_vertex_normals);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional color for each vertex.
         Mesh3D with_vertex_colors(Collection<rerun::components::Color> _vertex_colors) && {
             vertex_colors = std::move(_vertex_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional material properties for the mesh as a whole.
         Mesh3D with_mesh_material(rerun::components::Material _mesh_material) && {
             mesh_material = std::move(_mesh_material);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional class Ids for the vertices.
@@ -137,14 +137,14 @@ namespace rerun::archetypes {
         Mesh3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Unique identifiers for each individual vertex in the mesh.
         Mesh3D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys) && {
             instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

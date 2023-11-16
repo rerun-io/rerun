@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../components/color.hpp"
 #include "../components/radius.hpp"
 #include "../components/scalar.hpp"
@@ -13,7 +14,6 @@
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 #include "../serialized_component_batch.hpp"
-#include "../warning_macros.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -114,7 +114,7 @@ namespace rerun::archetypes {
         TimeSeriesScalar with_radius(rerun::components::Radius _radius) && {
             radius = std::move(_radius);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional color for the scalar entry.
@@ -131,7 +131,7 @@ namespace rerun::archetypes {
         TimeSeriesScalar with_color(rerun::components::Color _color) && {
             color = std::move(_color);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional label for the point.
@@ -145,7 +145,7 @@ namespace rerun::archetypes {
         TimeSeriesScalar with_label(rerun::components::Text _label) && {
             label = std::move(_label);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Specifies whether a point in a scatter plot should form a continuous line.
@@ -158,7 +158,7 @@ namespace rerun::archetypes {
         TimeSeriesScalar with_scattered(rerun::components::ScalarScattering _scattered) && {
             scattered = std::move(_scattered);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.
