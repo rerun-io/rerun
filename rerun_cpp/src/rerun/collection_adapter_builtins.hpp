@@ -4,6 +4,9 @@
 #include "collection_adapter.hpp"
 #include "type_traits.hpp"
 
+#include <array>
+#include <vector>
+
 // Documenting the builtin adapters is too much clutter for the doc class overview.
 /// \cond private
 
