@@ -51,7 +51,7 @@ namespace rerun::components {
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             const auto& element = elements[elem_idx];
             ARROW_RETURN_NOT_OK(builder->Append());
-            if (element.many_required_unions.data()) {
+            if (element.many_required_unions.size() > 0) {
                 RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
                     value_builder,
                     element.many_required_unions.data(),

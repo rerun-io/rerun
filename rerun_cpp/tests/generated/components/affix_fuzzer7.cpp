@@ -52,7 +52,7 @@ namespace rerun::components {
             const auto& element = elements[elem_idx];
             if (element.many_optional.has_value()) {
                 ARROW_RETURN_NOT_OK(builder->Append());
-                if (element.many_optional.value().data()) {
+                if (element.many_optional.value().size() > 0) {
                     RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer1::fill_arrow_array_builder(
                         value_builder,
                         element.many_optional.value().data(),

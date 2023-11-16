@@ -66,7 +66,7 @@ namespace rerun::datatypes {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
-                if (element.shape.data()) {
+                if (element.shape.size() > 0) {
                     RR_RETURN_NOT_OK(rerun::datatypes::TensorDimension::fill_arrow_array_builder(
                         value_builder,
                         element.shape.data(),

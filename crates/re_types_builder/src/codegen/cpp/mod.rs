@@ -1816,7 +1816,7 @@ fn quote_append_single_value_to_builder(
                     let fqname = quote_fqname_as_type_path(includes, fqname);
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
-                        if (#field_ptr_accessor) {
+                        if (#num_items_per_element > 0) {
                             RR_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
                         }
                     }

@@ -52,7 +52,7 @@ namespace rerun::components {
             const auto& element = elements[elem_idx];
             if (element.many_optional_unions.has_value()) {
                 ARROW_RETURN_NOT_OK(builder->Append());
-                if (element.many_optional_unions.value().data()) {
+                if (element.many_optional_unions.value().size() > 0) {
                     RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
                         value_builder,
                         element.many_optional_unions.value().data(),

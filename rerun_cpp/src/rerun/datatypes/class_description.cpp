@@ -88,7 +88,7 @@ namespace rerun::datatypes {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
-                if (element.keypoint_annotations.data()) {
+                if (element.keypoint_annotations.size() > 0) {
                     RR_RETURN_NOT_OK(rerun::datatypes::AnnotationInfo::fill_arrow_array_builder(
                         value_builder,
                         element.keypoint_annotations.data(),
@@ -106,7 +106,7 @@ namespace rerun::datatypes {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
-                if (element.keypoint_connections.data()) {
+                if (element.keypoint_connections.size() > 0) {
                     RR_RETURN_NOT_OK(rerun::datatypes::KeypointPair::fill_arrow_array_builder(
                         value_builder,
                         element.keypoint_connections.data(),
