@@ -1,18 +1,19 @@
+use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQuery, PropertyResolver, ScreenshotMode, SpaceViewContents};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
-    DataResult, DynSpaceViewClass, PerSystemDataResults, SpaceViewClassName, SpaceViewHighlights,
-    SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, ViewerContext,
+    DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClassName,
+    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, ViewerContext,
 };
 
 use crate::{
     space_info::SpaceInfoCollection,
     space_view_heuristics::{
         compute_heuristic_context_for_entities, is_entity_processed_by_class,
-        reachable_entities_from_root, EntitiesPerSystem,
+        reachable_entities_from_root,
     },
 };
 
@@ -138,8 +139,14 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         view_state: &mut dyn SpaceViewState,
-        entities_per_system_for_class: &EntitiesPerSystem,
     ) {
+        let empty_map = IntMap::default();
+
+        let entities_per_system_for_class = ctx
+            .entities_per_system_per_class
+            .get(self.class_name())
+            .unwrap_or(&empty_map);
+
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created.
             let reachable_entities = reachable_entities_from_root(&self.space_origin, spaces_info);
@@ -284,7 +291,7 @@ impl SpaceViewBlueprint {
     ) {
         re_tracing::profile_function!();
 
-        let heuristic_context = compute_heuristic_context_for_entities(ctx);
+        let heuristic_context = compute_heuristic_context_for_entities(ctx.store_db);
 
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {

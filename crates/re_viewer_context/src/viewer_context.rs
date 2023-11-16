@@ -1,6 +1,7 @@
 use re_data_store::store_db::StoreDb;
 use re_data_store::{EntityTree, TimeHistogramPerTimeline};
 
+use crate::EntitiesPerSystemPerClass;
 use crate::{
     item::resolve_mono_instance_path_item, AppOptions, Caches, CommandSender, ComponentUiRegistry,
     Item, ItemCollection, SelectionState, SpaceViewClassRegistry, StoreContext, TimeControl,
@@ -28,6 +29,9 @@ pub struct ViewerContext<'a> {
 
     /// The current view of the store
     pub store_context: &'a StoreContext<'a>,
+
+    /// Mapping from class and system to entities for the store
+    pub entities_per_system_per_class: &'a EntitiesPerSystemPerClass,
 
     /// UI config for the current recording (found in [`StoreDb`]).
     pub rec_cfg: &'a mut RecordingConfig,

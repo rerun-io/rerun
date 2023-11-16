@@ -33,6 +33,7 @@ pub use command_sender::{
 };
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
+use nohash_hasher::{IntMap, IntSet};
 use re_log_types::{EntityPath, EntityPathPart, Index};
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
@@ -64,6 +65,10 @@ pub mod external {
 }
 
 // ---------------------------------------------------------------------------
+
+pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
+
+pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
 
 /// A unique id for each space view.
 #[derive(

@@ -14,7 +14,7 @@ use crate::{
     blueprint::{AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, ViewportLayout},
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
-    space_view_heuristics::{default_created_space_views, identify_entities_per_system_per_class},
+    space_view_heuristics::default_created_space_views,
     VIEWPORT_PATH,
 };
 
@@ -106,9 +106,8 @@ impl<'a> ViewportBlueprint<'a> {
             .map_or(false, |ri| ri.is_app_default_blueprint());
         *tree_actions = Default::default();
 
-        let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
         for space_view in
-            default_created_space_views(ctx, spaces_info, &entities_per_system_per_class)
+            default_created_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
         {
             self.add_space_view(space_view);
         }

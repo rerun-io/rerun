@@ -11,8 +11,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    space_view_heuristics::{all_possible_space_views, identify_entities_per_system_per_class},
-    viewport_blueprint::TreeActions,
+    space_view_heuristics::all_possible_space_views, viewport_blueprint::TreeActions,
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
@@ -376,9 +375,8 @@ impl ViewportBlueprint<'_> {
             |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
                 for space_view in
-                    all_possible_space_views(ctx, spaces_info, &entities_per_system_per_class)
+                    all_possible_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
                         .into_iter()
                         .sorted_by_key(|space_view| space_view.space_origin.to_string())
                 {
