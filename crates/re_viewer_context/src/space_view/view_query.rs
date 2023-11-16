@@ -3,7 +3,8 @@ use std::collections::BTreeMap;
 use itertools::Itertools;
 use re_arrow_store::LatestAtQuery;
 use re_data_store::{EntityPath, EntityProperties, EntityPropertiesComponent, TimeInt, Timeline};
-use re_log_types::{DataRow, RowId, TimePoint};
+use re_log_types::{DataCell, DataRow, RowId, TimePoint};
+use re_types::Loggable;
 use smallvec::SmallVec;
 
 use crate::{
@@ -33,35 +34,67 @@ pub struct DataResult {
     // For now, bundling this here acts as a good proxy for that future data-override mechanism.
     pub resolved_properties: EntityProperties,
 
+    /// The individual property set in this `DataResult`, if any.
+    pub individual_properties: Option<EntityProperties>,
+
     /// `EntityPath` in the Blueprint store where updated overrides should be written back.
     pub override_path: EntityPath,
 }
 
 impl DataResult {
     /// Write the [`EntityProperties`] for this result back to the Blueprint store.
-    pub fn save_override(&self, props: EntityProperties, ctx: &ViewerContext<'_>) {
-        if props.has_edits(&self.resolved_properties) {
-            let timepoint = TimePoint::timeless();
+    pub fn save_override(&self, props: Option<EntityProperties>, ctx: &ViewerContext<'_>) {
+        let cell = match props {
+            None => {
+                if self.individual_properties.is_some() {
+                    re_log::debug!("Clearing {:?}", self.override_path);
 
-            re_log::debug!("Overriding {:?} with {:?}", self.override_path, props);
+                    Some(DataCell::from_arrow_empty(
+                        EntityPropertiesComponent::name(),
+                        EntityPropertiesComponent::arrow_datatype(),
+                    ))
+                } else {
+                    None
+                }
+            }
+            Some(props) => {
+                // A value of `None` in the data store means "use the default value", so if
+                // `self.individual_properties` is `None`, we only must save if `props` is different
+                // from the default.
+                if props.has_edits(
+                    self.individual_properties
+                        .as_ref()
+                        .unwrap_or(&EntityProperties::default()),
+                ) {
+                    re_log::debug!("Overriding {:?} with {:?}", self.override_path, props);
 
-            let component = EntityPropertiesComponent { props };
+                    let component = EntityPropertiesComponent { props };
 
-            let row = DataRow::from_cells1_sized(
-                RowId::random(),
-                self.override_path.clone(),
-                timepoint,
-                1,
-                [component],
-            )
-            .unwrap();
+                    Some(DataCell::from([component]))
+                } else {
+                    None
+                }
+            }
+        };
 
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                ));
-        }
+        let Some(cell) = cell else {
+            return;
+        };
+
+        let row = DataRow::from_cells1_sized(
+            RowId::random(),
+            self.override_path.clone(),
+            TimePoint::timeless(),
+            1,
+            cell,
+        )
+        .unwrap();
+
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                vec![row],
+            ));
     }
 }
 
