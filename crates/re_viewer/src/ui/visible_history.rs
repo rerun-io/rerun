@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
 
-use egui::NumExt as _;
+use egui::{NumExt as _, Response};
 
 use re_data_store::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
 use re_log_types::{EntityPath, TimeType, TimeZone};
@@ -42,7 +42,7 @@ static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<Comp
 
 // TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the ViewPart
 // system is able to report its ability to handle the visible history feature.
-fn has_visible_history_section(
+fn has_visible_history(
     ctx: &mut ViewerContext<'_>,
     space_view_class: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
@@ -78,117 +78,145 @@ pub fn visible_history_ui(
     resolved_visible_history_prop: &ExtraQueryHistory,
     visible_history_prop: &mut ExtraQueryHistory,
 ) {
-    if !has_visible_history_section(ctx, space_view_class, entity_path) {
+    if !has_visible_history(ctx, space_view_class, entity_path) {
         return;
     }
 
     let re_ui = ctx.re_ui;
 
-    re_ui.collapsing_header(ui, "Visible Time Range", true, |ui| {
-        ui.horizontal(|ui| {
-            re_ui.radio_value(
-                ui,
-                &mut visible_history_prop.enabled,
-                false,
-                if is_space_view {
-                    "Default"
-                } else {
-                    "Inherited"
-                },
-            );
-            re_ui.radio_value(ui, &mut visible_history_prop.enabled, true, "Override");
-        });
-
-        let timeline_spec = if let Some(times) = ctx
-            .store_db
-            .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
-        {
-            TimelineSpec::from_time_histogram(times)
-        } else {
-            TimelineSpec::from_time_range(0..=0)
-        };
-
-        let current_time = ctx
-            .rec_cfg
-            .time_ctrl
-            .time_i64()
-            .unwrap_or_default()
-            .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::BEGINNING)
-
-        let sequence_timeline =
-            matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
-
-        let (resolved_visible_history, visible_history) = if sequence_timeline {
-            (
-                &resolved_visible_history_prop.sequences,
-                &mut visible_history_prop.sequences,
-            )
-        } else {
-            (
-                &resolved_visible_history_prop.nanos,
-                &mut visible_history_prop.nanos,
-            )
-        };
-
-        if visible_history_prop.enabled {
-            let current_low_boundary = visible_history.from(current_time.into()).as_i64();
-            let current_high_boundary = visible_history.to(current_time.into()).as_i64();
-
+    re_ui
+        .collapsing_header(ui, "Visible Time Range", true, |ui| {
             ui.horizontal(|ui| {
-                visible_history_boundary_ui(
-                    ctx,
-                    ui,
-                    &mut visible_history.from,
-                    sequence_timeline,
-                    current_time,
-                    &timeline_spec,
-                    true,
-                    current_high_boundary,
-                );
+                re_ui
+                    .radio_value(ui, &mut visible_history_prop.enabled, false, "Default")
+                    .on_hover_text(if is_space_view {
+                        "Default Visible Time Range settings for this kind of Space View"
+                    } else {
+                        "Visible Time Range settings inherited from parent Group(s) or enclosing \
+                        Space View"
+                    });
+                re_ui
+                    .radio_value(ui, &mut visible_history_prop.enabled, true, "Override")
+                    .on_hover_text(if is_space_view {
+                        "Set Visible Time Range settings for the contents of this Space View"
+                    } else if entity_path.is_some() {
+                        "Set Visible Time Range settings for this entity"
+                    } else {
+                        "Set Visible Time Range settings for he contents of this Group"
+                    });
             });
 
-            ui.horizontal(|ui| {
-                visible_history_boundary_ui(
-                    ctx,
-                    ui,
-                    &mut visible_history.to,
-                    sequence_timeline,
-                    current_time,
-                    &timeline_spec,
-                    false,
-                    current_low_boundary,
-                );
-            });
-        } else {
-            // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-            let (from_boundary, to_boundary) = if !resolved_visible_history_prop.enabled
-                && space_view_class == TimeSeriesSpaceView::NAME
+            let timeline_spec = if let Some(times) = ctx
+                .store_db
+                .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
             {
-                // Contrary to other space views, Timeseries space view do not act like
-                // `VisibleHistory::default()` when its disabled. Instead, behaves like
-                // `VisibleHistory::ALL` instead.
-                (&VisibleHistory::ALL.from, &VisibleHistory::ALL.to)
+                TimelineSpec::from_time_histogram(times)
             } else {
-                (&resolved_visible_history.from, &resolved_visible_history.to)
+                TimelineSpec::from_time_range(0..=0)
             };
 
-            resolved_visible_history_boundary_ui(ctx, ui, from_boundary, sequence_timeline, true);
-            resolved_visible_history_boundary_ui(ctx, ui, to_boundary, sequence_timeline, false);
-        }
+            let current_time = ctx
+                .rec_cfg
+                .time_ctrl
+                .time_i64()
+                .unwrap_or_default()
+                .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::BEGINNING)
 
-        ui.add(
-            egui::Label::new(
-                egui::RichText::new(if sequence_timeline {
-                    "These settings apply to all sequence timelines."
+            let sequence_timeline =
+                matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
+
+            let (resolved_visible_history, visible_history) = if sequence_timeline {
+                (
+                    &resolved_visible_history_prop.sequences,
+                    &mut visible_history_prop.sequences,
+                )
+            } else {
+                (
+                    &resolved_visible_history_prop.nanos,
+                    &mut visible_history_prop.nanos,
+                )
+            };
+
+            if visible_history_prop.enabled {
+                let current_low_boundary = visible_history.from(current_time.into()).as_i64();
+                let current_high_boundary = visible_history.to(current_time.into()).as_i64();
+
+                ui.horizontal(|ui| {
+                    visible_history_boundary_ui(
+                        ctx,
+                        ui,
+                        &mut visible_history.from,
+                        sequence_timeline,
+                        current_time,
+                        &timeline_spec,
+                        true,
+                        current_high_boundary,
+                    );
+                });
+
+                ui.horizontal(|ui| {
+                    visible_history_boundary_ui(
+                        ctx,
+                        ui,
+                        &mut visible_history.to,
+                        sequence_timeline,
+                        current_time,
+                        &timeline_spec,
+                        false,
+                        current_low_boundary,
+                    );
+                });
+            } else {
+                // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
+                let (from_boundary, to_boundary) = if !resolved_visible_history_prop.enabled
+                    && space_view_class == TimeSeriesSpaceView::NAME
+                {
+                    // Contrary to other space views, Timeseries space view do not act like
+                    // `VisibleHistory::default()` when its disabled. Instead, behaves like
+                    // `VisibleHistory::ALL` instead.
+                    (&VisibleHistory::ALL.from, &VisibleHistory::ALL.to)
                 } else {
-                    "These settings apply to all temporal timelines."
-                })
-                .italics()
-                .weak(),
+                    (&resolved_visible_history.from, &resolved_visible_history.to)
+                };
+
+                resolved_visible_history_boundary_ui(
+                    ctx,
+                    ui,
+                    from_boundary,
+                    sequence_timeline,
+                    true,
+                );
+                resolved_visible_history_boundary_ui(
+                    ctx,
+                    ui,
+                    to_boundary,
+                    sequence_timeline,
+                    false,
+                );
+            }
+
+            ui.add(
+                egui::Label::new(
+                    egui::RichText::new(if sequence_timeline {
+                        "These settings apply to all sequence timelines."
+                    } else {
+                        "These settings apply to all temporal timelines."
+                    })
+                    .italics()
+                    .weak(),
+                )
+                .wrap(true),
             )
-            .wrap(true),
+            .on_hover_text(
+                "Visible Time Range properties are stored separately for each types of timelines. \
+            They may differ depending on whether the current timeline is temporal or a sequence.",
+            );
+        })
+        .header_response
+        .on_hover_text(
+            "Controls the time range used to display data in the Space View.\n\n\
+        Note that the data immediately preceding the time range is always displayed.",
         );
-    });
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -369,7 +397,9 @@ fn visible_history_boundary_ui(
         } else {
             "Show data until the end of the timeline"
         });
-    });
+    })
+    .response
+    .on_hover_text("Select the type of time range boundary to use");
 
     // Note: the time range adjustment below makes sure the two boundaries don't cross in time
     // (i.e. low > high). It does so by prioritizing the low boundary. Moving the low boundary
@@ -388,15 +418,25 @@ fn visible_history_boundary_ui(
             };
 
             if sequence_timeline {
-                timeline_spec.sequence_drag_value(ui, value, false, low_bound_override);
+                timeline_spec
+                    .sequence_drag_value(ui, value, false, low_bound_override)
+                    .on_hover_text(
+                        "Number of frames before/after the current time to use a time range \
+                        boundary",
+                    );
             } else {
-                timeline_spec.temporal_drag_value(
-                    ui,
-                    value,
-                    false,
-                    low_bound_override,
-                    ctx.app_options.time_zone_for_timestamps,
-                );
+                timeline_spec
+                    .temporal_drag_value(
+                        ui,
+                        value,
+                        false,
+                        low_bound_override,
+                        ctx.app_options.time_zone_for_timestamps,
+                    )
+                    .0
+                    .on_hover_text(
+                        "Time duration before/after the current time to use as time range boundary",
+                    );
             }
         }
         VisibleHistoryBoundary::Absolute(value) => {
@@ -408,15 +448,23 @@ fn visible_history_boundary_ui(
             };
 
             if sequence_timeline {
-                timeline_spec.sequence_drag_value(ui, value, true, low_bound_override);
+                timeline_spec
+                    .sequence_drag_value(ui, value, true, low_bound_override)
+                    .on_hover_text("Absolute frame number to use as time range boundary");
             } else {
-                timeline_spec.temporal_drag_value(
+                let (drag_resp, base_time_resp) = timeline_spec.temporal_drag_value(
                     ui,
                     value,
                     true,
                     low_bound_override,
                     ctx.app_options.time_zone_for_timestamps,
                 );
+
+                drag_resp.on_hover_text("Absolute time to use as time range boundary");
+
+                if let Some(base_time_resp) = base_time_resp {
+                    base_time_resp.on_hover_text("Base time used to set time range boundaries");
+                }
             }
         }
         VisibleHistoryBoundary::Infinite => {}
@@ -488,7 +536,7 @@ impl TimelineSpec {
         value: &mut i64,
         absolute: bool,
         low_bound_override: Option<i64>,
-    ) {
+    ) -> Response {
         let mut time_range = if absolute {
             self.abs_range.clone()
         } else {
@@ -507,9 +555,18 @@ impl TimelineSpec {
             egui::DragValue::new(value)
                 .clamp_range(time_range)
                 .speed(speed),
-        );
+        )
     }
 
+    /// Show a temporal drag value.
+    ///
+    /// Feature rich:
+    /// - scale to the proper units
+    /// - display the base time if any
+    /// - etc.
+    ///
+    /// Returns a tuple of the [`egui::DragValue`]'s [`egui::Response`], and the base time label's
+    /// [`egui::Response`], if any.
     fn temporal_drag_value(
         &self,
         ui: &mut egui::Ui,
@@ -517,7 +574,7 @@ impl TimelineSpec {
         absolute: bool,
         low_bound_override: Option<i64>,
         time_zone_for_timestamps: TimeZone,
-    ) {
+    ) -> (Response, Option<Response>) {
         let mut time_range = if absolute {
             self.abs_range.clone()
         } else {
@@ -543,16 +600,18 @@ impl TimelineSpec {
         let time_range = (*time_range.start() - offset) as f32 / factor
             ..=(*time_range.end() - offset) as f32 / factor;
 
-        if absolute {
-            if let Some(base_time) = self.base_time {
+        let base_time_response = if absolute {
+            self.base_time.map(|base_time| {
                 ui.label(format!(
                     "{} + ",
                     TimeType::Time.format(base_time.into(), time_zone_for_timestamps)
-                ));
-            }
-        }
+                ))
+            })
+        } else {
+            None
+        };
 
-        ui.add(
+        let drag_value_response = ui.add(
             egui::DragValue::new(&mut time_unit)
                 .clamp_range(time_range)
                 .speed(speed)
@@ -560,6 +619,8 @@ impl TimelineSpec {
         );
 
         *value = (time_unit * factor).round() as i64 + offset;
+
+        (drag_value_response, base_time_response)
     }
 }
 

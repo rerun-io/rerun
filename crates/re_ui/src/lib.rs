@@ -48,7 +48,7 @@ pub struct TopBarStyle {
 use crate::list_item::ListItem;
 use egui::emath::{Rangef, Rot2};
 use egui::epaint::util::FloatOrd;
-use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
+use egui::{pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
 pub struct ReUi {
@@ -554,7 +554,7 @@ impl ReUi {
         label: &str,
         default_open: bool,
         add_body: impl FnOnce(&mut egui::Ui) -> R,
-    ) {
+    ) -> egui::CollapsingResponse<R> {
         let id = ui.make_persistent_id(label);
         let button_padding = ui.spacing().button_padding;
 
@@ -620,10 +620,22 @@ impl ReUi {
             text.paint_with_visuals(ui.painter(), text_pos, visuals);
         }
 
-        ui.vertical(|ui| {
-            ui.spacing_mut().indent = indent;
-            state.show_body_indented(&header_response, ui, add_body)
-        });
+        let ret_response = ui
+            .vertical(|ui| {
+                ui.spacing_mut().indent = indent;
+                state.show_body_indented(&header_response, ui, add_body)
+            })
+            .inner;
+
+        let (body_response, body_returned) =
+            ret_response.map_or((None, None), |r| (Some(r.response), Some(r.inner)));
+
+        CollapsingResponse {
+            header_response,
+            body_response,
+            body_returned,
+            openness,
+        }
     }
 
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
