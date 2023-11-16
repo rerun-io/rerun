@@ -6,12 +6,12 @@
 #include "../collection.hpp"
 #include "../half.hpp"
 #include "../result.hpp"
+#include "../type_traits.hpp"
 
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <new>
-#include <type_traits>
 #include <utility>
 
 namespace arrow {

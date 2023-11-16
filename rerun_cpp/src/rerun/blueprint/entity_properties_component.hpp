@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -21,14 +21,14 @@ namespace rerun::blueprint {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct EntityPropertiesComponent {
-        std::vector<uint8_t> props;
+        rerun::Collection<uint8_t> props;
 
       public:
         EntityPropertiesComponent() = default;
 
-        EntityPropertiesComponent(std::vector<uint8_t> props_) : props(std::move(props_)) {}
+        EntityPropertiesComponent(rerun::Collection<uint8_t> props_) : props(std::move(props_)) {}
 
-        EntityPropertiesComponent& operator=(std::vector<uint8_t> props_) {
+        EntityPropertiesComponent& operator=(rerun::Collection<uint8_t> props_) {
             props = std::move(props_);
             return *this;
         }
