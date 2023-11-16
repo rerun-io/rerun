@@ -75,7 +75,7 @@ pub fn visible_history_ui(
     space_view_class: &SpaceViewClassName,
     is_space_view: bool,
     entity_path: Option<&EntityPath>,
-    projected_visible_history_prop: &ExtraQueryHistory,
+    resolved_visible_history_prop: &ExtraQueryHistory,
     visible_history_prop: &mut ExtraQueryHistory,
 ) {
     if !has_visible_history_section(ctx, space_view_class, entity_path) {
@@ -118,14 +118,14 @@ pub fn visible_history_ui(
         let sequence_timeline =
             matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
 
-        let (projected_visible_history, visible_history) = if sequence_timeline {
+        let (resolved_visible_history, visible_history) = if sequence_timeline {
             (
-                &projected_visible_history_prop.sequences,
+                &resolved_visible_history_prop.sequences,
                 &mut visible_history_prop.sequences,
             )
         } else {
             (
-                &projected_visible_history_prop.nanos,
+                &resolved_visible_history_prop.nanos,
                 &mut visible_history_prop.nanos,
             )
         };
@@ -161,7 +161,7 @@ pub fn visible_history_ui(
             });
         } else {
             // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-            let (from_boundary, to_boundary) = if !projected_visible_history_prop.enabled
+            let (from_boundary, to_boundary) = if !resolved_visible_history_prop.enabled
                 && space_view_class == TimeSeriesSpaceView::NAME
             {
                 // Contrary to other space views, Timeseries space view do not act like
@@ -169,14 +169,11 @@ pub fn visible_history_ui(
                 // `VisibleHistory::ALL` instead.
                 (&VisibleHistory::ALL.from, &VisibleHistory::ALL.to)
             } else {
-                (
-                    &projected_visible_history.from,
-                    &projected_visible_history.to,
-                )
+                (&resolved_visible_history.from, &resolved_visible_history.to)
             };
 
-            projected_visible_history_boundary_ui(ctx, ui, from_boundary, sequence_timeline, true);
-            projected_visible_history_boundary_ui(ctx, ui, to_boundary, sequence_timeline, false);
+            resolved_visible_history_boundary_ui(ctx, ui, from_boundary, sequence_timeline, true);
+            resolved_visible_history_boundary_ui(ctx, ui, to_boundary, sequence_timeline, false);
         }
 
         ui.add(
@@ -195,7 +192,7 @@ pub fn visible_history_ui(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn projected_visible_history_boundary_ui(
+fn resolved_visible_history_boundary_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &VisibleHistoryBoundary,

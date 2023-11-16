@@ -296,7 +296,7 @@ fn blueprint_ui(
                     );
 
                 // Space Views don't inherit properties
-                let projected_visible_history = ExtraQueryHistory::default();
+                let resolved_visible_history = ExtraQueryHistory::default();
 
                 visible_history_ui(
                     ctx,
@@ -304,7 +304,7 @@ fn blueprint_ui(
                     &space_view_class,
                     true,
                     None,
-                    &projected_visible_history,
+                    &resolved_visible_history,
                     &mut props.visible_history,
                 );
 
@@ -427,7 +427,7 @@ fn entity_props_ui(
     space_view_class: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
-    projected_entity_props: &EntityProperties,
+    resolved_entity_props: &EntityProperties,
 ) {
     let re_ui = ctx.re_ui;
     re_ui.checkbox(ui, &mut entity_props.visible, "Visible");
@@ -441,7 +441,7 @@ fn entity_props_ui(
         space_view_class,
         false,
         entity_path,
-        &projected_entity_props.visible_history,
+        &resolved_entity_props.visible_history,
         &mut entity_props.visible_history,
     );
 
