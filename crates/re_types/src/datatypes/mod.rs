@@ -44,6 +44,7 @@ mod translation_and_mat3x3_ext;
 mod translation_rotation_scale3d;
 mod translation_rotation_scale3d_ext;
 mod uuid;
+mod uuid_ext;
 mod uvec2d;
 mod uvec2d_ext;
 mod uvec3d;
