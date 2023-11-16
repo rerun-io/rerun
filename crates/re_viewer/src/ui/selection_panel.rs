@@ -290,7 +290,7 @@ fn blueprint_ui(
                     resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
                 }
 
-                let root_data_result = space_view.root_data_result(ctx);
+                let root_data_result = space_view.root_data_result(ctx.store_context);
                 let mut props = root_data_result
                     .individual_properties
                     .clone()
@@ -341,7 +341,8 @@ fn blueprint_ui(
 
                         let data_result = space_view.contents.resolve(
                             space_view,
-                            ctx,
+                            ctx.store_context,
+                            ctx.entities_per_system_per_class,
                             &instance_path.entity_path,
                         );
 
@@ -374,7 +375,12 @@ fn blueprint_ui(
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
                     let group_path = group.group_path.clone();
-                    let data_result = space_view.contents.resolve(space_view, ctx, &group_path);
+                    let data_result = space_view.contents.resolve(
+                        space_view,
+                        ctx.store_context,
+                        ctx.entities_per_system_per_class,
+                        &group_path,
+                    );
 
                     let space_view_class = *space_view.class_name();
                     let mut props = data_result

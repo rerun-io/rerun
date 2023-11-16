@@ -19,7 +19,7 @@ use crate::{
 ///
 /// In the future `resolved_properties` will be replaced by a `StoreView` that contains
 /// the relevant data overrides for the given query.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct DataResult {
     /// Where to retrieve the data from.
     // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle
@@ -28,6 +28,10 @@ pub struct DataResult {
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
     pub view_parts: SmallVec<[ViewSystemName; 4]>,
+
+    /// This DataResult represents a group
+    // TODO(jleibs): Maybe make this an enum instead?
+    pub is_group: bool,
 
     /// The resolved properties (including any hierarchical flattening) to apply.
     // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.

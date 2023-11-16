@@ -6,7 +6,8 @@ use re_space_view::{DataQuery, PropertyResolver, ScreenshotMode, SpaceViewConten
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
     DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClassName,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, ViewerContext,
+    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, StoreContext,
+    ViewerContext,
 };
 
 use crate::{
@@ -235,7 +236,9 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let data_results = self.contents.execute_query(self, ctx);
+        let data_results =
+            self.contents
+                .execute_query(self, ctx.store_context, ctx.entities_per_system_per_class);
 
         let mut per_system_data_results = PerSystemDataResults::default();
         {
@@ -349,11 +352,10 @@ impl SpaceViewBlueprint {
         self.id.as_entity_path()
     }
 
-    pub fn root_data_result(&self, ctx: &ViewerContext<'_>) -> DataResult {
+    pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {
         let entity_path = self.entity_path();
 
         let individual_properties = ctx
-            .store_context
             .blueprint
             .store()
             .query_timeless_component::<EntityPropertiesComponent>(&self.entity_path())
@@ -373,6 +375,7 @@ impl SpaceViewBlueprint {
         DataResult {
             entity_path: entity_path.clone(),
             view_parts: Default::default(),
+            is_group: true,
             resolved_properties,
             individual_properties,
             override_path: entity_path,
@@ -385,9 +388,9 @@ impl PropertyResolver for SpaceViewBlueprint {
     ///
     /// We start with the auto properties for the `SpaceView` as the base layer and
     /// then incrementally override from there.
-    fn resolve_entity_overrides(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap {
+    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityPropertyMap {
         re_tracing::profile_function!();
-        let blueprint = ctx.store_context.blueprint;
+        let blueprint = ctx.blueprint;
 
         let mut prop_map = self.auto_properties.clone();
 
@@ -409,7 +412,7 @@ impl PropertyResolver for SpaceViewBlueprint {
         prop_map
     }
 
-    fn resolve_root_override(&self, ctx: &ViewerContext<'_>) -> EntityProperties {
+    fn resolve_root_override(&self, ctx: &StoreContext<'_>) -> EntityProperties {
         self.root_data_result(ctx).resolved_properties
     }
 }
