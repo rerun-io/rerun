@@ -1,4 +1,5 @@
 use nohash_hasher::IntSet;
+use once_cell::sync::Lazy;
 use re_data_store::{EntityProperties, EntityPropertyMap, EntityTree};
 use re_log_types::{EntityPath, EntityPathExpr};
 use re_viewer_context::{
@@ -43,35 +44,32 @@ impl DataQuery for DataQueryBlueprint {
     ) -> DataResultTree {
         re_tracing::profile_function!();
 
+        static EMPTY_ENTITY_LIST: Lazy<EntitiesPerSystem> = Lazy::new(Default::default);
+
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
         let query_override = property_resolver.resolve_root_override(ctx);
         let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
 
-        if let Some(per_system_entity_list) =
-            entities_per_system_per_class.get(&self.space_view_class_name)
-        {
-            let executor = QueryExpressionEvaluator::new(self, per_system_entity_list);
+        let per_system_entity_list = entities_per_system_per_class
+            .get(&self.space_view_class_name)
+            .unwrap_or(&EMPTY_ENTITY_LIST);
 
-            let root_handle = ctx.recording.and_then(|store| {
-                executor.add_entity_tree_to_data_results_recursive(
-                    &store.entity_db().tree,
-                    &entity_overrides,
-                    &query_override,
-                    &mut data_results,
-                    false,
-                )
-            });
+        let executor = QueryExpressionEvaluator::new(self, per_system_entity_list);
 
-            DataResultTree {
-                data_results,
-                root_handle,
-            }
-        } else {
-            DataResultTree {
-                data_results,
-                root_handle: None,
-            }
+        let root_handle = ctx.recording.and_then(|store| {
+            executor.add_entity_tree_to_data_results_recursive(
+                &store.entity_db().tree,
+                &entity_overrides,
+                &query_override,
+                &mut data_results,
+                false,
+            )
+        });
+
+        DataResultTree {
+            data_results,
+            root_handle,
         }
     }
 
@@ -318,6 +316,20 @@ mod tests {
             recording.add_data_row(row).unwrap();
         }
 
+        let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
+        entities_per_system_per_class
+            .entry("3D".into())
+            .or_default()
+            .entry("Points3D".into())
+            .or_insert_with(|| {
+                [
+                    EntityPath::from("parent"),
+                    EntityPath::from("parent/skipped/child1"),
+                ]
+                .into_iter()
+                .collect()
+            });
+
         let ctx = StoreContext {
             blueprint: &blueprint,
             recording: Some(&recording),
@@ -345,6 +357,16 @@ mod tests {
                 ],
             ),
             (
+                vec!["parent", "parent/skipped/child2"],
+                vec![
+                    "/", // Trivial intermediate group -- could be collapsed
+                    "parent/",
+                    "parent",
+                    "parent/skipped/", // Trivial intermediate group -- could be collapsed
+                    "parent/skipped/child2",
+                ],
+            ),
+            (
                 vec!["parent/skipped", "parent/skipped/child2", "parent/"],
                 vec![
                     "/",
@@ -357,20 +379,6 @@ mod tests {
                 ],
             ),
         ];
-
-        let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
-        entities_per_system_per_class
-            .entry("3D".into())
-            .or_default()
-            .entry("Points3D".into())
-            .or_insert_with(|| {
-                [
-                    EntityPath::from("parent"),
-                    EntityPath::from("parent/skipped/child1"),
-                ]
-                .into_iter()
-                .collect()
-            });
 
         for (input, outputs) in scenarios {
             let query = DataQueryBlueprint {

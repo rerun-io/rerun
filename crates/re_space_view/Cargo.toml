@@ -29,6 +29,7 @@ re_viewer_context.workspace = true
 egui.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+once_cell.workspace = true
 serde = "1.0"
 slotmap.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
