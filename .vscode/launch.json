@@ -5,6 +5,18 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Launch C++ tests",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/rerun_cpp/tests/rerun_sdk_tests",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${fileDirname}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "lldb"
+        },
+        {
             "name": "Launch tests",
             "type": "lldb",
             "request": "launch",
@@ -119,6 +131,6 @@
             },
             "args": [],
             "cwd": "${workspaceFolder}"
-        },
+        }
     ]
 }

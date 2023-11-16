@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstring> // std::memset
 #include <utility>
@@ -10,16 +11,26 @@
 #include "collection_adapter.hpp"
 #include "compiler_utils.hpp"
 
+#ifndef RERUN_COLLECTION_SMALL_BUFFER_CAPACITY
+/// Amount of bytes that rerun::Collection can store without allocating.
+///
+/// Should be at least as large as the other storage variants.
+#define RERUN_COLLECTION_SMALL_BUFFER_CAPACITY (sizeof(void*) * 2)
+#endif
+
 namespace rerun {
     /// Type of ownership of a collection's data.
     ///
     /// User access to this is typically only needed for debugging and testing.
-    enum class CollectionOwnership {
+    enum class CollectionOwnership : uint8_t {
         /// The collection does not own the data and only has a pointer and a size.
         Borrowed,
 
-        /// The collection batch owns the data via an std::vector.
+        /// The collection owns the data via an std::vector.
         VectorOwned,
+
+        /// The collection owns the data via a small buffer that's part if its payload.
+        SmallBufOwned,
     };
 
     /// Generic collection of elements that are roughly contiguous in memory.
@@ -61,9 +72,8 @@ namespace rerun {
             std::enable_if_t<true>>;
 
         /// Creates a new empty collection.
-        Collection() : ownership(CollectionOwnership::Borrowed) {
-            storage.borrowed.data = nullptr;
-            storage.borrowed.num_instances = 0;
+        Collection() : _num_instances(0), _ownership(CollectionOwnership::Borrowed) {
+            _storage.borrowed = nullptr;
         }
 
         /// Construct using a `CollectionAdapter` for the given input type.
@@ -82,17 +92,24 @@ namespace rerun {
         /// If the data is owned, this will copy the data.
         /// If the data is borrowed, this will copy the borrow,
         /// meaning there's now (at least) two collections borrowing the same data.
-        Collection(const Collection<TElement>& other) : ownership(other.ownership) {
-            switch (other.ownership) {
+        Collection(const Collection<TElement>& other)
+            : _num_instances(other._num_instances), _ownership(other._ownership) {
+            switch (other._ownership) {
                 case CollectionOwnership::Borrowed: {
-                    storage.borrowed = other.storage.borrowed;
+                    _storage.borrowed = other._storage.borrowed;
                     break;
                 }
 
                 case CollectionOwnership::VectorOwned: {
-                    storage.vector_owned = other.storage.vector_owned;
+                    _storage.vector = other._storage.vector;
                     break;
                 }
+
+                case CollectionOwnership::SmallBufOwned: {
+                    for (size_t i = 0; i < _num_instances; ++i) {
+                        new (&_storage.small_buf[i]) TElement(other._storage.small_buf[i]);
+                    }
+                } break;
             }
         }
 
@@ -107,8 +124,29 @@ namespace rerun {
         }
 
         /// Move constructor.
-        Collection(Collection<TElement>&& other) : Collection() {
-            swap(other);
+        Collection(Collection<TElement>&& other)
+            : _num_instances(other._num_instances), _ownership(other._ownership) {
+            switch (_ownership) {
+                case CollectionOwnership::Borrowed:
+                    _storage.borrowed = other._storage.borrowed;
+                    break;
+
+                case CollectionOwnership::VectorOwned: {
+                    new (&_storage.vector) std::vector<TElement>(std::move(other._storage.vector));
+                    break;
+                }
+
+                case CollectionOwnership::SmallBufOwned: {
+                    for (size_t i = 0; i < _num_instances; ++i) {
+                        new (&_storage.small_buf[i])
+                            TElement(std::move(other._storage.small_buf[i]));
+                    }
+                } break;
+            }
+
+            // set the other to borrowed, so it doesn't deallocate anything
+            other._ownership = CollectionOwnership::Borrowed;
+            other._num_instances = 0;
         }
 
         /// Move assignment.
@@ -130,10 +168,11 @@ namespace rerun {
         /// This is not done as a `CollectionAdapter` since it tends to cause deduction issues
         /// (since there's special rules for overload resolution for initializer lists)
         Collection(std::initializer_list<TElement> data)
-            : ownership(CollectionOwnership::VectorOwned) {
+            : _num_instances(data.size()), _ownership(CollectionOwnership::VectorOwned) {
             // Don't assign, since the vector is in an undefined state and assigning may
             // attempt to free data.
-            new (&storage.vector_owned) std::vector<TElement>(data);
+            // TODO: use smallbuf optimization if applicable.
+            new (&_storage.vector) std::vector<TElement>(data);
         }
 
         /// Borrows binary compatible data into the collection.
@@ -156,11 +195,11 @@ namespace rerun {
                 "T & TElement are not binary compatible: TElement has a higher alignment requirement than T. This implies that pointers to T may not have the alignment needed to access TElement."
             );
 
-            Collection<TElement> batch;
-            batch.ownership = CollectionOwnership::Borrowed;
-            batch.storage.borrowed.data = reinterpret_cast<const TElement*>(data);
-            batch.storage.borrowed.num_instances = num_instances;
-            return batch;
+            Collection<TElement> collection;
+            collection._storage.borrowed = reinterpret_cast<const TElement*>(data);
+            collection._ownership = CollectionOwnership::Borrowed;
+            collection._num_instances = num_instances;
+            return collection;
         }
 
         /// Borrows binary compatible data into the collection.
@@ -182,10 +221,11 @@ namespace rerun {
         /// Takes ownership of the data and moves it into the collection.
         static Collection<TElement> take_ownership(std::vector<TElement>&& data) {
             Collection<TElement> batch;
-            batch.ownership = CollectionOwnership::VectorOwned;
+            batch._num_instances = data.size();
+            batch._ownership = CollectionOwnership::VectorOwned;
             // Don't assign, since the vector is in an undefined state and assigning may
             // attempt to free data.
-            new (&batch.storage.vector_owned) std::vector<TElement>(std::move(data));
+            new (&batch._storage.vector) std::vector<TElement>(std::move(data));
 
             return batch;
         }
@@ -198,67 +238,69 @@ namespace rerun {
             return take_ownership(std::move(elements));
         }
 
+        // TODO: what about having several elements that fit into the small buffer.
+
         /// Swaps the content of this collection with another.
         void swap(Collection<TElement>& other) {
-            // (writing out this-> here to make it less confusing!)
-            switch (this->ownership) {
-                case CollectionOwnership::Borrowed: {
-                    switch (other.ownership) {
-                        case CollectionOwnership::Borrowed:
-                            std::swap(this->storage.borrowed, other.storage.borrowed);
-                            break;
+            auto num_instances_old = _num_instances;
+            auto ownership_old = _ownership;
 
-                        case CollectionOwnership::VectorOwned: {
-                            auto this_borrowed_data_old = this->storage.borrowed;
-                            new (&this->storage.vector_owned)
-                                std::vector<TElement>(std::move(other.storage.vector_owned));
-                            other.storage.borrowed = this_borrowed_data_old;
-                            break;
-                        }
-                    }
+            // By using the collection storage we sidestep the need to default init TElement.
+            CollectionStorage<TElement> storage_old;
+            switch (_ownership) {
+                case CollectionOwnership::Borrowed: {
+                    storage_old.borrowed = _storage.borrowed;
+                    new (this) Collection<TElement>(std::move(other));
+                    other._storage.borrowed = storage_old.borrowed;
                     break;
                 }
 
                 case CollectionOwnership::VectorOwned: {
-                    switch (other.ownership) {
-                        case CollectionOwnership::Borrowed: {
-                            auto other_borrowed_data_old = other.storage.borrowed;
-                            new (&other.storage.vector_owned)
-                                std::vector<TElement>(std::move(this->storage.vector_owned));
-                            this->storage.borrowed = other_borrowed_data_old;
-                            break;
-                        }
+                    storage_old.vector = std::move(_storage.vector);
+                    new (this) Collection<TElement>(std::move(other));
+                    new (&other._storage.vector)
+                        std::vector<TElement>(std::move(storage_old.vector));
+                    break;
+                }
 
-                        case CollectionOwnership::VectorOwned:
-                            std::swap(storage.vector_owned, other.storage.vector_owned);
-                            break;
+                case CollectionOwnership::SmallBufOwned: {
+                    for (size_t i = 0; i < _num_instances; ++i) {
+                        new (&storage_old.small_buf[i])
+                            TElement(std::move(other._storage.small_buf[i]));
+                    }
+
+                    new (this) Collection<TElement>(std::move(other));
+
+                    for (size_t i = 0; i < _num_instances; ++i) {
+                        new (&other._storage.small_buf[i])
+                            TElement(std::move(storage_old.small_buf[i]));
                     }
                     break;
                 }
             }
 
-            std::swap(ownership, other.ownership);
+            other._num_instances = num_instances_old;
+            other._ownership = ownership_old;
         }
 
         ~Collection() {
-            switch (ownership) {
+            switch (_ownership) {
                 case CollectionOwnership::Borrowed:
                     break; // nothing to do.
                 case CollectionOwnership::VectorOwned:
-                    storage.vector_owned.~vector(); // Deallocate the vector!
+                    _storage.vector.~vector(); // Deallocate the vector!
+                    break;
+                case CollectionOwnership::SmallBufOwned:
+                    for (size_t i = 0; i < _num_instances; ++i) {
+                        _storage.small_buf[i].~TElement();
+                    }
                     break;
             }
         }
 
         /// Returns the number of instances in this collection.
         size_t size() const {
-            switch (ownership) {
-                case CollectionOwnership::Borrowed:
-                    return storage.borrowed.num_instances;
-                case CollectionOwnership::VectorOwned:
-                    return storage.vector_owned.size();
-            }
-            return 0;
+            return _num_instances;
         }
 
         /// Returns a raw pointer to the underlying data.
@@ -269,11 +311,13 @@ namespace rerun {
         /// The pointer is only valid as long as backing storage is alive
         /// which is either until the collection is destroyed the borrowed source is destroyed/moved.
         const TElement* data() const {
-            switch (ownership) {
+            switch (_ownership) {
                 case CollectionOwnership::Borrowed:
-                    return storage.borrowed.data;
+                    return _storage.borrowed;
                 case CollectionOwnership::VectorOwned:
-                    return storage.vector_owned.data();
+                    return _storage.vector.data();
+                case CollectionOwnership::SmallBufOwned:
+                    return _storage.small_buf.data();
             }
 
             // We need to return something to avoid compiler warnings.
@@ -289,7 +333,7 @@ namespace rerun {
 
         /// TODO(andreas): Return proper iterator
         const TElement* end() const {
-            return data() + size();
+            return data() + _num_instances;
         }
 
         /// Random read access to the underlying data.
@@ -302,7 +346,7 @@ namespace rerun {
         ///
         /// This is usually only needed for debugging and testing.
         CollectionOwnership get_ownership() const {
-            return ownership;
+            return _ownership;
         }
 
         /// Copies the data into a new `std::vector`.
@@ -317,12 +361,17 @@ namespace rerun {
       private:
         template <typename T>
         union CollectionStorage {
-            struct {
-                const T* data;
-                size_t num_instances;
-            } borrowed;
+            const T* borrowed;
 
-            std::vector<T> vector_owned;
+            // TODO(andreas): don't be vector!
+            std::vector<T> vector;
+
+            /// How many elements can be stored in the small optimization buffer.
+            /// Naturally, this can be zero! Luckily std::array has a special case for this.
+            static constexpr size_t small_buf_capacity =
+                RERUN_COLLECTION_SMALL_BUFFER_CAPACITY / sizeof(T);
+
+            std::array<T, small_buf_capacity> small_buf;
 
             CollectionStorage() {
                 std::memset(reinterpret_cast<void*>(this), 0, sizeof(CollectionStorage));
@@ -331,8 +380,11 @@ namespace rerun {
             ~CollectionStorage() {}
         };
 
-        CollectionOwnership ownership;
-        CollectionStorage<TElement> storage;
+        CollectionStorage<TElement> _storage;
+
+        // TODO(andreas): Fuse num instances and ownership in memory.
+        size_t _num_instances;
+        CollectionOwnership _ownership;
     };
 } // namespace rerun
 
