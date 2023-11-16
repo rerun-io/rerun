@@ -230,9 +230,9 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
-ecolor = { git = "https://github.com/emilk/egui.git", commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
-eframe = { git = "https://github.com/emilk/egui.git", commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
-egui = { git = "https://github.com/emilk/egui.git", commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
-egui-wgpu = { git = "https://github.com/emilk/egui.git", commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
-emath = { git = "https://github.com/emilk/egui.git", commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
-epaint = { git = "https://github.com/emilk/egui.git", commit = "b9500460b91dae60d44a8e615bcad5671845cf01" }
+ecolor = { git = "https://github.com/emilk/egui.git", commit = "fb8fa67afd6e673f76e7b56221a2162981d62f79" } # egui master 2023-11-16
+eframe = { git = "https://github.com/emilk/egui.git", commit = "fb8fa67afd6e673f76e7b56221a2162981d62f79" } # egui master 2023-11-16
+egui = { git = "https://github.com/emilk/egui.git", commit = "fb8fa67afd6e673f76e7b56221a2162981d62f79" } # egui master 2023-11-16
+egui-wgpu = { git = "https://github.com/emilk/egui.git", commit = "fb8fa67afd6e673f76e7b56221a2162981d62f79" } # egui master 2023-11-16
+emath = { git = "https://github.com/emilk/egui.git", commit = "fb8fa67afd6e673f76e7b56221a2162981d62f79" } # egui master 2023-11-16
+epaint = { git = "https://github.com/emilk/egui.git", commit = "fb8fa67afd6e673f76e7b56221a2162981d62f79" } # egui master 2023-11-16
