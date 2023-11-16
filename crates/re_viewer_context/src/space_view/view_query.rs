@@ -58,7 +58,14 @@ impl DataResult {
                 }
             }
             Some(props) => {
-                if props.has_edits(&self.resolved_properties) {
+                // A value of `None` in the data store means "use the default value", so if
+                // `self.individual_properties` is `None`, we only must save if `props` is different
+                // from the default.
+                if props.has_edits(
+                    self.individual_properties
+                        .as_ref()
+                        .unwrap_or(&EntityProperties::default()),
+                ) {
                     re_log::debug!("Overriding {:?} with {:?}", self.override_path, props);
 
                     let component = EntityPropertiesComponent { props };

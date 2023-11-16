@@ -75,8 +75,8 @@ pub fn visible_history_ui(
     space_view_class: &SpaceViewClassName,
     is_space_view: bool,
     entity_path: Option<&EntityPath>,
-    resolved_visible_history_prop: &ExtraQueryHistory,
     visible_history_prop: &mut ExtraQueryHistory,
+    resolved_visible_history_prop: &ExtraQueryHistory,
 ) {
     if !has_visible_history(ctx, space_view_class, entity_path) {
         return;

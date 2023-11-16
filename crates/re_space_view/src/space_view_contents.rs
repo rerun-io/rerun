@@ -314,6 +314,7 @@ impl SpaceViewContents {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
                     display_name: path_to_group_name(&parent_path),
                     children: smallvec![new_group],
+                    group_path: parent_path.clone(),
                     ..Default::default()
                 });
                 vacant_mapping.insert(parent_group);

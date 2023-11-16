@@ -282,15 +282,13 @@ fn blueprint_ui(
                 );
 
                 // Space View don't inherit properties.
+                let mut resolved_entity_props = EntityProperties::default();
+
                 // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-                let resolved_entity_props = if space_view_class == TimeSeriesSpaceView::NAME {
-                    let mut resolved_entity_props = EntityProperties::default();
+                if space_view_class == TimeSeriesSpaceView::NAME {
                     resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
                     resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
-                    resolved_entity_props
-                } else {
-                    EntityProperties::default()
-                };
+                }
 
                 let root_data_result = space_view.root_data_result(ctx);
                 let mut props = root_data_result
@@ -314,8 +312,8 @@ fn blueprint_ui(
                     &space_view_class,
                     true,
                     None,
-                    &resolved_entity_props.visible_history,
                     &mut props.visible_history,
+                    &resolved_entity_props.visible_history,
                 );
 
                 root_data_result.save_override(Some(props), ctx);
@@ -451,8 +449,8 @@ fn entity_props_ui(
         space_view_class,
         false,
         entity_path,
-        &resolved_entity_props.visible_history,
         &mut entity_props.visible_history,
+        &resolved_entity_props.visible_history,
     );
 
     egui::Grid::new("entity_properties")

@@ -250,7 +250,10 @@ impl ViewportBlueprint<'_> {
 
             let data_result = space_view.contents.resolve(space_view, ctx, entity_path);
 
-            let mut properties = data_result.resolved_properties.clone();
+            let mut properties = data_result
+                .individual_properties
+                .clone()
+                .unwrap_or_default();
 
             let name = entity_path.iter().last().unwrap().to_string();
             let label = format!("🔹 {name}");
@@ -301,7 +304,10 @@ impl ViewportBlueprint<'_> {
                     .contents
                     .resolve(space_view, ctx, &child_group.group_path);
 
-            let mut child_properties = child_data_result.resolved_properties.clone();
+            let mut child_properties = child_data_result
+                .individual_properties
+                .clone()
+                .unwrap_or_default();
 
             let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
                 .selected(is_selected)
