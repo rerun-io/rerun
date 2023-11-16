@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::ops::RangeInclusive;
 
-use egui::{NumExt as _, Response};
+use egui::{NumExt as _, Response, Ui};
 
 use re_data_store::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
 use re_log_types::{EntityPath, TimeType, TimeZone};
@@ -195,6 +195,8 @@ pub fn visible_history_ui(
                 );
             }
 
+            current_range_ui(ctx, ui, current_time, sequence_timeline, visible_history);
+
             ui.add(
                 egui::Label::new(
                     egui::RichText::new(if sequence_timeline {
@@ -217,6 +219,61 @@ pub fn visible_history_ui(
             "Controls the time range used to display data in the Space View.\n\n\
         Note that the data immediately preceding the time range is always displayed.",
         );
+}
+
+fn current_range_ui(
+    ctx: &mut ViewerContext<'_>,
+    ui: &mut Ui,
+    current_time: i64,
+    sequence_timeline: bool,
+    visible_history: &VisibleHistory,
+) {
+    let from = visible_history.from(current_time.into());
+    let to = visible_history.to(current_time.into());
+
+    let (label_text, hover_text) = if sequence_timeline {
+        if from == to {
+            (
+                format!("Showing last data before frame #{}", from.as_i64()),
+                None,
+            )
+        } else {
+            (
+                format!(
+                    "Showing data between frames #{:?} and #{:?}.",
+                    visible_history.from(current_time.into()).as_i64(),
+                    visible_history.to(current_time.into()).as_i64()
+                ),
+                Some("This may include the last data logged before the starting frame"),
+            )
+        }
+    } else {
+        let time_type = TimeType::Time;
+        let from_formatted = time_type.format(
+            visible_history.from(current_time.into()),
+            ctx.app_options.time_zone_for_timestamps,
+        );
+
+        if from == to {
+            (format!("Showing last data before {from_formatted}"), None)
+        } else {
+            (
+                format!(
+                    "Showing data between {from_formatted} and {}.",
+                    time_type.format(
+                        visible_history.to(current_time.into()),
+                        ctx.app_options.time_zone_for_timestamps
+                    )
+                ),
+                Some("This may include the last data logged before the starting time."),
+            )
+        }
+    };
+
+    let resp = ui.label(label_text);
+    if let Some(hover_text) = hover_text {
+        resp.on_hover_text(hover_text);
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -397,9 +454,7 @@ fn visible_history_boundary_ui(
         } else {
             "Show data until the end of the timeline"
         });
-    })
-    .response
-    .on_hover_text("Select the type of time range boundary to use");
+    });
 
     // Note: the time range adjustment below makes sure the two boundaries don't cross in time
     // (i.e. low > high). It does so by prioritizing the low boundary. Moving the low boundary
