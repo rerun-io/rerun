@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring> // std::memset
 #include <utility>
 #include <vector>
 
@@ -320,7 +321,7 @@ namespace rerun {
             std::vector<T> vector_owned;
 
             CollectionStorage() {
-                memset(reinterpret_cast<void*>(this), 0, sizeof(CollectionStorage));
+                std::memset(reinterpret_cast<void*>(this), 0, sizeof(CollectionStorage));
             }
 
             ~CollectionStorage() {}
