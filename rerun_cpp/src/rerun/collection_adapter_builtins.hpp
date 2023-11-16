@@ -50,7 +50,8 @@ namespace rerun {
             // There's no batch emplace method, so we need to reserve and then emplace manually.
             // We decide here to take the performance cost if a the input's iterator is not a random access iterator.
             // (in that case determining the size will have linear complexity)
-            elements.reserve(std::distance(std::begin(input), std::end(input)));
+            elements.reserve(static_cast<size_t>(std::distance(std::begin(input), std::end(input)))
+            );
             for (auto& element : input) {
                 elements.emplace_back(std::move(element));
             }
