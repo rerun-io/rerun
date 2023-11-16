@@ -526,7 +526,7 @@ SCENARIO("Copy/move construction/assignment of collections", TEST_TAG) {
         }
     }
 
-    GIVEN("A constructed collection with owned data") {
+    GIVEN("a collection with owned data") {
         auto collection =
             rerun::Collection<Element>::take_ownership(std::vector<Element> EXPECTED_ELEMENT_LIST);
         const Element* old_data_ptr = collection.data();
@@ -565,7 +565,7 @@ SCENARIO("Copy/move construction/assignment of collections", TEST_TAG) {
         }
     }
 
-    GIVEN("A constructed collection with borrowed data") {
+    GIVEN("a collection with borrowed data") {
         std::vector<Element> data EXPECTED_ELEMENT_LIST;
         auto collection = rerun::Collection<Element>::borrow(data.data(), data.size());
         const Element* old_data_ptr = data.data();
@@ -604,5 +604,28 @@ SCENARIO("Copy/move construction/assignment of collections", TEST_TAG) {
 }
 
 SCENARIO("Conversion to vector using `to_vector`", TEST_TAG) {
-    // TODO:
+    auto expected_vector = std::vector<Element> EXPECTED_ELEMENT_LIST;
+
+    GIVEN("a collection with owned data") {
+        auto collection =
+            rerun::Collection<Element>::take_ownership(std::vector<Element> EXPECTED_ELEMENT_LIST);
+
+        THEN("it can be converted to a vector") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            CHECK(collection.to_vector() == expected_vector);
+        }
+    }
+    GIVEN("a collection with borrowed data") {
+        std::vector<Element> data EXPECTED_ELEMENT_LIST;
+        auto collection = rerun::Collection<Element>::borrow(data.data(), data.size());
+
+        THEN("it can be converted to a vector") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            CHECK(collection.to_vector() == expected_vector);
+        }
+    }
 }

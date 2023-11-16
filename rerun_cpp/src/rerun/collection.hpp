@@ -304,8 +304,8 @@ namespace rerun {
         std::vector<TElement> to_vector() const {
             // TODO(andreas): Overload this for `const &` and `&&` to avoid the copy when possible.
             std::vector<TElement> result;
-            result.resize(size());
-            std::copy(begin(), end(), result.begin());
+            result.reserve(size());
+            result.insert(result.end(), begin(), end());
             return result;
         }
 
