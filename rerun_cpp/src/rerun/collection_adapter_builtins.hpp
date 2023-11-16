@@ -22,7 +22,7 @@ namespace rerun {
         }
     };
 
-    /// Adapter from a generic std compatible container (see `rerun::traits::is_iterable_and_has_size_v`) which
+    /// Adapter for a generic std compatible container (see `rerun::traits::is_iterable_and_has_size_v`) which
     /// has a value type from which `TElement` can be constructed.
     ///
     /// Since this needs to do a conversion, this will always need to allocate space.
@@ -109,6 +109,28 @@ namespace rerun {
             return Collection<TElement>::take_ownership(std::move(one_and_only));
         }
     };
+
+    /// Adapter for a single element of from which `TElement` can be constructed.
+    ///
+    /// Since this needs to do a conversion, this will always need to allocate space.
+    /// However, if a temporary is passed the element will be moved instead of copied upon construction of `TElement`.
+    template <typename TElement, typename TInput>
+    struct CollectionAdapter<
+        TElement, TInput,
+        std::enable_if_t<
+            !std::is_same_v<TElement, TInput> &&           //
+            !traits::is_iterable_and_has_size_v<TInput> && //
+            std::is_constructible_v<TElement, TInput>      //
+            >> {
+        Collection<TElement> operator()(const TInput& input) {
+            return Collection<TElement>::take_ownership(TElement(input));
+        }
+
+        Collection<TElement> operator()(TInput&& input) {
+            return Collection<TElement>::take_ownership(TElement(std::move(input)));
+        }
+    };
+
 } // namespace rerun
 
 /// \endcond
