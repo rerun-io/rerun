@@ -33,7 +33,7 @@ lint-codegen = "cargo run --package re_types_builder -- --check"
 # TODO(jleibs): implement lint-cpp-all
 lint-cpp-files = "clang-format --dry-run -Werror"
 lint-rerun = "python scripts/lint.py"
-lint-rs-files = "rustfmt --check"
+lint-rs-files = "rustfmt --edition 2021 --check"
 lint-rs-all = "cargo fmt --check"
 lint-py-fmt-check = "ruff format --check --config rerun_py/pyproject.toml"
 lint-py-blackdoc = "blackdoc --check"

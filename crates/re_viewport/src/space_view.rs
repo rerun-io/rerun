@@ -355,29 +355,29 @@ impl SpaceViewBlueprint {
     pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {
         let entity_path = self.entity_path();
 
-        let props = ctx
+        let individual_properties = ctx
             .blueprint
             .store()
             .query_timeless_component::<EntityPropertiesComponent>(&self.entity_path())
-            .map_or_else(
-                || {
-                    let mut props = EntityProperties::default();
-                    // better defaults for the time series space view
-                    // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
-                    if self.class_name == TimeSeriesSpaceView::NAME {
-                        props.visible_history.nanos = VisibleHistory::ALL;
-                        props.visible_history.sequences = VisibleHistory::ALL;
-                    }
-                    props
-                },
-                |result| result.value.props,
-            );
+            .map(|result| result.value.props);
+
+        let resolved_properties = individual_properties.clone().unwrap_or_else(|| {
+            let mut props = EntityProperties::default();
+            // better defaults for the time series space view
+            // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
+            if self.class_name == TimeSeriesSpaceView::NAME {
+                props.visible_history.nanos = VisibleHistory::ALL;
+                props.visible_history.sequences = VisibleHistory::ALL;
+            }
+            props
+        });
 
         DataResult {
             entity_path: entity_path.clone(),
             view_parts: Default::default(),
             is_group: true,
-            resolved_properties: props,
+            resolved_properties,
+            individual_properties,
             override_path: entity_path,
         }
     }

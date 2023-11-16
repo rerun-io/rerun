@@ -319,6 +319,7 @@ impl SpaceViewContents {
                 let parent_group = self.groups.insert(DataBlueprintGroup {
                     display_name: path_to_group_name(&parent_path),
                     children: smallvec![new_group],
+                    group_path: parent_path.clone(),
                     ..Default::default()
                 });
                 vacant_mapping.insert(parent_group);
@@ -521,6 +522,7 @@ impl DataQuery for SpaceViewContents {
             view_parts,
             is_group: false,
             resolved_properties,
+            individual_properties: entity_overrides.get_opt(entity_path).cloned(),
             override_path: self
                 .entity_path()
                 .join(&SpaceViewContents::PROPERTIES_PREFIX.into())
@@ -576,6 +578,7 @@ impl DataBlueprintGroup {
                     }
                 }
 
+                let individual_properties = overrides.get_opt(&entity_path).cloned();
                 let override_path = base_entity_path.join(&props_path).join(&entity_path);
 
                 data_results.insert(DataResultNode {
@@ -583,6 +586,7 @@ impl DataBlueprintGroup {
                         entity_path,
                         view_parts,
                         is_group: false,
+                        individual_properties,
                         resolved_properties,
                         override_path,
                     },
@@ -610,11 +614,13 @@ impl DataBlueprintGroup {
 
         children.append(&mut recursive_children);
 
+        let individual_properties = overrides.get_opt(&group_path).cloned();
         data_results.insert(DataResultNode {
             data_result: DataResult {
                 entity_path: group_path,
                 view_parts: group_view_parts,
                 is_group: true,
+                individual_properties,
                 resolved_properties: group_resolved_properties,
                 override_path: group_override_path,
             },

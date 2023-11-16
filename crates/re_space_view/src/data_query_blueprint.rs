@@ -109,6 +109,7 @@ impl DataQuery for DataQueryBlueprint {
             entity_path: entity_path.clone(),
             view_parts,
             is_group: false,
+            individual_properties: entity_overrides.get_opt(entity_path).cloned(),
             resolved_properties,
             override_path: self
                 .blueprint_path
@@ -222,6 +223,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path: entity_path.clone(),
                     view_parts,
                     is_group: false,
+                    individual_properties: overrides.get_opt(&entity_path).cloned(),
                     resolved_properties: resolved_properties.clone(),
                     override_path: override_path.clone(),
                 },
@@ -253,11 +255,13 @@ impl<'a> QueryExpressionEvaluator<'a> {
         if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
             self_leaf
         } else {
+            let individual_properties = overrides.get_opt(&entity_path).cloned();
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path,
                     view_parts: Default::default(),
                     is_group: true,
+                    individual_properties,
                     resolved_properties,
                     override_path,
                 },

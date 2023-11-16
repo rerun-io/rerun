@@ -257,7 +257,10 @@ impl ViewportBlueprint<'_> {
                 entity_path,
             );
 
-            let mut properties = data_result.resolved_properties.clone();
+            let mut properties = data_result
+                .individual_properties
+                .clone()
+                .unwrap_or_default();
 
             let name = entity_path.iter().last().unwrap().to_string();
             let label = format!("🔹 {name}");
@@ -268,7 +271,7 @@ impl ViewportBlueprint<'_> {
                 .with_buttons(|re_ui, ui| {
                     let vis_response =
                         visibility_button_ui(re_ui, ui, group_is_visible, &mut properties.visible);
-                    data_result.save_override(properties, ctx);
+                    data_result.save_override(Some(properties), ctx);
 
                     let response = remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                     if response.clicked() {
@@ -310,7 +313,10 @@ impl ViewportBlueprint<'_> {
                 &child_group.group_path,
             );
 
-            let mut child_properties = child_data_result.resolved_properties.clone();
+            let mut child_properties = child_data_result
+                .individual_properties
+                .clone()
+                .unwrap_or_default();
 
             let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
                 .selected(is_selected)
@@ -353,7 +359,7 @@ impl ViewportBlueprint<'_> {
                 .item_response
                 .on_hover_text("Group");
 
-            child_data_result.save_override(child_properties, ctx);
+            child_data_result.save_override(Some(child_properties), ctx);
 
             item_ui::select_hovered_on_click(ctx, &response, &[item]);
 

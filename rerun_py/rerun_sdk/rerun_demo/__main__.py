@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import pathlib
-import sys
 
 
 def run_cube(args: argparse.Namespace):
@@ -27,31 +25,9 @@ def run_cube(args: argparse.Namespace):
 
 
 def run_structure_from_motion(args):
-    from rerun import bindings, unregister_shutdown  # type: ignore[attr-defined]
-
-    serve_opts = []
-
-    # TODO(#1924): The need to special-case
-    # this flag conversion is a bit awkward.
-    if args.connect or args.addr:
-        print("Connecting to external viewer is only supported with the --cube demo.", file=sys.stderr)
-        exit(1)
-    if args.save:
-        print("Saving an RRD file is only supported from the --cube demo.", file=sys.stderr)
-        exit(1)
-    if args.serve:
-        serve_opts.append("--web-viewer")
-
-    # We don't need to call shutdown in this case. Rust should be handling everything
-    unregister_shutdown()
-
-    rrd_file = pathlib.Path(__file__).parent.joinpath("colmap_fiat.rrd").resolve()
-    if not rrd_file.exists():
-        print(f"No demo file found at {rrd_file}. Package was built without demo support", file=sys.stderr)
-        exit(1)
-    else:
-        sys.argv = [sys.argv[0], str(rrd_file)] + serve_opts
-        exit(bindings.main())
+    print(
+        "`run_structure_from_motion` has been deprecated. You can execute `rerun`, and use the built-in examples instead."
+    )
 
 
 def main() -> None:
