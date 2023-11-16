@@ -1,0 +1,21 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A path to an entity in the `DataStore`.
+table EntityPath  (
+  "attr.arrow.transparent",
+  "attr.rust.derive_only": "Clone",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  // TODO(jleibs): This should be a special primitive
+  path: string (order: 100);
+}

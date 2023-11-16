@@ -1,0 +1,20 @@
+include "arrow/attributes.fbs";
+include "python/attributes.fbs";
+include "rust/attributes.fbs";
+
+include "rerun/datatypes.fbs";
+include "rerun/attributes.fbs";
+
+namespace rerun.datatypes;
+
+// ---
+
+/// A 16-byte uuid.
+struct Uuid  (
+  "attr.arrow.transparent",
+  "attr.rust.derive_only": "Clone",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct"
+) {
+  bytes: [ubyte: 16] (order: 100);
+}
