@@ -15,35 +15,35 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::unnecessary_cast)]
 
-use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
-use ::re_types_core::SerializationResult;
-use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
-use ::re_types_core::{DeserializationError, DeserializationResult};
+use crate::external::arrow2;
+use crate::ComponentName;
+use crate::SerializationResult;
+use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A path to an entity in the `DataStore`.
 #[derive(Clone, Debug, Default)]
 #[repr(transparent)]
-pub struct EntityPath(pub ::re_types_core::ArrowString);
+pub struct EntityPath(pub crate::ArrowString);
 
-impl From<::re_types_core::ArrowString> for EntityPath {
+impl From<crate::ArrowString> for EntityPath {
     #[inline]
-    fn from(path: ::re_types_core::ArrowString) -> Self {
+    fn from(path: crate::ArrowString) -> Self {
         Self(path)
     }
 }
 
-impl From<EntityPath> for ::re_types_core::ArrowString {
+impl From<EntityPath> for crate::ArrowString {
     #[inline]
     fn from(value: EntityPath) -> Self {
         value.0
     }
 }
 
-::re_types_core::macros::impl_into_cow!(EntityPath);
+crate::macros::impl_into_cow!(EntityPath);
 
-impl ::re_types_core::Loggable for EntityPath {
-    type Name = ::re_types_core::DatatypeName;
+impl crate::Loggable for EntityPath {
+    type Name = crate::DatatypeName;
 
     #[inline]
     fn name() -> Self::Name {
@@ -65,7 +65,7 @@ impl ::re_types_core::Loggable for EntityPath {
         Self: Clone + 'a,
     {
         re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -116,7 +116,7 @@ impl ::re_types_core::Loggable for EntityPath {
         Self: Sized,
     {
         re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok({
             let arrow_data = arrow_data
@@ -153,7 +153,7 @@ impl ::re_types_core::Loggable for EntityPath {
                 .transpose()
             })
             .map(|res_or_opt| {
-                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| ::re_types_core::ArrowString(v)))
+                res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString(v)))
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.datatypes.EntityPath#path")?

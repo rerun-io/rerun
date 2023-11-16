@@ -6,7 +6,6 @@ annotation_info.rs linguist-generated=true
 class_description.rs linguist-generated=true
 class_description_map_elem.rs linguist-generated=true
 class_id.rs linguist-generated=true
-entity_path.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true
 keypoint_pair.rs linguist-generated=true
 mat3x3.rs linguist-generated=true

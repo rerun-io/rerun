@@ -14,7 +14,8 @@ table EntityPath  (
   "attr.arrow.transparent",
   "attr.rust.derive": "Default",
   "attr.rust.repr": "transparent",
-  "attr.rust.tuple_struct"
+  "attr.rust.tuple_struct",
+  "attr.rust.override_crate": "re_types_core"
 ) {
   // TODO(jleibs): This should be a special primitive
   path: string (order: 100);
