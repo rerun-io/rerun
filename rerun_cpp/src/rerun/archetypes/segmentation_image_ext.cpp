@@ -37,7 +37,7 @@ namespace rerun::archetypes {
         bool overwrite_width = !shape[1].name.has_value();
 
         if (overwrite_height || overwrite_width) {
-            auto new_shape = shape.copy_to_vector();
+            auto new_shape = shape.to_vector();
 
             if (overwrite_height) {
                 new_shape[0].name = "height";

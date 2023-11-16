@@ -66,7 +66,13 @@ namespace rerun {
         }
 
         /// Construct using a `CollectionAdapter` for the given input type.
-        template <typename TContainer>
+        template <
+            typename TContainer, //
+            // Avoid conflicting with the copy/move constructor.
+            // We could implement this also with an adapter, but this might confuse trait checks like `std::is_copy_constructible`.
+            typename = std::enable_if_t<
+                !std::is_same_v<std::remove_reference_t<TContainer>, Collection<TElement>>> //
+            >
         Collection(TContainer&& input)
             : Collection(Adapter<TContainer>()(std::forward<TContainer>(input))) {}
 
@@ -295,8 +301,8 @@ namespace rerun {
         }
 
         /// Copies the data into a new `std::vector`.
-        /// TODO: Overload this for temporary collections? We could avoid a copy here.
-        std::vector<TElement> copy_to_vector() const {
+        std::vector<TElement> to_vector() const {
+            // TODO(andreas): Overload this for `const &` and `&&` to avoid the copy when possible.
             std::vector<TElement> result;
             result.resize(size());
             std::copy(begin(), end(), result.begin());

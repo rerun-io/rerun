@@ -40,7 +40,7 @@ namespace rerun::archetypes {
                 .handle();
         }
 
-        auto new_shape = shape.copy_to_vector();
+        auto new_shape = shape.to_vector();
         for (size_t i = 0; i < std::min(shape.size(), names.size()); ++i) {
             new_shape[i].name = std::move(names[i]);
         }

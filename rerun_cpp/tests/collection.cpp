@@ -71,10 +71,10 @@ struct CheckElementMoveAndCopyCount {
     ~CheckElementMoveAndCopyCount() {
 // Both moves and copies can be elided, so we can only check for a minimum.
 // But in debug builds this seems to be surprisingly reliable!
-#if NDEBUG
-#define CMP ==
-#else
+#ifdef NDEBUG
 #define CMP >=
+#else
+#define CMP ==
 #endif
 
         CHECK(Element::copy_count - copy_count_before CMP expected_copy_increase);
@@ -498,10 +498,111 @@ SCENARIO("Move construction/assignment of collections", TEST_TAG) {
     //rerun::Collection<Position2D> batch(strings);
 }
 
-SCENARIO("Copy construction of collections", TEST_TAG) {
-    // TODO:
+SCENARIO("Copy/move construction/assignment of collections", TEST_TAG) {
+    GIVEN("A default constructed collection") {
+        rerun::Collection<int> collection;
+        const int* old_data_ptr = collection.data();
+
+        THEN("it can be move constructed") {
+            rerun::Collection<int> collection2(std::move(collection));
+            CHECK(collection2.size() == 0);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+        THEN("it can be move assigned") {
+            rerun::Collection<int> collection2;
+            collection2 = std::move(collection);
+            CHECK(collection2.size() == 0);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+
+        THEN("it can be copy constructed") {
+            rerun::Collection<int> collection2(collection);
+            CHECK(collection2.size() == 0);
+        }
+        THEN("it can be copy assigned") {
+            rerun::Collection<int> collection2;
+            collection2 = collection;
+            CHECK(collection2.size() == 0);
+        }
+    }
+
+    GIVEN("A constructed collection with owned data") {
+        auto collection =
+            rerun::Collection<Element>::take_ownership(std::vector<Element> EXPECTED_ELEMENT_LIST);
+        const Element* old_data_ptr = collection.data();
+
+        THEN("it can be move constructed") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2(std::move(collection));
+            check_for_expected_list(collection2);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+        THEN("it can be move assigned") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2;
+            collection2 = std::move(collection);
+            check_for_expected_list(collection2);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+
+        THEN("it can be copy constructed") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            rerun::Collection<Element> collection2(collection);
+            check_for_expected_list(collection2);
+        }
+        THEN("it can be copy assigned") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            rerun::Collection<Element> collection2;
+
+            collection2 = collection;
+            check_for_expected_list(collection2);
+        }
+    }
+
+    GIVEN("A constructed collection with borrowed data") {
+        std::vector<Element> data EXPECTED_ELEMENT_LIST;
+        auto collection = rerun::Collection<Element>::borrow(data.data(), data.size());
+        const Element* old_data_ptr = data.data();
+
+        THEN("it can be move constructed") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2(std::move(collection));
+            check_for_expected_list(collection2);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+        THEN("it can be move assigned") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2;
+            collection2 = std::move(collection);
+            check_for_expected_list(collection2);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+
+        THEN("it can be copy constructed") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2(collection);
+            check_for_expected_list(collection2);
+        }
+        THEN("it can be copy assigned") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2;
+
+            collection2 = collection;
+            check_for_expected_list(collection2);
+        }
+    }
 }
 
-SCENARIO("Conversion to vector using `copy_to_vector`", TEST_TAG) {
+SCENARIO("Conversion to vector using `to_vector`", TEST_TAG) {
     // TODO:
 }

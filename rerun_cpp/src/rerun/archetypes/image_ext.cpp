@@ -52,7 +52,7 @@ namespace rerun::archetypes {
 
         bool overwrite_depth = shape.size() > 2 && !shape[2].name.has_value();
         if (overwrite_height || overwrite_width || overwrite_depth) {
-            auto new_shape = shape.copy_to_vector();
+            auto new_shape = shape.to_vector();
 
             if (overwrite_height) {
                 new_shape[0].name = "height";
