@@ -33,7 +33,10 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
     }
 
     pub fn from_entity_path(path: &EntityPath) -> Self {
-        debug_assert!(path.is_child_of(T::registry()));
+        if !path.is_child_of(T::registry()) {
+            return Self::invalid();
+        }
+
         path.last()
             .and_then(|last| uuid::Uuid::parse_str(last.to_string().as_str()).ok())
             .map_or(Self::invalid(), |id| Self {
@@ -127,3 +130,28 @@ macro_rules! define_blueprint_id_type {
 // ----------------------------------------------------------------------------
 // Definitions for the different [`BlueprintId`] types.
 define_blueprint_id_type!(SpaceViewId, SpaceViewIdRegistry, "space_view");
+define_blueprint_id_type!(DataQueryId, DataQueryIdRegistry, "data_query");
+
+// ----------------------------------------------------------------------------
+// Tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_blueprint_id() {
+        let id = SpaceViewId::random();
+        let path = id.as_entity_path();
+        assert!(path.is_child_of(&EntityPath::parse_forgiving("space_view/")));
+
+        let id = DataQueryId::random();
+        let path = id.as_entity_path();
+        assert!(path.is_child_of(&EntityPath::parse_forgiving("data_query/")));
+
+        let roundtrip = DataQueryId::from_entity_path(&id.as_entity_path());
+        assert_eq!(roundtrip, id);
+
+        let crossed = DataQueryId::from_entity_path(&SpaceViewId::random().as_entity_path());
+        assert_eq!(crossed, DataQueryId::invalid());
+    }
+}
