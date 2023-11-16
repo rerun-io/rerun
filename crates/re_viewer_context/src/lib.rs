@@ -34,6 +34,7 @@ pub use command_sender::{
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
 use nohash_hasher::{IntMap, IntSet};
+use once_cell::sync::Lazy;
 use re_log_types::{EntityPath, EntityPathPart, Index};
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
@@ -70,29 +71,65 @@ pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
 
 pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
 
+pub trait BlueprintIdRegistry {
+    fn registry() -> &'static EntityPath;
+}
+
+macro_rules! define_blueprint_id_registry {
+    ($type:ident, $registry:ident, $registry_name:expr) => {
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub struct $registry;
+
+        impl $registry {
+            const REGISTRY: &'static str = $registry_name;
+        }
+
+        impl BlueprintIdRegistry for $registry {
+            fn registry() -> &'static EntityPath {
+                static REGISTRY_PATH: Lazy<EntityPath> = Lazy::new(|| $registry::REGISTRY.into());
+                &REGISTRY_PATH
+            }
+        }
+        pub type $type = BlueprintId<$registry>;
+    };
+}
+
+define_blueprint_id_registry!(SpaceViewId, SpaceViewIdRegistry, "space_view");
+
 /// A unique id for each space view.
 #[derive(
     Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Deserialize, serde::Serialize,
 )]
 
-pub struct SpaceViewId(uuid::Uuid);
+pub struct BlueprintId<T: BlueprintIdRegistry> {
+    id: uuid::Uuid,
+    #[serde(skip)]
+    _registry: std::marker::PhantomData<T>,
+}
 
-impl SpaceViewId {
-    // TODO(jleibs): Can we make this an EntityPath instead?
-    pub const SPACEVIEW_PREFIX: &str = "space_view";
-
+impl<T: BlueprintIdRegistry> BlueprintId<T> {
     pub fn invalid() -> Self {
-        Self(uuid::Uuid::nil())
+        Self {
+            id: uuid::Uuid::nil(),
+            _registry: std::marker::PhantomData,
+        }
     }
 
     pub fn random() -> Self {
-        Self(uuid::Uuid::new_v4())
+        Self {
+            id: uuid::Uuid::new_v4(),
+            _registry: std::marker::PhantomData,
+        }
     }
 
     pub fn from_entity_path(path: &EntityPath) -> Self {
+        debug_assert!(path.is_child_of(T::registry()));
         path.last()
             .and_then(|last| uuid::Uuid::parse_str(last.to_string().as_str()).ok())
-            .map_or(Self::invalid(), Self)
+            .map_or(Self::invalid(), |id| Self {
+                id,
+                _registry: std::marker::PhantomData,
+            })
     }
 
     pub fn hashed_from_str(s: &str) -> Self {
@@ -117,25 +154,42 @@ impl SpaceViewId {
 
         let uuid = uuid::Uuid::from_u64_pair(hash1, hash2);
 
-        Self(uuid)
+        uuid.into()
     }
 
     pub fn gpu_readback_id(self) -> re_renderer::GpuReadbackIdentifier {
-        re_log_types::hash::Hash64::hash(self).hash64()
+        re_log_types::hash::Hash64::hash(self.id).hash64()
     }
 
     #[inline]
     pub fn as_entity_path(&self) -> EntityPath {
-        let prefix = EntityPathPart::Name(Self::SPACEVIEW_PREFIX.into());
-        let uuid = EntityPathPart::Index(Index::Uuid(self.0));
-        EntityPath::from([prefix, uuid].as_slice())
+        T::registry()
+            .iter()
+            .cloned()
+            .chain(std::iter::once(EntityPathPart::Index(Index::Uuid(self.id))))
+            .collect()
+    }
+
+    #[inline]
+    pub fn registry() -> &'static EntityPath {
+        T::registry()
     }
 }
 
-impl std::fmt::Display for SpaceViewId {
+impl<T: BlueprintIdRegistry> From<uuid::Uuid> for BlueprintId<T> {
+    #[inline]
+    fn from(id: uuid::Uuid) -> Self {
+        Self {
+            id,
+            _registry: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T: BlueprintIdRegistry> std::fmt::Display for BlueprintId<T> {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:#}", self.0)
+        write!(f, "{}({:#})", T::registry(), self.id)
     }
 }
 
