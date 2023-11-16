@@ -18,99 +18,97 @@ namespace arrow {
     class StringBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
+namespace rerun::components {
+    /// **Component**: A standardized media type (RFC2046, formerly known as MIME types), encoded as a utf8 string.
+    ///
+    /// The complete reference of officially registered media types is maintained by the IANA and can be
+    /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
+    struct MediaType {
+        rerun::datatypes::Utf8 value;
+
+        /// Name of the component, used for serialization.
+        static const char NAME[];
+
+      public:
+        // Extensions to generated type defined in 'media_type_ext.cpp'
+
+        /// Construct media type from a null-terminated UTF8 string.
+        MediaType(const char* media_type) : value(media_type) {}
+
+        // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can
+        // declare these constants directly in there.
+
+        /// `text/plain`
+        static MediaType plain_text() {
+            return "text/plain";
+        }
+
+        /// `text/markdown`
         ///
-        /// The complete reference of officially registered media types is maintained by the IANA and can be
-        /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
-        struct MediaType {
-            rerun::datatypes::Utf8 value;
+        /// <https://www.iana.org/assignments/media-types/text/markdown>
+        static MediaType markdown() {
+            return "text/markdown";
+        }
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// `glTF`(https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
+        ///
+        /// <https://www.iana.org/assignments/media-types/model/gltf+json>
+        static MediaType gltf() {
+            return "model/gltf+json";
+        }
 
-          public:
-            // Extensions to generated type defined in 'media_type_ext.cpp'
+        /// Binary `glTF`(https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
+        ///
+        /// <https://www.iana.org/assignments/media-types/model/gltf-binary>
+        static MediaType glb() {
+            return "model/gltf-binary";
+        }
 
-            /// Construct media type from a null-terminated UTF8 string.
-            MediaType(const char* media_type) : value(media_type) {}
+        /// [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file): `model/obj`.
+        ///
+        /// <https://www.iana.org/assignments/media-types/model/obj>
+        static MediaType obj() {
+            return "model/obj";
+        }
 
-            // TODO(#2388): come up with some DSL in our flatbuffers definitions so that we can
-            // declare these constants directly in there.
+      public:
+        MediaType() = default;
 
-            /// `text/plain`
-            static MediaType plain_text() {
-                return "text/plain";
-            }
+        MediaType(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
 
-            /// `text/markdown`
-            ///
-            /// <https://www.iana.org/assignments/media-types/text/markdown>
-            static MediaType markdown() {
-                return "text/markdown";
-            }
+        MediaType& operator=(rerun::datatypes::Utf8 value_) {
+            value = std::move(value_);
+            return *this;
+        }
 
-            /// [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
-            ///
-            /// <https://www.iana.org/assignments/media-types/model/gltf+json>
-            static MediaType gltf() {
-                return "model/gltf+json";
-            }
+        MediaType(std::string value_) : value(std::move(value_)) {}
 
-            /// Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
-            ///
-            /// <https://www.iana.org/assignments/media-types/model/gltf-binary>
-            static MediaType glb() {
-                return "model/gltf-binary";
-            }
+        MediaType& operator=(std::string value_) {
+            value = std::move(value_);
+            return *this;
+        }
 
-            /// [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file): `model/obj`.
-            ///
-            /// <https://www.iana.org/assignments/media-types/model/obj>
-            static MediaType obj() {
-                return "model/obj";
-            }
+        /// Cast to the underlying Utf8 datatype
+        operator rerun::datatypes::Utf8() const {
+            return value;
+        }
 
-          public:
-            MediaType() = default;
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            MediaType(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            MediaType& operator=(rerun::datatypes::Utf8 value_) {
-                value = std::move(value_);
-                return *this;
-            }
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StringBuilder* builder, const MediaType* elements, size_t num_elements
+        );
 
-            MediaType(std::string value_) : value(std::move(value_)) {}
-
-            MediaType& operator=(std::string value_) {
-                value = std::move(value_);
-                return *this;
-            }
-
-            /// Cast to the underlying Utf8 datatype
-            operator rerun::datatypes::Utf8() const {
-                return value;
-            }
-
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
-
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::StringBuilder* builder, const MediaType* elements, size_t num_elements
-            );
-
-            /// Creates a Rerun DataCell from an array of MediaType components.
-            static Result<rerun::DataCell> to_data_cell(
-                const MediaType* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of MediaType components.
+        static Result<rerun::DataCell> to_data_cell(
+            const MediaType* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

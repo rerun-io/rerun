@@ -1,10 +1,5 @@
 use super::SpaceViewComponent;
 
-impl SpaceViewComponent {
-    // TODO(jleibs): Can we make this an EntityPath instead?
-    pub const SPACEVIEW_PREFIX: &str = "space_view";
-}
-
 impl std::fmt::Debug for SpaceViewComponent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "SpaceViewComponent")

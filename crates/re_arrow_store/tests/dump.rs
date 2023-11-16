@@ -3,6 +3,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use itertools::Itertools;
+use re_arrow_store::WriteError;
 use re_arrow_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreStats, GarbageCollectionOptions,
     TimeInt, TimeRange, Timeline,
@@ -11,6 +12,24 @@ use re_log_types::{build_frame_nr, build_log_time, DataTable, EntityPath, TableI
 use re_types::components::InstanceKey;
 use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
 use re_types_core::Loggable as _;
+
+// ---
+
+// We very often re-use RowIds when generating test data.
+fn insert_table_with_retries(store: &mut DataStore, table: &DataTable) {
+    for row in table.to_rows() {
+        let mut row = row.unwrap();
+        loop {
+            match store.insert_row(&row) {
+                Ok(_) => break,
+                Err(WriteError::ReusedRowId(_)) => {
+                    row.row_id = row.row_id.next();
+                }
+                err @ Err(_) => err.map(|_| ()).unwrap(),
+            }
+        }
+    }
+}
 
 // --- Dump ---
 
@@ -22,18 +41,27 @@ fn data_store_dump() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
         config.store_insert_ids = false;
 
-        let mut store1 = DataStore::new(InstanceKey::name(), config.clone());
-        let mut store2 = DataStore::new(InstanceKey::name(), config.clone());
-        let mut store3 = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store1 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
+        let mut store2 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
+        let mut store3 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
 
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);
 
         // stress-test GC impl
-        store1.wipe_timeless_data();
         store1.gc(GarbageCollectionOptions::gc_everything());
-        store2.wipe_timeless_data();
         store2.gc(GarbageCollectionOptions::gc_everything());
-        store3.wipe_timeless_data();
         store3.gc(GarbageCollectionOptions::gc_everything());
 
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);
@@ -44,12 +72,12 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
     // helper to insert a table both as a temporal and timeless payload
     let insert_table = |store: &mut DataStore, table: &DataTable| {
         // insert temporal
-        store.insert_table(table).unwrap();
+        insert_table_with_retries(store, table);
 
         // insert timeless
         let mut table_timeless = table.clone();
         table_timeless.col_timelines = Default::default();
-        store.insert_table(&table_timeless).unwrap();
+        insert_table_with_retries(store, &table_timeless);
     };
 
     let ent_paths = ["this/that", "other", "yet/another/one"];
@@ -66,13 +94,13 @@ fn data_store_dump_impl(store1: &mut DataStore, store2: &mut DataStore, store3: 
 
     // Dump the first store into the second one.
     for table in store1.to_data_tables(None) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     sanity_unwrap(store2);
 
     // Dump the second store into the third one.
     for table in store2.to_data_tables(None) {
-        store3.insert_table(&table).unwrap();
+        insert_table_with_retries(store3, &table);
     }
     sanity_unwrap(store3);
 
@@ -118,8 +146,16 @@ fn data_store_dump_filtered() {
         // NOTE: insert IDs aren't serialized and can be different across runs.
         config.store_insert_ids = false;
 
-        let mut store1 = DataStore::new(InstanceKey::name(), config.clone());
-        let mut store2 = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store1 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
+        let mut store2 = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
 
         data_store_dump_filtered_impl(&mut store1, &mut store2);
 
@@ -147,29 +183,29 @@ fn data_store_dump_filtered_impl(store1: &mut DataStore, store2: &mut DataStore)
 
     // Fill the first store.
     for table in &tables {
-        store1.insert_table(table).unwrap();
+        insert_table_with_retries(store1, table);
     }
     sanity_unwrap(store1);
 
     // Dump frame1 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame1, frame1)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     // Dump frame2 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame2, frame2)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     // Dump frame3 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame3, frame3)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     // Dump the other frame3 from the first store into the second one.
     for table in store1.to_data_tables((timeline_log_time, TimeRange::new(frame3, frame3)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     // Dump frame4 from the first store into the second one.
     for table in store1.to_data_tables((timeline_frame_nr, TimeRange::new(frame4, frame4)).into()) {
-        store2.insert_table(&table).unwrap();
+        insert_table_with_retries(store2, &table);
     }
     sanity_unwrap(store2);
 
@@ -252,7 +288,11 @@ fn data_store_dump_empty_column() {
     };
     config.store_insert_ids = false;
 
-    let mut store = DataStore::new(InstanceKey::name(), config);
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        config,
+    );
 
     data_store_dump_empty_column_impl(&mut store);
 }
@@ -276,7 +316,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
         ] => 3; [instances2, positions2]);
         let mut table = DataTable::from_rows(TableId::random(), [row1, row2]);
         table.compute_all_size_bytes();
-        store.insert_table(&table).unwrap();
+        insert_table_with_retries(store, &table);
     }
 
     // Now insert another table with points only.
@@ -287,7 +327,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
             ] => 3; [instances3, positions3]);
         let mut table = DataTable::from_rows(TableId::random(), [row3]);
         table.compute_all_size_bytes();
-        store.insert_table(&table).unwrap();
+        insert_table_with_retries(store, &table);
     }
 
     let data_msgs: Result<Vec<_>, _> = store

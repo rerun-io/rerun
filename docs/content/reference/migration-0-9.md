@@ -1,6 +1,6 @@
 ---
 title: Migration to 0.9
-order: 10
+order: 12
 ---
 
 Rerun-0.9 introduces a new set of type-oriented logging APIs built on top of an updated, more concrete,

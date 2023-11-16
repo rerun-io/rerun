@@ -10,6 +10,7 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
     template <typename T>
     class NumericBuilder;
 
@@ -19,42 +20,40 @@ namespace arrow {
     using UInt64Builder = NumericBuilder<UInt64Type>;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A unique numeric identifier for each individual instance within a batch.
-        struct InstanceKey {
-            uint64_t value;
+namespace rerun::components {
+    /// **Component**: A unique numeric identifier for each individual instance within a batch.
+    struct InstanceKey {
+        uint64_t value;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            InstanceKey() = default;
+      public:
+        InstanceKey() = default;
 
-            InstanceKey(uint64_t value_) : value(value_) {}
+        InstanceKey(uint64_t value_) : value(value_) {}
 
-            InstanceKey& operator=(uint64_t value_) {
-                value = value_;
-                return *this;
-            }
+        InstanceKey& operator=(uint64_t value_) {
+            value = value_;
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::UInt64Builder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::UInt64Builder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::UInt64Builder* builder, const InstanceKey* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::UInt64Builder* builder, const InstanceKey* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of InstanceKey components.
-            static Result<rerun::DataCell> to_data_cell(
-                const InstanceKey* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of InstanceKey components.
+        static Result<rerun::DataCell> to_data_cell(
+            const InstanceKey* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

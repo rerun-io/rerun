@@ -3,12 +3,13 @@
 
 #include "arrows3d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
+
+namespace rerun::archetypes {
+    const char Arrows3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Arrows3DIndicator";
+}
 
 namespace rerun {
-    namespace archetypes {
-        const char Arrows3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Arrows3DIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Arrows3D>::serialize(
         const archetypes::Arrows3D& archetype
@@ -53,9 +54,8 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result =
-                ComponentBatch<Arrows3D::IndicatorComponent>(Arrows3D::IndicatorComponent())
-                    .serialize();
+            auto result = Collection<Arrows3D::IndicatorComponent>(Arrows3D::IndicatorComponent())
+                              .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

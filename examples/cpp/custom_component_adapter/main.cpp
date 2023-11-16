@@ -21,26 +21,26 @@ struct MyVec3 {
     float x, y, z;
 };
 
-/// Adapts `MyContainer<MyVec3>` to a `ComponentBatch<Position3D>`.
+/// Adapts `MyContainer<MyVec3>` to a `Collection<Position3D>`.
 ///
-/// With this in place, `ComponentBatch<Position3D>` can be constructed from a `MyContainer<MyVec3>`!
+/// With this in place, `Collection<Position3D>` can be constructed from a `MyContainer<MyVec3>`!
 template <>
-struct rerun::ComponentBatchAdapter<rerun::Position3D, MyContainer<MyVec3>> {
-    // Creating a ComponentBatch from a non-temporary is done by casting & borrowing binary compatible data.
-    ComponentBatch<rerun::Position3D> operator()(const MyContainer<MyVec3>& container) {
-        return ComponentBatch<rerun::Position3D>::borrow(container.data, container.size);
+struct rerun::CollectionAdapter<rerun::Position3D, MyContainer<MyVec3>> {
+    // Creating a Collection from a non-temporary is done by casting & borrowing binary compatible data.
+    Collection<rerun::Position3D> operator()(const MyContainer<MyVec3>& container) {
+        return Collection<rerun::Position3D>::borrow(container.data, container.size);
     }
 
     // For temporaries we have to do a copy since the pointer doesn't live long enough.
     // If you don't implement this, the other overload may be used for temporaries and cause
     // undefined behavior.
-    ComponentBatch<rerun::Position3D> operator()(MyContainer<MyVec3>&& container) {
+    Collection<rerun::Position3D> operator()(MyContainer<MyVec3>&& container) {
         std::vector<rerun::Position3D> components(container.size);
         for (size_t i = 0; i < container.size; ++i) {
             components[i] =
                 rerun::Position3D(container.data[i].x, container.data[i].y, container.data[i].z);
         }
-        return ComponentBatch<rerun::Position3D>::take_ownership(std::move(components));
+        return Collection<rerun::Position3D>::take_ownership(std::move(components));
     }
 };
 

@@ -5,13 +5,13 @@ use ahash::HashMap;
 use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 use smallvec::SmallVec;
 
 use re_log_types::{
     DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
-    RowIdVec, TimeInt, TimePoint, TimeRange, Timeline,
+    RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
 };
+use re_types_core::{ComponentName, ComponentNameSet, SizeBytes};
 
 // --- Data store ---
 
@@ -156,9 +156,12 @@ impl std::ops::DerefMut for ClusterCellCache {
 
 // ---
 
-/// Incremented on each edit
+/// Incremented on each edit.
 #[derive(Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
-pub struct StoreGeneration(u64);
+pub struct StoreGeneration {
+    insert_id: u64,
+    gc_id: u64,
+}
 
 /// A complete data store: covers all timelines, all entities, everything.
 ///
@@ -172,6 +175,8 @@ pub struct StoreGeneration(u64);
 /// Additionally, if the `polars` feature is enabled, you can dump the entire datastore as a
 /// flat denormalized dataframe using [`Self::to_dataframe`].
 pub struct DataStore {
+    pub(crate) id: StoreId,
+
     /// The cluster key specifies a column/component that is guaranteed to always be present for
     /// every single row of data within the store.
     ///
@@ -193,6 +198,8 @@ pub struct DataStore {
     /// the store so far.
     ///
     /// See also [`Self::lookup_datatype`].
+    //
+    // TODO(#1809): replace this with a centralized Arrow registry.
     pub(crate) type_registry: DataTypeRegistry,
 
     /// Keeps track of arbitrary per-row metadata.
@@ -222,11 +229,15 @@ pub struct DataStore {
 
     /// Monotonically increasing ID for GCs.
     pub(crate) gc_id: u64,
+
+    /// Monotonically increasing ID for store events.
+    pub(crate) event_id: AtomicU64,
 }
 
 impl Clone for DataStore {
     fn clone(&self) -> Self {
         Self {
+            id: self.id.clone(),
             cluster_key: self.cluster_key,
             config: self.config.clone(),
             type_registry: self.type_registry.clone(),
@@ -234,30 +245,30 @@ impl Clone for DataStore {
             cluster_cell_cache: self.cluster_cell_cache.clone(),
             tables: self.tables.clone(),
             timeless_tables: self.timeless_tables.clone(),
-            insert_id: self.insert_id,
-            query_id: self
-                .query_id
-                .load(std::sync::atomic::Ordering::Relaxed)
-                .into(),
-            gc_id: self.gc_id,
+            insert_id: Default::default(),
+            query_id: Default::default(),
+            gc_id: Default::default(),
+            event_id: Default::default(),
         }
     }
 }
 
 impl DataStore {
     /// See [`Self::cluster_key`] for more information about the cluster key.
-    pub fn new(cluster_key: ComponentName, config: DataStoreConfig) -> Self {
+    pub fn new(id: StoreId, cluster_key: ComponentName, config: DataStoreConfig) -> Self {
         Self {
+            id,
             cluster_key,
             config,
             cluster_cell_cache: Default::default(),
-            metadata_registry: Default::default(),
             type_registry: Default::default(),
+            metadata_registry: Default::default(),
             tables: Default::default(),
             timeless_tables: Default::default(),
             insert_id: 0,
             query_id: AtomicU64::new(0),
             gc_id: 0,
+            event_id: AtomicU64::new(0),
         }
     }
 
@@ -272,7 +283,10 @@ impl DataStore {
     /// Return the current `StoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
     pub fn generation(&self) -> StoreGeneration {
-        StoreGeneration(self.insert_id)
+        StoreGeneration {
+            insert_id: self.insert_id,
+            gc_id: self.gc_id,
+        }
     }
 
     /// See [`Self::cluster_key`] for more information about the cluster key.
@@ -334,11 +348,13 @@ impl DataStore {
 /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
 /// ```
 #[test]
+#[cfg(test)]
 fn datastore_internal_repr() {
     use re_log_types::DataTable;
     use re_types_core::Loggable as _;
 
     let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         re_types::components::InstanceKey::name(),
         DataStoreConfig {
             indexed_bucket_num_rows: 0,
@@ -349,11 +365,15 @@ fn datastore_internal_repr() {
 
     let timeless = DataTable::example(true);
     eprintln!("{timeless}");
-    store.insert_table(&timeless).unwrap();
+    for row in timeless.to_rows() {
+        store.insert_row(&row.unwrap()).unwrap();
+    }
 
     let temporal = DataTable::example(false);
     eprintln!("{temporal}");
-    store.insert_table(&temporal).unwrap();
+    for row in temporal.to_rows() {
+        store.insert_row(&row.unwrap()).unwrap();
+    }
 
     store.sanity_check().unwrap();
     eprintln!("{store}");

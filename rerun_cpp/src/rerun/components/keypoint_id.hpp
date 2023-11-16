@@ -11,6 +11,7 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
     template <typename T>
     class NumericBuilder;
 
@@ -20,54 +21,52 @@ namespace arrow {
     using UInt16Builder = NumericBuilder<UInt16Type>;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
-        struct KeypointId {
-            rerun::datatypes::KeypointId id;
+namespace rerun::components {
+    /// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
+    struct KeypointId {
+        rerun::datatypes::KeypointId id;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            KeypointId() = default;
+      public:
+        KeypointId() = default;
 
-            KeypointId(rerun::datatypes::KeypointId id_) : id(id_) {}
+        KeypointId(rerun::datatypes::KeypointId id_) : id(id_) {}
 
-            KeypointId& operator=(rerun::datatypes::KeypointId id_) {
-                id = id_;
-                return *this;
-            }
+        KeypointId& operator=(rerun::datatypes::KeypointId id_) {
+            id = id_;
+            return *this;
+        }
 
-            KeypointId(uint16_t id_) : id(id_) {}
+        KeypointId(uint16_t id_) : id(id_) {}
 
-            KeypointId& operator=(uint16_t id_) {
-                id = id_;
-                return *this;
-            }
+        KeypointId& operator=(uint16_t id_) {
+            id = id_;
+            return *this;
+        }
 
-            /// Cast to the underlying KeypointId datatype
-            operator rerun::datatypes::KeypointId() const {
-                return id;
-            }
+        /// Cast to the underlying KeypointId datatype
+        operator rerun::datatypes::KeypointId() const {
+            return id;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::UInt16Builder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::UInt16Builder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of KeypointId components.
-            static Result<rerun::DataCell> to_data_cell(
-                const KeypointId* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of KeypointId components.
+        static Result<rerun::DataCell> to_data_cell(
+            const KeypointId* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

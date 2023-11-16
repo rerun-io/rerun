@@ -1,6 +1,7 @@
 // Log a simple 3D asset with an out-of-tree transform which will not affect its children.
 
 #include <exception>
+#include <filesystem>
 
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
@@ -36,9 +37,7 @@ int main(int argc, char** argv) {
             rerun::TranslationRotationScale3D({0.0, 0.0, static_cast<float>(i) - 10.0f});
         rec.log(
             "world/asset",
-            rerun::ComponentBatch<rerun::OutOfTreeTransform3D>(
-                rerun::OutOfTreeTransform3D(translation)
-            )
+            rerun::Collection<rerun::OutOfTreeTransform3D>(rerun::OutOfTreeTransform3D(translation))
         );
     }
 }

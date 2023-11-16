@@ -542,7 +542,7 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
             BadComponent::error.code =
                 GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
-            THEN("calling log_component_batch with an array logs the serialization error") {
+            THEN("calling log with an array logs the serialization error") {
                 check_logged_error(
                     [&] {
                         stream.log(path, std::array{component, component});
@@ -550,7 +550,7 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
                     component.error.code
                 );
             }
-            THEN("calling log_component_batch with a vector logs the serialization error") {
+            THEN("calling log with a vector logs the serialization error") {
                 check_logged_error(
                     [&] {
                         stream.log(path, std::vector{component, component});
@@ -558,18 +558,17 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
                     component.error.code
                 );
             }
-            THEN("calling log_component_batch with a c array logs the serialization error") {
+            THEN("calling log with a c array logs the serialization error") {
                 const BadComponent components[] = {component, component};
                 check_logged_error([&] { stream.log(path, components); }, component.error.code);
             }
-            THEN("calling try_log_component_batch with an array forwards the serialization error") {
+            THEN("calling try_log with an array forwards the serialization error") {
                 CHECK(stream.try_log(path, std::array{component, component}) == component.error);
             }
-            THEN("calling try_log_component_batch with a vector forwards the serialization error") {
+            THEN("calling try_log with a vector forwards the serialization error") {
                 CHECK(stream.try_log(path, std::vector{component, component}) == component.error);
             }
-            THEN("calling try_log_component_batch with a c array forwards the serialization error"
-            ) {
+            THEN("calling try_log with a c array forwards the serialization error") {
                 const BadComponent components[] = {component, component};
                 CHECK(stream.try_log(path, components) == component.error);
             }
@@ -600,6 +599,14 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     }
     SECTION("Setting time nanos does not log errors") {
         check_logged_error([&] { stream.set_time_nanos("my sequence", 1); });
+    }
+    SECTION("Setting time via chrono duration does not log errors") {
+        using namespace std::chrono_literals;
+        check_logged_error([&] { stream.set_time("duration", 1.0s); });
+        check_logged_error([&] { stream.set_time("duration", 1000ms); });
+    }
+    SECTION("Setting time via chrono duration does not log errors") {
+        check_logged_error([&] { stream.set_time("timepoint", std::chrono::system_clock::now()); });
     }
     SECTION("Resetting time does not log errors") {
         check_logged_error([&] { stream.reset_time(); });

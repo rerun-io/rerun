@@ -6,20 +6,16 @@ use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    DataCell, DataCellColumn, DataCellError, DataRow, DataTable, RowId, TimeInt, TimePoint,
-    TimeRange,
+    DataCell, DataCellColumn, DataCellError, DataRow, RowId, TimeInt, TimePoint, TimeRange,
 };
 use re_types_core::{
     components::InstanceKey, ComponentName, ComponentNameSet, Loggable, SizeBytes as _,
 };
 
 use crate::{
-    store::MetadataRegistry, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
-    IndexedTable, PersistentIndexedTable,
+    DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
+    PersistentIndexedTable, StoreDiff, StoreDiffKind, StoreEvent,
 };
-
-// TODO(cmc): the store should insert column-per-column rather than row-per-row (purely a
-// performance matter).
 
 // --- Data store ---
 
@@ -40,6 +36,9 @@ pub enum WriteError {
     )]
     InvalidClusteringComponent(DataCell),
 
+    #[error("The inserted data must contain at least one cell")]
+    Empty,
+
     #[error(
         "Component '{component}' failed to typecheck: expected {expected:#?} but got {got:#?}"
     )]
@@ -48,43 +47,42 @@ pub enum WriteError {
         expected: DataType,
         got: DataType,
     },
+
+    #[error("Attempted to re-use already taken RowId:{0}")]
+    ReusedRowId(RowId),
 }
 
 pub type WriteResult<T> = ::std::result::Result<T, WriteError>;
 
 impl DataStore {
-    /// Inserts a [`DataTable`]'s worth of components into the datastore.
-    ///
-    /// This iteratively inserts all rows from the table on a row-by-row basis.
-    /// The entire method fails if any row fails.
-    ///
-    /// Both the write and read paths transparently benefit from the contiguous memory of the
-    /// table's columns: the bigger the tables, the bigger the benefits!
-    ///
-    /// See [`Self::insert_row`].
-    pub fn insert_table(&mut self, table: &DataTable) -> WriteResult<()> {
-        for row in table.to_rows() {
-            self.insert_row(&row?)?;
-        }
-        Ok(())
-    }
-
     /// Inserts a [`DataRow`]'s worth of components into the datastore.
     ///
     /// If the bundle doesn't carry a payload for the cluster key, one will be auto-generated
     /// based on the length of the components in the payload, in the form of an array of
     /// monotonically increasing `u64`s going from `0` to `N-1`.
-    pub fn insert_row(&mut self, row: &DataRow) -> WriteResult<()> {
+    pub fn insert_row(&mut self, row: &DataRow) -> WriteResult<StoreEvent> {
         // TODO(cmc): kind & insert_id need to somehow propagate through the span system.
         self.insert_id += 1;
 
         if row.num_cells() == 0 {
-            return Ok(());
+            return Err(WriteError::Empty);
         }
+
+        let DataRow {
+            row_id,
+            timepoint,
+            entity_path: ent_path,
+            num_instances,
+            cells,
+        } = row;
+
+        self.metadata_registry.upsert(*row_id, timepoint.clone())?;
 
         re_tracing::profile_function!();
 
         // Update type registry and do typechecking if enabled
+        // TODO(#1809): not only this should be replaced by a central arrow runtime registry, it should
+        // also be implemented as a changelog subscriber.
         if self.config.enable_typecheck {
             for cell in row.cells().iter() {
                 use std::collections::hash_map::Entry;
@@ -113,14 +111,6 @@ impl DataStore {
                     .insert(cell.component_name(), cell.datatype().clone());
             }
         }
-
-        let DataRow {
-            row_id,
-            timepoint,
-            entity_path: ent_path,
-            num_instances,
-            cells,
-        } = row;
 
         let ent_path_hash = ent_path.hash();
         let num_instances = *num_instances;
@@ -163,7 +153,9 @@ impl DataStore {
             // one… unless we've already generated one of this exact length in the past,
             // in which case we can simply re-use that cell.
 
-            Some(self.generate_cluster_cell(num_instances.into()))
+            let (cell, _) = self.generate_cluster_cell(num_instances.into());
+
+            Some(cell)
         };
 
         let insert_id = self.config.store_insert_ids.then_some(self.insert_id);
@@ -174,7 +166,7 @@ impl DataStore {
                 .entry(ent_path_hash)
                 .or_insert_with(|| PersistentIndexedTable::new(self.cluster_key, ent_path.clone()));
 
-            index.insert_row(insert_id, generated_cluster_cell, row);
+            index.insert_row(insert_id, generated_cluster_cell.clone(), row);
         } else {
             for (timeline, time) in timepoint.iter() {
                 let ent_path = ent_path.clone(); // shallow
@@ -193,28 +185,51 @@ impl DataStore {
             }
         }
 
-        self.metadata_registry.upsert(*row_id, timepoint.clone());
+        let diff = StoreDiff::addition(*row_id, ent_path.clone())
+            .at_timepoint(timepoint.clone())
+            .with_cells(cells.iter().cloned());
 
-        Ok(())
-    }
+        // TODO(#4220): should we fire for auto-generated data?
+        // if let Some(cell) = generated_cluster_cell {
+        //     diff = diff.with_cells([cell]);
+        // }
 
-    /// Wipes all timeless data.
-    ///
-    /// Mostly useful for testing/debugging purposes.
-    pub fn wipe_timeless_data(&mut self) {
-        self.timeless_tables = Default::default();
+        let event = StoreEvent {
+            store_id: self.id.clone(),
+            store_generation: self.generation(),
+            event_id: self
+                .event_id
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            diff,
+        };
+
+        {
+            let events = &[event.clone()];
+
+            if cfg!(debug_assertions) {
+                let any_event_other_than_addition =
+                    events.iter().any(|e| e.kind != StoreDiffKind::Addition);
+                assert!(!any_event_other_than_addition);
+            }
+
+            Self::on_events(events);
+        }
+
+        Ok(event)
     }
 
     /// Auto-generates an appropriate cluster cell for the specified number of instances and
     /// transparently handles caching.
+    ///
+    /// Returns `true` if the cell was returned from cache.
     // TODO(#1777): shared slices for auto generated keys
-    fn generate_cluster_cell(&mut self, num_instances: u32) -> DataCell {
+    fn generate_cluster_cell(&mut self, num_instances: u32) -> (DataCell, bool) {
         re_tracing::profile_function!();
 
         if let Some(cell) = self.cluster_cell_cache.get(&num_instances) {
             // Cache hit!
 
-            cell.clone() // shallow
+            (cell.clone(), true)
         } else {
             // Cache miss! Craft a new instance keys from the ground up.
 
@@ -228,44 +243,27 @@ impl DataStore {
             self.cluster_cell_cache
                 .insert(num_instances, cell.clone() /* shallow */);
 
-            cell
+            (cell, false)
         }
     }
 }
 
 impl MetadataRegistry<TimePoint> {
-    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) {
-        let mut added_size_bytes = 0;
-
-        // This is valuable information even for a timeless timepoint!
+    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) -> WriteResult<()> {
         match self.entry(row_id) {
+            std::collections::btree_map::Entry::Occupied(_) => Err(WriteError::ReusedRowId(row_id)),
             std::collections::btree_map::Entry::Vacant(entry) => {
                 // NOTE: In a map, thus on the heap!
-                added_size_bytes += row_id.total_size_bytes();
-                added_size_bytes += timepoint.total_size_bytes();
+                let added_size_bytes = row_id.total_size_bytes() + timepoint.total_size_bytes();
+
+                // This is valuable information even for a timeless timepoint!
                 entry.insert(timepoint);
-            }
-            // NOTE: When saving and loading data from disk, it's very possible that we try to
-            // insert data for a single `RowId` in multiple calls (buckets are per-timeline, so a
-            // single `RowId` can get spread across multiple buckets)!
-            std::collections::btree_map::Entry::Occupied(mut entry) => {
-                let entry = entry.get_mut();
-                for (timeline, time) in timepoint {
-                    if let Some(old_time) = entry.insert(timeline, time) {
-                        if old_time != time {
-                            re_log::error!(%row_id, ?timeline, old_time = ?old_time, new_time = ?time, "detected re-used `RowId/Timeline` pair, this is illegal and will lead to undefined behavior in the datastore");
-                            debug_assert!(false, "detected re-used `RowId/Timeline`");
-                        }
-                    } else {
-                        // NOTE: In a map, thus on the heap!
-                        added_size_bytes += timeline.total_size_bytes();
-                        added_size_bytes += time.as_i64().total_size_bytes();
-                    }
-                }
+
+                self.heap_size_bytes += added_size_bytes;
+
+                Ok(())
             }
         }
-
-        self.heap_size_bytes += added_size_bytes;
     }
 }
 
@@ -409,8 +407,9 @@ impl IndexedTable {
             "inserted into indexed tables"
         );
 
-        self.buckets_size_bytes +=
+        let size_bytes =
             bucket.insert_row(insert_id, time, generated_cluster_cell, row, &components);
+        self.buckets_size_bytes += size_bytes;
         self.buckets_num_rows += 1;
 
         // Insert components last, only if bucket-insert succeeded.
@@ -476,7 +475,7 @@ impl IndexedBucket {
                 column
             });
             size_bytes_added += cluster_cell.total_size_bytes();
-            column.0.push(Some(cluster_cell));
+            column.0.push(Some(cluster_cell.clone()));
         }
 
         // append components to their respective columns (2-way merge)
@@ -837,7 +836,7 @@ impl PersistentIndexedTable {
             let column = columns
                 .entry(cluster_cell.component_name())
                 .or_insert_with(|| DataCellColumn::empty(num_rows));
-            column.0.push(Some(cluster_cell));
+            column.0.push(Some(cluster_cell.clone()));
         }
 
         // 2-way merge, step 1: left-to-right

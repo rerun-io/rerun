@@ -6,73 +6,71 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun {
-    namespace components {
-        const char AffixFuzzer10::NAME[] = "rerun.testing.components.AffixFuzzer10";
+namespace rerun::components {
+    const char AffixFuzzer10::NAME[] = "rerun.testing.components.AffixFuzzer10";
 
-        const std::shared_ptr<arrow::DataType>& AffixFuzzer10::arrow_datatype() {
-            static const auto datatype = arrow::utf8();
-            return datatype;
+    const std::shared_ptr<arrow::DataType>& AffixFuzzer10::arrow_datatype() {
+        static const auto datatype = arrow::utf8();
+        return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::StringBuilder>> AffixFuzzer10::new_arrow_array_builder(
+        arrow::MemoryPool* memory_pool
+    ) {
+        if (memory_pool == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
         }
 
-        Result<std::shared_ptr<arrow::StringBuilder>> AffixFuzzer10::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        ) {
-            if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-            }
+        return Result(std::make_shared<arrow::StringBuilder>(memory_pool));
+    }
 
-            return Result(std::make_shared<arrow::StringBuilder>(memory_pool));
+    rerun::Error AffixFuzzer10::fill_arrow_array_builder(
+        arrow::StringBuilder* builder, const AffixFuzzer10* elements, size_t num_elements
+    ) {
+        if (builder == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
         }
-
-        Error AffixFuzzer10::fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const AffixFuzzer10* elements, size_t num_elements
-        ) {
-            if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-            }
-            if (elements == nullptr) {
-                return Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Cannot serialize null pointer to arrow array."
-                );
-            }
-
-            ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto& element = elements[elem_idx];
-                if (element.single_string_optional.has_value()) {
-                    ARROW_RETURN_NOT_OK(builder->Append(element.single_string_optional.value()));
-                } else {
-                    ARROW_RETURN_NOT_OK(builder->AppendNull());
-                }
-            }
-
-            return Error::ok();
-        }
-
-        Result<rerun::DataCell> AffixFuzzer10::to_data_cell(
-            const AffixFuzzer10* instances, size_t num_instances
-        ) {
-            // TODO(andreas): Allow configuring the memory pool.
-            arrow::MemoryPool* pool = arrow::default_memory_pool();
-
-            auto builder_result = AffixFuzzer10::new_arrow_array_builder(pool);
-            RR_RETURN_NOT_OK(builder_result.error);
-            auto builder = std::move(builder_result.value);
-            if (instances && num_instances > 0) {
-                RR_RETURN_NOT_OK(
-                    AffixFuzzer10::fill_arrow_array_builder(builder.get(), instances, num_instances)
-                );
-            }
-            std::shared_ptr<arrow::Array> array;
-            ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-            return rerun::DataCell::create(
-                AffixFuzzer10::NAME,
-                AffixFuzzer10::arrow_datatype(),
-                std::move(array)
+        if (elements == nullptr) {
+            return rerun::Error(
+                ErrorCode::UnexpectedNullArgument,
+                "Cannot serialize null pointer to arrow array."
             );
         }
-    } // namespace components
-} // namespace rerun
+
+        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            const auto& element = elements[elem_idx];
+            if (element.single_string_optional.has_value()) {
+                ARROW_RETURN_NOT_OK(builder->Append(element.single_string_optional.value()));
+            } else {
+                ARROW_RETURN_NOT_OK(builder->AppendNull());
+            }
+        }
+
+        return Error::ok();
+    }
+
+    Result<rerun::DataCell> AffixFuzzer10::to_data_cell(
+        const AffixFuzzer10* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+
+        auto builder_result = AffixFuzzer10::new_arrow_array_builder(pool);
+        RR_RETURN_NOT_OK(builder_result.error);
+        auto builder = std::move(builder_result.value);
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(
+                AffixFuzzer10::fill_arrow_array_builder(builder.get(), instances, num_instances)
+            );
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+        return rerun::DataCell::create(
+            AffixFuzzer10::NAME,
+            AffixFuzzer10::arrow_datatype(),
+            std::move(array)
+        );
+    }
+} // namespace rerun::components

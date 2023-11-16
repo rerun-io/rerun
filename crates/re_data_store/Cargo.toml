@@ -20,7 +20,7 @@ all-features = true
 default = []
 
 ## Enable (de)serialization using serde.
-serde = ["dep:serde", "re_log_types/serde"]
+serde = ["dep:serde", "dep:rmp-serde", "re_log_types/serde"]
 
 
 [dependencies]
@@ -34,18 +34,26 @@ re_smart_channel.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
 
+ahash.workspace = true
 document-features.workspace = true
+getrandom.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+rmp-serde = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive", "rc"], optional = true }
 thiserror.workspace = true
+web-time.workspace = true
 
 [dev-dependencies]
-re_types = { workspace = true, features = ["datagen"] }
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
+re_log_types = { workspace = true, features = ["testing"] }
+re_types = { workspace = true, features = ["datagen"] }
+
+anyhow.workspace = true
 criterion.workspace = true
 mimalloc.workspace = true
 rand.workspace = true
+similar-asserts.workspace = true
 
 [lib]
 bench = false

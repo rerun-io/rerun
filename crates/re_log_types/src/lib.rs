@@ -21,6 +21,7 @@ pub mod arrow_msg;
 mod data_cell;
 mod data_row;
 mod data_table;
+#[cfg(feature = "testing")]
 pub mod example_components;
 pub mod hash;
 mod index;
@@ -59,13 +60,6 @@ pub use self::time_real::TimeReal;
 pub use self::data_table_batcher::{
     DataTableBatcher, DataTableBatcherConfig, DataTableBatcherError,
 };
-
-mod load_file;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use self::load_file::data_cells_from_file_path;
-
-pub use self::load_file::{data_cells_from_file_contents, FromFileError};
 
 pub mod external {
     pub use arrow2;
@@ -362,35 +356,6 @@ impl std::fmt::Display for StoreSource {
             },
             Self::Viewer => write!(f, "Viewer-generated"),
             Self::Other(string) => format!("{string:?}").fmt(f), // put it in quotes
-        }
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// Operation to perform on an [`EntityPath`], e.g. clearing all components.
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum PathOp {
-    /// Clear all the components stored at an [`EntityPath`]
-    ClearComponents(EntityPath),
-
-    /// Clear all the components of an `[EntityPath]` and any descendants.
-    ClearRecursive(EntityPath),
-}
-
-impl PathOp {
-    pub fn clear(recursive: bool, entity_path: EntityPath) -> Self {
-        if recursive {
-            PathOp::ClearRecursive(entity_path)
-        } else {
-            PathOp::ClearComponents(entity_path)
-        }
-    }
-
-    pub fn entity_path(&self) -> &EntityPath {
-        match &self {
-            PathOp::ClearComponents(path) | PathOp::ClearRecursive(path) => path,
         }
     }
 }

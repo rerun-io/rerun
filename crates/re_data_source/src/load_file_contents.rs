@@ -2,7 +2,7 @@ use re_log_encoding::decoder::VersionPolicy;
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
-use crate::FileContents;
+use crate::{load_file::data_cells_from_file_contents, FileContents};
 
 #[allow(clippy::needless_pass_by_value)] // false positive on some feature flags
 pub fn load_file_contents(
@@ -82,7 +82,7 @@ fn log_msg_from_file_contents(
     let FileContents { name, bytes } = file_contents;
 
     let entity_path = re_log_types::EntityPath::from_single_string(name.clone());
-    let cells = re_log_types::data_cells_from_file_contents(&name, bytes.to_vec())?;
+    let cells = data_cells_from_file_contents(&name, bytes.to_vec())?;
 
     let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
 

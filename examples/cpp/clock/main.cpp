@@ -4,10 +4,12 @@
 #include <cmath>
 #include <string>
 
+using namespace std::chrono;
+
 constexpr float TAU = 6.28318530717958647692528676655900577f;
 
 void log_hand(
-    const rerun::RecordingStream& rec, const char* name, int step, float angle, float length,
+    const rerun::RecordingStream& rec, const char* name, seconds step, float angle, float length,
     float width, uint8_t blue
 ) {
     const auto tip = rerun::Vec3D{length * sinf(angle * TAU), length * cosf(angle * TAU), 0.0f};
@@ -15,7 +17,7 @@ void log_hand(
     const auto color =
         rerun::Color{static_cast<uint8_t>(255 - c), c, blue, std::max<uint8_t>(128, blue)};
 
-    rec.set_time_seconds("sim_time", step);
+    rec.set_time("sim_time", step);
 
     rec.log(
         std::string("world/") + name + "_pt",
@@ -47,8 +49,8 @@ int main() {
     rec.log_timeless("world/frame", rerun::Boxes3D::from_half_sizes({{LENGTH_S, LENGTH_S, 1.0f}}));
 
     for (int step = 0; step < num_steps; step++) {
-        log_hand(rec, "seconds", step, (step % 60) / 60.0f, LENGTH_S, WIDTH_S, 0);
-        log_hand(rec, "minutes", step, (step % 3600) / 3600.0f, LENGTH_M, WIDTH_M, 128);
-        log_hand(rec, "hours", step, (step % 43200) / 43200.0f, LENGTH_H, WIDTH_H, 255);
+        log_hand(rec, "seconds", seconds(step), (step % 60) / 60.0f, LENGTH_S, WIDTH_S, 0);
+        log_hand(rec, "minutes", seconds(step), (step % 3600) / 3600.0f, LENGTH_M, WIDTH_M, 128);
+        log_hand(rec, "hours", seconds(step), (step % 43200) / 43200.0f, LENGTH_H, WIDTH_H, 255);
     }
 }

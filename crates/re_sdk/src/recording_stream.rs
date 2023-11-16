@@ -9,8 +9,7 @@ use re_log_types::{
     DataTableBatcherConfig, DataTableBatcherError, EntityPath, LogMsg, RowId, StoreId, StoreInfo,
     StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline, TimelineName,
 };
-use re_types::components::InstanceKey;
-use re_types_core::{AsComponents, ComponentBatch, SerializationError};
+use re_types_core::{components::InstanceKey, AsComponents, ComponentBatch, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -658,7 +657,7 @@ impl RecordingStream {
     /// Log data to Rerun.
     ///
     /// This is the main entry point for logging data to rerun. It can be used to log anything
-    /// that implements the [`AsComponents`], such as any [archetype][crate::archetypes].
+    /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
     ///
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
     /// See [`RecordingStream::set_time_sequence`] etc for more information.
@@ -670,8 +669,8 @@ impl RecordingStream {
     /// See [SDK Micro Batching] for more information.
     ///
     /// # Example:
-    /// ```
-    /// # use re_sdk as rerun;
+    /// ```ignore
+    /// # use rerun;
     /// # let (rec, storage) = rerun::RecordingStreamBuilder::new("rerun_example_points3d_simple").memory()?;
     /// rec.log(
     ///     "my/points",
@@ -694,14 +693,14 @@ impl RecordingStream {
     /// Log data to Rerun.
     ///
     /// It can be used to log anything
-    /// that implements the [`AsComponents`], such as any [archetype][crate::archetypes].
+    /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
     ///
     /// Timeless data is present on all timelines and behaves as if it was recorded infinitely far
     /// into the past.
     /// All timestamp data associated with this message will be dropped right before sending it to Rerun.
     ///
-    /// This is most often used for [`re_types::components::ViewCoordinates`] and
-    /// [`re_types::components::AnnotationContext`].
+    /// This is most often used for [`rerun::ViewCoordinates`](https://docs.rs/rerun/latest/rerun/archetypes/struct.ViewCoordinates.html) and
+    /// [`rerun::AnnotationContext`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AnnotationContext.html).
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.

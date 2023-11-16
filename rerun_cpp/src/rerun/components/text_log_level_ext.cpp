@@ -13,25 +13,25 @@ namespace rerun {
 
             // Don't provide a string_view constructor, std::string constructor exists and covers this.
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             /// Designates catastrophic failures.
-            static const TextLogLevel CRITICAL;
+            static const TextLogLevel Critical;
 
             /// Designates very serious errors.
-            static const TextLogLevel ERROR;
+            static const TextLogLevel Error;
 
             /// Designates hazardous situations.
-            static const TextLogLevel WARN;
+            static const TextLogLevel Warning;
 
             /// Designates useful information.
-            static const TextLogLevel INFO;
+            static const TextLogLevel Info;
 
             /// Designates lower priority information.
-            static const TextLogLevel DEBUG;
+            static const TextLogLevel Debug;
 
             /// Designates very low priority, often extremely verbose, information.
-            static const TextLogLevel TRACE;
+            static const TextLogLevel Trace;
 
             /// Construct `TextLogLevel` from a null-terminated UTF8 string.
             TextLogLevel(const char* str) : value(str) {}
@@ -40,7 +40,7 @@ namespace rerun {
                 return value.c_str();
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #undef TextLogLevel
@@ -48,11 +48,11 @@ namespace rerun {
 #define TextLogLevelExt TextLogLevel
 #endif
 
-        const TextLogLevel TextLogLevel::CRITICAL = "CRITICAL";
-        const TextLogLevel TextLogLevel::ERROR = "ERROR";
-        const TextLogLevel TextLogLevel::WARN = "WARN";
-        const TextLogLevel TextLogLevel::INFO = "INFO";
-        const TextLogLevel TextLogLevel::DEBUG = "DEBUG";
-        const TextLogLevel TextLogLevel::TRACE = "TRACE";
+        const TextLogLevel TextLogLevel::Critical = "CRITICAL";
+        const TextLogLevel TextLogLevel::Error = "ERROR";
+        const TextLogLevel TextLogLevel::Warning = "WARN";
+        const TextLogLevel TextLogLevel::Info = "INFO";
+        const TextLogLevel TextLogLevel::Debug = "DEBUG";
+        const TextLogLevel TextLogLevel::Trace = "TRACE";
     } // namespace components
 } // namespace rerun

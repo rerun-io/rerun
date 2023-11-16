@@ -10,17 +10,17 @@ void loguru_to_rerun(void* user_data, const loguru::Message& message) {
 
     rerun::TextLogLevel level;
     if (message.verbosity == loguru::Verbosity_FATAL) {
-        level = rerun::TextLogLevel::CRITICAL;
+        level = rerun::TextLogLevel::Critical;
     } else if (message.verbosity == loguru::Verbosity_ERROR) {
-        level = rerun::TextLogLevel::ERROR;
+        level = rerun::TextLogLevel::Error;
     } else if (message.verbosity == loguru::Verbosity_WARNING) {
-        level = rerun::TextLogLevel::WARN;
+        level = rerun::TextLogLevel::Warning;
     } else if (message.verbosity == loguru::Verbosity_INFO) {
-        level = rerun::TextLogLevel::INFO;
+        level = rerun::TextLogLevel::Info;
     } else if (message.verbosity == loguru::Verbosity_1) {
-        level = rerun::TextLogLevel::DEBUG;
+        level = rerun::TextLogLevel::Debug;
     } else if (message.verbosity == loguru::Verbosity_2) {
-        level = rerun::TextLogLevel::TRACE;
+        level = rerun::TextLogLevel::Trace;
     } else {
         level = rerun::TextLogLevel(std::to_string(message.verbosity));
     }
@@ -38,7 +38,7 @@ int main() {
     // Log a text entry directly:
     rec.log(
         "logs",
-        rerun::TextLog("this entry has loglevel TRACE").with_level(rerun::TextLogLevel::TRACE)
+        rerun::TextLog("this entry has loglevel TRACE").with_level(rerun::TextLogLevel::Trace)
     );
 
     loguru::add_callback(

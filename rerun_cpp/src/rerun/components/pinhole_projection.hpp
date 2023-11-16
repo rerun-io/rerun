@@ -17,75 +17,72 @@ namespace arrow {
     class MemoryPool;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: Camera projection, from image coordinates to view coordinates.
-        ///
-        /// Child from parent.
-        /// Image coordinates from camera view coordinates.
-        ///
-        /// Example:
-        /// ```text
-        /// 1496.1     0.0  980.5
-        ///    0.0  1496.1  744.5
-        ///    0.0     0.0    1.0
-        /// ```
-        struct PinholeProjection {
-            rerun::datatypes::Mat3x3 image_from_camera;
+namespace rerun::components {
+    /// **Component**: Camera projection, from image coordinates to view coordinates.
+    ///
+    /// Child from parent.
+    /// Image coordinates from camera view coordinates.
+    ///
+    /// Example:
+    /// ```text
+    /// 1496.1     0.0  980.5
+    ///    0.0  1496.1  744.5
+    ///    0.0     0.0    1.0
+    /// ```
+    struct PinholeProjection {
+        rerun::datatypes::Mat3x3 image_from_camera;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            // Extensions to generated type defined in 'pinhole_projection_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'pinhole_projection_ext.cpp'
 
-            /// Construct a new 3x3 pinhole matrix from a pointer to 9 floats (in row major order).
-            static PinholeProjection from_mat3x3(const float* elements) {
-                return PinholeProjection(rerun::datatypes::Mat3x3(elements));
-            }
+        /// Construct a new 3x3 pinhole matrix from a pointer to 9 floats (in row major order).
+        static PinholeProjection from_mat3x3(const float* elements) {
+            return PinholeProjection(rerun::datatypes::Mat3x3(elements));
+        }
 
-          public:
-            PinholeProjection() = default;
+      public:
+        PinholeProjection() = default;
 
-            PinholeProjection(rerun::datatypes::Mat3x3 image_from_camera_)
-                : image_from_camera(image_from_camera_) {}
+        PinholeProjection(rerun::datatypes::Mat3x3 image_from_camera_)
+            : image_from_camera(image_from_camera_) {}
 
-            PinholeProjection& operator=(rerun::datatypes::Mat3x3 image_from_camera_) {
-                image_from_camera = image_from_camera_;
-                return *this;
-            }
+        PinholeProjection& operator=(rerun::datatypes::Mat3x3 image_from_camera_) {
+            image_from_camera = image_from_camera_;
+            return *this;
+        }
 
-            PinholeProjection(std::array<float, 9> flat_columns_)
-                : image_from_camera(flat_columns_) {}
+        PinholeProjection(std::array<float, 9> flat_columns_) : image_from_camera(flat_columns_) {}
 
-            PinholeProjection& operator=(std::array<float, 9> flat_columns_) {
-                image_from_camera = flat_columns_;
-                return *this;
-            }
+        PinholeProjection& operator=(std::array<float, 9> flat_columns_) {
+            image_from_camera = flat_columns_;
+            return *this;
+        }
 
-            /// Cast to the underlying Mat3x3 datatype
-            operator rerun::datatypes::Mat3x3() const {
-                return image_from_camera;
-            }
+        /// Cast to the underlying Mat3x3 datatype
+        operator rerun::datatypes::Mat3x3() const {
+            return image_from_camera;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::FixedSizeListBuilder* builder, const PinholeProjection* elements,
-                size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::FixedSizeListBuilder* builder, const PinholeProjection* elements,
+            size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of PinholeProjection components.
-            static Result<rerun::DataCell> to_data_cell(
-                const PinholeProjection* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of PinholeProjection components.
+        static Result<rerun::DataCell> to_data_cell(
+            const PinholeProjection* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

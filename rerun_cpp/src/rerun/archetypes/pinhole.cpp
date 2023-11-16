@@ -3,12 +3,13 @@
 
 #include "pinhole.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
+
+namespace rerun::archetypes {
+    const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
+}
 
 namespace rerun {
-    namespace archetypes {
-        const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Pinhole>::serialize(
         const archetypes::Pinhole& archetype
@@ -19,28 +20,27 @@ namespace rerun {
 
         {
             auto result =
-                ComponentBatch<rerun::components::PinholeProjection>(archetype.image_from_camera)
+                Collection<rerun::components::PinholeProjection>(archetype.image_from_camera)
                     .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.resolution.has_value()) {
             auto result =
-                ComponentBatch<rerun::components::Resolution>(archetype.resolution.value())
-                    .serialize();
+                Collection<rerun::components::Resolution>(archetype.resolution.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.camera_xyz.has_value()) {
             auto result =
-                ComponentBatch<rerun::components::ViewCoordinates>(archetype.camera_xyz.value())
+                Collection<rerun::components::ViewCoordinates>(archetype.camera_xyz.value())
                     .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = ComponentBatch<Pinhole::IndicatorComponent>(Pinhole::IndicatorComponent())
-                              .serialize();
+            auto result =
+                Collection<Pinhole::IndicatorComponent>(Pinhole::IndicatorComponent()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

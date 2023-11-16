@@ -10,12 +10,145 @@ use re_arrow_store::{
     test_row, test_util::sanity_unwrap, DataStore, DataStoreConfig, DataStoreStats,
     GarbageCollectionOptions, LatestAtQuery, WriteError,
 };
+use re_log_types::example_components::MyPoint;
 use re_log_types::{
-    build_frame_nr, build_log_time, DataCell, Duration, EntityPath, Time, TimeType, Timeline,
+    build_frame_nr, build_log_time, DataCell, DataRow, Duration, EntityPath, RowId, Time, TimeInt,
+    TimePoint, TimeType, Timeline,
 };
 use re_types::components::InstanceKey;
 use re_types::datagen::{build_some_colors, build_some_instances, build_some_positions2d};
 use re_types_core::Loggable as _;
+
+// ---
+
+#[test]
+fn row_id_ordering_semantics() -> anyhow::Result<()> {
+    let entity_path: EntityPath = "some_entity".into();
+
+    let timeline_frame = Timeline::new_sequence("frame");
+    let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+
+    let point1 = MyPoint::new(1.0, 1.0);
+    let point2 = MyPoint::new(2.0, 2.0);
+
+    // * Insert `point1` at frame #10 with a random `RowId`.
+    // * Insert `point2` at frame #10 with a random `RowId`.
+    // * Query at frame #11 and make sure we get `point2` because random `RowId`s are monotonically
+    //   increasing.
+    {
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
+
+        let row_id = RowId::random();
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[point1] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        let row_id = RowId::random();
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[point2] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        {
+            let query = LatestAtQuery {
+                timeline: timeline_frame,
+                at: 11.into(),
+            };
+
+            let got_point = store
+                .query_latest_component::<MyPoint>(&entity_path, &query)
+                .unwrap()
+                .value;
+            similar_asserts::assert_eq!(point2, got_point);
+        }
+    }
+
+    // * Insert `point1` at frame #10 with a random `RowId`.
+    // * Fail to insert `point2` at frame #10 using `point1`s `RowId` because it is illegal.
+    {
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
+
+        let row_id = RowId::random();
+
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[point1] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[point2] as _],
+        )?;
+
+        let res = store.insert_row(&row);
+        assert!(matches!(res, Err(WriteError::ReusedRowId(_)),));
+    }
+
+    // * Insert `point1` at frame #10 with a random `RowId`.
+    // * Insert `point2` at frame #10 using `point1`'s `RowId`, decremented by one.
+    // * Query at frame #11 and make sure we get `point1` because of intra-timestamp tie-breaks.
+    {
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
+
+        let row_id1 = RowId::random();
+        let row_id2 = row_id1.next();
+
+        let row = DataRow::from_component_batches(
+            row_id2,
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[point1] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        let row = DataRow::from_component_batches(
+            row_id1,
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[point2] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        {
+            let query = LatestAtQuery {
+                timeline: timeline_frame,
+                at: 11.into(),
+            };
+
+            let got_point = store
+                .query_latest_component::<MyPoint>(&entity_path, &query)
+                .unwrap()
+                .value;
+            similar_asserts::assert_eq!(point1, got_point);
+        }
+    }
+
+    Ok(())
+}
 
 // ---
 
@@ -30,7 +163,11 @@ fn write_errors() {
             DataCell::from_component_sparse::<InstanceKey>([Some(1), None, Some(3)])
         }
 
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
         let row = test_row!(ent_path @
             [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
                 build_sparse_instances(), build_some_positions2d(3)
@@ -50,7 +187,11 @@ fn write_errors() {
             DataCell::from_component::<InstanceKey>([1, 2, 2])
         }
 
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
         {
             let row = test_row!(ent_path @
                 [build_frame_nr(32.into()), build_log_time(Time::now())] => 3; [
@@ -72,6 +213,36 @@ fn write_errors() {
             ));
         }
     }
+
+    {
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
+
+        let mut row = test_row!(ent_path @ [
+            build_frame_nr(1.into()),
+            build_log_time(Time::now()),
+        ] => 1; [ build_some_positions2d(1) ]);
+
+        row.row_id = re_log_types::RowId::random();
+        store.insert_row(&row).unwrap();
+
+        row.row_id = row.row_id.next();
+        store.insert_row(&row).unwrap();
+
+        assert!(matches!(
+            store.insert_row(&row),
+            Err(WriteError::ReusedRowId(_)),
+        ));
+
+        let err = store.insert_row(&row).unwrap_err();
+        let WriteError::ReusedRowId(err_row_id) = err else {
+            unreachable!();
+        };
+        assert_eq!(row.row_id(), err_row_id);
+    }
 }
 
 // ---
@@ -81,7 +252,11 @@ fn latest_at_emptiness_edge_cases() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         latest_at_emptiness_edge_cases_impl(&mut store);
     }
 }
@@ -207,7 +382,11 @@ fn range_join_across_single_row() {
     init_logs();
 
     for config in re_arrow_store::test_util::all_configs() {
-        let mut store = DataStore::new(InstanceKey::name(), config.clone());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
         range_join_across_single_row_impl(&mut store);
     }
 }
@@ -275,7 +454,11 @@ fn range_join_across_single_row_impl(store: &mut DataStore) {
 fn gc_correct() {
     init_logs();
 
-    let mut store = DataStore::new(InstanceKey::name(), DataStoreConfig::default());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        DataStoreConfig::default(),
+    );
 
     let stats_empty = DataStoreStats::from_store(&store);
 
@@ -302,10 +485,9 @@ fn gc_correct() {
 
     let stats = DataStoreStats::from_store(&store);
 
-    let (deleted, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    let (store_events, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
     let stats_diff = stats_diff + stats_empty; // account for fixed overhead
 
-    assert_eq!(deleted.row_ids.len() as u64, stats.total.num_rows);
     assert_eq!(
         stats.metadata_registry.num_rows,
         stats_diff.metadata_registry.num_rows
@@ -318,12 +500,12 @@ fn gc_correct() {
 
     sanity_unwrap(&mut store);
     check_still_readable(&store);
-    for row_id in &deleted.row_ids {
-        assert!(store.get_msg_metadata(row_id).is_none());
+    for event in store_events {
+        assert!(store.get_msg_metadata(&event.row_id).is_none());
     }
 
-    let (deleted, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
-    assert!(deleted.row_ids.is_empty());
+    let (store_events, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    assert!(store_events.is_empty());
     assert_eq!(DataStoreStats::default(), stats_diff);
 
     sanity_unwrap(&mut store);
@@ -345,4 +527,129 @@ pub fn init_logs() {
     if INIT.compare_exchange(false, true, SeqCst, SeqCst).is_ok() {
         re_log::setup_native_logging();
     }
+}
+
+// ---
+
+#[test]
+fn entity_min_time_correct() -> anyhow::Result<()> {
+    init_logs();
+
+    for config in re_arrow_store::test_util::all_configs() {
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            config.clone(),
+        );
+        entity_min_time_correct_impl(&mut store)?;
+    }
+
+    Ok(())
+}
+
+fn entity_min_time_correct_impl(store: &mut DataStore) -> anyhow::Result<()> {
+    let ent_path = EntityPath::from("this/that");
+    let wrong_ent_path = EntityPath::from("this/that/other");
+
+    let point = MyPoint::new(1.0, 1.0);
+    let timeline_wrong_name = Timeline::new("lag_time", TimeType::Time);
+    let timeline_wrong_kind = Timeline::new("log_time", TimeType::Sequence);
+    let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
+    let timeline_log_time = Timeline::log_time();
+
+    let now = Time::now();
+    let now_plus_one = now + Duration::from_secs(1.0);
+    let now_minus_one = now - Duration::from_secs(1.0);
+
+    let row = DataRow::from_component_batches(
+        RowId::random(),
+        TimePoint::from_iter([
+            (timeline_log_time, now.into()),
+            (timeline_frame_nr, 42.into()),
+        ]),
+        ent_path.clone(),
+        [&[point] as _],
+    )?;
+
+    store.insert_row(&row).unwrap();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(42))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
+
+    // insert row in the future, these shouldn't be visible
+    let row = DataRow::from_component_batches(
+        RowId::random(),
+        TimePoint::from_iter([
+            (timeline_log_time, now_plus_one.into()),
+            (timeline_frame_nr, 54.into()),
+        ]),
+        ent_path.clone(),
+        [&[point] as _],
+    )?;
+    store.insert_row(&row).unwrap();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(42))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
+
+    // insert row in the past, these should be visible
+    let row = DataRow::from_component_batches(
+        RowId::random(),
+        TimePoint::from_iter([
+            (timeline_log_time, now_minus_one.into()),
+            (timeline_frame_nr, 32.into()),
+        ]),
+        ent_path.clone(),
+        [&[point] as _],
+    )?;
+    store.insert_row(&row).unwrap();
+
+    assert!(store
+        .entity_min_time(&timeline_wrong_name, &ent_path)
+        .is_none());
+    assert!(store
+        .entity_min_time(&timeline_wrong_kind, &ent_path)
+        .is_none());
+    assert_eq!(
+        store.entity_min_time(&timeline_frame_nr, &ent_path),
+        Some(TimeInt::from(32))
+    );
+    assert_eq!(
+        store.entity_min_time(&timeline_log_time, &ent_path),
+        Some(TimeInt::from(now_minus_one))
+    );
+    assert!(store
+        .entity_min_time(&timeline_frame_nr, &wrong_ent_path)
+        .is_none());
+
+    Ok(())
 }

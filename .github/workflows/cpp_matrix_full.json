@@ -1,0 +1,29 @@
+{
+    "include": [
+        {
+            "name": "Linux x64, C++17",
+            "runs_on": "ubuntu-latest-16-cores",
+            "cache_key": "build-linux",
+            "extra_env_vars": "RERUN_USE_ASAN=1 RERUN_SET_CXX_VERSION=17",
+            "additional_commands": "pixi run cpp-docs"
+        },
+        {
+            "name": "Linux x64, C++20",
+            "runs_on": "ubuntu-latest-16-cores",
+            "cache_key": "build-linux",
+            "extra_env_vars": "RERUN_USE_ASAN=1 RERUN_SET_CXX_VERSION=20"
+        },
+        {
+            "name": "Windows x64",
+            "runs_on": "windows-latest-8-cores",
+            "cache_key": "build-windows",
+            "extra_env_vars": ""
+        },
+        {
+            "name": "Mac aarch64",
+            "runs_on": "macos-latest-large",
+            "cache_key": "build-macos-arm",
+            "extra_env_vars": "RERUN_USE_ASAN=1"
+        }
+    ]
+}

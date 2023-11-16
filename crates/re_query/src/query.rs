@@ -1,5 +1,5 @@
 use re_arrow_store::{DataStore, LatestAtQuery};
-use re_log_types::{DataRow, EntityPath, RowId};
+use re_log_types::{EntityPath, RowId};
 use re_types_core::{components::InstanceKey, Archetype, ComponentName, Loggable};
 
 use crate::{ArchetypeView, ComponentWithInstances, QueryError};
@@ -8,6 +8,9 @@ use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 ///
 /// Returns `None` if the component is not found.
 ///
+#[cfg_attr(
+    feature = "testing",
+    doc = r##"
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, example_components::{MyColor, MyPoint}};
@@ -43,7 +46,8 @@ use crate::{ArchetypeView, ComponentWithInstances, QueryError};
 /// │ 96          ┆ {3.0,4.0} │
 /// └─────────────┴───────────┘
 /// ```
-///
+"##
+)]
 pub fn get_component_with_instances(
     store: &DataStore,
     query: &LatestAtQuery,
@@ -72,6 +76,10 @@ pub fn get_component_with_instances(
 /// If you expect only one instance (e.g. for mono-components like `Transform` `Tensor`]
 /// and have no additional components you can use [`DataStore::query_latest_component`] instead.
 ///
+///
+#[cfg_attr(
+    feature = "testing",
+    doc = r##"
 /// ```
 /// # use re_arrow_store::LatestAtQuery;
 /// # use re_log_types::{Timeline, example_components::{MyColor, MyPoint, MyPoints}};
@@ -105,7 +113,8 @@ pub fn get_component_with_instances(
 /// │ 96                 ┆ {3.0,4.0}     ┆ 4278190080      │
 /// └────────────────────┴───────────────┴─────────────────┘
 /// ```
-///
+"##
+)]
 pub fn query_archetype<A: Archetype>(
     store: &DataStore,
     query: &LatestAtQuery,
@@ -155,11 +164,16 @@ pub fn query_archetype<A: Archetype>(
 }
 
 /// Helper used to create an example store we can use for querying in doctests
+#[cfg(feature = "testing")]
 pub fn __populate_example_store() -> DataStore {
-    use re_log_types::build_frame_nr;
     use re_log_types::example_components::{MyColor, MyPoint};
+    use re_log_types::{build_frame_nr, DataRow};
 
-    let mut store = DataStore::new(InstanceKey::name(), Default::default());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
 
     let ent_path = "point";
     let timepoint = [build_frame_nr(123.into())];
@@ -195,6 +209,8 @@ pub fn __populate_example_store() -> DataStore {
 
 // Minimal test matching the doctest for `get_component_with_instances`
 #[test]
+#[cfg(test)]
+#[cfg(feature = "testing")]
 fn simple_get_component() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::example_components::MyPoint;
@@ -228,6 +244,8 @@ fn simple_get_component() {
 
 // Minimal test matching the doctest for `query_entity_with_primary`
 #[test]
+#[cfg(test)]
+#[cfg(feature = "testing")]
 fn simple_query_archetype() {
     use re_arrow_store::LatestAtQuery;
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};

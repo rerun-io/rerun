@@ -14,36 +14,34 @@ namespace arrow {
     class StructBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace blueprint {
-        /// **Blueprint**: The state of the panels.
-        ///
-        /// Unstable. Used for the ongoing blueprint experimentations.
-        struct PanelView {
-            bool is_expanded;
+namespace rerun::blueprint {
+    /// **Blueprint**: The state of the panels.
+    ///
+    /// Unstable. Used for the ongoing blueprint experimentations.
+    struct PanelView {
+        bool is_expanded;
 
-          public:
-            PanelView() = default;
+      public:
+        PanelView() = default;
 
-            PanelView(bool is_expanded_) : is_expanded(is_expanded_) {}
+        PanelView(bool is_expanded_) : is_expanded(is_expanded_) {}
 
-            PanelView& operator=(bool is_expanded_) {
-                is_expanded = is_expanded_;
-                return *this;
-            }
+        PanelView& operator=(bool is_expanded_) {
+            is_expanded = is_expanded_;
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::StructBuilder* builder, const PanelView* elements, size_t num_elements
-            );
-        };
-    } // namespace blueprint
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StructBuilder* builder, const PanelView* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::blueprint

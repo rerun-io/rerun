@@ -55,6 +55,18 @@ impl BuildInfo {
             self.git_hash.to_owned()
         }
     }
+
+    pub fn short_git_hash(&self) -> &str {
+        if self.git_hash.is_empty() {
+            ""
+        } else {
+            &self.git_hash[..7]
+        }
+    }
+
+    pub fn is_final(&self) -> bool {
+        self.version.meta.is_none()
+    }
 }
 
 /// For use with e.g. `--version`

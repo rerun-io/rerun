@@ -1,8 +1,8 @@
-## C++ Quick Start
+# C++ Quick Start
 
 ${SAFARI_WARNING}
 
-#### Installing the Rerun viewer
+## Installing the Rerun viewer
 The Rerun C++ SDK works by connecting to an awaiting Rerun Viewer over TCP.
 
 If you need to install the viewer, follow the [installation guide](https://www.rerun.io/docs/getting-started/installing-viewer). Two of the more common ways to install the Rerun are:
@@ -11,7 +11,7 @@ If you need to install the viewer, follow the [installation guide](https://www.r
 
 After you have installed it, you should be able to type `rerun` in your terminal to start the viewer.
 
-#### Using the Rerun C++ SDK with CMake
+## Using the Rerun C++ SDK with CMake
 ```cmake
 include(FetchContent)
 FetchContent_Declare(rerun_sdk URL
@@ -29,7 +29,7 @@ Make sure you link with `rerun_sdk`:
 target_link_libraries(your_executable PRIVATE rerun_sdk)
 ```
 
-##### Logging your own data
+### Logging your own data
 
 Put the following code to your `main.cpp`:
 

@@ -6,314 +6,268 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun {
-    namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& TensorBuffer::arrow_datatype() {
-            static const auto datatype = arrow::dense_union({
-                arrow::field("_null_markers", arrow::null(), true, nullptr),
-                arrow::field("U8", arrow::list(arrow::field("item", arrow::uint8(), false)), false),
-                arrow::field(
-                    "U16",
-                    arrow::list(arrow::field("item", arrow::uint16(), false)),
-                    false
-                ),
-                arrow::field(
-                    "U32",
-                    arrow::list(arrow::field("item", arrow::uint32(), false)),
-                    false
-                ),
-                arrow::field(
-                    "U64",
-                    arrow::list(arrow::field("item", arrow::uint64(), false)),
-                    false
-                ),
-                arrow::field("I8", arrow::list(arrow::field("item", arrow::int8(), false)), false),
-                arrow::field(
-                    "I16",
-                    arrow::list(arrow::field("item", arrow::int16(), false)),
-                    false
-                ),
-                arrow::field(
-                    "I32",
-                    arrow::list(arrow::field("item", arrow::int32(), false)),
-                    false
-                ),
-                arrow::field(
-                    "I64",
-                    arrow::list(arrow::field("item", arrow::int64(), false)),
-                    false
-                ),
-                arrow::field(
-                    "F16",
-                    arrow::list(arrow::field("item", arrow::float16(), false)),
-                    false
-                ),
-                arrow::field(
-                    "F32",
-                    arrow::list(arrow::field("item", arrow::float32(), false)),
-                    false
-                ),
-                arrow::field(
-                    "F64",
-                    arrow::list(arrow::field("item", arrow::float64(), false)),
-                    false
-                ),
-                arrow::field(
-                    "JPEG",
-                    arrow::list(arrow::field("item", arrow::uint8(), false)),
-                    false
-                ),
-                arrow::field(
-                    "NV12",
-                    arrow::list(arrow::field("item", arrow::uint8(), false)),
-                    false
-                ),
-            });
-            return datatype;
+namespace rerun::datatypes {
+    const std::shared_ptr<arrow::DataType>& TensorBuffer::arrow_datatype() {
+        static const auto datatype = arrow::dense_union({
+            arrow::field("_null_markers", arrow::null(), true, nullptr),
+            arrow::field("U8", arrow::list(arrow::field("item", arrow::uint8(), false)), false),
+            arrow::field("U16", arrow::list(arrow::field("item", arrow::uint16(), false)), false),
+            arrow::field("U32", arrow::list(arrow::field("item", arrow::uint32(), false)), false),
+            arrow::field("U64", arrow::list(arrow::field("item", arrow::uint64(), false)), false),
+            arrow::field("I8", arrow::list(arrow::field("item", arrow::int8(), false)), false),
+            arrow::field("I16", arrow::list(arrow::field("item", arrow::int16(), false)), false),
+            arrow::field("I32", arrow::list(arrow::field("item", arrow::int32(), false)), false),
+            arrow::field("I64", arrow::list(arrow::field("item", arrow::int64(), false)), false),
+            arrow::field("F16", arrow::list(arrow::field("item", arrow::float16(), false)), false),
+            arrow::field("F32", arrow::list(arrow::field("item", arrow::float32(), false)), false),
+            arrow::field("F64", arrow::list(arrow::field("item", arrow::float64(), false)), false),
+            arrow::field("JPEG", arrow::list(arrow::field("item", arrow::uint8(), false)), false),
+            arrow::field("NV12", arrow::list(arrow::field("item", arrow::uint8(), false)), false),
+        });
+        return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::DenseUnionBuilder>> TensorBuffer::new_arrow_array_builder(
+        arrow::MemoryPool* memory_pool
+    ) {
+        if (memory_pool == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
         }
 
-        Result<std::shared_ptr<arrow::DenseUnionBuilder>> TensorBuffer::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        ) {
-            if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-            }
+        return Result(std::make_shared<arrow::DenseUnionBuilder>(
+            memory_pool,
+            // Children:
+            std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
+                std::make_shared<arrow::NullBuilder>(memory_pool),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::UInt8Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::UInt16Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::UInt32Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::UInt64Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::Int8Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::Int16Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::Int32Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::Int64Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::HalfFloatBuilder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::FloatBuilder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::DoubleBuilder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::UInt8Builder>(memory_pool)
+                ),
+                std::make_shared<arrow::ListBuilder>(
+                    memory_pool,
+                    std::make_shared<arrow::UInt8Builder>(memory_pool)
+                ),
+            }),
+            arrow_datatype()
+        ));
+    }
 
-            return Result(std::make_shared<arrow::DenseUnionBuilder>(
-                memory_pool,
-                // Children:
-                std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                    std::make_shared<arrow::NullBuilder>(memory_pool),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt8Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt16Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt32Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt64Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int8Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int16Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int32Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::Int64Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::HalfFloatBuilder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::FloatBuilder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::DoubleBuilder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt8Builder>(memory_pool)
-                    ),
-                    std::make_shared<arrow::ListBuilder>(
-                        memory_pool,
-                        std::make_shared<arrow::UInt8Builder>(memory_pool)
-                    ),
-                }),
-                arrow_datatype()
-            ));
+    rerun::Error TensorBuffer::fill_arrow_array_builder(
+        arrow::DenseUnionBuilder* builder, const TensorBuffer* elements, size_t num_elements
+    ) {
+        if (builder == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+        }
+        if (elements == nullptr) {
+            return rerun::Error(
+                ErrorCode::UnexpectedNullArgument,
+                "Cannot serialize null pointer to arrow array."
+            );
         }
 
-        Error TensorBuffer::fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const TensorBuffer* elements, size_t num_elements
-        ) {
-            if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+        ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
+        for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+            const auto& union_instance = elements[elem_idx];
+            ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
+
+            auto variant_index = static_cast<int>(union_instance._tag);
+            auto variant_builder_untyped = builder->child_builder(variant_index).get();
+
+            switch (union_instance._tag) {
+                case detail::TensorBufferTag::None: {
+                    ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
+                } break;
+                case detail::TensorBufferTag::U8: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::UInt8Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.u8.data(),
+                        static_cast<int64_t>(union_instance._data.u8.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::U16: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::UInt16Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.u16.data(),
+                        static_cast<int64_t>(union_instance._data.u16.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::U32: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::UInt32Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.u32.data(),
+                        static_cast<int64_t>(union_instance._data.u32.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::U64: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::UInt64Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.u64.data(),
+                        static_cast<int64_t>(union_instance._data.u64.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::I8: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::Int8Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.i8.data(),
+                        static_cast<int64_t>(union_instance._data.i8.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::I16: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::Int16Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.i16.data(),
+                        static_cast<int64_t>(union_instance._data.i16.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::I32: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::Int32Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.i32.data(),
+                        static_cast<int64_t>(union_instance._data.i32.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::I64: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::Int64Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.i64.data(),
+                        static_cast<int64_t>(union_instance._data.i64.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::F16: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::HalfFloatBuilder*>(variant_builder->value_builder());
+                    const rerun::half* values = union_instance._data.f16.data();
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        reinterpret_cast<const uint16_t*>(values),
+                        static_cast<int64_t>(union_instance._data.f16.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::F32: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::FloatBuilder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.f32.data(),
+                        static_cast<int64_t>(union_instance._data.f32.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::F64: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::DoubleBuilder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.f64.data(),
+                        static_cast<int64_t>(union_instance._data.f64.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::JPEG: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::UInt8Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.jpeg.data(),
+                        static_cast<int64_t>(union_instance._data.jpeg.size())
+                    ));
+                } break;
+                case detail::TensorBufferTag::NV12: {
+                    auto variant_builder =
+                        static_cast<arrow::ListBuilder*>(variant_builder_untyped);
+                    ARROW_RETURN_NOT_OK(variant_builder->Append());
+                    auto value_builder =
+                        static_cast<arrow::UInt8Builder*>(variant_builder->value_builder());
+                    ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+                        union_instance._data.nv12.data(),
+                        static_cast<int64_t>(union_instance._data.nv12.size())
+                    ));
+                } break;
             }
-            if (elements == nullptr) {
-                return Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Cannot serialize null pointer to arrow array."
-                );
-            }
-
-            ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
-            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                const auto& union_instance = elements[elem_idx];
-                ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
-
-                auto variant_index = static_cast<int>(union_instance._tag);
-                auto variant_builder_untyped = builder->child_builder(variant_index).get();
-
-                switch (union_instance._tag) {
-                    case detail::TensorBufferTag::NONE: {
-                        ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
-                    } break;
-                    case detail::TensorBufferTag::U8: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::UInt8Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.u8.data(),
-                            static_cast<int64_t>(union_instance._data.u8.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::U16: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::UInt16Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.u16.data(),
-                            static_cast<int64_t>(union_instance._data.u16.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::U32: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::UInt32Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.u32.data(),
-                            static_cast<int64_t>(union_instance._data.u32.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::U64: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::UInt64Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.u64.data(),
-                            static_cast<int64_t>(union_instance._data.u64.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::I8: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::Int8Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.i8.data(),
-                            static_cast<int64_t>(union_instance._data.i8.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::I16: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::Int16Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.i16.data(),
-                            static_cast<int64_t>(union_instance._data.i16.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::I32: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::Int32Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.i32.data(),
-                            static_cast<int64_t>(union_instance._data.i32.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::I64: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::Int64Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.i64.data(),
-                            static_cast<int64_t>(union_instance._data.i64.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::F16: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::HalfFloatBuilder*>(variant_builder->value_builder());
-                        const rerun::half* values = union_instance._data.f16.data();
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            reinterpret_cast<const uint16_t*>(values),
-                            static_cast<int64_t>(union_instance._data.f16.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::F32: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::FloatBuilder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.f32.data(),
-                            static_cast<int64_t>(union_instance._data.f32.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::F64: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::DoubleBuilder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.f64.data(),
-                            static_cast<int64_t>(union_instance._data.f64.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::JPEG: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::UInt8Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.jpeg.data(),
-                            static_cast<int64_t>(union_instance._data.jpeg.size())
-                        ));
-                    } break;
-                    case detail::TensorBufferTag::NV12: {
-                        auto variant_builder =
-                            static_cast<arrow::ListBuilder*>(variant_builder_untyped);
-                        ARROW_RETURN_NOT_OK(variant_builder->Append());
-                        auto value_builder =
-                            static_cast<arrow::UInt8Builder*>(variant_builder->value_builder());
-                        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                            union_instance._data.nv12.data(),
-                            static_cast<int64_t>(union_instance._data.nv12.size())
-                        ));
-                    } break;
-                }
-            }
-
-            return Error::ok();
         }
-    } // namespace datatypes
-} // namespace rerun
+
+        return Error::ok();
+    }
+} // namespace rerun::datatypes

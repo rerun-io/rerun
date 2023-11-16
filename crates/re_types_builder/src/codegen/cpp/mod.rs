@@ -46,6 +46,14 @@ fn quote_doc_comment(text: &str) -> TokenStream {
     quote! { #DOC_COMMENT_PREFIX_TOKEN #text #DOC_COMMENT_SUFFIX_TOKEN }
 }
 
+fn quote_hide_from_docs() -> TokenStream {
+    let comment = quote_doc_comment("\\private");
+    quote! {
+        #NEWLINE_TOKEN
+        #comment
+    }
+}
+
 fn string_from_token_stream(token_stream: &TokenStream, source_path: Option<&Utf8Path>) -> String {
     let mut code = String::new();
     code.push_str(&format!("// {}\n", autogen_warning!()));
@@ -207,50 +215,56 @@ fn hpp_type_extensions(
         return (quote! {}, None);
     };
 
-    let target_header = format!("{filename_stem}.hpp");
-    for line in content.lines() {
-        if line.starts_with("#include") {
-            if let Some(start) = line.find('\"') {
-                let end = line.rfind('\"').unwrap_or_else(|| {
-                    panic!("Expected to find '\"' include line {line} in file {extension_file:?}")
-                });
+    const COPY_TO_HEADER_START_MARKER: &str = "<CODEGEN_COPY_TO_HEADER>";
+    const COPY_TO_HEADER_END_MARKER: &str = "</CODEGEN_COPY_TO_HEADER>";
 
-                let include = &line[start + 1..end];
-                if include != target_header {
-                    includes.insert_relative(include);
-                }
-            } else if let Some(start) = line.find('<') {
-                let end = line.rfind('>').unwrap_or_else(|| {
-                    panic!(
+    let mut remaining_content = &content[..];
+    let mut hpp_extension_string = String::new();
+
+    while let Some(start) = remaining_content.find(COPY_TO_HEADER_START_MARKER) {
+        let end = remaining_content.find(COPY_TO_HEADER_END_MARKER).unwrap_or_else(||
+            panic!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_END_MARKER}' in {extension_file:?}")
+        );
+        let end = remaining_content[..end].rfind('\n').unwrap_or_else(||
+            panic!("Expected line break at some point before {COPY_TO_HEADER_END_MARKER} in {extension_file:?}")
+        );
+
+        let extensions = &remaining_content[start + COPY_TO_HEADER_START_MARKER.len()..end];
+
+        // Comb through any includes in the extension string.
+        for line in extensions.lines() {
+            if line.starts_with("#include") {
+                if let Some(start) = line.find('\"') {
+                    let end = line.rfind('\"').unwrap_or_else(|| {
+                        panic!(
+                            "Expected to find ending '\"' in include line {line} in file {extension_file:?}"
+                        )
+                    });
+
+                    includes.insert_relative(&line[start + 1..end]);
+                } else if let Some(start) = line.find('<') {
+                    let end = line.rfind('>').unwrap_or_else(|| {
+                        panic!(
                         "Expected to find or '>' in include line {line} in file {extension_file:?}"
                     )
-                });
-                includes.insert_system(&line[start + 1..end]);
+                    });
+                    includes.insert_system(&line[start + 1..end]);
+                } else {
+                    panic!("Expected to find '\"' or '<' in include line {line} in file {extension_file:?}");
+                }
             } else {
-                panic!("Expected to find '\"' or '<' in include line {line} in file {extension_file:?}");
+                hpp_extension_string += line;
+                hpp_extension_string += "\n";
             }
         }
+
+        remaining_content = &remaining_content[end + COPY_TO_HEADER_END_MARKER.len()..];
     }
-
-    const COPY_TO_HEADER_START_MARKER: &str = "[CODEGEN COPY TO HEADER START]";
-    const COPY_TO_HEADER_END_MARKER: &str = "[CODEGEN COPY TO HEADER END]";
-
-    let start = content.find(COPY_TO_HEADER_START_MARKER).unwrap_or_else(||
-        panic!("C++ extension file missing start marker. Without it, nothing is exposed to the header, i.e. not accessible to the user. Expected to find '{COPY_TO_HEADER_START_MARKER}' in {extension_file:?}")
-    );
-
-    let end = content.find(COPY_TO_HEADER_END_MARKER).unwrap_or_else(||
-        panic!("C++ extension file has a start marker but no end marker. Expected to find '{COPY_TO_HEADER_START_MARKER}' in {extension_file:?}")
-    );
-    let end = content[..end].rfind('\n').unwrap_or_else(||
-        panic!("Expected line break at some point before {COPY_TO_HEADER_END_MARKER} in {extension_file:?}")
-    );
 
     let comment = quote_comment(&format!(
         "Extensions to generated type defined in '{}'",
         extension_file.file_name().unwrap()
     ));
-    let hpp_extension_string = content[start + COPY_TO_HEADER_START_MARKER.len()..end].to_owned();
     let hpp_type_extensions = quote! {
         public:
         #NEWLINE_TOKEN
@@ -332,7 +346,7 @@ impl QuotedObject {
         let quoted_docs = quote_obj_docs(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone());
-        cpp_includes.insert_rerun("component_batch_adapter_builtins.hpp");
+        cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
 
@@ -402,7 +416,7 @@ impl QuotedObject {
             let method_ident = format_ident!("with_{}", obj_field.name);
             let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
 
-            hpp_includes.insert_rerun("util.hpp");
+            hpp_includes.insert_rerun("warning_macros.hpp");
             let gcc_ignore_comment =
                 quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
 
@@ -473,36 +487,37 @@ impl QuotedObject {
         };
 
         let indicator_comment = quote_doc_comment("Indicator component, used to identify the archetype when converting to a list of components.");
+        let doc_hide_comment = quote_hide_from_docs();
 
         let hpp = quote! {
             #hpp_includes
 
+            namespace rerun::archetypes {
+                #quoted_docs
+                struct #type_ident {
+                    #(#field_declarations;)*
+
+                    #(#constants_hpp;)*
+
+                    #NEWLINE_TOKEN
+                    #indicator_comment
+                    using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+
+                    #hpp_type_extensions
+
+                    #hpp_method_section
+                };
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
+            }
+
             namespace rerun {
-                namespace archetypes {
-                    #quoted_docs
-                    struct #type_ident {
-                        #(#field_declarations;)*
-
-                        #(#constants_hpp;)*
-
-                        #NEWLINE_TOKEN
-                        #indicator_comment
-                        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
-
-                        #hpp_type_extensions
-
-                        #hpp_method_section
-                    };
-                    #NEWLINE_TOKEN
-                    #NEWLINE_TOKEN
-                }
-                #NEWLINE_TOKEN
-                #NEWLINE_TOKEN
-
-                // Instead of including as_components.hpp, simply re-declare the template since it's trivial.
+                // Instead of including as_components.hpp, simply re-declare the template since it's trivial
+                #doc_hide_comment
                 template<typename T>
                 struct AsComponents;
 
+                #doc_hide_comment
                 template<>
                 struct AsComponents<archetypes::#type_ident> {
                     #serialize_hpp
@@ -516,12 +531,13 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            namespace rerun {
-                namespace archetypes {
-                    #(#constants_cpp;)*
+            namespace rerun::archetypes {
+                #(#constants_cpp;)*
 
-                    #(#methods_cpp)*
-                }
+                #(#methods_cpp)*
+            }
+
+            namespace rerun {
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
                 #serialize_cpp
@@ -646,19 +662,17 @@ impl QuotedObject {
 
             #hpp_declarations
 
-            namespace rerun {
-                namespace #namespace_ident {
-                    #quoted_docs
-                    struct #type_ident {
-                        #(#field_declarations;)*
+            namespace rerun::#namespace_ident {
+                #quoted_docs
+                struct #type_ident {
+                    #(#field_declarations;)*
 
-                        #(#constants_hpp;)*
+                    #(#constants_hpp;)*
 
-                        #hpp_type_extensions
+                    #hpp_type_extensions
 
-                        #hpp_method_section
-                    };
-                }
+                    #hpp_method_section
+                };
             }
         };
 
@@ -668,12 +682,10 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            namespace rerun {
-                namespace #namespace_ident {
-                    #(#constants_cpp;)*
+            namespace rerun::#namespace_ident {
+                #(#constants_cpp;)*
 
-                    #(#methods_cpp)*
-                }
+                #(#methods_cpp)*
             }
         };
 
@@ -690,7 +702,7 @@ impl QuotedObject {
         // Putting non-POD types in a union requires C++11.
         //
         // enum class Rotation3DTag : uint8_t {
-        //     NONE = 0,
+        //     None = 0,
         //     Quaternion,
         //     AxisAngle,
         // };
@@ -722,7 +734,7 @@ impl QuotedObject {
             let comment = quote_doc_comment(
                 "Having a special empty state makes it possible to implement move-semantics. \
                 We need to be able to leave the object in a state which we can run the destructor on.");
-            let tag_name = format_ident!("NONE");
+            let tag_name = format_ident!("None");
             quote! {
                 #NEWLINE_TOKEN
                 #comment
@@ -854,7 +866,7 @@ impl QuotedObject {
             let destructor_match_arms = std::iter::once({
                 let comment = quote_comment("Nothing to destroy");
                 quote! {
-                    case detail::#tag_typename::NONE: {
+                    case detail::#tag_typename::None: {
                         #NEWLINE_TOKEN
                         #comment
                     } break;
@@ -948,7 +960,7 @@ impl QuotedObject {
                         switch (other._tag) {
                             #(#placement_new_arms)*
 
-                            case detail::#tag_typename::NONE: {
+                            case detail::#tag_typename::None: {
                                 // there is nothing to copy
                             } break;
                         }
@@ -967,7 +979,7 @@ impl QuotedObject {
                                 #trivial_memcpy
                             } break;
 
-                            case detail::#tag_typename::NONE: {
+                            case detail::#tag_typename::None: {
                                 // there is nothing to copy
                             } break;
                         }
@@ -977,6 +989,7 @@ impl QuotedObject {
         };
 
         let swap_comment = quote_comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
+        let hide_from_docs_comment = quote_hide_from_docs();
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
         let hpp = quote! {
@@ -984,84 +997,83 @@ impl QuotedObject {
 
             #hpp_declarations
 
-            namespace rerun {
-                namespace #namespace_ident {
-                    namespace detail {
-                        enum class #tag_typename : uint8_t {
-                            #(#tag_fields)*
-                        };
+            namespace rerun::#namespace_ident {
+                namespace detail {
+                    #hide_from_docs_comment
+                    enum class #tag_typename : uint8_t {
+                        #(#tag_fields)*
+                    };
 
-                        union #data_typename {
-                            #(#enum_data_declarations;)*
+                    #hide_from_docs_comment
+                    union #data_typename {
+                        #(#enum_data_declarations;)*
 
-                            // Required by static constructors
-                            #data_typename() {
-                                std::memset(reinterpret_cast<void*>(this), 0, sizeof(#data_typename));
-                            }
-                            ~#data_typename() { }
-
-                            // Note that this type is *not* copyable unless all enum fields are trivially destructable.
-
-                            void swap(#data_typename& other) noexcept {
-                                #NEWLINE_TOKEN
-                                #swap_comment
-                                char temp[sizeof(#data_typename)];
-                                void* otherbytes = reinterpret_cast<void*>(&other);
-                                void* thisbytes = reinterpret_cast<void*>(this);
-                                std::memcpy(temp, thisbytes, sizeof(#data_typename));
-                                std::memcpy(thisbytes, otherbytes, sizeof(#data_typename));
-                                std::memcpy(otherbytes, temp, sizeof(#data_typename));
-                            }
-                        };
-
-                    }
-
-                    #quoted_docs
-                    struct #pascal_case_ident {
-                        #(#constants_hpp;)*
-
-                        #pascal_case_ident() : _tag(detail::#tag_typename::NONE) {}
-
-                        #copy_constructor
-
-                        // Copy-assignment
-                        #pascal_case_ident& operator=(const #pascal_case_ident& other) noexcept {
-                            #pascal_case_ident tmp(other);
-                            this->swap(tmp);
-                            return *this;
+                        // Required by static constructors
+                        #data_typename() {
+                            std::memset(reinterpret_cast<void*>(this), 0, sizeof(#data_typename));
                         }
+                        ~#data_typename() { }
 
-                        // Move-constructor:
-                        #pascal_case_ident(#pascal_case_ident&& other) noexcept : #pascal_case_ident() {
-                            this->swap(other);
+                        // Note that this type is *not* copyable unless all enum fields are trivially destructable.
+
+                        void swap(#data_typename& other) noexcept {
+                            #NEWLINE_TOKEN
+                            #swap_comment
+                            char temp[sizeof(#data_typename)];
+                            void* otherbytes = reinterpret_cast<void*>(&other);
+                            void* thisbytes = reinterpret_cast<void*>(this);
+                            std::memcpy(temp, thisbytes, sizeof(#data_typename));
+                            std::memcpy(thisbytes, otherbytes, sizeof(#data_typename));
+                            std::memcpy(otherbytes, temp, sizeof(#data_typename));
                         }
-
-                        // Move-assignment:
-                        #pascal_case_ident& operator=(#pascal_case_ident&& other) noexcept {
-                            this->swap(other);
-                            return *this;
-                        }
-
-                        #destructor
-
-                        #hpp_type_extensions
-
-                        // This is useful for easily implementing the move constructor and assignment operators:
-                        void swap(#pascal_case_ident& other) noexcept {
-                            // Swap tags: Not using std::swap here causes a warning for some gcc version about potentially uninitialized data.
-                            std::swap(this->_tag, other._tag);
-
-                            // Swap data:
-                            this->_data.swap(other._data);
-                        }
-
-                        #(#methods_hpp)*
-
-                    private:
-                        detail::#tag_typename _tag;
-                        detail::#data_typename _data;
                     };
                 }
+
+                #quoted_docs
+                struct #pascal_case_ident {
+                    #(#constants_hpp;)*
+
+                    #pascal_case_ident() : _tag(detail::#tag_typename::None) {}
+
+                    #copy_constructor
+
+                    // Copy-assignment
+                    #pascal_case_ident& operator=(const #pascal_case_ident& other) noexcept {
+                        #pascal_case_ident tmp(other);
+                        this->swap(tmp);
+                        return *this;
+                    }
+
+                    // Move-constructor:
+                    #pascal_case_ident(#pascal_case_ident&& other) noexcept : #pascal_case_ident() {
+                        this->swap(other);
+                    }
+
+                    // Move-assignment:
+                    #pascal_case_ident& operator=(#pascal_case_ident&& other) noexcept {
+                        this->swap(other);
+                        return *this;
+                    }
+
+                    #destructor
+
+                    #hpp_type_extensions
+
+                    // This is useful for easily implementing the move constructor and assignment operators:
+                    void swap(#pascal_case_ident& other) noexcept {
+                        // Swap tags: Not using std::swap here causes a warning for some gcc version about potentially uninitialized data.
+                        std::swap(this->_tag, other._tag);
+
+                        // Swap data:
+                        this->_data.swap(other._data);
+                    }
+
+                    #(#methods_hpp)*
+
+                private:
+                    detail::#tag_typename _tag;
+                    detail::#data_typename _data;
+                };
             }
         };
 
@@ -1073,10 +1085,8 @@ impl QuotedObject {
 
             #(#constants_cpp;)*
 
-            namespace rerun {
-                namespace #namespace_ident {
-                    #(#cpp_methods)*
-                }
+            namespace rerun::#namespace_ident {
+                #(#cpp_methods)*
             }
         };
 
@@ -1235,7 +1245,7 @@ fn new_arrow_array_builder_method(
         },
         definition_body: quote! {
             if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
@@ -1264,7 +1274,7 @@ fn fill_arrow_array_builder_method(
         docs: "Fills an arrow array builder with an array of this type.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { Error },
+            return_type: quote! { rerun::Error },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
                 fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #type_ident* elements, size_t num_elements)
@@ -1272,10 +1282,10 @@ fn fill_arrow_array_builder_method(
         },
         definition_body: quote! {
             if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
             }
             if (elements == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Cannot serialize null pointer to arrow array.");
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Cannot serialize null pointer to arrow array.");
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
@@ -1332,7 +1342,7 @@ fn component_to_data_cell_method(type_ident: &Ident, hpp_includes: &mut Includes
 
 fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Includes) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
-    hpp_includes.insert_rerun("component_batch.hpp");
+    hpp_includes.insert_rerun("collection.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
     let num_fields = quote_integer(obj.fields.len());
@@ -1340,7 +1350,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         let field_name = format_ident!("{}", field.name);
         let field_accessor = quote!(archetype.#field_name);
 
-        // TODO(andreas): Introducing MonoComponentBatch will remove the need for this.
+        // TODO(andreas): Introducing MonoCollection will remove the need for this.
         let wrapping_type = if field.typ.is_plural() {
             quote!()
         } else {
@@ -1351,7 +1361,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
                     .fqname()
                     .expect("Archetypes only have components and vectors of components."),
             );
-            quote!(ComponentBatch<#field_type>)
+            quote!(Collection<#field_type>)
         };
 
         if field.is_nullable {
@@ -1389,7 +1399,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #NEWLINE_TOKEN
             #(#push_batches)*
             {
-                auto result = ComponentBatch<#type_ident::IndicatorComponent>(#type_ident::IndicatorComponent()).serialize();
+                auto result = Collection<#type_ident::IndicatorComponent>(#type_ident::IndicatorComponent()).serialize();
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
@@ -1415,7 +1425,7 @@ fn quote_fill_arrow_array_builder(
                 quote! {
                     (void)num_elements;
                     if (true) { // Works around unreachability compiler warning.
-                        return Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
+                        return rerun::Error(ErrorCode::NotImplemented, "TODO(andreas) Handle nullable extensions");
                     }
                 }
             } else {
@@ -1470,7 +1480,7 @@ fn quote_fill_arrow_array_builder(
                             let error = format!("Failed to serialize {}::{}: nullable list types in unions not yet implemented", obj.name, variant.name);
                             quote! {
                                 (void)#variant_builder;
-                                return Error(ErrorCode::NotImplemented, #error);
+                                return rerun::Error(ErrorCode::NotImplemented, #error);
                             }
                         } else if arrow_builder_type == "ListBuilder" {
                             let field_name = format_ident!("{}", variant.snake_case_name());
@@ -1522,7 +1532,7 @@ fn quote_fill_arrow_array_builder(
                                     let error = format!("Failed to serialize {}::{}: objects ({:?}) in unions not yet implemented", obj.name, variant.name, element_type);
                                     quote! {
                                         (void)#variant_builder;
-                                        return Error(ErrorCode::NotImplemented, #error);
+                                        return rerun::Error(ErrorCode::NotImplemented, #error);
                                     }
                                 }
                             }
@@ -1530,7 +1540,7 @@ fn quote_fill_arrow_array_builder(
                             let error = format!("Failed to serialize {}::{}: {} in unions not yet implemented", obj.name, variant.name, arrow_builder_type);
                             quote! {
                                 (void)#variant_builder;
-                                return Error(ErrorCode::NotImplemented, #error);
+                                return rerun::Error(ErrorCode::NotImplemented, #error);
                             }
                         }
                     } else {
@@ -1559,7 +1569,7 @@ fn quote_fill_arrow_array_builder(
                         #NEWLINE_TOKEN
                         #NEWLINE_TOKEN
                         switch (union_instance._tag) {
-                            case detail::#tag_name::NONE: {
+                            case detail::#tag_name::None: {
                                 ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                             } break;
                             #(#tag_cases)*
@@ -1914,13 +1924,13 @@ fn are_types_disjoint(fields: &[ObjectField]) -> bool {
 fn quote_archetype_field_type(hpp_includes: &mut Includes, obj_field: &ObjectField) -> TokenStream {
     match &obj_field.typ {
         Type::Vector { elem_type } => {
-            hpp_includes.insert_rerun("component_batch.hpp");
+            hpp_includes.insert_rerun("collection.hpp");
             let elem_type = quote_element_type(hpp_includes, elem_type);
-            quote! { ComponentBatch<#elem_type> }
+            quote! { Collection<#elem_type> }
         }
-        // TODO(andreas): This should emit `MonoComponentBatch` which will be a constrained version of `ComponentBatch`.
-        // (simply adapting `MonoComponentBatch` breaks some existing code, so this not entirely trivial to do.
-        //  Designing constraints for `MonoComponentBatch` is harder still)
+        // TODO(andreas): This should emit `MonoCollection` which will be a constrained version of `Collection`.
+        // (simply adapting `MonoCollection` breaks some existing code, so this not entirely trivial to do.
+        //  Designing constraints for `MonoCollection` is harder still)
         Type::Object(fqname) => quote_fqname_as_type_path(hpp_includes, fqname),
         _ => panic!("Only vectors and objects are allowed in archetypes."),
     }
@@ -2070,10 +2080,7 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
         let mut examples = examples.into_iter().peekable();
         while let Some(example) = examples.next() {
             let ExampleInfo {
-                name,
-                title,
-                image: _, // TODO(andreas): Include images in doc
-                ..
+                name, title, image, ..
             } = &example.base;
 
             for line in &example.lines {
@@ -2085,7 +2092,18 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
             } else {
                 lines.push(format!("### `{name}`:"));
             }
-            lines.push("```cpp,ignore".into());
+
+            if let Some(image) = image {
+                match image {
+                    super::common::ImageUrl::Rerun(image) => lines.push(image.markdown_tag()),
+                    super::common::ImageUrl::Other(url) => {
+                        lines.push(format!("![example image]({url})"));
+                    }
+                }
+                lines.push(String::new());
+            }
+
+            lines.push("```cpp".into());
             lines.extend(example.lines.iter().cloned());
             lines.push("```".into());
             if examples.peek().is_some() {

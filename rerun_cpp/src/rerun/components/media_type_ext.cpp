@@ -12,7 +12,7 @@ namespace rerun {
 
             // Don't provide a string_view constructor, std::string constructor exists and covers this.
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             /// Construct media type from a null-terminated UTF8 string.
             MediaType(const char* media_type) : value(media_type) {}
@@ -32,14 +32,14 @@ namespace rerun {
                 return "text/markdown";
             }
 
-            /// [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
+            /// `glTF`(https://en.wikipedia.org/wiki/GlTF): `model/gltf+json`.
             ///
             /// <https://www.iana.org/assignments/media-types/model/gltf+json>
             static MediaType gltf() {
                 return "model/gltf+json";
             }
 
-            /// Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
+            /// Binary `glTF`(https://en.wikipedia.org/wiki/GlTF): `model/gltf-binary`.
             ///
             /// <https://www.iana.org/assignments/media-types/model/gltf-binary>
             static MediaType glb() {
@@ -53,7 +53,7 @@ namespace rerun {
                 return "model/obj";
             }
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         }
     };
 #endif

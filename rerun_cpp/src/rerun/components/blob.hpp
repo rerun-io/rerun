@@ -17,42 +17,38 @@ namespace arrow {
     class MemoryPool;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A binary blob of data.
-        struct Blob {
-            std::vector<uint8_t> data;
+namespace rerun::components {
+    /// **Component**: A binary blob of data.
+    struct Blob {
+        std::vector<uint8_t> data;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            Blob() = default;
+      public:
+        Blob() = default;
 
-            Blob(std::vector<uint8_t> data_) : data(std::move(data_)) {}
+        Blob(std::vector<uint8_t> data_) : data(std::move(data_)) {}
 
-            Blob& operator=(std::vector<uint8_t> data_) {
-                data = std::move(data_);
-                return *this;
-            }
+        Blob& operator=(std::vector<uint8_t> data_) {
+            data = std::move(data_);
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::ListBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::ListBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::ListBuilder* builder, const Blob* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::ListBuilder* builder, const Blob* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of Blob components.
-            static Result<rerun::DataCell> to_data_cell(
-                const Blob* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of Blob components.
+        static Result<rerun::DataCell> to_data_cell(const Blob* instances, size_t num_instances);
+    };
+} // namespace rerun::components

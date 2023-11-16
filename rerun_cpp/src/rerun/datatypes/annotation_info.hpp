@@ -10,7 +10,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <utility>
 
 namespace arrow {
     class DataType;
@@ -18,49 +17,47 @@ namespace arrow {
     class StructBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: Annotation info annotating a class id or key-point id.
-        ///
-        /// Color and label will be used to annotate entities/keypoints which reference the id.
-        /// The id refers either to a class or key-point id
-        struct AnnotationInfo {
-            /// `ClassId` or `KeypointId` to which this annotation info belongs.
-            uint16_t id;
+namespace rerun::datatypes {
+    /// **Datatype**: Annotation info annotating a class id or key-point id.
+    ///
+    /// Color and label will be used to annotate entities/keypoints which reference the id.
+    /// The id refers either to a class or key-point id
+    struct AnnotationInfo {
+        /// `ClassId` or `KeypointId` to which this annotation info belongs.
+        uint16_t id;
 
-            /// The label that will be shown in the UI.
-            std::optional<rerun::datatypes::Utf8> label;
+        /// The label that will be shown in the UI.
+        std::optional<rerun::datatypes::Utf8> label;
 
-            /// The color that will be applied to the annotated entity.
-            std::optional<rerun::datatypes::Rgba32> color;
+        /// The color that will be applied to the annotated entity.
+        std::optional<rerun::datatypes::Rgba32> color;
 
-          public:
-            // Extensions to generated type defined in 'annotation_info_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'annotation_info_ext.cpp'
 
-            AnnotationInfo(
-                uint16_t _id, std::optional<std::string> _label = std::nullopt,
-                std::optional<datatypes::Rgba32> _color = std::nullopt
-            )
-                : id(_id), label(std::move(_label)), color(_color) {}
+        AnnotationInfo(
+            uint16_t _id, std::optional<std::string> _label = std::nullopt,
+            std::optional<datatypes::Rgba32> _color = std::nullopt
+        )
+            : id(_id), label(std::move(_label)), color(_color) {}
 
-            AnnotationInfo(uint16_t _id, datatypes::Rgba32 _color)
-                : id(_id), label(std::nullopt), color(_color) {}
+        AnnotationInfo(uint16_t _id, datatypes::Rgba32 _color)
+            : id(_id), label(std::nullopt), color(_color) {}
 
-          public:
-            AnnotationInfo() = default;
+      public:
+        AnnotationInfo() = default;
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::StructBuilder* builder, const AnnotationInfo* elements, size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StructBuilder* builder, const AnnotationInfo* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.16...3.27)
 
 project(rerun_cpp_proj LANGUAGES CXX)
 
+# ------------------------------------------------------------------------------
+
+# Environment driven hooks so we can configure CMake configure even if its buried deep inside a pixi task.
 if(DEFINED ENV{RERUN_WERROR})
     message(STATUS "Compiling with warnings as errors since RERUN_WERROR is set.")
     set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
@@ -12,9 +15,27 @@ if(DEFINED ENV{RERUN_USE_ASAN})
     set(RERUN_USE_ASAN ON)
 endif()
 
-function(set_default_warning_settings target)
+if(DEFINED ENV{RERUN_SET_CXX_VERSION})
+    message(STATUS "Overwriting CMAKE_CXX_STANDARD to $ENV{RERUN_SET_CXX_VERSION} since RERUN_SET_CXX_VERSION is set accordingly.")
+    set(CMAKE_CXX_STANDARD $ENV{RERUN_SET_CXX_VERSION})
+endif()
+
+# ------------------------------------------------------------------------------
+
+function(rerun_strict_warning_settings target)
     if(MSVC)
+        # TODO(andreas): Try to enable /Wall
         target_compile_options(${target} PRIVATE /W4)
+
+        # CMAKE_COMPILE_WARNING_AS_ERROR is only directly supported starting in CMake `3.24`
+        # https://cmake.org/cmake/help/latest/prop_tgt/COMPILE_WARNING_AS_ERROR.html
+        if(CMAKE_COMPILE_WARNING_AS_ERROR)
+            target_compile_options(${target} PRIVATE /WX)
+        endif()
+
+        if(RERUN_USE_ASAN)
+            message(WARNING "Rerun C++ build does not support address sanatizer ('asan') on Windows. Ignoring RERUN_USE_ASAN.")
+        endif()
     else()
         # Enabled warnings.
         target_compile_options(${target} PRIVATE
@@ -122,6 +143,7 @@ FetchContent_Declare(LoguruGitRepo
     GIT_REPOSITORY "https://github.com/emilk/loguru" # can be a filesystem path
     GIT_TAG "master"
 )
+FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
 
 # Set any loguru compile-time flags before calling MakeAvailable()
 # Stacktraces are not yet supported on Windows.
@@ -129,10 +151,9 @@ if(NOT WIN32)
     set(LOGURU_STACKTRACES 1)
 endif()
 
-FetchContent_MakeAvailable(LoguruGitRepo) # defines target 'loguru::loguru'
-
 # ------------------------------------------------------------------------------
-add_subdirectory(rerun_cpp) # The Rerun C++ SDK library
+add_subdirectory(crates/rerun_c) # The Rerun C SDK library, must be included before the C++ SDK.
+add_subdirectory(rerun_cpp) # The Rerun C++ SDK library.
 add_subdirectory(examples/cpp)
 add_subdirectory(tests/cpp)
 add_subdirectory(docs/code-examples)

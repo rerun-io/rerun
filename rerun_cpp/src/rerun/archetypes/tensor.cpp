@@ -3,12 +3,13 @@
 
 #include "tensor.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
+
+namespace rerun::archetypes {
+    const char Tensor::INDICATOR_COMPONENT_NAME[] = "rerun.components.TensorIndicator";
+}
 
 namespace rerun {
-    namespace archetypes {
-        const char Tensor::INDICATOR_COMPONENT_NAME[] = "rerun.components.TensorIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Tensor>::serialize(
         const archetypes::Tensor& archetype
@@ -18,13 +19,13 @@ namespace rerun {
         cells.reserve(1);
 
         {
-            auto result = ComponentBatch<rerun::components::TensorData>(archetype.data).serialize();
+            auto result = Collection<rerun::components::TensorData>(archetype.data).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = ComponentBatch<Tensor::IndicatorComponent>(Tensor::IndicatorComponent())
-                              .serialize();
+            auto result =
+                Collection<Tensor::IndicatorComponent>(Tensor::IndicatorComponent()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

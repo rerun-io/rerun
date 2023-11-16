@@ -7,7 +7,7 @@ namespace rerun {
     namespace archetypes {
 
 #ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         BarChart(rerun::datatypes::TensorBuffer buffer) {
             auto num_elems = buffer.num_elems();
@@ -121,7 +121,7 @@ namespace rerun {
             return BarChart(f64);
         }
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
     } // namespace archetypes
 } // namespace rerun

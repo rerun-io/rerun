@@ -14,13 +14,13 @@ namespace rerun {
 
 #define ClassDescriptionMapElem ClassDescriptionMapElemExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             ClassDescriptionMapElem(ClassDescription _class_description)
                 : class_id(_class_description.info.id),
                   class_description(std::move(_class_description)) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
 

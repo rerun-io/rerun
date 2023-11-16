@@ -18,12 +18,14 @@ mod arrow_util;
 mod store;
 mod store_arrow;
 mod store_dump;
+mod store_event;
 mod store_format;
 mod store_gc;
 mod store_helpers;
 mod store_read;
 mod store_sanity;
 mod store_stats;
+mod store_subscriber;
 mod store_write;
 
 #[cfg(feature = "polars")]
@@ -37,10 +39,12 @@ pub mod test_util;
 
 pub use self::arrow_util::ArrayExt;
 pub use self::store::{DataStore, DataStoreConfig, StoreGeneration};
-pub use self::store_gc::{Deleted, GarbageCollectionOptions, GarbageCollectionTarget};
+pub use self::store_event::{StoreDiff, StoreDiffKind, StoreEvent};
+pub use self::store_gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::store_helpers::VersionedComponent;
 pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_stats::{DataStoreRowStats, DataStoreStats, EntityStats};
+pub use self::store_subscriber::{StoreSubscriber, StoreSubscriberHandle};
 pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{

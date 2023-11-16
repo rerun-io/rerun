@@ -338,6 +338,12 @@ impl App {
         )
             .on_hover_text("Show a debug overlay that renders the picking layer information using the `debug_overlay.wgsl` shader.");
 
+        self.re_ui.checkbox(ui,
+                       &mut self.state.app_options.show_blueprint_in_timeline,
+                       "Show Blueprint in the Time Panel",
+        )
+            .on_hover_text("Show the Blueprint data in the Time Panel tree view. This is useful for debugging the internal blueprint state.");
+
         ui.menu_button("Crash", |ui| {
             #[allow(clippy::manual_assert)]
             if ui.button("panic!").clicked() {

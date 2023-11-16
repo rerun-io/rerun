@@ -392,6 +392,7 @@ impl TimePanel {
                         None,
                         &ctx.store_db.entity_db().tree,
                         ui,
+                        "/",
                     );
                 } else {
                     self.show_children(
@@ -401,6 +402,18 @@ impl TimePanel {
                         tree_max_y,
                         &ctx.store_db.entity_db().tree,
                         ui,
+                    );
+                }
+                if ctx.app_options.show_blueprint_in_timeline {
+                    self.show_tree(
+                        ctx,
+                        time_area_response,
+                        time_area_painter,
+                        tree_max_y,
+                        None,
+                        &ctx.store_context.blueprint.entity_db().tree,
+                        ui,
+                        "/ (blueprint)",
                     );
                 }
             });
@@ -416,6 +429,7 @@ impl TimePanel {
         last_path_part: Option<&EntityPathPart>,
         tree: &EntityTree,
         ui: &mut egui::Ui,
+        show_root_as: &str,
     ) {
         let tree_has_data_in_current_timeline = ctx.tree_has_data_in_current_timeline(tree);
 
@@ -427,7 +441,7 @@ impl TimePanel {
                 format!("{last_path_part}/") // show we have children with a /
             }
         } else {
-            "/".to_owned()
+            show_root_as.to_owned()
         };
 
         let collapsing_header_id = ui.make_persistent_id(&tree.path);
@@ -493,7 +507,7 @@ impl TimePanel {
             if is_closed {
                 let empty = re_data_store::TimeHistogram::default();
                 let num_messages_at_time = tree
-                    .prefix_times
+                    .recursive_time_histogram
                     .get(ctx.rec_cfg.time_ctrl.timeline())
                     .unwrap_or(&empty);
 
@@ -503,7 +517,7 @@ impl TimePanel {
                     time_area_response,
                     time_area_painter,
                     ui,
-                    tree.num_timeless_messages(),
+                    tree.num_timeless_messages() as usize,
                     num_messages_at_time,
                     row_rect,
                     &self.time_ranges_ui,
@@ -531,15 +545,18 @@ impl TimePanel {
                 Some(last_component),
                 child,
                 ui,
+                "/",
             );
         }
 
         // If this is an entity:
-        if !tree.components.is_empty() {
+        if !tree.time_histograms_per_component.is_empty() {
             let clip_rect_save = ui.clip_rect();
 
-            for component_name in re_data_ui::ui_visible_components(tree.components.keys()) {
-                let data = &tree.components[component_name];
+            for component_name in
+                re_data_ui::ui_visible_components(tree.time_histograms_per_component.keys())
+            {
+                let data = &tree.time_histograms_per_component[component_name];
 
                 let component_has_data_in_current_timeline =
                     ctx.component_has_data_in_current_timeline(data);
@@ -579,13 +596,12 @@ impl TimePanel {
 
                 let empty_messages_over_time = TimeHistogram::default();
                 let messages_over_time = data
-                    .times
                     .get(ctx.rec_cfg.time_ctrl.timeline())
                     .unwrap_or(&empty_messages_over_time);
 
                 // `data.times` does not contain timeless. Need to add those manually:
                 let total_num_messages =
-                    messages_over_time.total_count() + data.num_timeless_messages() as u64;
+                    messages_over_time.total_count() + data.num_timeless_messages();
                 response.on_hover_ui(|ui| {
                     if total_num_messages == 0 {
                         ui.label(ctx.re_ui.warning_text(format!(
@@ -620,7 +636,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         ui,
-                        data.num_timeless_messages(),
+                        data.num_timeless_messages() as usize,
                         messages_over_time,
                         row_rect,
                         &self.time_ranges_ui,
@@ -777,7 +793,12 @@ fn is_time_safe_to_show(
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = store_db.entity_db().tree.prefix_times.get(timeline) {
+    if let Some(times) = store_db
+        .entity_db()
+        .tree
+        .recursive_time_histogram
+        .get(timeline)
+    {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),
@@ -822,10 +843,7 @@ fn initialize_time_ranges_ui(
 
     if let Some(times) = ctx
         .store_db
-        .entity_db()
-        .tree
-        .prefix_times
-        .get(ctx.rec_cfg.time_ctrl.timeline())
+        .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
     {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {

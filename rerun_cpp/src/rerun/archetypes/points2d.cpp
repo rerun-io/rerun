@@ -3,12 +3,13 @@
 
 #include "points2d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
+
+namespace rerun::archetypes {
+    const char Points2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points2DIndicator";
+}
 
 namespace rerun {
-    namespace archetypes {
-        const char Points2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points2DIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Points2D>::serialize(
         const archetypes::Points2D& archetype
@@ -38,8 +39,8 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result = ComponentBatch<rerun::components::DrawOrder>(archetype.draw_order.value())
-                              .serialize();
+            auto result =
+                Collection<rerun::components::DrawOrder>(archetype.draw_order.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
@@ -59,9 +60,8 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result =
-                ComponentBatch<Points2D::IndicatorComponent>(Points2D::IndicatorComponent())
-                    .serialize();
+            auto result = Collection<Points2D::IndicatorComponent>(Points2D::IndicatorComponent())
+                              .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

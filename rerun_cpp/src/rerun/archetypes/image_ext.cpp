@@ -8,7 +8,7 @@ namespace rerun {
     namespace archetypes {
 
 #ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+        // <CODEGEN_COPY_TO_HEADER>
 
         /// New Image from height/width/channel and tensor buffer.
         ///
@@ -22,7 +22,7 @@ namespace rerun {
         /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2 or 3.
         explicit Image(rerun::components::TensorData _data);
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         Image::Image(rerun::components::TensorData _data) : data(std::move(_data)) {

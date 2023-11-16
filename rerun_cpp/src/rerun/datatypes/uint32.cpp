@@ -6,42 +6,40 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun {
-    namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& UInt32::arrow_datatype() {
-            static const auto datatype = arrow::uint32();
-            return datatype;
+namespace rerun::datatypes {
+    const std::shared_ptr<arrow::DataType>& UInt32::arrow_datatype() {
+        static const auto datatype = arrow::uint32();
+        return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::UInt32Builder>> UInt32::new_arrow_array_builder(
+        arrow::MemoryPool* memory_pool
+    ) {
+        if (memory_pool == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
         }
 
-        Result<std::shared_ptr<arrow::UInt32Builder>> UInt32::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        ) {
-            if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-            }
+        return Result(std::make_shared<arrow::UInt32Builder>(memory_pool));
+    }
 
-            return Result(std::make_shared<arrow::UInt32Builder>(memory_pool));
+    rerun::Error UInt32::fill_arrow_array_builder(
+        arrow::UInt32Builder* builder, const UInt32* elements, size_t num_elements
+    ) {
+        if (builder == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
         }
-
-        Error UInt32::fill_arrow_array_builder(
-            arrow::UInt32Builder* builder, const UInt32* elements, size_t num_elements
-        ) {
-            if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-            }
-            if (elements == nullptr) {
-                return Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Cannot serialize null pointer to arrow array."
-                );
-            }
-
-            static_assert(sizeof(*elements) == sizeof(elements->value));
-            ARROW_RETURN_NOT_OK(
-                builder->AppendValues(&elements->value, static_cast<int64_t>(num_elements))
+        if (elements == nullptr) {
+            return rerun::Error(
+                ErrorCode::UnexpectedNullArgument,
+                "Cannot serialize null pointer to arrow array."
             );
-
-            return Error::ok();
         }
-    } // namespace datatypes
-} // namespace rerun
+
+        static_assert(sizeof(*elements) == sizeof(elements->value));
+        ARROW_RETURN_NOT_OK(
+            builder->AppendValues(&elements->value, static_cast<int64_t>(num_elements))
+        );
+
+        return Error::ok();
+    }
+} // namespace rerun::datatypes

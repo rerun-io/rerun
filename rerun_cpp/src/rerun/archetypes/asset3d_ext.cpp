@@ -1,33 +1,38 @@
 #include <algorithm>
-#include <filesystem> // TODO(#3991): Should not leak into public header.
-#include <fstream>    // TODO(#3991): Should not leak into public header.
+#include <fstream>
 #include <string>
 
 #include "asset3d.hpp"
 
-//#define EDIT_EXTENSION
+// It's undefined behavior to pre-declare std types, see http://www.gotw.ca/gotw/034.htm
+// We want to use `std::filesystem::path`, so we have it include it in the header.
+// <CODEGEN_COPY_TO_HEADER>
+
+#include <filesystem>
+
+// </CODEGEN_COPY_TO_HEADER>
 
 namespace rerun {
     namespace archetypes {
 
-#ifdef EDIT_EXTENSION
-        // [CODEGEN COPY TO HEADER START]
+#if 0
+        // <CODEGEN_COPY_TO_HEADER>
 
         static std::optional<rerun::components::MediaType> guess_media_type(
             const std::filesystem::path& path
         );
 
-        /// Creates a new [`Asset3D`] from the file contents at `path`.
+        /// Creates a new `Asset3D` from the file contents at `path`.
         ///
-        /// The [`MediaType`] will be guessed from the file extension.
+        /// The `MediaType` will be guessed from the file extension.
         ///
-        /// If no [`MediaType`] can be guessed at the moment, the Rerun Viewer will try to guess one
+        /// If no `MediaType` can be guessed at the moment, the Rerun Viewer will try to guess one
         /// from the data at render-time. If it can't, rendering will fail with an error.
         static Result<Asset3D> from_file(const std::filesystem::path& path);
 
-        /// Creates a new [`Asset3D`] from the given `bytes`.
+        /// Creates a new `Asset3D` from the given `bytes`.
         ///
-        /// If no [`MediaType`] is specified, the Rerun Viewer will try to guess one from the data
+        /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
         /// at render-time. If it can't, rendering will fail with an error.
         static Asset3D from_bytes(
             const std::vector<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type
@@ -38,7 +43,7 @@ namespace rerun {
             return asset;
         }
 
-        // [CODEGEN COPY TO HEADER END]
+        // </CODEGEN_COPY_TO_HEADER>
 #endif
 
         Result<Asset3D> Asset3D::from_file(const std::filesystem::path& path) {

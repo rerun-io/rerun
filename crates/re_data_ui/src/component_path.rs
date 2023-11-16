@@ -16,7 +16,17 @@ impl DataUi for ComponentPath {
             component_name,
         } = self;
 
-        let store = ctx.store_db.store();
+        let store = if ctx.app_options.show_blueprint_in_timeline
+            && ctx
+                .store_context
+                .blueprint
+                .entity_db()
+                .is_logged_entity(entity_path)
+        {
+            ctx.store_context.blueprint.store()
+        } else {
+            ctx.store_db.store()
+        };
 
         if let Some(archetype_name) = component_name.indicator_component_archetype() {
             ui.label(format!(
@@ -31,7 +41,10 @@ impl DataUi for ComponentPath {
             }
             .data_ui(ctx, ui, verbosity, query);
         } else if let Some(entity_tree) = ctx.store_db.entity_db().tree.subtree(entity_path) {
-            if entity_tree.components.contains_key(component_name) {
+            if entity_tree
+                .time_histograms_per_component
+                .contains_key(component_name)
+            {
                 ui.label("<unset>");
             } else {
                 ui.label(format!(

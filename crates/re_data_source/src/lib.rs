@@ -12,6 +12,7 @@
 
 mod data_source;
 
+mod load_file;
 mod load_file_contents;
 mod web_sockets;
 

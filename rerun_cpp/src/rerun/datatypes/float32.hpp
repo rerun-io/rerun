@@ -9,6 +9,7 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
     template <typename T>
     class NumericBuilder;
 
@@ -18,34 +19,32 @@ namespace arrow {
     using FloatBuilder = NumericBuilder<FloatType>;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: A single-precision 32-bit IEEE 754 floating point number.
-        struct Float32 {
-            float value;
+namespace rerun::datatypes {
+    /// **Datatype**: A single-precision 32-bit IEEE 754 floating point number.
+    struct Float32 {
+        float value;
 
-          public:
-            Float32() = default;
+      public:
+        Float32() = default;
 
-            Float32(float value_) : value(value_) {}
+        Float32(float value_) : value(value_) {}
 
-            Float32& operator=(float value_) {
-                value = value_;
-                return *this;
-            }
+        Float32& operator=(float value_) {
+            value = value_;
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::FloatBuilder* builder, const Float32* elements, size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::FloatBuilder* builder, const Float32* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

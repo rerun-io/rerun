@@ -17,38 +17,36 @@ namespace arrow {
     class StructBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: Optional triangle indices for a mesh.
-        struct MeshProperties {
-            /// A flattened array of vertex indices that describe the mesh's triangles.
-            ///
-            /// Its length must be divisible by 3.
-            std::optional<std::vector<uint32_t>> indices;
+namespace rerun::datatypes {
+    /// **Datatype**: Optional triangle indices for a mesh.
+    struct MeshProperties {
+        /// A flattened array of vertex indices that describe the mesh's triangles.
+        ///
+        /// Its length must be divisible by 3.
+        std::optional<std::vector<uint32_t>> indices;
 
-          public:
-            MeshProperties() = default;
+      public:
+        MeshProperties() = default;
 
-            MeshProperties(std::optional<std::vector<uint32_t>> indices_)
-                : indices(std::move(indices_)) {}
+        MeshProperties(std::optional<std::vector<uint32_t>> indices_)
+            : indices(std::move(indices_)) {}
 
-            MeshProperties& operator=(std::optional<std::vector<uint32_t>> indices_) {
-                indices = std::move(indices_);
-                return *this;
-            }
+        MeshProperties& operator=(std::optional<std::vector<uint32_t>> indices_) {
+            indices = std::move(indices_);
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::StructBuilder* builder, const MeshProperties* elements, size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StructBuilder* builder, const MeshProperties* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

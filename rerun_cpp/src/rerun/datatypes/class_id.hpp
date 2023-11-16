@@ -9,6 +9,7 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
     template <typename T>
     class NumericBuilder;
 
@@ -18,34 +19,32 @@ namespace arrow {
     using UInt16Builder = NumericBuilder<UInt16Type>;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: A 16-bit ID representing a type of semantic class.
-        struct ClassId {
-            uint16_t id;
+namespace rerun::datatypes {
+    /// **Datatype**: A 16-bit ID representing a type of semantic class.
+    struct ClassId {
+        uint16_t id;
 
-          public:
-            ClassId() = default;
+      public:
+        ClassId() = default;
 
-            ClassId(uint16_t id_) : id(id_) {}
+        ClassId(uint16_t id_) : id(id_) {}
 
-            ClassId& operator=(uint16_t id_) {
-                id = id_;
-                return *this;
-            }
+        ClassId& operator=(uint16_t id_) {
+            id = id_;
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::UInt16Builder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::UInt16Builder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::UInt16Builder* builder, const ClassId* elements, size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::UInt16Builder* builder, const ClassId* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

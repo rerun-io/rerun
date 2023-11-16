@@ -17,42 +17,40 @@ namespace arrow {
     class StringBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        struct AffixFuzzer10 {
-            std::optional<std::string> single_string_optional;
+namespace rerun::components {
+    struct AffixFuzzer10 {
+        std::optional<std::string> single_string_optional;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            AffixFuzzer10() = default;
+      public:
+        AffixFuzzer10() = default;
 
-            AffixFuzzer10(std::optional<std::string> single_string_optional_)
-                : single_string_optional(std::move(single_string_optional_)) {}
+        AffixFuzzer10(std::optional<std::string> single_string_optional_)
+            : single_string_optional(std::move(single_string_optional_)) {}
 
-            AffixFuzzer10& operator=(std::optional<std::string> single_string_optional_) {
-                single_string_optional = std::move(single_string_optional_);
-                return *this;
-            }
+        AffixFuzzer10& operator=(std::optional<std::string> single_string_optional_) {
+            single_string_optional = std::move(single_string_optional_);
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::StringBuilder* builder, const AffixFuzzer10* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StringBuilder* builder, const AffixFuzzer10* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of AffixFuzzer10 components.
-            static Result<rerun::DataCell> to_data_cell(
-                const AffixFuzzer10* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of AffixFuzzer10 components.
+        static Result<rerun::DataCell> to_data_cell(
+            const AffixFuzzer10* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

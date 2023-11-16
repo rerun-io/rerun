@@ -1,4 +1,5 @@
 include "./blueprint/auto_space_views.fbs";
+include "./blueprint/entity_properties_component.fbs";
 include "./blueprint/panel_view.fbs";
 include "./blueprint/space_view_component.fbs";
 include "./blueprint/space_view_maximized.fbs";

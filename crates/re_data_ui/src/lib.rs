@@ -4,7 +4,7 @@
 
 use itertools::Itertools;
 
-use re_log_types::{DataCell, EntityPath, PathOp, TimePoint};
+use re_log_types::{DataCell, EntityPath, TimePoint};
 use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
@@ -175,25 +175,6 @@ fn format_cell(cell: &DataCell) -> String {
         cell.num_instances(),
         cell.component_name().short_name()
     )
-}
-
-impl DataUi for PathOp {
-    fn data_ui(
-        &self,
-        _ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        _verbosity: UiVerbosity,
-        _query: &re_arrow_store::LatestAtQuery,
-    ) {
-        match self {
-            PathOp::ClearComponents(entity_path) => {
-                ui.label(format!("ClearComponents: {entity_path}"))
-            }
-            PathOp::ClearRecursive(entity_path) => {
-                ui.label(format!("ClearRecursive: {entity_path}"))
-            }
-        };
-    }
 }
 
 // ---------------------------------------------------------------------------

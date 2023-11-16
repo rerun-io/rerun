@@ -3,12 +3,13 @@
 
 #include "asset3d.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
+
+namespace rerun::archetypes {
+    const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";
+}
 
 namespace rerun {
-    namespace archetypes {
-        const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Asset3D>::serialize(
         const archetypes::Asset3D& archetype
@@ -18,26 +19,26 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = ComponentBatch<rerun::components::Blob>(archetype.blob).serialize();
+            auto result = Collection<rerun::components::Blob>(archetype.blob).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
-            auto result = ComponentBatch<rerun::components::MediaType>(archetype.media_type.value())
-                              .serialize();
+            auto result =
+                Collection<rerun::components::MediaType>(archetype.media_type.value()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.transform.has_value()) {
             auto result =
-                ComponentBatch<rerun::components::OutOfTreeTransform3D>(archetype.transform.value())
+                Collection<rerun::components::OutOfTreeTransform3D>(archetype.transform.value())
                     .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = ComponentBatch<Asset3D::IndicatorComponent>(Asset3D::IndicatorComponent())
-                              .serialize();
+            auto result =
+                Collection<Asset3D::IndicatorComponent>(Asset3D::IndicatorComponent()).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

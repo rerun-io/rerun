@@ -15,7 +15,7 @@ namespace rerun {
 
 #define AnnotationInfo AnnotationInfoExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             AnnotationInfo(
                 uint16_t _id, std::optional<std::string> _label = std::nullopt,
@@ -26,7 +26,7 @@ namespace rerun {
             AnnotationInfo(uint16_t _id, datatypes::Rgba32 _color)
                 : id(_id), label(std::nullopt), color(_color) {}
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 #endif
 

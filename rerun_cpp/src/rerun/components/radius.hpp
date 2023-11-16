@@ -10,6 +10,7 @@
 #include <memory>
 
 namespace arrow {
+    /// \private
     template <typename T>
     class NumericBuilder;
 
@@ -19,42 +20,38 @@ namespace arrow {
     using FloatBuilder = NumericBuilder<FloatType>;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A Radius component.
-        struct Radius {
-            float value;
+namespace rerun::components {
+    /// **Component**: A Radius component.
+    struct Radius {
+        float value;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            Radius() = default;
+      public:
+        Radius() = default;
 
-            Radius(float value_) : value(value_) {}
+        Radius(float value_) : value(value_) {}
 
-            Radius& operator=(float value_) {
-                value = value_;
-                return *this;
-            }
+        Radius& operator=(float value_) {
+            value = value_;
+            return *this;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::FloatBuilder* builder, const Radius* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::FloatBuilder* builder, const Radius* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of Radius components.
-            static Result<rerun::DataCell> to_data_cell(
-                const Radius* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of Radius components.
+        static Result<rerun::DataCell> to_data_cell(const Radius* instances, size_t num_instances);
+    };
+} // namespace rerun::components

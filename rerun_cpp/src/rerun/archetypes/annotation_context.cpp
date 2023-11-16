@@ -3,13 +3,14 @@
 
 #include "annotation_context.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
+
+namespace rerun::archetypes {
+    const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
+        "rerun.components.AnnotationContextIndicator";
+}
 
 namespace rerun {
-    namespace archetypes {
-        const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
-            "rerun.components.AnnotationContextIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<
         archetypes::AnnotationContext>::serialize(const archetypes::AnnotationContext& archetype) {
@@ -19,12 +20,12 @@ namespace rerun {
 
         {
             auto result =
-                ComponentBatch<rerun::components::AnnotationContext>(archetype.context).serialize();
+                Collection<rerun::components::AnnotationContext>(archetype.context).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result = ComponentBatch<AnnotationContext::IndicatorComponent>(
+            auto result = Collection<AnnotationContext::IndicatorComponent>(
                               AnnotationContext::IndicatorComponent()
             )
                               .serialize();

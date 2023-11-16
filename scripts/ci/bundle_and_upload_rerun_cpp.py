@@ -102,8 +102,9 @@ def main() -> None:
         download_rerun_c(package_dir + "/lib", git_hash, args.platform_filter)
 
         logging.info("Copying files…")
-        shutil.copy("rerun_cpp/CMakeLists.txt", package_dir + "/CMakeLists.txt")
-        shutil.copytree("rerun_cpp/src/", package_dir + "/src/")
+        shutil.copytree(
+            src="rerun_cpp/", dst=package_dir + "/", ignore=shutil.ignore_patterns("tests", "docs"), dirs_exist_ok=True
+        )
 
         logging.info(f"Packaging {package_dir}.zip…")
         rerun_zip = shutil.make_archive(

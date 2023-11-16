@@ -1,5 +1,6 @@
 #[cfg(feature = "serde")]
 use re_log_types::EntityPath;
+use re_log_types::TimeInt;
 
 #[cfg(feature = "serde")]
 use crate::EditableAutoValue;
@@ -22,9 +23,27 @@ impl EntityPropertyMap {
     }
 
     #[inline]
-    pub fn set(&mut self, entity_path: EntityPath, prop: EntityProperties) {
+    pub fn get_opt(&self, entity_path: &EntityPath) -> Option<&EntityProperties> {
+        self.props.get(entity_path)
+    }
+
+    /// Updates the properties for a given entity path.
+    ///
+    /// If an existing value is already in the map for the given entity path, the new value is merged
+    /// with the existing value. When merging, auto values that were already set inside the map are
+    /// preserved.
+    #[inline]
+    pub fn update(&mut self, entity_path: EntityPath, prop: EntityProperties) {
         if prop == EntityProperties::default() {
             self.props.remove(&entity_path); // save space
+        } else if self.props.contains_key(&entity_path) {
+            let merged = self
+                .props
+                .get(&entity_path)
+                .cloned()
+                .unwrap_or_default()
+                .merge_with(&prop);
+            self.props.insert(entity_path, merged);
         } else {
             self.props.insert(entity_path, prop);
         }
@@ -44,6 +63,15 @@ impl EntityPropertyMap {
                     .get(key)
                     .map_or(true, |other_val| val.has_edits(other_val))
             })
+    }
+}
+
+#[cfg(feature = "serde")]
+impl FromIterator<(EntityPath, EntityProperties)> for EntityPropertyMap {
+    fn from_iter<T: IntoIterator<Item = (EntityPath, EntityProperties)>>(iter: T) -> Self {
+        Self {
+            props: iter.into_iter().collect(),
+        }
     }
 }
 
@@ -142,6 +170,44 @@ impl EntityProperties {
         }
     }
 
+    /// Merge this `EntityProperty` with the values from another `EntityProperty`.
+    ///
+    /// When merging, other values are preferred over self values unless they are auto
+    /// values, in which case self values are preferred.
+    ///
+    /// This is important to combine the base-layer of up-to-date auto-values with values
+    /// loaded from the Blueprint store where the Auto values are not up-to-date.
+    pub fn merge_with(&self, other: &Self) -> Self {
+        Self {
+            visible: other.visible,
+            visible_history: self.visible_history.with_child(&other.visible_history),
+            interactive: other.interactive,
+
+            color_mapper: other.color_mapper.or(&self.color_mapper).clone(),
+
+            pinhole_image_plane_distance: other
+                .pinhole_image_plane_distance
+                .or(&self.pinhole_image_plane_distance)
+                .clone(),
+
+            backproject_depth: other.backproject_depth.or(&self.backproject_depth).clone(),
+            depth_from_world_scale: other
+                .depth_from_world_scale
+                .or(&self.depth_from_world_scale)
+                .clone(),
+            backproject_radius_scale: other
+                .backproject_radius_scale
+                .or(&self.backproject_radius_scale)
+                .clone(),
+
+            transform_3d_visible: other
+                .transform_3d_visible
+                .or(&self.transform_3d_visible)
+                .clone(),
+            transform_3d_size: self.transform_3d_size.or(&other.transform_3d_size).clone(),
+        }
+    }
+
     /// Determine whether this `EntityProperty` has user-edits relative to another `EntityProperty`
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
@@ -172,25 +238,115 @@ impl EntityProperties {
 
 // ----------------------------------------------------------------------------
 
+/// One of the boundaries of the visible history.
+///
+/// For [`VisibleHistoryBoundary::RelativeToTimeCursor`] and [`VisibleHistoryBoundary::Absolute`],
+/// the value are either nanos or frames, depending on the type of timeline.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum VisibleHistoryBoundary {
+    /// Boundary is a value relative to the time cursor
+    RelativeToTimeCursor(i64),
+
+    /// Boundary is an absolute value
+    Absolute(i64),
+
+    /// The boundary extends to infinity.
+    Infinite,
+}
+
+impl VisibleHistoryBoundary {
+    /// UI label to use when [`VisibleHistoryBoundary::RelativeToTimeCursor`] is selected.
+    pub const RELATIVE_LABEL: &'static str = "Relative";
+
+    /// UI label to use when [`VisibleHistoryBoundary::Absolute`] is selected.
+    pub const ABSOLUTE_LABEL: &'static str = "Absolute";
+
+    /// UI label to use when [`VisibleHistoryBoundary::Infinite`] is selected.
+    pub const INFINITE_LABEL: &'static str = "Infinite";
+
+    /// Value when the boundary is set to the current time cursor.
+    pub const AT_CURSOR: Self = Self::RelativeToTimeCursor(0);
+
+    /// Label to use in the UI.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::RelativeToTimeCursor(_) => Self::RELATIVE_LABEL,
+            Self::Absolute(_) => Self::ABSOLUTE_LABEL,
+            Self::Infinite => Self::INFINITE_LABEL,
+        }
+    }
+}
+
+impl Default for VisibleHistoryBoundary {
+    fn default() -> Self {
+        Self::AT_CURSOR
+    }
+}
+
+/// Visible history bounds.
+#[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct VisibleHistory {
+    /// Low time boundary.
+    pub from: VisibleHistoryBoundary,
+
+    /// High time boundary.
+    pub to: VisibleHistoryBoundary,
+}
+
+impl VisibleHistory {
+    /// Value with the visible history feature is disabled.
+    pub const OFF: Self = Self {
+        from: VisibleHistoryBoundary::AT_CURSOR,
+        to: VisibleHistoryBoundary::AT_CURSOR,
+    };
+
+    pub const ALL: Self = Self {
+        from: VisibleHistoryBoundary::Infinite,
+        to: VisibleHistoryBoundary::Infinite,
+    };
+
+    pub fn from(&self, cursor: TimeInt) -> TimeInt {
+        match self.from {
+            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::Infinite => TimeInt::MIN,
+        }
+    }
+
+    pub fn to(&self, cursor: TimeInt) -> TimeInt {
+        match self.to {
+            VisibleHistoryBoundary::Absolute(value) => TimeInt::from(value),
+            VisibleHistoryBoundary::RelativeToTimeCursor(value) => cursor + TimeInt::from(value),
+            VisibleHistoryBoundary::Infinite => TimeInt::MAX,
+        }
+    }
+}
+
 /// When showing an entity in the history view, add this much history to it.
 #[derive(Clone, Copy, Default, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(default))]
 pub struct ExtraQueryHistory {
-    /// Zero = off.
-    pub nanos: i64,
+    /// Is the feature enabled?
+    pub enabled: bool,
 
-    /// Zero = off.
-    pub sequences: i64,
+    /// Visible history settings for time timelines
+    pub nanos: VisibleHistory,
+
+    /// Visible history settings for frame timelines
+    pub sequences: VisibleHistory,
 }
 
 impl ExtraQueryHistory {
     /// Multiply/and these together.
     #[allow(dead_code)]
     fn with_child(&self, child: &Self) -> Self {
-        Self {
-            nanos: self.nanos.max(child.nanos),
-            sequences: self.sequences.max(child.sequences),
+        if child.enabled {
+            *child
+        } else {
+            *self
         }
     }
 }

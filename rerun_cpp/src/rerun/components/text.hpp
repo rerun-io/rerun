@@ -18,64 +18,60 @@ namespace arrow {
     class StringBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A string of text, e.g. for labels and text documents.
-        struct Text {
-            rerun::datatypes::Utf8 value;
+namespace rerun::components {
+    /// **Component**: A string of text, e.g. for labels and text documents.
+    struct Text {
+        rerun::datatypes::Utf8 value;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            // Extensions to generated type defined in 'text_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'text_ext.cpp'
 
-            /// Construct `Text` from a null-terminated UTF8 string.
-            Text(const char* str) : value(str) {}
+        /// Construct `Text` from a null-terminated UTF8 string.
+        Text(const char* str) : value(str) {}
 
-            const char* c_str() const {
-                return value.c_str();
-            }
+        const char* c_str() const {
+            return value.c_str();
+        }
 
-          public:
-            Text() = default;
+      public:
+        Text() = default;
 
-            Text(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
+        Text(rerun::datatypes::Utf8 value_) : value(std::move(value_)) {}
 
-            Text& operator=(rerun::datatypes::Utf8 value_) {
-                value = std::move(value_);
-                return *this;
-            }
+        Text& operator=(rerun::datatypes::Utf8 value_) {
+            value = std::move(value_);
+            return *this;
+        }
 
-            Text(std::string value_) : value(std::move(value_)) {}
+        Text(std::string value_) : value(std::move(value_)) {}
 
-            Text& operator=(std::string value_) {
-                value = std::move(value_);
-                return *this;
-            }
+        Text& operator=(std::string value_) {
+            value = std::move(value_);
+            return *this;
+        }
 
-            /// Cast to the underlying Utf8 datatype
-            operator rerun::datatypes::Utf8() const {
-                return value;
-            }
+        /// Cast to the underlying Utf8 datatype
+        operator rerun::datatypes::Utf8() const {
+            return value;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::StringBuilder* builder, const Text* elements, size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StringBuilder* builder, const Text* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of Text components.
-            static Result<rerun::DataCell> to_data_cell(
-                const Text* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of Text components.
+        static Result<rerun::DataCell> to_data_cell(const Text* instances, size_t num_instances);
+    };
+} // namespace rerun::components

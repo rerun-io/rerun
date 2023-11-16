@@ -17,69 +17,66 @@ namespace arrow {
     class MemoryPool;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        /// **Component**: A position in 2D space.
-        struct Position2D {
-            rerun::datatypes::Vec2D xy;
+namespace rerun::components {
+    /// **Component**: A position in 2D space.
+    struct Position2D {
+        rerun::datatypes::Vec2D xy;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            // Extensions to generated type defined in 'position2d_ext.cpp'
+      public:
+        // Extensions to generated type defined in 'position2d_ext.cpp'
 
-            /// Construct Position2D from x/y values.
-            Position2D(float x, float y) : xy{x, y} {}
+        /// Construct Position2D from x/y values.
+        Position2D(float x, float y) : xy{x, y} {}
 
-            float x() const {
-                return xy.x();
-            }
+        float x() const {
+            return xy.x();
+        }
 
-            float y() const {
-                return xy.y();
-            }
+        float y() const {
+            return xy.y();
+        }
 
-          public:
-            Position2D() = default;
+      public:
+        Position2D() = default;
 
-            Position2D(rerun::datatypes::Vec2D xy_) : xy(xy_) {}
+        Position2D(rerun::datatypes::Vec2D xy_) : xy(xy_) {}
 
-            Position2D& operator=(rerun::datatypes::Vec2D xy_) {
-                xy = xy_;
-                return *this;
-            }
+        Position2D& operator=(rerun::datatypes::Vec2D xy_) {
+            xy = xy_;
+            return *this;
+        }
 
-            Position2D(std::array<float, 2> xy_) : xy(xy_) {}
+        Position2D(std::array<float, 2> xy_) : xy(xy_) {}
 
-            Position2D& operator=(std::array<float, 2> xy_) {
-                xy = xy_;
-                return *this;
-            }
+        Position2D& operator=(std::array<float, 2> xy_) {
+            xy = xy_;
+            return *this;
+        }
 
-            /// Cast to the underlying Vec2D datatype
-            operator rerun::datatypes::Vec2D() const {
-                return xy;
-            }
+        /// Cast to the underlying Vec2D datatype
+        operator rerun::datatypes::Vec2D() const {
+            return xy;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::FixedSizeListBuilder* builder, const Position2D* elements,
-                size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::FixedSizeListBuilder* builder, const Position2D* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of Position2D components.
-            static Result<rerun::DataCell> to_data_cell(
-                const Position2D* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of Position2D components.
+        static Result<rerun::DataCell> to_data_cell(
+            const Position2D* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

@@ -3,13 +3,14 @@
 
 #include "affix_fuzzer4.hpp"
 
-#include <rerun/component_batch_adapter_builtins.hpp>
+#include <rerun/collection_adapter_builtins.hpp>
+
+namespace rerun::archetypes {
+    const char AffixFuzzer4::INDICATOR_COMPONENT_NAME[] =
+        "rerun.testing.components.AffixFuzzer4Indicator";
+}
 
 namespace rerun {
-    namespace archetypes {
-        const char AffixFuzzer4::INDICATOR_COMPONENT_NAME[] =
-            "rerun.testing.components.AffixFuzzer4Indicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::AffixFuzzer4>::serialize(
         const archetypes::AffixFuzzer4& archetype
@@ -110,7 +111,7 @@ namespace rerun {
         }
         {
             auto result =
-                ComponentBatch<AffixFuzzer4::IndicatorComponent>(AffixFuzzer4::IndicatorComponent())
+                Collection<AffixFuzzer4::IndicatorComponent>(AffixFuzzer4::IndicatorComponent())
                     .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));

@@ -10,12 +10,14 @@ crates/re_types_builder/source_hash.txt
 *.o
 **/arrow/
 **/build/
+**/build-msvc/
 **/CMakeFiles/
 **/CMakeCache.txt
 **/Makefile
 **/cmake_install.cmake
 _deps
 **/.cache/
+**/rerun_cpp/docs/html
 
 # Rust compile target directory:
 **/target

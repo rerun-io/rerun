@@ -168,6 +168,34 @@ impl DataStore {
             .map_or(false, |table| table.all_components.contains(component))
     }
 
+    /// Find the earliest time at which something was logged for a given entity on the specified
+    /// timeline.
+    ///
+    /// # Temporal semantics
+    ///
+    /// Only considers temporal results—timeless data is ignored.
+    pub fn entity_min_time(&self, timeline: &Timeline, ent_path: &EntityPath) -> Option<TimeInt> {
+        let ent_path_hash = ent_path.hash();
+
+        let min_time = self
+            .tables
+            .get(&(*timeline, ent_path_hash))?
+            .buckets
+            .first_key_value()?
+            .1
+            .inner
+            .read()
+            .time_range
+            .min;
+
+        // handle case where no data was logged
+        if min_time == TimeInt::MIN {
+            None
+        } else {
+            Some(min_time)
+        }
+    }
+
     /// Queries the datastore for the cells of the specified `components`, as seen from the point
     /// of view of the so-called `primary` component.
     ///

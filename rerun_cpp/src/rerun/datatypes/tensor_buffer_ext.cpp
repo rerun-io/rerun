@@ -13,7 +13,7 @@ namespace rerun {
         struct TensorBufferExt {
 #define TensorBuffer TensorBufferExt
 
-            // [CODEGEN COPY TO HEADER START]
+            // <CODEGEN_COPY_TO_HEADER>
 
             // TODO(#3794): don't use std::vector here
 
@@ -64,7 +64,7 @@ namespace rerun {
             /// You may NOT call this for JPEG buffers.
             size_t num_elems() const;
 
-            // [CODEGEN COPY TO HEADER END]
+            // </CODEGEN_COPY_TO_HEADER>
         };
 
 #undef TensorBuffer
@@ -75,7 +75,7 @@ namespace rerun {
         /// Number of elements in the buffer.
         size_t TensorBufferExt::num_elems() const {
             switch (this->_tag) {
-                case detail::TensorBufferTag::NONE: {
+                case detail::TensorBufferTag::None: {
                     return 0;
                 }
                 case detail::TensorBufferTag::U8: {

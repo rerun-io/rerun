@@ -3,12 +3,13 @@
 
 #include "bar_chart.hpp"
 
-#include "../component_batch_adapter_builtins.hpp"
+#include "../collection_adapter_builtins.hpp"
+
+namespace rerun::archetypes {
+    const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
+}
 
 namespace rerun {
-    namespace archetypes {
-        const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
-    }
 
     Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::BarChart>::serialize(
         const archetypes::BarChart& archetype
@@ -18,15 +19,13 @@ namespace rerun {
         cells.reserve(1);
 
         {
-            auto result =
-                ComponentBatch<rerun::components::TensorData>(archetype.values).serialize();
+            auto result = Collection<rerun::components::TensorData>(archetype.values).serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
-            auto result =
-                ComponentBatch<BarChart::IndicatorComponent>(BarChart::IndicatorComponent())
-                    .serialize();
+            auto result = Collection<BarChart::IndicatorComponent>(BarChart::IndicatorComponent())
+                              .serialize();
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

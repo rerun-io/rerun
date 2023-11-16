@@ -6,52 +6,50 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun {
-    namespace datatypes {
-        const std::shared_ptr<arrow::DataType>& Vec2D::arrow_datatype() {
-            static const auto datatype =
-                arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 2);
-            return datatype;
+namespace rerun::datatypes {
+    const std::shared_ptr<arrow::DataType>& Vec2D::arrow_datatype() {
+        static const auto datatype =
+            arrow::fixed_size_list(arrow::field("item", arrow::float32(), false), 2);
+        return datatype;
+    }
+
+    Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Vec2D::new_arrow_array_builder(
+        arrow::MemoryPool* memory_pool
+    ) {
+        if (memory_pool == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
         }
 
-        Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Vec2D::new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        ) {
-            if (memory_pool == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-            }
+        return Result(std::make_shared<arrow::FixedSizeListBuilder>(
+            memory_pool,
+            std::make_shared<arrow::FloatBuilder>(memory_pool),
+            2
+        ));
+    }
 
-            return Result(std::make_shared<arrow::FixedSizeListBuilder>(
-                memory_pool,
-                std::make_shared<arrow::FloatBuilder>(memory_pool),
-                2
-            ));
+    rerun::Error Vec2D::fill_arrow_array_builder(
+        arrow::FixedSizeListBuilder* builder, const Vec2D* elements, size_t num_elements
+    ) {
+        if (builder == nullptr) {
+            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
+        }
+        if (elements == nullptr) {
+            return rerun::Error(
+                ErrorCode::UnexpectedNullArgument,
+                "Cannot serialize null pointer to arrow array."
+            );
         }
 
-        Error Vec2D::fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const Vec2D* elements, size_t num_elements
-        ) {
-            if (builder == nullptr) {
-                return Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-            }
-            if (elements == nullptr) {
-                return Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Cannot serialize null pointer to arrow array."
-                );
-            }
+        auto value_builder = static_cast<arrow::FloatBuilder*>(builder->value_builder());
 
-            auto value_builder = static_cast<arrow::FloatBuilder*>(builder->value_builder());
+        ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
+        static_assert(sizeof(elements[0].xy) == sizeof(elements[0]));
+        ARROW_RETURN_NOT_OK(value_builder->AppendValues(
+            elements[0].xy.data(),
+            static_cast<int64_t>(num_elements * 2),
+            nullptr
+        ));
 
-            ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements)));
-            static_assert(sizeof(elements[0].xy) == sizeof(elements[0]));
-            ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                elements[0].xy.data(),
-                static_cast<int64_t>(num_elements * 2),
-                nullptr
-            ));
-
-            return Error::ok();
-        }
-    } // namespace datatypes
-} // namespace rerun
+        return Error::ok();
+    }
+} // namespace rerun::datatypes

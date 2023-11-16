@@ -42,7 +42,7 @@ trait PythonObjectExt {
     /// Returns `true` if the object is a delegating component.
     ///
     /// Components can either use a native type, or a custom datatype. In the latter case, the
-    /// the component delegates its implementation to the datatype.
+    /// component delegates its implementation to the datatype.
     fn is_delegating_component(&self) -> bool;
 
     /// Returns `true` if the object is a non-delegating component.

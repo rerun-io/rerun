@@ -17,72 +17,71 @@ namespace arrow {
     class StructBuilder;
 } // namespace arrow
 
-namespace rerun {
-    namespace datatypes {
-        /// **Datatype**: Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+namespace rerun::datatypes {
+    /// **Datatype**: Representation of an affine transform via a 3x3 affine matrix paired with a translation.
+    ///
+    /// First applies the matrix, then the translation.
+    struct TranslationAndMat3x3 {
+        /// 3D translation, applied after the matrix.
+        std::optional<rerun::datatypes::Vec3D> translation;
+
+        /// 3x3 matrix for scale, rotation & shear.
+        std::optional<rerun::datatypes::Mat3x3> mat3x3;
+
+        /// If true, this transform is from the parent space to the space where the transform was logged.
         ///
-        /// First applies the matrix, then the translation.
-        struct TranslationAndMat3x3 {
-            /// 3D translation, applied after the matrix.
-            std::optional<rerun::datatypes::Vec3D> translation;
+        /// If false (default), the transform maps from this space to its parent,
+        /// i.e. the translation is the position in the parent space.
+        bool from_parent;
 
-            /// 3x3 matrix for scale, rotation & shear.
-            std::optional<rerun::datatypes::Mat3x3> mat3x3;
+      public:
+        // Extensions to generated type defined in 'translation_and_mat3x3_ext.cpp'
 
-            /// If true, this transform is from the parent space to the space where the transform was logged.
-            ///
-            /// If false (default), the transform maps from this space to its parent,
-            /// i.e. the translation is the position in the parent space.
-            bool from_parent;
+        /// Identity transformation.
+        ///
+        /// Applying this transform does not alter an entity's transformation.
+        /// It has all optional fields set to `std::nullopt`.
+        static const TranslationAndMat3x3 IDENTITY;
 
-          public:
-            // Extensions to generated type defined in 'translation_and_mat3x3_ext.cpp'
+        /// Creates a new 3D transform from translation/matrix.
+        ///
+        /// \param translation_ \copydoc TranslationAndMat3x3::translation
+        /// \param mat3x3_ \copydoc TranslationAndMat3x3::mat3x3
+        /// \param from_parent_ \copydoc TranslationAndMat3x3::from_parent
+        TranslationAndMat3x3(
+            const std::optional<Vec3D>& translation_, const std::optional<Mat3x3>& mat3x3_,
+            bool from_parent_
+        )
+            : translation(translation_), mat3x3(mat3x3_), from_parent(from_parent_) {}
 
-            static const TranslationAndMat3x3 IDENTITY;
+        /// From rotation only.
+        ///
+        /// \param mat3x3_ \copydoc TranslationAndMat3x3::mat3x3
+        /// \param from_parent_ \copydoc TranslationAndMat3x3::from_parent
+        TranslationAndMat3x3(const Mat3x3& mat3x3_, bool from_parent_ = false)
+            : translation(std::nullopt), mat3x3(mat3x3_), from_parent(from_parent_) {}
 
-            /// Creates a new 3D transform from translation/matrix.
-            ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
-            TranslationAndMat3x3(
-                const std::optional<Vec3D>& _translation, const std::optional<Mat3x3>& _mat3x3,
-                bool _from_parent
-            )
-                : translation(_translation), mat3x3(_mat3x3), from_parent(_from_parent) {}
+        /// From translation only.
+        ///
+        /// \param translation_ \copydoc TranslationAndMat3x3::translation
+        /// \param from_parent_ \copydoc TranslationAndMat3x3::from_parent
+        TranslationAndMat3x3(const Vec3D& translation_, bool from_parent_ = false)
+            : translation(translation_), mat3x3(std::nullopt), from_parent(from_parent_) {}
 
-            /// From rotation only.
-            ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
-            TranslationAndMat3x3(const Mat3x3& _mat3x3, bool _from_parent = false)
-                : translation(std::nullopt), mat3x3(_mat3x3), from_parent(_from_parent) {}
+      public:
+        TranslationAndMat3x3() = default;
 
-            /// From translation only.
-            ///
-            /// @param _from_parent If true, the transform maps from the parent space to the space
-            /// where the transform was logged. Otherwise, the transform maps from the space to its
-            /// parent.
-            TranslationAndMat3x3(const Vec3D& _translation, bool _from_parent = false)
-                : translation(_translation), mat3x3(std::nullopt), from_parent(_from_parent) {}
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-          public:
-            TranslationAndMat3x3() = default;
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
-
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::StructBuilder* builder, const TranslationAndMat3x3* elements,
-                size_t num_elements
-            );
-        };
-    } // namespace datatypes
-} // namespace rerun
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::StructBuilder* builder, const TranslationAndMat3x3* elements, size_t num_elements
+        );
+    };
+} // namespace rerun::datatypes

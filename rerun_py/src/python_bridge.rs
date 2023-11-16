@@ -782,9 +782,7 @@ fn add_space_view(
     space_view.display_name = name.into();
     space_view.entities_determined_by_user = true;
 
-    let entity_path = parse_entity_path(
-        format!("{}/{}", SpaceViewComponent::SPACEVIEW_PREFIX, space_view.id).as_str(),
-    );
+    let entity_path = space_view.entity_path();
 
     let space_view = SpaceViewComponent { space_view };
 
@@ -848,7 +846,7 @@ fn log_arrow_msg(
 
     // It's important that we don't hold the session lock while building our arrow component.
     // the API we call to back through pyarrow temporarily releases the GIL, which can cause
-    // cause a deadlock.
+    // a deadlock.
     let row = crate::arrow::build_data_row_from_components(
         &entity_path,
         components,

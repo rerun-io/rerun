@@ -6,12 +6,16 @@
 #endif
 
 namespace rerun {
+    /// Configuration singleton that applies to the entire SDK.
     struct RerunGlobalConfig {
         static RerunGlobalConfig& instance();
 
         RerunGlobalConfig(const RerunGlobalConfig&) = delete;
         RerunGlobalConfig& operator=(const RerunGlobalConfig&) = delete;
 
+        /// Whether `RecordingStream`s are enabled by default.
+        ///
+        /// \see set_default_enabled, is_default_enabled
         std::atomic_bool default_enabled;
 
       private:
@@ -23,7 +27,7 @@ namespace rerun {
     /// Change whether `RecordingStream`s are enabled by default.
     ///
     /// This governs the creation of new `RecordingStream`s. If `default_enabled` is
-    /// is `false`, `RecordingStreams` will be created in the disabled state. Changing
+    /// `false`, `RecordingStreams` will be created in the disabled state. Changing
     /// the value of `default_enabled` will not affect existing `RecordingStream`s.
     ///
     /// Note that regardless of usage of this API, the value of default_enabled will

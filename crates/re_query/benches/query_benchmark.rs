@@ -195,7 +195,7 @@ fn build_points_rows(paths: &[EntityPath], num_points: usize) -> Vec<DataRow> {
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 let mut row = DataRow::from_cells2(
-                    RowId::ZERO,
+                    RowId::random(),
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     num_points as _,
@@ -221,7 +221,7 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 let mut row = DataRow::from_cells2(
-                    RowId::ZERO,
+                    RowId::random(),
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     num_strings as _,
@@ -248,8 +248,14 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
 }
 
 fn insert_rows<'a>(msgs: impl Iterator<Item = &'a DataRow>) -> DataStore {
-    let mut store = DataStore::new(InstanceKey::name(), Default::default());
-    msgs.for_each(|row| store.insert_row(row).unwrap());
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
+    msgs.for_each(|row| {
+        store.insert_row(row).unwrap();
+    });
     store
 }
 

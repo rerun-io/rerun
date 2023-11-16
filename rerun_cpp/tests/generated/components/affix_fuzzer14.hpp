@@ -17,48 +17,45 @@ namespace arrow {
     class MemoryPool;
 } // namespace arrow
 
-namespace rerun {
-    namespace components {
-        struct AffixFuzzer14 {
-            rerun::datatypes::AffixFuzzer3 single_required_union;
+namespace rerun::components {
+    struct AffixFuzzer14 {
+        rerun::datatypes::AffixFuzzer3 single_required_union;
 
-            /// Name of the component, used for serialization.
-            static const char NAME[];
+        /// Name of the component, used for serialization.
+        static const char NAME[];
 
-          public:
-            AffixFuzzer14() = default;
+      public:
+        AffixFuzzer14() = default;
 
-            AffixFuzzer14(rerun::datatypes::AffixFuzzer3 single_required_union_)
-                : single_required_union(std::move(single_required_union_)) {}
+        AffixFuzzer14(rerun::datatypes::AffixFuzzer3 single_required_union_)
+            : single_required_union(std::move(single_required_union_)) {}
 
-            AffixFuzzer14& operator=(rerun::datatypes::AffixFuzzer3 single_required_union_) {
-                single_required_union = std::move(single_required_union_);
-                return *this;
-            }
+        AffixFuzzer14& operator=(rerun::datatypes::AffixFuzzer3 single_required_union_) {
+            single_required_union = std::move(single_required_union_);
+            return *this;
+        }
 
-            /// Cast to the underlying AffixFuzzer3 datatype
-            operator rerun::datatypes::AffixFuzzer3() const {
-                return single_required_union;
-            }
+        /// Cast to the underlying AffixFuzzer3 datatype
+        operator rerun::datatypes::AffixFuzzer3() const {
+            return single_required_union;
+        }
 
-            /// Returns the arrow data type this type corresponds to.
-            static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-            /// Creates a new array builder with an array of this type.
-            static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-                arrow::MemoryPool* memory_pool
-            );
+        /// Creates a new array builder with an array of this type.
+        static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
+            arrow::MemoryPool* memory_pool
+        );
 
-            /// Fills an arrow array builder with an array of this type.
-            static Error fill_arrow_array_builder(
-                arrow::DenseUnionBuilder* builder, const AffixFuzzer14* elements,
-                size_t num_elements
-            );
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const AffixFuzzer14* elements, size_t num_elements
+        );
 
-            /// Creates a Rerun DataCell from an array of AffixFuzzer14 components.
-            static Result<rerun::DataCell> to_data_cell(
-                const AffixFuzzer14* instances, size_t num_instances
-            );
-        };
-    } // namespace components
-} // namespace rerun
+        /// Creates a Rerun DataCell from an array of AffixFuzzer14 components.
+        static Result<rerun::DataCell> to_data_cell(
+            const AffixFuzzer14* instances, size_t num_instances
+        );
+    };
+} // namespace rerun::components

@@ -33,7 +33,11 @@ fn bench_points(c: &mut criterion::Criterion) {
     let ent_path = EntityPath::from("points");
 
     let store = {
-        let mut store = DataStore::new(InstanceKey::name(), Default::default());
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
 
         let positions = vec![Position3D::new(0.1, 0.2, 0.3); NUM_POINTS];
         let colors = vec![Color::from(0xffffffff); NUM_POINTS];

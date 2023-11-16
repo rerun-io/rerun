@@ -191,7 +191,7 @@ impl ViewPartSystem for Arrows3DPart {
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.lines2d,
-            |_ctx, ent_path, arch_view, ent_context| {
+            |_ctx, ent_path, _ent_props, arch_view, ent_context| {
                 self.process_arch_view(query, &arch_view, ent_path, ent_context)
             },
         )?;
