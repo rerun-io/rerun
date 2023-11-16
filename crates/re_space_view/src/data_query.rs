@@ -162,6 +162,7 @@ impl DataQuery for SpaceViewContents {
             entity_path: entity_path.clone(),
             view_parts,
             resolved_properties,
+            individual_properties: entity_overrides.get_opt(entity_path).cloned(),
             override_path: self
                 .entity_path()
                 .join(&SpaceViewContents::PROPERTIES_PREFIX.into())
@@ -219,12 +220,14 @@ impl DataBlueprintGroup {
                 }
 
                 let override_path = base_entity_path.join(&props_path).join(&entity_path);
+                let individual_properties = overrides.get_opt(&entity_path).cloned();
 
                 data_results.insert(DataResultNode {
                     data_result: DataResult {
                         entity_path,
                         view_parts,
                         resolved_properties,
+                        individual_properties,
                         override_path,
                     },
                     children: Default::default(),
@@ -251,11 +254,13 @@ impl DataBlueprintGroup {
 
         children.append(&mut recursive_children);
 
+        let individual_properties = overrides.get_opt(&group_path).cloned();
         data_results.insert(DataResultNode {
             data_result: DataResult {
                 entity_path: group_path,
                 view_parts: group_view_parts,
                 resolved_properties: group_resolved_properties,
+                individual_properties,
                 override_path: group_override_path,
             },
             children,

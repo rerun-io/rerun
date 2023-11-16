@@ -18,7 +18,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks_cpp.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
-      FULL: 'true'
+      FULL: "true"
     secrets: inherit
 
   # Check that a CLEAN container with just `cargo` on it can build rerun:
@@ -69,16 +69,15 @@ jobs:
 
   upload-web:
     name: "Upload Web"
-    needs: [build-linux, build-web]
+    needs: [build-web]
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
-      RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
   build-web-demo:
     name: "Build Web Demo"
-    needs: [build-linux, build-web]
+    needs: [build-wheel-linux, build-web]
     uses: ./.github/workflows/reusable_build_web_demo.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
@@ -181,88 +180,102 @@ jobs:
 
   # -----------------------------------------------------------------------------------
 
-  build-linux:
+  build-wheel-linux:
     needs: [checks]
-    name: "Linux: Build/Test Wheels"
-    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    name: "Linux: Build Wheels"
+    uses: ./.github/workflows/reusable_build_wheels.yml
     with:
       CONCURRENCY: push-linux-${{ github.ref_name }}
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: linux-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
-  build-windows:
+  build-wheel-windows:
     needs: [checks]
-    name: "Windows: Build/Test Wheels"
-    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    name: "Windows: Build Wheels"
+    uses: ./.github/workflows/reusable_build_wheels.yml
     with:
       CONCURRENCY: push-windows-${{ github.ref_name }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
-      RRD_ARTIFACT_NAME: ""
     secrets: inherit
 
-  build-macos-arm:
+  build-wheel-macos-arm:
     needs: [checks]
-    name: "Macos-Arm: Build/Test Wheels"
-    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    name: "Macos-Arm: Build Wheels"
+    uses: ./.github/workflows/reusable_build_wheels.yml
     with:
       CONCURRENCY: push-macos-arm-${{ github.ref_name }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RRD_ARTIFACT_NAME: ""
     secrets: inherit
 
-  build-macos-intel:
+  build-wheel-macos-intel:
     needs: [checks]
-    name: "Macos-Intel: Build/Test Wheels"
-    uses: ./.github/workflows/reusable_build_and_test_wheels.yml
+    name: "Macos-Intel: Build Wheels"
+    uses: ./.github/workflows/reusable_build_wheels.yml
     with:
       CONCURRENCY: push-macos-intel-${{ github.ref_name }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
-      RRD_ARTIFACT_NAME: ""
     secrets: inherit
+
+  test-wheel-linux:
+    needs: [checks, build-wheel-linux]
+    name: "Linux: Test Wheels"
+    uses: ./.github/workflows/reusable_test_wheels.yml
+    with:
+      CONCURRENCY: push-linux-${{ github.ref_name }}
+      PLATFORM: linux
+      WHEEL_ARTIFACT_NAME: linux-wheel
+    secrets: inherit
+
+  test-wheel-windows:
+    needs: [checks, build-wheel-windows]
+    name: "Windows: Test Wheels"
+    uses: ./.github/workflows/reusable_test_wheels.yml
+    with:
+      CONCURRENCY: push-windows-${{ github.ref_name }}
+      PLATFORM: windows
+      WHEEL_ARTIFACT_NAME: windows-wheel
+    secrets: inherit
+
+  # NOTE: We currently don't test wheels on macos-arm/macos-intel
 
   upload-wheels-linux:
     name: "Linux: Upload Wheels"
-    needs: [build-linux]
+    needs: [build-wheel-linux]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       CONCURRENCY: push-linux-${{ github.ref_name }}
       WHEEL_ARTIFACT_NAME: linux-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
   upload-wheels-windows:
     name: "Windows: Upload Wheels"
-    needs: [build-linux, build-windows]
+    needs: [build-wheel-windows]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       CONCURRENCY: push-windows-${{ github.ref_name }}
       WHEEL_ARTIFACT_NAME: windows-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
   upload-wheels-macos-arm:
     name: "Macos-Arm: Upload Wheels"
-    needs: [build-linux, build-macos-arm]
+    needs: [build-wheel-macos-arm]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       CONCURRENCY: push-macos-arm-${{ github.ref_name }}
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
   upload-wheels-macos-intel:
     name: "Macos-Intel: Upload Wheels"
-    needs: [build-linux, build-macos-intel]
+    needs: [build-wheel-macos-intel]
     uses: ./.github/workflows/reusable_upload_wheels.yml
     with:
       CONCURRENCY: push-macos-intel-${{ github.ref_name }}
       WHEEL_ARTIFACT_NAME: macos-intel-wheel
-      RRD_ARTIFACT_NAME: linux-rrd
     secrets: inherit
 
   generate-pip-index:
@@ -379,3 +392,4 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}
       RELEASE_VERSION: prerelease
     secrets: inherit
+

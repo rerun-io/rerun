@@ -110,6 +110,13 @@ pub struct DataCell {
     pub inner: Arc<DataCellInner>,
 }
 
+impl DataCell {
+    #[inline]
+    pub fn as_ptr(&self) -> *const DataCellInner {
+        Arc::as_ptr(&self.inner)
+    }
+}
+
 impl PartialEq for DataCell {
     fn eq(&self, rhs: &Self) -> bool {
         let Self { inner: lhs_inner } = self;
