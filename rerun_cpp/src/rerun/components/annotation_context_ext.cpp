@@ -17,7 +17,7 @@ namespace rerun::components {
     /// This will then create a new collection of `rerun::datatypes::ClassDescriptionMapElem`.
     ///
     /// _Implementation note_:
-    /// We handle this type of conversion in a generic `rerun::ContainerAdapater`.
+    /// We handle this type of conversion in a generic `rerun::ContainerAdapter`.
     /// However, it is *still* necessary since initializer list overload resolution is handled
     /// in a special way by the compiler, making this case not being covered by the general container case.
     template <

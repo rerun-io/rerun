@@ -49,8 +49,8 @@ namespace rerun::archetypes {
         // But rerun collections are strictly immutable, so create a new one if necessary.
         bool overwrite_height = !shape[0].name.has_value();
         bool overwrite_width = !shape[1].name.has_value();
-
         bool overwrite_depth = shape.size() > 2 && !shape[2].name.has_value();
+
         if (overwrite_height || overwrite_width || overwrite_depth) {
             auto new_shape = shape.to_vector();
 
