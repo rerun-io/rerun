@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 
 use re_data_store::{EntityPath, StoreDb};
-use re_log_types::{DataCell, DataRow, RowId, TimePoint};
-use re_types::Loggable as _;
+use re_log_types::{DataRow, RowId, TimePoint};
+use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
     ViewerContext,
@@ -452,17 +452,18 @@ pub fn sync_space_view(
 }
 
 pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
-    let entity_path = space_view_id.as_entity_path();
-
     // TODO(jleibs): Seq instead of timeless?
     let timepoint = TimePoint::timeless();
 
-    let cell = DataCell::from_arrow_empty(
-        SpaceViewComponent::name(),
-        SpaceViewComponent::arrow_datatype(),
-    );
-
-    let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell).unwrap();
-
-    deltas.push(row);
+    if let Ok(row) = DataRow::from_component_batches(
+        RowId::random(),
+        timepoint,
+        space_view_id.as_entity_path(),
+        Clear::recursive()
+            .as_component_batches()
+            .iter()
+            .map(|b| b.as_ref()),
+    ) {
+        deltas.push(row);
+    }
 }
