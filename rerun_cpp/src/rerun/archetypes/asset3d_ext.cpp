@@ -59,7 +59,7 @@ namespace rerun::archetypes {
         file.read(reinterpret_cast<char*>(data.data()), length);
 
         return Asset3D::from_bytes(
-            Collection<uint8_t>::borrow(data.data(), data.size()),
+            Collection<uint8_t>::take_ownership(std::move(data)),
             Asset3D::guess_media_type(path)
         );
     }
