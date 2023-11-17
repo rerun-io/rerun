@@ -135,24 +135,34 @@ impl DataStore {
     }
 }
 
-#[cfg(tests)]
+#[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use ahash::HashSet;
 
     use re_log_types::{
-        example_components::{MyColor, MyPoint, MyPoints},
-        DataRow, DataTable, EntityPath, RowId, TableId, Time, TimePoint, Timeline,
+        example_components::{MyColor, MyPoint},
+        DataRow, RowId, StoreId, TimePoint, Timeline,
     };
     use re_types_core::{components::InstanceKey, Loggable as _};
 
-    use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber, StoreSubscriberHandle};
+    use crate::{DataStore, GarbageCollectionOptions, StoreSubscriber};
 
     use super::*;
 
     /// A simple [`StoreSubscriber`] for test purposes that just accumulates [`StoreEvent`]s.
-    #[derive(Default, Debug)]
+    #[derive(Debug)]
     struct AllEvents {
+        store_ids: HashSet<StoreId>,
         events: Vec<StoreEvent>,
+    }
+
+    impl AllEvents {
+        fn new(store_ids: impl IntoIterator<Item = StoreId>) -> Self {
+            Self {
+                store_ids: store_ids.into_iter().collect(),
+                events: Vec::new(),
+            }
+        }
     }
 
     impl StoreSubscriber for AllEvents {
@@ -169,7 +179,13 @@ mod tests {
         }
 
         fn on_events(&mut self, events: &[StoreEvent]) {
-            self.events.extend(events.to_owned());
+            self.events.extend(
+                events
+                    .iter()
+                    // NOTE: `cargo` implicitly runs tests in parallel!
+                    .filter(|e| self.store_ids.contains(&e.store_id))
+                    .cloned(),
+            );
         }
     }
 
@@ -188,7 +204,8 @@ mod tests {
 
         let mut expected_events = Vec::new();
 
-        let view_handle = DataStore::register_subscriber(Box::<AllEvents>::default());
+        let view = AllEvents::new([store1.id().clone(), store2.id().clone()]);
+        let view_handle = DataStore::register_subscriber(Box::new(view));
 
         let timeline_frame = Timeline::new_sequence("frame");
         let timeline_other = Timeline::new_temporal("other");
@@ -246,6 +263,7 @@ mod tests {
         expected_events.extend(store2.gc(GarbageCollectionOptions::gc_everything()).0);
 
         DataStore::with_subscriber::<AllEvents, _, _>(view_handle, |got| {
+            similar_asserts::assert_eq!(expected_events.len(), got.events.len());
             similar_asserts::assert_eq!(expected_events, got.events);
         });
 

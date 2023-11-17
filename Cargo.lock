@@ -4457,8 +4457,11 @@ dependencies = [
  "egui",
  "itertools 0.11.0",
  "nohash-hasher",
+ "once_cell",
  "re_data_store",
+ "re_log_types",
  "re_tracing",
+ "re_types_core",
  "re_viewer_context",
  "serde",
  "slotmap",
@@ -4875,6 +4878,7 @@ dependencies = [
  "re_viewer_context",
  "rmp-serde",
  "serde",
+ "slotmap",
  "tinyvec",
 ]
 

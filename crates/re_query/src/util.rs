@@ -1,5 +1,5 @@
 use re_arrow_store::{DataStore, LatestAtQuery, RangeQuery, TimeInt, TimeRange, Timeline};
-use re_data_store::{ExtraQueryHistory, VisibleHistory};
+use re_data_store::ExtraQueryHistory;
 use re_log_types::EntityPath;
 use re_types_core::Archetype;
 
@@ -17,14 +17,15 @@ pub fn query_archetype_with_history<'a, A: Archetype + 'a, const N: usize>(
         re_log_types::TimeType::Sequence => history.sequences,
     };
 
-    if !history.enabled || visible_history == VisibleHistory::OFF {
-        let latest_query = LatestAtQuery::new(*timeline, *time);
+    let min_time = visible_history.from(*time);
+    let max_time = visible_history.to(*time);
+
+    if !history.enabled || min_time == max_time {
+        let latest_query = LatestAtQuery::new(*timeline, min_time);
         let latest = query_archetype::<A>(store, &latest_query, ent_path)?;
 
         Ok(itertools::Either::Left(std::iter::once(latest)))
     } else {
-        let min_time = visible_history.from(*time);
-        let max_time = visible_history.to(*time);
         let range_query = RangeQuery::new(*timeline, TimeRange::new(min_time, max_time));
 
         let range = range_archetype::<A, N>(store, &range_query, ent_path);

@@ -1,18 +1,20 @@
+use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{DataQuery, PropertyResolver, ScreenshotMode, SpaceViewContents};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
-    DataResult, DynSpaceViewClass, PerSystemDataResults, SpaceViewClassName, SpaceViewHighlights,
-    SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, ViewerContext,
+    DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClassName,
+    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, StoreContext,
+    ViewerContext,
 };
 
 use crate::{
     space_info::SpaceInfoCollection,
     space_view_heuristics::{
         compute_heuristic_context_for_entities, is_entity_processed_by_class,
-        reachable_entities_from_root, EntitiesPerSystem,
+        reachable_entities_from_root,
     },
 };
 
@@ -138,8 +140,14 @@ impl SpaceViewBlueprint {
         ctx: &mut ViewerContext<'_>,
         spaces_info: &SpaceInfoCollection,
         view_state: &mut dyn SpaceViewState,
-        entities_per_system_for_class: &EntitiesPerSystem,
     ) {
+        let empty_map = IntMap::default();
+
+        let entities_per_system_for_class = ctx
+            .entities_per_system_per_class
+            .get(self.class_name())
+            .unwrap_or(&empty_map);
+
         if !self.entities_determined_by_user {
             // Add entities that have been logged since we were created.
             let reachable_entities = reachable_entities_from_root(&self.space_origin, spaces_info);
@@ -228,7 +236,9 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let data_results = self.contents.execute_query(self, ctx);
+        let data_results =
+            self.contents
+                .execute_query(self, ctx.store_context, ctx.entities_per_system_per_class);
 
         let mut per_system_data_results = PerSystemDataResults::default();
         {
@@ -284,7 +294,7 @@ impl SpaceViewBlueprint {
     ) {
         re_tracing::profile_function!();
 
-        let heuristic_context = compute_heuristic_context_for_entities(ctx);
+        let heuristic_context = compute_heuristic_context_for_entities(ctx.store_db);
 
         let mut entities = Vec::new();
         tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
@@ -342,32 +352,32 @@ impl SpaceViewBlueprint {
         self.id.as_entity_path()
     }
 
-    pub fn root_data_result(&self, ctx: &ViewerContext<'_>) -> DataResult {
+    pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {
         let entity_path = self.entity_path();
 
-        let props = ctx
-            .store_context
+        let individual_properties = ctx
             .blueprint
             .store()
             .query_timeless_component::<EntityPropertiesComponent>(&self.entity_path())
-            .map_or_else(
-                || {
-                    let mut props = EntityProperties::default();
-                    // better defaults for the time series space view
-                    // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
-                    if self.class_name == TimeSeriesSpaceView::NAME {
-                        props.visible_history.nanos = VisibleHistory::ALL;
-                        props.visible_history.sequences = VisibleHistory::ALL;
-                    }
-                    props
-                },
-                |result| result.value.props,
-            );
+            .map(|result| result.value.props);
+
+        let resolved_properties = individual_properties.clone().unwrap_or_else(|| {
+            let mut props = EntityProperties::default();
+            // better defaults for the time series space view
+            // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
+            if self.class_name == TimeSeriesSpaceView::NAME {
+                props.visible_history.nanos = VisibleHistory::ALL;
+                props.visible_history.sequences = VisibleHistory::ALL;
+            }
+            props
+        });
 
         DataResult {
             entity_path: entity_path.clone(),
             view_parts: Default::default(),
-            resolved_properties: props,
+            is_group: true,
+            resolved_properties,
+            individual_properties,
             override_path: entity_path,
         }
     }
@@ -378,9 +388,9 @@ impl PropertyResolver for SpaceViewBlueprint {
     ///
     /// We start with the auto properties for the `SpaceView` as the base layer and
     /// then incrementally override from there.
-    fn resolve_entity_overrides(&self, ctx: &ViewerContext<'_>) -> EntityPropertyMap {
+    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityPropertyMap {
         re_tracing::profile_function!();
-        let blueprint = ctx.store_context.blueprint;
+        let blueprint = ctx.blueprint;
 
         let mut prop_map = self.auto_properties.clone();
 
@@ -402,7 +412,7 @@ impl PropertyResolver for SpaceViewBlueprint {
         prop_map
     }
 
-    fn resolve_root_override(&self, ctx: &ViewerContext<'_>) -> EntityProperties {
+    fn resolve_root_override(&self, ctx: &StoreContext<'_>) -> EntityProperties {
         self.root_data_result(ctx).resolved_properties
     }
 }
