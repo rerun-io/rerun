@@ -225,11 +225,6 @@ impl DataStore {
                 continue;
             }
 
-            let metadata_dropped_size_bytes =
-                row_id.total_size_bytes() + timepoint.total_size_bytes();
-            self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
-            num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
-
             let mut diff: Option<StoreDiff> = None;
 
             // find all tables that could possibly contain this `RowId`
@@ -264,6 +259,15 @@ impl DataStore {
                     }
                     num_bytes_to_drop -= num_bytes_removed as f64;
                 }
+            }
+
+            // Only decrement the metadata size trackers if we're actually certain that we'll drop
+            // that RowId in the end.
+            if diff.is_some() {
+                let metadata_dropped_size_bytes =
+                    row_id.total_size_bytes() + timepoint.total_size_bytes();
+                self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
+                num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
             }
 
             diffs.extend(diff);
