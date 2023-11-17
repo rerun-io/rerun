@@ -97,6 +97,8 @@ impl SelectionPanel {
             return;
         }
 
+        ctx.rec_cfg.visible_history_highlight.clear();
+
         let num_selections = ctx.selection().len();
         let selection = ctx.selection().to_vec();
         for (i, item) in selection.iter().enumerate() {

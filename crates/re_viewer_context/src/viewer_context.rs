@@ -130,5 +130,5 @@ pub struct RecordingConfig {
     ///
     /// This is used during UI interactions to show the range of time that is being edited.
     #[serde(skip)]
-    pub visible_history_highlight: Option<TimeRange>,
+    pub visible_history_highlight: Vec<TimeRange>,
 }

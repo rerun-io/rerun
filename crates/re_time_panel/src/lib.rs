@@ -266,7 +266,7 @@ impl TimePanel {
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
-        if let Some(time_range) = ctx.rec_cfg.visible_history_highlight {
+        for time_range in &ctx.rec_cfg.visible_history_highlight {
             let x_from = self.time_ranges_ui.x_from_time_f32(time_range.min.into());
             let x_to = self.time_ranges_ui.x_from_time_f32(time_range.max.into());
 
