@@ -167,12 +167,20 @@ namespace rerun {
         ///
         /// This is not done as a `CollectionAdapter` since it tends to cause deduction issues
         /// (since there's special rules for overload resolution for initializer lists)
-        Collection(std::initializer_list<TElement> data)
-            : _num_instances(data.size()), _ownership(CollectionOwnership::VectorOwned) {
-            // Don't assign, since the vector is in an undefined state and assigning may
-            // attempt to free data.
-            // TODO: use smallbuf optimization if applicable.
-            new (&_storage.vector) std::vector<TElement>(data);
+        Collection(std::initializer_list<TElement> data) : _num_instances(data.size()) {
+            if (data.size() <= CollectionStorage<TElement>::small_buf_capacity) {
+                size_t i = 0;
+                for (auto& elem : data) {
+                    new (&_storage.small_buf[i]) TElement(std::move(elem));
+                    ++i;
+                }
+                _ownership = CollectionOwnership::SmallBufOwned;
+            } else {
+                // Don't assign, since the vector is in an undefined state and assigning may
+                // attempt to free data.
+                new (&_storage.vector) std::vector<TElement>(data);
+                _ownership = CollectionOwnership::VectorOwned;
+            }
         }
 
         /// Borrows binary compatible data into the collection.
@@ -232,10 +240,18 @@ namespace rerun {
 
         /// Takes ownership of a single element, moving it into the collection.
         static Collection<TElement> take_ownership(TElement&& data) {
-            // TODO(andreas): there should be a special path here to avoid allocating a vector.
-            std::vector<TElement> elements;
-            elements.emplace_back(std::move(data));
-            return take_ownership(std::move(elements));
+            if (CollectionStorage<TElement>::small_buf_capacity >= 1) {
+                Collection<TElement> batch;
+                batch._num_instances = 1;
+                batch._ownership = CollectionOwnership::SmallBufOwned;
+                new (&batch._storage.small_buf[0]) TElement(std::move(data));
+                return batch;
+            } else {
+                // TODO(andreas): there should be a special path here to avoid allocating a vector.
+                std::vector<TElement> elements;
+                elements.emplace_back(std::move(data));
+                return take_ownership(std::move(elements));
+            }
         }
 
         // TODO: what about having several elements that fit into the small buffer.
