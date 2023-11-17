@@ -1,9 +1,10 @@
 use nohash_hasher::IntMap;
-use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
+use re_data_store::{EntityPath, EntityProperties, EntityTree, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents};
 use re_space_view_time_series::TimeSeriesSpaceView;
+use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults,
     SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry,
@@ -21,28 +22,28 @@ use crate::{
 // ----------------------------------------------------------------------------
 
 /// A view of a space.
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone)]
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
     class_name: SpaceViewClassName,
-
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     pub space_origin: EntityPath,
 
-    /// The data blueprint tree, has blueprint settings for all blueprint groups and entities in this spaceview.
-    /// It determines which entities are part of the spaceview.
+    /// The legacy data blueprint tree
     pub contents: SpaceViewContents,
+
+    /// The data queries that are part of this space view.
+    pub queries: Vec<DataQueryId>,
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
 
     /// Auto Properties
     // TODO(jleibs): This needs to be per-query
-    #[serde(skip)]
     pub auto_properties: EntityPropertyMap,
 }
 
@@ -56,6 +57,7 @@ impl Default for SpaceViewBlueprint {
             class_name: SpaceViewClassName::invalid(),
             space_origin: EntityPath::root(),
             contents: SpaceViewContents::new(id),
+            queries: Default::default(),
             entities_determined_by_user: Default::default(),
             auto_properties: Default::default(),
         }
@@ -71,6 +73,7 @@ impl SpaceViewBlueprint {
             class_name,
             space_origin,
             contents,
+            queries,
             entities_determined_by_user,
             auto_properties: _,
         } = self;
@@ -80,6 +83,7 @@ impl SpaceViewBlueprint {
             || class_name != &other.class_name
             || space_origin != &other.space_origin
             || contents.has_edits(&other.contents)
+            || queries != &other.queries
             || entities_determined_by_user != &other.entities_determined_by_user
     }
 }
@@ -106,15 +110,45 @@ impl SpaceViewBlueprint {
         let mut contents = SpaceViewContents::new(id);
         contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
+        // TODO(jleibs): Need to create a real query here
+        let queries = vec![DataQueryId::invalid()];
+
         Self {
             display_name,
             class_name: space_view_class,
             id,
             space_origin: space_path.clone(),
             contents,
+            queries,
             entities_determined_by_user: false,
             auto_properties: Default::default(),
         }
+    }
+
+    pub fn try_from_db(path: &EntityPath, blueprint_db: &StoreDb) -> Option<Self> {
+        let SpaceViewComponent {
+            display_name,
+            class_name,
+            space_origin,
+            entities_determined_by_user,
+            contents,
+        } = blueprint_db
+            .store()
+            .query_timeless_component::<SpaceViewComponent>(path)
+            .map(|c| c.value)?;
+
+        let id = SpaceViewId::from_entity_path(path);
+
+        Some(Self {
+            id,
+            display_name: display_name.to_string(),
+            class_name: class_name.as_str().into(),
+            space_origin: space_origin.into(),
+            contents: SpaceViewContents::new(id),
+            queries: contents.into_iter().map(From::from).collect(),
+            entities_determined_by_user,
+            auto_properties: Default::default(),
+        })
     }
 
     pub fn class_name(&self) -> &SpaceViewClassName {

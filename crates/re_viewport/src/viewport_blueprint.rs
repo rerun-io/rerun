@@ -4,6 +4,7 @@ use ahash::HashMap;
 
 use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataRow, RowId, TimePoint};
+use re_types::blueprint::SpaceViewComponent;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
@@ -11,7 +12,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    blueprint::{AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, ViewportLayout},
+    blueprint::{AutoSpaceViews, SpaceViewMaximized, ViewportLayout},
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
     space_view_heuristics::default_created_space_views,
@@ -326,33 +327,6 @@ fn add_delta_from_single_component<'a, C>(
 
 // ----------------------------------------------------------------------------
 
-pub fn load_space_view_blueprint(
-    path: &EntityPath,
-    blueprint_db: &re_data_store::StoreDb,
-) -> Option<SpaceViewBlueprint> {
-    re_tracing::profile_function!();
-
-    let mut space_view = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<SpaceViewComponent>(path)
-        .map(|c| c.value.space_view);
-
-    // Blueprint data migrations can leave us unable to parse the expected id from the source-data
-    // We always want the id to match the one derived from the EntityPath since this id is how
-    // we would end up removing it from the blueprint.
-    let expected_id = SpaceViewId::from_entity_path(path);
-    if let Some(space_view) = &mut space_view {
-        if space_view.id != SpaceViewId::invalid() && space_view.id != expected_id {
-            re_log::warn_once!(
-                "SpaceViewBlueprint id is inconsistent with path: {:?}",
-                space_view.id
-            );
-        }
-        space_view.id = expected_id;
-    }
-    space_view
-}
-
 pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
     re_tracing::profile_function!();
 
@@ -365,7 +339,7 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         space_views
             .children
             .values()
-            .filter_map(|view_tree| load_space_view_blueprint(&view_tree.path, blueprint_db))
+            .filter_map(|view_tree| SpaceViewBlueprint::try_from_db(&view_tree.path, blueprint_db))
             .map(|sv| (sv.id, sv))
             .collect()
     } else {
@@ -442,7 +416,11 @@ pub fn sync_space_view(
         let timepoint = TimePoint::timeless();
 
         let component = SpaceViewComponent {
-            space_view: space_view.clone(),
+            display_name: space_view.display_name.clone().into(),
+            class_name: space_view.class_name().as_str().into(),
+            space_origin: (&space_view.space_origin).into(),
+            entities_determined_by_user: space_view.entities_determined_by_user,
+            contents: space_view.queries.iter().map(|q| (*q).into()).collect(),
         };
 
         add_delta_from_single_component(deltas, &space_view.entity_path(), &timepoint, component);
