@@ -2,7 +2,9 @@ use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents};
+use re_space_view::{
+    DataQueryBlueprint, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
+};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
@@ -37,7 +39,7 @@ pub struct SpaceViewBlueprint {
     pub contents: SpaceViewContents,
 
     /// The data queries that are part of this space view.
-    pub queries: Vec<DataQueryId>,
+    pub queries: Vec<DataQueryBlueprint>,
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
@@ -45,23 +47,6 @@ pub struct SpaceViewBlueprint {
     /// Auto Properties
     // TODO(jleibs): This needs to be per-query
     pub auto_properties: EntityPropertyMap,
-}
-
-// Default needed for deserialization when adding/changing fields.
-impl Default for SpaceViewBlueprint {
-    fn default() -> Self {
-        let id = SpaceViewId::invalid();
-        Self {
-            id,
-            display_name: "invalid".to_owned(),
-            class_name: SpaceViewClassName::invalid(),
-            space_origin: EntityPath::root(),
-            contents: SpaceViewContents::new(id),
-            queries: Default::default(),
-            entities_determined_by_user: Default::default(),
-            auto_properties: Default::default(),
-        }
-    }
 }
 
 /// Determine whether this `SpaceViewBlueprint` has user-edits relative to another `SpaceViewBlueprint`
@@ -111,7 +96,7 @@ impl SpaceViewBlueprint {
         contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
         // TODO(jleibs): Need to create a real query here
-        let queries = vec![DataQueryId::invalid()];
+        let queries = vec![DataQueryBlueprint::auto(space_view_class, space_path)];
 
         Self {
             display_name,
@@ -139,13 +124,23 @@ impl SpaceViewBlueprint {
 
         let id = SpaceViewId::from_entity_path(path);
 
+        let class_name = class_name.as_str().into();
+
+        let queries = contents
+            .into_iter()
+            .map(DataQueryId::from)
+            .filter_map(|id| {
+                DataQueryBlueprint::try_from_db(&id.as_entity_path(), blueprint_db, class_name)
+            })
+            .collect();
+
         Some(Self {
             id,
             display_name: display_name.to_string(),
-            class_name: class_name.as_str().into(),
+            class_name,
             space_origin: space_origin.into(),
             contents: SpaceViewContents::new(id),
-            queries: contents.into_iter().map(From::from).collect(),
+            queries,
             entities_determined_by_user,
             auto_properties: Default::default(),
         })

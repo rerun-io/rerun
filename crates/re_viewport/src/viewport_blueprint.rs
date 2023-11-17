@@ -420,10 +420,20 @@ pub fn sync_space_view(
             class_name: space_view.class_name().as_str().into(),
             space_origin: (&space_view.space_origin).into(),
             entities_determined_by_user: space_view.entities_determined_by_user,
-            contents: space_view.queries.iter().map(|q| (*q).into()).collect(),
+            contents: space_view.queries.iter().map(|q| q.id.into()).collect(),
         };
 
         add_delta_from_single_component(deltas, &space_view.entity_path(), &timepoint, component);
+
+        // TODO(jleibs): Query-removal logic
+        for query in &space_view.queries {
+            add_delta_from_single_component(
+                deltas,
+                &query.id.as_entity_path(),
+                &timepoint,
+                query.expressions.clone(),
+            );
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use once_cell::sync::Lazy;
-use re_data_store::{EntityProperties, EntityTree};
+use re_data_store::{EntityProperties, EntityTree, StoreDb};
 use re_log_types::{EntityPath, EntityPathExpr};
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
@@ -23,6 +23,7 @@ use crate::{blueprint::QueryExpressions, DataQuery, EntityOverrides, PropertyRes
 /// The results of recursive expressions are only included if they are found within the [`EntityTree`]
 /// and for which there is a valid `ViewPart` system. This keeps recursive expressions from incorrectly
 /// picking up irrelevant data within the tree.
+#[derive(Clone, PartialEq, Eq)]
 pub struct DataQueryBlueprint {
     pub id: DataQueryId,
     pub space_view_class_name: SpaceViewClassName,
@@ -31,6 +32,33 @@ pub struct DataQueryBlueprint {
 
 impl DataQueryBlueprint {
     pub const OVERRIDES_PREFIX: &str = "overrides";
+
+    pub fn auto(space_view_class_name: SpaceViewClassName, space_path: &EntityPath) -> Self {
+        Self {
+            id: DataQueryId::random(),
+            space_view_class_name,
+            expressions: vec![space_path.to_string().into()].into(),
+        }
+    }
+
+    pub fn try_from_db(
+        path: &EntityPath,
+        blueprint_db: &StoreDb,
+        space_view_class_name: SpaceViewClassName,
+    ) -> Option<Self> {
+        let expressions = blueprint_db
+            .store()
+            .query_timeless_component::<QueryExpressions>(path)
+            .map(|c| c.value)?;
+
+        let id = DataQueryId::from_entity_path(path);
+
+        Some(Self {
+            id,
+            space_view_class_name,
+            expressions,
+        })
+    }
 }
 
 impl DataQuery for DataQueryBlueprint {
