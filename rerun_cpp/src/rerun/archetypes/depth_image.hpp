@@ -99,7 +99,7 @@ namespace rerun::archetypes {
         ///
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
-        explicit DepthImage(components::TensorData _data);
+        explicit DepthImage(components::TensorData data_);
 
       public:
         DepthImage() = default;

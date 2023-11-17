@@ -19,12 +19,12 @@ namespace rerun::archetypes {
     ///
     /// Sets the dimension names to "height" and "width" if they are not specified.
     /// Calls `Error::handle()` if the shape is not rank 2.
-    explicit SegmentationImage(components::TensorData _data);
+    explicit SegmentationImage(components::TensorData data_);
 
     // </CODEGEN_COPY_TO_HEADER>
 #endif
 
-    SegmentationImage::SegmentationImage(components::TensorData _data) : data(std::move(_data)) {
+    SegmentationImage::SegmentationImage(components::TensorData data_) : data(std::move(data_)) {
         auto& shape = data.data.shape;
         if (shape.size() != 2) {
             Error(ErrorCode::InvalidTensorDimension, "Shape must be rank 2.").handle();

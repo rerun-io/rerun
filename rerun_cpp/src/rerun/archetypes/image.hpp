@@ -88,7 +88,7 @@ namespace rerun::archetypes {
         ///
         /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2 or 3.
-        explicit Image(rerun::components::TensorData _data);
+        explicit Image(rerun::components::TensorData data_);
 
       public:
         Image() = default;
