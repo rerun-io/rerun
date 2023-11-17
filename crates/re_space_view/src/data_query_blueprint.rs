@@ -362,6 +362,13 @@ mod tests {
                     "parent/skipped/child2",
                 ],
             ),
+            (
+                vec!["not/found"],
+                // TODO(jleibs): Making this work requires merging the EntityTree walk with a minimal-coverage ExactMatchTree walk
+                // not crucial for now until we expose a free-form UI for entering paths.
+                // vec!["/", "not/", "not/found"]),
+                vec![],
+            ),
         ];
 
         for (input, outputs) in scenarios {

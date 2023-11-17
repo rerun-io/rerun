@@ -4,6 +4,7 @@ use re_data_store::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
+use re_log_types::{DataRow, RowId, TimePoint};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
@@ -12,8 +13,12 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
-    ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, UiVerbosity, ViewerContext,
+};
+use re_viewport::{
+    external::re_space_view::{DataQuery as _, QueryExpressions},
+    Viewport, ViewportBlueprint,
 };
 use re_viewport::{Viewport, ViewportBlueprint};
 
@@ -412,6 +417,39 @@ fn blueprint_ui(
                     }
                 }
             });
+
+            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+                if space_view.queries.len() == 1 {
+                    let query = space_view.queries.first().unwrap();
+                    let expressions = query.expressions.expressions.join("\n");
+                    let mut edited_expressions = expressions.clone();
+
+                    ui.text_edit_multiline(&mut edited_expressions);
+
+                    if edited_expressions != expressions {
+                        let timepoint = TimePoint::timeless();
+
+                        let expressions_component = QueryExpressions {
+                            expressions: edited_expressions.split('\n').map(|s| s.into()).collect(),
+                        };
+
+                        let row = DataRow::from_cells1_sized(
+                            RowId::random(),
+                            query.id.as_entity_path(),
+                            timepoint.clone(),
+                            1,
+                            [expressions_component],
+                        )
+                        .unwrap();
+
+                        ctx.command_sender
+                            .send_system(SystemCommand::UpdateBlueprint(
+                                ctx.store_context.blueprint.store_id().clone(),
+                                vec![row],
+                            ));
+                    }
+                }
+            }
 
             ui.add_space(ui.spacing().item_spacing.y);
 
