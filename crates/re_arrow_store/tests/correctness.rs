@@ -485,7 +485,7 @@ fn gc_correct() {
 
     let stats = DataStoreStats::from_store(&store);
 
-    let (store_events, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    let (store_events, stats_diff) = store.gc(&GarbageCollectionOptions::gc_everything());
     let stats_diff = stats_diff + stats_empty; // account for fixed overhead
 
     assert_eq!(
@@ -504,7 +504,7 @@ fn gc_correct() {
         assert!(store.get_msg_metadata(&event.row_id).is_none());
     }
 
-    let (store_events, stats_diff) = store.gc(GarbageCollectionOptions::gc_everything());
+    let (store_events, stats_diff) = store.gc(&GarbageCollectionOptions::gc_everything());
     assert!(store_events.is_empty());
     assert_eq!(DataStoreStats::default(), stats_diff);
 
@@ -542,17 +542,19 @@ fn gc_metadata_size() -> anyhow::Result<()> {
     }
 
     for _ in 0..2 {
-        _ = store.gc(GarbageCollectionOptions {
+        _ = store.gc(&GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
             gc_timeless: false,
             protect_latest: 1,
             purge_empty_tables: false,
+            dont_protect: Default::default(),
         });
-        _ = store.gc(GarbageCollectionOptions {
+        _ = store.gc(&GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
             gc_timeless: false,
             protect_latest: 1,
             purge_empty_tables: false,
+            dont_protect: Default::default(),
         });
     }
 

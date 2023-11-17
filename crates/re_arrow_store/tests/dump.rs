@@ -60,9 +60,9 @@ fn data_store_dump() {
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);
 
         // stress-test GC impl
-        store1.gc(GarbageCollectionOptions::gc_everything());
-        store2.gc(GarbageCollectionOptions::gc_everything());
-        store3.gc(GarbageCollectionOptions::gc_everything());
+        store1.gc(&GarbageCollectionOptions::gc_everything());
+        store2.gc(&GarbageCollectionOptions::gc_everything());
+        store3.gc(&GarbageCollectionOptions::gc_everything());
 
         data_store_dump_impl(&mut store1, &mut store2, &mut store3);
     }
@@ -160,8 +160,8 @@ fn data_store_dump_filtered() {
         data_store_dump_filtered_impl(&mut store1, &mut store2);
 
         // stress-test GC impl
-        store1.gc(GarbageCollectionOptions::gc_everything());
-        store2.gc(GarbageCollectionOptions::gc_everything());
+        store1.gc(&GarbageCollectionOptions::gc_everything());
+        store2.gc(&GarbageCollectionOptions::gc_everything());
 
         data_store_dump_filtered_impl(&mut store1, &mut store2);
     }

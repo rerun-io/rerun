@@ -463,7 +463,7 @@ mod tests {
             view,
         );
 
-        view.on_events(&store.gc(GarbageCollectionOptions::gc_everything()).0);
+        view.on_events(&store.gc(&GarbageCollectionOptions::gc_everything()).0);
 
         similar_asserts::assert_eq!(
             GlobalCounts::new(
@@ -521,7 +521,7 @@ mod tests {
             let event = store.insert_row(&row1)?;
             assert!(event.cells.contains_key(&store.cluster_key()));
 
-            let (events, _) = store.gc(GarbageCollectionOptions::gc_everything());
+            let (events, _) = store.gc(&GarbageCollectionOptions::gc_everything());
             assert!(events.len() == 1);
             assert!(events[0].cells.contains_key(&store.cluster_key()));
         }
@@ -538,7 +538,7 @@ mod tests {
             let event = store.insert_row(&row2)?;
             assert!(!event.cells.contains_key(&store.cluster_key()));
 
-            let (events, _) = store.gc(GarbageCollectionOptions::gc_everything());
+            let (events, _) = store.gc(&GarbageCollectionOptions::gc_everything());
             assert!(events.len() == 1);
             assert!(!events[0].cells.contains_key(&store.cluster_key()));
         }
