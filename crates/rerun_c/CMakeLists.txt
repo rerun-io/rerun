@@ -16,7 +16,7 @@ add_library(rerun_c STATIC IMPORTED GLOBAL)
 set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION ${RERUN_C_BUILD_ARTIFACT})
 
 # Just depend on all rust and toml files, it's hard to know which files exactly are relevant.
-file(GLOB_RECURSE RERUN_C_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../crates/*.rs" "${CMAKE_CURRENT_SOURCE_DIR}/../crates/*.toml")
+file(GLOB_RECURSE RERUN_C_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../*.rs" "${CMAKE_CURRENT_SOURCE_DIR}/../../crates/*.toml")
 add_custom_command(
     OUTPUT ${RERUN_C_BUILD_ARTIFACT}
     DEPENDS ${RERUN_C_SOURCES}
