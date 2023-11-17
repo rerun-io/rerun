@@ -225,17 +225,15 @@ pub fn visible_history_ui(
                 } else {
                     visible_history_prop.nanos
                 }
+            } else if sequence_timeline {
+                resolved_visible_history_prop.sequences
             } else {
-                if sequence_timeline {
-                    resolved_visible_history_prop.sequences
-                } else {
-                    resolved_visible_history_prop.nanos
-                }
+                resolved_visible_history_prop.nanos
             };
 
             TimeRange::new(
-                visible_history.from(current_time.into()),
-                visible_history.to(current_time.into()),
+                visible_history.from(current_time),
+                visible_history.to(current_time),
             )
         })
     } else {

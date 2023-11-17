@@ -770,7 +770,7 @@ fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>
 
 fn paint_visible_history_range(
     time_ranges_ui: &TimeRangesUi,
-    ctx: &mut ViewerContext,
+    ctx: &mut ViewerContext<'_>,
     painter: &egui::Painter,
     rect: Rect,
 ) {
