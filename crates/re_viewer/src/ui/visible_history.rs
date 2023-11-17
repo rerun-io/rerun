@@ -210,6 +210,7 @@ pub fn visible_history_ui(
     // Decide when to show the visible history highlight in the timeline. The trick is that when
     // interacting with the controls, the mouse might end up outside the collapsing header rect,
     // so we must track these interactions specifically.
+    // Note: visible history highlight is always reset at the beginning of the Selection Panel UI.
 
     let should_display_visible_history = interacting_with_controls
         || collapsing_response.header_response.hovered()
@@ -217,8 +218,8 @@ pub fn visible_history_ui(
             .body_response
             .map_or(false, |r| r.hovered());
 
-    ctx.rec_cfg.visible_history_highlight = if should_display_visible_history {
-        ctx.rec_cfg.time_ctrl.time_int().map(|current_time| {
+    if should_display_visible_history {
+        if let Some(current_time) = ctx.rec_cfg.time_ctrl.time_int() {
             let visible_history = if visible_history_prop.enabled {
                 if sequence_timeline {
                     visible_history_prop.sequences
@@ -231,14 +232,12 @@ pub fn visible_history_ui(
                 resolved_visible_history_prop.nanos
             };
 
-            TimeRange::new(
+            ctx.rec_cfg.visible_history_highlight = Some(TimeRange::new(
                 visible_history.from(current_time),
                 visible_history.to(current_time),
-            )
-        })
-    } else {
-        None
-    };
+            ));
+        }
+    }
 
     collapsing_response.header_response.on_hover_text(
         "Controls the time range used to display data in the Space View.\n\n\
