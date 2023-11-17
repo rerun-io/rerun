@@ -17,7 +17,7 @@ use re_arrow_store::{
     TimeInt, TimeRange,
 };
 use re_log_types::{
-    build_frame_nr, DataCell, DataRow, DataTable, EntityPath, TableId, TimeType, Timeline,
+    build_frame_nr, DataCell, DataRow, DataTable, EntityPath, RowId, TableId, TimeType, Timeline,
 };
 use re_types::datagen::{
     build_some_colors, build_some_instances, build_some_instances_from, build_some_positions2d,
@@ -26,7 +26,8 @@ use re_types::{
     components::{Color, InstanceKey, Position2D},
     testing::{build_some_large_structs, LargeStruct},
 };
-use re_types_core::{ComponentName, Loggable as _};
+use re_types_core::archetypes::Clear;
+use re_types_core::{AsComponents as _, ComponentName, Loggable as _};
 
 // ---
 
@@ -1088,8 +1089,14 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let colors2 = build_some_colors(0);
     let row3 = test_row!(ent_path @ [build_frame_nr(frame3)] => 0; [colors2]);
 
-    let points4 = build_some_positions2d(0);
-    let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 0; [points4]);
+    let clear = Clear::recursive();
+    let row4 = DataRow::from_component_batches(
+        RowId::random(),
+        [build_frame_nr(frame4)].into(),
+        ent_path.clone(),
+        clear.as_component_batches().iter().map(|b| b.as_ref()),
+    )
+    .unwrap();
 
     // Insert the 3 rows as timeless
     let mut table_timeless = DataTable::from_rows(
