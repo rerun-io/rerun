@@ -42,9 +42,7 @@ namespace rerun {
                 traits::value_type_of_t<TContainer>> //
             >> {
         Collection<TElement> operator()(const TContainer& input) {
-            std::vector<TElement> elements;
-            // Insert supposedly automatically reserves if size is known, see https://stackoverflow.com/a/35359472
-            elements.insert(elements.end(), std::begin(input), std::end(input));
+            std::vector<TElement> elements(std::begin(input), std::end(input));
             return Collection<TElement>::take_ownership(std::move(elements));
         }
 
@@ -73,10 +71,7 @@ namespace rerun {
         }
 
         Collection<TElement> operator()(std::array<TElement, NumInstances>&& array) {
-            std::vector<TElement> elements;
-            // Insert supposedly automatically reserves if size is known, see https://stackoverflow.com/a/35359472
-            elements.insert(
-                elements.end(),
+            std::vector<TElement> elements(
                 std::make_move_iterator(array.begin()),
                 std::make_move_iterator(array.end())
             );
@@ -94,10 +89,7 @@ namespace rerun {
         }
 
         Collection<TElement> operator()(TElement (&&array)[NumInstances]) {
-            std::vector<TElement> elements;
-            // Insert supposedly automatically reserves if size is known, see https://stackoverflow.com/a/35359472
-            elements.insert(
-                elements.end(),
+            std::vector<TElement> elements(
                 std::make_move_iterator(array),
                 std::make_move_iterator(array + NumInstances)
             );
