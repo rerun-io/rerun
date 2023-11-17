@@ -1,4 +1,4 @@
-use re_arrow_store::LatestAtQuery;
+use re_arrow_store::{DataStoreStats, LatestAtQuery};
 use re_data_store::StoreDb;
 use re_log_types::{
     example_components::{MyColor, MyPoint},
@@ -429,6 +429,57 @@ fn clears() -> anyhow::Result<()> {
                 .query_latest_component::<MyColor>(&entity_path_grandchild, &query)
                 .is_none());
         }
+    }
+
+    Ok(())
+}
+
+/// Test for GC behavior following clear. This functionality is expected by blueprints.
+#[test]
+fn clear_and_gc() -> anyhow::Result<()> {
+    init_logs();
+
+    let mut db = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+
+    let timepoint = TimePoint::timeless();
+    let entity_path: EntityPath = "space_view".into();
+
+    // * Insert a 2D point
+    // * Query 'parent' at frame #11 and make sure we find everything back.
+    {
+        let point = MyPoint::new(1.0, 2.0);
+
+        let row = DataRow::from_component_batches(
+            RowId::random(),
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[point] as _],
+        )?;
+
+        db.add_data_row(row)?;
+
+        db.gc_everything_but_the_latest_row();
+
+        let stats = DataStoreStats::from_store(db.store());
+        assert_eq!(stats.timeless.num_rows, 1);
+
+        let clear = DataRow::from_component_batches(
+            RowId::random(),
+            timepoint.clone(),
+            entity_path.clone(),
+            Clear::recursive()
+                .as_component_batches()
+                .iter()
+                .map(|b| b.as_ref()),
+        )?;
+
+        db.add_data_row(clear)?;
+
+        db.gc_everything_but_the_latest_row();
+
+        // No rows should remain because the table should have been purged
+        let stats = DataStoreStats::from_store(db.store());
+        assert_eq!(stats.timeless.num_rows, 0);
     }
 
     Ok(())
