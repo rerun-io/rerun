@@ -519,6 +519,46 @@ fn check_still_readable(_store: &DataStore) {
     }
 }
 
+// This used to panic because the GC will decrement the metadata_registry size trackers before
+// getting the confirmation that the row was really removed.
+#[test]
+fn gc_metadata_size() -> anyhow::Result<()> {
+    let mut store = DataStore::new(
+        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+        InstanceKey::name(),
+        Default::default(),
+    );
+
+    let point = MyPoint::new(1.0, 1.0);
+
+    for _ in 0..3 {
+        let row = DataRow::from_component_batches(
+            RowId::random(),
+            TimePoint::timeless(),
+            "xxx".into(),
+            [&[point] as _],
+        )?;
+        store.insert_row(&row).unwrap();
+    }
+
+    for _ in 0..2 {
+        _ = store.gc(GarbageCollectionOptions {
+            target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
+            gc_timeless: false,
+            protect_latest: 1,
+            purge_empty_tables: false,
+        });
+        _ = store.gc(GarbageCollectionOptions {
+            target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
+            gc_timeless: false,
+            protect_latest: 1,
+            purge_empty_tables: false,
+        });
+    }
+
+    Ok(())
+}
+
 // ---
 
 pub fn init_logs() {
