@@ -266,7 +266,16 @@ impl DataStore {
             if diff.is_some() {
                 let metadata_dropped_size_bytes =
                     row_id.total_size_bytes() + timepoint.total_size_bytes();
-                self.metadata_registry.heap_size_bytes -= metadata_dropped_size_bytes;
+                self.metadata_registry.heap_size_bytes = self
+                    .metadata_registry
+                    .heap_size_bytes
+                    .checked_sub(metadata_dropped_size_bytes)
+                    .unwrap_or_else(|| {
+                        re_log::warn_once!(
+                            "GC metadata_registry size tracker underflowed, this is a bug!"
+                        );
+                        0
+                    });
                 num_bytes_to_drop -= metadata_dropped_size_bytes as f64;
             }
 
