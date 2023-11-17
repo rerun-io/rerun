@@ -444,9 +444,11 @@ fn clear_and_gc() -> anyhow::Result<()> {
     let timepoint = TimePoint::timeless();
     let entity_path: EntityPath = "space_view".into();
 
-    // * Insert a 2D point
-    // * Query 'parent' at frame #11 and make sure we find everything back.
+    // Insert a component, then clear it, then GC.
     {
+        // Entity Tree is Empty when we start
+        assert_eq!(db.entity_db().tree.num_children_and_fields(), 0);
+
         let point = MyPoint::new(1.0, 2.0);
 
         let row = DataRow::from_component_batches(
@@ -480,6 +482,9 @@ fn clear_and_gc() -> anyhow::Result<()> {
         // No rows should remain because the table should have been purged
         let stats = DataStoreStats::from_store(db.store());
         assert_eq!(stats.timeless.num_rows, 0);
+
+        // TODO(#4264): Entity Tree should be empty when we end
+        // assert_eq!(db.entity_db().tree.num_children_and_fields(), 0);
     }
 
     Ok(())
