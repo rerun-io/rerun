@@ -90,7 +90,7 @@ namespace rerun {
                 }
 
                 case CollectionOwnership::VectorOwned: {
-                    storage.vector_owned = other.storage.vector_owned;
+                    new (&storage.vector_owned) std::vector<TElement>(other.storage.vector_owned);
                     break;
                 }
             }
@@ -121,7 +121,7 @@ namespace rerun {
             RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
         }
 
-        /// Construct from a initializer list£ of elements that are compatible with TElement.
+        /// Construct from a initializer list of elements that are compatible with TElement.
         ///
         /// Takes ownership of the passed elements.
         /// If you want to avoid an allocation, you have to manually keep the data on the stack
