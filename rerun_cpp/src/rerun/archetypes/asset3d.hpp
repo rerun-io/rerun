@@ -4,13 +4,14 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
 #include "../components/out_of_tree_transform3d.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../warning_macros.hpp"
+#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -92,10 +93,10 @@ namespace rerun::archetypes {
         /// If no `MediaType` is specified, the Rerun Viewer will try to guess one from the data
         /// at render-time. If it can't, rendering will fail with an error.
         static Asset3D from_bytes(
-            const std::vector<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type
+            rerun::Collection<uint8_t> bytes, std::optional<rerun::components::MediaType> media_type
         ) {
             // TODO(cmc): we could try and guess using magic bytes here, like rust does.
-            Asset3D asset = Asset3D(bytes);
+            Asset3D asset = Asset3D(std::move(bytes));
             asset.media_type = media_type;
             return asset;
         }
@@ -117,7 +118,7 @@ namespace rerun::archetypes {
         Asset3D with_media_type(rerun::components::MediaType _media_type) && {
             media_type = std::move(_media_type);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An out-of-tree transform.
@@ -126,7 +127,7 @@ namespace rerun::archetypes {
         Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
             transform = std::move(_transform);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

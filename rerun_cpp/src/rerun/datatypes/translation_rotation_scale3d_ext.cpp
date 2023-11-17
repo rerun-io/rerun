@@ -1,7 +1,7 @@
 #include "translation_rotation_scale3d.hpp"
 
 // <CODEGEN_COPY_TO_HEADER>
-#include "../warning_macros.hpp"
+#include "../compiler_utils.hpp"
 
 // </CODEGEN_COPY_TO_HEADER>
 namespace rerun {
@@ -20,14 +20,14 @@ namespace rerun {
             // of union-types datatypes inside of an optional component.
             //
             // See: https://github.com/rerun-io/rerun/issues/4027
-            DISABLE_MAYBE_UNINITIALIZED_PUSH
+            RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH
             TranslationRotationScale3D(const TranslationRotationScale3D& other)
                 : translation(other.translation),
                   rotation(other.rotation),
                   scale(other.scale),
                   from_parent(other.from_parent) {}
 
-            DISABLE_MAYBE_UNINITIALIZED_POP
+            RERUN_DISABLE_MAYBE_UNINITIALIZED_POP
 
             /// Creates a new 3D transform from translation/rotation/scale.
             ///

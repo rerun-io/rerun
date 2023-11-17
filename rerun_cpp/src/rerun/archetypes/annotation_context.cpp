@@ -19,18 +19,17 @@ namespace rerun {
         cells.reserve(1);
 
         {
+            const size_t size = 1;
             auto result =
-                Collection<rerun::components::AnnotationContext>(archetype.context).serialize();
+                rerun::components::AnnotationContext::to_data_cell(&archetype.context, size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result = Collection<AnnotationContext::IndicatorComponent>(
-                              AnnotationContext::IndicatorComponent()
-            )
-                              .serialize();
+            auto indicator = AnnotationContext::IndicatorComponent();
+            auto result = AnnotationContext::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;

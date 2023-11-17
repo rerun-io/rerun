@@ -11,9 +11,9 @@
 #include <memory>
 #include <new>
 #include <optional>
+#include <rerun/collection.hpp>
 #include <rerun/result.hpp>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -39,7 +39,7 @@ namespace rerun::datatypes {
 
             std::optional<float> radians;
 
-            std::vector<rerun::datatypes::AffixFuzzer1> craziness;
+            rerun::Collection<rerun::datatypes::AffixFuzzer1> craziness;
 
             std::array<float, 3> fixed_size_shenanigans;
 
@@ -68,7 +68,7 @@ namespace rerun::datatypes {
         AffixFuzzer3(const AffixFuzzer3& other) : _tag(other._tag) {
             switch (other._tag) {
                 case detail::AffixFuzzer3Tag::craziness: {
-                    using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
+                    using TypeAlias = rerun::Collection<rerun::datatypes::AffixFuzzer1>;
                     new (&_data.craziness) TypeAlias(other._data.craziness);
                 } break;
                 case detail::AffixFuzzer3Tag::degrees:
@@ -110,7 +110,7 @@ namespace rerun::datatypes {
                     // has a trivial destructor
                 } break;
                 case detail::AffixFuzzer3Tag::craziness: {
-                    using TypeAlias = std::vector<rerun::datatypes::AffixFuzzer1>;
+                    using TypeAlias = rerun::Collection<rerun::datatypes::AffixFuzzer1>;
                     _data.craziness.~TypeAlias();
                 } break;
                 case detail::AffixFuzzer3Tag::fixed_size_shenanigans: {
@@ -138,11 +138,11 @@ namespace rerun::datatypes {
             return self;
         }
 
-        static AffixFuzzer3 craziness(std::vector<rerun::datatypes::AffixFuzzer1> craziness) {
+        static AffixFuzzer3 craziness(rerun::Collection<rerun::datatypes::AffixFuzzer1> craziness) {
             AffixFuzzer3 self;
             self._tag = detail::AffixFuzzer3Tag::craziness;
             new (&self._data.craziness)
-                std::vector<rerun::datatypes::AffixFuzzer1>(std::move(craziness));
+                rerun::Collection<rerun::datatypes::AffixFuzzer1>(std::move(craziness));
             return self;
         }
 
@@ -173,7 +173,7 @@ namespace rerun::datatypes {
         }
 
         /// Return a pointer to craziness if the union is in that state, otherwise `nullptr`.
-        const std::vector<rerun::datatypes::AffixFuzzer1>* get_craziness() const {
+        const rerun::Collection<rerun::datatypes::AffixFuzzer1>* get_craziness() const {
             if (_tag == detail::AffixFuzzer3Tag::craziness) {
                 return &_data.craziness;
             } else {

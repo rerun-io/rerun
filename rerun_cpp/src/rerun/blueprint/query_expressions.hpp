@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -23,15 +23,15 @@ namespace rerun::blueprint {
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct QueryExpressions {
         /// A set of strings that can be parsed as `EntityPathExpression`s.
-        std::vector<std::string> expressions;
+        rerun::Collection<std::string> expressions;
 
       public:
         QueryExpressions() = default;
 
-        QueryExpressions(std::vector<std::string> expressions_)
+        QueryExpressions(rerun::Collection<std::string> expressions_)
             : expressions(std::move(expressions_)) {}
 
-        QueryExpressions& operator=(std::vector<std::string> expressions_) {
+        QueryExpressions& operator=(rerun::Collection<std::string> expressions_) {
             expressions = std::move(expressions_);
             return *this;
         }

@@ -19,28 +19,30 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = Collection<rerun::components::TensorData>(archetype.data).serialize();
+            const size_t size = 1;
+            auto result = rerun::components::TensorData::to_data_cell(&archetype.data, size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.meter.has_value()) {
+            const size_t size = 1;
             auto result =
-                Collection<rerun::components::DepthMeter>(archetype.meter.value()).serialize();
+                rerun::components::DepthMeter::to_data_cell(&archetype.meter.value(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.draw_order.has_value()) {
+            const size_t size = 1;
             auto result =
-                Collection<rerun::components::DrawOrder>(archetype.draw_order.value()).serialize();
+                rerun::components::DrawOrder::to_data_cell(&archetype.draw_order.value(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result =
-                Collection<DepthImage::IndicatorComponent>(DepthImage::IndicatorComponent())
-                    .serialize();
+            auto indicator = DepthImage::IndicatorComponent();
+            auto result = DepthImage::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;

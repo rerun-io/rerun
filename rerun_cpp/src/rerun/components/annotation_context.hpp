@@ -3,14 +3,15 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../data_cell.hpp"
 #include "../datatypes/class_description_map_elem.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
+#include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -28,7 +29,7 @@ namespace rerun::components {
     /// path.
     struct AnnotationContext {
         /// List of class descriptions, mapping class indices to class names, colors etc.
-        std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map;
+        rerun::Collection<rerun::datatypes::ClassDescriptionMapElem> class_map;
 
         /// Name of the component, used for serialization.
         static const char NAME[];
@@ -36,23 +37,38 @@ namespace rerun::components {
       public:
         // Extensions to generated type defined in 'annotation_context_ext.cpp'
 
-        AnnotationContext(
-            std::initializer_list<rerun::datatypes::ClassDescription> class_descriptions
-        ) {
-            class_map.reserve(class_descriptions.size());
+        /// Construct from an initializer list of elements from which `rerun::datatypes::ClassDescriptionMapElem`s can be constructed.
+        ///
+        /// This will then create a new collection of `rerun::datatypes::ClassDescriptionMapElem`.
+        ///
+        /// _Implementation note_:
+        /// We handle this type of conversion in a generic `rerun::ContainerAdapter`.
+        /// However, it is *still* necessary since initializer list overload resolution is handled
+        /// in a special way by the compiler, making this case not being covered by the general container case.
+        template <
+            typename TElement, //
+            typename = std::enable_if_t<
+                std::is_constructible_v<datatypes::ClassDescriptionMapElem, TElement>> //
+            >
+        AnnotationContext(std::initializer_list<TElement> class_descriptions) {
+            std::vector<datatypes::ClassDescriptionMapElem> class_map_new;
+            class_map_new.reserve(class_descriptions.size());
             for (const auto& class_description : class_descriptions) {
-                class_map.emplace_back(std::move(class_description));
+                class_map_new.emplace_back(std::move(class_description));
             }
+            class_map = Collection<datatypes::ClassDescriptionMapElem>::take_ownership(
+                std::move(class_map_new)
+            );
         }
 
       public:
         AnnotationContext() = default;
 
-        AnnotationContext(std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map_)
+        AnnotationContext(rerun::Collection<rerun::datatypes::ClassDescriptionMapElem> class_map_)
             : class_map(std::move(class_map_)) {}
 
         AnnotationContext& operator=(
-            std::vector<rerun::datatypes::ClassDescriptionMapElem> class_map_
+            rerun::Collection<rerun::datatypes::ClassDescriptionMapElem> class_map_
         ) {
             class_map = std::move(class_map_);
             return *this;

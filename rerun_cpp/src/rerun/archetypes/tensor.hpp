@@ -8,6 +8,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -58,11 +59,8 @@ namespace rerun::archetypes {
         // Extensions to generated type defined in 'tensor_ext.cpp'
 
         /// New Tensor from dimensions and tensor buffer.
-        Tensor(
-            std::vector<rerun::datatypes::TensorDimension> shape,
-            rerun::datatypes::TensorBuffer buffer
-        )
-            : Tensor(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+        Tensor(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+            : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// Update the `names` of the contained `TensorData` dimensions.
         ///
@@ -70,9 +68,7 @@ namespace rerun::archetypes {
         ///
         /// If too many, or too few names are provided, this function will call
         /// Error::handle and then proceed to only update the subset of names that it can.
-        ///
-        /// TODO(#3794): don't use std::vector here.
-        Tensor with_dim_names(std::vector<std::string> names) &&;
+        Tensor with_dim_names(Collection<std::string> names) &&;
 
       public:
         Tensor() = default;

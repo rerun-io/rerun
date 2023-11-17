@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits> // std::enable_if, std::false_type
+
 namespace rerun {
     /// The `rerun::CollectionAdapter` trait is responsible for mapping an input argument to a `rerun::Collection`.
     ///
@@ -21,7 +23,7 @@ namespace rerun {
     /// input)` in order to accidentally borrow data that is passed in as a temporary!
     ///
     /// TODO(andreas): Point to an example here and in the assert.
-    template <typename TElement, typename TInput, typename Enable = std::enable_if_t<true>>
+    template <typename TElement, typename TContainer, typename Enable = std::enable_if_t<true>>
     struct CollectionAdapter {
         /// \private
         /// `NoAdapterFor` always evaluates to false, but in a way that requires template instantiation.
@@ -29,13 +31,13 @@ namespace rerun {
         struct NoAdapterFor : std::false_type {};
 
         static_assert(
-            NoAdapterFor<TElement, TInput>::value,
+            NoAdapterFor<TElement, TContainer>::value,
             "CollectionAdapter is not implemented for this type. "
             "It is implemented for single elements as well as std::vector, std::array, and "
             "c-arrays of components. "
             "You can add your own implementation by specializing "
-            "CollectionAdapter<TElement, T> for a given "
-            "target type TElement and your input type T."
+            "rerun::CollectionAdapter<TElement, TContainer> for a given "
+            "target type TElement and your input type TContainer."
         );
     };
 } // namespace rerun
