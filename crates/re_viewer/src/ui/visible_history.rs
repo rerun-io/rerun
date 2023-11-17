@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response, Ui};
 
 use re_data_store::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{EntityPath, TimeType, TimeZone};
+use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
@@ -141,31 +141,44 @@ pub fn visible_history_ui(
                 let current_low_boundary = visible_history.from(current_time.into()).as_i64();
                 let current_high_boundary = visible_history.to(current_time.into()).as_i64();
 
-                ui.horizontal(|ui| {
-                    visible_history_boundary_ui(
-                        ctx,
-                        ui,
-                        &mut visible_history.from,
-                        sequence_timeline,
-                        current_time,
-                        &timeline_spec,
-                        true,
-                        current_high_boundary,
-                    );
-                });
+                let interacting_low = ui
+                    .horizontal(|ui| {
+                        visible_history_boundary_ui(
+                            ctx,
+                            ui,
+                            &mut visible_history.from,
+                            sequence_timeline,
+                            current_time,
+                            &timeline_spec,
+                            true,
+                            current_high_boundary,
+                        )
+                    })
+                    .inner;
 
-                ui.horizontal(|ui| {
-                    visible_history_boundary_ui(
-                        ctx,
-                        ui,
-                        &mut visible_history.to,
-                        sequence_timeline,
-                        current_time,
-                        &timeline_spec,
-                        false,
-                        current_low_boundary,
-                    );
-                });
+                let interacting_high = ui
+                    .horizontal(|ui| {
+                        visible_history_boundary_ui(
+                            ctx,
+                            ui,
+                            &mut visible_history.to,
+                            sequence_timeline,
+                            current_time,
+                            &timeline_spec,
+                            false,
+                            current_low_boundary,
+                        )
+                    })
+                    .inner;
+
+                if interacting_low || interacting_high {
+                    ctx.rec_cfg.visible_history_highlight = Some(TimeRange::new(
+                        visible_history.from(current_time.into()),
+                        visible_history.to(current_time.into()),
+                    ));
+                } else {
+                    ctx.rec_cfg.visible_history_highlight = None;
+                }
             } else {
                 resolved_visible_history_boundary_ui(
                     ctx,
@@ -384,7 +397,7 @@ fn visible_history_boundary_ui(
     timeline_spec: &TimelineSpec,
     low_bound: bool,
     other_boundary_absolute: i64,
-) {
+) -> bool {
     ui.label(if low_bound { "From" } else { "To" });
 
     let (abs_time, rel_time) = match visible_history_boundary {
@@ -466,7 +479,8 @@ fn visible_history_boundary_ui(
                     .on_hover_text(
                         "Number of frames before/after the current time to use a time range \
                         boundary",
-                    );
+                    )
+                    .dragged()
             } else {
                 timeline_spec
                     .temporal_drag_value(
@@ -479,7 +493,8 @@ fn visible_history_boundary_ui(
                     .0
                     .on_hover_text(
                         "Time duration before/after the current time to use as time range boundary",
-                    );
+                    )
+                    .dragged()
             }
         }
         VisibleHistoryBoundary::Absolute(value) => {
@@ -493,7 +508,8 @@ fn visible_history_boundary_ui(
             if sequence_timeline {
                 timeline_spec
                     .sequence_drag_value(ui, value, true, low_bound_override)
-                    .on_hover_text("Absolute frame number to use as time range boundary");
+                    .on_hover_text("Absolute frame number to use as time range boundary")
+                    .dragged()
             } else {
                 let (drag_resp, base_time_resp) = timeline_spec.temporal_drag_value(
                     ui,
@@ -503,14 +519,16 @@ fn visible_history_boundary_ui(
                     ctx.app_options.time_zone_for_timestamps,
                 );
 
-                drag_resp.on_hover_text("Absolute time to use as time range boundary");
-
                 if let Some(base_time_resp) = base_time_resp {
                     base_time_resp.on_hover_text("Base time used to set time range boundaries");
                 }
+
+                drag_resp
+                    .on_hover_text("Absolute time to use as time range boundary")
+                    .dragged()
             }
         }
-        VisibleHistoryBoundary::Infinite => {}
+        VisibleHistoryBoundary::Infinite => false,
     }
 }
 

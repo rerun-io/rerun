@@ -1,5 +1,6 @@
 use re_data_store::store_db::StoreDb;
 use re_data_store::{EntityTree, TimeHistogramPerTimeline};
+use re_log_types::TimeRange;
 
 use crate::EntitiesPerSystemPerClass;
 use crate::{
@@ -124,4 +125,10 @@ pub struct RecordingConfig {
 
     /// Selection & hovering state.
     pub selection_state: SelectionState,
+
+    /// Should the visible history time range be highlighted?
+    ///
+    /// This is used during UI interactions to show the range of time that is being edited.
+    #[serde(skip)]
+    pub visible_history_highlight: Option<TimeRange>,
 }
