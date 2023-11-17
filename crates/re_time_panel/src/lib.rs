@@ -266,23 +266,7 @@ impl TimePanel {
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
-        if let Some(time_range) = ctx.rec_cfg.visible_history_highlight {
-            let x_from = self.time_ranges_ui.x_from_time_f32(time_range.min.into());
-            let x_to = self.time_ranges_ui.x_from_time_f32(time_range.max.into());
-
-            if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
-                let visible_history_area_rect =
-                    Rect::from_x_y_ranges(x_from..=x_to, time_fg_area_rect.y_range())
-                        .intersect(time_fg_area_rect);
-
-                ui.painter().rect(
-                    visible_history_area_rect,
-                    0.0,
-                    egui::Color32::WHITE.gamma_multiply(0.1),
-                    egui::Stroke::NONE,
-                );
-            }
-        }
+        paint_visible_history_range(&self.time_ranges_ui, ctx, ui.painter(), time_fg_area_rect);
 
         ui.painter().hline(
             0.0..=ui.max_rect().right(),
@@ -760,6 +744,9 @@ fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>
             time_ranges_ui.snap_time_control(ctx);
 
             let painter = ui.painter_at(time_range_rect.expand(4.0));
+
+            paint_visible_history_range(&time_ranges_ui, ctx, &painter, time_range_rect);
+
             painter.hline(
                 time_range_rect.x_range(),
                 time_range_rect.center().y,
@@ -779,6 +766,30 @@ fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>
     }
 
     current_time_ui(ctx, ui);
+}
+
+fn paint_visible_history_range(
+    time_ranges_ui: &TimeRangesUi,
+    ctx: &mut ViewerContext,
+    painter: &egui::Painter,
+    rect: Rect,
+) {
+    if let Some(time_range) = ctx.rec_cfg.visible_history_highlight {
+        let x_from = time_ranges_ui.x_from_time_f32(time_range.min.into());
+        let x_to = time_ranges_ui.x_from_time_f32(time_range.max.into());
+
+        if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
+            let visible_history_area_rect =
+                Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
+
+            painter.rect(
+                visible_history_area_rect,
+                0.0,
+                egui::Color32::WHITE.gamma_multiply(0.1),
+                egui::Stroke::NONE,
+            );
+        }
+    }
 }
 
 fn help_button(ui: &mut egui::Ui) {
