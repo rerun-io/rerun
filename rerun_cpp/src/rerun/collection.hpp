@@ -279,7 +279,10 @@ namespace rerun {
             // We need to return something to avoid compiler warnings.
             // But if we don't mark this as unreachable, GCC will complain that we're dereferencing null down the line.
             RERUN_UNREACHABLE();
+            // But with this in place, MSVC complains that the return statement is not reachable (GCC/clang on the other hand need it).
+#ifndef _MSC_VER
             return nullptr;
+#endif
         }
 
         /// TODO(andreas): Return proper iterator
