@@ -13,7 +13,6 @@ impl App {
         &mut self,
         _store_context: Option<&StoreContext<'_>>,
         ui: &mut egui::Ui,
-        frame: &mut eframe::Frame,
     ) {
         // let desired_icon_height = ui.max_rect().height() - 2.0 * ui.spacing_mut().button_padding.y;
         let desired_icon_height = ui.max_rect().height() - 4.0; // TODO(emilk): figure out this fudge
@@ -76,7 +75,7 @@ impl App {
             ui.add_space(spacing);
 
             ui.menu_button("Options", |ui| {
-                self.options_menu_ui(ui, frame);
+                self.options_menu_ui(ui);
             });
 
             ui.add_space(spacing);
@@ -152,7 +151,7 @@ impl App {
         ui.label(label);
     }
 
-    fn options_menu_ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn options_menu_ui(&mut self, ui: &mut egui::Ui) {
         ui.style_mut().wrap = Some(false);
 
         if self
@@ -215,7 +214,7 @@ impl App {
 
             self.egui_debug_options_ui(ui);
             ui.separator();
-            self.debug_menu_options_ui(ui, _frame);
+            self.debug_menu_options_ui(ui);
         }
     }
 
@@ -316,13 +315,16 @@ impl App {
     }
 
     #[cfg(debug_assertions)]
-    fn debug_menu_options_ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn debug_menu_options_ui(&mut self, ui: &mut egui::Ui) {
         #[cfg(not(target_arch = "wasm32"))]
         {
             if ui.button("Mobile size").clicked() {
-                // frame.set_window_size(egui::vec2(375.0, 812.0)); // iPhone 12 mini
-                _frame.set_window_size(egui::vec2(375.0, 667.0)); //  iPhone SE 2nd gen
-                _frame.set_fullscreen(false);
+                // let size = egui::vec2(375.0, 812.0); // iPhone 12 mini
+                let size = egui::vec2(375.0, 667.0); //  iPhone SE 2nd gen
+                ui.ctx()
+                    .send_viewport_cmd(egui::ViewportCommand::Fullscreen(false));
+                ui.ctx()
+                    .send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
                 ui.close_menu();
             }
             ui.separator();

@@ -147,16 +147,13 @@ impl eframe::App for ExampleApp {
         [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
     }
 
-    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_text_logs_as_notifications();
         self.toasts.show(egui_ctx);
 
-        egui::gui_zoom::zoom_with_keyboard_shortcuts(
-            egui_ctx,
-            frame.info().native_pixels_per_point,
-        );
+        egui::gui_zoom::zoom_with_keyboard_shortcuts(egui_ctx);
 
-        self.top_bar(egui_ctx, frame);
+        self.top_bar(egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
             .frame(self.re_ui.bottom_panel_frame())
@@ -364,18 +361,9 @@ impl eframe::App for ExampleApp {
 }
 
 impl ExampleApp {
-    fn top_bar(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let native_pixels_per_point = frame.info().native_pixels_per_point;
-        let fullscreen = {
-            #[cfg(target_arch = "wasm32")]
-            {
-                false
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                frame.info().window_info.fullscreen
-            }
-        };
+    fn top_bar(&mut self, egui_ctx: &egui::Context) {
+        let native_pixels_per_point = egui_ctx.input(|i| i.raw.native_pixels_per_point);
+        let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen).unwrap_or(false);
         let top_bar_style = self
             .re_ui
             .top_bar_style(native_pixels_per_point, fullscreen, false);
@@ -390,7 +378,7 @@ impl ExampleApp {
 
                     ui.menu_button("File", |ui| file_menu(ui, &self.command_sender));
 
-                    self.top_bar_ui(ui, frame);
+                    self.top_bar_ui(ui);
                 })
                 .response;
 
@@ -398,21 +386,23 @@ impl ExampleApp {
                 if !re_ui::NATIVE_WINDOW_BAR {
                     let title_bar_response = _response.interact(egui::Sense::click());
                     if title_bar_response.double_clicked() {
-                        frame.set_maximized(!frame.info().window_info.maximized);
+                        let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+                        ui.ctx()
+                            .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
                     } else if title_bar_response.is_pointer_button_down_on() {
-                        frame.drag_window();
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
                     }
                 }
             });
     }
 
-    fn top_bar_ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+    fn top_bar_ui(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // From right-to-left:
 
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 ui.add_space(8.0);
-                re_ui::native_window_buttons_ui(frame, ui);
+                re_ui::native_window_buttons_ui(ui);
                 ui.separator();
             } else {
                 ui.add_space(16.0);

@@ -917,10 +917,9 @@ impl ReUi {
 /// Assumes it is in a right-to-left layout.
 ///
 /// Use when [`CUSTOM_WINDOW_DECORATIONS`] is set.
-#[cfg(feature = "eframe")]
 #[cfg(not(target_arch = "wasm32"))]
-pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
-    use egui::{Button, RichText};
+pub fn native_window_buttons_ui(ui: &mut egui::Ui) {
+    use egui::{Button, RichText, ViewportCommand};
 
     let button_height = 12.0;
 
@@ -928,22 +927,24 @@ pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
         .add(Button::new(RichText::new("❌").size(button_height)))
         .on_hover_text("Close the window");
     if close_response.clicked() {
-        frame.close();
+        ui.ctx().send_viewport_cmd(ViewportCommand::Close);
     }
 
-    if frame.info().window_info.maximized {
+    let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+    if maximized {
         let maximized_response = ui
             .add(Button::new(RichText::new("🗗").size(button_height)))
             .on_hover_text("Restore window");
         if maximized_response.clicked() {
-            frame.set_maximized(false);
+            ui.ctx()
+                .send_viewport_cmd(ViewportCommand::Maximized(false));
         }
     } else {
         let maximized_response = ui
             .add(Button::new(RichText::new("🗗").size(button_height)))
             .on_hover_text("Maximize window");
         if maximized_response.clicked() {
-            frame.set_maximized(true);
+            ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));
         }
     }
 
@@ -951,7 +952,7 @@ pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
         .add(Button::new(RichText::new("🗕").size(button_height)))
         .on_hover_text("Minimize the window");
     if minimized_response.clicked() {
-        frame.set_minimized(true);
+        ui.ctx().send_viewport_cmd(ViewportCommand::Minimized(true));
     }
 }
 

@@ -1514,7 +1514,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1523,7 +1523,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1556,7 +1556,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "accesskit",
  "ahash 0.8.6",
@@ -1572,9 +1572,10 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "bytemuck",
+ "egui",
  "epaint",
  "log",
  "puffin",
@@ -1587,7 +1588,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -1616,7 +1617,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "egui",
  "ehttp",
@@ -1631,7 +1632,7 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1691,7 +1692,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1793,7 +1794,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=fb8fa67afd6e673f76e7b56221a2162981d62f79#fb8fa67afd6e673f76e7b56221a2162981d62f79"
+source = "git+https://github.com/emilk/egui.git?rev=1571027556b57cef5908df094038795c09b9090a#1571027556b57cef5908df094038795c09b9090a"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.6",
@@ -4126,7 +4127,7 @@ dependencies = [
  "indoc",
  "libc",
  "memoffset 0.9.0",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.1",
  "pyo3-build-config",
  "pyo3-ffi",
  "pyo3-macros",
@@ -6977,7 +6978,7 @@ dependencies = [
  "js-sys",
  "log",
  "naga",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.1",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -7002,7 +7003,7 @@ dependencies = [
  "codespan-reporting",
  "log",
  "naga",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.1",
  "profiling",
  "raw-window-handle",
  "rustc-hash",
@@ -7042,7 +7043,7 @@ dependencies = [
  "naga",
  "objc",
  "once_cell",
- "parking_lot 0.11.2",
+ "parking_lot 0.12.1",
  "profiling",
  "range-alloc",
  "raw-window-handle",

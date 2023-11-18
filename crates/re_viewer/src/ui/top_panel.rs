@@ -10,23 +10,13 @@ pub fn top_panel(
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
-    frame: &mut eframe::Frame,
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     re_tracing::profile_function!();
 
-    let native_pixels_per_point = frame.info().native_pixels_per_point;
-    let fullscreen = {
-        #[cfg(target_arch = "wasm32")]
-        {
-            false
-        }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            frame.info().window_info.fullscreen
-        }
-    };
+    let native_pixels_per_point = ui.input(|i| i.raw.native_pixels_per_point);
+    let fullscreen = ui.input(|i| i.viewport().fullscreen).unwrap_or(false);
     let style_like_web = app.is_screenshotting();
     let top_bar_style =
         app.re_ui()
@@ -40,14 +30,7 @@ pub fn top_panel(
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
-                top_bar_ui(
-                    app_blueprint,
-                    store_context,
-                    ui,
-                    frame,
-                    app,
-                    gpu_resource_stats,
-                );
+                top_bar_ui(app_blueprint, store_context, ui, app, gpu_resource_stats);
             })
             .response;
 
@@ -55,9 +38,11 @@ pub fn top_panel(
             if !re_ui::NATIVE_WINDOW_BAR {
                 let title_bar_response = _response.interact(egui::Sense::click());
                 if title_bar_response.double_clicked() {
-                    frame.set_maximized(!frame.info().window_info.maximized);
+                    let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+                    ui.ctx()
+                        .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
                 } else if title_bar_response.is_pointer_button_down_on() {
-                    frame.drag_window();
+                    ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
                 }
             }
         });
@@ -67,11 +52,10 @@ fn top_bar_ui(
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
-    frame: &mut eframe::Frame,
     app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    app.rerun_menu_button_ui(store_context, ui, frame);
+    app.rerun_menu_button_ui(store_context, ui);
 
     ui.add_space(12.0);
     website_link_ui(ui);
@@ -87,7 +71,7 @@ fn top_bar_ui(
         if re_ui::CUSTOM_WINDOW_DECORATIONS && !cfg!(target_arch = "wasm32") {
             ui.add_space(8.0);
             #[cfg(not(target_arch = "wasm32"))]
-            re_ui::native_window_buttons_ui(frame, ui);
+            re_ui::native_window_buttons_ui(ui);
             ui.separator();
         } else {
             // Make the first button the same distance form the side as from the top,

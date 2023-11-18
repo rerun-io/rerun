@@ -34,14 +34,10 @@ impl Screenshotter {
     }
 
     /// Call once per frame
-    pub fn update(
-        &mut self,
-        egui_ctx: &egui::Context,
-        frame: &mut eframe::Frame,
-    ) -> ScreenshotterOutput {
+    pub fn update(&mut self, egui_ctx: &egui::Context) -> ScreenshotterOutput {
         if let Some(countdown) = &mut self.countdown {
             if *countdown == 0 {
-                frame.request_screenshot();
+                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot);
             } else {
                 *countdown -= 1;
             }
