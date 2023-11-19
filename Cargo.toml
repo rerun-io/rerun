@@ -156,8 +156,8 @@ polars-lazy = "0.29"
 polars-ops = "0.29"
 poll-promise = "0.3"
 pollster = "0.3"
-puffin = "0.16"
-puffin_http = "0.13"
+puffin = "0.17"
+puffin_http = "0.14"
 rand = { version = "0.8", default-features = false }
 rayon = "1.7"
 rfd = { version = "0.12", default_features = false, features = ["xdg-portal"] }
@@ -232,10 +232,10 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "a23b959fd4c228f6d37e7e6e33bc10c4e9edc933" }      # egui master 2023-11-19
-eframe = { git = "https://github.com/emilk/egui.git", rev = "a23b959fd4c228f6d37e7e6e33bc10c4e9edc933" }      # egui master 2023-11-19
-egui = { git = "https://github.com/emilk/egui.git", rev = "a23b959fd4c228f6d37e7e6e33bc10c4e9edc933" }        # egui master 2023-11-19
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "a23b959fd4c228f6d37e7e6e33bc10c4e9edc933" } # egui master 2023-11-19
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "a23b959fd4c228f6d37e7e6e33bc10c4e9edc933" }   # egui master 2023-11-19
-emath = { git = "https://github.com/emilk/egui.git", rev = "a23b959fd4c228f6d37e7e6e33bc10c4e9edc933" }       # egui master 2023-11-19
-epaint = { git = "https://github.com/emilk/egui.git", rev = "a23b959fd4c228f6d37e7e6e33bc10c4e9edc933" }      # egui master 2023-11-19
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }      # egui master 2023-11-19
+eframe = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }      # egui master 2023-11-19
+egui = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }        # egui master 2023-11-19
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" } # egui master 2023-11-19
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }   # egui master 2023-11-19
+emath = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }       # egui master 2023-11-19
+epaint = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }      # egui master 2023-11-19
