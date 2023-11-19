@@ -33,19 +33,15 @@ fn main() -> eframe::Result<()> {
     re_log::setup_native_logging();
 
     let native_options = eframe::NativeOptions {
-        app_id: Some("rerun_example_re_ui_example".to_owned()),
+        viewport: egui::ViewportBuilder::default()
+            .with_app_id("re_ui_example")
+            .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
+            .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
+            .with_inner_size([1200.0, 800.0])
+            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners we need transparency
 
-        initial_window_size: Some([1200.0, 800.0].into()),
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
-
-        #[cfg(target_os = "macos")]
-        fullsize_content: re_ui::FULLSIZE_CONTENT,
-
-        // Maybe hide the OS-specific "chrome" around the window:
-        decorated: !re_ui::CUSTOM_WINDOW_DECORATIONS,
-        // To have rounded corners we need transparency:
-        transparent: re_ui::CUSTOM_WINDOW_DECORATIONS,
 
         ..Default::default()
     };
