@@ -1137,6 +1137,7 @@ impl eframe::App for App {
         self.store_hub = Some(store_hub);
 
         // Check for returned screenshot:
+        #[cfg(not(target_arch = "wasm32"))]
         egui_ctx.input(|i| {
             for event in &i.raw.events {
                 if let egui::Event::Screenshot { image, .. } = event {
