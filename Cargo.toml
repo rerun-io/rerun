@@ -132,6 +132,7 @@ infer = "0.15" # infer MIME type by checking the magic number signature
 itertools = "0.11"
 js-sys = "0.3"
 lazy_static = "1.4"
+lz4_flex = "0.10"
 log = "0.4"
 log-once = "0.4"
 macaw = "0.18"
