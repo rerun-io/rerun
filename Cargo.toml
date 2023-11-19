@@ -132,7 +132,7 @@ infer = "0.15" # infer MIME type by checking the magic number signature
 itertools = "0.11"
 js-sys = "0.3"
 lazy_static = "1.4"
-lz4_flex = "0.10"
+lz4_flex = "0.11"
 log = "0.4"
 log-once = "0.4"
 macaw = "0.18"
@@ -240,3 +240,14 @@ egui_extras = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d0
 egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }   # egui master 2023-11-19
 emath = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }       # egui master 2023-11-19
 epaint = { git = "https://github.com/emilk/egui.git", rev = "7bfaf4963676d02a88000b900b46365a827e0b65" }      # egui master 2023-11-19
+
+# Useful while developing:
+# ecolor = { path = "../../egui/crates/ecolor" }
+# eframe = { path = "../../egui/crates/eframe" }
+# egui = { path = "../../egui/crates/egui" }
+# egui_extras = { path = "../../egui/crates/egui_extras" }
+# egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
+# emath = { path = "../../egui/crates/emath" }
+# epaint = { path = "../../egui/crates/epaint" }
+
+# puffin = { path = "../../embark/puffin/puffin" }
