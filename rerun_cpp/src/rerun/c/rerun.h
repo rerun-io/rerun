@@ -159,7 +159,7 @@ typedef struct {
     uint32_t num_data_cells;
 
     /// One for each component.
-    const rr_data_cell* data_cells;
+    rr_data_cell* data_cells;
 } rr_data_row;
 
 /// Error codes returned by the Rerun C SDK as part of `rr_error`.
@@ -360,8 +360,12 @@ extern void rr_recording_stream_reset_time(rr_recording_stream stream);
 ///
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
+///
+/// Takes ownership of the passed data cells and will release underlying
+/// arrow data once it is no longer needed.
+/// Any pointers passed via `rr_string` can be safely freed after this call.
 extern void rr_recording_stream_log(
-    rr_recording_stream stream, const rr_data_row* data_row, bool inject_time, rr_error* error
+    rr_recording_stream stream, rr_data_row data_row, bool inject_time, rr_error* error
 );
 
 // ----------------------------------------------------------------------------

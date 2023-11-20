@@ -35,7 +35,7 @@ namespace rerun {
 
         /// To rerun C API data cell.
         ///
-        /// Only valid as long as the C++ data cell is alive.
+        /// The resulting `rr_data_cell` keeps the `arrow::Array` alive until it is released.
         Error to_c_ffi_struct(rr_data_cell& out_cell) const;
     };
 } // namespace rerun

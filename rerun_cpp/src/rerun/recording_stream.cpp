@@ -236,7 +236,8 @@ namespace rerun {
         c_data_row.data_cells = c_data_cells.data();
 
         rr_error status = {};
-        rr_recording_stream_log(_id, &c_data_row, inject_time, &status);
+        rr_recording_stream_log(_id, c_data_row, inject_time, &status);
+
         return status;
     }
 } // namespace rerun

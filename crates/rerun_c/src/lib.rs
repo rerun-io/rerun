@@ -123,7 +123,7 @@ pub struct CDataRow {
     pub entity_path: CStringView,
     pub num_instances: u32,
     pub num_data_cells: u32,
-    pub data_cells: *const CDataCell,
+    pub data_cells: *mut CDataCell,
 }
 
 #[repr(u32)]
@@ -559,58 +559,64 @@ pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
 
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
+#[allow(clippy::needless_pass_by_value)] // Conceptually we're consuming the data_row, as we take ownership of data it points to.
 fn rr_log_impl(
     stream: CRecordingStream,
-    data_row: *const CDataRow,
+    data_row: CDataRow,
     inject_time: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
-
-    let data_row = ptr::try_ptr_as_ref(data_row, "data_row")?;
 
     let CDataRow {
         entity_path,
         num_instances,
         num_data_cells,
         data_cells,
-    } = *data_row;
+    } = data_row;
 
     let entity_path = entity_path.as_str("entity_path")?;
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
+    let num_data_cells = num_data_cells as usize;
     re_log::debug!(
         "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",
     );
 
     let mut cells = re_log_types::DataCellVec::default();
-    cells.reserve(num_data_cells as usize);
+    cells.reserve(num_data_cells);
 
-    let data_cells = unsafe { std::slice::from_raw_parts(data_cells, num_data_cells as usize) };
+    let data_cells = unsafe { std::slice::from_raw_parts_mut(data_cells, num_data_cells) };
 
     for data_cell in data_cells {
+        // Arrow2 implements drop for ArrowArray and ArrowSchema.
+        //
+        // Therefore, for things to work correctly we have to take ownership of the data cell!
+        // The C interface is documented to take ownership of the data cell - the user should NOT call `release`.
+        // This makes sense because from here on out we want to manage the lifetime of the underlying schema and array data:
+        // the schema won't survive a loop iteration since it's reference passed for import, whereas the ArrowArray lives
+        // on a longer within the resulting arrow::Array.
         let CDataCell {
             component_name,
             array,
             schema,
-        } = &data_cell;
+        } = unsafe { std::ptr::read(data_cell) };
+
+        // It would be nice to now mark the data_cell as "consumed" by setting the original release method to nullptr.
+        // This would signifies to the calling code that the data_cell is no longer owned.
+        // However, Arrow2 doesn't allow us to access the fields of the ArrowArray and ArrowSchema structs.
 
         let component_name = component_name.as_str("data_cells[i].component_name")?;
         let component_name = ComponentName::from(component_name);
 
-        let field = unsafe { arrow2::ffi::import_field_from_c(schema) }.map_err(|err| {
+        let field = unsafe { arrow2::ffi::import_field_from_c(&schema) }.map_err(|err| {
             CError::new(
                 CErrorCode::ArrowFfiSchemaImportError,
                 &format!("Failed to import ffi schema: {err}"),
             )
         })?;
 
-        // We need to copy the array since `import_array_from_c` takes ownership of the array.
-        // Since we don't touch the original afterwards anymore and array doesn't have a drop implementation,
-        // it should be safe to do so.
-        let ffi_array: arrow2::ffi::ArrowArray = unsafe { std::mem::transmute_copy(array) };
-
-        let values = unsafe { arrow2::ffi::import_array_from_c(ffi_array, field.data_type) }
-            .map_err(|err| {
+        let values =
+            unsafe { arrow2::ffi::import_array_from_c(array, field.data_type) }.map_err(|err| {
                 CError::new(
                     CErrorCode::ArrowFfiArrayImportError,
                     &format!("Failed to import ffi array: {err}"),
@@ -650,7 +656,7 @@ fn rr_log_impl(
 #[no_mangle]
 pub unsafe extern "C" fn rr_recording_stream_log(
     stream: CRecordingStream,
-    data_row: *const CDataRow,
+    data_row: CDataRow,
     inject_time: bool,
     error: *mut CError,
 ) {
