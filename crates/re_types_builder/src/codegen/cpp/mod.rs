@@ -631,8 +631,8 @@ impl QuotedObject {
         if obj.kind == ObjectKind::Component {
             methods.push(component_to_data_cell_method(
                 &type_ident,
-                &obj,
-                &objects,
+                obj,
+                objects,
                 &mut hpp_includes,
             ));
         }
