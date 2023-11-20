@@ -482,7 +482,7 @@ fn visible_history_boundary_ui(
     // both boundaries fighting each other in some corner cases (when the user interacts with the
     // current time cursor)
 
-    match visible_history_boundary {
+    let response = match visible_history_boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
             // see note above
             let low_bound_override = if !low_bound {
@@ -492,27 +492,30 @@ fn visible_history_boundary_ui(
             };
 
             if is_sequence_timeline {
-                timeline_spec
-                    .sequence_drag_value(ui, value, false, low_bound_override)
-                    .on_hover_text(
-                        "Number of frames before/after the current time to use a time range \
-                        boundary",
-                    )
-                    .dragged()
+                Some(
+                    timeline_spec
+                        .sequence_drag_value(ui, value, false, low_bound_override)
+                        .on_hover_text(
+                            "Number of frames before/after the current time to use a time \
+                        range boundary",
+                        ),
+                )
             } else {
-                timeline_spec
-                    .temporal_drag_value(
-                        ui,
-                        value,
-                        false,
-                        low_bound_override,
-                        ctx.app_options.time_zone_for_timestamps,
-                    )
-                    .0
-                    .on_hover_text(
-                        "Time duration before/after the current time to use as time range boundary",
-                    )
-                    .dragged()
+                Some(
+                    timeline_spec
+                        .temporal_drag_value(
+                            ui,
+                            value,
+                            false,
+                            low_bound_override,
+                            ctx.app_options.time_zone_for_timestamps,
+                        )
+                        .0
+                        .on_hover_text(
+                            "Time duration before/after the current time to use as time range \
+                                boundary",
+                        ),
+                )
             }
         }
         VisibleHistoryBoundary::Absolute(value) => {
@@ -524,10 +527,11 @@ fn visible_history_boundary_ui(
             };
 
             if is_sequence_timeline {
-                timeline_spec
-                    .sequence_drag_value(ui, value, true, low_bound_override)
-                    .on_hover_text("Absolute frame number to use as time range boundary")
-                    .dragged()
+                Some(
+                    timeline_spec
+                        .sequence_drag_value(ui, value, true, low_bound_override)
+                        .on_hover_text("Absolute frame number to use as time range boundary"),
+                )
             } else {
                 let (drag_resp, base_time_resp) = timeline_spec.temporal_drag_value(
                     ui,
@@ -541,13 +545,13 @@ fn visible_history_boundary_ui(
                     base_time_resp.on_hover_text("Base time used to set time range boundaries");
                 }
 
-                drag_resp
-                    .on_hover_text("Absolute time to use as time range boundary")
-                    .dragged()
+                Some(drag_resp.on_hover_text("Absolute time to use as time range boundary"))
             }
         }
-        VisibleHistoryBoundary::Infinite => false,
-    }
+        VisibleHistoryBoundary::Infinite => None,
+    };
+
+    response.map_or(false, |r| r.dragged() || r.has_focus())
 }
 
 // ---
