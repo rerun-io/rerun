@@ -112,11 +112,10 @@ pub struct CStoreInfo {
 pub struct CDataCell {
     pub component_name: CStringView,
 
-    /// Length of [`Self::bytes`].
-    pub num_bytes: u64,
+    pub array: arrow2::ffi::ArrowArray,
 
-    /// Data in the Arrow IPC encapsulated message format.
-    pub bytes: *const u8,
+    /// TODO(andreas): Use a schema registry.
+    pub schema: arrow2::ffi::ArrowSchema,
 }
 
 #[repr(C)]
@@ -147,6 +146,8 @@ pub enum CErrorCode {
     _CategoryArrow = 0x0000_1000,
     ArrowIpcMessageParsingFailure,
     ArrowDataCellError,
+    ArrowFfiSchemaImportError, // TODO: sync to C and C++
+    ArrowFfiArrayImportError,
 
     Unknown = 0xFFFF_FFFF,
 }
@@ -584,30 +585,52 @@ fn rr_log_impl(
 
     let mut cells = re_log_types::DataCellVec::default();
     cells.reserve(num_data_cells as usize);
-    for i in 0..num_data_cells {
-        let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
+
+    let data_cells = unsafe { std::slice::from_raw_parts(data_cells, num_data_cells as usize) };
+
+    for data_cell in data_cells {
         let CDataCell {
             component_name,
-            num_bytes,
-            bytes,
-        } = *data_cell;
+            array,
+            schema,
+        } = &data_cell;
 
         let component_name = component_name.as_str("data_cells[i].component_name")?;
         let component_name = ComponentName::from(component_name);
 
-        let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
-        let array = parse_arrow_ipc_encapsulated_message(bytes).map_err(|err| {
+        // let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
+        // let array = parse_arrow_ipc_encapsulated_message(bytes).map_err(|err| {
+        //     CError::new(
+        //         CErrorCode::ArrowIpcMessageParsingFailure,
+        //         &format!("Failed to parse Arrow IPC encapsulated message: {err}"),
+        //     )
+        // })?;
+
+        let field = unsafe { arrow2::ffi::import_field_from_c(schema) }.map_err(|err| {
             CError::new(
-                CErrorCode::ArrowIpcMessageParsingFailure,
-                &format!("Failed to parse Arrow IPC encapsulated message: {err}"),
+                CErrorCode::ArrowFfiSchemaImportError,
+                &format!("Failed to import ffi schema: {err}"),
             )
         })?;
 
+        // We need to copy the array since `import_array_from_c` takes ownership of the array.
+        // Since we don't touch the original afterwards anymore and array doesn't have a drop implementation,
+        // it should be safe to do so.
+        let ffi_array: arrow2::ffi::ArrowArray = unsafe { std::mem::transmute_copy(array) };
+
+        let values = unsafe { arrow2::ffi::import_array_from_c(ffi_array, field.data_type) }
+            .map_err(|err| {
+                CError::new(
+                    CErrorCode::ArrowFfiArrayImportError,
+                    &format!("Failed to import ffi array: {err}"),
+                )
+            })?;
+
         cells.push(
-            DataCell::try_from_arrow(component_name, array).map_err(|err| {
+            DataCell::try_from_arrow(component_name, values).map_err(|err| {
                 CError::new(
                     CErrorCode::ArrowDataCellError,
-                    &format!("Failed to create arrow datacell from message: {err}"),
+                    &format!("Failed to create arrow datacell: {err}"),
                 )
             })?,
         );

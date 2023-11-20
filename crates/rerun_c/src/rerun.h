@@ -16,6 +16,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "abi.h"
 
 // ----------------------------------------------------------------------------
 // Types:
@@ -136,17 +137,10 @@ typedef struct rr_data_cell {
     /// The name of the component, e.g. `position`.
     rr_string component_name;
 
-    /// The number of bytes in the `bytes` field.
-    /// Must be a multiple of 8.
-    uint64_t num_bytes;
+    ArrowArray array;
 
-    /// Data in the Arrow IPC encapsulated message format.
-    ///
-    /// There must be exactly one chunk of data.
-    ///
-    /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
-    /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
-    const uint8_t* bytes;
+    /// TODO(andreas): Use a schema registry.
+    ArrowSchema schema;
 } rr_data_cell;
 
 /// Arrow-encoded log data for a single entity.

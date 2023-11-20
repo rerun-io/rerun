@@ -227,16 +227,7 @@ namespace rerun {
         // Map to C API:
         std::vector<rr_data_cell> c_data_cells(num_data_cells);
         for (size_t i = 0; i < num_data_cells; i++) {
-            if (data_cells[i].buffer == nullptr) {
-                return Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "DataCell buffer is null for cell " + std::to_string(i)
-                );
-            }
-
-            c_data_cells[i].component_name = detail::to_rr_string(data_cells[i].component_name);
-            c_data_cells[i].num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size());
-            c_data_cells[i].bytes = data_cells[i].buffer->data();
+            RR_RETURN_NOT_OK(data_cells[i].to_c(c_data_cells[i]));
         }
 
         rr_data_row c_data_row;
