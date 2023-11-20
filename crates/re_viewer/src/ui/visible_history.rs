@@ -236,7 +236,7 @@ pub fn visible_history_ui(
 
     collapsing_response.header_response.on_hover_text(
         "Controls the time range used to display data in the Space View.\n\n\
-        Note that the data immediately preceding the time range is always displayed.",
+        Note that the data current as of the time range starting time is included.",
     );
 }
 
@@ -250,49 +250,33 @@ fn current_range_ui(
     let from = visible_history.from(current_time.into());
     let to = visible_history.to(current_time.into());
 
-    let (label_text, hover_text) = if is_sequence_timeline {
-        if from == to {
-            (
-                format!("Showing last data before frame #{}", from.as_i64()),
-                None,
-            )
-        } else {
-            (
-                format!(
-                    "Showing data between frames #{:?} and #{:?}.",
-                    visible_history.from(current_time.into()).as_i64(),
-                    visible_history.to(current_time.into()).as_i64()
-                ),
-                Some("This may include the last data logged before the starting frame"),
-            )
-        }
+    let (time_type, quantity_name) = if is_sequence_timeline {
+        (TimeType::Sequence, "frame")
     } else {
-        let time_type = TimeType::Time;
-        let from_formatted = time_type.format(
-            visible_history.from(current_time.into()),
-            ctx.app_options.time_zone_for_timestamps,
-        );
-
-        if from == to {
-            (format!("Showing last data before {from_formatted}"), None)
-        } else {
-            (
-                format!(
-                    "Showing data between {from_formatted} and {}.",
-                    time_type.format(
-                        visible_history.to(current_time.into()),
-                        ctx.app_options.time_zone_for_timestamps
-                    )
-                ),
-                Some("This may include the last data logged before the starting time."),
-            )
-        }
+        (TimeType::Time, "time")
     };
 
-    let resp = ui.label(label_text);
-    if let Some(hover_text) = hover_text {
-        resp.on_hover_text(hover_text);
-    }
+    let from_formatted = time_type.format(
+        visible_history.from(current_time.into()),
+        ctx.app_options.time_zone_for_timestamps,
+    );
+
+    if from == to {
+        ui.label(format!(
+            "Showing last data logged on or before {quantity_name} {from_formatted}"
+        ));
+    } else {
+        ui.label(format!(
+            "Showing data between {quantity_name}s {from_formatted} and {}.",
+            time_type.format(
+                visible_history.to(current_time.into()),
+                ctx.app_options.time_zone_for_timestamps
+            )
+        ))
+        .on_hover_text(format!(
+            "This includes the data current as of the starting {quantity_name}."
+        ));
+    };
 }
 
 #[allow(clippy::too_many_arguments)]
