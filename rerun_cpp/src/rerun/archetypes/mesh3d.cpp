@@ -19,48 +19,69 @@ namespace rerun {
         cells.reserve(7);
 
         {
-            auto result = (archetype.vertex_positions).serialize();
+            const size_t size = archetype.vertex_positions.size();
+            auto result = rerun::components::Position3D::to_data_cell(
+                archetype.vertex_positions.data(),
+                archetype.vertex_positions.size()
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.mesh_properties.has_value()) {
-            auto result =
-                Collection<rerun::components::MeshProperties>(archetype.mesh_properties.value())
-                    .serialize();
+            const size_t size = 1;
+            auto result = rerun::components::MeshProperties::to_data_cell(
+                &archetype.mesh_properties.value(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.vertex_normals.has_value()) {
-            auto result = (archetype.vertex_normals.value()).serialize();
+            const size_t size = archetype.vertex_normals.value().size();
+            auto result = rerun::components::Vector3D::to_data_cell(
+                archetype.vertex_normals.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.vertex_colors.has_value()) {
-            auto result = (archetype.vertex_colors.value()).serialize();
+            const size_t size = archetype.vertex_colors.value().size();
+            auto result = rerun::components::Color::to_data_cell(
+                archetype.vertex_colors.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.mesh_material.has_value()) {
-            auto result = Collection<rerun::components::Material>(archetype.mesh_material.value())
-                              .serialize();
+            const size_t size = 1;
+            auto result =
+                rerun::components::Material::to_data_cell(&archetype.mesh_material.value(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.class_ids.has_value()) {
-            auto result = (archetype.class_ids.value()).serialize();
+            const size_t size = archetype.class_ids.value().size();
+            auto result =
+                rerun::components::ClassId::to_data_cell(archetype.class_ids.value().data(), size);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         if (archetype.instance_keys.has_value()) {
-            auto result = (archetype.instance_keys.value()).serialize();
+            const size_t size = archetype.instance_keys.value().size();
+            auto result = rerun::components::InstanceKey::to_data_cell(
+                archetype.instance_keys.value().data(),
+                size
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), size);
         }
         {
-            auto result =
-                Collection<Mesh3D::IndicatorComponent>(Mesh3D::IndicatorComponent()).serialize();
+            auto indicator = Mesh3D::IndicatorComponent();
+            auto result = Mesh3D::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.emplace_back(std::move(result.value), 1);
         }
 
         return cells;

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/half_sizes3d.hpp"
@@ -15,7 +16,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../warning_macros.hpp"
+#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -150,34 +151,34 @@ namespace rerun::archetypes {
         Boxes3D with_centers(Collection<rerun::components::Position3D> _centers) && {
             centers = std::move(_centers);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         Boxes3D with_rotations(Collection<rerun::components::Rotation3D> _rotations) && {
             rotations = std::move(_rotations);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the boxes.
         Boxes3D with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional radii for the lines that make up the boxes.
         Boxes3D with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the boxes.
         Boxes3D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional `ClassId`s for the boxes.
@@ -186,14 +187,14 @@ namespace rerun::archetypes {
         Boxes3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Unique identifiers for each individual boxes in the batch.
         Boxes3D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys) && {
             instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

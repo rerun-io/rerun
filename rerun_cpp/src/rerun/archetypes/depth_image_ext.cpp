@@ -1,45 +1,53 @@
 #include "../error.hpp"
 #include "depth_image.hpp"
 
-// Uncomment for better auto-complete while editing the extension.
-// #define EDIT_EXTENSION
+#include "../collection_adapter_builtins.hpp"
 
-namespace rerun {
-    namespace archetypes {
+namespace rerun::archetypes {
 
 #ifdef EDIT_EXTENSION
-        // <CODEGEN_COPY_TO_HEADER>
+    // <CODEGEN_COPY_TO_HEADER>
 
-        /// New depth image from height/width and tensor buffer.
-        ///
-        /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// Calls `Error::handle()` if the shape is not rank 2.
-        DepthImage(std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
-            : DepthImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+    /// New depth image from height/width and tensor buffer.
+    ///
+    /// Sets the dimension names to "height" and "width" if they are not specified.
+    /// Calls `Error::handle()` if the shape is not rank 2.
+    DepthImage(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+        : DepthImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
-        /// New depth image from tensor data.
-        ///
-        /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// Calls `Error::handle()` if the shape is not rank 2.
-        explicit DepthImage(components::TensorData _data);
+    /// New depth image from tensor data.
+    ///
+    /// Sets the dimension names to "height" and "width" if they are not specified.
+    /// Calls `Error::handle()` if the shape is not rank 2.
+    explicit DepthImage(components::TensorData data_);
 
-        // </CODEGEN_COPY_TO_HEADER>
+    // </CODEGEN_COPY_TO_HEADER>
 #endif
 
-        DepthImage::DepthImage(components::TensorData _data) : data(std::move(_data)) {
-            auto& shape = data.data.shape;
-            if (shape.size() != 2) {
-                Error(ErrorCode::InvalidTensorDimension, "Shape must be rank 2.").handle();
-                return;
-            }
-
-            if (!shape[0].name.has_value()) {
-                shape[0].name = "height";
-            }
-            if (!shape[1].name.has_value()) {
-                shape[1].name = "width";
-            }
+    DepthImage::DepthImage(components::TensorData data_) : data(std::move(data_)) {
+        auto& shape = data.data.shape;
+        if (shape.size() != 2) {
+            Error(ErrorCode::InvalidTensorDimension, "Shape must be rank 2.").handle();
+            return;
         }
 
-    } // namespace archetypes
-} // namespace rerun
+        // We want to change the dimension names if they are not specified.
+        // But rerun collections are strictly immutable, so create a new one if necessary.
+        bool overwrite_height = !shape[0].name.has_value();
+        bool overwrite_width = !shape[1].name.has_value();
+
+        if (overwrite_height || overwrite_width) {
+            auto new_shape = shape.to_vector();
+
+            if (overwrite_height) {
+                new_shape[0].name = "height";
+            }
+            if (overwrite_width) {
+                new_shape[1].name = "width";
+            }
+
+            shape = std::move(new_shape);
+        }
+    }
+
+} // namespace rerun::archetypes

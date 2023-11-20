@@ -8,6 +8,7 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
+#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -52,109 +53,107 @@ namespace rerun::archetypes {
 
         // --------------------------------------------------------------------
         // Implicit constructors:
-        // TODO(#3794): don't use std::vector here
 
-        /// Construct a `BarChart` from a `std::vector<uint8_t>`.
-        BarChart(std::vector<uint8_t> u8)
+        /// Construct a `BarChart` from a `Collection<uint8_t>`.
+        BarChart(Collection<uint8_t> u8)
             : BarChart(rerun::datatypes::TensorBuffer::u8(std::move(u8))) {}
 
-        /// Construct a `BarChart` from a `std::vector<uint16_t>`.
-        BarChart(std::vector<uint16_t> u16)
+        /// Construct a `BarChart` from a `Collection<uint16_t>`.
+        BarChart(Collection<uint16_t> u16)
             : BarChart(rerun::datatypes::TensorBuffer::u16(std::move(u16))) {}
 
-        /// Construct a `BarChart` from a `std::vector<uint32_t>`.
-        BarChart(std::vector<uint32_t> u32)
+        /// Construct a `BarChart` from a `Collection<uint32_t>`.
+        BarChart(Collection<uint32_t> u32)
             : BarChart(rerun::datatypes::TensorBuffer::u32(std::move(u32))) {}
 
-        /// Construct a `BarChart` from a `std::vector<uint64_t>`.
-        BarChart(std::vector<uint64_t> u64)
+        /// Construct a `BarChart` from a `Collection<uint64_t>`.
+        BarChart(Collection<uint64_t> u64)
             : BarChart(rerun::datatypes::TensorBuffer::u64(std::move(u64))) {}
 
-        /// Construct a `BarChart` from a `std::vector<int8_t>`.
-        BarChart(std::vector<int8_t> i8)
+        /// Construct a `BarChart` from a `Collection<int8_t>`.
+        BarChart(Collection<int8_t> i8)
             : BarChart(rerun::datatypes::TensorBuffer::i8(std::move(i8))) {}
 
-        /// Construct a `BarChart` from a `std::vector<int16_t>`.
-        BarChart(std::vector<int16_t> i16)
+        /// Construct a `BarChart` from a `Collection<int16_t>`.
+        BarChart(Collection<int16_t> i16)
             : BarChart(rerun::datatypes::TensorBuffer::i16(std::move(i16))) {}
 
-        /// Construct a `BarChart` from a `std::vector<int32_t>`.
-        BarChart(std::vector<int32_t> i32)
+        /// Construct a `BarChart` from a `Collection<int32_t>`.
+        BarChart(Collection<int32_t> i32)
             : BarChart(rerun::datatypes::TensorBuffer::i32(std::move(i32))) {}
 
-        /// Construct a `BarChart` from a `std::vector<int64_t>`.
-        BarChart(std::vector<int64_t> i64)
+        /// Construct a `BarChart` from a `Collection<int64_t>`.
+        BarChart(Collection<int64_t> i64)
             : BarChart(rerun::datatypes::TensorBuffer::i64(std::move(i64))) {}
 
-        /// Construct aBarChart` from a `std::vector<half>`.
-        BarChart(std::vector<rerun::half> f16)
+        /// Construct aBarChart` from a `Collection<half>`.
+        BarChart(Collection<rerun::half> f16)
             : BarChart(rerun::datatypes::TensorBuffer::f16(std::move(f16))) {}
 
-        /// Construct a `BarChart` from a `std::vector<float>`.
-        BarChart(std::vector<float> f32)
+        /// Construct a `BarChart` from a `Collection<float>`.
+        BarChart(Collection<float> f32)
             : BarChart(rerun::datatypes::TensorBuffer::f32(std::move(f32))) {}
 
-        /// Construct a `BarChart` from a `std::vector<double>`.
-        BarChart(std::vector<double> f64)
+        /// Construct a `BarChart` from a `Collection<double>`.
+        BarChart(Collection<double> f64)
             : BarChart(rerun::datatypes::TensorBuffer::f64(std::move(f64))) {}
 
         // --------------------------------------------------------------------
         // Explicit static constructors:
-        // TODO(#3794): don't use std::vector here
 
-        /// Construct a `BarChart` from a `std::vector<uint8_t>`.
-        static BarChart u8(std::vector<uint8_t> u8) {
-            return BarChart(u8);
+        /// Construct a `BarChart` from a `Collection<uint8_t>`.
+        static BarChart u8(Collection<uint8_t> u8) {
+            return BarChart(std::move(u8));
         }
 
-        /// Construct a `BarChart` from a `std::vector<uint16_t>`.
-        static BarChart u16(std::vector<uint16_t> u16) {
-            return BarChart(u16);
+        /// Construct a `BarChart` from a `Collection<uint16_t>`.
+        static BarChart u16(Collection<uint16_t> u16) {
+            return BarChart(std::move(u16));
         }
 
-        /// Construct a `BarChart` from a `std::vector<uint32_t>`.
-        static BarChart u32(std::vector<uint32_t> u32) {
-            return BarChart(u32);
+        /// Construct a `BarChart` from a `Collection<uint32_t>`.
+        static BarChart u32(Collection<uint32_t> u32) {
+            return BarChart(std::move(u32));
         }
 
-        /// Construct a `BarChart` from a `std::vector<uint64_t>`.
-        static BarChart u64(std::vector<uint64_t> u64) {
-            return BarChart(u64);
+        /// Construct a `BarChart` from a `Collection<uint64_t>`.
+        static BarChart u64(Collection<uint64_t> u64) {
+            return BarChart(std::move(u64));
         }
 
-        /// Construct a `BarChart` from a `std::vector<int8_t>`.
-        static BarChart i8(std::vector<int8_t> i8) {
-            return BarChart(i8);
+        /// Construct a `BarChart` from a `Collection<int8_t>`.
+        static BarChart i8(Collection<int8_t> i8) {
+            return BarChart(std::move(i8));
         }
 
-        /// Construct a `BarChart` from a `std::vector<int16_t>`.
-        static BarChart i16(std::vector<int16_t> i16) {
-            return BarChart(i16);
+        /// Construct a `BarChart` from a `Collection<int16_t>`.
+        static BarChart i16(Collection<int16_t> i16) {
+            return BarChart(std::move(i16));
         }
 
-        /// Construct a `BarChart` from a `std::vector<int32_t>`.
-        static BarChart i32(std::vector<int32_t> i32) {
-            return BarChart(i32);
+        /// Construct a `BarChart` from a `Collection<int32_t>`.
+        static BarChart i32(Collection<int32_t> i32) {
+            return BarChart(std::move(i32));
         }
 
-        /// Construct a `BarChart` from a `std::vector<int64_t>`.
-        static BarChart i64(std::vector<int64_t> i64) {
-            return BarChart(i64);
+        /// Construct a `BarChart` from a `Collection<int64_t>`.
+        static BarChart i64(Collection<int64_t> i64) {
+            return BarChart(std::move(i64));
         }
 
-        /// Construct a `BarChart` from a  `std::vector<half>`.
-        static BarChart f16(std::vector<rerun::half> f16) {
-            return BarChart(f16);
+        /// Construct a `BarChart` from a  `Collection<half>`.
+        static BarChart f16(Collection<rerun::half> f16) {
+            return BarChart(std::move(f16));
         }
 
-        /// Construct a `BarChart` from a `std::vector<float>`.
-        static BarChart f32(std::vector<float> f32) {
-            return BarChart(f32);
+        /// Construct a `BarChart` from a `Collection<float>`.
+        static BarChart f32(Collection<float> f32) {
+            return BarChart(std::move(f32));
         }
 
-        /// Construct a `BarChart` from a `std::vector<double>`.
-        static BarChart f64(std::vector<double> f64) {
-            return BarChart(f64);
+        /// Construct a `BarChart` from a `Collection<double>`.
+        static BarChart f64(Collection<double> f64) {
+            return BarChart(std::move(f64));
         }
 
       public:

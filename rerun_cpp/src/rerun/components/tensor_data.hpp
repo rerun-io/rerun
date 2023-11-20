@@ -30,7 +30,7 @@ namespace rerun::components {
 
         /// New Tensor from dimensions and tensor buffer.
         TensorData(
-            std::vector<rerun::datatypes::TensorDimension> shape,
+            rerun::Collection<rerun::datatypes::TensorDimension> shape,
             rerun::datatypes::TensorBuffer buffer
         )
             : data(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}

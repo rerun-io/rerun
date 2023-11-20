@@ -4,12 +4,13 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../warning_macros.hpp"
+#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -85,7 +86,7 @@ namespace rerun::archetypes {
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
         SegmentationImage(
-            std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer
+            Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer
         )
             : SegmentationImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
@@ -93,7 +94,7 @@ namespace rerun::archetypes {
         ///
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
-        explicit SegmentationImage(components::TensorData _data);
+        explicit SegmentationImage(components::TensorData data_);
 
       public:
         SegmentationImage() = default;
@@ -105,7 +106,7 @@ namespace rerun::archetypes {
         SegmentationImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
             draw_order = std::move(_draw_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

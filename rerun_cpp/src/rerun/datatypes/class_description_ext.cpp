@@ -1,32 +1,26 @@
 #include "class_description.hpp"
 
-// Uncomment for better auto-complete while editing the extension.
-// #define EDIT_EXTENSION
+namespace rerun::datatypes {
 
-namespace rerun {
-    namespace datatypes {
+#if 0
+    // <CODEGEN_COPY_TO_HEADER>
 
-#ifdef EDIT_EXTENSION
-        struct ClassDescriptionExt {
-            AnnotationInfo info;
-            std::vector<AnnotationInfo> keypoint_annotations;
-            std::vector<KeypointPair> keypoint_connections;
+    /// Create a new `ClassDescription` from a single annotation info.
+    ClassDescription(
+        uint16_t id, std::optional<std::string> label = std::nullopt,
+        std::optional<datatypes::Rgba32> color = std::nullopt
+    )
+        : info(id, label, color) {}
 
-#define ClassDescription ClassDescriptionExt
+    ClassDescription(
+        AnnotationInfo info_, Collection<AnnotationInfo> keypoint_annotations_ = {},
+        Collection<KeypointPair> keypoint_connections_ = {}
+    )
+        : info(std::move(info_)),
+            keypoint_annotations(std::move(keypoint_annotations_)),
+            keypoint_connections(std::move(keypoint_connections_)) {}
 
-            // <CODEGEN_COPY_TO_HEADER>
-
-            ClassDescription(
-                AnnotationInfo _info, std::vector<AnnotationInfo> _keypoint_annotations = {},
-                std::vector<KeypointPair> _keypoint_connections = {}
-            )
-                : info(std::move(_info)),
-                  keypoint_annotations(std::move(_keypoint_annotations)),
-                  keypoint_connections(std::move(_keypoint_connections)) {}
-
-            // </CODEGEN_COPY_TO_HEADER>
-        };
+    // </CODEGEN_COPY_TO_HEADER>
 #endif
 
-    } // namespace datatypes
-} // namespace rerun
+} // namespace rerun::datatypes

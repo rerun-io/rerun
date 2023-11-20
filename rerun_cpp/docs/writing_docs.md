@@ -34,3 +34,5 @@ We stick to the following styles:
     /// \endcond
     ```
 * Avoid the use of groups when namespaces can be used instead
+* Don't omit namespaces when referring to types in docs - instead of `Collection` use `rerun::Collection`.
+  Both works usually but the latter makes it easier to understand what is meant.

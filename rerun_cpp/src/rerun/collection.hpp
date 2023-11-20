@@ -1,18 +1,14 @@
 #pragma once
 
 #include <algorithm>
-#include <cstring>
-
+#include <cassert>
+#include <cstring> // std::memset
 #include <utility>
 #include <vector>
 
 #include "collection.hpp"
 #include "collection_adapter.hpp"
-#include "warning_macros.hpp"
-
-// TODO(#3794): remove, needed for serialization.
-#include "result.hpp"
-#include "serialized_component_batch.hpp"
+#include "compiler_utils.hpp"
 
 namespace rerun {
     /// Type of ownership of a collection's data.
@@ -38,6 +34,10 @@ namespace rerun {
     /// or (most commonly in user code) implicitly using the `CollectionAdapter` trait
     /// (see documentation for `CollectionAdapter` for more information on how data can be adapted).
     ///
+    /// Other than being assignable, collections are generally immutable:
+    /// there is no mutable data access in order to not violate the contract with the data lender
+    /// and changes in size are not possible.
+    ///
     /// ## Implementation notes:
     ///
     /// Does intentionally not implement copy construction since this for the owned case this may
@@ -46,12 +46,19 @@ namespace rerun {
     template <typename TElement>
     class Collection {
       public:
-        using ElementType = TElement;
+        /// Type of the elements in the collection.
+        ///
+        /// Note that calling this `value_type` makes it compatible with the STL.
+        using value_type = TElement;
 
-        /// Type of an adapter given input types Ts.
-        template <typename T>
+        /// Type of an adapter given an input container type.
+        ///
+        /// Note that the "container" passed may also be a single element of something.
+        /// The only thing relevant is that there's an Adapter for it.
+        template <typename TContainer>
         using Adapter = CollectionAdapter<
-            TElement, std::remove_cv_t<std::remove_reference_t<T>>, std::enable_if_t<true>>;
+            TElement, std::remove_cv_t<std::remove_reference_t<TContainer>>,
+            std::enable_if_t<true>>;
 
         /// Creates a new empty collection.
         Collection() : ownership(CollectionOwnership::Borrowed) {
@@ -60,16 +67,68 @@ namespace rerun {
         }
 
         /// Construct using a `CollectionAdapter` for the given input type.
-        template <typename T>
-        Collection(T&& input) : Collection(Adapter<T>()(std::forward<T>(input))) {}
+        template <
+            typename TContainer, //
+            // Avoid conflicting with the copy/move constructor.
+            // We could implement this also with an adapter, but this might confuse trait checks like `std::is_copy_constructible`.
+            typename = std::enable_if_t<
+                !std::is_same_v<std::remove_reference_t<TContainer>, Collection<TElement>>> //
+            >
+        Collection(TContainer&& input)
+            : Collection(Adapter<TContainer>()(std::forward<TContainer>(input))) {}
 
-        /// Construct from a temporary list of elements.
+        /// Copy constructor.
+        ///
+        /// If the data is owned, this will copy the data.
+        /// If the data is borrowed, this will copy the borrow,
+        /// meaning there's now (at least) two collections borrowing the same data.
+        Collection(const Collection<TElement>& other) : ownership(other.ownership) {
+            switch (other.ownership) {
+                case CollectionOwnership::Borrowed: {
+                    storage.borrowed = other.storage.borrowed;
+                    break;
+                }
+
+                case CollectionOwnership::VectorOwned: {
+                    new (&storage.vector_owned) std::vector<TElement>(other.storage.vector_owned);
+                    break;
+                }
+            }
+        }
+
+        /// Copy assignment.
+        ///
+        /// If the data is owned, this will copy the data.
+        /// If the data is borrowed, this will copy the borrow,
+        /// meaning there's now (at least) two collections borrowing the same data.
+        void operator=(const Collection<TElement>& other) {
+            this->~Collection<TElement>();
+            new (this) Collection(other);
+        }
+
+        /// Move constructor.
+        Collection(Collection<TElement>&& other) : Collection() {
+            swap(other);
+        }
+
+        /// Move assignment.
+        void operator=(Collection<TElement>&& other) {
+            // Need to disable the maybe-uninitialized here.  It seems like the compiler may be confused in situations where
+            // we are assigning into an unused optional from a temporary. The fact that this hits the move-assignment without
+            // having called the move constructor is suspicious though and hints of an actual bug.
+            //
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
+        }
+
+        /// Construct from a initializer list of elements that are compatible with TElement.
         ///
         /// Takes ownership of the passed elements.
         /// If you want to avoid an allocation, you have to manually keep the data on the stack
         /// (e.g. as `std::array`) and construct the collection from this instead.
         ///
-        /// This is not done as a `CollectionAdapter` since it tends to cause deduction issues.
+        /// This is not done as a `CollectionAdapter` since it tends to cause deduction issues
+        /// (since there's special rules for overload resolution for initializer lists)
         Collection(std::initializer_list<TElement> data)
             : ownership(CollectionOwnership::VectorOwned) {
             // Don't assign, since the vector is in an undefined state and assigning may
@@ -83,6 +142,9 @@ namespace rerun {
         /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
         /// resized.)
         /// The passed type must be binary compatible with the collection type.
+        ///
+        /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
+        /// any function or operation taking on a `Collection`.
         template <typename T>
         static Collection<TElement> borrow(const T* data, size_t num_instances) {
             static_assert(
@@ -108,6 +170,9 @@ namespace rerun {
         /// Borrowed data must outlive the collection!
         /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
         /// resized.)
+        ///
+        /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
+        /// any function or operation taking on a `rerun::Collection`.
         static Collection borrow(const void* data, size_t num_instances) {
             return borrow(reinterpret_cast<const TElement*>(data), num_instances);
         }
@@ -128,22 +193,9 @@ namespace rerun {
         /// Takes ownership of a single element, moving it into the collection.
         static Collection<TElement> take_ownership(TElement&& data) {
             // TODO(andreas): there should be a special path here to avoid allocating a vector.
-            return take_ownership(std::vector<TElement>{std::move(data)});
-        }
-
-        /// Move constructor.
-        Collection(Collection<TElement>&& other) : Collection() {
-            swap(other);
-        }
-
-        /// Move assignment.
-        void operator=(Collection<TElement>&& other) {
-            // Need to disable the maybe-uninitialized here.  It seems like the compiler may be confused in situations where
-            // we are assigning into an unused optional from a temporary. The fact that this hits the move-assignment without
-            // having called the move constructor is suspicious though and hints of an actual bug.
-            //
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
+            std::vector<TElement> elements;
+            elements.emplace_back(std::move(data));
+            return take_ownership(std::move(elements));
         }
 
         /// Swaps the content of this collection with another.
@@ -198,9 +250,6 @@ namespace rerun {
             }
         }
 
-        /// Copy constructor.
-        Collection(const Collection<TElement>&) = delete;
-
         /// Returns the number of instances in this collection.
         size_t size() const {
             switch (ownership) {
@@ -212,37 +261,44 @@ namespace rerun {
             return 0;
         }
 
-        /// Serializes the component batch into a rerun datacell that can be sent to a store.
-        Result<SerializedComponentBatch> serialize() const {
-            // TODO(#3794): Invert this relationship - a user of this *container* should call
-            // TElement::serialize (or similar) passing in this container.
-            switch (this->ownership) {
-                case CollectionOwnership::Borrowed: {
-                    auto cell_result = TElement::to_data_cell(
-                        this->storage.borrowed.data,
-                        this->storage.borrowed.num_instances
-                    );
-                    RR_RETURN_NOT_OK(cell_result.error);
-                    return SerializedComponentBatch(
-                        this->storage.borrowed.num_instances,
-                        std::move(cell_result.value)
-                    );
-                }
-
-                case CollectionOwnership::VectorOwned: {
-                    auto cell_result = TElement::to_data_cell(
-                        this->storage.vector_owned.data(),
-                        this->storage.vector_owned.size()
-                    );
-                    RR_RETURN_NOT_OK(cell_result.error);
-                    return SerializedComponentBatch(
-                        this->storage.vector_owned.size(),
-                        std::move(cell_result.value)
-                    );
-                }
+        /// Returns a raw pointer to the underlying data.
+        ///
+        /// Do not use this if the data is not continuous in memory!
+        /// TODO(#4225): So far it always is continuous, but in the future we want to support strides!
+        ///
+        /// The pointer is only valid as long as backing storage is alive
+        /// which is either until the collection is destroyed the borrowed source is destroyed/moved.
+        const TElement* data() const {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed:
+                    return storage.borrowed.data;
+                case CollectionOwnership::VectorOwned:
+                    return storage.vector_owned.data();
             }
 
-            return Error(ErrorCode::Unknown, "Invalid ownership state");
+            // We need to return something to avoid compiler warnings.
+            // But if we don't mark this as unreachable, GCC will complain that we're dereferencing null down the line.
+            RERUN_UNREACHABLE();
+            // But with this in place, MSVC complains that the return statement is not reachable (GCC/clang on the other hand need it).
+#ifndef _MSC_VER
+            return nullptr;
+#endif
+        }
+
+        /// TODO(andreas): Return proper iterator
+        const TElement* begin() const {
+            return data();
+        }
+
+        /// TODO(andreas): Return proper iterator
+        const TElement* end() const {
+            return data() + size();
+        }
+
+        /// Random read access to the underlying data.
+        const TElement& operator[](size_t i) const {
+            assert(i < size());
+            return data()[i];
         }
 
         /// Returns the data ownership of collection.
@@ -250,6 +306,15 @@ namespace rerun {
         /// This is usually only needed for debugging and testing.
         CollectionOwnership get_ownership() const {
             return ownership;
+        }
+
+        /// Copies the data into a new `std::vector`.
+        std::vector<TElement> to_vector() const {
+            // TODO(andreas): Overload this for `const &` and `&&` to avoid the copy when possible.
+            std::vector<TElement> result;
+            result.reserve(size());
+            result.insert(result.end(), begin(), end());
+            return result;
         }
 
       private:
@@ -263,7 +328,7 @@ namespace rerun {
             std::vector<T> vector_owned;
 
             CollectionStorage() {
-                memset(reinterpret_cast<void*>(this), 0, sizeof(CollectionStorage));
+                std::memset(reinterpret_cast<void*>(this), 0, sizeof(CollectionStorage));
             }
 
             ~CollectionStorage() {}
@@ -273,3 +338,8 @@ namespace rerun {
         CollectionStorage<TElement> storage;
     };
 } // namespace rerun
+
+// Could keep this separately, but its very hard to use the collection without the basic suite of adapters.
+// Needs to know about `rerun::Collection` which means that it needs to be included after `rerun::Collection` is defined.
+// (it tried to include `Collection.hpp` but if that was our starting point that include wouldn't do anything)
+#include "collection_adapter_builtins.hpp"
