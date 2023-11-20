@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use egui::{NumExt as _, Response, Ui};
 
 use re_data_store::{ExtraQueryHistory, TimeHistogram, VisibleHistory, VisibleHistoryBoundary};
-use re_log_types::{EntityPath, TimeType, TimeZone};
+use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
@@ -84,142 +84,173 @@ pub fn visible_history_ui(
 
     let re_ui = ctx.re_ui;
 
-    re_ui
-        .collapsing_header(ui, "Visible Time Range", true, |ui| {
-            ui.horizontal(|ui| {
-                re_ui
-                    .radio_value(ui, &mut visible_history_prop.enabled, false, "Default")
-                    .on_hover_text(if is_space_view {
-                        "Default Visible Time Range settings for this kind of Space View"
-                    } else {
-                        "Visible Time Range settings inherited from parent Group(s) or enclosing \
+    let is_sequence_timeline = matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
+
+    let mut interacting_with_controls = false;
+
+    let collapsing_response = re_ui.collapsing_header(ui, "Visible Time Range", true, |ui| {
+        ui.horizontal(|ui| {
+            re_ui
+                .radio_value(ui, &mut visible_history_prop.enabled, false, "Default")
+                .on_hover_text(if is_space_view {
+                    "Default Visible Time Range settings for this kind of Space View"
+                } else {
+                    "Visible Time Range settings inherited from parent Group(s) or enclosing \
                         Space View"
-                    });
-                re_ui
-                    .radio_value(ui, &mut visible_history_prop.enabled, true, "Override")
-                    .on_hover_text(if is_space_view {
-                        "Set Visible Time Range settings for the contents of this Space View"
-                    } else if entity_path.is_some() {
-                        "Set Visible Time Range settings for this entity"
-                    } else {
-                        "Set Visible Time Range settings for he contents of this Group"
-                    });
-            });
+                });
+            re_ui
+                .radio_value(ui, &mut visible_history_prop.enabled, true, "Override")
+                .on_hover_text(if is_space_view {
+                    "Set Visible Time Range settings for the contents of this Space View"
+                } else if entity_path.is_some() {
+                    "Set Visible Time Range settings for this entity"
+                } else {
+                    "Set Visible Time Range settings for he contents of this Group"
+                });
+        });
 
-            let timeline_spec = if let Some(times) = ctx
-                .store_db
-                .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
-            {
-                TimelineSpec::from_time_histogram(times)
-            } else {
-                TimelineSpec::from_time_range(0..=0)
-            };
+        let timeline_spec = if let Some(times) = ctx
+            .store_db
+            .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
+        {
+            TimelineSpec::from_time_histogram(times)
+        } else {
+            TimelineSpec::from_time_range(0..=0)
+        };
 
-            let current_time = ctx
-                .rec_cfg
-                .time_ctrl
-                .time_i64()
-                .unwrap_or_default()
-                .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::BEGINNING)
+        let current_time = ctx
+            .rec_cfg
+            .time_ctrl
+            .time_i64()
+            .unwrap_or_default()
+            .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::BEGINNING)
 
-            let sequence_timeline =
-                matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
+        let (resolved_visible_history, visible_history) = if is_sequence_timeline {
+            (
+                &resolved_visible_history_prop.sequences,
+                &mut visible_history_prop.sequences,
+            )
+        } else {
+            (
+                &resolved_visible_history_prop.nanos,
+                &mut visible_history_prop.nanos,
+            )
+        };
 
-            let (resolved_visible_history, visible_history) = if sequence_timeline {
-                (
-                    &resolved_visible_history_prop.sequences,
-                    &mut visible_history_prop.sequences,
-                )
-            } else {
-                (
-                    &resolved_visible_history_prop.nanos,
-                    &mut visible_history_prop.nanos,
-                )
-            };
+        if visible_history_prop.enabled {
+            let current_low_boundary = visible_history.from(current_time.into()).as_i64();
+            let current_high_boundary = visible_history.to(current_time.into()).as_i64();
 
-            if visible_history_prop.enabled {
-                let current_low_boundary = visible_history.from(current_time.into()).as_i64();
-                let current_high_boundary = visible_history.to(current_time.into()).as_i64();
-
-                ui.horizontal(|ui| {
+            interacting_with_controls |= ui
+                .horizontal(|ui| {
                     visible_history_boundary_ui(
                         ctx,
                         ui,
                         &mut visible_history.from,
-                        sequence_timeline,
+                        is_sequence_timeline,
                         current_time,
                         &timeline_spec,
                         true,
                         current_high_boundary,
-                    );
-                });
+                    )
+                })
+                .inner;
 
-                ui.horizontal(|ui| {
+            interacting_with_controls |= ui
+                .horizontal(|ui| {
                     visible_history_boundary_ui(
                         ctx,
                         ui,
                         &mut visible_history.to,
-                        sequence_timeline,
+                        is_sequence_timeline,
                         current_time,
                         &timeline_spec,
                         false,
                         current_low_boundary,
-                    );
-                });
-            } else {
-                resolved_visible_history_boundary_ui(
-                    ctx,
-                    ui,
-                    &resolved_visible_history.from,
-                    sequence_timeline,
-                    true,
-                );
-                resolved_visible_history_boundary_ui(
-                    ctx,
-                    ui,
-                    &resolved_visible_history.to,
-                    sequence_timeline,
-                    false,
-                );
-            }
-
-            current_range_ui(ctx, ui, current_time, sequence_timeline, visible_history);
-
-            ui.add(
-                egui::Label::new(
-                    egui::RichText::new(if sequence_timeline {
-                        "These settings apply to all sequence timelines."
-                    } else {
-                        "These settings apply to all temporal timelines."
-                    })
-                    .italics()
-                    .weak(),
-                )
-                .wrap(true),
-            )
-            .on_hover_text(
-                "Visible Time Range properties are stored separately for each types of timelines. \
-            They may differ depending on whether the current timeline is temporal or a sequence.",
+                    )
+                })
+                .inner;
+        } else {
+            resolved_visible_history_boundary_ui(
+                ctx,
+                ui,
+                &resolved_visible_history.from,
+                is_sequence_timeline,
+                true,
             );
-        })
-        .header_response
+            resolved_visible_history_boundary_ui(
+                ctx,
+                ui,
+                &resolved_visible_history.to,
+                is_sequence_timeline,
+                false,
+            );
+        }
+
+        current_range_ui(ctx, ui, current_time, is_sequence_timeline, visible_history);
+
+        ui.add(
+            egui::Label::new(
+                egui::RichText::new(if is_sequence_timeline {
+                    "These settings apply to all sequence timelines."
+                } else {
+                    "These settings apply to all temporal timelines."
+                })
+                .italics()
+                .weak(),
+            )
+            .wrap(true),
+        )
         .on_hover_text(
-            "Controls the time range used to display data in the Space View.\n\n\
-        Note that the data immediately preceding the time range is always displayed.",
+            "Visible Time Range properties are stored separately for each types of timelines. \
+            They may differ depending on whether the current timeline is temporal or a sequence.",
         );
+    });
+
+    // Decide when to show the visible history highlight in the timeline. The trick is that when
+    // interacting with the controls, the mouse might end up outside the collapsing header rect,
+    // so we must track these interactions specifically.
+    // Note: visible history highlight is always reset at the beginning of the Selection Panel UI.
+
+    let should_display_visible_history = interacting_with_controls
+        || collapsing_response.header_response.hovered()
+        || collapsing_response
+            .body_response
+            .map_or(false, |r| r.hovered());
+
+    if should_display_visible_history {
+        if let Some(current_time) = ctx.rec_cfg.time_ctrl.time_int() {
+            let visible_history = match (visible_history_prop.enabled, is_sequence_timeline) {
+                (true, true) => visible_history_prop.sequences,
+                (true, false) => visible_history_prop.nanos,
+                (false, true) => resolved_visible_history_prop.sequences,
+                (false, false) => resolved_visible_history_prop.nanos,
+            };
+
+            ctx.rec_cfg.visible_history_highlight = Some(TimeRange::new(
+                visible_history.from(current_time),
+                visible_history.to(current_time),
+            ));
+        }
+    }
+
+    collapsing_response.header_response.on_hover_text(
+        "Controls the time range used to display data in the Space View.\n\n\
+        Note that the data immediately preceding the time range is always displayed.",
+    );
 }
 
 fn current_range_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut Ui,
     current_time: i64,
-    sequence_timeline: bool,
+    is_sequence_timeline: bool,
     visible_history: &VisibleHistory,
 ) {
     let from = visible_history.from(current_time.into());
     let to = visible_history.to(current_time.into());
 
-    let (label_text, hover_text) = if sequence_timeline {
+    let (label_text, hover_text) = if is_sequence_timeline {
         if from == to {
             (
                 format!("Showing last data before frame #{}", from.as_i64()),
@@ -269,20 +300,20 @@ fn resolved_visible_history_boundary_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &VisibleHistoryBoundary,
-    sequence_timeline: bool,
+    is_sequence_timeline: bool,
     low_bound: bool,
 ) {
     let from_to = if low_bound { "From" } else { "To" };
     let boundary_type = match visible_history_boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(_) => {
-            if sequence_timeline {
+            if is_sequence_timeline {
                 "current frame"
             } else {
                 "current time"
             }
         }
         VisibleHistoryBoundary::Absolute(_) => {
-            if sequence_timeline {
+            if is_sequence_timeline {
                 "frame"
             } else {
                 "absolute time"
@@ -302,7 +333,7 @@ fn resolved_visible_history_boundary_ui(
     match visible_history_boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(offset) => {
             if *offset != 0 {
-                if sequence_timeline {
+                if is_sequence_timeline {
                     label += &format!(
                         " with {offset} frame{} offset",
                         if offset.abs() > 1 { "s" } else { "" }
@@ -327,7 +358,7 @@ fn resolved_visible_history_boundary_ui(
             }
         }
         VisibleHistoryBoundary::Absolute(time) => {
-            let time_type = if sequence_timeline {
+            let time_type = if is_sequence_timeline {
                 TimeType::Sequence
             } else {
                 TimeType::Time
@@ -346,19 +377,19 @@ fn resolved_visible_history_boundary_ui(
 
 fn visible_history_boundary_combo_label(
     boundary: &VisibleHistoryBoundary,
-    sequence_timeline: bool,
+    is_sequence_timeline: bool,
     low_bound: bool,
 ) -> &'static str {
     match boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(_) => {
-            if sequence_timeline {
+            if is_sequence_timeline {
                 "current frame with offset"
             } else {
                 "current time with offset"
             }
         }
         VisibleHistoryBoundary::Absolute(_) => {
-            if sequence_timeline {
+            if is_sequence_timeline {
                 "absolute frame"
             } else {
                 "absolute time"
@@ -379,12 +410,12 @@ fn visible_history_boundary_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &mut VisibleHistoryBoundary,
-    sequence_timeline: bool,
+    is_sequence_timeline: bool,
     current_time: i64,
     timeline_spec: &TimelineSpec,
     low_bound: bool,
     other_boundary_absolute: i64,
-) {
+) -> bool {
     ui.label(if low_bound { "From" } else { "To" });
 
     let (abs_time, rel_time) = match visible_history_boundary {
@@ -402,7 +433,7 @@ fn visible_history_boundary_ui(
     })
     .selected_text(visible_history_boundary_combo_label(
         visible_history_boundary,
-        sequence_timeline,
+        is_sequence_timeline,
         low_bound,
     ))
     .show_ui(ui, |ui| {
@@ -411,7 +442,7 @@ fn visible_history_boundary_ui(
         ui.selectable_value(
             visible_history_boundary,
             rel_time,
-            visible_history_boundary_combo_label(&rel_time, sequence_timeline, low_bound),
+            visible_history_boundary_combo_label(&rel_time, is_sequence_timeline, low_bound),
         )
         .on_hover_text(if low_bound {
             "Show data from a time point relative to the current time."
@@ -421,7 +452,7 @@ fn visible_history_boundary_ui(
         ui.selectable_value(
             visible_history_boundary,
             abs_time,
-            visible_history_boundary_combo_label(&abs_time, sequence_timeline, low_bound),
+            visible_history_boundary_combo_label(&abs_time, is_sequence_timeline, low_bound),
         )
         .on_hover_text(if low_bound {
             "Show data from an absolute time point."
@@ -433,7 +464,7 @@ fn visible_history_boundary_ui(
             VisibleHistoryBoundary::Infinite,
             visible_history_boundary_combo_label(
                 &VisibleHistoryBoundary::Infinite,
-                sequence_timeline,
+                is_sequence_timeline,
                 low_bound,
             ),
         )
@@ -451,7 +482,7 @@ fn visible_history_boundary_ui(
     // both boundaries fighting each other in some corner cases (when the user interacts with the
     // current time cursor)
 
-    match visible_history_boundary {
+    let response = match visible_history_boundary {
         VisibleHistoryBoundary::RelativeToTimeCursor(value) => {
             // see note above
             let low_bound_override = if !low_bound {
@@ -460,26 +491,31 @@ fn visible_history_boundary_ui(
                 None
             };
 
-            if sequence_timeline {
-                timeline_spec
-                    .sequence_drag_value(ui, value, false, low_bound_override)
-                    .on_hover_text(
-                        "Number of frames before/after the current time to use a time range \
-                        boundary",
-                    );
+            if is_sequence_timeline {
+                Some(
+                    timeline_spec
+                        .sequence_drag_value(ui, value, false, low_bound_override)
+                        .on_hover_text(
+                            "Number of frames before/after the current time to use a time \
+                        range boundary",
+                        ),
+                )
             } else {
-                timeline_spec
-                    .temporal_drag_value(
-                        ui,
-                        value,
-                        false,
-                        low_bound_override,
-                        ctx.app_options.time_zone_for_timestamps,
-                    )
-                    .0
-                    .on_hover_text(
-                        "Time duration before/after the current time to use as time range boundary",
-                    );
+                Some(
+                    timeline_spec
+                        .temporal_drag_value(
+                            ui,
+                            value,
+                            false,
+                            low_bound_override,
+                            ctx.app_options.time_zone_for_timestamps,
+                        )
+                        .0
+                        .on_hover_text(
+                            "Time duration before/after the current time to use as time range \
+                                boundary",
+                        ),
+                )
             }
         }
         VisibleHistoryBoundary::Absolute(value) => {
@@ -490,10 +526,12 @@ fn visible_history_boundary_ui(
                 None
             };
 
-            if sequence_timeline {
-                timeline_spec
-                    .sequence_drag_value(ui, value, true, low_bound_override)
-                    .on_hover_text("Absolute frame number to use as time range boundary");
+            if is_sequence_timeline {
+                Some(
+                    timeline_spec
+                        .sequence_drag_value(ui, value, true, low_bound_override)
+                        .on_hover_text("Absolute frame number to use as time range boundary"),
+                )
             } else {
                 let (drag_resp, base_time_resp) = timeline_spec.temporal_drag_value(
                     ui,
@@ -503,15 +541,17 @@ fn visible_history_boundary_ui(
                     ctx.app_options.time_zone_for_timestamps,
                 );
 
-                drag_resp.on_hover_text("Absolute time to use as time range boundary");
-
                 if let Some(base_time_resp) = base_time_resp {
                     base_time_resp.on_hover_text("Base time used to set time range boundaries");
                 }
+
+                Some(drag_resp.on_hover_text("Absolute time to use as time range boundary"))
             }
         }
-        VisibleHistoryBoundary::Infinite => {}
-    }
+        VisibleHistoryBoundary::Infinite => None,
+    };
+
+    response.map_or(false, |r| r.dragged() || r.has_focus())
 }
 
 // ---
