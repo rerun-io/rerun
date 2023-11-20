@@ -19,16 +19,6 @@ namespace rerun::components {
     rerun::Error Text::fill_arrow_array_builder(
         arrow::StringBuilder* builder, const Text* elements, size_t num_elements
     ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
-            );
-        }
-
         static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(Text));
         RR_RETURN_NOT_OK(rerun::datatypes::Utf8::fill_arrow_array_builder(
             builder,

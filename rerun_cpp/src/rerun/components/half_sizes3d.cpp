@@ -19,16 +19,6 @@ namespace rerun::components {
     rerun::Error HalfSizes3D::fill_arrow_array_builder(
         arrow::FixedSizeListBuilder* builder, const HalfSizes3D* elements, size_t num_elements
     ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
-            );
-        }
-
         static_assert(sizeof(rerun::datatypes::Vec3D) == sizeof(HalfSizes3D));
         RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
             builder,

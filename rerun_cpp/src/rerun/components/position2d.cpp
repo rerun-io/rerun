@@ -19,16 +19,6 @@ namespace rerun::components {
     rerun::Error Position2D::fill_arrow_array_builder(
         arrow::FixedSizeListBuilder* builder, const Position2D* elements, size_t num_elements
     ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
-            );
-        }
-
         static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(Position2D));
         RR_RETURN_NOT_OK(rerun::datatypes::Vec2D::fill_arrow_array_builder(
             builder,

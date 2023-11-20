@@ -19,16 +19,6 @@ namespace rerun::components {
     rerun::Error Color::fill_arrow_array_builder(
         arrow::UInt32Builder* builder, const Color* elements, size_t num_elements
     ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
-            );
-        }
-
         static_assert(sizeof(rerun::datatypes::Rgba32) == sizeof(Color));
         RR_RETURN_NOT_OK(rerun::datatypes::Rgba32::fill_arrow_array_builder(
             builder,
