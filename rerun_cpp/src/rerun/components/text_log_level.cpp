@@ -49,7 +49,6 @@ namespace rerun::components {
         DataCell cell;
         cell.num_instances = num_instances;
         cell.component_name = TextLogLevel::NAME;
-        cell.datatype = TextLogLevel::arrow_datatype().get();
         cell.array = std::move(array);
         return cell;
     }

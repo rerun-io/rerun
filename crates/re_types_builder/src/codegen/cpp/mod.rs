@@ -1284,7 +1284,6 @@ fn component_to_data_cell_method(
             DataCell cell;
             cell.num_instances = num_instances;
             cell.component_name = #type_ident::NAME;
-            cell.datatype = #type_ident::arrow_datatype().get();
             cell.array = std::move(array);
             return cell;
         },

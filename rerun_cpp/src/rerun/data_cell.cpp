@@ -18,7 +18,6 @@ namespace rerun {
         cell.num_instances = 1;
         cell.component_name = archetype_name;
         cell.array = std::move(array);
-        cell.datatype = arrow::null().get();
         return cell;
     }
 

@@ -55,7 +55,6 @@ namespace rerun::components {
         DataCell cell;
         cell.num_instances = num_instances;
         cell.component_name = AffixFuzzer9::NAME;
-        cell.datatype = AffixFuzzer9::arrow_datatype().get();
         cell.array = std::move(array);
         return cell;
     }

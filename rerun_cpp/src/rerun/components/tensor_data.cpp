@@ -49,7 +49,6 @@ namespace rerun::components {
         DataCell cell;
         cell.num_instances = num_instances;
         cell.component_name = TensorData::NAME;
-        cell.datatype = TensorData::arrow_datatype().get();
         cell.array = std::move(array);
         return cell;
     }

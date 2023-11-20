@@ -49,7 +49,6 @@ namespace rerun::components {
         DataCell cell;
         cell.num_instances = num_instances;
         cell.component_name = Vector3D::NAME;
-        cell.datatype = Vector3D::arrow_datatype().get();
         cell.array = std::move(array);
         return cell;
     }

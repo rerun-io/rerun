@@ -49,7 +49,6 @@ namespace rerun::components {
         DataCell cell;
         cell.num_instances = num_instances;
         cell.component_name = Position3D::NAME;
-        cell.datatype = Position3D::arrow_datatype().get();
         cell.array = std::move(array);
         return cell;
     }

@@ -26,12 +26,6 @@ namespace rerun {
         /// String pointer to a component name valid for the lifetime of the cell.
         std::string_view component_name;
 
-        /// Pointer to a data type valid for the lifetime of the cell.
-        ///
-        /// Note that arrow internally prefers `const std::shared_ptr<..>&` for statically allocated types.
-        /// However, this makes it hard to initialize the object without C++20 initializers, so using a pointer instead.
-        const arrow::DataType* datatype;
-
         /// Arrow-encoded data of the components.
         std::shared_ptr<arrow::Array> array;
 

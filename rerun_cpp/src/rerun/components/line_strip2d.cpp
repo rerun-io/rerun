@@ -69,7 +69,6 @@ namespace rerun::components {
         DataCell cell;
         cell.num_instances = num_instances;
         cell.component_name = LineStrip2D::NAME;
-        cell.datatype = LineStrip2D::arrow_datatype().get();
         cell.array = std::move(array);
         return cell;
     }
