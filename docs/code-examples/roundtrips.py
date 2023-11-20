@@ -56,6 +56,8 @@ extra_args = {
 
 # fmt: on
 
+cpp_build_dir = "build/roundtrips"
+
 
 def run(
     args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
@@ -119,7 +121,16 @@ def main() -> None:
         build_type = "Debug"
         if args.release:
             build_type = "Release"
-        configure_args = ["cmake", f"-DCMAKE_BUILD_TYPE={build_type}", "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON", ".."]
+        configure_args = [
+            "cmake",
+            "-G",
+            "Ninja",
+            "-B",
+            cpp_build_dir,
+            f"-DCMAKE_BUILD_TYPE={build_type}",
+            "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON",
+            "..",
+        ]
         run(
             configure_args,
             env=build_env,
@@ -299,15 +310,15 @@ def cmake_build(target: str, release: bool) -> None:
     build_process_args = [
         "cmake",
         "--build",
+        cpp_build_dir,
         ".",
-        "--config",
         config,
         "--target",
         target,
         "--parallel",
         str(multiprocessing.cpu_count()),
     ]
-    run(build_process_args, cwd="build")
+    run(build_process_args, cwd=cpp_build_dir)
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:

@@ -48,31 +48,31 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
 ] }
 
 # All the cpp-* tasks can be configured with environment variables, e.g.:  RERUN_WERROR=ON  CXX=clang++
-cpp-prepare-release = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Release"
-cpp-prepare = "cmake -G 'Ninja' -B build -S . -DCMAKE_BUILD_TYPE=Debug"
-cpp-build-all = { cmd = "cmake --build build --config Debug --target all", depends_on = [
+cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
+cpp-prepare = "cmake -G 'Ninja' -B build/debug -S . -DCMAKE_BUILD_TYPE=Debug"
+cpp-build-all = { cmd = "cmake --build build/debug --config Debug --target all", depends_on = [
   "cpp-prepare",
 ] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
-cpp-build-tests = { cmd = "cmake --build build --config Debug --target rerun_sdk_tests", depends_on = [
+cpp-build-tests = { cmd = "cmake --build build/debug --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",
 ] }
-cpp-build-roundtrips = { cmd = "cmake --build build --config Debug --target roundtrips", depends_on = [
+cpp-build-roundtrips = { cmd = "cmake --build build/debug --config Debug --target roundtrips", depends_on = [
   "cpp-prepare",
 ] }
-cpp-build-examples = { cmd = "cmake --build build --config Debug --target examples", depends_on = [
+cpp-build-examples = { cmd = "cmake --build build/debug --config Debug --target examples", depends_on = [
   "cpp-prepare",
 ] }
-cpp-build-doc-examples = { cmd = "cmake --build build --config Debug --target doc_examples", depends_on = [
+cpp-build-doc-examples = { cmd = "cmake --build build/debug --config Debug --target doc_examples", depends_on = [
   "cpp-prepare",
 ] }
-cpp-build-log-benchmark = { cmd = "cmake --build build --config Release --target log_benchmark", depends_on = [
+cpp-build-log-benchmark = { cmd = "cmake --build build/release --config Release --target log_benchmark", depends_on = [
   "cpp-prepare-release",
 ] }
-cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
+cpp-test = { cmd = "export RERUN_STRICT=1 && ./build/debug/rerun_cpp/tests/rerun_sdk_tests", depends_on = [
   "cpp-build-tests",
 ] }
-cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/tests/cpp/log_benchmark/log_benchmark", depends_on = [
+cpp-log-benchmark = { cmd = "export RERUN_STRICT=1 && ./build/release/tests/cpp/log_benchmark/log_benchmark", depends_on = [
   "cpp-build-log-benchmark",
 ] }
 cpp-build-and-test-all = { depends_on = ["cpp-build-all", "cpp-test"] }

@@ -28,6 +28,8 @@ opt_out = {
     "time_series_scalar": ["cpp", "py", "rust"],  # Don't need it, API example roundtrips cover it all
 }
 
+cpp_build_dir = "build/roundtrips"
+
 
 def run(
     args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
@@ -84,7 +86,16 @@ def main() -> None:
         build_type = "Debug"
         if args.release:
             build_type = "Release"
-        configure_args = ["cmake", f"-DCMAKE_BUILD_TYPE={build_type}", "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON", ".."]
+        configure_args = [
+            "cmake",
+            "-G",
+            "Ninja",
+            "-B",
+            cpp_build_dir,
+            f"-DCMAKE_BUILD_TYPE={build_type}",
+            "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON",
+            "..",
+        ]
         run(
             configure_args,
             env=build_env,
@@ -248,7 +259,7 @@ def cmake_build(target: str, release: bool) -> None:
         "--parallel",
         str(multiprocessing.cpu_count()),
     ]
-    run(build_process_args, cwd="build")
+    run(build_process_args, cwd=cpp_build_dir)
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
