@@ -42,6 +42,7 @@ function(download_and_build_arrow)
     if(MSVC)
         # Enable multithreaded compiling of Arrow on MSVC.
         set(ARROW_CXXFLAGS "/MP")
+
         # ASAN doesn't work with arrow (yet?)
         set(ARROW_ASAN OFF)
     else()
@@ -83,7 +84,7 @@ function(download_and_build_arrow)
         -DARROW_BUILD_SHARED=${ARROW_BUILD_SHARED}
         -DARROW_BUILD_STATIC=${ARROW_BUILD_STATIC}
         -DARROW_CXXFLAGS=${DARROW_CXXFLAGS}
-        -DARROW_IPC=ON
+        -DARROW_IPC=OFF
         -DARROW_JEMALLOC=OFF # We encountered some build issues with jemalloc, use mimalloc instead.
         -DARROW_MIMALLOC=ON
         -DARROW_USE_ASAN=${RERUN_USE_ASAN}

@@ -47,7 +47,8 @@ namespace rerun {
 
         // Arrow data processing errors.
         _CategoryArrow = 0x0000'1000,
-        ArrowIpcMessageParsingFailure,
+        ArrowFfiSchemaImportError,
+        ArrowFfiArrayImportError,
         ArrowDataCellError,
 
         // Errors relating to file IO.

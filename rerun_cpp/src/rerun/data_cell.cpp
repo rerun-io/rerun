@@ -1,5 +1,4 @@
 #include "data_cell.hpp"
-#include "arrow.hpp"
 #include "string_utils.hpp"
 
 #include <arrow/api.h>
@@ -11,12 +10,6 @@ namespace rerun {
         std::string name_, const std::shared_ptr<arrow::DataType>& datatype_,
         std::shared_ptr<arrow::Array> array_
     ) {
-        // // TODO(andreas): This should be lazily created once just like datatypes are right now, saving repeated allocations.
-        // auto schema = arrow::schema({arrow::field(name, datatype, false)});
-
-        // const auto ipc_result = rerun::ipc_from_table(*arrow::Table::Make(schema, {array}));
-        // RR_RETURN_NOT_OK(ipc_result.error);
-
         rerun::DataCell cell;
         cell.component_name = std::move(name_);
         cell.datatype = datatype_;

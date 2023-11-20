@@ -144,10 +144,9 @@ pub enum CErrorCode {
     RecordingStreamSpawnFailure,
 
     _CategoryArrow = 0x0000_1000,
-    ArrowIpcMessageParsingFailure,
-    ArrowDataCellError,
-    ArrowFfiSchemaImportError, // TODO: sync to C and C++
+    ArrowFfiSchemaImportError,
     ArrowFfiArrayImportError,
+    ArrowDataCellError,
 
     Unknown = 0xFFFF_FFFF,
 }
@@ -598,14 +597,6 @@ fn rr_log_impl(
         let component_name = component_name.as_str("data_cells[i].component_name")?;
         let component_name = ComponentName::from(component_name);
 
-        // let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
-        // let array = parse_arrow_ipc_encapsulated_message(bytes).map_err(|err| {
-        //     CError::new(
-        //         CErrorCode::ArrowIpcMessageParsingFailure,
-        //         &format!("Failed to parse Arrow IPC encapsulated message: {err}"),
-        //     )
-        // })?;
-
         let field = unsafe { arrow2::ffi::import_field_from_c(schema) }.map_err(|err| {
             CError::new(
                 CErrorCode::ArrowFfiSchemaImportError,
@@ -677,78 +668,4 @@ fn initialize_logging() {
     START.call_once(|| {
         re_log::setup_native_logging();
     });
-}
-
-fn parse_arrow_ipc_encapsulated_message(
-    bytes: &[u8],
-) -> Result<Box<dyn arrow2::array::Array>, String> {
-    re_log::debug!(
-        "parse_arrow_ipc_encapsulated_message: {} bytes",
-        bytes.len()
-    );
-
-    use arrow2::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
-
-    let mut cursor = std::io::Cursor::new(bytes);
-    let metadata = match read_stream_metadata(&mut cursor) {
-        Ok(metadata) => metadata,
-        Err(err) => return Err(format!("Failed to read stream metadata: {err}")),
-    };
-
-    // This IPC message represents the contents of a single DataCell, thus we should have a single
-    // field.
-    if metadata.schema.fields.len() != 1 {
-        return Err(format!(
-            "Found {} fields in stream metadata - expected exactly one.",
-            metadata.schema.fields.len(),
-        ));
-    }
-    // Might need that later if it turns out we don't have any data to log.
-    let datatype = metadata.schema.fields[0].data_type().clone();
-
-    let stream = StreamReader::new(cursor, metadata, None);
-    let chunks: Result<Vec<_>, _> = stream
-        .map(|state| match state {
-            Ok(StreamState::Some(chunk)) => Ok(chunk),
-            Ok(StreamState::Waiting) => {
-                unreachable!("cannot be waiting on a fixed buffer")
-            }
-            Err(err) => Err(err),
-        })
-        .collect();
-
-    let chunks = chunks.map_err(|err| format!("Arrow error: {err}"))?;
-
-    // We're not sending a `DataCellColumn`'s (i.e. `List<DataCell>`) worth of data like we normally do
-    // here, rather we're sending a single, independent `DataCell`'s worth of data.
-    //
-    // This distinction is crucial:
-    // - The data for a `DataCellColumn` containing a single empty `DataCell` is a unit-length list-array whose
-    //   first and only entry is an empty array (`ListArray[[]]`). There's actually data there (as
-    //   in bytes).
-    // - The data for a standalone empty `DataCell`, on the other hand, is literally nothing. It's
-    //   zero bytes.
-    //
-    // Where there's no data whatsoever, the chunk gets optimized out, which is why logging an
-    // empty array in C++ ends up hitting this path.
-    if chunks.is_empty() {
-        // The fix is simple: craft an empty array with the correct datatype.
-        return Ok(arrow2::array::new_empty_array(datatype));
-    }
-
-    if chunks.len() > 1 {
-        return Err(format!(
-            "Found {} chunks in stream - expected just one.",
-            chunks.len()
-        ));
-    }
-    let chunk = chunks.into_iter().next().unwrap();
-
-    let arrays = chunk.into_arrays();
-
-    if arrays.len() != 1 {
-        return Err(format!("Expected one array, got {}", arrays.len()));
-    }
-
-    Ok(arrays.into_iter().next().unwrap())
 }
