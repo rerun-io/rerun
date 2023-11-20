@@ -22,6 +22,10 @@ namespace rerun {
     }
 
     Error DataCell::to_c_ffi_struct(rr_data_cell& out_cell) const {
+        if (array == nullptr) {
+            return Error(ErrorCode::UnexpectedNullArgument, "array is null");
+        }
+
         out_cell.component_name = detail::to_rr_string(component_name);
         return arrow::ExportArray(*array, &out_cell.array, &out_cell.schema);
     }

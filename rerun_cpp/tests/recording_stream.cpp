@@ -480,56 +480,22 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
         // }
 
         AND_GIVEN("a valid path") {
-            //const char* path = "valid";
+            const char* path = "valid";
 
-            // TODO:
-            // AND_GIVEN("a cell with a null buffer") {
-            //     rerun::DataCell cell;
-            //     cell.buffer = nullptr;
-            //     cell.component_name = "valid";
+            AND_GIVEN("a cell with a null buffer") {
+                rerun::DataCell cell = {};
+                cell.num_instances = 1;
+                cell.component_name = "valid";
 
-            //     THEN("try_log_data_row fails with UnexpectedNullArgument") {
-            //         CHECK(
-            //             stream.try_log_data_row(path, 1, 1, &cell, true).code ==
-            //             rerun::ErrorCode::UnexpectedNullArgument
-            //         );
-            //     }
-            // }
+                THEN("try_log_data_row fails with UnexpectedNullArgument") {
+                    CHECK(
+                        stream.try_log_data_row(path, 1, 1, &cell, true).code ==
+                        rerun::ErrorCode::UnexpectedNullArgument
+                    );
+                }
+            }
 
-            // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
-            // at least on some C++ implementations.
-            // If we'd want to support this in earnest we'd have to create out own string_view type.
-            //
-            // AND_GIVEN("a cell with a null component name") {
-            //     rerun::DataCell cell;
-            //     cell.buffer = std::make_shared<arrow::Buffer>(nullptr, 0);
-            //     cell.component_name = nullptr;
-
-            //     THEN("try_log_data_row fails with UnexpectedNullArgument") {
-            //         CHECK(
-            //             stream.try_log_data_row(path, 1, 1, &cell, true).code ==
-            //             rerun::ErrorCode::UnexpectedNullArgument
-            //         );
-            //     }
-            // }
-
-            // TODO:
-            // AND_GIVEN("a cell with a valid component name but invalid data") {
-            //     uint8_t invalid_data[1] = {0};
-            //     rerun::DataCell cell;
-            //     cell.component_name = "very-valid";
-            //     cell.buffer = std::make_shared<arrow::Buffer>(invalid_data, sizeof(invalid_data));
-
-            //     THEN("try_log_data_row fails with ArrowIpcMessageParsingFailure") {
-            //         CHECK(
-            //             stream.try_log_data_row(path, 1, 1, &cell, true).code ==
-            //             rerun::ErrorCode::ArrowIpcMessageParsingFailure
-            //         );
-            //     }
-            // }
-
-            // TODO(andreas): Missing test that provokes `ArrowDataCellError`. It's fairly hard to
-            // get there which I reckon is a good thing!
+            // TODO(andreas): Tests missing for various invalid data cell types, provoking the different errors that may occur.
         }
     }
 }
