@@ -16,7 +16,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "abi.h"
+#include "arrow_c_data_interface.h"
 
 // ----------------------------------------------------------------------------
 // Types:
@@ -137,9 +137,11 @@ typedef struct rr_data_cell {
     /// The name of the component, e.g. `position`.
     rr_string component_name;
 
+    /// A batch of components serialized into an arrow array.
     ArrowArray array;
 
-    /// TODO(andreas): Use a schema registry.
+    /// The schema used for the arrow array.
+    /// TODO(andreas): Use a schema registry that identifies this and the component name with a unique schema ID.
     ArrowSchema schema;
 } rr_data_cell;
 
