@@ -360,10 +360,8 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         blueprint_db
             .entity_db()
             .tree
-            .children
-            .get(&re_data_store::EntityPathPart::Name(
-                SpaceViewId::SPACEVIEW_PREFIX.into(),
-            )) {
+            .subtree(SpaceViewId::registry())
+    {
         space_views
             .children
             .values()
