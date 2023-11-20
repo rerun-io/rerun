@@ -310,6 +310,7 @@ def cmake_build(target: str, release: bool) -> None:
         "cmake",
         "--build",
         cpp_build_dir,
+        "--config",
         config,
         "--target",
         target,
