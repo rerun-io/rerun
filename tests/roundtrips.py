@@ -236,7 +236,7 @@ def run_roundtrip_cpp(arch: str, release: bool) -> str:
 
     cmake_build(target_name, release)
 
-    cmd = [f"./build/tests/cpp/roundtrips/{target_name}", output_path]
+    cmd = [f"{cpp_build_dir}/tests/cpp/roundtrips/{target_name}", output_path]
     run(cmd, env=roundtrip_env(), timeout=12000)
 
     return output_path
@@ -250,7 +250,7 @@ def cmake_build(target: str, release: bool) -> None:
     build_process_args = [
         "cmake",
         "--build",
-        ".",
+        cpp_build_dir,
         "--config",
         config,
         "--target",
@@ -258,7 +258,7 @@ def cmake_build(target: str, release: bool) -> None:
         "--parallel",
         str(multiprocessing.cpu_count()),
     ]
-    run(build_process_args, cwd=cpp_build_dir)
+    run(build_process_args)
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:

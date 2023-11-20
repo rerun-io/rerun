@@ -56,7 +56,7 @@ extra_args = {
 
 # fmt: on
 
-cpp_build_dir = "build/roundtrips"
+cpp_build_dir = "./build/roundtrips"
 
 
 def run(
@@ -294,7 +294,7 @@ def run_roundtrip_cpp(example: str, release: bool) -> str:
 
     cmake_build(target_name, release)
 
-    cmd = [f"./build/docs/code-examples/{example}"] + (extra_args.get(example) or [])
+    cmd = [f"{cpp_build_dir}/docs/code-examples/{example}"] + (extra_args.get(example) or [])
     env = roundtrip_env(save_path=output_path)
     run(cmd, env=env, timeout=12000)
 
@@ -309,14 +309,14 @@ def cmake_build(target: str, release: bool) -> None:
     build_process_args = [
         "cmake",
         "--build",
-        ".",
+        cpp_build_dir,
         config,
         "--target",
         target,
         "--parallel",
         str(multiprocessing.cpu_count()),
     ]
-    run(build_process_args, cwd=cpp_build_dir)
+    run(build_process_args)
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
