@@ -117,7 +117,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Build rerun_c & rerun_cpp…")
         start_time = time.time()
-        os.makedirs("build", exist_ok=True)
+        os.makedirs(cpp_build_dir, exist_ok=True)
         build_type = "Debug"
         if args.release:
             build_type = "Release"
@@ -129,12 +129,11 @@ def main() -> None:
             cpp_build_dir,
             f"-DCMAKE_BUILD_TYPE={build_type}",
             "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON",
-            "..",
+            ".",
         ]
         run(
             configure_args,
             env=build_env,
-            cwd="build",
         )
         cmake_build("rerun_sdk", args.release)
         elapsed = time.time() - start_time
@@ -310,7 +309,6 @@ def cmake_build(target: str, release: bool) -> None:
     build_process_args = [
         "cmake",
         "--build",
-        cpp_build_dir,
         ".",
         config,
         "--target",
