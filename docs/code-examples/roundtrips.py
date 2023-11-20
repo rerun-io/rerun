@@ -121,10 +121,9 @@ def main() -> None:
         build_type = "Debug"
         if args.release:
             build_type = "Release"
+        # TODO(andreas): We should pixi for the prepare so we can ensure we have build tooling ready
         configure_args = [
             "cmake",
-            "-G",
-            "Ninja",
             "-B",
             cpp_build_dir,
             f"-DCMAKE_BUILD_TYPE={build_type}",
