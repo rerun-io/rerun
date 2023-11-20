@@ -4,13 +4,14 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../components/depth_meter.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../warning_macros.hpp"
+#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -91,14 +92,14 @@ namespace rerun::archetypes {
         ///
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
-        DepthImage(std::vector<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+        DepthImage(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
             : DepthImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// New depth image from tensor data.
         ///
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
-        explicit DepthImage(components::TensorData _data);
+        explicit DepthImage(components::TensorData data_);
 
       public:
         DepthImage() = default;
@@ -111,7 +112,7 @@ namespace rerun::archetypes {
         DepthImage with_meter(rerun::components::DepthMeter _meter) && {
             meter = std::move(_meter);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional floating point value that specifies the 2D drawing order.
@@ -120,7 +121,7 @@ namespace rerun::archetypes {
         DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
             draw_order = std::move(_draw_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

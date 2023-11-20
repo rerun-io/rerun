@@ -15,7 +15,6 @@ pub use command_palette::CommandPalette;
 pub use design_tokens::DesignTokens;
 pub use icons::Icon;
 pub use layout_job_builder::LayoutJobBuilder;
-use std::ops::RangeInclusive;
 pub use toggle_switch::toggle_switch;
 
 // ---------------------------------------------------------------------------
@@ -49,7 +48,7 @@ pub struct TopBarStyle {
 use crate::list_item::ListItem;
 use egui::emath::{Rangef, Rot2};
 use egui::epaint::util::FloatOrd;
-use egui::{pos2, Align2, Color32, Mesh, NumExt, Rect, Shape, Vec2};
+use egui::{pos2, Align2, CollapsingResponse, Color32, Mesh, NumExt, Rect, Shape, Vec2};
 
 #[derive(Clone)]
 pub struct ReUi {
@@ -446,41 +445,6 @@ impl ReUi {
         .inner
     }
 
-    /// Shows a `egui::DragValue` for a time in nanoseconds.
-    ///
-    /// The value and unit displayed adapts to the provided allowable time range.
-    #[allow(clippy::unused_self)]
-    pub fn time_drag_value(
-        &self,
-        ui: &mut egui::Ui,
-        value: &mut i64,
-        time_range: &RangeInclusive<i64>,
-    ) {
-        let span = time_range.end() - time_range.start();
-
-        let (unit, factor) = if span / 1_000_000_000 > 0 {
-            ("s", 1_000_000_000.)
-        } else if span / 1_000_000 > 0 {
-            ("ms", 1_000_000.)
-        } else if span / 1_000 > 0 {
-            ("μs", 1_000.)
-        } else {
-            ("ns", 1.)
-        };
-
-        let mut time_unit = *value as f32 / factor;
-        let time_range = *time_range.start() as f32 / factor..=*time_range.end() as f32 / factor;
-        let speed = (time_range.end() - time_range.start()) * 0.005;
-
-        ui.add(
-            egui::DragValue::new(&mut time_unit)
-                .clamp_range(time_range)
-                .speed(speed)
-                .suffix(unit),
-        );
-        *value = (time_unit * factor).round() as _;
-    }
-
     pub fn large_button(&self, ui: &mut egui::Ui, icon: &Icon) -> egui::Response {
         self.large_button_impl(ui, icon, None, None)
     }
@@ -577,6 +541,101 @@ impl ReUi {
             },
         )
         .inner
+    }
+
+    /// Replacement for [`egui::CollapsingHeader`] that respect our style.
+    ///
+    /// The layout is fine-tuned to fit well in inspector panels (such as Rerun's Selection Panel)
+    /// where the collapsing header should align nicely with checkboxes and other controls.
+    #[allow(clippy::unused_self)]
+    pub fn collapsing_header<R>(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        default_open: bool,
+        add_body: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::CollapsingResponse<R> {
+        let id = ui.make_persistent_id(label);
+        let button_padding = ui.spacing().button_padding;
+
+        let available = ui.available_rect_before_wrap();
+        // TODO(ab): use design token for indent — cannot use the global indent value as we must
+        // align with checkbox, etc.
+        let indent = 18.0;
+        let text_pos = available.min + egui::vec2(indent, 0.0);
+        let wrap_width = available.right() - text_pos.x;
+        let wrap = Some(false);
+        let text = egui::WidgetText::from(label).into_galley(
+            ui,
+            wrap,
+            wrap_width,
+            egui::TextStyle::Button,
+        );
+        let text_max_x = text_pos.x + text.size().x;
+
+        let mut desired_width = text_max_x + button_padding.x - available.left();
+        if ui.visuals().collapsing_header_frame {
+            desired_width = desired_width.max(available.width()); // fill full width
+        }
+
+        let mut desired_size = egui::vec2(desired_width, text.size().y + 2.0 * button_padding.y);
+        desired_size = desired_size.at_least(ui.spacing().interact_size);
+        let (_, rect) = ui.allocate_space(desired_size);
+
+        let mut header_response = ui.interact(rect, id, egui::Sense::click());
+        let text_pos = pos2(
+            text_pos.x,
+            header_response.rect.center().y - text.size().y / 2.0,
+        );
+
+        let mut state = egui::collapsing_header::CollapsingState::load_with_default_open(
+            ui.ctx(),
+            id,
+            default_open,
+        );
+        if header_response.clicked() {
+            state.toggle(ui);
+            header_response.mark_changed();
+        }
+
+        let openness = state.openness(ui.ctx());
+
+        if ui.is_rect_visible(rect) {
+            let visuals = ui.style().interact(&header_response);
+
+            {
+                let space_around_icon = 3.0;
+                let icon_width = ui.spacing().icon_width_inner;
+
+                let icon_rect = egui::Rect::from_center_size(
+                    header_response.rect.left_center()
+                        + egui::vec2(space_around_icon + icon_width / 2.0, 0.0),
+                    egui::Vec2::splat(icon_width),
+                );
+
+                let icon_response = header_response.clone().with_new_rect(icon_rect);
+                Self::paint_collapsing_triangle(ui, openness, icon_rect, &icon_response);
+            }
+
+            text.paint_with_visuals(ui.painter(), text_pos, visuals);
+        }
+
+        let ret_response = ui
+            .vertical(|ui| {
+                ui.spacing_mut().indent = indent;
+                state.show_body_indented(&header_response, ui, add_body)
+            })
+            .inner;
+
+        let (body_response, body_returned) =
+            ret_response.map_or((None, None), |r| (Some(r.response), Some(r.inner)));
+
+        CollapsingResponse {
+            header_response,
+            body_response,
+            body_returned,
+            openness,
+        }
     }
 
     /// Show a prominent collapsing header to be used as section delimitation in side panels.

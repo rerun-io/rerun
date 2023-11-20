@@ -4,3 +4,4 @@ include "./blueprint/panel_view.fbs";
 include "./blueprint/space_view_component.fbs";
 include "./blueprint/space_view_maximized.fbs";
 include "./blueprint/viewport_layout.fbs";
+include "./blueprint/query_expressions.fbs";

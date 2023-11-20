@@ -8,9 +8,9 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <rerun/collection.hpp>
 #include <rerun/result.hpp>
 #include <string>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -26,11 +26,11 @@ namespace rerun::datatypes {
 
         std::optional<std::string> single_string_optional;
 
-        std::optional<std::vector<float>> many_floats_optional;
+        std::optional<rerun::Collection<float>> many_floats_optional;
 
-        std::vector<std::string> many_strings_required;
+        rerun::Collection<std::string> many_strings_required;
 
-        std::optional<std::vector<std::string>> many_strings_optional;
+        std::optional<rerun::Collection<std::string>> many_strings_optional;
 
         float flattened_scalar;
 

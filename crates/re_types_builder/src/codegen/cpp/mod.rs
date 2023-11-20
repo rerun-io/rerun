@@ -416,7 +416,7 @@ impl QuotedObject {
             let method_ident = format_ident!("with_{}", obj_field.name);
             let field_type = quote_archetype_field_type(&mut hpp_includes, obj_field);
 
-            hpp_includes.insert_rerun("warning_macros.hpp");
+            hpp_includes.insert_rerun("compiler_utils.hpp");
             let gcc_ignore_comment =
                 quote_comment("See: https://github.com/rerun-io/rerun/issues/4027");
 
@@ -433,7 +433,7 @@ impl QuotedObject {
                     #field_ident = std::move(#parameter_ident);
                     #NEWLINE_TOKEN
                     #gcc_ignore_comment
-                    WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+                    RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
                 },
                 inline: true,
             });
@@ -1343,41 +1343,60 @@ fn component_to_data_cell_method(type_ident: &Ident, hpp_includes: &mut Includes
 fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Includes) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("collection.hpp");
+    hpp_includes.insert_rerun("serialized_component_batch.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
     let num_fields = quote_integer(obj.fields.len());
     let push_batches = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
         let field_accessor = quote!(archetype.#field_name);
+        let field_type = quote_fqname_as_type_path(
+            hpp_includes,
+            field
+                .typ
+                .fqname()
+                .expect("Archetypes only have components and vectors of components."),
+        );
 
-        // TODO(andreas): Introducing MonoCollection will remove the need for this.
-        let wrapping_type = if field.typ.is_plural() {
-            quote!()
-        } else {
-            let field_type = quote_fqname_as_type_path(
-                hpp_includes,
-                field
-                    .typ
-                    .fqname()
-                    .expect("Archetypes only have components and vectors of components."),
-            );
-            quote!(Collection<#field_type>)
+        let emplace_back = quote! {
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value), size);
         };
 
-        if field.is_nullable {
+
+        // TODO(andreas): Introducing MonoCollection will remove the need for distinguishing these two cases.
+        if field.typ.is_plural() {
+            if field.is_nullable {
+                quote! {
+                    if (#field_accessor.has_value()) {
+                        const size_t size = #field_accessor.value().size();
+                        auto result = #field_type::to_data_cell(#field_accessor.value().data(), size);
+                        #emplace_back
+                    }
+                }
+            } else {
+                quote! {
+                    {
+                        const size_t size = #field_accessor.size();
+                        auto result = #field_type::to_data_cell(#field_accessor.data(), #field_accessor.size());
+                        #emplace_back
+                    }
+                }
+            }
+        } else if field.is_nullable {
             quote! {
                 if (#field_accessor.has_value()) {
-                    auto result = #wrapping_type(#field_accessor.value()).serialize();
-                    RR_RETURN_NOT_OK(result.error);
-                    cells.emplace_back(std::move(result.value));
+                    const size_t size = 1;
+                    auto result = #field_type::to_data_cell(&#field_accessor.value(), size);
+                    #emplace_back
                 }
             }
         } else {
             quote! {
                 {
-                    auto result = #wrapping_type(#field_accessor).serialize();
-                    RR_RETURN_NOT_OK(result.error);
-                    cells.emplace_back(std::move(result.value));
+                    const size_t size = 1;
+                    auto result = #field_type::to_data_cell(&#field_accessor, size);
+                    #emplace_back
                 }
             }
         }
@@ -1399,9 +1418,10 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #NEWLINE_TOKEN
             #(#push_batches)*
             {
-                auto result = Collection<#type_ident::IndicatorComponent>(#type_ident::IndicatorComponent()).serialize();
+                auto indicator = #type_ident::IndicatorComponent();
+                auto result = #type_ident::IndicatorComponent::to_data_cell(&indicator, 1);
                 RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value));
+                cells.emplace_back(std::move(result.value), 1);
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
@@ -1983,8 +2003,8 @@ fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenSt
         }
         Type::Vector { elem_type } => {
             let elem_type = quote_element_type(includes, elem_type);
-            includes.insert_system("vector");
-            quote! { std::vector<#elem_type>  }
+            includes.insert_rerun("collection.hpp");
+            quote! { rerun::Collection<#elem_type>  }
         }
         Type::Object(fqname) => {
             let type_name = quote_fqname_as_type_path(includes, fqname);

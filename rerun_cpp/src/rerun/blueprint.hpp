@@ -5,6 +5,7 @@
 #include "blueprint/auto_space_views.hpp"
 #include "blueprint/entity_properties_component.hpp"
 #include "blueprint/panel_view.hpp"
+#include "blueprint/query_expressions.hpp"
 #include "blueprint/space_view_component.hpp"
 #include "blueprint/space_view_maximized.hpp"
 #include "blueprint/viewport_layout.hpp"

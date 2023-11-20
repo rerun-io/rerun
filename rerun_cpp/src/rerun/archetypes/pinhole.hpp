@@ -4,13 +4,14 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
 #include "../components/pinhole_projection.hpp"
 #include "../components/resolution.hpp"
 #include "../components/view_coordinates.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../warning_macros.hpp"
+#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -155,7 +156,7 @@ namespace rerun::archetypes {
         Pinhole with_resolution(rerun::components::Resolution _resolution) && {
             resolution = std::move(_resolution);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Sets the view coordinates for the camera.
@@ -188,7 +189,7 @@ namespace rerun::archetypes {
         Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) && {
             camera_xyz = std::move(_camera_xyz);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

@@ -2,6 +2,7 @@
 
 #include "collection.hpp"
 #include "indicator_component.hpp"
+#include "serialized_component_batch.hpp"
 
 namespace rerun {
     /// The AsComponents trait is used to convert a type into a list of serialized component.
@@ -11,13 +12,14 @@ namespace rerun {
     /// Anything that implements `AsComponents` can be logged to a recording stream.
     template <typename T>
     struct AsComponents {
+        /// \private
+        /// `NoAsComponentsFor` always evaluates to false, but in a way that requires template instantiation.
         template <typename T2>
         struct NoAsComponentsFor : std::false_type {};
 
         // TODO(andreas): This should also mention an example of how to implement this.
         static_assert(
-            NoAsComponentsFor<T>::value, // Always evaluate to false, but in a way that requires
-                                         // template instantiation.
+            NoAsComponentsFor<T>::value,
             "AsComponents is not implemented for this type. "
             "It is implemented for all built-in archetypes as well as std::vector, std::array, and "
             "c-arrays of components. "
@@ -34,9 +36,12 @@ namespace rerun {
         static Result<std::vector<SerializedComponentBatch>> serialize(
             const Collection<TComponent>& components
         ) {
-            const auto result = components.serialize();
-            RR_RETURN_NOT_OK(result.error);
-            return Result(std::vector<SerializedComponentBatch>{std::move(result.value)});
+            auto cell_result = TComponent::to_data_cell(components.data(), components.size());
+            RR_RETURN_NOT_OK(cell_result.error);
+
+            return Result<std::vector<SerializedComponentBatch>>(
+                {SerializedComponentBatch(std::move(cell_result.value), components.size())}
+            );
         }
     };
 

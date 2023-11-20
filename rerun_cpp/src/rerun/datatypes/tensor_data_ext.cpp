@@ -1,24 +1,15 @@
 #include "tensor_data.hpp"
 
-// Uncomment for better auto-complete while editing the extension.
-//#define EDIT_EXTENSION
+namespace rerun::datatypes {
 
-namespace rerun {
-    namespace datatypes {
+#if 0
+    // <CODEGEN_COPY_TO_HEADER>
 
-#ifdef EDIT_EXTENSION
-#define TensorData TensorDataExt
+    TensorData(
+        Collection<rerun::datatypes::TensorDimension> shape_, datatypes::TensorBuffer buffer_
+    )
+        : shape(std::move(shape_)), buffer(std::move(buffer_)) {}
 
-        // <CODEGEN_COPY_TO_HEADER>
-
-        // TODO(#3794): There should be the option to not have TensorData take ownership of the buffer.
-        TensorData(
-            std::vector<rerun::datatypes::TensorDimension> shape_,
-            rerun::datatypes::TensorBuffer buffer_
-        )
-            : shape(std::move(shape_)), buffer(std::move(buffer_)) {}
-
-        // </CODEGEN_COPY_TO_HEADER>
+    // </CODEGEN_COPY_TO_HEADER>
 #endif
-    } // namespace datatypes
-} // namespace rerun
+} // namespace rerun::datatypes

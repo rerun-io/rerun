@@ -11,101 +11,366 @@
 
 using namespace rerun::components;
 
-SCENARIO("Collection creation via common adapters", TEST_TAG) {
-    GIVEN("a vector of components") {
-        std::vector<Position2D> components = {
-            Position2D(0.0f, 1.0f),
-            Position2D(1.0f, 2.0f),
-        };
+// Input type that can be converted to the one held by the container.
+struct ConvertibleElement {
+    ConvertibleElement(int v) : value(v) {}
+
+    ConvertibleElement(const ConvertibleElement& e) = default;
+
+    ConvertibleElement& operator=(const ConvertibleElement& e) = default;
+
+    int value = 99999;
+};
+
+// Type held by the container.
+struct Element {
+    Element(int v) : value(v) {}
+
+    Element(const Element& e) : value(e.value) {
+        ++copy_count;
+    }
+
+    Element(Element&& e) : value(e.value) {
+        ++move_count;
+    }
+
+    Element& operator=(const Element& e) = default;
+
+    Element(const ConvertibleElement& e) : value(e.value) {
+        ++move_convertible_count;
+    }
+
+    Element(ConvertibleElement&& e) : value(e.value) {
+        ++copy_convertible_count;
+    }
+
+    bool operator==(const Element& other) const {
+        return value == other.value;
+    }
+
+    int value = 99999;
+
+    static int move_count;
+    static int copy_count;
+    static int move_convertible_count;
+    static int copy_convertible_count;
+};
+
+int Element::move_count = 0;
+int Element::copy_count = 0;
+int Element::move_convertible_count = 0;
+int Element::copy_convertible_count = 0;
+
+struct CheckElementMoveAndCopyCount {
+    CheckElementMoveAndCopyCount()
+        : copy_count_before(Element::copy_count),
+          move_count_before(Element::move_count),
+          copy_convertible_count_before(Element::copy_convertible_count),
+          move_convertible_count_before(Element::move_convertible_count) {}
+
+    ~CheckElementMoveAndCopyCount() {
+// Both moves and copies can be elided, so we can only check for a minimum.
+// But in debug builds this seems to be surprisingly reliable!
+#ifdef NDEBUG
+#define CMP >=
+#else
+#define CMP ==
+#endif
+
+        CHECK(Element::copy_count - copy_count_before CMP expected_copy_increase);
+        CHECK(Element::move_count - move_count_before CMP expected_move_increase);
+        CHECK(
+            Element::copy_convertible_count -
+            copy_convertible_count_before CMP expected_copy_convertible_increase
+        );
+        CHECK(
+            Element::move_convertible_count -
+            move_convertible_count_before CMP expected_move_convertible_increase
+        );
+#undef CMP
+    }
+
+    CheckElementMoveAndCopyCount(const CheckElementMoveAndCopyCount&) = delete;
+
+    CheckElementMoveAndCopyCount& expect_move(int i) {
+        expected_move_increase = i;
+        return *this;
+    }
+
+    CheckElementMoveAndCopyCount& expect_copy(int i) {
+        expected_copy_increase = i;
+        return *this;
+    }
+
+    CheckElementMoveAndCopyCount& expect_convertible_move(int i) {
+        expected_copy_convertible_increase = i;
+        return *this;
+    }
+
+    CheckElementMoveAndCopyCount& expect_convertible_copy(int i) {
+        expected_move_convertible_increase = i;
+        return *this;
+    }
+
+    int expected_copy_increase = 0;
+    int expected_move_increase = 0;
+    int expected_copy_convertible_increase = 0;
+    int expected_move_convertible_increase = 0;
+
+    int copy_count_before, move_count_before;
+    int copy_convertible_count_before, move_convertible_count_before;
+};
+
+#define EXPECTED_ELEMENT_LIST \
+    { 1337, 42 }
+
+// Checks if the collection contains the elements defined in `EXPECTED_ELEMENT_LIST`.
+void check_for_expected_list(const rerun::Collection<Element>& collection) {
+    std::array<Element, 2> expected = EXPECTED_ELEMENT_LIST;
+    CHECK(collection.size() == expected.size());
+    CHECK(collection[0] == expected[0]);
+    CHECK(collection[1] == expected[1]);
+}
+
+#define EXPECTED_SINGLE 666
+
+// Checks if the collection contains the elements defined in `EXPECTED_SINGLE`.
+void check_for_expected_single(const rerun::Collection<Element>& collection) {
+    Element expected = EXPECTED_SINGLE;
+    CHECK(collection.size() == 1);
+    CHECK(collection[0] == expected);
+}
+
+SCENARIO(
+    "Collection creation via basic adapters, using the container's value_type as input", TEST_TAG
+) {
+    GIVEN("a vector of elements") {
+        std::vector<Element> elements = EXPECTED_ELEMENT_LIST;
 
         THEN("a collection created from it borrows its data") {
-            const rerun::Collection<Position2D> batch(components);
-            CHECK(batch.size() == components.size());
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::Borrowed);
-        }
-        THEN("a collection created from it moving it owns the data") {
-            const rerun::Collection<Position2D> batch(std::move(components));
-            CHECK(batch.size() == 2);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::VectorOwned);
-        }
-    }
+            CheckElementMoveAndCopyCount check; // No copies or moves.
 
-    GIVEN("a temporary vector of components") {
-        THEN("a collection created from it owns its data") {
-            const rerun::Collection<Position2D> batch(std::vector<Position2D>{
-                Position2D(0.0f, 1.0f),
-                Position2D(1.0f, 2.0f),
-            });
-            CHECK(batch.size() == 2);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::VectorOwned);
-        }
-    }
-
-    GIVEN("an std::array of components") {
-        std::array<Position2D, 2> components = {
-            Position2D(0.0f, 1.0f),
-            Position2D(1.0f, 2.0f),
-        };
-
-        THEN("a collection created from it borrows its data") {
-            const rerun::Collection<Position2D> batch(components);
-            CHECK(batch.size() == components.size());
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::Borrowed);
-        }
-        THEN("a collection created from it moving it owns the data") {
-            const rerun::Collection<Position2D> batch(std::move(components));
-            CHECK(batch.size() == 2);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::VectorOwned);
-        }
-    }
-    GIVEN("a temporary std::array of components") {
-        THEN("a collection created from it owns its data") {
-            const rerun::Collection<Position2D> batch(std::array<Position2D, 2>{
-                Position2D(0.0f, 1.0f),
-                Position2D(1.0f, 2.0f),
-            });
-            CHECK(batch.size() == 2);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::VectorOwned);
-        }
-    }
-
-    GIVEN("a c-array of components") {
-        Position2D components[] = {
-            Position2D(0.0f, 1.0f),
-            Position2D(1.0f, 2.0f),
-        };
-
-        THEN("a collection created from it borrows its data") {
-            const rerun::Collection<Position2D> batch(components);
-            CHECK(batch.size() == 2);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::Borrowed);
+            const rerun::Collection<Element> collection(elements);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
         }
         THEN("a collection created from moving it owns the data") {
-            const rerun::Collection<Position2D> batch(std::move(components));
-            CHECK(batch.size() == 2);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+            CheckElementMoveAndCopyCount check;
+            // No element copies or moves, the vector itself is moved.
+
+            const rerun::Collection<Element> collection(std::move(elements));
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
         }
     }
 
-    GIVEN("a single components") {
-        Position2D component = Position2D(0.0f, 1.0f);
+    GIVEN("a temporary vector of elements") {
+        THEN("a collection created from it owns its data") {
+            CheckElementMoveAndCopyCount check;
+            // No element moves, the vector itself is moved.
+            check.expect_copy(2); // for constructing the temporary vector.
+
+            const rerun::Collection<Element> collection(std::vector<Element> EXPECTED_ELEMENT_LIST);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+
+    GIVEN("an std::array of elements") {
+        std::array<Element, 2> elements = EXPECTED_ELEMENT_LIST;
 
         THEN("a collection created from it borrows its data") {
-            const rerun::Collection<Position2D> batch(component);
-            CHECK(batch.size() == 1);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::Borrowed);
+            CheckElementMoveAndCopyCount check; // No copies or moves.
+
+            const rerun::Collection<Element> collection(elements);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
         }
         THEN("a collection created from it moving it owns the data") {
-            const rerun::Collection<Position2D> batch(std::move(component));
-            CHECK(batch.size() == 1);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(2);
+
+            const rerun::Collection<Element> collection(std::move(elements));
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+    GIVEN("a temporary std::array of elements") {
+        THEN("a collection created from it owns its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(2);
+
+            const rerun::Collection<Element> collection(std::array<Element, 2> EXPECTED_ELEMENT_LIST
+            );
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+
+    GIVEN("a c-array of elements") {
+        Element elements[] = EXPECTED_ELEMENT_LIST;
+
+        THEN("a collection created from it borrows its data") {
+            CheckElementMoveAndCopyCount check; // No copies or moves.
+
+            const rerun::Collection<Element> collection(elements);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
+        }
+        THEN("a collection created from moving it owns the data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(2);
+
+            const rerun::Collection<Element> collection(std::move(elements));
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+
+    GIVEN("a single element") {
+        Element component = EXPECTED_SINGLE;
+
+        THEN("a collection created from it borrows its data") {
+            CheckElementMoveAndCopyCount check; // No copies or moves.
+
+            const rerun::Collection<Element> collection(component);
+            check_for_expected_single(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
+        }
+        THEN("a collection created from moving it owns the data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(1);
+
+            const rerun::Collection<Element> collection(std::move(component));
+            check_for_expected_single(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
         }
     }
     GIVEN("a single temporary component") {
-        THEN("a collection created from it borrows its data") {
-            const rerun::Collection<Position2D> batch(Position2D(0.0f, 1.0f));
-            CHECK(batch.size() == 1);
-            CHECK(batch.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        THEN("a collection created from it owns the data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_move(1);
+
+            const rerun::Collection<Element> collection(Element(EXPECTED_SINGLE));
+            check_for_expected_single(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+}
+
+SCENARIO(
+    "Collection creation via basic adapters, using a type that is compatible to the container's value_type as input",
+    TEST_TAG
+) {
+    GIVEN("a vector of convertible elements") {
+        std::vector<ConvertibleElement> elements = EXPECTED_ELEMENT_LIST;
+
+        THEN("a collection created from it copies its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_copy(2);
+
+            const rerun::Collection<Element> collection(elements);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+        THEN("a collection created from it moves its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_move(2);
+
+            const rerun::Collection<Element> collection(std::move(elements));
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+
+    GIVEN("a temporary vector of convertible elements") {
+        THEN("a collection created from it moves its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_move(2);
+
+            const rerun::Collection<Element>
+                collection(std::vector<ConvertibleElement> EXPECTED_ELEMENT_LIST);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+
+    GIVEN("an std::array of convertible elements") {
+        std::array<ConvertibleElement, 2> elements = EXPECTED_ELEMENT_LIST;
+
+        THEN("a collection created from it copies its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_copy(2);
+
+            const rerun::Collection<Element> collection(elements);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+        THEN("a collection created from it moves its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_move(2);
+
+            const rerun::Collection<Element> collection(std::move(elements));
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+    GIVEN("a temporary std::array of convertible elements") {
+        THEN("a collection created from it moves its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_move(2);
+
+            const rerun::Collection<Element>
+                collection(std::array<ConvertibleElement, 2> EXPECTED_ELEMENT_LIST);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+
+    // Not yet supported.
+    // GIVEN("a c-array of convertible elements") {
+    //     ConvertibleElement elements[] = EXPECTED_ELEMENT_LIST;
+    //
+    //     THEN("a collection created from it borrows its data") {
+    //     }
+    //     THEN("a collection created from moving it owns the data") {
+    //     }
+    // }
+
+    GIVEN("a single convertible element") {
+        ConvertibleElement element = EXPECTED_SINGLE;
+
+        THEN("a collection created from it copies its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_copy(1);
+            // The resulting value is moved internally into a vector.
+            check.expect_move(1);
+
+            const rerun::Collection<Element> collection(element);
+            check_for_expected_single(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+        THEN("a collection created from it move its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_move(1);
+            // The resulting value is moved internally into a vector.
+            check.expect_move(1);
+
+            const rerun::Collection<Element> collection(std::move(element));
+            check_for_expected_single(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+    GIVEN("a single temporary convertible element") {
+        THEN("a collection created from it move its data") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_convertible_move(1);
+            // The resulting value is moved internally into a vector.
+            check.expect_move(1);
+
+            const rerun::Collection<Element> collection(ConvertibleElement(EXPECTED_SINGLE));
+            check_for_expected_single(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
         }
     }
 }
@@ -169,7 +434,7 @@ SCENARIO("Collection creation via a custom adapter for a datalayout compatible t
     }
 }
 
-SCENARIO("Collection move behavior", TEST_TAG) {
+SCENARIO("Move construction/assignment of collections", TEST_TAG) {
     std::vector<Position2D> components = {
         Position2D(0.0f, 1.0f),
         Position2D(1.0f, 2.0f),
@@ -231,4 +496,136 @@ SCENARIO("Collection move behavior", TEST_TAG) {
     // Uncomment to check if the error message for missing adapter is sane:
     //std::vector<std::string> strings = {"a", "b", "c"};
     //rerun::Collection<Position2D> batch(strings);
+}
+
+SCENARIO("Copy/move construction/assignment of collections", TEST_TAG) {
+    GIVEN("A default constructed collection") {
+        rerun::Collection<int> collection;
+        const int* old_data_ptr = collection.data();
+
+        THEN("it can be move constructed") {
+            rerun::Collection<int> collection2(std::move(collection));
+            CHECK(collection2.size() == 0);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+        THEN("it can be move assigned") {
+            rerun::Collection<int> collection2;
+            collection2 = std::move(collection);
+            CHECK(collection2.size() == 0);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+
+        THEN("it can be copy constructed") {
+            rerun::Collection<int> collection2(collection);
+            CHECK(collection2.size() == 0);
+        }
+        THEN("it can be copy assigned") {
+            rerun::Collection<int> collection2;
+            collection2 = collection;
+            CHECK(collection2.size() == 0);
+        }
+    }
+
+    GIVEN("a collection with owned data") {
+        auto collection =
+            rerun::Collection<Element>::take_ownership(std::vector<Element> EXPECTED_ELEMENT_LIST);
+        const Element* old_data_ptr = collection.data();
+
+        THEN("it can be move constructed") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2(std::move(collection));
+            check_for_expected_list(collection2);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+        THEN("it can be move assigned") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2;
+            collection2 = std::move(collection);
+            check_for_expected_list(collection2);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+
+        THEN("it can be copy constructed") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            rerun::Collection<Element> collection2(collection);
+            check_for_expected_list(collection2);
+        }
+        THEN("it can be copy assigned") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            rerun::Collection<Element> collection2;
+
+            collection2 = collection;
+            check_for_expected_list(collection2);
+        }
+    }
+
+    GIVEN("a collection with borrowed data") {
+        std::vector<Element> data EXPECTED_ELEMENT_LIST;
+        auto collection = rerun::Collection<Element>::borrow(data.data(), data.size());
+        const Element* old_data_ptr = data.data();
+
+        THEN("it can be move constructed") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2(std::move(collection));
+            check_for_expected_list(collection2);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+        THEN("it can be move assigned") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2;
+            collection2 = std::move(collection);
+            check_for_expected_list(collection2);
+            CHECK(collection2.data() == old_data_ptr);
+        }
+
+        THEN("it can be copy constructed") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2(collection);
+            check_for_expected_list(collection2);
+        }
+        THEN("it can be copy assigned") {
+            CheckElementMoveAndCopyCount check; // No move or copy.
+
+            rerun::Collection<Element> collection2;
+
+            collection2 = collection;
+            check_for_expected_list(collection2);
+        }
+    }
+}
+
+SCENARIO("Conversion to vector using `to_vector`", TEST_TAG) {
+    auto expected_vector = std::vector<Element> EXPECTED_ELEMENT_LIST;
+
+    GIVEN("a collection with owned data") {
+        auto collection =
+            rerun::Collection<Element>::take_ownership(std::vector<Element> EXPECTED_ELEMENT_LIST);
+
+        THEN("it can be converted to a vector") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            CHECK(collection.to_vector() == expected_vector);
+        }
+    }
+    GIVEN("a collection with borrowed data") {
+        std::vector<Element> data EXPECTED_ELEMENT_LIST;
+        auto collection = rerun::Collection<Element>::borrow(data.data(), data.size());
+
+        THEN("it can be converted to a vector") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            CHECK(collection.to_vector() == expected_vector);
+        }
+    }
 }

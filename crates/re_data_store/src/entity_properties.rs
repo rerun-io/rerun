@@ -256,26 +256,8 @@ pub enum VisibleHistoryBoundary {
 }
 
 impl VisibleHistoryBoundary {
-    /// UI label to use when [`VisibleHistoryBoundary::RelativeToTimeCursor`] is selected.
-    pub const RELATIVE_LABEL: &'static str = "Relative";
-
-    /// UI label to use when [`VisibleHistoryBoundary::Absolute`] is selected.
-    pub const ABSOLUTE_LABEL: &'static str = "Absolute";
-
-    /// UI label to use when [`VisibleHistoryBoundary::Infinite`] is selected.
-    pub const INFINITE_LABEL: &'static str = "Infinite";
-
     /// Value when the boundary is set to the current time cursor.
     pub const AT_CURSOR: Self = Self::RelativeToTimeCursor(0);
-
-    /// Label to use in the UI.
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::RelativeToTimeCursor(_) => Self::RELATIVE_LABEL,
-            Self::Absolute(_) => Self::ABSOLUTE_LABEL,
-            Self::Infinite => Self::INFINITE_LABEL,
-        }
-    }
 }
 
 impl Default for VisibleHistoryBoundary {
@@ -345,8 +327,10 @@ impl ExtraQueryHistory {
     fn with_child(&self, child: &Self) -> Self {
         if child.enabled {
             *child
-        } else {
+        } else if self.enabled {
             *self
+        } else {
+            Self::default()
         }
     }
 }

@@ -1,31 +1,27 @@
 use egui::NumExt as _;
-use std::collections::HashSet;
-use std::ops::RangeInclusive;
 
 use re_data_store::{
-    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, ExtraQueryHistory,
-    VisibleHistoryBoundary,
+    ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
-use re_log_types::TimeType;
-use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
-use re_types_core::ComponentName;
 use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
     ViewerContext,
 };
 use re_viewport::{external::re_space_view::DataQuery as _, Viewport, ViewportBlueprint};
 
+use crate::ui::visible_history::visible_history_ui;
+
 use super::selection_history_ui::SelectionHistoryUi;
 
 // ---
 
-/// The "Selection View" side-bar.
+/// The "Selection View" sidebar.
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub(crate) struct SelectionPanel {
@@ -284,8 +280,21 @@ fn blueprint_ui(
                     space_view.id,
                     space_view.class_name(),
                 );
-                let root_data_result = space_view.root_data_result(ctx);
-                let mut props = root_data_result.resolved_properties.clone();
+
+                // Space View don't inherit properties.
+                let mut resolved_entity_props = EntityProperties::default();
+
+                // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
+                if space_view_class == TimeSeriesSpaceView::NAME {
+                    resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
+                    resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
+                }
+
+                let root_data_result = space_view.root_data_result(ctx.store_context);
+                let mut props = root_data_result
+                    .individual_properties
+                    .clone()
+                    .unwrap_or(resolved_entity_props.clone());
 
                 space_view
                     .class(ctx.space_view_class_registry)
@@ -297,9 +306,17 @@ fn blueprint_ui(
                         space_view.id,
                     );
 
-                visible_history_ui(ctx, ui, &space_view_class, None, &mut props.visible_history);
+                visible_history_ui(
+                    ctx,
+                    ui,
+                    &space_view_class,
+                    true,
+                    None,
+                    &mut props.visible_history,
+                    &resolved_entity_props.visible_history,
+                );
 
-                root_data_result.save_override(props, ctx);
+                root_data_result.save_override(Some(props), ctx);
             }
         }
 
@@ -319,21 +336,29 @@ fn blueprint_ui(
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
                         // splat - the whole entity
-                        let space_view_class_name = *space_view.class_name();
+                        let space_view_class = *space_view.class_name();
+                        let entity_path = &instance_path.entity_path;
+
                         let data_result = space_view.contents.resolve(
                             space_view,
-                            ctx,
+                            ctx.store_context,
+                            ctx.entities_per_system_per_class,
                             &instance_path.entity_path,
                         );
-                        let mut props = data_result.resolved_properties.clone();
+
+                        let mut props = data_result
+                            .individual_properties
+                            .clone()
+                            .unwrap_or_default();
                         entity_props_ui(
                             ctx,
                             ui,
-                            &space_view_class_name,
-                            Some(&instance_path.entity_path),
+                            &space_view_class,
+                            Some(entity_path),
                             &mut props,
+                            &data_result.resolved_properties,
                         );
-                        data_result.save_override(props, ctx);
+                        data_result.save_override(Some(props), ctx);
                     }
                 }
             } else {
@@ -348,15 +373,30 @@ fn blueprint_ui(
 
         Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                if let Some(group) = space_view.contents.group(*data_blueprint_group_handle) {
-                    let data_result =
-                        space_view
-                            .contents
-                            .resolve(space_view, ctx, &group.group_path);
-                    let space_view_class_name = *space_view.class_name();
-                    let mut props = data_result.resolved_properties.clone();
-                    entity_props_ui(ctx, ui, &space_view_class_name, None, &mut props);
-                    data_result.save_override(props, ctx);
+                if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
+                    let group_path = group.group_path.clone();
+                    let data_result = space_view.contents.resolve(
+                        space_view,
+                        ctx.store_context,
+                        ctx.entities_per_system_per_class,
+                        &group_path,
+                    );
+
+                    let space_view_class = *space_view.class_name();
+                    let mut props = data_result
+                        .individual_properties
+                        .clone()
+                        .unwrap_or_default();
+
+                    entity_props_ui(
+                        ctx,
+                        ui,
+                        &space_view_class,
+                        None,
+                        &mut props,
+                        &data_result.resolved_properties,
+                    );
+                    data_result.save_override(Some(props), ctx);
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }
@@ -401,6 +441,7 @@ fn entity_props_ui(
     space_view_class: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
+    resolved_entity_props: &EntityProperties,
 ) {
     let re_ui = ctx.re_ui;
     re_ui.checkbox(ui, &mut entity_props.visible, "Visible");
@@ -412,8 +453,10 @@ fn entity_props_ui(
         ctx,
         ui,
         space_view_class,
+        false,
         entity_path,
         &mut entity_props.visible_history,
+        &resolved_entity_props.visible_history,
     );
 
     egui::Grid::new("entity_properties")
@@ -427,271 +470,6 @@ fn entity_props_ui(
                 transform3d_visualization_ui(ctx, ui, entity_path, entity_props);
             }
         });
-}
-
-/// These space views support the Visible History feature.
-static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<SpaceViewClassName>> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            SpatialSpaceView3D::NAME,
-            SpatialSpaceView2D::NAME,
-            TimeSeriesSpaceView::NAME,
-        ]
-        .map(Into::into)
-        .into()
-    });
-
-/// Entities containing one of these components support the Visible History feature.
-static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.components.HalfSizes2D",
-            "rerun.components.HalfSizes3D",
-            "rerun.components.LineStrip2D",
-            "rerun.components.LineStrip3D",
-            "rerun.components.Position2D",
-            "rerun.components.Position3D",
-            "rerun.components.Scalar",
-            "rerun.components.TensorData",
-            "rerun.components.Vector3D",
-        ]
-        .map(Into::into)
-        .into()
-    });
-
-// TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the ViewPart
-// system is able to report its ability to handle the visible history feature.
-fn should_display_visible_history(
-    ctx: &mut ViewerContext<'_>,
-    space_view_class: &SpaceViewClassName,
-    entity_path: Option<&EntityPath>,
-) -> bool {
-    if !VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(space_view_class) {
-        return false;
-    }
-
-    if let Some(entity_path) = entity_path {
-        let store = ctx.store_db.store();
-        let component_names = store.all_components(ctx.rec_cfg.time_ctrl.timeline(), entity_path);
-        if let Some(component_names) = component_names {
-            if !component_names
-                .iter()
-                .any(|name| VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES.contains(name))
-            {
-                return false;
-            }
-        } else {
-            return false;
-        }
-    }
-
-    true
-}
-
-pub fn visible_history_ui(
-    ctx: &mut ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    space_view_class: &SpaceViewClassName,
-    entity_path: Option<&EntityPath>,
-    visible_history_prop: &mut ExtraQueryHistory,
-) {
-    if !should_display_visible_history(ctx, space_view_class, entity_path) {
-        return;
-    }
-
-    let re_ui = ctx.re_ui;
-
-    re_ui
-        .checkbox(ui, &mut visible_history_prop.enabled, "Visible history")
-        .on_hover_text(
-            "Enable Visible History.\n\nBy default, only the last state before the \
-            current time is shown. By activating Visible History, all data within a \
-            time window is shown instead.",
-        );
-
-    let time_range = if let Some(times) = ctx
-        .store_db
-        .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
-    {
-        times.min_key().unwrap_or_default()..=times.max_key().unwrap_or_default()
-    } else {
-        0..=0
-    };
-
-    let current_time = ctx
-        .rec_cfg
-        .time_ctrl
-        .time_i64()
-        .unwrap_or_default()
-        .at_least(*time_range.start()); // accounts for timeless time (TimeInt::BEGINNING)
-
-    let sequence_timeline = matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
-
-    let visible_history = if sequence_timeline {
-        &mut visible_history_prop.sequences
-    } else {
-        &mut visible_history_prop.nanos
-    };
-
-    let visible_history_time_range = visible_history.from(current_time.into()).as_i64()
-        ..=visible_history.to(current_time.into()).as_i64();
-
-    ui.add_enabled_ui(visible_history_prop.enabled, |ui| {
-        egui::Grid::new("visible_history_boundaries")
-            .num_columns(4)
-            .show(ui, |ui| {
-                ui.label("From");
-                visible_history_boundary_ui(
-                    re_ui,
-                    ui,
-                    &mut visible_history.from,
-                    sequence_timeline,
-                    current_time,
-                    time_range.clone(),
-                    true,
-                    *visible_history_time_range.end(),
-                );
-
-                ui.end_row();
-
-                ui.label("To");
-                visible_history_boundary_ui(
-                    re_ui,
-                    ui,
-                    &mut visible_history.to,
-                    sequence_timeline,
-                    current_time,
-                    time_range,
-                    false,
-                    *visible_history_time_range.start(),
-                );
-
-                ui.end_row();
-            });
-    });
-    ui.add(
-        egui::Label::new(
-            egui::RichText::new(if sequence_timeline {
-                "These settings apply to all sequence timelines."
-            } else {
-                "These settings apply to all temporal timelines."
-            })
-            .italics()
-            .weak(),
-        )
-        .wrap(true),
-    );
-}
-
-#[allow(clippy::too_many_arguments)]
-fn visible_history_boundary_ui(
-    re_ui: &re_ui::ReUi,
-    ui: &mut egui::Ui,
-    visible_history_boundary: &mut VisibleHistoryBoundary,
-    sequence_timeline: bool,
-    current_time: i64,
-    mut time_range: RangeInclusive<i64>,
-    low_bound: bool,
-    other_boundary_absolute: i64,
-) {
-    let span = time_range.end() - time_range.start();
-
-    // Hot "usability" area! This achieves two things:
-    // 1) It makes sure the time range in relative mode has enough margin beyond the current
-    //    timeline's span to avoid the boundary value to be modified by changing the current time
-    //    cursor
-    // 2) It makes sure the two boundaries don't cross in time (i.e. low > high). It does so by
-    //    prioritizing the low boundary. Moving the low boundary against the high boundary will
-    //    displace the high boundary. On the other hand, the high boundary cannot be moved against
-    //    the low boundary. This asymmetry is intentional, and avoids both boundaries fighting each
-    //    other in some corner cases (when the user interacts with the current time cursor).
-    #[allow(clippy::collapsible_else_if)] // for readability
-    if matches!(
-        visible_history_boundary,
-        VisibleHistoryBoundary::RelativeToTimeCursor(_)
-    ) {
-        if low_bound {
-            time_range = -span..=2 * span;
-        } else {
-            time_range =
-                (other_boundary_absolute.saturating_sub(current_time)).at_least(-span)..=2 * span;
-        }
-    } else {
-        if !low_bound {
-            time_range = other_boundary_absolute.at_least(-span)..=*time_range.end();
-        }
-    }
-
-    match visible_history_boundary {
-        VisibleHistoryBoundary::RelativeToTimeCursor(value)
-        | VisibleHistoryBoundary::Absolute(value) => {
-            if sequence_timeline {
-                let speed = (span as f32 * 0.005).at_least(1.0);
-
-                ui.add(
-                    egui::DragValue::new(value)
-                        .clamp_range(time_range)
-                        .speed(speed),
-                );
-            } else {
-                re_ui.time_drag_value(ui, value, &time_range);
-            }
-        }
-        VisibleHistoryBoundary::Infinite => {
-            let mut unused = 0.0;
-            ui.add_enabled(
-                false,
-                egui::DragValue::new(&mut unused).custom_formatter(|_, _| "∞".to_owned()),
-            );
-        }
-    }
-
-    let (abs_time, rel_time) = match visible_history_boundary {
-        VisibleHistoryBoundary::RelativeToTimeCursor(value) => (*value + current_time, *value),
-        VisibleHistoryBoundary::Absolute(value) => (*value, *value - current_time),
-        VisibleHistoryBoundary::Infinite => (current_time, 0),
-    };
-
-    egui::ComboBox::from_id_source(if low_bound {
-        "time_history_low_bound"
-    } else {
-        "time_history_high_bound"
-    })
-    .selected_text(visible_history_boundary.label())
-    .show_ui(ui, |ui| {
-        ui.set_min_width(64.0);
-
-        ui.selectable_value(
-            visible_history_boundary,
-            VisibleHistoryBoundary::RelativeToTimeCursor(rel_time),
-            VisibleHistoryBoundary::RELATIVE_LABEL,
-        )
-        .on_hover_text(if low_bound {
-            "Show data from a time point relative to the current time."
-        } else {
-            "Show data until a time point relative to the current time."
-        });
-        ui.selectable_value(
-            visible_history_boundary,
-            VisibleHistoryBoundary::Absolute(abs_time),
-            VisibleHistoryBoundary::ABSOLUTE_LABEL,
-        )
-        .on_hover_text(if low_bound {
-            "Show data from an absolute time point."
-        } else {
-            "Show data until an absolute time point."
-        });
-        ui.selectable_value(
-            visible_history_boundary,
-            VisibleHistoryBoundary::Infinite,
-            VisibleHistoryBoundary::INFINITE_LABEL,
-        )
-        .on_hover_text(if low_bound {
-            "Show data from the beginning of the timeline"
-        } else {
-            "Show data until the end of the timeline"
-        });
-    });
 }
 
 fn colormap_props_ui(

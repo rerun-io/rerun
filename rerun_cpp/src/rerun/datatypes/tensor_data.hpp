@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../result.hpp"
 #include "tensor_buffer.hpp"
 #include "tensor_dimension.hpp"
 
 #include <cstdint>
 #include <memory>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -27,17 +27,15 @@ namespace rerun::datatypes {
     /// These dimensions are combined with an index to look up values from the `buffer` field,
     /// which stores a contiguous array of typed values.
     struct TensorData {
-        std::vector<rerun::datatypes::TensorDimension> shape;
+        rerun::Collection<rerun::datatypes::TensorDimension> shape;
 
         rerun::datatypes::TensorBuffer buffer;
 
       public:
         // Extensions to generated type defined in 'tensor_data_ext.cpp'
 
-        // TODO(#3794): There should be the option to not have TensorData take ownership of the buffer.
         TensorData(
-            std::vector<rerun::datatypes::TensorDimension> shape_,
-            rerun::datatypes::TensorBuffer buffer_
+            Collection<rerun::datatypes::TensorDimension> shape_, datatypes::TensorBuffer buffer_
         )
             : shape(std::move(shape_)), buffer(std::move(buffer_)) {}
 

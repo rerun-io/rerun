@@ -17,6 +17,13 @@ from .entity_properties_component import (
     EntityPropertiesComponentType,
 )
 from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
+from .query_expressions import (
+    QueryExpressions,
+    QueryExpressionsArrayLike,
+    QueryExpressionsBatch,
+    QueryExpressionsLike,
+    QueryExpressionsType,
+)
 from .space_view_component import (
     SpaceViewComponent,
     SpaceViewComponentArrayLike,
@@ -55,6 +62,11 @@ __all__ = [
     "PanelViewBatch",
     "PanelViewLike",
     "PanelViewType",
+    "QueryExpressions",
+    "QueryExpressionsArrayLike",
+    "QueryExpressionsBatch",
+    "QueryExpressionsLike",
+    "QueryExpressionsType",
     "SpaceViewComponent",
     "SpaceViewComponentArrayLike",
     "SpaceViewComponentBatch",

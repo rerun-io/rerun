@@ -23,6 +23,7 @@ pub mod blueprint;
 
 pub use space_info::SpaceInfoCollection;
 pub use space_view::SpaceViewBlueprint;
+pub use space_view_heuristics::identify_entities_per_system_per_class;
 pub use viewport::{Viewport, ViewportState};
 pub use viewport_blueprint::ViewportBlueprint;
 

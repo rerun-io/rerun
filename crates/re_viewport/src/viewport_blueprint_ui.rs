@@ -11,8 +11,7 @@ use re_viewer_context::{
 };
 
 use crate::{
-    space_view_heuristics::{all_possible_space_views, identify_entities_per_system_per_class},
-    viewport_blueprint::TreeActions,
+    space_view_heuristics::all_possible_space_views, viewport_blueprint::TreeActions,
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
@@ -225,9 +224,12 @@ impl ViewportBlueprint<'_> {
 
         // TODO(jleibs): We should use `query` instead of `resolve` in this function, but doing so
         // requires changing the view layout a little bit, so holding off on that for now.
-        let top_data_result = space_view
-            .contents
-            .resolve(space_view, ctx, &group.group_path);
+        let top_data_result = space_view.contents.resolve(
+            space_view,
+            ctx.store_context,
+            ctx.entities_per_system_per_class,
+            &group.group_path,
+        );
 
         let group_is_visible = top_data_result.resolved_properties.visible && space_view_visible;
 
@@ -248,9 +250,17 @@ impl ViewportBlueprint<'_> {
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
 
-            let data_result = space_view.contents.resolve(space_view, ctx, entity_path);
+            let data_result = space_view.contents.resolve(
+                space_view,
+                ctx.store_context,
+                ctx.entities_per_system_per_class,
+                entity_path,
+            );
 
-            let mut properties = data_result.resolved_properties.clone();
+            let mut properties = data_result
+                .individual_properties
+                .clone()
+                .unwrap_or_default();
 
             let name = entity_path.iter().last().unwrap().to_string();
             let label = format!("🔹 {name}");
@@ -261,7 +271,7 @@ impl ViewportBlueprint<'_> {
                 .with_buttons(|re_ui, ui| {
                     let vis_response =
                         visibility_button_ui(re_ui, ui, group_is_visible, &mut properties.visible);
-                    data_result.save_override(properties, ctx);
+                    data_result.save_override(Some(properties), ctx);
 
                     let response = remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                     if response.clicked() {
@@ -296,12 +306,17 @@ impl ViewportBlueprint<'_> {
             let mut remove_group = false;
             let default_open = Self::default_open_for_group(child_group);
 
-            let child_data_result =
-                space_view
-                    .contents
-                    .resolve(space_view, ctx, &child_group.group_path);
+            let child_data_result = space_view.contents.resolve(
+                space_view,
+                ctx.store_context,
+                ctx.entities_per_system_per_class,
+                &child_group.group_path,
+            );
 
-            let mut child_properties = child_data_result.resolved_properties.clone();
+            let mut child_properties = child_data_result
+                .individual_properties
+                .clone()
+                .unwrap_or_default();
 
             let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
                 .selected(is_selected)
@@ -344,7 +359,7 @@ impl ViewportBlueprint<'_> {
                 .item_response
                 .on_hover_text("Group");
 
-            child_data_result.save_override(child_properties, ctx);
+            child_data_result.save_override(Some(child_properties), ctx);
 
             item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
@@ -370,9 +385,8 @@ impl ViewportBlueprint<'_> {
             |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                let entities_per_system_per_class = identify_entities_per_system_per_class(ctx);
                 for space_view in
-                    all_possible_space_views(ctx, spaces_info, &entities_per_system_per_class)
+                    all_possible_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
                         .into_iter()
                         .sorted_by_key(|space_view| space_view.space_origin.to_string())
                 {

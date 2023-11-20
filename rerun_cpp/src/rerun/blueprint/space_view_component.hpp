@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "../collection.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <utility>
-#include <vector>
 
 namespace arrow {
     class DataType;
@@ -21,14 +21,15 @@ namespace rerun::blueprint {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct SpaceViewComponent {
-        std::vector<uint8_t> space_view;
+        rerun::Collection<uint8_t> space_view;
 
       public:
         SpaceViewComponent() = default;
 
-        SpaceViewComponent(std::vector<uint8_t> space_view_) : space_view(std::move(space_view_)) {}
+        SpaceViewComponent(rerun::Collection<uint8_t> space_view_)
+            : space_view(std::move(space_view_)) {}
 
-        SpaceViewComponent& operator=(std::vector<uint8_t> space_view_) {
+        SpaceViewComponent& operator=(rerun::Collection<uint8_t> space_view_) {
             space_view = std::move(space_view_);
             return *this;
         }

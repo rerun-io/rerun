@@ -4,56 +4,49 @@
 #include <algorithm> // std::min
 #include <string>    // std::to_string
 #include <utility>   // std::move
-#include <vector>
 
-// Uncomment for better auto-complete while editing the extension.
-// #define EDIT_EXTENSION
+#include "../collection_adapter_builtins.hpp"
 
-namespace rerun {
-    namespace archetypes {
+namespace rerun::archetypes {
 
-#ifdef EDIT_EXTENSION
-        // <CODEGEN_COPY_TO_HEADER>
+#if 0
+    // <CODEGEN_COPY_TO_HEADER>
 
-        /// New Tensor from dimensions and tensor buffer.
-        Tensor(
-            std::vector<rerun::datatypes::TensorDimension> shape,
-            rerun::datatypes::TensorBuffer buffer
-        )
-            : Tensor(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+    /// New Tensor from dimensions and tensor buffer.
+    Tensor(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+        : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
-        /// Update the `names` of the contained `TensorData` dimensions.
-        ///
-        /// Any existing Dimension names will be overwritten.
-        ///
-        /// If too many, or too few names are provided, this function will call
-        /// Error::handle and then proceed to only update the subset of names that it can.
-        ///
-        /// TODO(#3794): don't use std::vector here.
-        Tensor with_dim_names(std::vector<std::string> names) &&;
+    /// Update the `names` of the contained `TensorData` dimensions.
+    ///
+    /// Any existing Dimension names will be overwritten.
+    ///
+    /// If too many, or too few names are provided, this function will call
+    /// Error::handle and then proceed to only update the subset of names that it can.
+    Tensor with_dim_names(Collection<std::string> names) &&;
 
-        // </CODEGEN_COPY_TO_HEADER>
+    // </CODEGEN_COPY_TO_HEADER>
 #endif
 
-        Tensor Tensor::with_dim_names(std::vector<std::string> names) && {
-            auto& shape = data.data.shape;
+    Tensor Tensor::with_dim_names(Collection<std::string> names) && {
+        auto& shape = data.data.shape;
 
-            if (names.size() != shape.size()) {
-                Error(
-                    ErrorCode::InvalidTensorDimension,
-                    "Wrong number of names provided for tensor dimension. " +
-                        std::to_string(names.size()) + " provided but " +
-                        std::to_string(shape.size()) + " expected."
-                )
-                    .handle();
-            }
-
-            for (size_t i = 0; i < std::min(shape.size(), names.size()); ++i) {
-                shape[i].name = std::move(names[i]);
-            }
-
-            return std::move(*this);
+        if (names.size() != shape.size()) {
+            Error(
+                ErrorCode::InvalidTensorDimension,
+                "Wrong number of names provided for tensor dimension. " +
+                    std::to_string(names.size()) + " provided but " + std::to_string(shape.size()) +
+                    " expected."
+            )
+                .handle();
         }
 
-    } // namespace archetypes
-} // namespace rerun
+        auto new_shape = shape.to_vector();
+        for (size_t i = 0; i < std::min(shape.size(), names.size()); ++i) {
+            new_shape[i].name = std::move(names[i]);
+        }
+        shape = std::move(new_shape);
+
+        return std::move(*this);
+    }
+
+} // namespace rerun::archetypes

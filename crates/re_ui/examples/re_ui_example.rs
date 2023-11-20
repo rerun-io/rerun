@@ -211,6 +211,11 @@ impl eframe::App for ExampleApp {
                                     ui.style_mut().wrap = Some(false);
                                     ui.label("Some blueprint stuff here, that might be wide.");
                                     self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
+
+                                    self.re_ui.collapsing_header(ui, "Collapsing header", true, |ui| {
+                                        ui.label("Some data here");
+                                        self.re_ui.checkbox(ui, &mut self.dummy_bool, "Checkbox");
+                                    });
                                 });
                         });
                     });
