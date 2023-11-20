@@ -15,10 +15,7 @@ use crate::{
     ObjectSpecifics, Objects, Reporter, Type, ATTR_CPP_NO_FIELD_CTORS,
 };
 
-use self::array_builder::{
-    arrow_array_builder_type, arrow_array_builder_type_object,
-    quote_arrow_array_builder_type_instantiation,
-};
+use self::array_builder::{arrow_array_builder_type, arrow_array_builder_type_object};
 use self::forward_decl::{ForwardDecl, ForwardDecls};
 use self::includes::Includes;
 use self::method::{Method, MethodDeclaration};
@@ -623,13 +620,6 @@ impl QuotedObject {
             &mut cpp_includes,
             &mut hpp_declarations,
         ));
-        methods.push(new_arrow_array_builder_method(
-            obj,
-            objects,
-            &mut hpp_includes,
-            &mut cpp_includes,
-            &mut hpp_declarations,
-        ));
         methods.push(fill_arrow_array_builder_method(
             obj,
             &type_ident,
@@ -641,6 +631,8 @@ impl QuotedObject {
         if obj.kind == ObjectKind::Component {
             methods.push(component_to_data_cell_method(
                 &type_ident,
+                &obj,
+                &objects,
                 &mut hpp_includes,
             ));
         }
@@ -838,13 +830,6 @@ impl QuotedObject {
         }
 
         methods.push(arrow_data_type_method(
-            obj,
-            objects,
-            &mut hpp_includes,
-            &mut cpp_includes,
-            &mut hpp_declarations,
-        ));
-        methods.push(new_arrow_array_builder_method(
             obj,
             objects,
             &mut hpp_includes,
@@ -1217,44 +1202,6 @@ fn arrow_data_type_method(
     }
 }
 
-fn new_arrow_array_builder_method(
-    obj: &Object,
-    objects: &Objects,
-    hpp_includes: &mut Includes,
-    cpp_includes: &mut Includes,
-    hpp_declarations: &mut ForwardDecls,
-) -> Method {
-    hpp_includes.insert_system("memory"); // std::shared_ptr
-    cpp_includes.insert_system("arrow/builder.h");
-    hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("MemoryPool")));
-
-    let builder_instantiation = quote_arrow_array_builder_type_instantiation(
-        &Type::Object(obj.fqname.clone()),
-        objects,
-        cpp_includes,
-        true,
-    );
-    let arrow_builder_type = arrow_array_builder_type_object(obj, objects, hpp_declarations);
-
-    Method {
-        docs: "Creates a new array builder with an array of this type.".into(),
-        declaration: MethodDeclaration {
-            is_static: true,
-            return_type: quote! { Result<std::shared_ptr<arrow::#arrow_builder_type>> },
-            name_and_parameters: quote!(new_arrow_array_builder(arrow::MemoryPool * memory_pool)),
-        },
-        definition_body: quote! {
-            if (memory_pool == nullptr) {
-                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-            }
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            return Result(#builder_instantiation);
-        },
-        inline: false,
-    }
-}
-
 fn fill_arrow_array_builder_method(
     obj: &Object,
     type_ident: &Ident,
@@ -1298,12 +1245,21 @@ fn fill_arrow_array_builder_method(
     }
 }
 
-fn component_to_data_cell_method(type_ident: &Ident, hpp_includes: &mut Includes) -> Method {
+fn component_to_data_cell_method(
+    type_ident: &Ident,
+    obj: &Object,
+    objects: &Objects,
+    hpp_includes: &mut Includes,
+) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
+
+    // Only need this in the cpp file where we don't need to forward declare the arrow builder type.
+    let arrow_builder_type =
+        arrow_array_builder_type_object(obj, objects, &mut ForwardDecls::default());
 
     Method {
         docs: format!("Creates a Rerun DataCell from an array of {type_ident} components.").into(),
@@ -1320,12 +1276,11 @@ fn component_to_data_cell_method(type_ident: &Ident, hpp_includes: &mut Includes
             arrow::MemoryPool* pool = arrow::default_memory_pool();
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            auto builder_result = #type_ident::new_arrow_array_builder(pool);
-            RR_RETURN_NOT_OK(builder_result.error);
-            auto builder = std::move(builder_result.value);
+
+            ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool));
             if (instances && num_instances > 0) {
                 RR_RETURN_NOT_OK(#type_ident::fill_arrow_array_builder(
-                    builder.get(),
+                    static_cast<arrow::#arrow_builder_type*>(builder.get()),
                     instances,
                     num_instances
                 ));

@@ -19,25 +19,6 @@ namespace rerun::datatypes {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::DenseUnionBuilder>> Rotation3D::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::DenseUnionBuilder>(
-            memory_pool,
-            // Children:
-            std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                std::make_shared<arrow::NullBuilder>(memory_pool),
-                rerun::datatypes::Quaternion::new_arrow_array_builder(memory_pool).value,
-                rerun::datatypes::RotationAxisAngle::new_arrow_array_builder(memory_pool).value,
-            }),
-            arrow_datatype()
-        ));
-    }
-
     rerun::Error Rotation3D::fill_arrow_array_builder(
         arrow::DenseUnionBuilder* builder, const Rotation3D* elements, size_t num_elements
     ) {

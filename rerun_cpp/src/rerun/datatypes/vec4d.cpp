@@ -13,20 +13,6 @@ namespace rerun::datatypes {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::FixedSizeListBuilder>> Vec4D::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::FixedSizeListBuilder>(
-            memory_pool,
-            std::make_shared<arrow::FloatBuilder>(memory_pool),
-            4
-        ));
-    }
-
     rerun::Error Vec4D::fill_arrow_array_builder(
         arrow::FixedSizeListBuilder* builder, const Vec4D* elements, size_t num_elements
     ) {

@@ -12,16 +12,6 @@ namespace rerun::datatypes {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::FloatBuilder>> Float32::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::FloatBuilder>(memory_pool));
-    }
-
     rerun::Error Float32::fill_arrow_array_builder(
         arrow::FloatBuilder* builder, const Float32* elements, size_t num_elements
     ) {

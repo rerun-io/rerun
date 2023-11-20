@@ -13,7 +13,6 @@
 namespace arrow {
     class DataType;
     class FixedSizeListBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
@@ -136,11 +135,6 @@ namespace rerun::components {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
