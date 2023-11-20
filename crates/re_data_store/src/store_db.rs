@@ -10,7 +10,7 @@ use re_log_types::{
     ApplicationId, DataCell, DataRow, DataTable, EntityPath, EntityPathHash, LogMsg, RowId,
     SetStoreInfo, StoreId, StoreInfo, StoreKind, TimePoint, Timeline,
 };
-use re_types_core::{components::InstanceKey, Loggable};
+use re_types_core::{components::InstanceKey, Archetype, Loggable};
 
 use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
 
@@ -422,11 +422,17 @@ impl StoreDb {
     pub fn gc_everything_but_the_latest_row(&mut self) {
         re_tracing::profile_function!();
 
-        self.gc(GarbageCollectionOptions {
+        self.gc(&GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::Everything,
             gc_timeless: true,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
             purge_empty_tables: true,
+            dont_protect: [
+                re_types_core::components::ClearIsRecursive::name(),
+                re_types_core::archetypes::Clear::indicator().name(),
+            ]
+            .into_iter()
+            .collect(),
         });
     }
 
@@ -435,17 +441,18 @@ impl StoreDb {
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
-        self.gc(GarbageCollectionOptions {
+        self.gc(&GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
             gc_timeless: true,
             protect_latest: 1,
             purge_empty_tables: false,
+            dont_protect: Default::default(),
         });
     }
 
-    pub fn gc(&mut self, gc_options: GarbageCollectionOptions) {
+    pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) {
         re_tracing::profile_function!();
 
         let (store_events, stats_diff) = self.entity_db.data_store.gc(gc_options);
