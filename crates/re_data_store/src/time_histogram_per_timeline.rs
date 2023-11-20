@@ -81,13 +81,12 @@ impl TimeHistogramPerTimeline {
                 });
         } else {
             for (timeline, time_value) in timepoint.iter() {
-                if (self
+                let remaining_count = self
                     .times
                     .entry(*timeline)
                     .or_default()
-                    .decrement(time_value.as_i64(), n))
-                    == 0
-                {
+                    .decrement(time_value.as_i64(), n);
+                if remaining_count == 0 {
                     self.times.remove(timeline);
                 }
             }
