@@ -4,11 +4,7 @@
 #include <string>
 #include "result.hpp"
 
-// TODO: That's silly.
-#include "c/rerun.h"
-
 namespace arrow {
-    class Buffer;
     class Array;
     class DataType;
 } // namespace arrow
@@ -16,27 +12,36 @@ namespace arrow {
 struct rr_data_cell;
 
 namespace rerun {
-    /// Equivalent to `rr_data_cell` from the C API.
+    /// Arrow-encoded data of a single batch components for a single entity.
+    ///
+    /// Note that the DataCell doesn't own `datatype` and `component_name`.
     struct DataCell {
-        // TODO: don't alloc every time. Cache together with datatype.
-        std::string component_name;
+        /// How many components were serialized in this data cell.
+        ///
+        /// TODO(andreas): Just like in Rust, make this part of `AsComponents`.
+        ///                 This will requiring inlining some things on RecordingStream and have some refactor ripples.
+        ///                 But it's worth keeping the language bindings more similar!
+        size_t num_instances;
+
+        /// String pointer to a component name valid for the lifetime of the cell.
+        std::string_view component_name;
+
+        /// Pointer to a data type valid for the lifetime of the cell.
+        ///
+        /// Note that arrow internally prefers `const std::shared_ptr<..>&` for statically allocated types.
+        /// However, this makes it hard to initialize the object without C++20 initializers, so using a pointer instead.
+        const arrow::DataType* datatype;
+
+        /// Arrow-encoded data of the components.
         std::shared_ptr<arrow::Array> array;
-        // TODO: don't alloc every time.
-        std::shared_ptr<arrow::DataType> datatype;
 
-        /// Create a new data cell from an arrow array.
-        /// TODO: silly method.
-        static Result<DataCell> create(
-            std::string name, const std::shared_ptr<arrow::DataType>& datatype,
-            std::shared_ptr<arrow::Array> array
-        );
-
+      public:
         /// Create a data cell for an indicator component.
-        static Result<rerun::DataCell> create_indicator_component(std::string arch_name);
+        static Result<DataCell> create_indicator_component(std::string_view archetype_name);
 
         /// To rerun C API data cell.
         ///
-        /// Only valid as long as the data cell is alive.
-        Error to_c(rr_data_cell& out_cell) const;
+        /// Only valid as long as the C++ data cell is alive.
+        Error to_c_ffi_struct(rr_data_cell& out_cell) const;
     };
 } // namespace rerun

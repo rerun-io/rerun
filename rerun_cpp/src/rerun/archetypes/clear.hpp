@@ -8,7 +8,6 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -112,8 +111,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Clear> {
         /// Serialize all set component batches.
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const archetypes::Clear& archetype
-        );
+        static Result<std::vector<DataCell>> serialize(const archetypes::Clear& archetype);
     };
 } // namespace rerun

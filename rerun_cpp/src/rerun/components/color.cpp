@@ -44,6 +44,11 @@ namespace rerun::components {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        return rerun::DataCell::create(Color::NAME, Color::arrow_datatype(), std::move(array));
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.component_name = Color::NAME;
+        cell.datatype = Color::arrow_datatype().get();
+        cell.array = std::move(array);
+        return cell;
     }
 } // namespace rerun::components

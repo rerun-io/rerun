@@ -132,7 +132,7 @@ typedef struct rr_store_info {
     rr_store_kind store_kind;
 } rr_store_info;
 
-/// Arrow-encoded data of a single component for a single entity.
+/// Arrow-encoded data of a single batch components for a single entity.
 typedef struct rr_data_cell {
     /// The name of the component, e.g. `position`.
     rr_string component_name;

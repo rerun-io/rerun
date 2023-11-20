@@ -46,10 +46,11 @@ namespace rerun::components {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        return rerun::DataCell::create(
-            AffixFuzzer1::NAME,
-            AffixFuzzer1::arrow_datatype(),
-            std::move(array)
-        );
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.component_name = AffixFuzzer1::NAME;
+        cell.datatype = AffixFuzzer1::arrow_datatype().get();
+        cell.array = std::move(array);
+        return cell;
     }
 } // namespace rerun::components

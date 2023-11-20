@@ -12,24 +12,23 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<
-        archetypes::AnnotationContext>::serialize(const archetypes::AnnotationContext& archetype) {
+    Result<std::vector<DataCell>> AsComponents<archetypes::AnnotationContext>::serialize(
+        const archetypes::AnnotationContext& archetype
+    ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(1);
+        std::vector<DataCell> cells;
+        cells.reserve(2);
 
         {
-            const size_t size = 1;
-            auto result =
-                rerun::components::AnnotationContext::to_data_cell(&archetype.context, size);
+            auto result = rerun::components::AnnotationContext::to_data_cell(&archetype.context, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = AnnotationContext::IndicatorComponent();
             auto result = AnnotationContext::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

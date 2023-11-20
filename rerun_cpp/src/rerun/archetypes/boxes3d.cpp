@@ -11,80 +11,82 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Boxes3D>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::Boxes3D>::serialize(
         const archetypes::Boxes3D& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(8);
+        std::vector<DataCell> cells;
+        cells.reserve(9);
 
         {
-            const size_t size = archetype.half_sizes.size();
             auto result = rerun::components::HalfSizes3D::to_data_cell(
                 archetype.half_sizes.data(),
                 archetype.half_sizes.size()
             );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.centers.has_value()) {
-            const size_t size = archetype.centers.value().size();
-            auto result =
-                rerun::components::Position3D::to_data_cell(archetype.centers.value().data(), size);
+            auto result = rerun::components::Position3D::to_data_cell(
+                archetype.centers.value().data(),
+                archetype.centers.value().size()
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.rotations.has_value()) {
-            const size_t size = archetype.rotations.value().size();
             auto result = rerun::components::Rotation3D::to_data_cell(
                 archetype.rotations.value().data(),
-                size
+                archetype.rotations.value().size()
             );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            const size_t size = archetype.colors.value().size();
-            auto result =
-                rerun::components::Color::to_data_cell(archetype.colors.value().data(), size);
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
-        }
-        if (archetype.radii.has_value()) {
-            const size_t size = archetype.radii.value().size();
-            auto result =
-                rerun::components::Radius::to_data_cell(archetype.radii.value().data(), size);
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
-        }
-        if (archetype.labels.has_value()) {
-            const size_t size = archetype.labels.value().size();
-            auto result =
-                rerun::components::Text::to_data_cell(archetype.labels.value().data(), size);
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
-        }
-        if (archetype.class_ids.has_value()) {
-            const size_t size = archetype.class_ids.value().size();
-            auto result =
-                rerun::components::ClassId::to_data_cell(archetype.class_ids.value().data(), size);
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
-        }
-        if (archetype.instance_keys.has_value()) {
-            const size_t size = archetype.instance_keys.value().size();
-            auto result = rerun::components::InstanceKey::to_data_cell(
-                archetype.instance_keys.value().data(),
-                size
+            auto result = rerun::components::Color::to_data_cell(
+                archetype.colors.value().data(),
+                archetype.colors.value().size()
             );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.radii.has_value()) {
+            auto result = rerun::components::Radius::to_data_cell(
+                archetype.radii.value().data(),
+                archetype.radii.value().size()
+            );
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.labels.has_value()) {
+            auto result = rerun::components::Text::to_data_cell(
+                archetype.labels.value().data(),
+                archetype.labels.value().size()
+            );
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.class_ids.has_value()) {
+            auto result = rerun::components::ClassId::to_data_cell(
+                archetype.class_ids.value().data(),
+                archetype.class_ids.value().size()
+            );
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.instance_keys.has_value()) {
+            auto result = rerun::components::InstanceKey::to_data_cell(
+                archetype.instance_keys.value().data(),
+                archetype.instance_keys.value().size()
+            );
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = Boxes3D::IndicatorComponent();
             auto result = Boxes3D::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

@@ -1281,7 +1281,12 @@ fn component_to_data_cell_method(
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-            return rerun::DataCell::create(#type_ident::NAME, #type_ident::arrow_datatype(), std::move(array));
+            DataCell cell;
+            cell.num_instances = num_instances;
+            cell.component_name = #type_ident::NAME;
+            cell.datatype = #type_ident::arrow_datatype().get();
+            cell.array = std::move(array);
+            return cell;
         },
         inline: false,
     }
@@ -1290,10 +1295,10 @@ fn component_to_data_cell_method(
 fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Includes) -> Method {
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("collection.hpp");
-    hpp_includes.insert_rerun("serialized_component_batch.hpp");
+    hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
-    let num_fields = quote_integer(obj.fields.len());
+    let num_fields = quote_integer(obj.fields.len() + 1); // Plus one for the indicator.
     let push_batches = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
         let field_accessor = quote!(archetype.#field_name);
@@ -1307,7 +1312,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
 
         let emplace_back = quote! {
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         };
 
 
@@ -1316,15 +1321,13 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             if field.is_nullable {
                 quote! {
                     if (#field_accessor.has_value()) {
-                        const size_t size = #field_accessor.value().size();
-                        auto result = #field_type::to_data_cell(#field_accessor.value().data(), size);
+                        auto result = #field_type::to_data_cell(#field_accessor.value().data(), #field_accessor.value().size());
                         #emplace_back
                     }
                 }
             } else {
                 quote! {
                     {
-                        const size_t size = #field_accessor.size();
                         auto result = #field_type::to_data_cell(#field_accessor.data(), #field_accessor.size());
                         #emplace_back
                     }
@@ -1333,16 +1336,14 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         } else if field.is_nullable {
             quote! {
                 if (#field_accessor.has_value()) {
-                    const size_t size = 1;
-                    auto result = #field_type::to_data_cell(&#field_accessor.value(), size);
+                    auto result = #field_type::to_data_cell(&#field_accessor.value(), 1);
                     #emplace_back
                 }
             }
         } else {
             quote! {
                 {
-                    const size_t size = 1;
-                    auto result = #field_type::to_data_cell(&#field_accessor, size);
+                    auto result = #field_type::to_data_cell(&#field_accessor, 1);
                     #emplace_back
                 }
             }
@@ -1353,13 +1354,14 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         docs: "Serialize all set component batches.".into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote!(Result<std::vector<SerializedComponentBatch>>),
+            // TODO(andreas): Use a rerun::Collection here as well.
+            return_type: quote!(Result<std::vector<DataCell>>),
             name_and_parameters: quote!(serialize(const archetypes::#type_ident& archetype)),
         },
         definition_body: quote! {
             using namespace archetypes;
             #NEWLINE_TOKEN
-            std::vector<SerializedComponentBatch> cells;
+            std::vector<DataCell> cells;
             cells.reserve(#num_fields);
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
@@ -1368,7 +1370,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
                 auto indicator = #type_ident::IndicatorComponent();
                 auto result = #type_ident::IndicatorComponent::to_data_cell(&indicator, 1);
                 RR_RETURN_NOT_OK(result.error);
-                cells.emplace_back(std::move(result.value), 1);
+                cells.emplace_back(std::move(result.value));
             }
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN

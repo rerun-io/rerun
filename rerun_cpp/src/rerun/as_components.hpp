@@ -1,8 +1,8 @@
 #pragma once
 
 #include "collection.hpp"
+#include "data_cell.hpp"
 #include "indicator_component.hpp"
-#include "serialized_component_batch.hpp"
 
 namespace rerun {
     /// The AsComponents trait is used to convert a type into a list of serialized component.
@@ -33,24 +33,18 @@ namespace rerun {
     /// AsComponents for a Collection of components.
     template <typename TComponent>
     struct AsComponents<Collection<TComponent>> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const Collection<TComponent>& components
-        ) {
+        static Result<std::vector<DataCell>> serialize(const Collection<TComponent>& components) {
             auto cell_result = TComponent::to_data_cell(components.data(), components.size());
             RR_RETURN_NOT_OK(cell_result.error);
 
-            return Result<std::vector<SerializedComponentBatch>>(
-                {SerializedComponentBatch(std::move(cell_result.value), components.size())}
-            );
+            return Result<std::vector<DataCell>>({std::move(cell_result.value)});
         }
     };
 
     /// AsComponents for a std::vector of components.
     template <typename TComponent>
     struct AsComponents<std::vector<TComponent>> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const std::vector<TComponent>& components
-        ) {
+        static Result<std::vector<DataCell>> serialize(const std::vector<TComponent>& components) {
             return AsComponents<Collection<TComponent>>::serialize(components);
         }
     };
@@ -58,8 +52,7 @@ namespace rerun {
     /// AsComponents for std::initializer_list
     template <typename TComponent>
     struct AsComponents<std::initializer_list<TComponent>> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            std::initializer_list<TComponent> components
+        static Result<std::vector<DataCell>> serialize(std::initializer_list<TComponent> components
         ) {
             return AsComponents<Collection<TComponent>>::serialize(components);
         }
@@ -68,7 +61,7 @@ namespace rerun {
     /// AsComponents for an std::array of components.
     template <typename TComponent, size_t NumInstances>
     struct AsComponents<std::array<TComponent, NumInstances>> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<DataCell>> serialize(
             const std::array<TComponent, NumInstances>& components
         ) {
             return AsComponents<Collection<TComponent>>::serialize(components);
@@ -78,8 +71,8 @@ namespace rerun {
     /// AsComponents for an c-array of components.
     template <typename TComponent, size_t NumInstances>
     struct AsComponents<TComponent[NumInstances]> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(const TComponent (&components
-        )[NumInstances]) {
+        static Result<std::vector<DataCell>> serialize(const TComponent (&components)[NumInstances]
+        ) {
             return AsComponents<Collection<TComponent>>::serialize(components);
         }
     };
@@ -87,7 +80,7 @@ namespace rerun {
     /// AsComponents for single indicators
     template <const char Name[]>
     struct AsComponents<components::IndicatorComponent<Name>> {
-        static Result<std::vector<SerializedComponentBatch>> serialize(
+        static Result<std::vector<DataCell>> serialize(
             const components::IndicatorComponent<Name>& indicator
         ) {
             return AsComponents<Collection<components::IndicatorComponent<Name>>>::serialize(

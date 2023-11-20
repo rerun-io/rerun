@@ -46,10 +46,11 @@ namespace rerun::components {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        return rerun::DataCell::create(
-            Rotation3D::NAME,
-            Rotation3D::arrow_datatype(),
-            std::move(array)
-        );
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.component_name = Rotation3D::NAME;
+        cell.datatype = Rotation3D::arrow_datatype().get();
+        cell.array = std::move(array);
+        return cell;
     }
 } // namespace rerun::components

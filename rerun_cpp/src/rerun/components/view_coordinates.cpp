@@ -58,10 +58,11 @@ namespace rerun::components {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        return rerun::DataCell::create(
-            ViewCoordinates::NAME,
-            ViewCoordinates::arrow_datatype(),
-            std::move(array)
-        );
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.component_name = ViewCoordinates::NAME;
+        cell.datatype = ViewCoordinates::arrow_datatype().get();
+        cell.array = std::move(array);
+        return cell;
     }
 } // namespace rerun::components

@@ -11,37 +11,34 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::TextLog>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::TextLog>::serialize(
         const archetypes::TextLog& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(3);
+        std::vector<DataCell> cells;
+        cells.reserve(4);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::Text::to_data_cell(&archetype.text, size);
+            auto result = rerun::components::Text::to_data_cell(&archetype.text, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.level.has_value()) {
-            const size_t size = 1;
             auto result =
-                rerun::components::TextLogLevel::to_data_cell(&archetype.level.value(), size);
+                rerun::components::TextLogLevel::to_data_cell(&archetype.level.value(), 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            const size_t size = 1;
-            auto result = rerun::components::Color::to_data_cell(&archetype.color.value(), size);
+            auto result = rerun::components::Color::to_data_cell(&archetype.color.value(), 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = TextLog::IndicatorComponent();
             auto result = TextLog::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

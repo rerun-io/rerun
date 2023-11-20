@@ -12,23 +12,23 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<
-        archetypes::ViewCoordinates>::serialize(const archetypes::ViewCoordinates& archetype) {
+    Result<std::vector<DataCell>> AsComponents<archetypes::ViewCoordinates>::serialize(
+        const archetypes::ViewCoordinates& archetype
+    ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(1);
+        std::vector<DataCell> cells;
+        cells.reserve(2);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::ViewCoordinates::to_data_cell(&archetype.xyz, size);
+            auto result = rerun::components::ViewCoordinates::to_data_cell(&archetype.xyz, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = ViewCoordinates::IndicatorComponent();
             auto result = ViewCoordinates::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;
