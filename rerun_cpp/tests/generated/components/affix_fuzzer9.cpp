@@ -41,7 +41,7 @@ namespace rerun::components {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
 
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool));
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(AffixFuzzer9::fill_arrow_array_builder(
                 static_cast<arrow::StringBuilder*>(builder.get()),
