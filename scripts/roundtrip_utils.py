@@ -20,6 +20,7 @@ def get_repo_root() -> str:
         get_rev_parse = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True)
         assert get_rev_parse.returncode == 0
         repo_root = get_rev_parse.stdout.decode("utf-8").strip()
+        print("Respository root:", repo_root)
         return repo_root
 
 
