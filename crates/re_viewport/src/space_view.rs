@@ -435,7 +435,7 @@ impl PropertyResolver for SpaceViewBlueprint {
 
 #[cfg(test)]
 mod tests {
-    use re_data_store::{StoreDb, VisibleHistoryBoundary};
+    use re_data_store::StoreDb;
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
     use re_space_view::DataResultTree;
     use re_viewer_context::{EntitiesPerSystemPerClass, StoreContext};
