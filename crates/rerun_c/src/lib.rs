@@ -45,6 +45,7 @@ impl CStringView {
 }
 
 pub type CRecordingStream = u32;
+
 pub type CComponentTypeHandle = u32;
 
 pub const RR_REC_STREAM_CURRENT_RECORDING: CRecordingStream = 0xFFFFFFFF;
