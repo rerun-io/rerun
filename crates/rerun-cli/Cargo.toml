@@ -50,10 +50,8 @@ re_log.workspace = true
 re_memory.workspace = true
 rerun = { workspace = true, features = [
   "analytics",
-  "demo",
   "glam",
   "image",
-  "sdk",
   "server",
 ] }
 
