@@ -66,10 +66,10 @@ namespace rerun::components {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        return rerun::DataCell::create(
-            LineStrip3D::NAME,
-            LineStrip3D::arrow_datatype(),
-            std::move(array)
-        );
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.component_name = LineStrip3D::NAME;
+        cell.array = std::move(array);
+        return cell;
     }
 } // namespace rerun::components

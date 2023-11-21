@@ -46,10 +46,10 @@ namespace rerun::components {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        return rerun::DataCell::create(
-            HalfSizes2D::NAME,
-            HalfSizes2D::arrow_datatype(),
-            std::move(array)
-        );
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.component_name = HalfSizes2D::NAME;
+        cell.array = std::move(array);
+        return cell;
     }
 } // namespace rerun::components

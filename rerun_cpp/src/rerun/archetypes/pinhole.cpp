@@ -11,43 +11,36 @@ namespace rerun::archetypes {
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Pinhole>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::Pinhole>::serialize(
         const archetypes::Pinhole& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(3);
+        std::vector<DataCell> cells;
+        cells.reserve(4);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::PinholeProjection::to_data_cell(
-                &archetype.image_from_camera,
-                size
-            );
+            auto result =
+                rerun::components::PinholeProjection::to_data_cell(&archetype.image_from_camera, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.resolution.has_value()) {
-            const size_t size = 1;
             auto result =
-                rerun::components::Resolution::to_data_cell(&archetype.resolution.value(), size);
+                rerun::components::Resolution::to_data_cell(&archetype.resolution.value(), 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.camera_xyz.has_value()) {
-            const size_t size = 1;
-            auto result = rerun::components::ViewCoordinates::to_data_cell(
-                &archetype.camera_xyz.value(),
-                size
-            );
+            auto result =
+                rerun::components::ViewCoordinates::to_data_cell(&archetype.camera_xyz.value(), 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = Pinhole::IndicatorComponent();
             auto result = Pinhole::IndicatorComponent::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

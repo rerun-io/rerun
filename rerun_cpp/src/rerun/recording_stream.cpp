@@ -175,8 +175,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_serialized_batches(
-        std::string_view entity_path, bool timeless,
-        const std::vector<SerializedComponentBatch>& batches
+        std::string_view entity_path, bool timeless, std::vector<DataCell> batches
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -191,9 +190,9 @@ namespace rerun {
 
         for (const auto& batch : batches) {
             if (num_instances_max > 1 && batch.num_instances == 1) {
-                splatted.push_back(batch.data_cell);
+                splatted.push_back(std::move(batch));
             } else {
-                instanced.push_back(batch.data_cell);
+                instanced.push_back(std::move(batch));
             }
         }
 
@@ -227,16 +226,7 @@ namespace rerun {
         // Map to C API:
         std::vector<rr_data_cell> c_data_cells(num_data_cells);
         for (size_t i = 0; i < num_data_cells; i++) {
-            if (data_cells[i].buffer == nullptr) {
-                return Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "DataCell buffer is null for cell " + std::to_string(i)
-                );
-            }
-
-            c_data_cells[i].component_name = detail::to_rr_string(data_cells[i].component_name);
-            c_data_cells[i].num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size());
-            c_data_cells[i].bytes = data_cells[i].buffer->data();
+            RR_RETURN_NOT_OK(data_cells[i].to_c_ffi_struct(c_data_cells[i]));
         }
 
         rr_data_row c_data_row;
@@ -246,7 +236,8 @@ namespace rerun {
         c_data_row.data_cells = c_data_cells.data();
 
         rr_error status = {};
-        rr_recording_stream_log(_id, &c_data_row, inject_time, &status);
+        rr_recording_stream_log(_id, c_data_row, inject_time, &status);
+
         return status;
     }
 } // namespace rerun

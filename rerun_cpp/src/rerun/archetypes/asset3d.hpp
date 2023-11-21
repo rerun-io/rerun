@@ -11,7 +11,6 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -147,8 +146,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Asset3D> {
         /// Serialize all set component batches.
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const archetypes::Asset3D& archetype
-        );
+        static Result<std::vector<DataCell>> serialize(const archetypes::Asset3D& archetype);
     };
 } // namespace rerun

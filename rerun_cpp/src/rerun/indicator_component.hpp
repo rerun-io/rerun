@@ -1,6 +1,5 @@
 #pragma once
 
-#include "arrow.hpp"
 #include "data_cell.hpp"
 
 namespace rerun {

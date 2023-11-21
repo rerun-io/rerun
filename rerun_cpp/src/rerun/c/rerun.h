@@ -16,6 +16,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "arrow_c_data_interface.h"
 
 // ----------------------------------------------------------------------------
 // Types:
@@ -131,22 +132,17 @@ typedef struct rr_store_info {
     rr_store_kind store_kind;
 } rr_store_info;
 
-/// Arrow-encoded data of a single component for a single entity.
+/// Arrow-encoded data of a single batch components for a single entity.
 typedef struct rr_data_cell {
     /// The name of the component, e.g. `position`.
     rr_string component_name;
 
-    /// The number of bytes in the `bytes` field.
-    /// Must be a multiple of 8.
-    uint64_t num_bytes;
+    /// A batch of instances of this component serialized into an arrow array.
+    ArrowArray array;
 
-    /// Data in the Arrow IPC encapsulated message format.
-    ///
-    /// There must be exactly one chunk of data.
-    ///
-    /// * <https://arrow.apache.org/docs/format/Columnar.html#format-ipc>
-    /// * <https://wesm.github.io/arrow-site-test/format/IPC.html#encapsulated-message-format>
-    const uint8_t* bytes;
+    /// The schema used for the arrow array.
+    /// TODO(andreas): Use a schema registry that identifies this and the component name with a unique schema ID.
+    ArrowSchema schema;
 } rr_data_cell;
 
 /// Arrow-encoded log data for a single entity.
@@ -163,7 +159,7 @@ typedef struct {
     uint32_t num_data_cells;
 
     /// One for each component.
-    const rr_data_cell* data_cells;
+    rr_data_cell* data_cells;
 } rr_data_row;
 
 /// Error codes returned by the Rerun C SDK as part of `rr_error`.
@@ -190,7 +186,8 @@ enum {
 
     // Arrow data processing errors.
     _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
-    RR_ERROR_CODE_ARROW_IPC_MESSAGE_PARSING_FAILURE,
+    RR_ERROR_CODE_ARROW_FFI_SCHEMA_IMPORT_ERROR,
+    RR_ERROR_CODE_ARROW_FFI_ARRAY_IMPORT_ERROR,
     RR_ERROR_CODE_ARROW_DATA_CELL_ERROR,
 
     // Generic errors.
@@ -363,8 +360,12 @@ extern void rr_recording_stream_reset_time(rr_recording_stream stream);
 ///
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
+///
+/// Takes ownership of the passed data cells and will release underlying
+/// arrow data once it is no longer needed.
+/// Any pointers passed via `rr_string` can be safely freed after this call.
 extern void rr_recording_stream_log(
-    rr_recording_stream stream, const rr_data_row* data_row, bool inject_time, rr_error* error
+    rr_recording_stream stream, rr_data_row data_row, bool inject_time, rr_error* error
 );
 
 // ----------------------------------------------------------------------------

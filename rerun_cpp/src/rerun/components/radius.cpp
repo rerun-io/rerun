@@ -50,6 +50,10 @@ namespace rerun::components {
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        return rerun::DataCell::create(Radius::NAME, Radius::arrow_datatype(), std::move(array));
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.component_name = Radius::NAME;
+        cell.array = std::move(array);
+        return cell;
     }
 } // namespace rerun::components
