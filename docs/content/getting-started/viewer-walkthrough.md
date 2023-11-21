@@ -39,25 +39,31 @@ pip install rerun-sdk
 
 You can also find `rerun-sdk` on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock).
 
-## Launching the demo
+## Launching an example
 
-If you have already followed the Python Quickstart you may have used `rerun_demo` already to run the cube demo.
+If you have already followed the Python Quickstart you may have already check the "Helix" integrated example. This time, we will use the "Structure from Motion" example.
 
-This time, we will pass an additional flag:
+Start by running the viewer:
+
 ```bash
-$ python -m rerun_demo --structure-from-motion
+$ rerun
 ```
 
 *Note: If this is your first time launching Rerun you will see a notification about the Rerun anonymous data usage
 policy. Rerun collects anonymous usage data to help improve the SDK, though you may choose to opt out if you would
 like.*
 
-In your terminal you should see an output along the lines of:
-```
-2023-02-13T05:16:06.835424Z  INFO rerun::run: Loading "/home/rerun/venv/lib/python3.10/site-packages/rerun_sdk/rerun_demo/colmap_fiat.rrd"…
-```
+This will bring you the Rerun viewer's Welcome screen:
 
-And a window that looks like this will appear:
+<picture>
+  <img src="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/1200w.png">
+</picture>
+
+Click on the "View Examples" button, and then chose the "Structure from Motion" example. A window that looks like this will appear:
 
 <picture>
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough1_first_launch/793d828d867a8d341cd3ec35bc553f2d65fba549/480w.png">
@@ -314,7 +320,8 @@ system to transform or project all data into the space root for the given view.
 
 That brings us to the end of this walkthrough. To recap, you have learned how to:
 - Install the `rerun-sdk` pypi package.
-- Run the Rerun Viewer using the `rerun_demo` helper.
+- Run the Rerun Viewer using the `rerun` command.
+- Open the examples integrated in the viewer.
 - Work with the [Blueprint](../reference/viewer/blueprint.md), [Selection](../reference/viewer/selection.md) and [Timeline](../reference/viewer/timeline.md) panels.
 - Rearrange space view layouts.
 - Explore data through hover and selection.
