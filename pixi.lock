@@ -1,3 +1,4 @@
+version: 2
 metadata:
   content_hash:
     linux-64: e90c2ee71ad70fc0a1c8302029533a7d1498f2bffcd0eaa8d2934700e775dc1d
@@ -1309,6 +1310,85 @@ package:
   license_family: Apache
   size: 3228453
   timestamp: 1696018718586
+- platform: linux-64
+  name: binaryen
+  version: '116'
+  category: main
+  manager: conda
+  dependencies:
+  - libgcc-ng >=12
+  - libstdcxx-ng >=12
+  url: https://conda.anaconda.org/conda-forge/linux-64/binaryen-116-h59595ed_0.conda
+  hash:
+    md5: 52dff2370624a2be1e323c41e3882ed4
+    sha256: 84704b46b2bfde6d35fdd479bfe2769a6ef4c899677618ce1d6f8c926657cbf8
+  build: h59595ed_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 5215096
+  timestamp: 1694722302360
+- platform: osx-64
+  name: binaryen
+  version: '116'
+  category: main
+  manager: conda
+  dependencies:
+  - libcxx >=15.0.7
+  url: https://conda.anaconda.org/conda-forge/osx-64/binaryen-116-he965462_0.conda
+  hash:
+    md5: 8c5fcc736f62d68f1807f87b3f36708b
+    sha256: ccdf062ca035f8087619c454d3a676dd1598626ee753799cdf8cba1e497bebbd
+  build: he965462_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 3440338
+  timestamp: 1694723081095
+- platform: osx-arm64
+  name: binaryen
+  version: '116'
+  category: main
+  manager: conda
+  dependencies:
+  - libcxx >=15.0.7
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/binaryen-116-h13dd4ca_0.conda
+  hash:
+    md5: e4aad775b4f2c3b336b8e2eea63eaff2
+    sha256: 80aba7f9d8f311ba103e6a4806231a404b0f39f130be5af07ea9574cd42afebf
+  build: h13dd4ca_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 3505018
+  timestamp: 1694723361260
+- platform: win-64
+  name: binaryen
+  version: '116'
+  category: main
+  manager: conda
+  dependencies:
+  - ucrt >=10.0.20348.0
+  - vc >=14.2,<15
+  - vc14_runtime >=14.29.30139
+  url: https://conda.anaconda.org/conda-forge/win-64/binaryen-116-h63175ca_0.conda
+  hash:
+    md5: eee203f471868cf9c078ddfae586f221
+    sha256: 531c4be009192cfb1b53ef1724fc3c670d16f629c20a77b5664b90f3c4d048c9
+  build: h63175ca_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: Apache-2.0
+  license_family: APACHE
+  size: 36575639
+  timestamp: 1694723421705
 - platform: linux-64
   name: binutils
   version: '2.40'
@@ -11594,4 +11674,3 @@ package:
   license_family: BSD
   size: 343428
   timestamp: 1693151615801
-version: 1
