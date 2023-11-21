@@ -9,7 +9,7 @@ int main(void) {
         .application_id = rr_make_string("c-example-app"),
         .store_kind = RERUN_STORE_KIND_RECORDING,
     };
-    rr_recording_stream rec = rr_recording_stream_new(&store_info, &error);
+    rr_recording_stream rec = rr_recording_stream_new(&store_info, true, &error);
 
     // Connect to running viewer:
     //rr_recording_stream_connect(rec, rr_make_string("127.0.0.1:9876"), 2.0f, &error);
