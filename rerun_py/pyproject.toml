@@ -121,7 +121,7 @@ required-imports = ["from __future__ import annotations"]
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
 include = ["rerun_sdk.pth"]
 locked = true
-name = "rerun_bindings"                                             # name of the .so library that the Python module will import
+name = "rerun_bindings"
 python-packages = ["rerun_sdk/rerun"]
 
 [tool.pytest.ini_options]
