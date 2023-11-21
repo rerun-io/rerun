@@ -16,7 +16,7 @@ namespace rerun {
     ///
     /// Note that the DataCell doesn't own `datatype` and `component_name`.
     struct DataCell {
-        /// How many components were serialized in this data cell.
+        /// How many instances of the component were serialized in this data cell.
         ///
         /// TODO(andreas): Just like in Rust, make this part of `AsComponents`.
         ///                 This will requiring inlining some things on RecordingStream and have some refactor ripples.

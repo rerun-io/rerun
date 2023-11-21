@@ -137,7 +137,7 @@ typedef struct rr_data_cell {
     /// The name of the component, e.g. `position`.
     rr_string component_name;
 
-    /// A batch of components serialized into an arrow array.
+    /// A batch of instances of this component serialized into an arrow array.
     ArrowArray array;
 
     /// The schema used for the arrow array.
