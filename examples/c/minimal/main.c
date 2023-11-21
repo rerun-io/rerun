@@ -7,7 +7,7 @@ int main(void) {
     rr_error error = {0};
     const rr_store_info store_info = {
         .application_id = rr_make_string("c-example-app"),
-        .store_kind = RERUN_STORE_KIND_RECORDING,
+        .store_kind = RR_STORE_KIND_RECORDING,
     };
     rr_recording_stream rec = rr_recording_stream_new(&store_info, true, &error);
 

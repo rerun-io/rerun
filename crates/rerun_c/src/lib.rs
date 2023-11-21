@@ -47,9 +47,9 @@ impl CStringView {
 pub type CRecordingStream = u32;
 pub type CComponentTypeHandle = u32;
 
-pub const RERUN_REC_STREAM_CURRENT_RECORDING: CRecordingStream = 0xFFFFFFFF;
-pub const RERUN_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
-pub const RERUN_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
+pub const RR_REC_STREAM_CURRENT_RECORDING: CRecordingStream = 0xFFFFFFFF;
+pub const RR_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
+pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 
 /// C version of [`re_sdk::SpawnOptions`].
 #[derive(Debug, Clone)]
@@ -229,6 +229,7 @@ fn rr_register_component_type_impl(
 #[allow(unsafe_code)]
 #[no_mangle]
 pub extern "C" fn rr_register_component_type(
+    // Note that since this is passed by value, Arrow2 will release the schema on drop!
     component_type: CComponentType,
     error: *mut CError,
 ) -> u32 {
@@ -236,7 +237,7 @@ pub extern "C" fn rr_register_component_type(
         Ok(id) => id,
         Err(err) => {
             err.write_error(error);
-            RERUN_COMPONENT_TYPE_HANDLE_INVALID
+            RR_COMPONENT_TYPE_HANDLE_INVALID
         }
     }
 }

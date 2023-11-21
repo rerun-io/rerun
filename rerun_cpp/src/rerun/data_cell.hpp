@@ -1,8 +1,9 @@
 #pragma once
 
 #include <memory> // shared_ptr
-#include <string>
-#include "result.hpp"
+
+#include "component_type.hpp"
+#include "error.hpp"
 
 namespace arrow {
     class Array;
@@ -23,15 +24,11 @@ namespace rerun {
         ///                 But it's worth keeping the language bindings more similar!
         size_t num_instances;
 
-        /// String pointer to a component name valid for the lifetime of the cell.
-        std::string_view component_name;
-
-        /// Arrow-encoded data of the components.
+        /// Arrow-encoded data of the component instances.
         std::shared_ptr<arrow::Array> array;
 
-      public:
-        /// Create a data cell for an indicator component.
-        static Result<DataCell> create_indicator_component(std::string_view archetype_name);
+        /// The type of the component instances in array.
+        ComponentTypeHandle component_type;
 
         /// To rerun C API data cell.
         ///

@@ -3,8 +3,7 @@ use parking_lot::Mutex;
 use re_sdk::{RecordingStream, StoreKind};
 
 use crate::{
-    CError, CRecordingStream, RERUN_REC_STREAM_CURRENT_BLUEPRINT,
-    RERUN_REC_STREAM_CURRENT_RECORDING,
+    CError, CRecordingStream, RR_REC_STREAM_CURRENT_BLUEPRINT, RR_REC_STREAM_CURRENT_RECORDING,
 };
 
 #[derive(Default)]
@@ -23,9 +22,9 @@ impl RecStreams {
 
     pub fn get(&self, id: CRecordingStream) -> Option<RecordingStream> {
         match id {
-            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None)
+            RR_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None)
                 .or(Some(RecordingStream::disabled())),
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None)
+            RR_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None)
                 .or(Some(RecordingStream::disabled())),
             _ => self.streams.get(&id).cloned(),
         }
@@ -33,7 +32,7 @@ impl RecStreams {
 
     pub fn remove(&mut self, id: CRecordingStream) -> Option<RecordingStream> {
         match id {
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT | RERUN_REC_STREAM_CURRENT_RECORDING => None,
+            RR_REC_STREAM_CURRENT_BLUEPRINT | RR_REC_STREAM_CURRENT_RECORDING => None,
             _ => self.streams.remove(&id),
         }
     }

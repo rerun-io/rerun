@@ -1266,10 +1266,10 @@ fn component_to_data_cell_method(
             #NEWLINE_TOKEN
             #todo_pool
             arrow::MemoryPool* pool = arrow::default_memory_pool();
+            auto datatype = arrow_datatype();
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-
-            ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
+            ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
             if (instances && num_instances > 0) {
                 RR_RETURN_NOT_OK(#type_ident::fill_arrow_array_builder(
                     static_cast<arrow::#arrow_builder_type*>(builder.get()),
@@ -1281,10 +1281,15 @@ fn component_to_data_cell_method(
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
+            // Lazily register component type.
+            static const Result<ComponentTypeHandle> component_type = ComponentType(NAME, datatype).register_component();
+            RR_RETURN_NOT_OK(component_type.error);
+            #NEWLINE_TOKEN
+            #NEWLINE_TOKEN
             DataCell cell;
             cell.num_instances = num_instances;
-            cell.component_name = #type_ident::NAME;
             cell.array = std::move(array);
+            cell.component_type = component_type.value;
             return cell;
         },
         inline: false,
