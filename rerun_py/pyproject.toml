@@ -119,10 +119,10 @@ required-imports = ["from __future__ import annotations"]
 # with the other `rerun` pypi package. The rerun_sdk.pth adds this to the pythonpath
 # which then allows `import rerun` to work as expected.
 # See https://github.com/rerun-io/rerun/pull/1085 for more details
-include = ["rerun_sdk.pth", "rerun_sdk/rerun_demo/colmap_fiat.rrd"]
+include = ["rerun_sdk.pth"]
 locked = true
 name = "rerun_bindings"                                             # name of the .so library that the Python module will import
-python-packages = ["rerun_sdk/rerun", "rerun_sdk/rerun_demo"]
+python-packages = ["rerun_sdk/rerun"]
 
 [tool.pytest.ini_options]
 # These conform to Python's Warning Filter syntax:

@@ -9,8 +9,7 @@
   ],
 
   "ignore": [
-    "rerun_py/rerun",
-    "rerun_py/rerun_demo"
+    "rerun_py/rerun"
   ],
 
   "defineConstant": {

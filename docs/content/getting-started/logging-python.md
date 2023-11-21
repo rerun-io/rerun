@@ -69,8 +69,8 @@ We will do so incrementally, but if you just want to update your imports once an
 ```python
 from math import tau
 import numpy as np
-from rerun_demo.data import build_color_spiral
-from rerun_demo.util import bounce_lerp
+from rerun.utilities import build_color_spiral
+from rerun.utilities import bounce_lerp
 ```
 ---
 
@@ -81,7 +81,7 @@ Add the following to your file:
 
 ```python
 # new imports
-from rerun_demo.data import build_color_spiral
+from rerun.utilities import build_color_spiral
 from math import tau
 
 NUM_POINTS = 100
@@ -163,7 +163,7 @@ Which only leaves the beads:
 ```python
 # new imports
 import numpy as np
-from rerun_demo.util import bounce_lerp
+from rerun.utilities import bounce_lerp
 
 offsets = np.random.rand(NUM_POINTS)
 beads = [bounce_lerp(points1[n], points2[n], offsets[n]) for n in range(NUM_POINTS)]
@@ -211,7 +211,7 @@ Rerun has rich support for time: whether you want concurrent or disjoint timelin
 Let's add our custom timeline:
 ```python
 # new imports
-from rerun_demo.util import bounce_lerp
+from rerun.utilities import bounce_lerp
 
 time_offsets = np.random.rand(NUM_POINTS)
 for i in range(400):
