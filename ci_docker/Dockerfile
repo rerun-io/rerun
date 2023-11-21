@@ -84,6 +84,12 @@ RUN set -eux; \
     cargo --version; \
     rustc --version;
 
+# Install stuff from `rust-toolchain`
+ADD rust-toolchain rust-toolchain
+# `show` is currently the only way to install whatever is in `rust-toolchain`
+# This is subject to change, but there is no alternative: https://github.com/rust-lang/rustup/issues/1397
+RUN rustup show
+
 # Install some cargo tools we know we'll always need
 # We can't do this until after we've installed rust / cargo above
 # Latest cargo-deny requires a rust update!
