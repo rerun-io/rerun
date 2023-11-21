@@ -16,7 +16,7 @@ You are now ready to start logging and visualizing data.
 
 ## Trying out the viewer
 
-Rerun comes packaged with integrated examples to make it easy to explore the viewer. Launch it with: 
+Rerun comes packaged with integrated examples to make it easy to explore the viewer. Launch it with:
 ```bash
 $ rerun
 ```
