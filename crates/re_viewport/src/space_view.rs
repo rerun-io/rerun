@@ -389,14 +389,14 @@ impl SpaceViewBlueprint {
     fn resolve_entity_overrides_for_prefix(
         &self,
         ctx: &StoreContext<'_>,
-        prefix: EntityPath,
+        prefix: &EntityPath,
     ) -> EntityPropertyMap {
         re_tracing::profile_function!();
         let blueprint = ctx.blueprint;
 
         let mut prop_map = self.auto_properties.clone();
 
-        let props_path = self.entity_path().join(&prefix);
+        let props_path = self.entity_path().join(prefix);
         if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
@@ -423,11 +423,11 @@ impl PropertyResolver for SpaceViewBlueprint {
             root: self.root_data_result(ctx).resolved_properties,
             individual: self.resolve_entity_overrides_for_prefix(
                 ctx,
-                SpaceViewContents::INDIVIDUAL_OVERRIDES_PREFIX.into(),
+                &SpaceViewContents::INDIVIDUAL_OVERRIDES_PREFIX.into(),
             ),
             group: self.resolve_entity_overrides_for_prefix(
                 ctx,
-                SpaceViewContents::GROUP_OVERRIDES_PREFIX.into(),
+                &SpaceViewContents::GROUP_OVERRIDES_PREFIX.into(),
             ),
         }
     }
