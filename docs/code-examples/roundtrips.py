@@ -7,11 +7,13 @@ from __future__ import annotations
 import argparse
 import multiprocessing
 import os
-import subprocess
 import sys
 import time
 from os import listdir
 from os.path import isfile, join
+
+sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../scripts/")
+from roundtrip_utils import cmake_build, cmake_configure, cpp_build_dir, roundtrip_env, run, run_comparison  # noqa
 
 # fmt: off
 
@@ -55,18 +57,6 @@ extra_args = {
 }
 
 # fmt: on
-
-cpp_build_dir = "./build/roundtrips"
-
-
-def run(
-    args: list[str], *, env: dict[str, str] | None = None, timeout: int | None = None, cwd: str | None = None
-) -> None:
-    print(f"> {subprocess.list2cmdline(args)}")
-    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
-    assert (
-        result.returncode == 0
-    ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
 
 
 def main() -> None:
@@ -117,23 +107,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Build rerun_c & rerun_cpp…")
         start_time = time.time()
-        os.makedirs(cpp_build_dir, exist_ok=True)
-        build_type = "Debug"
-        if args.release:
-            build_type = "Release"
-        # TODO(andreas): We should pixi for the prepare so we can ensure we have build tooling ready
-        configure_args = [
-            "cmake",
-            "-B",
-            cpp_build_dir,
-            f"-DCMAKE_BUILD_TYPE={build_type}",
-            "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON",
-            ".",
-        ]
-        run(
-            configure_args,
-            env=build_env,
-        )
+        cmake_configure(args.release, build_env)
         cmake_build("rerun_sdk", args.release)
         elapsed = time.time() - start_time
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
@@ -227,26 +201,6 @@ def run_example(example: str, language: str, args: argparse.Namespace) -> None:
         assert False, f"Unknown language: {language}"
 
 
-def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
-    env = os.environ.copy()
-
-    # NOTE: Make sure to disable batching, otherwise the Arrow concatenation logic within
-    # the batcher will happily insert uninitialized padding bytes as needed!
-    env["RERUN_FLUSH_NUM_ROWS"] = "0"
-
-    # Turn on strict mode to catch errors early
-    env["RERUN_STRICT"] = "1"
-
-    # Treat any warning as panics
-    env["RERUN_PANIC_ON_WARN"] = "1"
-
-    if save_path:
-        # NOTE: Force the recording stream to write to disk!
-        env["_RERUN_TEST_FORCE_SAVE"] = save_path
-
-    return env
-
-
 def run_roundtrip_python(example: str) -> str:
     main_path = f"docs/code-examples/{example}.py"
     output_path = f"docs/code-examples/{example}_py.rrd"
@@ -298,34 +252,6 @@ def run_roundtrip_cpp(example: str, release: bool) -> str:
     run(cmd, env=env, timeout=12000)
 
     return output_path
-
-
-def cmake_build(target: str, release: bool) -> None:
-    config = "Debug"
-    if release:
-        config = "Release"
-
-    build_process_args = [
-        "cmake",
-        "--build",
-        cpp_build_dir,
-        "--config",
-        config,
-        "--target",
-        target,
-        "--parallel",
-        str(multiprocessing.cpu_count()),
-    ]
-    run(build_process_args)
-
-
-def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
-    cmd = ["rerun", "compare"]
-    if full_dump:
-        cmd += ["--full-dump"]
-    cmd += [rrd0_path, rrd1_path]
-
-    run(cmd, env=roundtrip_env(), timeout=30)
 
 
 def check_non_empty_rrd(path: str) -> None:
