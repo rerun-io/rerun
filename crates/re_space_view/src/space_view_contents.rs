@@ -561,7 +561,7 @@ impl DataQuery for SpaceViewContents {
 impl DataBlueprintGroup {
     /// This recursively walks a `DataBlueprintGroup` and adds every entity / group to the tree.
     ///
-    /// Properties are resolved hierarchically from an [`EntityPropertyMap`] containing all the
+    /// Properties are resolved hierarchically from an `EntityPropertyMap` containing all the
     /// overrides. As we walk down the tree.
     fn add_to_data_results_recursive(
         &self,
