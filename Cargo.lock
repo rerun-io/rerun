@@ -1514,7 +1514,7 @@ checksum = "68b0cf012f1230e43cd00ebb729c6bb58707ecfa8ad08b52ef3a4ccd2697fc30"
 [[package]]
 name = "ecolor"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1523,7 +1523,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "bytemuck",
  "cocoa",
@@ -1556,7 +1556,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "accesskit",
  "ahash 0.8.6",
@@ -1572,7 +1572,7 @@ dependencies = [
 [[package]]
 name = "egui-wgpu"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "bytemuck",
  "egui",
@@ -1588,7 +1588,7 @@ dependencies = [
 [[package]]
 name = "egui-winit"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "accesskit_winit",
  "arboard",
@@ -1617,7 +1617,7 @@ dependencies = [
 [[package]]
 name = "egui_extras"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "egui",
  "ehttp",
@@ -1632,14 +1632,14 @@ dependencies = [
 [[package]]
 name = "egui_glow"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "bytemuck",
  "egui",
  "egui-winit",
  "glow 0.12.3",
  "log",
- "memoffset 0.6.5",
+ "memoffset 0.7.1",
  "puffin",
  "wasm-bindgen",
  "web-sys",
@@ -1692,7 +1692,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 [[package]]
 name = "emath"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "bytemuck",
  "serde",
@@ -1794,7 +1794,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.23.0"
-source = "git+https://github.com/emilk/egui.git?rev=7bfaf4963676d02a88000b900b46365a827e0b65#7bfaf4963676d02a88000b900b46365a827e0b65"
+source = "git+https://github.com/emilk/egui.git?rev=e82349124092fc1c3c4b94f3e532a9f7d281c946#e82349124092fc1c3c4b94f3e532a9f7d281c946"
 dependencies = [
  "ab_glyph",
  "ahash 0.8.6",
@@ -6660,9 +6660,9 @@ checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
 name = "wasm-bindgen"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7706a72ab36d8cb1f80ffbf0e071533974a60d0a308d01a5d0375bf60499a342"
+checksum = "7daec296f25a1bae309c0cd5c29c4b260e510e6d813c286b19eaadf409d40fce"
 dependencies = [
  "cfg-if",
  "wasm-bindgen-macro",
@@ -6670,9 +6670,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-backend"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ef2b6d3c510e9625e5fe6f509ab07d66a760f0885d858736483c32ed7809abd"
+checksum = "e397f4664c0e4e428e8313a469aaa58310d302159845980fd23b0f22a847f217"
 dependencies = [
  "bumpalo",
  "log",
@@ -6685,9 +6685,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-cli-support"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d21c60239a09bf9bab8dfa752be4e6c637db22296b9ded493800090448692da9"
+checksum = "f2252adf46913da7b729caf556b81cedd1335165576e6446d84618e8835d89dd"
 dependencies = [
  "anyhow",
  "base64 0.9.3",
@@ -6707,9 +6707,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-externref-xform"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bafbe1984f67cc12645f12ab65e6145e8ddce1ab265d0be58435f25bb0ce2608"
+checksum = "43f3b73cf8fcb86da78c6649c74acef205723f57af99b9f549b2609c83fe7815"
 dependencies = [
  "anyhow",
  "walrus",
@@ -6729,9 +6729,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dee495e55982a3bd48105a7b947fd2a9b4a8ae3010041b9e0faab3f9cd028f1d"
+checksum = "5961017b3b08ad5f3fe39f1e79877f8ee7c23c5e5fd5eb80de95abc41f1f16b2"
 dependencies = [
  "quote",
  "wasm-bindgen-macro-support",
@@ -6739,9 +6739,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-macro-support"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54681b18a46765f095758388f2d0cf16eb8d4169b639ab575a8f5693af210c7b"
+checksum = "c5353b8dab669f5e10f5bd76df26a9360c748f054f862ff5f3f8aae0c7fb3907"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6752,9 +6752,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-multi-value-xform"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "581419e3995571a1d2d066e360ca1c0c09da097f5a53c98e6f00d96eddaf0ffe"
+checksum = "930dd8e8226379aebb7d512f31b9241a3c59a1801452932e5a15bebfd3b708fb"
 dependencies = [
  "anyhow",
  "walrus",
@@ -6762,15 +6762,15 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-shared"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca6ad05a4870b2bf5fe995117d3728437bd27d7cd5f06f13c17443ef369775a1"
+checksum = "0d046c5d029ba91a1ed14da14dca44b68bf2f124cfbaf741c54151fdb3e0750b"
 
 [[package]]
 name = "wasm-bindgen-threads-xform"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e05d272073981137e8426cf2a6830d43d1f84f988a050b2f8b210f0e266b8983"
+checksum = "759b1e9784f903a7890bcf147aa7c8c529a6318a2db05f88c054194a3e6c6d57"
 dependencies = [
  "anyhow",
  "walrus",
@@ -6779,9 +6779,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-wasm-conventions"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e9c65b1ff5041ea824ca24c519948aec16fb6611c617d601623c0657dfcd47b"
+checksum = "2dc12bc175c837239520b8aa9dcfb68a025fcf56a718a02551a75a972711c816"
 dependencies = [
  "anyhow",
  "walrus",
@@ -6789,9 +6789,9 @@ dependencies = [
 
 [[package]]
 name = "wasm-bindgen-wasm-interpreter"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c5c796220738ab5d44666f37205728a74141c0039d1166bcf8110b26bafaa1e"
+checksum = "6a5510ab88377b4e3160a7e5d90a876d0a1da2d9b9b67495f437246714c0980f"
 dependencies = [
  "anyhow",
  "log",
