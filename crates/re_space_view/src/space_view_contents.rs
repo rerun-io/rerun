@@ -183,6 +183,15 @@ impl SpaceViewContents {
         }
     }
 
+    #[inline]
+    /// Looks up the group handle for an entity path.
+    pub fn group_handle_for_entity_path(
+        &self,
+        path: &EntityPath,
+    ) -> Option<DataBlueprintGroupHandle> {
+        self.path_to_group.get(path).cloned()
+    }
+
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
         // If an entity is in path_to_group it is *likely* also an entity in the Space View.
         // However, it could be that the path *only* refers to a group, not also an entity.

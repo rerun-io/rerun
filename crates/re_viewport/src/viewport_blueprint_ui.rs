@@ -3,12 +3,10 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_space_view::{DataBlueprintGroup, DataQuery as _};
+use re_space_view::{DataQuery as _, DataResultHandle, DataResultNode, DataResultTree};
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
-use re_viewer_context::{
-    DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId, ViewerContext,
-};
+use re_viewer_context::{HoverHighlight, Item, SpaceViewId, ViewerContext};
 
 use crate::{
     space_view_heuristics::all_possible_space_views, viewport_blueprint::TreeActions,
@@ -53,8 +51,8 @@ impl ViewportBlueprint<'_> {
     }
 
     /// If a group or spaceview has a total of this number of elements, show its subtree by default?
-    fn default_open_for_group(group: &DataBlueprintGroup) -> bool {
-        let num_children = group.children.len() + group.entities.len();
+    fn default_open_for_data_result(group: &DataResultNode) -> bool {
+        let num_children = group.children.len();
         2 <= num_children && num_children <= 3
     }
 
@@ -150,13 +148,22 @@ impl ViewportBlueprint<'_> {
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
+        let result_tree = space_view.contents.execute_query(
+            space_view,
+            ctx.store_context,
+            ctx.entities_per_system_per_class,
+        );
+
         let mut visibility_changed = false;
         let mut visible = self.tree.is_visible(tile_id);
         let visible_child = visible;
         let item = Item::SpaceView(space_view.id);
 
-        let root_group = space_view.contents.root_group();
-        let default_open = Self::default_open_for_group(root_group);
+        let default_open = result_tree
+            .root_handle
+            .and_then(|handle| result_tree.lookup_node(handle))
+            .map_or(false, Self::default_open_for_data_result);
+
         let collapsing_header_id = ui.id().with(space_view.id);
         let is_item_hovered =
             ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
@@ -178,13 +185,21 @@ impl ViewportBlueprint<'_> {
                 response | vis_response
             })
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                Self::space_view_blueprint_ui(
-                    ctx,
-                    ui,
-                    space_view.contents.root_handle(),
-                    space_view,
-                    visible_child,
-                );
+                if let Some(result_handle) = result_tree.root_handle {
+                    // TODO(jleibs): handle the case where the only result
+                    // in the tree is a single path (no groups). This should never
+                    // happen for a SpaceViewContents.
+                    Self::space_view_blueprint_ui(
+                        ctx,
+                        ui,
+                        &result_tree,
+                        result_handle,
+                        space_view,
+                        visible_child,
+                    );
+                } else {
+                    ui.label("No results");
+                }
             })
             .item_response
             .on_hover_text("Space View");
@@ -208,171 +223,169 @@ impl ViewportBlueprint<'_> {
     fn space_view_blueprint_ui(
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        group_handle: DataBlueprintGroupHandle,
+        result_tree: &DataResultTree,
+        result_handle: DataResultHandle,
         space_view: &mut SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
-        let Some(group) = space_view.contents.group(group_handle) else {
-            debug_assert!(false, "Invalid group handle in blueprint group tree");
+        let Some(top_node) = result_tree.lookup_node(result_handle) else {
+            debug_assert!(false, "Invalid data result handle in data result tree");
             return;
         };
 
-        // TODO(andreas): These clones are workarounds against borrowing multiple times from space_view_blueprint_ui.
-        let children = group.children.clone();
-        let entities = group.entities.clone();
-        let group_name = group.display_name.clone();
+        let group_is_visible =
+            top_node.data_result.resolved_properties.visible && space_view_visible;
 
-        // TODO(jleibs): We should use `query` instead of `resolve` in this function, but doing so
-        // requires changing the view layout a little bit, so holding off on that for now.
-        let as_group = true;
-        let top_data_result = space_view.contents.resolve(
-            space_view,
-            ctx.store_context,
-            ctx.entities_per_system_per_class,
-            &group.group_path,
-            as_group,
-        );
-
-        let group_is_visible = top_data_result.resolved_properties.visible && space_view_visible;
-
-        for entity_path in &entities {
-            if entity_path.is_root() {
+        // Always real children ahead of groups
+        for child in top_node
+            .children
+            .iter()
+            .filter(|c| {
+                result_tree
+                    .lookup_result(**c)
+                    .map_or(false, |c| !c.is_group)
+            })
+            .chain(
+                top_node
+                    .children
+                    .iter()
+                    .filter(|c| result_tree.lookup_result(**c).map_or(false, |c| c.is_group)),
+            )
+        {
+            let Some(child_node) = result_tree.lookup_node(*child) else {
+                debug_assert!(false, "DataResultNode {top_node:?} has an invalid child");
                 continue;
-            }
+            };
 
-            let is_selected = ctx.selection().contains(&Item::InstancePath(
-                Some(space_view.id),
-                InstancePath::entity_splat(entity_path.clone()),
-            ));
+            let data_result = &child_node.data_result;
+            let entity_path = &child_node.data_result.entity_path;
 
-            let item = Item::InstancePath(
-                Some(space_view.id),
-                InstancePath::entity_splat(entity_path.clone()),
-            );
+            let item = if data_result.is_group {
+                let group_handle = space_view
+                    .contents
+                    .group_handle_for_entity_path(entity_path);
+                // If we can't find a group_handle for some reason, use the default, null handle.
+                Item::DataBlueprintGroup(space_view.id, group_handle.unwrap_or_default())
+            } else {
+                Item::InstancePath(
+                    Some(space_view.id),
+                    InstancePath::entity_splat(entity_path.clone()),
+                )
+            };
+
+            let is_selected = ctx.selection().contains(&item);
+
             let is_item_hovered =
                 ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
-
-            let as_group = false;
-            let data_result = space_view.contents.resolve(
-                space_view,
-                ctx.store_context,
-                ctx.entities_per_system_per_class,
-                entity_path,
-                as_group,
-            );
 
             let mut properties = data_result
                 .individual_properties
                 .clone()
                 .unwrap_or_default();
 
-            let name = entity_path.iter().last().unwrap().to_string();
-            let label = format!("🔹 {name}");
-            let response = ListItem::new(ctx.re_ui, label)
-                .selected(is_selected)
-                .subdued(!group_is_visible || !properties.visible)
-                .force_hovered(is_item_hovered)
-                .with_buttons(|re_ui, ui| {
-                    let vis_response =
-                        visibility_button_ui(re_ui, ui, group_is_visible, &mut properties.visible);
-                    data_result.save_override(Some(properties), ctx);
+            let name = entity_path
+                .iter()
+                .last()
+                .map_or("unknown".to_owned(), |e| e.to_string());
 
-                    let response = remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
-                    if response.clicked() {
-                        space_view.contents.remove_entity(entity_path);
-                        space_view.entities_determined_by_user = true;
-                    }
+            let response = if child_node.children.is_empty() {
+                let label = format!("🔹 {name}");
 
-                    response | vis_response
-                })
-                .show(ui)
-                .on_hover_ui(|ui| {
-                    re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, entity_path);
-                });
+                ListItem::new(ctx.re_ui, label)
+                    .selected(is_selected)
+                    .subdued(
+                        !group_is_visible
+                            || !properties.visible
+                            || data_result.view_parts.is_empty(),
+                    )
+                    .force_hovered(is_item_hovered)
+                    .with_buttons(|re_ui, ui| {
+                        let vis_response = visibility_button_ui(
+                            re_ui,
+                            ui,
+                            group_is_visible,
+                            &mut properties.visible,
+                        );
 
-            item_ui::select_hovered_on_click(ctx, &response, &[item]);
-        }
+                        let response =
+                            remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
+                        if response.clicked() {
+                            space_view.contents.remove_entity(entity_path);
+                            space_view.entities_determined_by_user = true;
+                        }
 
-        for child_group_handle in &children {
-            let Some(child_group) = space_view.contents.group(*child_group_handle) else {
-                debug_assert!(
-                    false,
-                    "Data blueprint group {group_name} has an invalid child"
-                );
-                continue;
-            };
+                        response | vis_response
+                    })
+                    .show(ui)
+                    .on_hover_ui(|ui| {
+                        if data_result.is_group {
+                            ui.label("Group");
+                        } else {
+                            re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, entity_path);
+                        }
+                    })
+            } else {
+                let default_open = Self::default_open_for_data_result(child_node);
+                let mut remove_group = false;
 
-            let item = Item::DataBlueprintGroup(space_view.id, *child_group_handle);
-            let is_selected = ctx.selection().contains(&item);
-            let is_item_hovered =
-                ctx.selection_state().highlight_for_ui_element(&item) == HoverHighlight::Hovered;
+                let response = ListItem::new(ctx.re_ui, name)
+                    .selected(is_selected)
+                    .subdued(!properties.visible || !group_is_visible)
+                    .force_hovered(is_item_hovered)
+                    .with_icon(&re_ui::icons::CONTAINER)
+                    .with_buttons(|re_ui, ui| {
+                        let vis_response = visibility_button_ui(
+                            re_ui,
+                            ui,
+                            group_is_visible,
+                            &mut properties.visible,
+                        );
 
-            let mut remove_group = false;
-            let default_open = Self::default_open_for_group(child_group);
+                        let response = remove_button_ui(
+                            re_ui,
+                            ui,
+                            "Remove Group and all its children from the Space View",
+                        );
+                        if response.clicked() {
+                            remove_group = true;
+                        }
 
-            let as_group = true;
-            let child_data_result = space_view.contents.resolve(
-                space_view,
-                ctx.store_context,
-                ctx.entities_per_system_per_class,
-                &child_group.group_path,
-                as_group,
-            );
-
-            let mut child_properties = child_data_result
-                .individual_properties
-                .clone()
-                .unwrap_or_default();
-
-            let response = ListItem::new(ctx.re_ui, child_group.display_name.clone())
-                .selected(is_selected)
-                .subdued(!child_properties.visible || !group_is_visible)
-                .force_hovered(is_item_hovered)
-                .with_icon(&re_ui::icons::CONTAINER)
-                .with_buttons(|re_ui, ui| {
-                    let vis_response = visibility_button_ui(
-                        re_ui,
-                        ui,
-                        group_is_visible,
-                        &mut child_properties.visible,
-                    );
-
-                    let response = remove_button_ui(
-                        re_ui,
-                        ui,
-                        "Remove Group and all its children from the Space View",
-                    );
-                    if response.clicked() {
-                        remove_group = true;
-                    }
-
-                    response | vis_response
-                })
-                .show_collapsing(
-                    ui,
-                    ui.id().with(child_group_handle),
-                    default_open,
-                    |_, ui| {
+                        response | vis_response
+                    })
+                    .show_collapsing(ui, ui.id().with(child), default_open, |_, ui| {
                         Self::space_view_blueprint_ui(
                             ctx,
                             ui,
-                            *child_group_handle,
+                            result_tree,
+                            *child,
                             space_view,
                             space_view_visible,
                         );
-                    },
-                )
-                .item_response
-                .on_hover_text("Group");
+                    })
+                    .item_response
+                    .on_hover_ui(|ui| {
+                        if data_result.is_group {
+                            ui.label("Group");
+                        } else {
+                            re_data_ui::item_ui::entity_hover_card_ui(ui, ctx, entity_path);
+                        }
+                    });
 
-            child_data_result.save_override(Some(child_properties), ctx);
+                if remove_group {
+                    if let Some(group_handle) = space_view
+                        .contents
+                        .group_handle_for_entity_path(entity_path)
+                    {
+                        space_view.contents.remove_group(group_handle);
+                        space_view.entities_determined_by_user = true;
+                    }
+                }
+
+                response
+            };
+            data_result.save_override(Some(properties), ctx);
 
             item_ui::select_hovered_on_click(ctx, &response, &[item]);
-
-            if remove_group {
-                space_view.contents.remove_group(*child_group_handle);
-                space_view.entities_determined_by_user = true;
-            }
         }
     }
 
