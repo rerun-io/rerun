@@ -12,19 +12,6 @@ namespace rerun::blueprint {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::ListBuilder>> SpaceViewMaximized::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::ListBuilder>(
-            memory_pool,
-            std::make_shared<arrow::UInt8Builder>(memory_pool)
-        ));
-    }
-
     rerun::Error SpaceViewMaximized::fill_arrow_array_builder(
         arrow::ListBuilder* builder, const SpaceViewMaximized* elements, size_t num_elements
     ) {

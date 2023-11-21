@@ -12,16 +12,6 @@ namespace rerun::datatypes {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::UInt32Builder>> UInt32::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::UInt32Builder>(memory_pool));
-    }
-
     rerun::Error UInt32::fill_arrow_array_builder(
         arrow::UInt32Builder* builder, const UInt32* elements, size_t num_elements
     ) {

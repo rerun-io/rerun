@@ -15,7 +15,6 @@ namespace arrow {
     class NumericBuilder;
 
     class DataType;
-    class MemoryPool;
     class UInt64Type;
     using UInt64Builder = NumericBuilder<UInt64Type>;
 } // namespace arrow
@@ -40,11 +39,6 @@ namespace rerun::components {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::UInt64Builder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(

@@ -18,25 +18,6 @@ namespace rerun::datatypes {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::DenseUnionBuilder>> Scale3D::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::DenseUnionBuilder>(
-            memory_pool,
-            // Children:
-            std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                std::make_shared<arrow::NullBuilder>(memory_pool),
-                rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).value,
-                std::make_shared<arrow::FloatBuilder>(memory_pool),
-            }),
-            arrow_datatype()
-        ));
-    }
-
     rerun::Error Scale3D::fill_arrow_array_builder(
         arrow::DenseUnionBuilder* builder, const Scale3D* elements, size_t num_elements
     ) {

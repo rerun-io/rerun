@@ -30,34 +30,6 @@ namespace rerun::datatypes {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::DenseUnionBuilder>> AffixFuzzer3::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::DenseUnionBuilder>(
-            memory_pool,
-            // Children:
-            std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                std::make_shared<arrow::NullBuilder>(memory_pool),
-                std::make_shared<arrow::FloatBuilder>(memory_pool),
-                std::make_shared<arrow::FloatBuilder>(memory_pool),
-                std::make_shared<arrow::ListBuilder>(
-                    memory_pool,
-                    rerun::datatypes::AffixFuzzer1::new_arrow_array_builder(memory_pool).value
-                ),
-                std::make_shared<arrow::FixedSizeListBuilder>(
-                    memory_pool,
-                    std::make_shared<arrow::FloatBuilder>(memory_pool),
-                    3
-                ),
-            }),
-            arrow_datatype()
-        ));
-    }
-
     rerun::Error AffixFuzzer3::fill_arrow_array_builder(
         arrow::DenseUnionBuilder* builder, const AffixFuzzer3* elements, size_t num_elements
     ) {

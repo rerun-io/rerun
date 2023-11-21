@@ -14,16 +14,6 @@ namespace rerun::components {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::UInt64Builder>> InstanceKey::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::UInt64Builder>(memory_pool));
-    }
-
     rerun::Error InstanceKey::fill_arrow_array_builder(
         arrow::UInt64Builder* builder, const InstanceKey* elements, size_t num_elements
     ) {
@@ -51,13 +41,13 @@ namespace rerun::components {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
 
-        auto builder_result = InstanceKey::new_arrow_array_builder(pool);
-        RR_RETURN_NOT_OK(builder_result.error);
-        auto builder = std::move(builder_result.value);
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(
-                InstanceKey::fill_arrow_array_builder(builder.get(), instances, num_instances)
-            );
+            RR_RETURN_NOT_OK(InstanceKey::fill_arrow_array_builder(
+                static_cast<arrow::UInt64Builder*>(builder.get()),
+                instances,
+                num_instances
+            ));
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));

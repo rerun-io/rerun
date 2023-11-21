@@ -16,29 +16,9 @@ namespace rerun::components {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::DenseUnionBuilder>> OutOfTreeTransform3D::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(rerun::datatypes::Transform3D::new_arrow_array_builder(memory_pool).value);
-    }
-
     rerun::Error OutOfTreeTransform3D::fill_arrow_array_builder(
         arrow::DenseUnionBuilder* builder, const OutOfTreeTransform3D* elements, size_t num_elements
     ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
-            );
-        }
-
         static_assert(sizeof(rerun::datatypes::Transform3D) == sizeof(OutOfTreeTransform3D));
         RR_RETURN_NOT_OK(rerun::datatypes::Transform3D::fill_arrow_array_builder(
             builder,
@@ -55,12 +35,10 @@ namespace rerun::components {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
 
-        auto builder_result = OutOfTreeTransform3D::new_arrow_array_builder(pool);
-        RR_RETURN_NOT_OK(builder_result.error);
-        auto builder = std::move(builder_result.value);
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
         if (instances && num_instances > 0) {
             RR_RETURN_NOT_OK(OutOfTreeTransform3D::fill_arrow_array_builder(
-                builder.get(),
+                static_cast<arrow::DenseUnionBuilder*>(builder.get()),
                 instances,
                 num_instances
             ));

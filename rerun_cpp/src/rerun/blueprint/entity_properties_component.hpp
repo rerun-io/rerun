@@ -12,7 +12,6 @@
 
 namespace arrow {
     class DataType;
-    class MemoryPool;
     class StructBuilder;
 } // namespace arrow
 
@@ -35,11 +34,6 @@ namespace rerun::blueprint {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
-
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(

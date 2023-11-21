@@ -12,16 +12,6 @@ namespace rerun::datatypes {
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::UInt16Builder>> KeypointId::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::UInt16Builder>(memory_pool));
-    }
-
     rerun::Error KeypointId::fill_arrow_array_builder(
         arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
     ) {
