@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from data import (
+from .data import (
     ColorGrid,
     ColorSpiral,
     RectPyramid,
@@ -11,8 +11,8 @@ from data import (
     color_spiral,
     rect_pyramid,
 )
-from turbo import turbo_colormap_data
-from util import bounce_lerp, interleave
+from .turbo import turbo_colormap_data
+from .util import bounce_lerp, interleave
 
 __all__ = [
     # data
