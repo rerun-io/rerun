@@ -7,6 +7,8 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <rerun.hpp>
 
+#include <rerun/c/rerun.h>
+
 #include "error_check.hpp"
 
 namespace fs = std::filesystem;
@@ -455,9 +457,19 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                     );
                 }
             }
+            AND_GIVEN("a cell with an invalid component type") {
+                rerun::DataCell cell = {};
+                cell.num_instances = 1;
+                cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
+                cell.array = rerun::components::indicator_arrow_array();
 
-            // TODO: log with invalid type
-            // TODO(andreas): Tests missing for various invalid data cell types, provoking the different errors that may occur.
+                THEN("try_log_data_row fails with InvalidComponentTypeHandle") {
+                    CHECK(
+                        stream.try_log_data_row(path, 1, 1, &cell, true).code ==
+                        rerun::ErrorCode::InvalidComponentTypeHandle
+                    );
+                }
+            }
         }
     }
 }
