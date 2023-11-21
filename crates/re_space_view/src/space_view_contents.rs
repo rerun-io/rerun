@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use nohash_hasher::IntMap;
-use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
+use re_data_store::{EntityPath, EntityProperties};
 use re_viewer_context::{
     DataBlueprintGroupHandle, DataResult, EntitiesPerSystemPerClass, PerSystemEntities,
     SpaceViewId, StoreContext, ViewSystemName,
@@ -9,7 +9,9 @@ use re_viewer_context::{
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
-use crate::{DataQuery, DataResultHandle, DataResultNode, DataResultTree, PropertyResolver};
+use crate::{
+    DataQuery, DataResultHandle, DataResultNode, DataResultTree, EntityOverrides, PropertyResolver,
+};
 
 /// A grouping of several data-blueprints.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
@@ -90,7 +92,8 @@ pub struct SpaceViewContents {
 
 /// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
 impl SpaceViewContents {
-    pub const PROPERTIES_PREFIX: &str = "properties";
+    pub const INDIVIDUAL_OVERRIDES_PREFIX: &str = "individual_overrides";
+    pub const GROUP_OVERRIDES_PREFIX: &str = "group_overrides";
 
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {
@@ -474,14 +477,13 @@ impl DataQuery for SpaceViewContents {
         _entities_per_system_per_class: &EntitiesPerSystemPerClass,
     ) -> DataResultTree {
         re_tracing::profile_function!();
-        let root_override = property_resolver.resolve_root_override(ctx);
-        let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
+        let overrides = property_resolver.resolve_entity_overrides(ctx);
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
         let root_handle = Some(self.root_group().add_to_data_results_recursive(
             self,
-            &entity_overrides,
+            &overrides,
             None,
-            &root_override,
+            &overrides.root,
             &mut data_results,
         ));
         DataResultTree {
@@ -496,9 +498,10 @@ impl DataQuery for SpaceViewContents {
         ctx: &StoreContext<'_>,
         _entities_per_system_per_class: &EntitiesPerSystemPerClass,
         entity_path: &EntityPath,
+        as_group: bool,
     ) -> DataResult {
         re_tracing::profile_function!();
-        let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
+        let overrides = property_resolver.resolve_entity_overrides(ctx);
 
         let view_parts = self
             .per_system_entities()
@@ -512,21 +515,45 @@ impl DataQuery for SpaceViewContents {
             })
             .collect();
 
-        let mut resolved_properties = property_resolver.resolve_root_override(ctx);
+        // Start with the root override
+        let mut resolved_properties = overrides.root;
+
+        // Merge in any group overrides
         for prefix in EntityPath::incremental_walk(None, entity_path) {
-            resolved_properties = resolved_properties.with_child(&entity_overrides.get(&prefix));
+            if let Some(props) = overrides.group.get_opt(&prefix) {
+                resolved_properties = resolved_properties.with_child(props);
+            }
         }
 
-        DataResult {
-            entity_path: entity_path.clone(),
-            view_parts,
-            is_group: false,
-            resolved_properties,
-            individual_properties: entity_overrides.get_opt(entity_path).cloned(),
-            override_path: self
-                .entity_path()
-                .join(&SpaceViewContents::PROPERTIES_PREFIX.into())
-                .join(entity_path),
+        if as_group {
+            DataResult {
+                entity_path: entity_path.clone(),
+                view_parts,
+                is_group: true,
+                resolved_properties,
+                individual_properties: overrides.group.get_opt(entity_path).cloned(),
+                override_path: self
+                    .entity_path()
+                    .join(&SpaceViewContents::GROUP_OVERRIDES_PREFIX.into())
+                    .join(entity_path),
+            }
+        } else {
+            // Finally apply the individual overrides
+            if let Some(props) = overrides.individual.get_opt(entity_path) {
+                resolved_properties = resolved_properties.with_child(props);
+            }
+
+            DataResult {
+                entity_path: entity_path.clone(),
+                view_parts,
+                is_group: false,
+                resolved_properties,
+                individual_properties: overrides.individual.get_opt(entity_path).cloned(),
+                override_path: self
+                    .entity_path()
+                    .join(&SpaceViewContents::INDIVIDUAL_OVERRIDES_PREFIX.into())
+                    .join(entity_path),
+            }
         }
     }
 }
@@ -539,28 +566,28 @@ impl DataBlueprintGroup {
     fn add_to_data_results_recursive(
         &self,
         contents: &SpaceViewContents,
-        overrides: &EntityPropertyMap,
+        overrides: &EntityOverrides,
         inherited_base: Option<&EntityPath>,
         inherited: &EntityProperties,
         data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
     ) -> DataResultHandle {
         let group_path = self.group_path.clone();
 
-        // TODO(jleibs): This remapping isn't great when a view has a bunch of entity-types.
-        let group_view_parts = contents.view_parts_for_entity_path(&group_path);
+        // The group in a SpaceViewContents should never be displayed
+        // there will always be a leaf that is the actual entity.
+        let group_view_parts = Default::default();
 
         let mut group_resolved_properties = inherited.clone();
 
         for prefix in EntityPath::incremental_walk(inherited_base, &group_path) {
-            if let Some(props) = overrides.get_opt(&prefix) {
+            if let Some(props) = overrides.group.get_opt(&prefix) {
                 group_resolved_properties = group_resolved_properties.with_child(props);
             }
         }
 
         let base_entity_path = contents.entity_path();
-        let props_path = EntityPath::from(SpaceViewContents::PROPERTIES_PREFIX);
-
-        let group_override_path = base_entity_path.join(&props_path).join(&group_path);
+        let individual_prefix = EntityPath::from(SpaceViewContents::INDIVIDUAL_OVERRIDES_PREFIX);
+        let group_prefix = EntityPath::from(SpaceViewContents::GROUP_OVERRIDES_PREFIX);
 
         // First build up the direct children
         let mut children: SmallVec<_> = self
@@ -572,14 +599,20 @@ impl DataBlueprintGroup {
 
                 let mut resolved_properties = group_resolved_properties.clone();
 
-                for prefix in EntityPath::incremental_walk(inherited_base, &entity_path) {
-                    if let Some(props) = overrides.get_opt(&prefix) {
+                // Only need to do the incremental walk up from the group
+                for prefix in EntityPath::incremental_walk(Some(&group_path), &entity_path) {
+                    if let Some(props) = overrides.group.get_opt(&prefix) {
                         resolved_properties = resolved_properties.with_child(props);
                     }
                 }
 
-                let individual_properties = overrides.get_opt(&entity_path).cloned();
-                let override_path = base_entity_path.join(&props_path).join(&entity_path);
+                let individual_properties = overrides.individual.get_opt(&entity_path).cloned();
+
+                if let Some(props) = &individual_properties {
+                    resolved_properties = resolved_properties.with_child(props);
+                }
+
+                let override_path = base_entity_path.join(&individual_prefix).join(&entity_path);
 
                 data_results.insert(DataResultNode {
                     data_result: DataResult {
@@ -604,8 +637,8 @@ impl DataBlueprintGroup {
                     group.add_to_data_results_recursive(
                         contents,
                         overrides,
-                        inherited_base,
-                        inherited,
+                        Some(&group_path),
+                        &group_resolved_properties,
                         data_results,
                     )
                 })
@@ -614,7 +647,11 @@ impl DataBlueprintGroup {
 
         children.append(&mut recursive_children);
 
-        let individual_properties = overrides.get_opt(&group_path).cloned();
+        // The 'individual' properties of a group are the group overrides
+        let individual_properties = overrides.group.get_opt(&group_path).cloned();
+
+        let group_override_path = base_entity_path.join(&group_prefix).join(&group_path);
+
         data_results.insert(DataResultNode {
             data_result: DataResult {
                 entity_path: group_path,

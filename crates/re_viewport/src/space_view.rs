@@ -2,7 +2,9 @@ use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{DataQuery, PropertyResolver, ScreenshotMode, SpaceViewContents};
+use re_space_view::{
+    DataQuery, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
+};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
     DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClassName,
@@ -383,20 +385,18 @@ impl SpaceViewBlueprint {
     }
 }
 
-impl PropertyResolver for SpaceViewBlueprint {
-    /// Helper function to lookup the properties for a given entity path.
-    ///
-    /// We start with the auto properties for the `SpaceView` as the base layer and
-    /// then incrementally override from there.
-    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityPropertyMap {
+impl SpaceViewBlueprint {
+    fn resolve_entity_overrides_for_prefix(
+        &self,
+        ctx: &StoreContext<'_>,
+        prefix: EntityPath,
+    ) -> EntityPropertyMap {
         re_tracing::profile_function!();
         let blueprint = ctx.blueprint;
 
         let mut prop_map = self.auto_properties.clone();
 
-        let props_path = self
-            .entity_path()
-            .join(&SpaceViewContents::PROPERTIES_PREFIX.into());
+        let props_path = self.entity_path().join(&prefix);
         if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
@@ -411,8 +411,24 @@ impl PropertyResolver for SpaceViewBlueprint {
         }
         prop_map
     }
+}
 
-    fn resolve_root_override(&self, ctx: &StoreContext<'_>) -> EntityProperties {
-        self.root_data_result(ctx).resolved_properties
+impl PropertyResolver for SpaceViewBlueprint {
+    /// Helper function to lookup the properties for a given entity path.
+    ///
+    /// We start with the auto properties for the `SpaceView` as the base layer and
+    /// then incrementally override from there.
+    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityOverrides {
+        EntityOverrides {
+            root: self.root_data_result(ctx).resolved_properties,
+            individual: self.resolve_entity_overrides_for_prefix(
+                ctx,
+                SpaceViewContents::INDIVIDUAL_OVERRIDES_PREFIX.into(),
+            ),
+            group: self.resolve_entity_overrides_for_prefix(
+                ctx,
+                SpaceViewContents::GROUP_OVERRIDES_PREFIX.into(),
+            ),
+        }
     }
 }

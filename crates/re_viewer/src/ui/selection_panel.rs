@@ -341,12 +341,14 @@ fn blueprint_ui(
                         // splat - the whole entity
                         let space_view_class = *space_view.class_name();
                         let entity_path = &instance_path.entity_path;
+                        let as_group = false;
 
                         let data_result = space_view.contents.resolve(
                             space_view,
                             ctx.store_context,
                             ctx.entities_per_system_per_class,
                             &instance_path.entity_path,
+                            as_group,
                         );
 
                         let mut props = data_result
@@ -378,11 +380,14 @@ fn blueprint_ui(
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
                     let group_path = group.group_path.clone();
+                    let as_group = false;
+
                     let data_result = space_view.contents.resolve(
                         space_view,
                         ctx.store_context,
                         ctx.entities_per_system_per_class,
                         &group_path,
+                        as_group,
                     );
 
                     let space_view_class = *space_view.class_name();
