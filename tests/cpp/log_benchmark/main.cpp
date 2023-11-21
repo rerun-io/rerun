@@ -25,7 +25,7 @@
 // For better whole-executable timing capture you can also first build the executable and then run:
 // ```
 // pixi run cpp-build-log-benchmark
-// ./build/tests/cpp/log_benchmark/log_benchmark
+// ./build/release/tests/cpp/log_benchmark/log_benchmark
 // ```
 //
 
