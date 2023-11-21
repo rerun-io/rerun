@@ -237,7 +237,7 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=["RecordingStream", "LoggingHandler", "MemoryRecording"],
     ),
     Section(
-        title="Example utilities",
+        title="Utilities",
         show_tables=False,
         mod_path="rerun.utilities",
         show_submodules=True,
