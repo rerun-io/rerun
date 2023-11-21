@@ -5,7 +5,7 @@
 
 namespace arrow {
     class DataType;
-};
+}
 
 namespace rerun::components {
     /// Arrow data type shared by all instances of IndicatorComponent.
