@@ -432,3 +432,251 @@ impl PropertyResolver for SpaceViewBlueprint {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use re_data_store::{StoreDb, VisibleHistoryBoundary};
+    use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
+    use re_space_view::DataResultTree;
+    use re_viewer_context::{EntitiesPerSystemPerClass, StoreContext};
+
+    use super::*;
+
+    fn find_in_tree<'a>(
+        tree: &'a DataResultTree,
+        path: &EntityPath,
+        is_group: bool,
+    ) -> Option<&'a DataResult> {
+        let mut return_result = None;
+        tree.visit(&mut |handle| {
+            if let Some(result) = tree.lookup(handle) {
+                if result.entity_path == *path && result.is_group == is_group {
+                    return_result = Some(result);
+                }
+            }
+        });
+        return_result
+    }
+
+    fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
+        let component = EntityPropertiesComponent { props };
+        let row = DataRow::from_cells1_sized(
+            RowId::random(),
+            path.clone(),
+            TimePoint::timeless(),
+            1,
+            DataCell::from([component]),
+        )
+        .unwrap();
+
+        store.add_data_row(row).unwrap();
+    }
+
+    #[test]
+    fn test_overrides() {
+        let recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut blueprint = StoreDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+
+        let space_view = SpaceViewBlueprint::new(
+            "3D".into(),
+            &EntityPath::root(),
+            [
+                &"parent".into(),
+                &"parent/skip/child1".into(),
+                &"parent/skip/child2".into(),
+            ]
+            .into_iter(),
+        );
+
+        let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
+        entities_per_system_per_class
+            .entry("3D".into())
+            .or_default()
+            .entry("Points3D".into())
+            .or_insert_with(|| {
+                [
+                    EntityPath::from("parent"),
+                    EntityPath::from("parent/skipped/child1"),
+                ]
+                .into_iter()
+                .collect()
+            });
+
+        // No overrides set. Everybody has default values.
+        {
+            let ctx = StoreContext {
+                blueprint: &blueprint,
+                recording: Some(&recording),
+                all_recordings: vec![],
+            };
+
+            let result_tree = space_view.contents.execute_query(
+                &space_view,
+                &ctx,
+                &entities_per_system_per_class,
+            );
+
+            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
+            let child1 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
+            let child2 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+
+            for result in [parent, child1, child2] {
+                assert_eq!(result.resolved_properties, EntityProperties::default(),);
+            }
+
+            // Now, override visibility on parent but not group
+            let mut overrides = parent.individual_properties.clone().unwrap_or_default();
+            overrides.visible = false;
+
+            save_override(overrides, &parent.override_path, &mut blueprint);
+        }
+
+        // Parent is not visible, but children are
+        {
+            let ctx = StoreContext {
+                blueprint: &blueprint,
+                recording: Some(&recording),
+                all_recordings: vec![],
+            };
+
+            let result_tree = space_view.contents.execute_query(
+                &space_view,
+                &ctx,
+                &entities_per_system_per_class,
+            );
+
+            let parent_group =
+                find_in_tree(&result_tree, &EntityPath::from("parent"), true).unwrap();
+            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
+            let child1 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
+            let child2 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+
+            assert!(!parent.resolved_properties.visible);
+
+            for result in [child1, child2] {
+                assert!(result.resolved_properties.visible);
+            }
+
+            // Override visibility on parent group
+            let mut overrides = parent_group
+                .individual_properties
+                .clone()
+                .unwrap_or_default();
+            overrides.visible = false;
+
+            save_override(overrides, &parent_group.override_path, &mut blueprint);
+        }
+
+        // Nobody is visible
+        {
+            let ctx = StoreContext {
+                blueprint: &blueprint,
+                recording: Some(&recording),
+                all_recordings: vec![],
+            };
+
+            let result_tree = space_view.contents.execute_query(
+                &space_view,
+                &ctx,
+                &entities_per_system_per_class,
+            );
+
+            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
+            let child1 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
+            let child2 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+
+            for result in [parent, child1, child2] {
+                assert!(!result.resolved_properties.visible);
+            }
+        }
+
+        // Override visible range on root
+        {
+            let root = space_view.root_data_result(&StoreContext {
+                blueprint: &blueprint,
+                recording: Some(&recording),
+                all_recordings: vec![],
+            });
+            let mut overrides = root.individual_properties.clone().unwrap_or_default();
+            overrides.visible_history.enabled = true;
+            overrides.visible_history.nanos = VisibleHistory::ALL;
+
+            save_override(overrides, &root.override_path, &mut blueprint);
+        }
+
+        // Everyone has visible history
+        {
+            let ctx = StoreContext {
+                blueprint: &blueprint,
+                recording: Some(&recording),
+                all_recordings: vec![],
+            };
+
+            let result_tree = space_view.contents.execute_query(
+                &space_view,
+                &ctx,
+                &entities_per_system_per_class,
+            );
+
+            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
+            let child1 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
+            let child2 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+
+            for result in [parent, child1, child2] {
+                assert!(result.resolved_properties.visible_history.enabled);
+                assert_eq!(
+                    result.resolved_properties.visible_history.nanos,
+                    VisibleHistory::ALL
+                );
+            }
+
+            let mut overrides = child2.individual_properties.clone().unwrap_or_default();
+            overrides.visible_history.enabled = true;
+
+            save_override(overrides, &child2.override_path, &mut blueprint);
+        }
+
+        // Child2 has its own visible history
+        {
+            let ctx = StoreContext {
+                blueprint: &blueprint,
+                recording: Some(&recording),
+                all_recordings: vec![],
+            };
+
+            let result_tree = space_view.contents.execute_query(
+                &space_view,
+                &ctx,
+                &entities_per_system_per_class,
+            );
+
+            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
+            let child1 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
+            let child2 =
+                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+
+            for result in [parent, child1] {
+                assert!(result.resolved_properties.visible_history.enabled);
+                assert_eq!(
+                    result.resolved_properties.visible_history.nanos,
+                    VisibleHistory::ALL
+                );
+            }
+
+            assert!(child2.resolved_properties.visible_history.enabled);
+            assert_eq!(
+                child2.resolved_properties.visible_history.nanos,
+                VisibleHistory::OFF
+            );
+        }
+    }
+}
