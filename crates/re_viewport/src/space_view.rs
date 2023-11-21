@@ -247,7 +247,7 @@ impl SpaceViewBlueprint {
             re_tracing::profile_scope!("per_system_data_results");
 
             data_results.visit(&mut |handle| {
-                if let Some(result) = data_results.lookup(handle) {
+                if let Some(result) = data_results.lookup_result(handle) {
                     for system in &result.view_parts {
                         per_system_data_results
                             .entry(*system)
@@ -449,7 +449,7 @@ mod tests {
     ) -> Option<&'a DataResult> {
         let mut return_result = None;
         tree.visit(&mut |handle| {
-            if let Some(result) = tree.lookup(handle) {
+            if let Some(result) = tree.lookup_result(handle) {
                 if result.entity_path == *path && result.is_group == is_group {
                     return_result = Some(result);
                 }
