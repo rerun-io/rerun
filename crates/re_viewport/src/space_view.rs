@@ -360,7 +360,7 @@ impl SpaceViewBlueprint {
         let individual_properties = ctx
             .blueprint
             .store()
-            .query_timeless_component::<EntityPropertiesComponent>(&self.entity_path())
+            .query_timeless_component_quiet::<EntityPropertiesComponent>(&self.entity_path())
             .map(|result| result.value.props);
 
         let resolved_properties = individual_properties.clone().unwrap_or_else(|| {
@@ -401,7 +401,7 @@ impl SpaceViewBlueprint {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
                     .store()
-                    .query_timeless_component::<EntityPropertiesComponent>(path)
+                    .query_timeless_component_quiet::<EntityPropertiesComponent>(path)
                 {
                     let overridden_path =
                         EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);

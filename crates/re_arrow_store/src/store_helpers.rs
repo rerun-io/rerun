@@ -92,6 +92,66 @@ impl DataStore {
             .map(|c| (row_id, c).into())
     }
 
+    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`].
+    ///
+    /// This is a quiet version of [`query_latest_component`] which suppresses errors and sends them
+    /// to debug instead.
+    ///
+    /// This assumes that the row we get from the store only contains a single instance for this
+    /// component; it will return None and log a debug message otherwise.
+    ///
+    /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
+    ///
+    /// This is a best-effort helper, it will merely logs debug messages on failure.
+    pub fn query_latest_component_quiet<C: Component>(
+        &self,
+        entity_path: &EntityPath,
+        query: &LatestAtQuery,
+    ) -> Option<VersionedComponent<C>> {
+        re_tracing::profile_function!();
+
+        let (row_id, cells) = self.latest_at(query, entity_path, C::name(), &[C::name()])?;
+        let cell = cells.get(0)?.as_ref()?;
+
+        cell.try_to_native_mono::<C>()
+            .map_err(|err| {
+                if let re_log_types::DataCellError::LoggableDeserialize(err) = err {
+                    let bt = err.backtrace().map(|mut bt| {
+                        bt.resolve();
+                        bt
+                    });
+
+                    let err = Box::new(err) as Box<dyn std::error::Error>;
+                    if let Some(bt) = bt {
+                        re_log::debug_once!(
+                            "Couldn't deserialize component at {entity_path}#{}: {}\n{:#?}",
+                            C::name(),
+                            re_error::format(&err),
+                            bt,
+                        );
+                    } else {
+                        re_log::debug_once!(
+                            "Couldn't deserialize component at {entity_path}#{}: {}",
+                            C::name(),
+                            re_error::format(&err)
+                        );
+                    }
+                    return err;
+                }
+
+                let err = Box::new(err) as Box<dyn std::error::Error>;
+                re_log::debug_once!(
+                    "Couldn't deserialize component at {entity_path}#{}: {}",
+                    C::name(),
+                    re_error::format(&err)
+                );
+
+                err
+            })
+            .ok()?
+            .map(|c| (row_id, c).into())
+    }
+
     /// Call [`Self::query_latest_component`] at the given path, walking up the hierarchy until an instance is found.
     pub fn query_latest_component_at_closest_ancestor<C: Component>(
         &self,
@@ -126,6 +186,27 @@ impl DataStore {
 
         let query = LatestAtQuery::latest(Timeline::default());
         self.query_latest_component(entity_path, &query)
+    }
+
+    /// Get the latest value for a given [`re_types_core::Component`] and the associated [`RowId`], assuming it is timeless.
+    ///
+    /// This is a quiet version of [`query_timeless_component`] which suppresses errors and sends them
+    /// to debug instead.
+    ///
+    /// This assumes that the row we get from the store only contains a single instance for this
+    /// component; it will log a warning otherwise.
+    ///
+    /// This should only be used for "mono-components" such as `Transform` and `Tensor`.
+    ///
+    /// This is a best-effort helper, it will merely log debug on failure.
+    pub fn query_timeless_component_quiet<C: Component>(
+        &self,
+        entity_path: &EntityPath,
+    ) -> Option<VersionedComponent<C>> {
+        re_tracing::profile_function!();
+
+        let query = LatestAtQuery::latest(Timeline::default());
+        self.query_latest_component_quiet(entity_path, &query)
     }
 }
 
