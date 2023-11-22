@@ -2167,22 +2167,11 @@ fn quote_loggable_hpp_and_cpp(
     let type_ident = obj.ident();
     let fqname = &obj.fqname;
 
-    let mut methods = Vec::new();
-
-    methods.push(arrow_data_type_method(
-        obj,
-        objects,
-        hpp_includes,
-        cpp_includes,
-        hpp_declarations,
-    ));
-    methods.push(fill_arrow_array_builder_method(
-        obj,
-        cpp_includes,
-        hpp_declarations,
-        objects,
-    ));
-    methods.push(to_data_cell_method(obj, objects, hpp_includes));
+    let methods = vec![
+        arrow_data_type_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
+        fill_arrow_array_builder_method(obj, cpp_includes, hpp_declarations, objects),
+        to_data_cell_method(obj, objects, hpp_includes),
+    ];
 
     let loggable_type_name = quote! { Loggable<#namespace_ident::#type_ident> };
 
