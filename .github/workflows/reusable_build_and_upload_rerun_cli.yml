@@ -135,56 +135,22 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      # The pip-cache setup logic doesn't work in the ubuntu docker container
-      # That's probably fine since we bake these deps into the container already
-      - name: Setup python
-        if: ${{ inputs.PLATFORM != 'linux' }}
-        uses: actions/setup-python@v4
+      - uses: prefix-dev/setup-pixi@v0.3.0
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-          cache-dependency-path: "scripts/ci/requirements.txt"
+          pixi-version: v0.6.0
+          cache: true
 
-      # These should already be in the docker container, but run for good measure. A no-op install
-      # should be fast, and this way things don't break if we add new packages without rebuilding
-      # docker
-      - run: pip install -r scripts/ci/requirements.txt
-
-      # We have a nice script for that: ./scripts/setup_web.sh
-      # Unfortunately, we can't run that on Windows, because Windows doesn't come with
-      # a package manager like grown-up OSes do (at least not the CI version of Windows).
-      # Also we can't run it on linux because the 20.04 Docker container will install
-      # an old version of binaryen/wasm-opt that barfs on the `--fast-math` flag
-      # So we only run the script on macos, and then on Windows we do the parts of the script manually.
-      # On ubuntu, the correct packages are pre-installed in our docker container.
-
-      - name: Install prerequisites for building the web-viewer Wasm (non-Windows)
-        if: (inputs.PLATFORM == 'macos-intel') || (inputs.PLATFORM == 'macos-arm')
-        shell: bash
-        run: ./scripts/setup_web.sh
-
-      # The first steps of setup_web.sh, for Windows:
-      - name: Install wasm32 cargo target for building the web-viewer Wasm on windows
-        if: inputs.PLATFORM == 'windows'
-        shell: bash
-        run: rustup target add wasm32-unknown-unknown
-
-      # The last step of setup_web.sh, for Windows.
-      # Since 'winget' is not available within the GitHub runner, we download the package directly:
-      # See: https://github.com/marketplace/actions/engineerd-configurator
-      - name: Install binaryen for building the web-viewer Wasm on windows
-        if: inputs.PLATFORM == 'windows'
-        uses: engineerd/configurator@v0.0.9
-        with:
-          name: "wasm-opt.exe"
-          url: "https://github.com/WebAssembly/binaryen/releases/download/version_111/binaryen-version_111-x86_64-windows.tar.gz"
-          pathInArchive: "binaryen-version_111/bin/wasm-opt.exe"
-
-      - name: Build rerun-cli (release)
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --locked -p rerun-cli --no-default-features --features native_viewer,web_viewer --release --target ${{ needs.set-config.outputs.TARGET }}
+      - name: Build rerun-cli
+        run: |
+          pixi shell
+          pip install -r scripts/ci/requirements.txt
+          cargo build \
+            --locked \
+            -p rerun-cli \
+            --no-default-features \
+            --features native_viewer,web_viewer \
+            --release \
+            --target ${{ needs.set-config.outputs.TARGET }}
 
       - id: "auth"
         uses: google-github-actions/auth@v1
@@ -212,3 +178,4 @@ jobs:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
+
