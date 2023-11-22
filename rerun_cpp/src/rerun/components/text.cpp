@@ -29,7 +29,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::Text>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::Text>::to_arrow(
         const components::Text* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

@@ -41,7 +41,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::Vec2D>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::Vec2D>::to_arrow(
         const datatypes::Vec2D* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

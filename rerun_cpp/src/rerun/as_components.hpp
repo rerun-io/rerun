@@ -41,8 +41,7 @@ namespace rerun {
         );
 
         static Result<std::vector<DataCell>> serialize(const Collection<TComponent>& components) {
-            auto cell_result =
-                Loggable<TComponent>::to_data_cell(components.data(), components.size());
+            auto cell_result = Loggable<TComponent>::to_arrow(components.data(), components.size());
             RR_RETURN_NOT_OK(cell_result.error);
 
             return Result<std::vector<DataCell>>({std::move(cell_result.value)});

@@ -85,7 +85,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::Rotation3D>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::Rotation3D>::to_arrow(
         const datatypes::Rotation3D* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

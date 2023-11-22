@@ -76,7 +76,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::datatypes::Vec4D` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const datatypes::Vec4D* instances, size_t num_instances
         );
     };

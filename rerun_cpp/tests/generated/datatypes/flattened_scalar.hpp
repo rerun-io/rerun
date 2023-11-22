@@ -48,7 +48,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::datatypes::FlattenedScalar` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const datatypes::FlattenedScalar* instances, size_t num_instances
         );
     };

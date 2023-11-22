@@ -528,7 +528,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::datatypes::TensorBuffer` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const datatypes::TensorBuffer* instances, size_t num_instances
         );
     };

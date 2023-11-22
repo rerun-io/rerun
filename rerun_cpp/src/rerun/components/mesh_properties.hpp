@@ -74,7 +74,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::components::MeshProperties` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const components::MeshProperties* instances, size_t num_instances
         );
     };

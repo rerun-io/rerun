@@ -114,7 +114,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::ClassDescription>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::ClassDescription>::to_arrow(
         const datatypes::ClassDescription* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

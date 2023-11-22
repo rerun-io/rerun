@@ -65,7 +65,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::components::LineStrip3D` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const components::LineStrip3D* instances, size_t num_instances
         );
     };

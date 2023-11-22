@@ -17,7 +17,7 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = Loggable<rerun::components::DisconnectedSpace>::to_data_cell(
+            auto result = Loggable<rerun::components::DisconnectedSpace>::to_arrow(
                 &archetype.disconnected_space,
                 1
             );
@@ -26,8 +26,7 @@ namespace rerun {
         }
         {
             auto indicator = DisconnectedSpace::IndicatorComponent();
-            auto result =
-                Loggable<DisconnectedSpace::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = Loggable<DisconnectedSpace::IndicatorComponent>::to_arrow(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

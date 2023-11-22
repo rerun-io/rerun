@@ -17,22 +17,19 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = Loggable<rerun::components::TensorData>::to_data_cell(&archetype.data, 1);
+            auto result = Loggable<rerun::components::TensorData>::to_arrow(&archetype.data, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result = Loggable<rerun::components::DrawOrder>::to_data_cell(
-                &archetype.draw_order.value(),
-                1
-            );
+            auto result =
+                Loggable<rerun::components::DrawOrder>::to_arrow(&archetype.draw_order.value(), 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = SegmentationImage::IndicatorComponent();
-            auto result =
-                Loggable<SegmentationImage::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = Loggable<SegmentationImage::IndicatorComponent>::to_arrow(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

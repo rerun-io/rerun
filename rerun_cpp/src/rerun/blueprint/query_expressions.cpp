@@ -54,7 +54,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<blueprint::QueryExpressions>::to_data_cell(
+    Result<rerun::DataCell> Loggable<blueprint::QueryExpressions>::to_arrow(
         const blueprint::QueryExpressions* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

@@ -27,7 +27,7 @@ namespace rerun {
     template <const char Name[]>
     struct Loggable<components::IndicatorComponent<Name>> {
         /// Creates a Rerun DataCell from an array of IndicatorComponent components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const components::IndicatorComponent<Name>*, size_t
         ) {
             // Lazily register the component type (only once).

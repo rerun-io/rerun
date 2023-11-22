@@ -30,7 +30,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::Vector3D>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::Vector3D>::to_arrow(
         const components::Vector3D* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

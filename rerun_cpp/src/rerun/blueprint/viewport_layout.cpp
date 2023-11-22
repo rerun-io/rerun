@@ -80,7 +80,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<blueprint::ViewportLayout>::to_data_cell(
+    Result<rerun::DataCell> Loggable<blueprint::ViewportLayout>::to_arrow(
         const blueprint::ViewportLayout* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

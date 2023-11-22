@@ -30,7 +30,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::Position2D>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::Position2D>::to_arrow(
         const components::Position2D* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

@@ -54,7 +54,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::components::Radius` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const components::Radius* instances, size_t num_instances
         );
     };

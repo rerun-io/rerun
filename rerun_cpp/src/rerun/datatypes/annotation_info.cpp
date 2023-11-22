@@ -79,7 +79,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::AnnotationInfo>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::AnnotationInfo>::to_arrow(
         const datatypes::AnnotationInfo* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

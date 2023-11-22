@@ -17,13 +17,13 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = Loggable<rerun::components::TensorData>::to_data_cell(&archetype.data, 1);
+            auto result = Loggable<rerun::components::TensorData>::to_arrow(&archetype.data, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = Tensor::IndicatorComponent();
-            auto result = Loggable<Tensor::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = Loggable<Tensor::IndicatorComponent>::to_arrow(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

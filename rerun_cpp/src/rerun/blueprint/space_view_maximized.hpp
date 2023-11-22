@@ -55,7 +55,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::blueprint::SpaceViewMaximized` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const blueprint::SpaceViewMaximized* instances, size_t num_instances
         );
     };

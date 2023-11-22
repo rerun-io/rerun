@@ -38,7 +38,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::ClearIsRecursive>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::ClearIsRecursive>::to_arrow(
         const components::ClearIsRecursive* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

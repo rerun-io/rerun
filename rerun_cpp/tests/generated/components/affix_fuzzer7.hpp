@@ -57,7 +57,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::components::AffixFuzzer7` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const components::AffixFuzzer7* instances, size_t num_instances
         );
     };

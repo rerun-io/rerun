@@ -42,7 +42,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::Quaternion>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::Quaternion>::to_arrow(
         const datatypes::Quaternion* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

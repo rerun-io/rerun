@@ -57,7 +57,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::blueprint::QueryExpressions` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const blueprint::QueryExpressions* instances, size_t num_instances
         );
     };

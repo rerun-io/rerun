@@ -207,7 +207,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::TensorBuffer>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::TensorBuffer>::to_arrow(
         const datatypes::TensorBuffer* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

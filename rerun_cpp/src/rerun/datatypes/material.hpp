@@ -60,7 +60,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::datatypes::Material` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const datatypes::Material* instances, size_t num_instances
         );
     };

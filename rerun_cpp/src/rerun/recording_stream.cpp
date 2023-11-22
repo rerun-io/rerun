@@ -198,8 +198,7 @@ namespace rerun {
         bool inject_time = !timeless;
 
         if (!splatted.empty()) {
-            splatted.push_back(Loggable<components::InstanceKey>::to_data_cell(&splat_key, 1).value
-            );
+            splatted.push_back(Loggable<components::InstanceKey>::to_arrow(&splat_key, 1).value);
             auto result =
                 try_log_data_row(entity_path, 1, splatted.size(), splatted.data(), inject_time);
             if (result.is_err()) {

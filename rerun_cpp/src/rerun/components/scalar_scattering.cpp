@@ -38,7 +38,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::ScalarScattering>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::ScalarScattering>::to_arrow(
         const components::ScalarScattering* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

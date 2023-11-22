@@ -32,7 +32,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::AffixFuzzer4>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::AffixFuzzer4>::to_arrow(
         const components::AffixFuzzer4* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

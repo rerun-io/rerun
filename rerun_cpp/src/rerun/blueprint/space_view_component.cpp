@@ -56,7 +56,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<blueprint::SpaceViewComponent>::to_data_cell(
+    Result<rerun::DataCell> Loggable<blueprint::SpaceViewComponent>::to_arrow(
         const blueprint::SpaceViewComponent* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

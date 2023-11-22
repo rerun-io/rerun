@@ -31,7 +31,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::PinholeProjection>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::PinholeProjection>::to_arrow(
         const components::PinholeProjection* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

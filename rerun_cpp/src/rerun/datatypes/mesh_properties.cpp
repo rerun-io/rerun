@@ -59,7 +59,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::MeshProperties>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::MeshProperties>::to_arrow(
         const datatypes::MeshProperties* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

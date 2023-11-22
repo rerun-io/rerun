@@ -51,7 +51,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::blueprint::PanelView` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const blueprint::PanelView* instances, size_t num_instances
         );
     };

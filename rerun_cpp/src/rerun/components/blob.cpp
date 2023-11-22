@@ -44,7 +44,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::Blob>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::Blob>::to_arrow(
         const components::Blob* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

@@ -17,7 +17,7 @@ namespace rerun {
         cells.reserve(9);
 
         {
-            auto result = Loggable<rerun::components::HalfSizes2D>::to_data_cell(
+            auto result = Loggable<rerun::components::HalfSizes2D>::to_arrow(
                 archetype.half_sizes.data(),
                 archetype.half_sizes.size()
             );
@@ -25,7 +25,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.centers.has_value()) {
-            auto result = Loggable<rerun::components::Position2D>::to_data_cell(
+            auto result = Loggable<rerun::components::Position2D>::to_arrow(
                 archetype.centers.value().data(),
                 archetype.centers.value().size()
             );
@@ -33,7 +33,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            auto result = Loggable<rerun::components::Color>::to_data_cell(
+            auto result = Loggable<rerun::components::Color>::to_arrow(
                 archetype.colors.value().data(),
                 archetype.colors.value().size()
             );
@@ -41,7 +41,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            auto result = Loggable<rerun::components::Radius>::to_data_cell(
+            auto result = Loggable<rerun::components::Radius>::to_arrow(
                 archetype.radii.value().data(),
                 archetype.radii.value().size()
             );
@@ -49,7 +49,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.labels.has_value()) {
-            auto result = Loggable<rerun::components::Text>::to_data_cell(
+            auto result = Loggable<rerun::components::Text>::to_arrow(
                 archetype.labels.value().data(),
                 archetype.labels.value().size()
             );
@@ -57,15 +57,13 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result = Loggable<rerun::components::DrawOrder>::to_data_cell(
-                &archetype.draw_order.value(),
-                1
-            );
+            auto result =
+                Loggable<rerun::components::DrawOrder>::to_arrow(&archetype.draw_order.value(), 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = Loggable<rerun::components::ClassId>::to_data_cell(
+            auto result = Loggable<rerun::components::ClassId>::to_arrow(
                 archetype.class_ids.value().data(),
                 archetype.class_ids.value().size()
             );
@@ -73,7 +71,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.instance_keys.has_value()) {
-            auto result = Loggable<rerun::components::InstanceKey>::to_data_cell(
+            auto result = Loggable<rerun::components::InstanceKey>::to_arrow(
                 archetype.instance_keys.value().data(),
                 archetype.instance_keys.value().size()
             );
@@ -82,7 +80,7 @@ namespace rerun {
         }
         {
             auto indicator = Boxes2D::IndicatorComponent();
-            auto result = Loggable<Boxes2D::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = Loggable<Boxes2D::IndicatorComponent>::to_arrow(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

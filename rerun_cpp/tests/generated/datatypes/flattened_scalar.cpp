@@ -42,7 +42,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::FlattenedScalar>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::FlattenedScalar>::to_arrow(
         const datatypes::FlattenedScalar* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

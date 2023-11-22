@@ -41,7 +41,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<blueprint::PanelView>::to_data_cell(
+    Result<rerun::DataCell> Loggable<blueprint::PanelView>::to_arrow(
         const blueprint::PanelView* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

@@ -92,7 +92,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::datatypes::TranslationAndMat3x3` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const datatypes::TranslationAndMat3x3* instances, size_t num_instances
         );
     };

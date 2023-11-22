@@ -53,7 +53,7 @@ namespace rerun {
         );
 
         /// Creates a Rerun DataCell from an array of `rerun::blueprint::ViewportLayout` components.
-        static Result<rerun::DataCell> to_data_cell(
+        static Result<rerun::DataCell> to_arrow(
             const blueprint::ViewportLayout* instances, size_t num_instances
         );
     };

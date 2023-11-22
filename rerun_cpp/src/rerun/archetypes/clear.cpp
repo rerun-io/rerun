@@ -17,16 +17,14 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = Loggable<rerun::components::ClearIsRecursive>::to_data_cell(
-                &archetype.is_recursive,
-                1
-            );
+            auto result =
+                Loggable<rerun::components::ClearIsRecursive>::to_arrow(&archetype.is_recursive, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = Clear::IndicatorComponent();
-            auto result = Loggable<Clear::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = Loggable<Clear::IndicatorComponent>::to_arrow(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

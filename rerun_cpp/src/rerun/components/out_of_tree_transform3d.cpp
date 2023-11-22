@@ -33,7 +33,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::OutOfTreeTransform3D>::to_data_cell(
+    Result<rerun::DataCell> Loggable<components::OutOfTreeTransform3D>::to_arrow(
         const components::OutOfTreeTransform3D* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

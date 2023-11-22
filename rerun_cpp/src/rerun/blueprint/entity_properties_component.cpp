@@ -52,7 +52,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<blueprint::EntityPropertiesComponent>::to_data_cell(
+    Result<rerun::DataCell> Loggable<blueprint::EntityPropertiesComponent>::to_arrow(
         const blueprint::EntityPropertiesComponent* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

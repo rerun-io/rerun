@@ -103,7 +103,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<datatypes::AffixFuzzer3>::to_data_cell(
+    Result<rerun::DataCell> Loggable<datatypes::AffixFuzzer3>::to_arrow(
         const datatypes::AffixFuzzer3* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.

@@ -17,7 +17,7 @@ namespace rerun {
         cells.reserve(19);
 
         if (archetype.fuzz2101.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer1>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer1>::to_arrow(
                 archetype.fuzz2101.value().data(),
                 archetype.fuzz2101.value().size()
             );
@@ -25,7 +25,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2102.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer2>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer2>::to_arrow(
                 archetype.fuzz2102.value().data(),
                 archetype.fuzz2102.value().size()
             );
@@ -33,7 +33,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2103.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer3>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer3>::to_arrow(
                 archetype.fuzz2103.value().data(),
                 archetype.fuzz2103.value().size()
             );
@@ -41,7 +41,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2104.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer4>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer4>::to_arrow(
                 archetype.fuzz2104.value().data(),
                 archetype.fuzz2104.value().size()
             );
@@ -49,7 +49,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2105.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer5>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer5>::to_arrow(
                 archetype.fuzz2105.value().data(),
                 archetype.fuzz2105.value().size()
             );
@@ -57,7 +57,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2106.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer6>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer6>::to_arrow(
                 archetype.fuzz2106.value().data(),
                 archetype.fuzz2106.value().size()
             );
@@ -65,7 +65,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2107.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer7>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer7>::to_arrow(
                 archetype.fuzz2107.value().data(),
                 archetype.fuzz2107.value().size()
             );
@@ -73,7 +73,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2108.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer8>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer8>::to_arrow(
                 archetype.fuzz2108.value().data(),
                 archetype.fuzz2108.value().size()
             );
@@ -81,7 +81,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2109.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer9>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer9>::to_arrow(
                 archetype.fuzz2109.value().data(),
                 archetype.fuzz2109.value().size()
             );
@@ -89,7 +89,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2110.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer10>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer10>::to_arrow(
                 archetype.fuzz2110.value().data(),
                 archetype.fuzz2110.value().size()
             );
@@ -97,7 +97,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2111.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer11>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer11>::to_arrow(
                 archetype.fuzz2111.value().data(),
                 archetype.fuzz2111.value().size()
             );
@@ -105,7 +105,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2112.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer12>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer12>::to_arrow(
                 archetype.fuzz2112.value().data(),
                 archetype.fuzz2112.value().size()
             );
@@ -113,7 +113,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2113.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer13>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer13>::to_arrow(
                 archetype.fuzz2113.value().data(),
                 archetype.fuzz2113.value().size()
             );
@@ -121,7 +121,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2114.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer14>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer14>::to_arrow(
                 archetype.fuzz2114.value().data(),
                 archetype.fuzz2114.value().size()
             );
@@ -129,7 +129,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2115.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer15>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer15>::to_arrow(
                 archetype.fuzz2115.value().data(),
                 archetype.fuzz2115.value().size()
             );
@@ -137,7 +137,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2116.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer16>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer16>::to_arrow(
                 archetype.fuzz2116.value().data(),
                 archetype.fuzz2116.value().size()
             );
@@ -145,7 +145,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2117.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer17>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer17>::to_arrow(
                 archetype.fuzz2117.value().data(),
                 archetype.fuzz2117.value().size()
             );
@@ -153,7 +153,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.fuzz2118.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer18>::to_data_cell(
+            auto result = Loggable<rerun::components::AffixFuzzer18>::to_arrow(
                 archetype.fuzz2118.value().data(),
                 archetype.fuzz2118.value().size()
             );
@@ -162,7 +162,7 @@ namespace rerun {
         }
         {
             auto indicator = AffixFuzzer4::IndicatorComponent();
-            auto result = Loggable<AffixFuzzer4::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = Loggable<AffixFuzzer4::IndicatorComponent>::to_arrow(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

@@ -1212,7 +1212,7 @@ fn fill_arrow_array_builder_method(
     }
 }
 
-fn to_data_cell_method(obj: &Object, objects: &Objects, hpp_includes: &mut Includes) -> Method {
+fn to_arrow_method(obj: &Object, objects: &Objects, hpp_includes: &mut Includes) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
     hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
@@ -1232,7 +1232,7 @@ fn to_data_cell_method(obj: &Object, objects: &Objects, hpp_includes: &mut Inclu
             is_static: true,
             return_type: quote! { Result<rerun::DataCell> },
             name_and_parameters: quote! {
-                to_data_cell(const #namespace_ident::#type_ident* instances, size_t num_instances)
+                to_arrow(const #namespace_ident::#type_ident* instances, size_t num_instances)
             },
         },
         definition_body: quote! {
@@ -1298,14 +1298,14 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             if field.is_nullable {
                 quote! {
                     if (#field_accessor.has_value()) {
-                        auto result = Loggable<#field_type>::to_data_cell(#field_accessor.value().data(), #field_accessor.value().size());
+                        auto result = Loggable<#field_type>::to_arrow(#field_accessor.value().data(), #field_accessor.value().size());
                         #emplace_back
                     }
                 }
             } else {
                 quote! {
                     {
-                        auto result = Loggable<#field_type>::to_data_cell(#field_accessor.data(), #field_accessor.size());
+                        auto result = Loggable<#field_type>::to_arrow(#field_accessor.data(), #field_accessor.size());
                         #emplace_back
                     }
                 }
@@ -1313,14 +1313,14 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         } else if field.is_nullable {
             quote! {
                 if (#field_accessor.has_value()) {
-                    auto result = Loggable<#field_type>::to_data_cell(&#field_accessor.value(), 1);
+                    auto result = Loggable<#field_type>::to_arrow(&#field_accessor.value(), 1);
                     #emplace_back
                 }
             }
         } else {
             quote! {
                 {
-                    auto result = Loggable<#field_type>::to_data_cell(&#field_accessor, 1);
+                    auto result = Loggable<#field_type>::to_arrow(&#field_accessor, 1);
                     #emplace_back
                 }
             }
@@ -1345,7 +1345,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #(#push_batches)*
             {
                 auto indicator = #type_ident::IndicatorComponent();
-                auto result = Loggable<#type_ident::IndicatorComponent>::to_data_cell(&indicator, 1);
+                auto result = Loggable<#type_ident::IndicatorComponent>::to_arrow(&indicator, 1);
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
@@ -2170,7 +2170,7 @@ fn quote_loggable_hpp_and_cpp(
     let methods = vec![
         arrow_data_type_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
         fill_arrow_array_builder_method(obj, cpp_includes, hpp_declarations, objects),
-        to_data_cell_method(obj, objects, hpp_includes),
+        to_arrow_method(obj, objects, hpp_includes),
     ];
 
     let loggable_type_name = quote! { Loggable<#namespace_ident::#type_ident> };
