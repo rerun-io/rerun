@@ -131,7 +131,6 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       WHEEL_ARTIFACT_NAME: linux-wheel-fast
-      SOURCE_LINK_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   track-sizes:
