@@ -28,7 +28,7 @@ namespace rerun {
     namespace detail {
         template <typename T>
         constexpr auto is_loggable(int = 0)
-            -> decltype(!sizeof(typename Loggable<T>::NoLoggableFor<T>)) {
+            -> decltype(!sizeof(typename Loggable<T>::template NoLoggableFor<T>)) {
             return false;
         }
 
