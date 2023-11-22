@@ -448,25 +448,9 @@ mod tests {
     use re_data_store::StoreDb;
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
     use re_space_view::DataQuery as _;
-    use re_viewer_context::{DataResultTree, EntitiesPerSystemPerClass, StoreContext};
+    use re_viewer_context::{EntitiesPerSystemPerClass, StoreContext};
 
     use super::*;
-
-    fn find_in_tree<'a>(
-        tree: &'a DataResultTree,
-        path: &EntityPath,
-        is_group: bool,
-    ) -> Option<&'a DataResult> {
-        let mut return_result = None;
-        tree.visit(&mut |handle| {
-            if let Some(result) = tree.lookup_result(handle) {
-                if result.entity_path == *path && result.is_group == is_group {
-                    return_result = Some(result);
-                }
-            }
-        });
-        return_result
-    }
 
     fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
         let component = EntityPropertiesComponent { props };
@@ -526,20 +510,18 @@ mod tests {
                 &entities_per_system_per_class,
             );
 
-            let parent =
-                find_in_tree(&query_result.tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child1"),
-                false,
-            )
-            .unwrap();
-            let child2 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child2"),
-                false,
-            )
-            .unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert_eq!(result.resolved_properties, EntityProperties::default(),);
@@ -566,22 +548,22 @@ mod tests {
                 &entities_per_system_per_class,
             );
 
-            let parent_group =
-                find_in_tree(&query_result.tree, &EntityPath::from("parent"), true).unwrap();
-            let parent =
-                find_in_tree(&query_result.tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child1"),
-                false,
-            )
-            .unwrap();
-            let child2 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child2"),
-                false,
-            )
-            .unwrap();
+            let parent_group = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), true)
+                .unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             assert!(!parent.resolved_properties.visible);
 
@@ -613,20 +595,18 @@ mod tests {
                 &entities_per_system_per_class,
             );
 
-            let parent =
-                find_in_tree(&query_result.tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child1"),
-                false,
-            )
-            .unwrap();
-            let child2 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child2"),
-                false,
-            )
-            .unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert!(!result.resolved_properties.visible);
@@ -661,20 +641,18 @@ mod tests {
                 &entities_per_system_per_class,
             );
 
-            let parent =
-                find_in_tree(&query_result.tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child1"),
-                false,
-            )
-            .unwrap();
-            let child2 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child2"),
-                false,
-            )
-            .unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert!(result.resolved_properties.visible_history.enabled);
@@ -704,20 +682,18 @@ mod tests {
                 &entities_per_system_per_class,
             );
 
-            let parent =
-                find_in_tree(&query_result.tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child1"),
-                false,
-            )
-            .unwrap();
-            let child2 = find_in_tree(
-                &query_result.tree,
-                &EntityPath::from("parent/skip/child2"),
-                false,
-            )
-            .unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1] {
                 assert!(result.resolved_properties.visible_history.enabled);
