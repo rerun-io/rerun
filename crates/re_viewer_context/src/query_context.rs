@@ -1,7 +1,8 @@
+use once_cell::sync::Lazy;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
-use crate::{DataQueryId, DataResult};
+use crate::{DataQueryId, DataResult, ViewerContext};
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
@@ -17,14 +18,34 @@ pub struct DataQueryResult {
     pub tree: DataResultTree,
 }
 
+impl Clone for DataQueryResult {
+    fn clone(&self) -> Self {
+        re_tracing::profile_function!();
+        Self {
+            id: self.id,
+            tree: self.tree.clone(),
+        }
+    }
+}
+
+impl Default for DataQueryResult {
+    fn default() -> Self {
+        Self {
+            id: DataQueryId::invalid(),
+            tree: DataResultTree::default(),
+        }
+    }
+}
+
 /// A hierarchical tree of [`DataResult`]s
+#[derive(Clone, Default)]
 pub struct DataResultTree {
     pub data_results: SlotMap<DataResultHandle, DataResultNode>,
     pub root_handle: Option<DataResultHandle>,
 }
 
 /// A single node in the [`DataResultTree`]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct DataResultNode {
     pub data_result: DataResult,
     pub children: SmallVec<[DataResultHandle; 4]>,
@@ -60,5 +81,16 @@ impl DataResultTree {
                 self.visit_recursive(*child, visitor);
             }
         }
+    }
+}
+
+static EMPTY_QUERY: Lazy<DataQueryResult> = Lazy::<DataQueryResult>::new(Default::default);
+
+impl ViewerContext<'_> {
+    pub fn lookup_query_result(&self, id: DataQueryId) -> &DataQueryResult {
+        self.query_results.get(&id).unwrap_or_else(|| {
+            re_log::warn!("Missing query!");
+            &EMPTY_QUERY
+        })
     }
 }

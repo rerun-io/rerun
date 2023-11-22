@@ -3,9 +3,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
-    DataResultNode, DataResultTree, EntitiesPerSystemPerClass, PerSystemEntities, SpaceViewId,
-    StoreContext, ViewSystemName,
+    DataBlueprintGroupHandle, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
+    DataResultTree, EntitiesPerSystemPerClass, PerSystemEntities, SpaceViewId, StoreContext,
+    ViewSystemName,
 };
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};

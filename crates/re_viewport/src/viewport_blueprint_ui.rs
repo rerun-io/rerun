@@ -3,7 +3,6 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_space_view::DataQuery as _;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
@@ -153,11 +152,10 @@ impl ViewportBlueprint<'_> {
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
-        let query_result = space_view.contents.execute_query(
-            space_view,
-            ctx.store_context,
-            ctx.entities_per_system_per_class,
-        );
+        // TODO(jleibs): Sort out borrow-checker to avoid the need to clone here
+        // while still being able to pass &ViewerContext down the chain.
+        let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
+
         let result_tree = &query_result.tree;
 
         let mut visibility_changed = false;

@@ -1,13 +1,14 @@
 use ahash::HashMap;
 
+use nohash_hasher::IntMap;
 use re_data_store::StoreDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
+use re_space_view::DataQuery as _;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SelectionState, SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
-use re_viewport::external::re_space_view::DataQuery as _;
 use re_viewport::{
     identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportState,
 };
@@ -116,21 +117,41 @@ impl AppState {
         );
 
         // Execute the queries for every `SpaceView`
-        let query_results = viewport
-            .blueprint
-            .space_views
-            .values()
-            .map(|space_view| {
-                (
-                    space_view.query_id(),
-                    space_view.contents.execute_query(
-                        space_view,
-                        store_context,
-                        &entities_per_system_per_class,
-                    ),
-                )
-            })
-            .collect::<_>();
+        let query_results = {
+            let empty_map = IntMap::default();
+
+            re_tracing::profile_scope!("query_results");
+            viewport
+                .blueprint
+                .space_views
+                .values_mut()
+                .map(|space_view| {
+                    // TODO(jleibs): Some annoying causality in here
+                    // This code is partially reundant with code in `on_frame_start`.
+                    //
+                    // We generally want to run queries before on_frame_start since we want to have
+                    // access to the ViewerContext to run on_frame_start. This should somewhat sort
+                    // itself out as we continue to deprecate SpaceViewContents-based queries and
+                    // migrate to the new DataQueryBlueprint.
+                    {
+                        let entities_per_system_for_class = entities_per_system_per_class
+                            .get(space_view.class_name())
+                            .unwrap_or(&empty_map);
+
+                        space_view.reset_systems_per_entity_path(entities_per_system_for_class);
+                    }
+
+                    (
+                        space_view.query_id(),
+                        space_view.contents.execute_query(
+                            space_view,
+                            store_context,
+                            &entities_per_system_per_class,
+                        ),
+                    )
+                })
+                .collect::<_>()
+        };
 
         let mut ctx = ViewerContext {
             app_options,

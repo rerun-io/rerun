@@ -2,9 +2,7 @@ use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{
-    DataQuery, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
-};
+use re_space_view::{EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults,
@@ -238,16 +236,16 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let data_results =
-            self.contents
-                .execute_query(self, ctx.store_context, ctx.entities_per_system_per_class);
+        // TODO(jleibs): Sort out borrow-checker to avoid the need to clone here
+        // while still being able to pass &ViewerContext down the chain.
+        let query_result = ctx.lookup_query_result(self.query_id()).clone();
 
         let mut per_system_data_results = PerSystemDataResults::default();
         {
             re_tracing::profile_scope!("per_system_data_results");
 
-            data_results.tree.visit(&mut |handle| {
-                if let Some(result) = data_results.tree.lookup_result(handle) {
+            query_result.tree.visit(&mut |handle| {
+                if let Some(result) = query_result.tree.lookup_result(handle) {
                     for system in &result.view_parts {
                         per_system_data_results
                             .entry(*system)
@@ -449,6 +447,7 @@ impl PropertyResolver for SpaceViewBlueprint {
 mod tests {
     use re_data_store::StoreDb;
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
+    use re_space_view::DataQuery as _;
     use re_viewer_context::{DataResultTree, EntitiesPerSystemPerClass, StoreContext};
 
     use super::*;
