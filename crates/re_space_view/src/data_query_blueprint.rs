@@ -1,10 +1,12 @@
 use nohash_hasher::IntSet;
 use once_cell::sync::Lazy;
-use re_data_store::{EntityProperties, EntityTree, StoreDb};
+use re_data_store::{
+    EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
+};
 use re_log_types::{EntityPath, EntityPathExpr};
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName,
+    EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName, SpaceViewId, StoreContext,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -58,6 +60,21 @@ impl DataQueryBlueprint {
             space_view_class_name,
             expressions,
         })
+    }
+
+    pub fn build_resolver<'a>(
+        &self,
+        container: SpaceViewId,
+        auto_properties: &'a EntityPropertyMap,
+    ) -> DataQueryPropertyResolver<'a> {
+        DataQueryPropertyResolver {
+            auto_properties,
+            default_stack: vec![container.as_entity_path(), self.id.as_entity_path()],
+            override_root: self
+                .id
+                .as_entity_path()
+                .join(&Self::OVERRIDES_PREFIX.into()),
+        }
     }
 }
 
@@ -251,10 +268,59 @@ impl<'a> QueryExpressionEvaluator<'a> {
     }
 }
 
+pub struct DataQueryPropertyResolver<'a> {
+    auto_properties: &'a EntityPropertyMap,
+    default_stack: Vec<EntityPath>,
+    override_root: EntityPath,
+}
+
+impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
+    /// Helper function to lookup the properties for a given entity path.
+    ///
+    /// We start with the auto properties for the `SpaceView` as the base layer and
+    /// then incrementally override from there.
+    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityOverrides {
+        re_tracing::profile_function!();
+        let blueprint = ctx.blueprint;
+
+        let mut root: EntityProperties = Default::default();
+        for prefix in &self.default_stack {
+            if let Some(overrides) = ctx
+                .blueprint
+                .store()
+                .query_timeless_component::<EntityPropertiesComponent>(prefix)
+            {
+                root = root.with_child(&overrides.value.props);
+            }
+        }
+
+        let mut prop_map = self.auto_properties.clone();
+
+        if let Some(tree) = blueprint.entity_db().tree.subtree(&self.override_root) {
+            tree.visit_children_recursively(&mut |path: &EntityPath| {
+                if let Some(props) = blueprint
+                    .store()
+                    .query_timeless_component::<EntityPropertiesComponent>(path)
+                {
+                    let overridden_path =
+                        EntityPath::from(&path.as_slice()[self.override_root.len()..path.len()]);
+                    prop_map.update(overridden_path, props.value.props);
+                }
+            });
+        }
+
+        EntityOverrides {
+            root,
+            individual: prop_map.clone(),
+            group: prop_map,
+        }
+    }
+}
+
 #[cfg(feature = "testing")]
 #[cfg(test)]
 mod tests {
-    use re_data_store::{EntityPropertyMap, StoreDb};
+    use re_data_store::StoreDb;
     use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
     use re_viewer_context::StoreContext;
 

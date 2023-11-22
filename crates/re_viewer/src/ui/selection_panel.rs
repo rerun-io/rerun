@@ -16,11 +16,7 @@ use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, SystemCommand,
     SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
-use re_viewport::{
-    external::re_space_view::{DataQuery as _, QueryExpressions},
-    Viewport, ViewportBlueprint,
-};
-use re_viewport::{Viewport, ViewportBlueprint};
+use re_viewport::{external::re_space_view::QueryExpressions, Viewport, ViewportBlueprint};
 
 use crate::ui::visible_history::visible_history_ui;
 
