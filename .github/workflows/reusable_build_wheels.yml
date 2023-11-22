@@ -134,9 +134,9 @@ jobs:
             --manylinux 2_31 \
             --release \
             --manifest-path rerun_py/Cargo.toml \
-            --target ${{ needs.set-config.outputs.TARGET }}
+            --target ${{ needs.set-config.outputs.TARGET }} \
+            --out dist \
             ${{ inputs.MATURIN_FEATURE_FLAGS }}
-            --out dist
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
