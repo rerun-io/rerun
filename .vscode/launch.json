@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "cwd": "${workspaceFolder}",
-            "program": "${workspaceFolder}/build/examples/cpp/minimal/example_minimal",
+            "program": "${workspaceFolder}/build/debug/examples/cpp/minimal/example_minimal",
             "args": [],
             "stopAtEntry": false,
             "environment": [],
