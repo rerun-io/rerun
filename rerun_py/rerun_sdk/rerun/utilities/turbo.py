@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
+__all__ = ["turbo_colormap_data"]
+
 turbo_colormap_data = np.array(
     [
         [0.18995, 0.07176, 0.23217],

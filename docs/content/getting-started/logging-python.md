@@ -69,8 +69,8 @@ We will do so incrementally, but if you just want to update your imports once an
 ```python
 from math import tau
 import numpy as np
-from rerun_demo.data import build_color_spiral
-from rerun_demo.util import bounce_lerp
+from rerun.utilities import build_color_spiral
+from rerun.utilities import bounce_lerp
 ```
 ---
 
@@ -81,7 +81,7 @@ Add the following to your file:
 
 ```python
 # new imports
-from rerun_demo.data import build_color_spiral
+from rerun.utilities import build_color_spiral
 from math import tau
 
 NUM_POINTS = 100
@@ -128,7 +128,7 @@ archetypes altogether.
 
 For more information on how the rerun data model works, refer to our section on [Entities and Components](../concepts/entity-component.md).
 
-Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun_demo.data.build_color_spiral) in this example are vanilla `numpy` arrays.
+Our [Python SDK](https://ref.rerun.io/docs/python) integrates with the rest of the Python ecosystem: the points and colors returned by [`build_color_spiral`](https://ref.rerun.io/docs/python/stable/common/utilities/?speculative-link#rerun.utilities.data.build_color_spiral) in this example are vanilla `numpy` arrays.
 Rerun takes care of mapping those arrays to actual Rerun components depending on the context (e.g. we're calling [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D) in this case).
 
 ### Entities & hierarchies
@@ -163,7 +163,7 @@ Which only leaves the beads:
 ```python
 # new imports
 import numpy as np
-from rerun_demo.util import bounce_lerp
+from rerun.utilities import bounce_lerp
 
 offsets = np.random.rand(NUM_POINTS)
 beads = [bounce_lerp(points1[n], points2[n], offsets[n]) for n in range(NUM_POINTS)]
@@ -174,7 +174,7 @@ rr.log(
 )
 ```
 
-Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/stable/common/demo_utilities/#rerun_demo.util.bounce_lerp),
+Once again, although we are getting fancier and fancier with our [`numpy` incantations](https://ref.rerun.io/docs/python/stable/common/utilities/?speculative-link#rerun.utilities.util.bounce_lerp),
 there is nothing new here: it's all about building out `numpy` arrays and feeding them to the Rerun API.
 
 <picture>
@@ -211,7 +211,7 @@ Rerun has rich support for time: whether you want concurrent or disjoint timelin
 Let's add our custom timeline:
 ```python
 # new imports
-from rerun_demo.util import bounce_lerp
+from rerun.utilities import bounce_lerp
 
 time_offsets = np.random.rand(NUM_POINTS)
 for i in range(400):

@@ -11,8 +11,7 @@ from math import tau
 
 import numpy as np
 import rerun as rr  # pip install rerun-sdk
-from rerun_demo.data import build_color_spiral
-from rerun_demo.util import bounce_lerp
+from rerun.utilities import bounce_lerp, build_color_spiral
 
 DESCRIPTION = """
 # DNA
