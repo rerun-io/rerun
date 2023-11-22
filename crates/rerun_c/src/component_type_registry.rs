@@ -21,6 +21,16 @@ impl ComponentTypeRegistry {
         name: ComponentName,
         datatype: arrow2::datatypes::DataType,
     ) -> CComponentTypeHandle {
+        #[cfg(debug_assertions)]
+        {
+            for ty in &self.types {
+                assert_ne!(
+                    ty.name, name,
+                    "Component type with the same name already registered"
+                );
+            }
+        }
+
         let id = self.next_id;
         self.next_id += 1;
         self.types.push(ComponentType { name, datatype });

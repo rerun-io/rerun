@@ -236,6 +236,7 @@ extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
 /// Registers a new component type to be used in `rr_data_cell`.
 ///
+/// A component with a given name can only be registered once.
 /// Takes ownership of the passed arrow schema and will release it once it is no longer needed.
 extern rr_component_type_handle rr_register_component_type(
     rr_component_type component_type, rr_error* error
