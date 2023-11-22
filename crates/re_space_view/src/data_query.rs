@@ -22,9 +22,14 @@ impl DataResultTree {
         }
     }
 
-    /// Look up a node in the tree based on its handle.
-    pub fn lookup(&self, handle: DataResultHandle) -> Option<&DataResult> {
+    /// Look up a [`DataResult`] in the tree based on its handle.
+    pub fn lookup_result(&self, handle: DataResultHandle) -> Option<&DataResult> {
         self.data_results.get(handle).map(|node| &node.data_result)
+    }
+
+    /// Look up a [`DataResultNode`] in the tree based on its handle.
+    pub fn lookup_node(&self, handle: DataResultHandle) -> Option<&DataResultNode> {
+        self.data_results.get(handle)
     }
 
     fn visit_recursive(

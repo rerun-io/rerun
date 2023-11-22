@@ -334,7 +334,7 @@ pub fn load_space_view_blueprint(
 
     let mut space_view = blueprint_db
         .store()
-        .query_timeless_component::<SpaceViewComponent>(path)
+        .query_timeless_component_quiet::<SpaceViewComponent>(path)
         .map(|c| c.value.space_view);
 
     // Blueprint data migrations can leave us unable to parse the expected id from the source-data
@@ -374,7 +374,7 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
 
     let auto_space_views = blueprint_db
         .store()
-        .query_timeless_component::<AutoSpaceViews>(&VIEWPORT_PATH.into())
+        .query_timeless_component_quiet::<AutoSpaceViews>(&VIEWPORT_PATH.into())
         .map_or_else(
             || {
                 // Only enable auto-space-views if this is the app-default blueprint
@@ -389,13 +389,13 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
 
     let space_view_maximized = blueprint_db
         .store()
-        .query_timeless_component::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
+        .query_timeless_component_quiet::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
         .map(|space_view| space_view.value)
         .unwrap_or_default();
 
     let viewport_layout: ViewportLayout = blueprint_db
         .store()
-        .query_timeless_component::<ViewportLayout>(&VIEWPORT_PATH.into())
+        .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
         .map(|space_view| space_view.value)
         .unwrap_or_default();
 

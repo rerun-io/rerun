@@ -247,7 +247,7 @@ impl SpaceViewBlueprint {
             re_tracing::profile_scope!("per_system_data_results");
 
             data_results.visit(&mut |handle| {
-                if let Some(result) = data_results.lookup(handle) {
+                if let Some(result) = data_results.lookup_result(handle) {
                     for system in &result.view_parts {
                         per_system_data_results
                             .entry(*system)
@@ -360,7 +360,7 @@ impl SpaceViewBlueprint {
         let individual_properties = ctx
             .blueprint
             .store()
-            .query_timeless_component::<EntityPropertiesComponent>(&self.entity_path())
+            .query_timeless_component_quiet::<EntityPropertiesComponent>(&self.entity_path())
             .map(|result| result.value.props);
 
         let resolved_properties = individual_properties.clone().unwrap_or_else(|| {
@@ -401,7 +401,7 @@ impl SpaceViewBlueprint {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
                     .store()
-                    .query_timeless_component::<EntityPropertiesComponent>(path)
+                    .query_timeless_component_quiet::<EntityPropertiesComponent>(path)
                 {
                     let overridden_path =
                         EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
@@ -449,7 +449,7 @@ mod tests {
     ) -> Option<&'a DataResult> {
         let mut return_result = None;
         tree.visit(&mut |handle| {
-            if let Some(result) = tree.lookup(handle) {
+            if let Some(result) = tree.lookup_result(handle) {
                 if result.entity_path == *path && result.is_group == is_group {
                     return_result = Some(result);
                 }

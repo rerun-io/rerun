@@ -5,14 +5,27 @@ from collections import namedtuple
 from math import cos, sin, tau
 
 import numpy as np
+
 from rerun import Box2DFormat
 
-from rerun_demo.turbo import turbo_colormap_data
+from .turbo import turbo_colormap_data
+
+__all__ = [
+    "ColorGrid",
+    "build_color_grid",
+    "color_grid",
+    "RectPyramid",
+    "build_rect_pyramid",
+    "rect_pyramid",
+    "ColorSpiral",
+    "build_color_spiral",
+    "color_spiral",
+]
 
 ColorGrid = namedtuple("ColorGrid", ["positions", "colors"])
 
 
-def build_color_grid(x_count=10, y_count=10, z_count=10, twist=0):
+def build_color_grid(x_count: int = 10, y_count: int = 10, z_count: int = 10, twist: float = 0) -> ColorGrid:
     """
     Create a cube of points with colors.
 
@@ -63,7 +76,7 @@ color_grid = build_color_grid()
 RectPyramid = namedtuple("RectPyramid", ["rects", "format", "colors"])
 
 
-def build_rect_pyramid(count=20, width=100, height=100):
+def build_rect_pyramid(count: int = 20, width: int = 100, height: int = 100) -> RectPyramid:
     """
     Create a stack of N colored rectangles.
 
@@ -94,7 +107,13 @@ rect_pyramid = build_rect_pyramid()
 ColorSpiral = namedtuple("ColorSpiral", ["positions", "colors"])
 
 
-def build_color_spiral(num_points=100, radius=2, angular_step=0.02, angular_offset=0, z_step=0.1):
+def build_color_spiral(
+    num_points: int = 100,
+    radius: float = 2,
+    angular_step: float = 0.02,
+    angular_offset: float = 0,
+    z_step: float = 0.1,
+) -> ColorSpiral:
     """
     Create a spiral of points with colors along the Z axis.
 
@@ -105,9 +124,9 @@ def build_color_spiral(num_points=100, radius=2, angular_step=0.02, angular_offs
     radius:
         The radius of the spiral.
     angular_step:
-        The factor applied between each step along the trigonemetric circle.
+        The factor applied between each step along the trigonometric circle.
     angular_offset:
-        Offsets the starting position on the trigonemetric circle.
+        Offsets the starting position on the trigonometric circle.
     z_step:
         The factor applied between each step along the Z axis.
 

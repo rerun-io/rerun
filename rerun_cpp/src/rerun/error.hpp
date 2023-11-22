@@ -37,6 +37,7 @@ namespace rerun {
         InvalidStringArgument,
         InvalidRecordingStreamHandle,
         InvalidSocketAddress,
+        InvalidComponentTypeHandle,
         InvalidTensorDimension,
 
         // Recording stream errors

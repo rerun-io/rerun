@@ -15,16 +15,16 @@ namespace rerun {
     static rr_store_kind store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
             case StoreKind::Recording:
-                return RERUN_STORE_KIND_RECORDING;
+                return RR_STORE_KIND_RECORDING;
 
             case StoreKind::Blueprint:
-                return RERUN_STORE_KIND_BLUEPRINT;
+                return RR_STORE_KIND_BLUEPRINT;
         }
 
         // This should never happen since if we missed a switch case we'll get a warning on
         // compilers which compiles as an error on CI. But let's play it safe regardless and default
         // to recording.
-        return RERUN_STORE_KIND_RECORDING;
+        return RR_STORE_KIND_RECORDING;
     }
 
     RecordingStream::RecordingStream(std::string_view app_id, StoreKind store_kind)
@@ -47,8 +47,8 @@ namespace rerun {
 
     RecordingStream::RecordingStream(RecordingStream&& other)
         : _id(other._id), _store_kind(other._store_kind), _enabled(other._enabled) {
-        // Set to `RERUN_REC_STREAM_CURRENT_RECORDING` since it's a no-op on destruction.
-        other._id = RERUN_REC_STREAM_CURRENT_RECORDING;
+        // Set to `RR_REC_STREAM_CURRENT_RECORDING` since it's a no-op on destruction.
+        other._id = RR_REC_STREAM_CURRENT_RECORDING;
     }
 
     RecordingStream::RecordingStream(uint32_t id, StoreKind store_kind)
@@ -61,8 +61,7 @@ namespace rerun {
     RecordingStream::~RecordingStream() {
         // C-Api already specifies that the current constants are not destroyed, but we repeat this
         // here, since we rely on this invariant in the move constructor.
-        if (_id != RERUN_REC_STREAM_CURRENT_RECORDING &&
-            _id != RERUN_REC_STREAM_CURRENT_BLUEPRINT) {
+        if (_id != RR_REC_STREAM_CURRENT_RECORDING && _id != RR_REC_STREAM_CURRENT_BLUEPRINT) {
             rr_recording_stream_free(this->_id);
         }
     }
@@ -79,7 +78,7 @@ namespace rerun {
         switch (store_kind) {
             case StoreKind::Blueprint: {
                 static RecordingStream current_blueprint(
-                    RERUN_REC_STREAM_CURRENT_BLUEPRINT,
+                    RR_REC_STREAM_CURRENT_BLUEPRINT,
                     StoreKind::Blueprint
                 );
                 return current_blueprint;
@@ -87,7 +86,7 @@ namespace rerun {
             case StoreKind::Recording:
             default: {
                 static RecordingStream current_recording(
-                    RERUN_REC_STREAM_CURRENT_RECORDING,
+                    RR_REC_STREAM_CURRENT_RECORDING,
                     StoreKind::Recording
                 );
                 return current_recording;

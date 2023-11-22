@@ -30,7 +30,7 @@ pub use tracing::{debug, error, info, trace, warn};
 // The `re_log::info_once!(…)` etc are nice helpers, but the `log-once` crate is a bit lacking.
 // In the future we should implement our own macros to de-duplicate based on the callsite,
 // similar to how the log console in a browser will automatically suppress duplicates.
-pub use log_once::{debug_once, error_once, info_once, trace_once, warn_once};
+pub use log_once::{debug_once, error_once, info_once, log_once, trace_once, warn_once};
 
 pub use {
     channel_logger::*,

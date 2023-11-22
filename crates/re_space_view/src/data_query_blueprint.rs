@@ -400,7 +400,7 @@ mod tests {
 
             let mut visited = vec![];
             result_tree.visit(&mut |handle| {
-                let result = result_tree.lookup(handle).unwrap();
+                let result = result_tree.lookup_result(handle).unwrap();
                 if result.is_group && result.entity_path != EntityPath::root() {
                     visited.push(format!("{}/", result.entity_path));
                 } else {

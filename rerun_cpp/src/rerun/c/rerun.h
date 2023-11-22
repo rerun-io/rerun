@@ -54,19 +54,25 @@ rr_string rr_make_string(const char* utf8) {
 typedef uint32_t rr_store_kind;
 
 enum {
-    RERUN_STORE_KIND_RECORDING = 1,
-    RERUN_STORE_KIND_BLUEPRINT = 2,
+    RR_STORE_KIND_RECORDING = 1,
+    RR_STORE_KIND_BLUEPRINT = 2,
 };
 
 /// Special value for `rr_recording_stream` methods to indicate the most appropriate
 /// globally available recording stream for recordings.
 /// (i.e. thread-local first, then global scope)
-#define RERUN_REC_STREAM_CURRENT_RECORDING 0xFFFFFFFF
+#define RR_REC_STREAM_CURRENT_RECORDING 0xFFFFFFFF
 
 /// Special value for `rr_recording_stream` methods to indicate the most appropriate
 /// globally available recording stream for blueprints.
 /// (i.e. thread-local first, then global scope)
-#define RERUN_REC_STREAM_CURRENT_BLUEPRINT 0xFFFFFFFE
+#define RR_REC_STREAM_CURRENT_BLUEPRINT 0xFFFFFFFE
+
+/// Handle to a component type that can be registered.
+typedef uint32_t rr_component_type_handle;
+
+/// Special value for `rr_component_type_handle` to indicate an invalid handle.
+#define RR_COMPONENT_TYPE_HANDLE_INVALID 0xFFFFFFFF
 
 /// A unique handle for a recording stream.
 /// A recording stream handles everything related to logging data into Rerun.
@@ -128,21 +134,26 @@ typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     rr_string application_id;
 
-    /// `RERUN_STORE_KIND_RECORDING` or `RERUN_STORE_KIND_BLUEPRINT`
+    /// `RR_STORE_KIND_RECORDING` or `RR_STORE_KIND_BLUEPRINT`
     rr_store_kind store_kind;
 } rr_store_info;
 
+/// Definition of a component type that can be registered.
+typedef struct rr_component_type {
+    /// The name of the component, e.g. `position`.
+    rr_string name;
+
+    /// The arrow schema used for arrow arrays of instances of this component.
+    struct ArrowSchema schema;
+} rr_component_type;
+
 /// Arrow-encoded data of a single batch components for a single entity.
 typedef struct rr_data_cell {
-    /// The name of the component, e.g. `position`.
-    rr_string component_name;
+    /// The component type to use for this data cell.
+    rr_component_type_handle component_type;
 
     /// A batch of instances of this component serialized into an arrow array.
-    ArrowArray array;
-
-    /// The schema used for the arrow array.
-    /// TODO(andreas): Use a schema registry that identifies this and the component name with a unique schema ID.
-    ArrowSchema schema;
+    struct ArrowArray array;
 } rr_data_cell;
 
 /// Arrow-encoded log data for a single entity.
@@ -176,7 +187,7 @@ enum {
     RR_ERROR_CODE_INVALID_STRING_ARGUMENT,
     RR_ERROR_CODE_INVALID_RECORDING_STREAM_HANDLE,
     RR_ERROR_CODE_INVALID_SOCKET_ADDRESS,
-    RR_ERROR_CODE_INVALID_ENTITY_PATH,
+    RR_ERROR_CODE_INVALID_COMPONENT_TYPE_HANDLE,
 
     // Recording stream errors
     _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
@@ -223,13 +234,21 @@ extern const char* rr_version_string(void);
 /// If a Rerun Viewer is already listening on this TCP port, this does nothing.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
+/// Registers a new component type to be used in `rr_data_cell`.
+///
+/// A component with a given name can only be registered once.
+/// Takes ownership of the passed arrow schema and will release it once it is no longer needed.
+extern rr_component_type_handle rr_register_component_type(
+    rr_component_type component_type, rr_error* error
+);
+
 /// Creates a new recording stream to log to.
 ///
 /// You must call this at least once to enable logging.
 ///
 /// Usually you only have one recording stream, so you can call
 /// `rr_recording_stream_set_global` afterwards once to make it available globally via
-/// `RERUN_REC_STREAM_CURRENT_RECORDING` and `RERUN_REC_STREAM_CURRENT_BLUEPRINT` respectively.
+/// `RR_REC_STREAM_CURRENT_RECORDING` and `RR_REC_STREAM_CURRENT_BLUEPRINT` respectively.
 ///
 /// @return A handle to the recording stream, or null if an error occurred.
 extern rr_recording_stream rr_recording_stream_new(
@@ -240,7 +259,7 @@ extern rr_recording_stream rr_recording_stream_new(
 ///
 /// Flushes the stream before freeing it, but does *not* block.
 ///
-/// Does nothing for `RERUN_REC_STREAM_CURRENT_RECORDING` and `RERUN_REC_STREAM_CURRENT_BLUEPRINT`.
+/// Does nothing for `RR_REC_STREAM_CURRENT_RECORDING` and `RR_REC_STREAM_CURRENT_BLUEPRINT`.
 ///
 /// No-op for destroyed/non-existing streams.
 extern void rr_recording_stream_free(rr_recording_stream stream);

@@ -719,6 +719,7 @@ def main() -> None:
     ]
 
     exclude_paths = (
+        "./rerun_cpp/docs/html",
         "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
         "./CODE_STYLE.md",
         "./crates/re_types_builder/src/reflection.rs",  # auto-generated
