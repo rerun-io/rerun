@@ -39,7 +39,10 @@ impl DataQueryBlueprint {
         Self {
             id: DataQueryId::random(),
             space_view_class_name,
-            expressions: vec![space_path.to_string().into()].into(),
+            expressions: vec![EntityPathExpr::Recursive(space_path.clone())
+                .to_string()
+                .into()]
+            .into(),
         }
     }
 

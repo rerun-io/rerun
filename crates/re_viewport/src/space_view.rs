@@ -1,3 +1,4 @@
+use ahash::HashSet;
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
@@ -29,6 +30,7 @@ pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
     class_name: SpaceViewClassName,
+
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
     /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
@@ -57,7 +59,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_name,
             space_origin,
-            contents,
+            contents: _,
             queries,
             entities_determined_by_user,
             auto_properties: _,
@@ -67,8 +69,8 @@ impl SpaceViewBlueprint {
             || display_name != &other.display_name
             || class_name != &other.class_name
             || space_origin != &other.space_origin
-            || contents.has_edits(&other.contents)
-            || queries != &other.queries
+            || queries.iter().map(|q| q.id).collect::<HashSet<_>>()
+                != other.queries.iter().map(|q| q.id).collect::<HashSet<_>>()
             || entities_determined_by_user != &other.entities_determined_by_user
     }
 }
@@ -390,7 +392,10 @@ impl SpaceViewBlueprint {
 
     #[inline]
     pub fn query_id(&self) -> DataQueryId {
-        self.id.uuid().into()
+        // TODO(jleibs): Return all queries
+        self.queries
+            .first()
+            .map_or(DataQueryId::invalid(), |q| q.id)
     }
 
     pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {

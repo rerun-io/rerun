@@ -122,15 +122,19 @@ impl AppState {
                 .blueprint
                 .space_views
                 .values_mut()
-                .map(|space_view| {
-                    (
-                        space_view.query_id(),
-                        space_view.contents.execute_query(
-                            space_view,
-                            store_context,
-                            &entities_per_system_per_class,
-                        ),
-                    )
+                .flat_map(|space_view| {
+                    space_view.queries.iter().map(|query| {
+                        let resolver =
+                            query.build_resolver(space_view.id, &space_view.auto_properties);
+                        (
+                            query.id,
+                            query.execute_query(
+                                &resolver,
+                                store_context,
+                                &entities_per_system_per_class,
+                            ),
+                        )
+                    })
                 })
                 .collect::<_>()
         };
@@ -172,15 +176,19 @@ impl AppState {
                 .blueprint
                 .space_views
                 .values_mut()
-                .map(|space_view| {
-                    (
-                        space_view.query_id(),
-                        space_view.contents.execute_query(
-                            space_view,
-                            store_context,
-                            &entities_per_system_per_class,
-                        ),
-                    )
+                .flat_map(|space_view| {
+                    space_view.queries.iter().map(|query| {
+                        let resolver =
+                            query.build_resolver(space_view.id, &space_view.auto_properties);
+                        (
+                            query.id,
+                            query.execute_query(
+                                &resolver,
+                                store_context,
+                                &entities_per_system_per_class,
+                            ),
+                        )
+                    })
                 })
                 .collect::<_>()
         };
