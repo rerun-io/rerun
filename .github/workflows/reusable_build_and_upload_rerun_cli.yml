@@ -140,16 +140,8 @@ jobs:
           pixi-version: v0.6.0
 
       - name: Build rerun-cli
-        run: |
-          pixi shell
-          pip install -r scripts/ci/requirements.txt
-          cargo build \
-            --locked \
-            -p rerun-cli \
-            --no-default-features \
-            --features native_viewer,web_viewer \
-            --release \
-            --target ${{ needs.set-config.outputs.TARGET }}
+        shell: bash
+        run: pixi run build-rerun-cli --target ${{ needs.set-config.outputs.TARGET }}
 
       - id: "auth"
         uses: google-github-actions/auth@v1

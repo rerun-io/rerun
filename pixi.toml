@@ -46,6 +46,10 @@ py-build = "maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests"
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
+py-install-ci = { cmd = "pip install -r scripts/ci/requirements.txt" }
+
+# Needs `--target TARGET`
+build-rerun-cli = { cmd = "cargo build --locked -p rerun-cli --no-default-features --features native_viewer,web_viewer --release" }
 
 # All the cpp-* tasks can be configured with environment variables, e.g.:  RERUN_WERROR=ON  CXX=clang++
 cpp-prepare-release = "cmake -G 'Ninja' -B build/release -S . -DCMAKE_BUILD_TYPE=Release"
