@@ -15,7 +15,7 @@ use re_viewer_context::{
     gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
     ViewerContext,
 };
-use re_viewport::{external::re_space_view::DataQuery as _, Viewport, ViewportBlueprint};
+use re_viewport::{Viewport, ViewportBlueprint};
 
 use crate::ui::visible_history::visible_history_ui;
 
@@ -491,27 +491,26 @@ fn blueprint_ui(
                         let entity_path = &instance_path.entity_path;
                         let as_group = false;
 
-                        let data_result = space_view.contents.resolve(
-                            space_view,
-                            ctx.store_context,
-                            ctx.entities_per_system_per_class,
-                            &instance_path.entity_path,
-                            as_group,
-                        );
-
-                        let mut props = data_result
-                            .individual_properties
-                            .clone()
-                            .unwrap_or_default();
-                        entity_props_ui(
-                            ctx,
-                            ui,
-                            &space_view_class,
-                            Some(entity_path),
-                            &mut props,
-                            &data_result.resolved_properties,
-                        );
-                        data_result.save_override(Some(props), ctx);
+                        let query_result = ctx.lookup_query_result(space_view.query_id());
+                        if let Some(data_result) = query_result
+                            .tree
+                            .lookup_result_by_path_and_group(entity_path, as_group)
+                            .cloned()
+                        {
+                            let mut props = data_result
+                                .individual_properties
+                                .clone()
+                                .unwrap_or_default();
+                            entity_props_ui(
+                                ctx,
+                                ui,
+                                &space_view_class,
+                                Some(entity_path),
+                                &mut props,
+                                &data_result.resolved_properties,
+                            );
+                            data_result.save_override(Some(props), ctx);
+                        }
                     }
                 }
             }
@@ -523,29 +522,28 @@ fn blueprint_ui(
                     let group_path = group.group_path.clone();
                     let as_group = true;
 
-                    let data_result = space_view.contents.resolve(
-                        space_view,
-                        ctx.store_context,
-                        ctx.entities_per_system_per_class,
-                        &group_path,
-                        as_group,
-                    );
+                    let query_result = ctx.lookup_query_result(space_view.query_id());
+                    if let Some(data_result) = query_result
+                        .tree
+                        .lookup_result_by_path_and_group(&group_path, as_group)
+                        .cloned()
+                    {
+                        let space_view_class = *space_view.class_name();
+                        let mut props = data_result
+                            .individual_properties
+                            .clone()
+                            .unwrap_or_default();
 
-                    let space_view_class = *space_view.class_name();
-                    let mut props = data_result
-                        .individual_properties
-                        .clone()
-                        .unwrap_or_default();
-
-                    entity_props_ui(
-                        ctx,
-                        ui,
-                        &space_view_class,
-                        None,
-                        &mut props,
-                        &data_result.resolved_properties,
-                    );
-                    data_result.save_override(Some(props), ctx);
+                        entity_props_ui(
+                            ctx,
+                            ui,
+                            &space_view_class,
+                            None,
+                            &mut props,
+                            &data_result.resolved_properties,
+                        );
+                        data_result.save_override(Some(props), ctx);
+                    }
                 } else {
                     ctx.selection_state_mut().clear_current();
                 }

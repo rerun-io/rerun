@@ -1,4 +1,4 @@
-use nohash_hasher::IntMap;
+use ahash::HashMap;
 use once_cell::sync::Lazy;
 use re_log_types::EntityPath;
 use slotmap::SlotMap;
@@ -43,7 +43,7 @@ impl Default for DataQueryResult {
 #[derive(Clone, Default)]
 pub struct DataResultTree {
     data_results: SlotMap<DataResultHandle, DataResultNode>,
-    data_results_by_path: IntMap<EntityPath, DataResultHandle>,
+    data_results_by_path: HashMap<(EntityPath, bool), DataResultHandle>,
     root_handle: Option<DataResultHandle>,
 }
 
@@ -61,7 +61,15 @@ impl DataResultTree {
     ) -> Self {
         let data_results_by_path = data_results
             .iter()
-            .map(|(handle, node)| (node.data_result.entity_path.clone(), handle))
+            .map(|(handle, node)| {
+                (
+                    (
+                        node.data_result.entity_path.clone(),
+                        node.data_result.is_group,
+                    ),
+                    handle,
+                )
+            })
             .collect();
 
         Self {
@@ -98,9 +106,13 @@ impl DataResultTree {
     }
 
     /// Look up a [`DataResultNode`] in the tree based on an [`EntityPath`].
-    pub fn lookup_result_by_path(&self, path: &EntityPath) -> Option<&DataResult> {
+    pub fn lookup_result_by_path_and_group(
+        &self,
+        path: &EntityPath,
+        is_group: bool,
+    ) -> Option<&DataResult> {
         self.data_results_by_path
-            .get(path)
+            .get(&(path.clone(), is_group))
             .and_then(|handle| self.lookup_result(*handle))
     }
 
