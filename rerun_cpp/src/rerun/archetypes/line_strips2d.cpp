@@ -74,7 +74,7 @@ namespace rerun {
         }
         {
             auto indicator = LineStrips2D::IndicatorComponent();
-            auto result = LineStrips2D::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<LineStrips2D::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

@@ -23,7 +23,7 @@ namespace rerun {
         }
         {
             auto indicator = Tensor::IndicatorComponent();
-            auto result = Tensor::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<Tensor::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

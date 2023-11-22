@@ -66,7 +66,7 @@ namespace rerun {
         }
         {
             auto indicator = LineStrips3D::IndicatorComponent();
-            auto result = LineStrips3D::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<LineStrips3D::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

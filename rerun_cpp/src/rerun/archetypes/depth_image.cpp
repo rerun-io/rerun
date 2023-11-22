@@ -37,7 +37,7 @@ namespace rerun {
         }
         {
             auto indicator = DepthImage::IndicatorComponent();
-            auto result = DepthImage::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<DepthImage::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

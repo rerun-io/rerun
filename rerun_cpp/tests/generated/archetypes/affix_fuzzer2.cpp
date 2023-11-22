@@ -162,7 +162,7 @@ namespace rerun {
         }
         {
             auto indicator = AffixFuzzer2::IndicatorComponent();
-            auto result = AffixFuzzer2::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<AffixFuzzer2::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

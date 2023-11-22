@@ -39,7 +39,7 @@ namespace rerun {
         }
         {
             auto indicator = Asset3D::IndicatorComponent();
-            auto result = Asset3D::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<Asset3D::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

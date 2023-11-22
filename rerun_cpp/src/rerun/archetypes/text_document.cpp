@@ -31,7 +31,7 @@ namespace rerun {
         }
         {
             auto indicator = TextDocument::IndicatorComponent();
-            auto result = TextDocument::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<TextDocument::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

@@ -31,7 +31,8 @@ namespace rerun {
         }
         {
             auto indicator = SegmentationImage::IndicatorComponent();
-            auto result = SegmentationImage::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result =
+                Loggable<SegmentationImage::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

@@ -1346,7 +1346,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #(#push_batches)*
             {
                 auto indicator = #type_ident::IndicatorComponent();
-                auto result = #type_ident::IndicatorComponent::to_data_cell(&indicator, 1);
+                auto result = Loggable<#type_ident::IndicatorComponent>::to_data_cell(&indicator, 1);
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
