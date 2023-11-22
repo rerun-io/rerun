@@ -26,12 +26,20 @@ namespace rerun {
 
     /// \private
     namespace detail {
+        /// Helper to check whether a type implements the Loggable trait.
+        ///
+        /// This is used to implement `rerun::is_loggable`.
+        /// Uses SFINAE to ensure that a given type T *specializes* the `rerun::Loggable` trait.
         template <typename T>
-        constexpr auto is_loggable(int = 0)
-            -> decltype(!sizeof(typename Loggable<T>::template NoLoggableFor<T>)) {
+        constexpr auto is_loggable(int = 0) ->
+            typename Loggable<T>::template NoLoggableFor<T>::type {
             return false;
         }
 
+        /// Helper to check whether a type implements the Loggable trait.
+        ///
+        /// This is used to implement `rerun::is_loggable`.
+        /// Uses SFINAE to ensure that a given type T *specializes* the `rerun::Loggable` trait.
         template <typename T>
         constexpr bool is_loggable(...) {
             return true;
