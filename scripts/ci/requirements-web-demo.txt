@@ -4,3 +4,8 @@
 -r ../../examples/python/human_pose_tracking/requirements.txt
 -r ../../examples/python/plots/requirements.txt
 -r ../../examples/python/structure_from_motion/requirements.txt
+
+python-frontmatter==1.0.0
+requests>=2.31,<3
+Jinja2==3.1.2
+Pillow==10.0.0
