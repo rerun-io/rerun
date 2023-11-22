@@ -24,7 +24,7 @@ namespace rerun {
         }
         {
             auto indicator = ViewCoordinates::IndicatorComponent();
-            auto result = Loggable<ViewCoordinates::IndicatorComponent>::to_arrow(&indicator, 1);
+            auto result = DataCell::from_loggable<decltype(indicator)>(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
