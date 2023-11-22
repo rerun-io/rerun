@@ -3,10 +3,13 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_space_view::{DataQuery as _, DataResultHandle, DataResultNode, DataResultTree};
+use re_space_view::DataQuery as _;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
-use re_viewer_context::{HoverHighlight, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    DataResultHandle, DataResultNode, DataResultTree, HoverHighlight, Item, SpaceViewId,
+    ViewerContext,
+};
 
 use crate::{
     space_view_heuristics::all_possible_space_views, viewport_blueprint::TreeActions,

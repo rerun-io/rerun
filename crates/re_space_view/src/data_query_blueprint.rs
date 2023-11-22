@@ -3,15 +3,13 @@ use once_cell::sync::Lazy;
 use re_data_store::{EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathExpr};
 use re_viewer_context::{
-    DataQueryId, DataResult, EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName,
+    DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
+    EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
-use crate::{
-    blueprint::QueryExpressions, data_query::DataQueryResult, DataQuery, DataResultHandle,
-    DataResultNode, DataResultTree, EntityOverrides, PropertyResolver,
-};
+use crate::{blueprint::QueryExpressions, DataQuery, EntityOverrides, PropertyResolver};
 
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
 ///

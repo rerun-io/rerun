@@ -3,16 +3,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, DataQueryId, DataResult, EntitiesPerSystemPerClass,
-    PerSystemEntities, SpaceViewId, StoreContext, ViewSystemName,
+    DataBlueprintGroupHandle, DataQueryId, DataQueryResult, DataResult, DataResultHandle,
+    DataResultNode, DataResultTree, EntitiesPerSystemPerClass, PerSystemEntities, SpaceViewId,
+    StoreContext, ViewSystemName,
 };
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
-use crate::{
-    data_query::DataQueryResult, DataQuery, DataResultHandle, DataResultNode, DataResultTree,
-    EntityOverrides, PropertyResolver,
-};
+use crate::{DataQuery, EntityOverrides, PropertyResolver};
 
 /// A grouping of several data-blueprints.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]

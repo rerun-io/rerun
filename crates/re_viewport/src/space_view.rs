@@ -443,8 +443,7 @@ impl PropertyResolver for SpaceViewBlueprint {
 mod tests {
     use re_data_store::StoreDb;
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
-    use re_space_view::DataResultTree;
-    use re_viewer_context::{EntitiesPerSystemPerClass, StoreContext};
+    use re_viewer_context::{DataResultTree, EntitiesPerSystemPerClass, StoreContext};
 
     use super::*;
 

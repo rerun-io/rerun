@@ -114,6 +114,9 @@ impl AppState {
             &rec_cfg.time_ctrl.current_query(),
         );
 
+        // TODO(jleibs): Execute queries
+        let query_results = Default::default();
+
         let mut ctx = ViewerContext {
             app_options,
             cache,
@@ -122,6 +125,7 @@ impl AppState {
             store_db,
             store_context,
             entities_per_system_per_class: &entities_per_system_per_class,
+            query_results: &query_results,
             rec_cfg,
             re_ui,
             render_ctx,
