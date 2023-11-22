@@ -1,5 +1,5 @@
-use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataQueryResult, DataResult, EntitiesPerSystemPerClass, StoreContext};
+use re_data_store::{EntityProperties, EntityPropertyMap};
+use re_viewer_context::{DataQueryResult, EntitiesPerSystemPerClass, StoreContext};
 
 pub struct EntityOverrides {
     pub root: EntityProperties,

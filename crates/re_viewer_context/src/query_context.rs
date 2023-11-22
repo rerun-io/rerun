@@ -43,6 +43,10 @@ impl Default for DataQueryResult {
 #[derive(Clone, Default)]
 pub struct DataResultTree {
     data_results: SlotMap<DataResultHandle, DataResultNode>,
+    // TODO(jleibs): Decide if we really want to compute this per-query.
+    // at the moment we only look up a single path per frame for the selection panel. It's probably
+    // less over-head to just walk the tree once instead of pre-computing an entire map we use for
+    // a single lookup.
     data_results_by_path: HashMap<(EntityPath, bool), DataResultHandle>,
     root_handle: Option<DataResultHandle>,
 }
@@ -59,6 +63,7 @@ impl DataResultTree {
         data_results: SlotMap<DataResultHandle, DataResultNode>,
         root_handle: Option<DataResultHandle>,
     ) -> Self {
+        re_tracing::profile_function!();
         let data_results_by_path = data_results
             .iter()
             .map(|(handle, node)| {
@@ -136,7 +141,7 @@ static EMPTY_QUERY: Lazy<DataQueryResult> = Lazy::<DataQueryResult>::new(Default
 impl ViewerContext<'_> {
     pub fn lookup_query_result(&self, id: DataQueryId) -> &DataQueryResult {
         self.query_results.get(&id).unwrap_or_else(|| {
-            re_log::warn!("Missing query!");
+            re_log::debug!("Tried looking up a query that doesn't exist: {:?}", id);
             &EMPTY_QUERY
         })
     }

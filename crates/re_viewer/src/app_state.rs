@@ -127,7 +127,7 @@ impl AppState {
                 .values_mut()
                 .map(|space_view| {
                     // TODO(jleibs): Some annoying causality in here
-                    // This code is partially reundant with code in `on_frame_start`.
+                    // This code is partially redundant with code in `on_frame_start`.
                     //
                     // We generally want to run queries before on_frame_start since we want to have
                     // access to the ViewerContext to run on_frame_start. This should somewhat sort
