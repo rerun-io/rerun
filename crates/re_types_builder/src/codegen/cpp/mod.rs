@@ -339,7 +339,7 @@ impl QuotedObject {
                     Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
                 }
                 ObjectKind::Archetype => {
-                    Self::from_archetype(objects, obj, hpp_includes, hpp_type_extensions)
+                    Self::from_archetype(obj, hpp_includes, hpp_type_extensions)
                 }
             },
             crate::ObjectSpecifics::Union { .. } => {
@@ -349,7 +349,6 @@ impl QuotedObject {
     }
 
     fn from_archetype(
-        objects: &Objects,
         obj: &Object,
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
