@@ -21,9 +21,6 @@ namespace rerun::components {
     struct Blob {
         rerun::Collection<uint8_t> data;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         Blob() = default;
 
@@ -33,16 +30,29 @@ namespace rerun::components {
             data = std::move(data_);
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::Blob> {
+        static constexpr const char Name[] = "rerun.components.Blob";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::ListBuilder* builder, const Blob* elements, size_t num_elements
+            arrow::ListBuilder* builder, const components::Blob* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of Blob components.
-        static Result<rerun::DataCell> to_data_cell(const Blob* instances, size_t num_instances);
+        /// Creates a Rerun DataCell from an array of `rerun::components::Blob` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const components::Blob* instances, size_t num_instances
+        );
     };
-} // namespace rerun::components
+} // namespace rerun

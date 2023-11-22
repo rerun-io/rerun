@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../data_cell.hpp"
 #include "../result.hpp"
 #include "rgba32.hpp"
 #include "utf8.hpp"
@@ -45,13 +46,30 @@ namespace rerun::datatypes {
 
       public:
         AnnotationInfo() = default;
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::AnnotationInfo> {
+        static constexpr const char Name[] = "rerun.datatypes.AnnotationInfo";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const AnnotationInfo* elements, size_t num_elements
+            arrow::StructBuilder* builder, const datatypes::AnnotationInfo* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::AnnotationInfo` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::AnnotationInfo* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

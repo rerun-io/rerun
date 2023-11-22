@@ -5,9 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char Pinhole::INDICATOR_COMPONENT_NAME[] = "rerun.components.PinholeIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -19,20 +17,26 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result =
-                rerun::components::PinholeProjection::to_data_cell(&archetype.image_from_camera, 1);
+            auto result = Loggable<rerun::components::PinholeProjection>::to_data_cell(
+                &archetype.image_from_camera,
+                1
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.resolution.has_value()) {
-            auto result =
-                rerun::components::Resolution::to_data_cell(&archetype.resolution.value(), 1);
+            auto result = Loggable<rerun::components::Resolution>::to_data_cell(
+                &archetype.resolution.value(),
+                1
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.camera_xyz.has_value()) {
-            auto result =
-                rerun::components::ViewCoordinates::to_data_cell(&archetype.camera_xyz.value(), 1);
+            auto result = Loggable<rerun::components::ViewCoordinates>::to_data_cell(
+                &archetype.camera_xyz.value(),
+                1
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

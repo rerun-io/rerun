@@ -24,9 +24,6 @@ namespace rerun::components {
     struct HalfSizes3D {
         rerun::datatypes::Vec3D xyz;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         // Extensions to generated type defined in 'half_sizes3d_ext.cpp'
 
@@ -66,18 +63,30 @@ namespace rerun::components {
         operator rerun::datatypes::Vec3D() const {
             return xyz;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::HalfSizes3D> {
+        static constexpr const char Name[] = "rerun.components.HalfSizes3D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const HalfSizes3D* elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const components::HalfSizes3D* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of HalfSizes3D components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::HalfSizes3D` components.
         static Result<rerun::DataCell> to_data_cell(
-            const HalfSizes3D* instances, size_t num_instances
+            const components::HalfSizes3D* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

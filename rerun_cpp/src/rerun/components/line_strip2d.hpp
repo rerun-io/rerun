@@ -33,9 +33,6 @@ namespace rerun::components {
     struct LineStrip2D {
         rerun::Collection<rerun::datatypes::Vec2D> points;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         LineStrip2D() = default;
 
@@ -46,18 +43,30 @@ namespace rerun::components {
             points = std::move(points_);
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::LineStrip2D> {
+        static constexpr const char Name[] = "rerun.components.LineStrip2D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::ListBuilder* builder, const LineStrip2D* elements, size_t num_elements
+            arrow::ListBuilder* builder, const components::LineStrip2D* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of LineStrip2D components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::LineStrip2D` components.
         static Result<rerun::DataCell> to_data_cell(
-            const LineStrip2D* instances, size_t num_instances
+            const components::LineStrip2D* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

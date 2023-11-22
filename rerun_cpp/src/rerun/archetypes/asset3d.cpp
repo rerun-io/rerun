@@ -5,9 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -19,18 +17,20 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = rerun::components::Blob::to_data_cell(&archetype.blob, 1);
+            auto result = Loggable<rerun::components::Blob>::to_data_cell(&archetype.blob, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
-            auto result =
-                rerun::components::MediaType::to_data_cell(&archetype.media_type.value(), 1);
+            auto result = Loggable<rerun::components::MediaType>::to_data_cell(
+                &archetype.media_type.value(),
+                1
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.transform.has_value()) {
-            auto result = rerun::components::OutOfTreeTransform3D::to_data_cell(
+            auto result = Loggable<rerun::components::OutOfTreeTransform3D>::to_data_cell(
                 &archetype.transform.value(),
                 1
             );

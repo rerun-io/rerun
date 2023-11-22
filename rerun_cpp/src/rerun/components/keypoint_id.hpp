@@ -25,9 +25,6 @@ namespace rerun::components {
     struct KeypointId {
         rerun::datatypes::KeypointId id;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         KeypointId() = default;
 
@@ -49,18 +46,30 @@ namespace rerun::components {
         operator rerun::datatypes::KeypointId() const {
             return id;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::KeypointId> {
+        static constexpr const char Name[] = "rerun.components.KeypointId";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
+            arrow::UInt16Builder* builder, const components::KeypointId* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of KeypointId components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::KeypointId` components.
         static Result<rerun::DataCell> to_data_cell(
-            const KeypointId* instances, size_t num_instances
+            const components::KeypointId* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

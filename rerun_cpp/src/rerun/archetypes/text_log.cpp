@@ -5,9 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -19,18 +17,21 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = rerun::components::Text::to_data_cell(&archetype.text, 1);
+            auto result = Loggable<rerun::components::Text>::to_data_cell(&archetype.text, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.level.has_value()) {
-            auto result =
-                rerun::components::TextLogLevel::to_data_cell(&archetype.level.value(), 1);
+            auto result = Loggable<rerun::components::TextLogLevel>::to_data_cell(
+                &archetype.level.value(),
+                1
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            auto result = rerun::components::Color::to_data_cell(&archetype.color.value(), 1);
+            auto result =
+                Loggable<rerun::components::Color>::to_data_cell(&archetype.color.value(), 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

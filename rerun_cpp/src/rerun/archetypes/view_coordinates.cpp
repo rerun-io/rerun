@@ -5,10 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char ViewCoordinates::INDICATOR_COMPONENT_NAME[] =
-        "rerun.components.ViewCoordinatesIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -20,7 +17,8 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = rerun::components::ViewCoordinates::to_data_cell(&archetype.xyz, 1);
+            auto result =
+                Loggable<rerun::components::ViewCoordinates>::to_data_cell(&archetype.xyz, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

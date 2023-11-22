@@ -5,10 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char DisconnectedSpace::INDICATOR_COMPONENT_NAME[] =
-        "rerun.components.DisconnectedSpaceIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -20,7 +17,7 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = rerun::components::DisconnectedSpace::to_data_cell(
+            auto result = Loggable<rerun::components::DisconnectedSpace>::to_data_cell(
                 &archetype.disconnected_space,
                 1
             );

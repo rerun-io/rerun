@@ -88,10 +88,11 @@ namespace rerun::archetypes {
         /// Unique identifiers for each individual vertex in the mesh.
         std::optional<Collection<rerun::components::InstanceKey>> instance_keys;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] = "rerun.components.Mesh3DIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         Mesh3D() = default;
