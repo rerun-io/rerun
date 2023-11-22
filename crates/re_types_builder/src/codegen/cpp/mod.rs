@@ -1276,13 +1276,6 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
     let push_batches = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
         let field_accessor = quote!(archetype.#field_name);
-        let field_type = quote_fqname_as_type_path(
-            hpp_includes,
-            field
-                .typ
-                .fqname()
-                .expect("Archetypes only have components and vectors of components."),
-        );
 
         let push_back = quote! {
             RR_RETURN_NOT_OK(result.error);
@@ -1294,14 +1287,14 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         if field.is_nullable {
             quote! {
                 if (#field_accessor.has_value()) {
-                    auto result = DataCell::from_loggable<#field_type>(#field_accessor.value());
+                    auto result = DataCell::from_loggable(#field_accessor.value());
                     #push_back
                 }
             }
         } else {
             quote! {
                 {
-                    auto result = DataCell::from_loggable<#field_type>(#field_accessor);
+                    auto result = DataCell::from_loggable(#field_accessor);
                     #push_back
                 }
             }
@@ -1326,7 +1319,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #(#push_batches)*
             {
                 auto indicator = #type_ident::IndicatorComponent();
-                auto result = DataCell::from_loggable<decltype(indicator)>(indicator);
+                auto result = DataCell::from_loggable(indicator);
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }

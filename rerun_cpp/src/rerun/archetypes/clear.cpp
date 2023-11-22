@@ -17,15 +17,13 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result =
-                DataCell::from_loggable<rerun::components::ClearIsRecursive>(archetype.is_recursive
-                );
+            auto result = DataCell::from_loggable(archetype.is_recursive);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Clear::IndicatorComponent();
-            auto result = DataCell::from_loggable<decltype(indicator)>(indicator);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

@@ -17,37 +17,33 @@ namespace rerun {
         cells.reserve(6);
 
         {
-            auto result = DataCell::from_loggable<rerun::components::Scalar>(archetype.scalar);
+            auto result = DataCell::from_loggable(archetype.scalar);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.radius.has_value()) {
-            auto result =
-                DataCell::from_loggable<rerun::components::Radius>(archetype.radius.value());
+            auto result = DataCell::from_loggable(archetype.radius.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            auto result =
-                DataCell::from_loggable<rerun::components::Color>(archetype.color.value());
+            auto result = DataCell::from_loggable(archetype.color.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.label.has_value()) {
-            auto result = DataCell::from_loggable<rerun::components::Text>(archetype.label.value());
+            auto result = DataCell::from_loggable(archetype.label.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.scattered.has_value()) {
-            auto result = DataCell::from_loggable<rerun::components::ScalarScattering>(
-                archetype.scattered.value()
-            );
+            auto result = DataCell::from_loggable(archetype.scattered.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = TimeSeriesScalar::IndicatorComponent();
-            auto result = DataCell::from_loggable<decltype(indicator)>(indicator);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

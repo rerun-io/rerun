@@ -17,25 +17,23 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = DataCell::from_loggable<rerun::components::Text>(archetype.text);
+            auto result = DataCell::from_loggable(archetype.text);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.level.has_value()) {
-            auto result =
-                DataCell::from_loggable<rerun::components::TextLogLevel>(archetype.level.value());
+            auto result = DataCell::from_loggable(archetype.level.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            auto result =
-                DataCell::from_loggable<rerun::components::Color>(archetype.color.value());
+            auto result = DataCell::from_loggable(archetype.color.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = TextLog::IndicatorComponent();
-            auto result = DataCell::from_loggable<decltype(indicator)>(indicator);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

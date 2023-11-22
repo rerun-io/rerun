@@ -24,18 +24,15 @@ struct CustomPoints3D {
 template <>
 struct rerun::AsComponents<CustomPoints3D> {
     static Result<std::vector<DataCell>> serialize(const CustomPoints3D& archetype) {
-        auto cells =
-            rerun::AsComponents<rerun::Points3D>::serialize(archetype.points).value_or_throw();
+        auto cells = AsComponents<rerun::Points3D>::serialize(archetype.points).value_or_throw();
 
+        // Add a custom indicator component.
         CustomPoints3D::IndicatorComponent indicator;
-        cells.push_back(rerun::DataCell::from_loggable<CustomPoints3D::IndicatorComponent>(indicator
-        )
-                            .value_or_throw());
+        cells.push_back(DataCell::from_loggable(indicator).value_or_throw());
 
+        // Add custom confidence components if present.
         if (archetype.confidences) {
-            cells.push_back(rerun::DataCell::from_loggable<Confidence>(archetype.confidences.value()
-            )
-                                .value_or_throw());
+            cells.push_back(DataCell::from_loggable(*archetype.confidences).value_or_throw());
         }
 
         return cells;

@@ -33,7 +33,9 @@ namespace rerun {
         ComponentTypeHandle component_type;
 
       public:
-        /// TODO:
+        /// Creates a new data cell from a collection of component instances.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
         static Result<DataCell> from_loggable(const rerun::Collection<T>& components) {
             static_assert(
@@ -56,6 +58,16 @@ namespace rerun {
             cell.array = std::move(array.value);
             cell.component_type = component_type.value;
             return cell;
+        }
+
+        /// Creates a new data cell from a single component instance.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
+        template <typename T>
+        static Result<DataCell> from_loggable(const T& component) {
+            // Collection adapter will automatically borrow for single elements, but let's do this explicitly, avoiding the extra hoop.
+            const auto collection = Collection<T>::borrow(&component, 1);
+            return from_loggable(collection);
         }
 
         /// To rerun C API data cell.

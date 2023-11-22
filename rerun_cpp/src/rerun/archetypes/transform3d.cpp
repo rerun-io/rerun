@@ -17,14 +17,13 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result =
-                DataCell::from_loggable<rerun::components::Transform3D>(archetype.transform);
+            auto result = DataCell::from_loggable(archetype.transform);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Transform3D::IndicatorComponent();
-            auto result = DataCell::from_loggable<decltype(indicator)>(indicator);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

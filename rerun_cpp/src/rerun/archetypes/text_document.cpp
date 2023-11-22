@@ -17,19 +17,18 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = DataCell::from_loggable<rerun::components::Text>(archetype.text);
+            auto result = DataCell::from_loggable(archetype.text);
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
-            auto result =
-                DataCell::from_loggable<rerun::components::MediaType>(archetype.media_type.value());
+            auto result = DataCell::from_loggable(archetype.media_type.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         {
             auto indicator = TextDocument::IndicatorComponent();
-            auto result = DataCell::from_loggable<decltype(indicator)>(indicator);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
