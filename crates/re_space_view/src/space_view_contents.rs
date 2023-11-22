@@ -498,10 +498,7 @@ impl DataQuery for SpaceViewContents {
             // Create a fake `DataQueryId` based on the SpaceView since each
             // SpaceView contains a single "Query" based on its contents.
             id: self.space_view_id.uuid().into(),
-            tree: DataResultTree {
-                data_results,
-                root_handle,
-            },
+            tree: DataResultTree::new(data_results, root_handle),
         }
     }
 

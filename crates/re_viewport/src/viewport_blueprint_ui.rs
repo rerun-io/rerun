@@ -164,8 +164,7 @@ impl ViewportBlueprint<'_> {
         let item = Item::SpaceView(space_view.id);
 
         let default_open = result_tree
-            .root_handle
-            .and_then(|handle| result_tree.lookup_node(handle))
+            .root_node()
             .map_or(false, Self::default_open_for_data_result);
 
         let collapsing_header_id = ui.id().with(space_view.id);
@@ -189,7 +188,7 @@ impl ViewportBlueprint<'_> {
                 response | vis_response
             })
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                if let Some(result_handle) = result_tree.root_handle {
+                if let Some(result_handle) = result_tree.root_handle() {
                     // TODO(jleibs): handle the case where the only result
                     // in the tree is a single path (no groups). This should never
                     // happen for a SpaceViewContents.

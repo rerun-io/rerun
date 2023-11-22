@@ -1,4 +1,6 @@
+use nohash_hasher::IntMap;
 use once_cell::sync::Lazy;
+use re_log_types::EntityPath;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -40,8 +42,9 @@ impl Default for DataQueryResult {
 /// A hierarchical tree of [`DataResult`]s
 #[derive(Clone, Default)]
 pub struct DataResultTree {
-    pub data_results: SlotMap<DataResultHandle, DataResultNode>,
-    pub root_handle: Option<DataResultHandle>,
+    data_results: SlotMap<DataResultHandle, DataResultNode>,
+    data_results_by_path: IntMap<EntityPath, DataResultHandle>,
+    root_handle: Option<DataResultHandle>,
 }
 
 /// A single node in the [`DataResultTree`]
@@ -52,6 +55,31 @@ pub struct DataResultNode {
 }
 
 impl DataResultTree {
+    pub fn new(
+        data_results: SlotMap<DataResultHandle, DataResultNode>,
+        root_handle: Option<DataResultHandle>,
+    ) -> Self {
+        let data_results_by_path = data_results
+            .iter()
+            .map(|(handle, node)| (node.data_result.entity_path.clone(), handle))
+            .collect();
+
+        Self {
+            data_results,
+            data_results_by_path,
+            root_handle,
+        }
+    }
+
+    pub fn root_handle(&self) -> Option<DataResultHandle> {
+        self.root_handle
+    }
+
+    pub fn root_node(&self) -> Option<&DataResultNode> {
+        self.root_handle
+            .and_then(|handle| self.data_results.get(handle))
+    }
+
     /// Depth-first traversal of the tree, calling `visitor` on each result.
     pub fn visit(&self, visitor: &mut impl FnMut(DataResultHandle)) {
         if let Some(root_handle) = self.root_handle {
@@ -67,6 +95,13 @@ impl DataResultTree {
     /// Look up a [`DataResultNode`] in the tree based on its handle.
     pub fn lookup_node(&self, handle: DataResultHandle) -> Option<&DataResultNode> {
         self.data_results.get(handle)
+    }
+
+    /// Look up a [`DataResultNode`] in the tree based on an [`EntityPath`].
+    pub fn lookup_result_by_path(&self, path: &EntityPath) -> Option<&DataResult> {
+        self.data_results_by_path
+            .get(path)
+            .and_then(|handle| self.lookup_result(*handle))
     }
 
     fn visit_recursive(

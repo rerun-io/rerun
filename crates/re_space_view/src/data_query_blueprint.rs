@@ -66,10 +66,7 @@ impl DataQuery for DataQueryBlueprint {
 
         DataQueryResult {
             id: self.id,
-            tree: DataResultTree {
-                data_results,
-                root_handle,
-            },
+            tree: DataResultTree::new(data_results, root_handle),
         }
     }
 
