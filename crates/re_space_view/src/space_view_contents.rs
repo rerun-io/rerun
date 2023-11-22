@@ -3,14 +3,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, DataResult, EntitiesPerSystemPerClass, PerSystemEntities,
-    SpaceViewId, StoreContext, ViewSystemName,
+    DataBlueprintGroupHandle, DataQueryId, DataResult, EntitiesPerSystemPerClass,
+    PerSystemEntities, SpaceViewId, StoreContext, ViewSystemName,
 };
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
 use crate::{
-    DataQuery, DataResultHandle, DataResultNode, DataResultTree, EntityOverrides, PropertyResolver,
+    data_query::DataQueryResult, DataQuery, DataResultHandle, DataResultNode, DataResultTree,
+    EntityOverrides, PropertyResolver,
 };
 
 /// A grouping of several data-blueprints.
@@ -484,7 +485,7 @@ impl DataQuery for SpaceViewContents {
         property_resolver: &impl PropertyResolver,
         ctx: &StoreContext<'_>,
         _entities_per_system_per_class: &EntitiesPerSystemPerClass,
-    ) -> DataResultTree {
+    ) -> DataQueryResult {
         re_tracing::profile_function!();
         let overrides = property_resolver.resolve_entity_overrides(ctx);
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
@@ -495,9 +496,12 @@ impl DataQuery for SpaceViewContents {
             &overrides.root,
             &mut data_results,
         ));
-        DataResultTree {
-            data_results,
-            root_handle,
+        DataQueryResult {
+            id: DataQueryId::invalid(), // Not a real DataQuery
+            tree: DataResultTree {
+                data_results,
+                root_handle,
+            },
         }
     }
 

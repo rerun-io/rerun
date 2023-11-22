@@ -1,11 +1,20 @@
 use re_data_store::{EntityPath, EntityProperties, EntityPropertyMap};
-use re_viewer_context::{DataResult, EntitiesPerSystemPerClass, StoreContext};
+use re_viewer_context::{DataQueryId, DataResult, EntitiesPerSystemPerClass, StoreContext};
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 slotmap::new_key_type! {
     /// Identifier for a [`DataResultNode`]
     pub struct DataResultHandle;
+}
+
+/// The result of executing a single data query
+pub struct DataQueryResult {
+    /// Which [`DataQuery`] generated this result
+    pub id: DataQueryId,
+
+    /// The [`DataResultTree`] for the query
+    pub tree: DataResultTree,
 }
 
 /// A hierarchical tree of [`DataResult`]s
@@ -83,7 +92,7 @@ pub trait DataQuery {
         property_resolver: &impl PropertyResolver,
         ctx: &StoreContext<'_>,
         entities_per_system_per_class: &EntitiesPerSystemPerClass,
-    ) -> DataResultTree;
+    ) -> DataQueryResult;
 
     /// Find a single [`DataResult`] within the context of the query.
     ///

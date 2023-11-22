@@ -150,11 +150,12 @@ impl ViewportBlueprint<'_> {
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
-        let result_tree = space_view.contents.execute_query(
+        let query_result = space_view.contents.execute_query(
             space_view,
             ctx.store_context,
             ctx.entities_per_system_per_class,
         );
+        let result_tree = &query_result.tree;
 
         let mut visibility_changed = false;
         let mut visible = self.tree.is_visible(tile_id);
@@ -194,7 +195,7 @@ impl ViewportBlueprint<'_> {
                     Self::space_view_blueprint_ui(
                         ctx,
                         ui,
-                        &result_tree,
+                        result_tree,
                         result_handle,
                         space_view,
                         visible_child,

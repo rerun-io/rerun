@@ -3,14 +3,14 @@ use once_cell::sync::Lazy;
 use re_data_store::{EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathExpr};
 use re_viewer_context::{
-    DataResult, EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName,
+    DataQueryId, DataResult, EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
 use crate::{
-    blueprint::QueryExpressions, DataQuery, DataResultHandle, DataResultNode, DataResultTree,
-    EntityOverrides, PropertyResolver,
+    blueprint::QueryExpressions, data_query::DataQueryResult, DataQuery, DataResultHandle,
+    DataResultNode, DataResultTree, EntityOverrides, PropertyResolver,
 };
 
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
@@ -26,7 +26,7 @@ use crate::{
 /// and for which there is a valid `ViewPart` system. This keeps recursive expressions from incorrectly
 /// picking up irrelevant data within the tree.
 pub struct DataQueryBlueprint {
-    pub blueprint_path: EntityPath,
+    pub id: DataQueryId,
     pub space_view_class_name: SpaceViewClassName,
     pub expressions: QueryExpressions,
 }
@@ -41,7 +41,7 @@ impl DataQuery for DataQueryBlueprint {
         property_resolver: &impl PropertyResolver,
         ctx: &re_viewer_context::StoreContext<'_>,
         entities_per_system_per_class: &EntitiesPerSystemPerClass,
-    ) -> DataResultTree {
+    ) -> DataQueryResult {
         re_tracing::profile_function!();
 
         static EMPTY_ENTITY_LIST: Lazy<EntitiesPerSystem> = Lazy::new(Default::default);
@@ -66,9 +66,12 @@ impl DataQuery for DataQueryBlueprint {
             )
         });
 
-        DataResultTree {
-            data_results,
-            root_handle,
+        DataQueryResult {
+            id: self.id,
+            tree: DataResultTree {
+                data_results,
+                root_handle,
+            },
         }
     }
 
@@ -113,7 +116,8 @@ impl DataQuery for DataQueryBlueprint {
             individual_properties: overrides.individual.get_opt(entity_path).cloned(),
             resolved_properties,
             override_path: self
-                .blueprint_path
+                .id
+                .as_entity_path()
                 .join(&Self::OVERRIDES_PREFIX.into())
                 .join(entity_path),
         }
@@ -214,7 +218,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
             resolved_properties = resolved_properties.with_child(props);
         }
 
-        let base_entity_path = self.blueprint.blueprint_path.clone();
+        let base_entity_path = self.blueprint.id.as_entity_path().clone();
         let prefix = EntityPath::from(DataQueryBlueprint::OVERRIDES_PREFIX);
         let override_path = base_entity_path.join(&prefix).join(&entity_path);
 
@@ -387,7 +391,7 @@ mod tests {
 
         for (input, outputs) in scenarios {
             let query = DataQueryBlueprint {
-                blueprint_path: EntityPath::root(),
+                id: DataQueryId::random(),
                 space_view_class_name: "3D".into(),
                 expressions: input
                     .into_iter()
@@ -396,11 +400,11 @@ mod tests {
                     .into(),
             };
 
-            let result_tree = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
             let mut visited = vec![];
-            result_tree.visit(&mut |handle| {
-                let result = result_tree.lookup_result(handle).unwrap();
+            query_result.tree.visit(&mut |handle| {
+                let result = query_result.tree.lookup_result(handle).unwrap();
                 if result.is_group && result.entity_path != EntityPath::root() {
                     visited.push(format!("{}/", result.entity_path));
                 } else {
