@@ -287,7 +287,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.3.0
         with:
           pixi-version: v0.6.0
-          cache: true
 
       # TODO(emilk): make this work somehow. Right now this just results in
       # > Compiler: GNU 12.3.0 (/__w/rerun/rerun/.pixi/env/bin/x86_64-conda-linux-gnu-c++)
