@@ -1212,10 +1212,15 @@ fn fill_arrow_array_builder_method(
     }
 }
 
-fn to_arrow_method(obj: &Object, objects: &Objects, hpp_includes: &mut Includes) -> Method {
+fn to_arrow_method(
+    obj: &Object,
+    objects: &Objects,
+    hpp_includes: &mut Includes,
+    declarations: &mut ForwardDecls,
+) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
-    hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
+    declarations.insert("arrow", ForwardDecl::Class(format_ident!("Array")));
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
 
@@ -1227,10 +1232,13 @@ fn to_arrow_method(obj: &Object, objects: &Objects, hpp_includes: &mut Includes)
     let namespace_ident = obj.namespace_ident();
 
     Method {
-        docs: format!("Creates a Rerun DataCell from an array of `rerun::{namespace_ident}::{type_ident}` components.").into(),
+        docs: format!(
+            "Serializes an array of `rerun::{namespace_ident}::{type_ident}` into an arrow array."
+        )
+        .into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { Result<rerun::DataCell> },
+            return_type: quote! { Result<std::shared_ptr<arrow::Array>> },
             name_and_parameters: quote! {
                 to_arrow(const #namespace_ident::#type_ident* instances, size_t num_instances)
             },
@@ -1252,18 +1260,7 @@ fn to_arrow_method(obj: &Object, objects: &Objects, hpp_includes: &mut Includes)
             }
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            // Lazily register component type.
-            static const Result<ComponentTypeHandle> component_type = ComponentType(Name, datatype).register_component();
-            RR_RETURN_NOT_OK(component_type.error);
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            DataCell cell;
-            cell.num_instances = num_instances;
-            cell.array = std::move(array);
-            cell.component_type = component_type.value;
-            return cell;
+            return array;
         },
         inline: false,
     }
@@ -1287,41 +1284,25 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
                 .expect("Archetypes only have components and vectors of components."),
         );
 
-        let emplace_back = quote! {
+        let push_back = quote! {
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         };
 
-
         // TODO(andreas): Introducing MonoCollection will remove the need for distinguishing these two cases.
-        if field.typ.is_plural() {
-            if field.is_nullable {
-                quote! {
-                    if (#field_accessor.has_value()) {
-                        auto result = Loggable<#field_type>::to_arrow(#field_accessor.value().data(), #field_accessor.value().size());
-                        #emplace_back
-                    }
-                }
-            } else {
-                quote! {
-                    {
-                        auto result = Loggable<#field_type>::to_arrow(#field_accessor.data(), #field_accessor.size());
-                        #emplace_back
-                    }
-                }
-            }
-        } else if field.is_nullable {
+        // TODO: are you sure that single elements are borrowed here?
+        if field.is_nullable {
             quote! {
                 if (#field_accessor.has_value()) {
-                    auto result = Loggable<#field_type>::to_arrow(&#field_accessor.value(), 1);
-                    #emplace_back
+                    auto result = DataCell::from_loggable<#field_type>(#field_accessor.value());
+                    #push_back
                 }
             }
         } else {
             quote! {
                 {
-                    auto result = Loggable<#field_type>::to_arrow(&#field_accessor, 1);
-                    #emplace_back
+                    auto result = DataCell::from_loggable<#field_type>(#field_accessor);
+                    #push_back
                 }
             }
         }
@@ -2170,7 +2151,7 @@ fn quote_loggable_hpp_and_cpp(
     let methods = vec![
         arrow_data_type_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
         fill_arrow_array_builder_method(obj, cpp_includes, hpp_declarations, objects),
-        to_arrow_method(obj, objects, hpp_includes),
+        to_arrow_method(obj, objects, hpp_includes, hpp_declarations),
     ];
 
     let loggable_type_name = quote! { Loggable<#namespace_ident::#type_ident> };

@@ -18,9 +18,10 @@ namespace rerun {
 
         {
             auto result =
-                Loggable<rerun::components::ClearIsRecursive>::to_arrow(&archetype.is_recursive, 1);
+                DataCell::from_loggable<rerun::components::ClearIsRecursive>(archetype.is_recursive
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Clear::IndicatorComponent();

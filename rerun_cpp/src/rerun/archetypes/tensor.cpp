@@ -17,9 +17,9 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = Loggable<rerun::components::TensorData>::to_arrow(&archetype.data, 1);
+            auto result = DataCell::from_loggable<rerun::components::TensorData>(archetype.data);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Tensor::IndicatorComponent();

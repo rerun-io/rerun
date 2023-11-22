@@ -17,15 +17,15 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = Loggable<rerun::components::Text>::to_arrow(&archetype.text, 1);
+            auto result = DataCell::from_loggable<rerun::components::Text>(archetype.text);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
             auto result =
-                Loggable<rerun::components::MediaType>::to_arrow(&archetype.media_type.value(), 1);
+                DataCell::from_loggable<rerun::components::MediaType>(archetype.media_type.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = TextDocument::IndicatorComponent();

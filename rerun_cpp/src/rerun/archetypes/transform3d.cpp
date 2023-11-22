@@ -18,9 +18,9 @@ namespace rerun {
 
         {
             auto result =
-                Loggable<rerun::components::Transform3D>::to_arrow(&archetype.transform, 1);
+                DataCell::from_loggable<rerun::components::Transform3D>(archetype.transform);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Transform3D::IndicatorComponent();

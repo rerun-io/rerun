@@ -18,9 +18,9 @@ namespace rerun {
 
         {
             auto result =
-                Loggable<rerun::components::AnnotationContext>::to_arrow(&archetype.context, 1);
+                DataCell::from_loggable<rerun::components::AnnotationContext>(archetype.context);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = AnnotationContext::IndicatorComponent();

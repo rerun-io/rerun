@@ -5,10 +5,10 @@
 
 #include <cstdint>
 #include <memory>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -47,8 +47,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::datatypes::FlattenedScalar` components.
-        static Result<rerun::DataCell> to_arrow(
+        /// Serializes an array of `rerun::datatypes::FlattenedScalar` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::FlattenedScalar* instances, size_t num_instances
         );
     };

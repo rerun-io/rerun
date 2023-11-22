@@ -5,7 +5,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 
 namespace arrow {
@@ -13,6 +12,7 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
     class UInt32Type;
     using UInt32Builder = NumericBuilder<UInt32Type>;
@@ -52,8 +52,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::datatypes::PrimitiveComponent` components.
-        static Result<rerun::DataCell> to_arrow(
+        /// Serializes an array of `rerun::datatypes::PrimitiveComponent` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::PrimitiveComponent* instances, size_t num_instances
         );
     };

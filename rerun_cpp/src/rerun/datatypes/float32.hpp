@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -14,6 +13,7 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
     class FloatType;
     using FloatBuilder = NumericBuilder<FloatType>;
@@ -53,8 +53,8 @@ namespace rerun {
             arrow::FloatBuilder* builder, const datatypes::Float32* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::datatypes::Float32` components.
-        static Result<rerun::DataCell> to_arrow(
+        /// Serializes an array of `rerun::datatypes::Float32` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::Float32* instances, size_t num_instances
         );
     };

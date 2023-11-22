@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/utf8.hpp"
 #include "../result.hpp"
 
@@ -13,6 +12,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StringBuilder;
 } // namespace arrow
@@ -73,8 +73,8 @@ namespace rerun {
             arrow::StringBuilder* builder, const components::Text* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::Text` components.
-        static Result<rerun::DataCell> to_arrow(
+        /// Serializes an array of `rerun::components::Text` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Text* instances, size_t num_instances
         );
     };

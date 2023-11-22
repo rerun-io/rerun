@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/transform3d.hpp"
 #include "../result.hpp"
 
@@ -11,6 +10,7 @@
 #include <memory>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
 } // namespace arrow
@@ -56,8 +56,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::Transform3D` components.
-        static Result<rerun::DataCell> to_arrow(
+        /// Serializes an array of `rerun::components::Transform3D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Transform3D* instances, size_t num_instances
         );
     };

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../result.hpp"
 #include "quaternion.hpp"
 #include "rotation_axis_angle.hpp"
@@ -15,6 +14,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
 } // namespace arrow
@@ -169,8 +169,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::datatypes::Rotation3D` components.
-        static Result<rerun::DataCell> to_arrow(
+        /// Serializes an array of `rerun::datatypes::Rotation3D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::Rotation3D* instances, size_t num_instances
         );
     };

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/tensor_data.hpp"
 #include "../result.hpp"
 
@@ -12,6 +11,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -66,8 +66,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::TensorData` components.
-        static Result<rerun::DataCell> to_arrow(
+        /// Serializes an array of `rerun::components::TensorData` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::TensorData* instances, size_t num_instances
         );
     };

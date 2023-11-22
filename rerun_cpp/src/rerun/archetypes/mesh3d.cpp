@@ -17,60 +17,50 @@ namespace rerun {
         cells.reserve(8);
 
         {
-            auto result = Loggable<rerun::components::Position3D>::to_arrow(
-                archetype.vertex_positions.data(),
-                archetype.vertex_positions.size()
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::Position3D>(archetype.vertex_positions);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.mesh_properties.has_value()) {
-            auto result = Loggable<rerun::components::MeshProperties>::to_arrow(
-                &archetype.mesh_properties.value(),
-                1
+            auto result = DataCell::from_loggable<rerun::components::MeshProperties>(
+                archetype.mesh_properties.value()
             );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.vertex_normals.has_value()) {
-            auto result = Loggable<rerun::components::Vector3D>::to_arrow(
-                archetype.vertex_normals.value().data(),
-                archetype.vertex_normals.value().size()
+            auto result = DataCell::from_loggable<rerun::components::Vector3D>(
+                archetype.vertex_normals.value()
             );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.vertex_colors.has_value()) {
-            auto result = Loggable<rerun::components::Color>::to_arrow(
-                archetype.vertex_colors.value().data(),
-                archetype.vertex_colors.value().size()
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::Color>(archetype.vertex_colors.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.mesh_material.has_value()) {
-            auto result = Loggable<rerun::components::Material>::to_arrow(
-                &archetype.mesh_material.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::Material>(archetype.mesh_material.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = Loggable<rerun::components::ClassId>::to_arrow(
-                archetype.class_ids.value().data(),
-                archetype.class_ids.value().size()
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::ClassId>(archetype.class_ids.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.instance_keys.has_value()) {
-            auto result = Loggable<rerun::components::InstanceKey>::to_arrow(
-                archetype.instance_keys.value().data(),
-                archetype.instance_keys.value().size()
+            auto result = DataCell::from_loggable<rerun::components::InstanceKey>(
+                archetype.instance_keys.value()
             );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Mesh3D::IndicatorComponent();

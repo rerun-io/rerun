@@ -5,12 +5,12 @@
 
 #include <cstdint>
 #include <memory>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <string>
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StringBuilder;
 } // namespace arrow
@@ -49,8 +49,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::datatypes::StringComponent` components.
-        static Result<rerun::DataCell> to_arrow(
+        /// Serializes an array of `rerun::datatypes::StringComponent` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::StringComponent* instances, size_t num_instances
         );
     };

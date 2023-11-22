@@ -17,15 +17,15 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = Loggable<rerun::components::TensorData>::to_arrow(&archetype.data, 1);
+            auto result = DataCell::from_loggable<rerun::components::TensorData>(archetype.data);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
             auto result =
-                Loggable<rerun::components::DrawOrder>::to_arrow(&archetype.draw_order.value(), 1);
+                DataCell::from_loggable<rerun::components::DrawOrder>(archetype.draw_order.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Image::IndicatorComponent();

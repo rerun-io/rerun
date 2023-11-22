@@ -18,129 +18,129 @@ namespace rerun {
 
         if (archetype.fuzz2001.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer1>::to_arrow(&archetype.fuzz2001.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer1>(archetype.fuzz2001.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2002.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer2>::to_arrow(&archetype.fuzz2002.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer2>(archetype.fuzz2002.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2003.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer3>::to_arrow(&archetype.fuzz2003.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer3>(archetype.fuzz2003.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2004.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer4>::to_arrow(&archetype.fuzz2004.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer4>(archetype.fuzz2004.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2005.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer5>::to_arrow(&archetype.fuzz2005.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer5>(archetype.fuzz2005.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2006.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer6>::to_arrow(&archetype.fuzz2006.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer6>(archetype.fuzz2006.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2007.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer7>::to_arrow(&archetype.fuzz2007.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer7>(archetype.fuzz2007.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2008.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer8>::to_arrow(&archetype.fuzz2008.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer8>(archetype.fuzz2008.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2009.has_value()) {
             auto result =
-                Loggable<rerun::components::AffixFuzzer9>::to_arrow(&archetype.fuzz2009.value(), 1);
+                DataCell::from_loggable<rerun::components::AffixFuzzer9>(archetype.fuzz2009.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2010.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer10>::to_arrow(
-                &archetype.fuzz2010.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer10>(archetype.fuzz2010.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2011.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer11>::to_arrow(
-                &archetype.fuzz2011.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer11>(archetype.fuzz2011.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2012.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer12>::to_arrow(
-                &archetype.fuzz2012.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer12>(archetype.fuzz2012.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2013.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer13>::to_arrow(
-                &archetype.fuzz2013.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer13>(archetype.fuzz2013.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2014.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer14>::to_arrow(
-                &archetype.fuzz2014.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer14>(archetype.fuzz2014.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2015.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer15>::to_arrow(
-                &archetype.fuzz2015.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer15>(archetype.fuzz2015.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2016.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer16>::to_arrow(
-                &archetype.fuzz2016.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer16>(archetype.fuzz2016.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2017.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer17>::to_arrow(
-                &archetype.fuzz2017.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer17>(archetype.fuzz2017.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.fuzz2018.has_value()) {
-            auto result = Loggable<rerun::components::AffixFuzzer18>::to_arrow(
-                &archetype.fuzz2018.value(),
-                1
-            );
+            auto result =
+                DataCell::from_loggable<rerun::components::AffixFuzzer18>(archetype.fuzz2018.value()
+                );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = AffixFuzzer3::IndicatorComponent();

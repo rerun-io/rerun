@@ -17,23 +17,22 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = Loggable<rerun::components::Blob>::to_arrow(&archetype.blob, 1);
+            auto result = DataCell::from_loggable<rerun::components::Blob>(archetype.blob);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
             auto result =
-                Loggable<rerun::components::MediaType>::to_arrow(&archetype.media_type.value(), 1);
+                DataCell::from_loggable<rerun::components::MediaType>(archetype.media_type.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.transform.has_value()) {
-            auto result = Loggable<rerun::components::OutOfTreeTransform3D>::to_arrow(
-                &archetype.transform.value(),
-                1
+            auto result = DataCell::from_loggable<rerun::components::OutOfTreeTransform3D>(
+                archetype.transform.value()
             );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Asset3D::IndicatorComponent();
