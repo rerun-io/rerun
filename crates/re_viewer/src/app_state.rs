@@ -7,6 +7,7 @@ use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SelectionState, SpaceViewClassRegistry, StoreContext, ViewerContext,
 };
+use re_viewport::external::re_space_view::DataQuery as _;
 use re_viewport::{
     identify_entities_per_system_per_class, SpaceInfoCollection, Viewport, ViewportState,
 };
@@ -114,8 +115,22 @@ impl AppState {
             &rec_cfg.time_ctrl.current_query(),
         );
 
-        // TODO(jleibs): Execute queries
-        let query_results = Default::default();
+        // Execute the queries for every `SpaceView`
+        let query_results = viewport
+            .blueprint
+            .space_views
+            .values()
+            .map(|space_view| {
+                (
+                    space_view.query_id(),
+                    space_view.contents.execute_query(
+                        space_view,
+                        store_context,
+                        &entities_per_system_per_class,
+                    ),
+                )
+            })
+            .collect::<_>();
 
         let mut ctx = ViewerContext {
             app_options,

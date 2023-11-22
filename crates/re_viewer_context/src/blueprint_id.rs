@@ -87,6 +87,11 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
     pub fn registry() -> &'static EntityPath {
         T::registry()
     }
+
+    #[inline]
+    pub fn uuid(&self) -> uuid::Uuid {
+        self.id
+    }
 }
 
 impl<T: BlueprintIdRegistry> From<uuid::Uuid> for BlueprintId<T> {

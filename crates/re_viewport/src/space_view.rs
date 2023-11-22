@@ -7,9 +7,9 @@ use re_space_view::{
 };
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
-    DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClassName,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, StoreContext,
-    ViewerContext,
+    DataQueryId, DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults,
+    SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry,
+    StoreContext, ViewerContext,
 };
 
 use crate::{
@@ -356,8 +356,14 @@ impl SpaceViewBlueprint {
         *self.contents.per_system_entities_mut() = per_system_entities;
     }
 
+    #[inline]
     pub fn entity_path(&self) -> EntityPath {
         self.id.as_entity_path()
+    }
+
+    #[inline]
+    pub fn query_id(&self) -> DataQueryId {
+        self.id.uuid().into()
     }
 
     pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {
