@@ -69,54 +69,6 @@ impl DataQuery for DataQueryBlueprint {
             tree: DataResultTree::new(data_results, root_handle),
         }
     }
-
-    fn resolve(
-        &self,
-        property_resolver: &impl PropertyResolver,
-        ctx: &re_viewer_context::StoreContext<'_>,
-        entities_per_system_per_class: &EntitiesPerSystemPerClass,
-        entity_path: &re_log_types::EntityPath,
-        as_group: bool,
-    ) -> re_viewer_context::DataResult {
-        re_tracing::profile_function!();
-        let overrides = property_resolver.resolve_entity_overrides(ctx);
-
-        let view_parts = if let Some(per_system_entity_list) =
-            entities_per_system_per_class.get(&self.space_view_class_name)
-        {
-            per_system_entity_list
-                .iter()
-                .filter_map(|(part, ents)| {
-                    if ents.contains(entity_path) {
-                        Some(*part)
-                    } else {
-                        None
-                    }
-                })
-                .collect()
-        } else {
-            Default::default()
-        };
-
-        let mut resolved_properties = overrides.root.clone();
-        for prefix in EntityPath::incremental_walk(None, entity_path) {
-            resolved_properties = resolved_properties.with_child(&overrides.group.get(&prefix));
-        }
-
-        // TODO(jleibs): This needs to be updated to accommodate for groups
-        DataResult {
-            entity_path: entity_path.clone(),
-            view_parts,
-            is_group: as_group,
-            individual_properties: overrides.individual.get_opt(entity_path).cloned(),
-            resolved_properties,
-            override_path: self
-                .id
-                .as_entity_path()
-                .join(&Self::OVERRIDES_PREFIX.into())
-                .join(entity_path),
-        }
-    }
 }
 
 /// Helper struct for executing the query from [`DataQueryBlueprint`]

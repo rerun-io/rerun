@@ -31,19 +31,4 @@ pub trait DataQuery {
         ctx: &StoreContext<'_>,
         entities_per_system_per_class: &EntitiesPerSystemPerClass,
     ) -> DataQueryResult;
-
-    /// Find a single [`DataResult`] within the context of the query.
-    ///
-    /// `auto_properties` is a map containing any heuristic-derived auto properties for the given `SpaceView`.
-    ///
-    /// This is used when finding the result for a single entity such as in
-    /// a selection panel.
-    fn resolve(
-        &self,
-        property_resolver: &impl PropertyResolver,
-        ctx: &StoreContext<'_>,
-        entities_per_system_per_class: &EntitiesPerSystemPerClass,
-        entity_path: &EntityPath,
-        as_group: bool,
-    ) -> DataResult;
 }
