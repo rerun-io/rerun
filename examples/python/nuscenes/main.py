@@ -43,7 +43,8 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
 
     scene = next(s for s in nusc.scene if s["name"] == scene_name)
 
-    # TODO log sensor configuration
+    # each sensor only has to be logged once, maintain set of already logged sensors
+    logged_sensor_tokens = set()
 
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
 
@@ -51,22 +52,27 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
     start_timestamp = current_sample["timestamp"]
     while True:
         # log data
-        for data_name, data_token in current_sample["data"].items():
+        for sensor_name, data_token in current_sample["data"].items():
             while True:
                 meta_data = nusc.get("sample_data", data_token)
+                sensor_token = meta_data["calibrated_sensor_token"]
+                if sensor_token not in logged_sensor_tokens:
+                    calibrated_sensor = nusc.get("calibrated_sensor", sensor_token)
+                    rotation_xyzw = np.roll(calibrated_sensor["rotation"], shift=-1)
+                    rr.log(
+                        f"world/ego_vehicle/{sensor_name}",
+                        rr.Transform3D(
+                            translation=calibrated_sensor["translation"],
+                            rotation=rr.Quaternion(xyzw=rotation_xyzw),
+                            from_parent=False,
+                        ),
+                        timeless=True,
+                    )
+                    logged_sensor_tokens.add(sensor_token)
+                    breakpoint()
+
                 rr.set_time_seconds("timestamp", (meta_data["timestamp"] - start_timestamp) * 1e-6)
 
-                ego_pose = nusc.get("ego_pose", meta_data["ego_pose_token"])
-
-                rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)
-                rr.log(
-                    "world/ego_vehicle",
-                    rr.Transform3D(
-                        translation=ego_pose["translation"],
-                        rotation=rr.Quaternion(xyzw=rotation_xyzw),
-                        from_parent=False,
-                    ),
-                )
 
                 data_file_path = root_dir / meta_data["filename"]
 
@@ -75,11 +81,22 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
                     print(meta_data["ego_pose_token"])
                     pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
                     points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
-                    rr.log(f"world/ego_vehicle/{data_name}", rr.Points3D(points))
+                    rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points))
+
+                    ego_pose = nusc.get("ego_pose", meta_data["ego_pose_token"])
+                    rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)
+                    rr.log(
+                        "world/ego_vehicle",
+                        rr.Transform3D(
+                            translation=ego_pose["translation"],
+                            rotation=rr.Quaternion(xyzw=rotation_xyzw),
+                            from_parent=False,
+                        ),
+                    )
                 elif meta_data["sensor_modality"] == "radar":
                     pointcloud = nuscenes.RadarPointCloud.from_file(str(data_file_path))
                     points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
-                    rr.log(f"world/ego_vehicle/{data_name}", rr.Points3D(points))
+                    rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points))
                 elif meta_data["sensor_modality"] == "camera":
                     # TODO log images
                     pass
