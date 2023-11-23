@@ -28,18 +28,20 @@ namespace rerun {
     namespace detail {
         /// Helper to check whether a type implements the Loggable trait.
         ///
-        /// This is used to implement `rerun::is_loggable`.
         /// Uses SFINAE to ensure that a given type T *specializes* the `rerun::Loggable` trait.
+        /// The non-specialized `Loggable<T>` is the only implementation which contains `NoLoggableFor<T>`,
+        /// so if that type exists we know the type does not specialize the `Loggable` trait.
         template <typename T>
         constexpr auto is_loggable(int = 0) ->
-            typename Loggable<T>::template NoLoggableFor<T>::type {
+            typename Loggable<T>::template NoLoggableFor<T>::value_type {
             return false;
         }
 
         /// Helper to check whether a type implements the Loggable trait.
         ///
-        /// This is used to implement `rerun::is_loggable`.
         /// Uses SFINAE to ensure that a given type T *specializes* the `rerun::Loggable` trait.
+        /// The non-specialized `Loggable<T>` is the only implementation which contains `NoLoggableFor<T>`,
+        /// so if that type exists we know the type does not specialize the `Loggable` trait.
         template <typename T>
         constexpr bool is_loggable(...) {
             return true;
