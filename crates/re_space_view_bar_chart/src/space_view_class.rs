@@ -94,10 +94,7 @@ impl SpaceViewClass for BarChartSpaceView {
             Plot::new("bar_chart_plot")
                 .legend(Legend::default())
                 .clamp_grid(true)
-                .allow_zoom(egui_plot::AxisBools {
-                    x: true,
-                    y: zoom_both_axis,
-                })
+                .allow_zoom([true, zoom_both_axis])
                 .show(ui, |plot_ui| {
                     fn create_bar_chart<N: Into<f64>>(
                         ent_path: &EntityPath,

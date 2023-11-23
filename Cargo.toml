@@ -70,6 +70,28 @@ re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.11.
 re_ws_comms = { path = "crates/re_ws_comms", version = "=0.11.0-alpha.1", default-features = false }
 rerun = { path = "crates/rerun", version = "=0.11.0-alpha.1", default-features = false }
 
+# egui-crates:
+ecolor = "0.24"
+eframe = { version = "0.24", default-features = false, features = [
+  "accesskit",
+  "default_fonts",
+  "puffin",
+  "wayland",
+  "x11",
+] }
+egui = { version = "0.24", features = [
+  "callstack",
+  "extra_debug_asserts",
+  "log",
+  "puffin",
+] }
+egui_commonmark = { version = "0.10", default-features = false }
+egui_extras = { version = "0.24", features = ["http", "image", "puffin"] }
+egui_plot = "0.24"
+egui_tiles = "0.4"
+egui-wgpu = "0.24"
+emath = "0.24.0"
+
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
 anyhow = "1.0"
@@ -94,27 +116,7 @@ criterion = "0.5"
 crossbeam = "0.8"
 directories-next = "2"
 document-features = "0.2"
-ecolor = "0.23.0"
-eframe = { version = "0.23.0", default-features = false, features = [
-  "accesskit",
-  "default_fonts",
-  "puffin",
-  "wayland",
-  "x11",
-] }
-egui = { version = "0.23.0", features = [
-  "callstack",
-  "extra_debug_asserts",
-  "log",
-  "puffin",
-] }
-egui_commonmark = { version = "0.9.2", default-features = false }
-egui_extras = { version = "0.23.0", features = ["http", "image", "puffin"] }
-egui_plot = "0.23.0"
-egui_tiles = "0.3.1"
-egui-wgpu = "0.23.0"
 ehttp = "0.3.1"
-emath = "0.23.0"
 enumset = "1.0.12"
 env_logger = "0.10"
 epaint = "0.23.0"
@@ -233,13 +235,13 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
-eframe = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
-egui = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }        # egui master 2023-11-23
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" } # egui master 2023-11-23
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }   # egui master 2023-11-23
-emath = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }       # egui master 2023-11-23
-epaint = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
+# ecolor = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
+# eframe = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
+# egui = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }        # egui master 2023-11-23
+# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" } # egui master 2023-11-23
+# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }   # egui master 2023-11-23
+# emath = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }       # egui master 2023-11-23
+# epaint = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

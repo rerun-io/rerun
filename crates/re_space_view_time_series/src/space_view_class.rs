@@ -141,10 +141,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
-            .allow_zoom(egui_plot::AxisBools {
-                x: true,
-                y: zoom_both_axis,
-            })
+            .allow_zoom([true, zoom_both_axis])
             .legend(Legend {
                 position: egui_plot::Corner::RightBottom,
                 ..Default::default()

@@ -89,7 +89,7 @@ impl ExampleApp {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).unwrap();
 
-        let tree = egui_tiles::Tree::new_tabs(vec![1, 2, 3]);
+        let tree = egui_tiles::Tree::new_tabs("my_tree", vec![1, 2, 3]);
 
         let (command_sender, command_receiver) = command_channel();
 
