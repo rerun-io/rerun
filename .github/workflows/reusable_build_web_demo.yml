@@ -82,6 +82,7 @@ jobs:
       - name: Build web demo
         env:
           COMMIT_HASH: ${{ steps.get-sha.outputs.sha }}
+        shell: bash
         run: |
           pixi run python3 scripts/ci/build_demo_app.py --skip-build
 

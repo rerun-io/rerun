@@ -62,11 +62,13 @@ jobs:
           cache-dependency-path: "rerun_py/requirements-doc.txt"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-doc.txt
 
       - name: Set up git author
+        shell: bash
         run: |
           remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git config --global user.name "${GITHUB_ACTOR}"
@@ -79,6 +81,7 @@ jobs:
       # to make sure we don't accumulate unnecessary history in gh-pages branch
       - name: Deploy via mike # https://github.com/jimporter/mike
         if: ${{ inputs.UPDATE_LATEST }}
+        shell: bash
         run: |
           git fetch
           mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_DOCS_VERSION_NAME}} stable
@@ -92,6 +95,7 @@ jobs:
       # to make sure we don't accumulate unnecessary history in gh-pages branch
       - name: Deploy tag via mike # https://github.com/jimporter/mike
         if: ${{ ! inputs.UPDATE_LATEST }}
+        shell: bash
         run: |
           git fetch
           mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python ${{inputs.PY_DOCS_VERSION_NAME}}
@@ -110,6 +114,7 @@ jobs:
       image: rerunio/ci_docker:0.10.0
     steps:
       - name: Show context
+        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT
@@ -136,6 +141,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Delete existing /target/doc
+        shell: bash
         run: rm -rf ./target/doc
 
       - name: cargo doc --document-private-items
@@ -145,6 +151,7 @@ jobs:
           args: --document-private-items --no-deps --all-features --workspace --exclude rerun-cli
 
       - name: Set up git author
+        shell: bash
         run: |
           remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git config --global user.name "${GITHUB_ACTOR}"
@@ -153,15 +160,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up ghp-import
+        shell: bash
         run: pip install ghp-import
 
       - name: Patch in a redirect page
+        shell: bash
         run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
         env:
           REDIRECT_CRATE: rerun
 
       # See: https://github.com/c-w/ghp-import
       - name: Deploy the docs
+        shell: bash
         run: |
           git fetch
           python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_AND_CPP_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
@@ -172,6 +182,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Show context
+        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT
@@ -193,9 +204,11 @@ jobs:
           pixi-version: v0.6.0
 
       - name: Doxygen C++ docs
+        shell: bash
         run: pixi run cpp-docs
 
       - name: Set up git author
+        shell: bash
         run: |
           remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git config --global user.name "${GITHUB_ACTOR}"
@@ -204,16 +217,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up ghp-import
+        shell: bash
         run: pip install ghp-import
 
         # TODO(andreas): Do we need this?
       # - name: Patch in a redirect page
+      #   shell: bash
       #   run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
       #   env:
       #     REDIRECT_CRATE: rerun
 
       # See: https://github.com/c-w/ghp-import
       - name: Deploy the docs
+        shell: bash
         run: |
           git fetch
           python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.RS_AND_CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"

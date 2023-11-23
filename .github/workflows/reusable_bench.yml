@@ -70,6 +70,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
       - name: Run benchmark
@@ -99,12 +100,14 @@ jobs:
 
       - name: Download comparison bench from GCS
         if: ${{ inputs.COMPARE_TO != '' }}
+        shell: bash
         run: |
           mkdir /tmp/compare/
           gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/compare/${{ inputs.COMPARE_TO }}
 
       - name: Compare results with benchcmp
         if: ${{ inputs.COMPARE_TO != '' }}
+        shell: bash
         run: cargo benchcmp /tmp/compare/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
 
       - name: "Upload bench-results to GCS"
@@ -116,6 +119,7 @@ jobs:
 
       - name: "Copy bench to named file"
         if: ${{ inputs.BENCH_NAME != '' }}
+        shell: bash
         run: cp /tmp/${{ env.SHORT_SHA }} /tmp/${{ inputs.BENCH_NAME }}
 
       # Don't upload the new named bench until the end in case the names are the same
@@ -147,6 +151,7 @@ jobs:
 
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'
+        shell: bash
         run: |
           python3 -m pip install google-cloud-storage==2.9.0
           scripts/ci/render_bench.py crates \

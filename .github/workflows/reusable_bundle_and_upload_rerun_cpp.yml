@@ -42,6 +42,7 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Install python gcs library
+        shell: bash
         run: |
           python3 -m pip install google-cloud-storage
 
@@ -53,5 +54,6 @@ jobs:
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Bundle and upload rerun_cpp_sdk.zip"
+        shell: bash
         run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.get-sha.outputs.sha }} --platform-filter=${{ inputs.PLATFORM_FILTER }}
 

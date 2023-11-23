@@ -34,6 +34,7 @@ jobs:
 
     steps:
       - name: Show context
+        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT

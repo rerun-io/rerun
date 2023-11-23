@@ -37,8 +37,8 @@ jobs:
       - name: Set up cargo cache
         uses: Swatinem/rust-cache@v2
 
-      - name: cargo build -p rerun
-        run: cargo build -p rerun
+      - run: cargo build -p rerun
+        shell: bash
 
   benches:
     name: Benchmarks
@@ -326,6 +326,7 @@ jobs:
     runs-on: "ubuntu-latest"
     steps:
       - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
       # First delete the old prerelease. If we don't do this, we don't get things like

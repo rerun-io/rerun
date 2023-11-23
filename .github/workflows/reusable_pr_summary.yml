@@ -48,9 +48,11 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Install deps
+        shell: bash
         run: pip install google-cloud-storage Jinja2 PyGithub
 
       - name: Render HTML template
+        shell: bash
         run: |
           python scripts/ci/generate_pr_summary.py \
           --github-token ${{secrets.GITHUB_TOKEN}} \

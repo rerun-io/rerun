@@ -45,15 +45,18 @@ jobs:
           python-version: "3.11"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-lint.txt
 
       - name: Lint Python
+        shell: bash
         run: |
           just py-lint
 
       - name: Check requirements
+        shell: bash
         run: |
           just py-requirements
 
@@ -69,11 +72,13 @@ jobs:
           python-version: "3.8"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-doc.txt
 
       - name: Build via mkdocs
+        shell: bash
         run: |
           mkdocs build --strict -f rerun_py/mkdocs.yml
 
@@ -90,6 +95,7 @@ jobs:
 
       # So we can format the Python code
       - name: Set up Python
+        shell: bash
         run: |
           pip install -r rerun_py/requirements-lint.txt
 
@@ -179,6 +185,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: clippy check re_viewer wasm32
+        shell: bash
         run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
@@ -205,6 +212,7 @@ jobs:
           tool: taplo-cli
 
       - name: Taplo check
+        shell: bash
         run: |
           taplo fmt --check --diff
 
@@ -220,23 +228,28 @@ jobs:
           python-version: "3.8"
 
       - name: Install dependencies
+        shell: bash
         run: |
           pip install gitignore_parser python-frontmatter
           pip install -r ./scripts/ci/requirements.txt
 
       - name: Rerun lints
+        shell: bash
         run: |
           ./scripts/lint.py
 
       - name: Check for too large files
+        shell: bash
         run: |
           ./scripts/ci/check_large_files.sh
 
       - name: Check Python example requirements
+        shell: bash
         run: |
           ./scripts/ci/check_requirements.py
 
       - name: Check Python example thumbnails
+        shell: bash
         run: |
           ./scripts/ci/thumbnails.py check
 
@@ -304,3 +317,4 @@ jobs:
           pixi run cpp-clean
           RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-build-all
           RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-test
+
