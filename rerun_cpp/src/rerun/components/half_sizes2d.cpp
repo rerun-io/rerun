@@ -8,19 +8,20 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char HalfSizes2D::NAME[] = "rerun.components.HalfSizes2D";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& HalfSizes2D::arrow_datatype() {
-        static const auto datatype = rerun::datatypes::Vec2D::arrow_datatype();
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::HalfSizes2D>::arrow_datatype() {
+        static const auto datatype = Loggable<rerun::datatypes::Vec2D>::arrow_datatype();
         return datatype;
     }
 
-    rerun::Error HalfSizes2D::fill_arrow_array_builder(
-        arrow::FixedSizeListBuilder* builder, const HalfSizes2D* elements, size_t num_elements
+    rerun::Error Loggable<components::HalfSizes2D>::fill_arrow_array_builder(
+        arrow::FixedSizeListBuilder* builder, const components::HalfSizes2D* elements,
+        size_t num_elements
     ) {
-        static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(HalfSizes2D));
-        RR_RETURN_NOT_OK(rerun::datatypes::Vec2D::fill_arrow_array_builder(
+        static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(components::HalfSizes2D));
+        RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Vec2D>::fill_arrow_array_builder(
             builder,
             reinterpret_cast<const rerun::datatypes::Vec2D*>(elements),
             num_elements
@@ -29,8 +30,8 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> HalfSizes2D::to_data_cell(
-        const HalfSizes2D* instances, size_t num_instances
+    Result<rerun::DataCell> Loggable<components::HalfSizes2D>::to_data_cell(
+        const components::HalfSizes2D* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
@@ -38,7 +39,7 @@ namespace rerun::components {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(HalfSizes2D::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<components::HalfSizes2D>::fill_arrow_array_builder(
                 static_cast<arrow::FixedSizeListBuilder*>(builder.get()),
                 instances,
                 num_instances
@@ -48,7 +49,7 @@ namespace rerun::components {
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
         static const Result<ComponentTypeHandle> component_type =
-            ComponentType(NAME, datatype).register_component();
+            ComponentType(Name, datatype).register_component();
         RR_RETURN_NOT_OK(component_type.error);
 
         DataCell cell;
@@ -57,4 +58,4 @@ namespace rerun::components {
         cell.component_type = component_type.value;
         return cell;
     }
-} // namespace rerun::components
+} // namespace rerun

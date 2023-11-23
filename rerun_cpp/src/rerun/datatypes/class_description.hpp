@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../data_cell.hpp"
 #include "../result.hpp"
 #include "annotation_info.hpp"
 #include "keypoint_pair.hpp"
@@ -61,13 +62,30 @@ namespace rerun::datatypes {
 
       public:
         ClassDescription() = default;
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::ClassDescription> {
+        static constexpr const char Name[] = "rerun.datatypes.ClassDescription";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const ClassDescription* elements, size_t num_elements
+            arrow::StructBuilder* builder, const datatypes::ClassDescription* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::ClassDescription` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::ClassDescription* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

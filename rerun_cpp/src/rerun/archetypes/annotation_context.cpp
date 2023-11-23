@@ -5,10 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char AnnotationContext::INDICATOR_COMPONENT_NAME[] =
-        "rerun.components.AnnotationContextIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -20,13 +17,15 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result = rerun::components::AnnotationContext::to_data_cell(&archetype.context, 1);
+            auto result =
+                Loggable<rerun::components::AnnotationContext>::to_data_cell(&archetype.context, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = AnnotationContext::IndicatorComponent();
-            auto result = AnnotationContext::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result =
+                Loggable<AnnotationContext::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

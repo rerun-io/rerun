@@ -5,10 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char TimeSeriesScalar::INDICATOR_COMPONENT_NAME[] =
-        "rerun.components.TimeSeriesScalarIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -20,34 +17,40 @@ namespace rerun {
         cells.reserve(6);
 
         {
-            auto result = rerun::components::Scalar::to_data_cell(&archetype.scalar, 1);
+            auto result = Loggable<rerun::components::Scalar>::to_data_cell(&archetype.scalar, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.radius.has_value()) {
-            auto result = rerun::components::Radius::to_data_cell(&archetype.radius.value(), 1);
+            auto result =
+                Loggable<rerun::components::Radius>::to_data_cell(&archetype.radius.value(), 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            auto result = rerun::components::Color::to_data_cell(&archetype.color.value(), 1);
+            auto result =
+                Loggable<rerun::components::Color>::to_data_cell(&archetype.color.value(), 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.label.has_value()) {
-            auto result = rerun::components::Text::to_data_cell(&archetype.label.value(), 1);
+            auto result =
+                Loggable<rerun::components::Text>::to_data_cell(&archetype.label.value(), 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.scattered.has_value()) {
-            auto result =
-                rerun::components::ScalarScattering::to_data_cell(&archetype.scattered.value(), 1);
+            auto result = Loggable<rerun::components::ScalarScattering>::to_data_cell(
+                &archetype.scattered.value(),
+                1
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = TimeSeriesScalar::IndicatorComponent();
-            auto result = TimeSeriesScalar::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result =
+                Loggable<TimeSeriesScalar::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

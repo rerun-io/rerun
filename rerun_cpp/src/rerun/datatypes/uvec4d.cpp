@@ -6,15 +6,17 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::datatypes {
-    const std::shared_ptr<arrow::DataType>& UVec4D::arrow_datatype() {
+namespace rerun::datatypes {}
+
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<datatypes::UVec4D>::arrow_datatype() {
         static const auto datatype =
             arrow::fixed_size_list(arrow::field("item", arrow::uint32(), false), 4);
         return datatype;
     }
 
-    rerun::Error UVec4D::fill_arrow_array_builder(
-        arrow::FixedSizeListBuilder* builder, const UVec4D* elements, size_t num_elements
+    rerun::Error Loggable<datatypes::UVec4D>::fill_arrow_array_builder(
+        arrow::FixedSizeListBuilder* builder, const datatypes::UVec4D* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -38,4 +40,33 @@ namespace rerun::datatypes {
 
         return Error::ok();
     }
-} // namespace rerun::datatypes
+
+    Result<rerun::DataCell> Loggable<datatypes::UVec4D>::to_data_cell(
+        const datatypes::UVec4D* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<datatypes::UVec4D>::fill_arrow_array_builder(
+                static_cast<arrow::FixedSizeListBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+        static const Result<ComponentTypeHandle> component_type =
+            ComponentType(Name, datatype).register_component();
+        RR_RETURN_NOT_OK(component_type.error);
+
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.array = std::move(array);
+        cell.component_type = component_type.value;
+        return cell;
+    }
+} // namespace rerun

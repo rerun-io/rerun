@@ -2,6 +2,7 @@
 
 #include <memory>
 #include "data_cell.hpp"
+#include "loggable.hpp"
 
 namespace arrow {
     class DataType;
@@ -18,19 +19,27 @@ namespace rerun::components {
     ///
     /// This is done in order to track how a collection of component was logged.
     template <const char Name[]>
-    struct IndicatorComponent {
+    struct IndicatorComponent {};
+} // namespace rerun::components
+
+namespace rerun {
+    /// \private
+    template <const char Name[]>
+    struct Loggable<components::IndicatorComponent<Name>> {
         /// Creates a Rerun DataCell from an array of IndicatorComponent components.
-        static Result<rerun::DataCell> to_data_cell(const IndicatorComponent<Name>*, size_t) {
+        static Result<rerun::DataCell> to_data_cell(
+            const components::IndicatorComponent<Name>*, size_t
+        ) {
             // Lazily register the component type (only once).
             static const Result<ComponentTypeHandle> component_type =
-                ComponentType(Name, indicator_arrow_datatype()).register_component();
+                ComponentType(Name, components::indicator_arrow_datatype()).register_component();
             RR_RETURN_NOT_OK(component_type.error);
 
             rerun::DataCell cell;
             cell.num_instances = 1;
-            cell.array = indicator_arrow_array();
+            cell.array = components::indicator_arrow_array();
             cell.component_type = component_type.value;
             return cell;
         }
     };
-} // namespace rerun::components
+} // namespace rerun

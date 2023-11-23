@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -32,13 +33,29 @@ namespace rerun::datatypes {
             id = id_;
             return *this;
         }
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::ClassId> {
+        static constexpr const char Name[] = "rerun.datatypes.ClassId";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt16Builder* builder, const ClassId* elements, size_t num_elements
+            arrow::UInt16Builder* builder, const datatypes::ClassId* elements, size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::ClassId` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::ClassId* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

@@ -8,18 +8,18 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char AffixFuzzer16::NAME[] = "rerun.testing.components.AffixFuzzer16";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& AffixFuzzer16::arrow_datatype() {
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer16>::arrow_datatype() {
         static const auto datatype = arrow::list(
-            arrow::field("item", rerun::datatypes::AffixFuzzer3::arrow_datatype(), false)
+            arrow::field("item", Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype(), false)
         );
         return datatype;
     }
 
-    rerun::Error AffixFuzzer16::fill_arrow_array_builder(
-        arrow::ListBuilder* builder, const AffixFuzzer16* elements, size_t num_elements
+    rerun::Error Loggable<components::AffixFuzzer16>::fill_arrow_array_builder(
+        arrow::ListBuilder* builder, const components::AffixFuzzer16* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -39,7 +39,7 @@ namespace rerun::components {
             const auto& element = elements[elem_idx];
             ARROW_RETURN_NOT_OK(builder->Append());
             if (element.many_required_unions.data()) {
-                RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::AffixFuzzer3>::fill_arrow_array_builder(
                     value_builder,
                     element.many_required_unions.data(),
                     element.many_required_unions.size()
@@ -50,8 +50,8 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> AffixFuzzer16::to_data_cell(
-        const AffixFuzzer16* instances, size_t num_instances
+    Result<rerun::DataCell> Loggable<components::AffixFuzzer16>::to_data_cell(
+        const components::AffixFuzzer16* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
@@ -59,7 +59,7 @@ namespace rerun::components {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(AffixFuzzer16::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<components::AffixFuzzer16>::fill_arrow_array_builder(
                 static_cast<arrow::ListBuilder*>(builder.get()),
                 instances,
                 num_instances
@@ -69,7 +69,7 @@ namespace rerun::components {
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
         static const Result<ComponentTypeHandle> component_type =
-            ComponentType(NAME, datatype).register_component();
+            ComponentType(Name, datatype).register_component();
         RR_RETURN_NOT_OK(component_type.error);
 
         DataCell cell;
@@ -78,4 +78,4 @@ namespace rerun::components {
         cell.component_type = component_type.value;
         return cell;
     }
-} // namespace rerun::components
+} // namespace rerun

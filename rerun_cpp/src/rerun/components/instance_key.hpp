@@ -24,9 +24,6 @@ namespace rerun::components {
     struct InstanceKey {
         uint64_t value;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         InstanceKey() = default;
 
@@ -36,18 +33,30 @@ namespace rerun::components {
             value = value_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::InstanceKey> {
+        static constexpr const char Name[] = "rerun.components.InstanceKey";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt64Builder* builder, const InstanceKey* elements, size_t num_elements
+            arrow::UInt64Builder* builder, const components::InstanceKey* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of InstanceKey components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::InstanceKey` components.
         static Result<rerun::DataCell> to_data_cell(
-            const InstanceKey* instances, size_t num_instances
+            const components::InstanceKey* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun
