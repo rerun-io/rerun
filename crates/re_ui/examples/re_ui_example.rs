@@ -38,8 +38,9 @@ fn main() -> eframe::Result<()> {
             .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
             .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
             .with_inner_size([1200.0, 800.0])
-            .with_title_hidden(re_ui::FULLSIZE_CONTENT)
-            .with_titlebar_transparent(re_ui::FULLSIZE_CONTENT)
+            .with_title_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
+            .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
             .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
         follow_system_theme: false,

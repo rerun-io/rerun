@@ -87,8 +87,9 @@ pub fn eframe_options() -> eframe::NativeOptions {
             .with_icon(icon_data())
             .with_inner_size([1600.0, 1200.0])
             .with_min_inner_size([320.0, 450.0]) // Should be high enough to fit the rerun menu
-            .with_title_hidden(re_ui::FULLSIZE_CONTENT)
-            .with_titlebar_transparent(re_ui::FULLSIZE_CONTENT)
+            .with_title_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
+            .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
             .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
         follow_system_theme: false,
