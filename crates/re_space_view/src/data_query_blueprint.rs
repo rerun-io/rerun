@@ -33,7 +33,8 @@ pub struct DataQueryBlueprint {
 }
 
 impl DataQueryBlueprint {
-    pub const OVERRIDES_PREFIX: &str = "overrides";
+    pub const INDIVIDUAL_OVERRIDES_PREFIX: &str = "individual_overrides";
+    pub const RECURSIVE_OVERRIDES_PREFIX: &str = "recursive_overrides";
 
     pub fn auto(space_view_class_name: SpaceViewClassName, space_path: &EntityPath) -> Self {
         Self {
@@ -73,10 +74,14 @@ impl DataQueryBlueprint {
         DataQueryPropertyResolver {
             auto_properties,
             default_stack: vec![container.as_entity_path(), self.id.as_entity_path()],
-            override_root: self
+            individual_override_root: self
                 .id
                 .as_entity_path()
-                .join(&Self::OVERRIDES_PREFIX.into()),
+                .join(&Self::INDIVIDUAL_OVERRIDES_PREFIX.into()),
+            recursive_override_root: self
+                .id
+                .as_entity_path()
+                .join(&Self::RECURSIVE_OVERRIDES_PREFIX.into()),
         }
     }
 }
@@ -214,18 +219,29 @@ impl<'a> QueryExpressionEvaluator<'a> {
         }
 
         let base_entity_path = self.blueprint.id.as_entity_path().clone();
-        let prefix = EntityPath::from(DataQueryBlueprint::OVERRIDES_PREFIX);
-        let override_path = base_entity_path.join(&prefix).join(&entity_path);
+
+        let individual_override_path = base_entity_path
+            .join(&DataQueryBlueprint::INDIVIDUAL_OVERRIDES_PREFIX.into())
+            .join(&entity_path);
+        let recursive_override_path = base_entity_path
+            .join(&DataQueryBlueprint::RECURSIVE_OVERRIDES_PREFIX.into())
+            .join(&entity_path);
 
         let self_leaf = if !view_parts.is_empty() || exact_match {
+            let individual_props = overrides.individual.get_opt(&entity_path);
+            let mut leaf_resolved_properties = resolved_properties.clone();
+
+            if let Some(props) = individual_props {
+                leaf_resolved_properties = leaf_resolved_properties.with_child(props);
+            }
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path: entity_path.clone(),
                     view_parts,
                     is_group: false,
                     individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
-                    resolved_properties: resolved_properties.clone(),
-                    override_path: override_path.clone(),
+                    resolved_properties: leaf_resolved_properties,
+                    override_path: individual_override_path,
                 },
                 children: Default::default(),
             }))
@@ -244,7 +260,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                 self.add_entity_tree_to_data_results_recursive(
                     subtree,
                     overrides,
-                    inherited,
+                    &resolved_properties,
                     data_results,
                     recursive_match, // Once we have hit a recursive match, it's always propagated
                 )
@@ -255,7 +271,8 @@ impl<'a> QueryExpressionEvaluator<'a> {
         if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
             self_leaf
         } else {
-            let individual_properties = overrides.individual.get_opt(&entity_path).cloned();
+            // The 'individual' properties of a group are the group overrides
+            let individual_properties = overrides.group.get_opt(&entity_path).cloned();
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path,
@@ -263,7 +280,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     is_group: true,
                     individual_properties,
                     resolved_properties,
-                    override_path,
+                    override_path: recursive_override_path,
                 },
                 children,
             }))
@@ -274,7 +291,35 @@ impl<'a> QueryExpressionEvaluator<'a> {
 pub struct DataQueryPropertyResolver<'a> {
     auto_properties: &'a EntityPropertyMap,
     default_stack: Vec<EntityPath>,
-    override_root: EntityPath,
+    individual_override_root: EntityPath,
+    recursive_override_root: EntityPath,
+}
+
+impl DataQueryPropertyResolver<'_> {
+    fn resolve_entity_overrides_for_path(
+        &self,
+        ctx: &StoreContext<'_>,
+        props_path: &EntityPath,
+    ) -> EntityPropertyMap {
+        re_tracing::profile_function!();
+        let blueprint = ctx.blueprint;
+
+        let mut prop_map = self.auto_properties.clone();
+
+        if let Some(tree) = blueprint.entity_db().tree.subtree(props_path) {
+            tree.visit_children_recursively(&mut |path: &EntityPath| {
+                if let Some(props) = blueprint
+                    .store()
+                    .query_timeless_component_quiet::<EntityPropertiesComponent>(path)
+                {
+                    let overridden_path =
+                        EntityPath::from(&path.as_slice()[props_path.len()..path.len()]);
+                    prop_map.update(overridden_path, props.value.props);
+                }
+            });
+        }
+        prop_map
+    }
 }
 
 impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
@@ -297,25 +342,30 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
             }
         }
 
-        let mut prop_map = self.auto_properties.clone();
+        let mut individual = self.auto_properties.clone();
 
-        if let Some(tree) = blueprint.entity_db().tree.subtree(&self.override_root) {
+        if let Some(tree) = blueprint
+            .entity_db()
+            .tree
+            .subtree(&self.individual_override_root)
+        {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
                     .store()
                     .query_timeless_component::<EntityPropertiesComponent>(path)
                 {
-                    let overridden_path =
-                        EntityPath::from(&path.as_slice()[self.override_root.len()..path.len()]);
-                    prop_map.update(overridden_path, props.value.props);
+                    let overridden_path = EntityPath::from(
+                        &path.as_slice()[self.individual_override_root.len()..path.len()],
+                    );
+                    individual.update(overridden_path, props.value.props);
                 }
             });
         }
 
         EntityOverrides {
             root,
-            individual: prop_map.clone(),
-            group: prop_map,
+            individual: self.resolve_entity_overrides_for_path(ctx, &self.individual_override_root),
+            group: self.resolve_entity_overrides_for_path(ctx, &self.recursive_override_root),
         }
     }
 }
