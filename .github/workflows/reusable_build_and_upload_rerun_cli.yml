@@ -141,10 +141,20 @@ jobs:
         with:
           pixi-version: v0.6.0
 
-      - name: Build rerun-cli
+      - name: Build web-viewer
         shell: bash
         run: |
-          pixi run cargo build \
+          pixi run cargo run --locked -p re_build_web_viewer -- --release
+
+      # This does not run in the pixi environment, doing so
+      # causes it to select the wrong compiler on macos-arm
+      - name: Build rerun-cli
+        shell: bash
+        env:
+          # this stops `re_web_viewer_server/build.rs` from running
+          RERUN_IS_PUBLISHING: true
+        run: |
+          cargo build \
             --locked \
             -p rerun-cli \
             --no-default-features \
