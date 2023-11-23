@@ -69,15 +69,18 @@ jobs:
           cache-dependency-path: "rerun_py/requirements-lint.txt"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-lint.txt
 
       - name: Lint Python
+        shell: bash
         run: |
           just py-lint
 
       - name: Check requirements
+        shell: bash
         run: |
           just py-requirements
 
@@ -99,11 +102,13 @@ jobs:
           cache-dependency-path: "rerun_py/requirements-doc.txt"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-doc.txt
 
       - name: Build via mkdocs
+        shell: bash
         run: |
           mkdocs build --strict -f rerun_py/mkdocs.yml
 
@@ -132,6 +137,7 @@ jobs:
 
       # So we can format the Python code
       - name: Set up Python
+        shell: bash
         run: |
           pip install -r rerun_py/requirements-lint.txt
 
@@ -247,6 +253,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: clippy check re_viewer wasm32
+        shell: bash
         run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
@@ -277,6 +284,7 @@ jobs:
           tool: taplo-cli
 
       - name: Taplo check
+        shell: bash
         run: |
           taplo fmt --check --diff
 
@@ -296,29 +304,35 @@ jobs:
           python-version: "3.8"
 
       - name: Install dependencies
+        shell: bash
         run: |
           pip install gitignore_parser python-frontmatter
           pip install -r ./scripts/ci/requirements.txt
 
       - name: Rerun lints
+        shell: bash
         run: |
           ./scripts/lint.py
 
       # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
       # at least for the time being.
       # - name: Check for zombie TODOs
+      #   shell: bash
       #   run: |
       #     ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for too large files
+        shell: bash
         run: |
           ./scripts/ci/check_large_files.sh
 
       - name: Check Python example requirements
+        shell: bash
         run: |
           ./scripts/ci/check_requirements.py
 
       - name: Check Python example thumbnails
+        shell: bash
         run: |
           ./scripts/ci/thumbnails.py check
 
@@ -369,3 +383,4 @@ jobs:
           clang-format-version: "16"
           # Only check c/cpp/h/hpp (default checks also .proto and others)
           include-regex: ^.*\.(c|cpp|h|hpp)$
+

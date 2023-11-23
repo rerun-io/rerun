@@ -84,6 +84,7 @@ jobs:
           python-version: 3.11
 
       - name: Install deps
+        shell: bash
         run: |
           python3 -m pip install -r ./scripts/ci/requirements-crates.txt
 
@@ -94,6 +95,7 @@ jobs:
 
       - name: Update crate versions
         id: versioning
+        shell: bash
         run: |
 
           echo "release_version: $release_version"
@@ -135,15 +137,17 @@ jobs:
           echo "final=$final"       >> "$GITHUB_OUTPUT"
 
       - name: Update NPM versions
+        shell: bash
         run: |
           node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
 
-      - name: "Taplo fmt"
-        run: taplo fmt
+      - run: taplo fmt
+        shell: bash
 
       - name: Commit new version
         id: commit
         if: steps.versioning.outputs.previous != steps.versioning.outputs.current
+        shell: bash
         run: |
           git pull
           git config --global user.name "rerun-bot"
@@ -155,6 +159,7 @@ jobs:
       - name: Create pull request
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        shell: bash
         run: |
           set +e
           pr=$(gh pr view --json headRefName 2>/dev/null || echo "{}")
@@ -287,6 +292,7 @@ jobs:
           ref: ${{ needs.version.outputs.release-commit }}
 
       - name: Update latest branch
+        shell: bash
         run: |
           git fetch
           git checkout ${{ github.ref_name }}
@@ -323,6 +329,7 @@ jobs:
           python-version: 3.11
 
       - name: Install dependencies
+        shell: bash
         run: |
           python3 -m pip install -r scripts/ci/requirements-crates.txt
 
@@ -333,18 +340,21 @@ jobs:
 
       - name: Update version
         id: update-version
+        shell: bash
         run: |
           python3 scripts/ci/crates.py version --bump auto
           echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
       - name: Update NPM versions
+        shell: bash
         run: |
           node rerun_js/web-viewer/scripts/version.mjs ${{ steps.update-version.outputs.version }}
 
-      - name: "Taplo fmt"
-        run: taplo fmt
+      - run: taplo fmt
+        shell: bash
 
       - name: Commit new version
+        shell: bash
         run: |
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
@@ -375,6 +385,7 @@ jobs:
       - name: Create comment
         env:
           GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        shell: bash
         run: |
           pr_number=$(gh pr view --json number | jq '.number')
           echo "pr_number: $pr_number"
@@ -415,3 +426,4 @@ jobs:
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
+

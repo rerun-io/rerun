@@ -34,10 +34,12 @@ jobs:
           python-version: 3.11
 
       - name: Install deps
+        shell: bash
         run: |
           python3 -m pip install -r ./scripts/ci/requirements.txt
 
       - name: Check PR checkboxes
+        shell: bash
         run: |
           ./scripts/ci/check_pr_checkboxes.py \
             --github-token ${{ secrets.GITHUB_TOKEN }} \

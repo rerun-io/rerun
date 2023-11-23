@@ -39,7 +39,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: "20.x"
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -51,10 +51,10 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Install dependencies
-        run: |
-          node rerun_js/web-viewer/scripts/install.mjs
+        shell: bash
+        run: node rerun_js/web-viewer/scripts/install.mjs
 
       - name: Build package
-        run: |
-          node rerun_js/web-viewer/scripts/build.mjs
+        shell: bash
+        run: node rerun_js/web-viewer/scripts/build.mjs
 

@@ -47,11 +47,13 @@ jobs:
           command: build
           args: --locked -p re_viewer
       - name: Commit examples manifest
+        shell: bash
         run: |
           git add ./crates/re_viewer/data/examples_manifest.json
           git commit -m 'temp'
 
       - name: Publish
+        shell: bash
         run: |
           python3 scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}
 

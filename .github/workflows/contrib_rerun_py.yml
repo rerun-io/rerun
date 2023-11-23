@@ -44,6 +44,7 @@ jobs:
       # should be fast, and this way things don't break if we add new packages without rebuilding
       # docker
       - run: pip install -r scripts/ci/requirements.txt
+        shell: bash
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1

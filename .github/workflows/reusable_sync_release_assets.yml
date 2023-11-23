@@ -41,6 +41,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Python dependencies
+        shell: bash
         run: pip install google-cloud-storage "PyGithub==1.59.0" "requests>=2.31,<3"
 
       - id: "auth"
@@ -55,9 +56,11 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Sync release assets & build.rerun.io
+        shell: bash
         run: |
           python ./scripts/ci/sync_release_assets.py \
             --github-release ${{ inputs.RELEASE_VERSION }} \
             --github-token ${{ secrets.GITHUB_TOKEN }} \
             --wait ${{ inputs.WAIT_TIME_SECS }} \
             --remove --update
+

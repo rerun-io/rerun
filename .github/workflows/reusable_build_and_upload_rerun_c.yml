@@ -67,6 +67,7 @@ jobs:
     steps:
       - name: Set runner and target based on platform
         id: set-config
+        shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux)
@@ -107,6 +108,7 @@ jobs:
     container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
     steps:
       - name: Show context
+        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT

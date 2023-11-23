@@ -29,10 +29,12 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
+        shell: bash
         run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
+        shell: bash
         run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   build:
@@ -45,8 +47,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-          registry-url: 'https://registry.npmjs.org'
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -57,16 +59,19 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Install dependencies
+        shell: bash
         run: |
           node rerun_js/web-viewer/scripts/install.mjs
 
       - name: Build package
+        shell: bash
         run: |
           node rerun_js/web-viewer/scripts/build.mjs
 
       - name: Publish package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
         run: |
           node rerun_js/web-viewer/scripts/publish.mjs
 

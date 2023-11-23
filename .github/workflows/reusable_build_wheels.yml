@@ -59,6 +59,7 @@ jobs:
     steps:
       - name: Set runner and target based on platform
         id: set-config
+        shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux)
@@ -99,6 +100,7 @@ jobs:
 
     steps:
       - name: Show context
+        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT
@@ -128,6 +130,7 @@ jobs:
           pixi-version: v0.6.0
 
       - name: Build Wheel
+        shell: bash
         run: |
           pixi run pip install -r rerun_py/requirements-build.txt
           pixi run maturin build \

@@ -21,15 +21,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install dependencies
+        shell: bash
         run: |
           python3 -m pip install -r scripts/ci/requirements.txt
 
       - name: Update crate versions
+        shell: bash
         run: |
           python3 scripts/ci/crates.py version --bump prerelease
 
       - name: Get bumped version
         id: versioning
+        shell: bash
         run: |
           crate_version=$(python3 scripts/ci/crates.py get-version)
           echo "crate_version=$crate_version" >> "$GITHUB_OUTPUT"

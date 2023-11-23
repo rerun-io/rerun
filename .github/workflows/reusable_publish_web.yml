@@ -41,10 +41,12 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
+        shell: bash
         run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
+        shell: bash
         run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   build-web:
@@ -108,12 +110,14 @@ jobs:
           pixi run rerun --version
 
       - name: Build app.rerun.io
+        shell: bash
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release
 
       - name: Build web demo
         env:
           COMMIT_HASH: ${{ needs.get-commit-sha.outputs.short-sha }}
+        shell: bash
         run: |
           pixi run python3 scripts/ci/build_demo_app.py --skip-build
 
@@ -147,16 +151,19 @@ jobs:
 
       - name: Publish app.rerun.io
         if: inputs.update-latest
+        shell: bash
         run: |
           gsutil -m cp -r 'gs://rerun-example-rrd/version/${{ inputs.release-version }}/*' gs://rerun-example-rrd/version/latest
 
       - name: Publish app.rerun.io
         if: inputs.update-latest
+        shell: bash
         run: |
           gsutil -m cp -r 'gs://rerun-web-viewer/version/${{ inputs.release-version }}/*' gs://rerun-web-viewer/version/latest
 
       - name: Publish demo.rerun.io
         if: inputs.update-latest
+        shell: bash
         run: |
           gsutil -m cp -r 'gs://rerun-demo/version/${{ inputs.release-version }}/*' gs://rerun-demo/version/latest
 
