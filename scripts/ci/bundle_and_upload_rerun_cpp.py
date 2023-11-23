@@ -54,13 +54,42 @@ def upload_rerun_cpp_sdk(rerun_zip: str, git_hash: str) -> None:
     logging.info(f"Uploaded to https://build.rerun.io/commit/{git_hash}/rerun_cpp_sdk.zip")
 
 
-def test_rerun_cpp(git_hash: str) -> None:
+def test_fetch_content(git_hash: str) -> None:
     logging.info("Testing uploaded artifact…")
 
+    logging.info("-> Testing without installing rerun…")
     with tempfile.TemporaryDirectory() as testdir:
         shutil.copytree("examples/cpp/minimal/", testdir, dirs_exist_ok=True)
         run(["cmake", f"-DRERUN_CPP_URL=https://build.rerun.io/commit/{git_hash}/rerun_cpp_sdk.zip", "."], cwd=testdir)
         run(["cmake", "--build", ".", "--parallel", str(multiprocessing.cpu_count())], cwd=testdir)
+
+
+def test_install(rerun_zip: str) -> None:
+    logging.info("Testing using an install artifact…")
+
+    with tempfile.TemporaryDirectory() as testdir:
+        # unpacking the rerun_cpp_sdk.zip and installing it to a local directory.
+        shutil.unpack_archive(rerun_zip, f"{testdir}")
+        os.makedirs(f"{testdir}/build")
+        os.makedirs(f"{testdir}/install")
+        os.makedirs(f"{testdir}/example")
+        run(  # configure
+            ["cmake", "-B", "../build", "."],
+            cwd=f"{testdir}/rerun_cpp_sdk/",
+        )
+        run(  # build
+            ["cmake", "--build", "../build", "--target", "rerun_sdk", "--parallel", str(multiprocessing.cpu_count())],
+            cwd=f"{testdir}/rerun_cpp_sdk/",
+        )
+        run(  # install
+            ["cmake", "--install", "../build", "--prefix", "../install"],
+            cwd=f"{testdir}/rerun_cpp_sdk/",
+        )
+
+        # Using the install.
+        shutil.copytree("examples/cpp/minimal/", f"{testdir}/example", dirs_exist_ok=True)
+        run(["cmake", "-DRERUN_FIND_PACKAGE=ON", "-DCMAKE_PREFIX_PATH=../install", "."], cwd=f"{testdir}/example")
+        run(["cmake", "--build", ".", "--parallel", str(multiprocessing.cpu_count())], cwd=f"{testdir}/example")
 
 
 def main() -> None:
@@ -115,11 +144,14 @@ def main() -> None:
             logging.info(f"Copying rerun_cpp_sdk bundle to local path from '{rerun_zip}' to '{args.local_path}'")
             shutil.copy(rerun_zip, args.local_path)
 
+        if args.skip_test is not True:
+            test_install(rerun_zip)
+
         if args.no_upload is not True:
             upload_rerun_cpp_sdk(rerun_zip, git_hash)
 
     if args.skip_test is not True and args.no_upload is not True:
-        test_rerun_cpp(git_hash)
+        test_fetch_content(git_hash)
 
 
 if __name__ == "__main__":
