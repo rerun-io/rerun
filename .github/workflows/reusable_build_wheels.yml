@@ -132,6 +132,7 @@ jobs:
       - name: Build Wheel
         shell: bash
         run: |
+          pixi run rustup target add ${{ needs.set-config.outputs.TARGET }}
           pixi run pip install -r rerun_py/requirements-build.txt
           pixi run maturin build \
             --manylinux 2_31 \
