@@ -310,14 +310,14 @@ impl ReUi {
             let height = native_buttons_size_in_native_scale.y;
 
             // …but never shrink below the native button height when zoomed out.
-            height.max(egui_zoom_factor * native_buttons_size_in_native_scale.y)
+            height.max(native_buttons_size_in_native_scale.y / egui_zoom_factor)
         } else {
             Self::top_bar_height() - Self::top_bar_margin().sum().y
         };
 
         let indent = if make_room_for_window_buttons {
             // Always use the same width measured in native GUI coordinates:
-            egui_zoom_factor * native_buttons_size_in_native_scale.x
+            native_buttons_size_in_native_scale.x / egui_zoom_factor
         } else {
             0.0
         };
