@@ -73,7 +73,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.3.0
         with:
           pixi-version: v0.6.0
-          cache: true
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust

@@ -49,7 +49,9 @@ jobs:
         id: get-sha
         shell: bash
         run: |
-          echo "sha=$(echo ${{ inputs.RELEASE_COMMIT || github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || github.sha) }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Bundle and upload rerun_cpp_sdk.zip"
         run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.get-sha.outputs.sha }} --platform-filter=${{ inputs.PLATFORM_FILTER }}
+

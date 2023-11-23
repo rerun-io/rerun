@@ -9,12 +9,6 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: true
         type: string
-      # Each example in the built app contains a link to its source code.
-      # This determines the target commit to link to, and by default
-      # it is the current commit (github.sha)
-      SOURCE_LINK_COMMIT_OVERRIDE:
-        required: false
-        type: string
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-web-demo
@@ -59,39 +53,37 @@ jobs:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
-      - name: Install dependencies for examples/python
-        run: |
-          pip install -r scripts/ci/requirements.txt
-          pip install -r scripts/ci/requirements-web-demo.txt
+      - uses: prefix-dev/setup-pixi@v0.3.0
+        with:
+          pixi-version: v0.6.0
 
-      - name: Install built wheel
+      - name: Install Python dependencies and wheel
         shell: bash
         run: |
-          pip uninstall rerun-sdk -y
-          pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
-          pip install rerun-sdk --no-index --find-links wheel
+          pixi run pip install -r scripts/ci/requirements-web-demo.txt
+          pixi run pip uninstall rerun-sdk -y
+          pixi run pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+          pixi run pip install rerun-sdk --no-index --find-links wheel
 
       - name: Verify built wheel version
         shell: bash
         run: |
-          python3 -m rerun --version
-          which rerun
-          rerun --version
+          pixi run python3 -m rerun --version
+          pixi run which rerun
+          pixi run rerun --version
 
-      - name: Resolve source link commit hash
+      - name: Get sha
+        id: get-sha
+        shell: bash
         run: |
-          if [ -z "${{ inputs.SOURCE_LINK_COMMIT_OVERRIDE }}" ]; then
-            USED_SHA=${{ github.sha }}
-          else
-            USED_SHA=${{ inputs.SOURCE_LINK_COMMIT_OVERRIDE }}
-          fi
-          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || github.sha }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: Build web demo
         env:
-          COMMIT_HASH: ${{ env.SHORT_SHA }}
+          COMMIT_HASH: ${{ steps.get-sha.outputs.sha }}
         run: |
-          python3 scripts/ci/build_demo_app.py --skip-build
+          pixi run python3 scripts/ci/build_demo_app.py --skip-build
 
       - name: Upload web demo assets
         uses: actions/upload-artifact@v3

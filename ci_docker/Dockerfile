@@ -84,6 +84,12 @@ RUN set -eux; \
     cargo --version; \
     rustc --version;
 
+# Install stuff from `rust-toolchain`
+ADD rust-toolchain rust-toolchain
+# `show` is currently the only way to install whatever is in `rust-toolchain`
+# This is subject to change, but there is no alternative: https://github.com/rust-lang/rustup/issues/1397
+RUN rustup show
+
 # Install some cargo tools we know we'll always need
 # We can't do this until after we've installed rust / cargo above
 # Latest cargo-deny requires a rust update!
@@ -97,10 +103,6 @@ RUN pip install -r requirements-build.txt
 ADD rerun_py/requirements-lint.txt requirements-lint.txt
 RUN pip install -r requirements-lint.txt
 
-# Install tools from setup_web.sh
-ADD scripts/setup_web.sh setup_web.sh
-# Installing binaryen is going to cause this script to fail, but that's ok -- we install it manually
-RUN ./setup_web.sh || true
 # Note: We need a more modern binaryen than ships on ubuntu-20.4, so we pull it from github
 RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 

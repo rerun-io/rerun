@@ -107,6 +107,8 @@ ninja = "1.11.1"
 # Make sure to use a version that is compatible with
 # the theme we're using, see https://github.com/jothepro/doxygen-awesome-css/blob/v2.2.1/README.md
 doxygen = "1.9.7.*"
+binaryen = "116.*"  # for `wasm-opt`
+nox = "2021.10.1.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
