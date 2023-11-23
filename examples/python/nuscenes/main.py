@@ -1,5 +1,6 @@
 import argparse
 import pathlib
+import numpy as np
 
 from nuscenes import nuscenes
 
@@ -44,8 +45,9 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
 
     # TODO log sensor configuration
 
-    # breakpoint()
-    current_sample = nusc.get('sample', scene["first_sample_token"])
+    rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
+
+    current_sample = nusc.get("sample", scene["first_sample_token"])
     start_timestamp = current_sample["timestamp"]
     while True:
         # log data
@@ -53,6 +55,19 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
             while True:
                 meta_data = nusc.get("sample_data", data_token)
                 rr.set_time_seconds("timestamp", (meta_data["timestamp"] - start_timestamp) * 1e-6)
+
+                ego_pose = nusc.get("ego_pose", meta_data["ego_pose_token"])
+
+                rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)
+                rr.log(
+                    "world/ego_vehicle",
+                    rr.Transform3D(
+                        translation=ego_pose["translation"],
+                        rotation=rr.Quaternion(xyzw=rotation_xyzw),
+                        from_parent=False,
+                    ),
+                )
+
                 data_file_path = root_dir / meta_data["filename"]
 
                 if meta_data["sensor_modality"] == "lidar":
@@ -60,11 +75,11 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
                     print(meta_data["ego_pose_token"])
                     pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
                     points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
-                    rr.log(f"ego_vehicle/{data_name}", rr.Points3D(points))
+                    rr.log(f"world/ego_vehicle/{data_name}", rr.Points3D(points))
                 elif meta_data["sensor_modality"] == "radar":
                     pointcloud = nuscenes.RadarPointCloud.from_file(str(data_file_path))
                     points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
-                    rr.log(f"ego_vehicle/{data_name}", rr.Points3D(points))
+                    rr.log(f"world/ego_vehicle/{data_name}", rr.Points3D(points))
                 elif meta_data["sensor_modality"] == "camera":
                     # TODO log images
                     pass
@@ -74,7 +89,6 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
                     break
 
         # TODO optional log annotations
-
 
         if current_sample["next"] == "":
             break
