@@ -116,7 +116,7 @@ impl SpatialSpaceViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        _space_view_id: SpaceViewId,
         spatial_kind: SpatialSpaceViewKind,
     ) {
         let re_ui = ctx.re_ui;
@@ -130,15 +130,6 @@ impl SpatialSpaceViewState {
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
             let auto_size_world = auto_size_world_heuristic(&self.scene_bbox_accum, self.scene_num_primitives);
-
-            ctx.re_ui.grid_left_hand_label(ui, "Space origin")
-                .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
-            item_ui::entity_path_button(ctx,
-                ui,
-                Some(space_view_id),
-                space_origin,
-            );
-            ui.end_row();
 
             ctx.re_ui.grid_left_hand_label(ui, "Default size");
             ui.vertical(|ui| {
