@@ -136,6 +136,8 @@ jobs:
           pixi run pip install -r rerun_py/requirements-build.txt
 
       - name: Build web-viewer
+        # only build web-viewer when publishing to pypi
+        if: ${{ contains(inputs.MATURIN_FEATURE_FLAGS, 'pypi') }}
         shell: bash
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release
