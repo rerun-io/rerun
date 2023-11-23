@@ -183,7 +183,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 space_view.class_name(),
             );
 
-            space_view.on_frame_start(ctx, spaces_info, space_view_state);
+            space_view.on_frame_start(ctx, space_view_state);
         }
 
         if self.blueprint.auto_space_views {
@@ -208,8 +208,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     return false;
                 }
                 if existing_view
-                    .contents
-                    .contains_all_entities_from(&space_view_candidate.contents)
+                    .queries
+                    .iter()
+                    .zip(space_view_candidate.queries.iter())
+                    .all(|(q1, q2)| q1.is_equivalent(q2))
                 {
                     // This space view wouldn't add anything we haven't already
                     return false;

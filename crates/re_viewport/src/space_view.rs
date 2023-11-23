@@ -1,5 +1,4 @@
 use ahash::HashSet;
-use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
@@ -10,16 +9,13 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults,
-    SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry,
-    StoreContext, ViewerContext,
+    PerSystemEntities, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
+    SpaceViewSystemRegistry, StoreContext, ViewerContext,
 };
 
 use crate::{
     space_info::SpaceInfoCollection,
-    space_view_heuristics::{
-        compute_heuristic_context_for_entities, is_entity_processed_by_class,
-        reachable_entities_from_root,
-    },
+    space_view_heuristics::{compute_heuristic_context_for_entities, is_entity_processed_by_class},
 };
 
 // ----------------------------------------------------------------------------
@@ -169,30 +165,8 @@ impl SpaceViewBlueprint {
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
         view_state: &mut dyn SpaceViewState,
     ) {
-        let empty_map = IntMap::default();
-
-        let entities_per_system_for_class = ctx
-            .entities_per_system_per_class
-            .get(self.class_name())
-            .unwrap_or(&empty_map);
-
-        if !self.entities_determined_by_user {
-            // Add entities that have been logged since we were created.
-            let reachable_entities = reachable_entities_from_root(&self.space_origin, spaces_info);
-            let queries_entities = reachable_entities.iter().filter(|ent_path| {
-                entities_per_system_for_class
-                    .iter()
-                    .any(|(_, ents)| ents.contains(ent_path))
-            });
-            self.contents
-                .insert_entities_according_to_hierarchy(queries_entities, &self.space_origin);
-        }
-
-        self.reset_systems_per_entity_path(entities_per_system_for_class);
-
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
             self.id.gpu_readback_id(),
@@ -201,10 +175,29 @@ impl SpaceViewBlueprint {
         .is_some()
         {}
 
+        let query_result = ctx.lookup_query_result(self.query_id()).clone();
+
+        // TODO(jleibs): Use PerSystemDataResults?
+        let mut per_system_entities = PerSystemEntities::default();
+        {
+            re_tracing::profile_scope!("per_system_data_results");
+
+            query_result.tree.visit(&mut |handle| {
+                if let Some(result) = query_result.tree.lookup_result(handle) {
+                    for system in &result.view_parts {
+                        per_system_entities
+                            .entry(*system)
+                            .or_default()
+                            .insert(result.entity_path.clone());
+                    }
+                }
+            });
+        }
+
         self.class(ctx.space_view_class_registry).on_frame_start(
             ctx,
             view_state,
-            self.contents.per_system_entities(),
+            &per_system_entities,
             &mut self.auto_properties,
         );
     }

@@ -33,6 +33,13 @@ pub struct DataQueryBlueprint {
 }
 
 impl DataQueryBlueprint {
+    pub fn is_equivalent(&self, other: &DataQueryBlueprint) -> bool {
+        self.space_view_class_name.eq(&other.space_view_class_name)
+            && self.expressions.eq(&other.expressions)
+    }
+}
+
+impl DataQueryBlueprint {
     pub const INDIVIDUAL_OVERRIDES_PREFIX: &str = "individual_overrides";
     pub const RECURSIVE_OVERRIDES_PREFIX: &str = "recursive_overrides";
 
