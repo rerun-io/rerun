@@ -16,18 +16,25 @@ This page is meant to give an high level overview of ongoing and planned work.
 
 ## Roadmap of major feature areas
 
-### First week of October: Release 0.9
-- Redesigned API that gives more low level control of the underlying ECS data model of Rerun, and makes it easier to use Rerun with your own data types.
-- Updated in-viewer getting started experience
+### Last week of November: Release 0.11
+- Improvements to the C++ SDK
+    - Hosted api reference documentation
+    - Even easier cmake build system integration
+    - Logging non-rerun types is faster and easier
+- Expand the "Visual History" feature to "Visible Time Range"
+    - For supported views and data types you'll be able to specify both absolute and relative time ranges to include data from.
 
-### Mid/Late October: Release 0.10
-- C++ SDK
+### December 2023: Release 0.12
+- Significant performance improvements for all time range visualizations, particularly time series.
 
-### Multiple releases over the rest of 2023
-- Blueprint: layout and visualization configuration from code
+### Near term: Now - Q1 2024
+- End to end performance for high frequency time series logging
+- Layout and configuration from code (blueprint)
+- Datasets that are bigger than RAM for the native viewer
 
-### Multiple releases over the first half of 2024
-- Plug-ins and extensions
-    - major extension and plug-in points to make it even easier to adapt Rerun to your specific needs.
+### Medium term
+- Extensibility of all parts of the stack
+- Easily read query data recordings from user code
+- Callbacks and the ability to build interactive applications with Rerun
+    - For example: UI for tweaking configs, custom data annotation tools, etc
 - Data format stability
-
