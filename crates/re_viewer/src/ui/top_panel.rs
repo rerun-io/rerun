@@ -15,12 +15,8 @@ pub fn top_panel(
 ) {
     re_tracing::profile_function!();
 
-    let native_pixels_per_point = ui.input(|i| i.raw.native_pixels_per_point);
-    let fullscreen = ui.input(|i| i.viewport().fullscreen).unwrap_or(false);
     let style_like_web = app.is_screenshotting();
-    let top_bar_style =
-        app.re_ui()
-            .top_bar_style(native_pixels_per_point, fullscreen, style_like_web);
+    let top_bar_style = app.re_ui().top_bar_style(style_like_web);
 
     egui::TopBottomPanel::top("top_bar")
         .frame(app.re_ui().top_panel_frame())

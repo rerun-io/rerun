@@ -233,13 +233,13 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "f9f5db9885edd9ccd98b970adb1edc41e7b28686" }      # egui master 2023-11-21
-eframe = { git = "https://github.com/emilk/egui.git", rev = "f9f5db9885edd9ccd98b970adb1edc41e7b28686" }      # egui master 2023-11-21
-egui = { git = "https://github.com/emilk/egui.git", rev = "f9f5db9885edd9ccd98b970adb1edc41e7b28686" }        # egui master 2023-11-21
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "f9f5db9885edd9ccd98b970adb1edc41e7b28686" } # egui master 2023-11-21
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "f9f5db9885edd9ccd98b970adb1edc41e7b28686" }   # egui master 2023-11-21
-emath = { git = "https://github.com/emilk/egui.git", rev = "f9f5db9885edd9ccd98b970adb1edc41e7b28686" }       # egui master 2023-11-21
-epaint = { git = "https://github.com/emilk/egui.git", rev = "f9f5db9885edd9ccd98b970adb1edc41e7b28686" }      # egui master 2023-11-21
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "85489dc1dda21a87713bbc137603021f08b90072" }      # egui master 2023-11-23
+eframe = { git = "https://github.com/emilk/egui.git", rev = "85489dc1dda21a87713bbc137603021f08b90072" }      # egui master 2023-11-23
+egui = { git = "https://github.com/emilk/egui.git", rev = "85489dc1dda21a87713bbc137603021f08b90072" }        # egui master 2023-11-23
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "85489dc1dda21a87713bbc137603021f08b90072" } # egui master 2023-11-23
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "85489dc1dda21a87713bbc137603021f08b90072" }   # egui master 2023-11-23
+emath = { git = "https://github.com/emilk/egui.git", rev = "85489dc1dda21a87713bbc137603021f08b90072" }       # egui master 2023-11-23
+epaint = { git = "https://github.com/emilk/egui.git", rev = "85489dc1dda21a87713bbc137603021f08b90072" }      # egui master 2023-11-23
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

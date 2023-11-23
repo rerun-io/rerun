@@ -160,6 +160,7 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
 #[must_use]
 pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
     re_tracing::profile_function!();
+
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 
@@ -175,6 +176,9 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
             },
         ));
     }
+
+    // We implement our own gui zooming with `UICommand::ZoomIn` etc
+    cc.egui_ctx.options_mut(|o| o.zoom_with_keyboard = false);
 
     re_ui::ReUi::load_and_apply(&cc.egui_ctx)
 }

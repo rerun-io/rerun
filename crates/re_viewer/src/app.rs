@@ -82,11 +82,6 @@ impl Default for StartupOptions {
 
 // ----------------------------------------------------------------------------
 
-#[cfg(not(target_arch = "wasm32"))]
-const MIN_ZOOM_FACTOR: f32 = 0.2;
-#[cfg(not(target_arch = "wasm32"))]
-const MAX_ZOOM_FACTOR: f32 = 4.0;
-
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     build_info: re_build_info::BuildInfo,
@@ -453,15 +448,15 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
-                self.app_options_mut().zoom_factor += 0.1;
+                _egui_ctx.options_mut(|o| o.zoom_factor += 0.1);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomOut => {
-                self.app_options_mut().zoom_factor -= 0.1;
+                _egui_ctx.options_mut(|o| o.zoom_factor -= 0.1); // TODO: clamp
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => {
-                self.app_options_mut().zoom_factor = 1.0;
+                _egui_ctx.options_mut(|o| o.zoom_factor = 1.0);
             }
 
             UICommand::SelectionPrevious => {
@@ -1045,20 +1040,7 @@ impl eframe::App for App {
             // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
             egui_ctx.set_pixels_per_point(2.0);
         } else {
-            // Ensure zoom factor is sane and in 10% steps at all times before applying it.
-            {
-                let mut zoom_factor = self.app_options().zoom_factor;
-                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
-                zoom_factor = (zoom_factor * 10.).round() / 10.;
-                self.state.app_options_mut().zoom_factor = zoom_factor;
-            }
-
-            // Apply zoom factor on top of natively reported pixel per point.
-            let native_pixels_per_point = egui_ctx
-                .input(|i| i.raw.native_pixels_per_point)
-                .unwrap_or(1.0);
-            let pixels_per_point = native_pixels_per_point * self.app_options().zoom_factor;
-            egui_ctx.set_pixels_per_point(pixels_per_point);
+            // TODO: restore pixels-per-point post screnshotting
         }
 
         // TODO(andreas): store the re_renderer somewhere else.
