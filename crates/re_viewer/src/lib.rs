@@ -179,9 +179,6 @@ pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
         ));
     }
 
-    // We implement our own gui zooming with `UICommand::ZoomIn` etc
-    cc.egui_ctx.options_mut(|o| o.zoom_with_keyboard = false);
-
     re_ui::ReUi::load_and_apply(&cc.egui_ctx)
 }
 

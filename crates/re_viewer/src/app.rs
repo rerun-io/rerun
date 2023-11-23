@@ -82,6 +82,11 @@ impl Default for StartupOptions {
 
 // ----------------------------------------------------------------------------
 
+#[cfg(not(target_arch = "wasm32"))]
+const MIN_ZOOM_FACTOR: f32 = 0.2;
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_ZOOM_FACTOR: f32 = 5.0;
+
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     build_info: re_build_info::BuildInfo,
@@ -448,11 +453,19 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
-                _egui_ctx.options_mut(|o| o.zoom_factor += 0.1);
+                let mut zoom_factor = _egui_ctx.zoom_factor();
+                zoom_factor += 0.1;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                _egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomOut => {
-                _egui_ctx.options_mut(|o| o.zoom_factor -= 0.1); // TODO: clamp
+                let mut zoom_factor = _egui_ctx.zoom_factor();
+                zoom_factor -= 0.1;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                _egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => {

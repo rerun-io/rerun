@@ -357,10 +357,14 @@ impl eframe::App for ExampleApp {
             match cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
                 UICommand::ZoomIn => {
-                    egui_ctx.options_mut(|o| o.zoom_factor += 0.1);
+                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    zoom_factor += 0.1;
+                    egui_ctx.set_zoom_factor(zoom_factor);
                 }
                 UICommand::ZoomOut => {
-                    egui_ctx.options_mut(|o| o.zoom_factor -= 0.1);
+                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    zoom_factor -= 0.1;
+                    egui_ctx.set_zoom_factor(zoom_factor);
                 }
                 UICommand::ZoomReset => {
                     egui_ctx.options_mut(|o| o.zoom_factor = 1.0);
