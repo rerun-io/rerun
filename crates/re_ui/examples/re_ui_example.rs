@@ -367,7 +367,7 @@ impl eframe::App for ExampleApp {
                     egui_ctx.set_zoom_factor(zoom_factor);
                 }
                 UICommand::ZoomReset => {
-                    egui_ctx.options_mut(|o| o.zoom_factor = 1.0);
+                    egui_ctx.set_zoom_factor(1.0);
                 }
                 _ => {}
             }

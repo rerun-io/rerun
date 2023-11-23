@@ -469,7 +469,7 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => {
-                _egui_ctx.options_mut(|o| o.zoom_factor = 1.0);
+                _egui_ctx.set_zoom_factor(1.0);
             }
 
             UICommand::SelectionPrevious => {
