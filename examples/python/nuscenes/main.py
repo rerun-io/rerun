@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import pathlib
 from typing import Any, Union
@@ -5,9 +6,14 @@ from typing import Any, Union
 import numpy as np
 from nuscenes import nuscenes
 import numbers
+import matplotlib
 
 import rerun as rr
 
+cmap = matplotlib.colormaps["turbo_r"]
+norm = matplotlib.colors.Normalize(
+    vmin=3.0, vmax=50.0,
+)
 
 def download_minisplit(root_dir: pathlib.Path) -> None:
     """
@@ -64,8 +70,6 @@ def log_nuscenes_sample(
     sample: dict[str, Any], nusc: nuscenes.NuScenes, logged_sensor_tokens: set[str], start_timestamp: numbers.Number
 ) -> None:
     # each sample is a keyframe with annotations
-
-    # log data
     for sensor_name, sample_data_token in sample["data"].items():
         # TODO optional log annotations
         while True:
@@ -118,7 +122,9 @@ def log_nuscenes_sample_data(
         # log lidar points
         pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
         points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
-        rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points))
+        point_distances = np.linalg.norm(points, axis=1)
+        point_colors = cmap(norm(point_distances))
+        rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
 
         ego_pose = nusc.get("ego_pose", sample_data["ego_pose_token"])
         rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)
