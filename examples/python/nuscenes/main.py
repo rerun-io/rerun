@@ -69,10 +69,18 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
                         timeless=True,
                     )
                     logged_sensor_tokens.add(sensor_token)
-                    breakpoint()
+                    if len(calibrated_sensor["camera_intrinsic"]) != 0:
+                        rr.log(
+                            f"world/ego_vehicle/{sensor_name}",
+                            rr.Pinhole(
+                                image_from_camera=calibrated_sensor["camera_intrinsic"],
+                                width=meta_data["width"],
+                                height=meta_data["height"],
+                            ),
+                            timeless=True,
+                        )
 
                 rr.set_time_seconds("timestamp", (meta_data["timestamp"] - start_timestamp) * 1e-6)
-
 
                 data_file_path = root_dir / meta_data["filename"]
 
@@ -98,8 +106,7 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
                     points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
                     rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points))
                 elif meta_data["sensor_modality"] == "camera":
-                    # TODO log images
-                    pass
+                    rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
 
                 data_token = meta_data["next"]
                 if data_token == "" or nusc.get("sample_data", data_token)["is_key_frame"]:
