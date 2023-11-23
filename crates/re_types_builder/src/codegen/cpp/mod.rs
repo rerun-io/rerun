@@ -1283,7 +1283,6 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         };
 
         // TODO(andreas): Introducing MonoCollection will remove the need for distinguishing these two cases.
-        // TODO: are you sure that single elements are borrowed here?
         if field.is_nullable {
             quote! {
                 if (#field_accessor.has_value()) {
