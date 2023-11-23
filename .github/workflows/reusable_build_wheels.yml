@@ -129,18 +129,33 @@ jobs:
         with:
           pixi-version: v0.6.0
 
-      - name: Build Wheel
+      - name: Install dependencies
         shell: bash
         run: |
           pixi run rustup target add ${{ needs.set-config.outputs.TARGET }}
           pixi run pip install -r rerun_py/requirements-build.txt
-          pixi run maturin build \
-            --manylinux 2_31 \
-            --release \
-            --manifest-path rerun_py/Cargo.toml \
-            --target ${{ needs.set-config.outputs.TARGET }} \
-            --out dist \
+
+      - name: Build web-viewer
+        shell: bash
+        run: |
+          pixi run cargo run --locked -p re_build_web_viewer -- --release
+
+      - name: Build Wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.17"
+          manylinux: manylinux_2_31
+          container: off
+          command: build
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --target ${{ needs.set-config.outputs.TARGET }}
             ${{ inputs.MATURIN_FEATURE_FLAGS }}
+            --out dist
+        env:
+          # we're not actually publishing anything here, this stops `re_web_viewer_server/build.rs` from running
+          RERUN_IS_PUBLISHING: true
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
