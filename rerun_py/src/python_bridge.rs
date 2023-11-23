@@ -11,8 +11,9 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_viewer_context::SpaceViewId;
-use re_viewport::{SpaceViewBlueprint, VIEWPORT_PATH};
+//use re_viewer_context::SpaceViewId;
+//use re_viewport::{SpaceViewBlueprint, VIEWPORT_PATH};
+use re_viewport::VIEWPORT_PATH;
 
 use re_log_types::{DataRow, StoreKind};
 use rerun::{
