@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -31,14 +32,30 @@ namespace rerun::blueprint {
             props = std::move(props_);
             return *this;
         }
+    };
+} // namespace rerun::blueprint
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<blueprint::EntityPropertiesComponent> {
+        static constexpr const char Name[] = "rerun.blueprint.EntityPropertiesComponent";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const EntityPropertiesComponent* elements,
+            arrow::StructBuilder* builder, const blueprint::EntityPropertiesComponent* elements,
             size_t num_elements
         );
+
+        /// Creates a Rerun DataCell from an array of `rerun::blueprint::EntityPropertiesComponent` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const blueprint::EntityPropertiesComponent* instances, size_t num_instances
+        );
     };
-} // namespace rerun::blueprint
+} // namespace rerun

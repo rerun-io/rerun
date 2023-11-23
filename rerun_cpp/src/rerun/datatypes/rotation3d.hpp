@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../data_cell.hpp"
 #include "../result.hpp"
 #include "quaternion.hpp"
 #include "rotation_axis_angle.hpp"
@@ -134,16 +135,43 @@ namespace rerun::datatypes {
             }
         }
 
-        /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// \private
+        const detail::Rotation3DData& get_union_data() const {
+            return _data;
+        }
 
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const Rotation3D* elements, size_t num_elements
-        );
+        /// \private
+        detail::Rotation3DTag get_union_tag() const {
+            return _tag;
+        }
 
       private:
         detail::Rotation3DTag _tag;
         detail::Rotation3DData _data;
     };
 } // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::Rotation3D> {
+        static constexpr const char Name[] = "rerun.datatypes.Rotation3D";
+
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const datatypes::Rotation3D* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::Rotation3D` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::Rotation3D* instances, size_t num_instances
+        );
+    };
+} // namespace rerun

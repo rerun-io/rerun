@@ -8,19 +8,20 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char Resolution::NAME[] = "rerun.components.Resolution";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& Resolution::arrow_datatype() {
-        static const auto datatype = rerun::datatypes::Vec2D::arrow_datatype();
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::Resolution>::arrow_datatype() {
+        static const auto datatype = Loggable<rerun::datatypes::Vec2D>::arrow_datatype();
         return datatype;
     }
 
-    rerun::Error Resolution::fill_arrow_array_builder(
-        arrow::FixedSizeListBuilder* builder, const Resolution* elements, size_t num_elements
+    rerun::Error Loggable<components::Resolution>::fill_arrow_array_builder(
+        arrow::FixedSizeListBuilder* builder, const components::Resolution* elements,
+        size_t num_elements
     ) {
-        static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(Resolution));
-        RR_RETURN_NOT_OK(rerun::datatypes::Vec2D::fill_arrow_array_builder(
+        static_assert(sizeof(rerun::datatypes::Vec2D) == sizeof(components::Resolution));
+        RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Vec2D>::fill_arrow_array_builder(
             builder,
             reinterpret_cast<const rerun::datatypes::Vec2D*>(elements),
             num_elements
@@ -29,8 +30,8 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Resolution::to_data_cell(
-        const Resolution* instances, size_t num_instances
+    Result<rerun::DataCell> Loggable<components::Resolution>::to_data_cell(
+        const components::Resolution* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
@@ -38,7 +39,7 @@ namespace rerun::components {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Resolution::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<components::Resolution>::fill_arrow_array_builder(
                 static_cast<arrow::FixedSizeListBuilder*>(builder.get()),
                 instances,
                 num_instances
@@ -48,7 +49,7 @@ namespace rerun::components {
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
         static const Result<ComponentTypeHandle> component_type =
-            ComponentType(NAME, datatype).register_component();
+            ComponentType(Name, datatype).register_component();
         RR_RETURN_NOT_OK(component_type.error);
 
         DataCell cell;
@@ -57,4 +58,4 @@ namespace rerun::components {
         cell.component_type = component_type.value;
         return cell;
     }
-} // namespace rerun::components
+} // namespace rerun

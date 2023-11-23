@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../data_cell.hpp"
 #include "../result.hpp"
 #include "translation_and_mat3x3.hpp"
 #include "translation_rotation_scale3d.hpp"
@@ -130,16 +131,43 @@ namespace rerun::datatypes {
             }
         }
 
-        /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// \private
+        const detail::Transform3DData& get_union_data() const {
+            return _data;
+        }
 
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
-        );
+        /// \private
+        detail::Transform3DTag get_union_tag() const {
+            return _tag;
+        }
 
       private:
         detail::Transform3DTag _tag;
         detail::Transform3DData _data;
     };
 } // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::Transform3D> {
+        static constexpr const char Name[] = "rerun.datatypes.Transform3D";
+
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const datatypes::Transform3D* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::Transform3D` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::Transform3D* instances, size_t num_instances
+        );
+    };
+} // namespace rerun

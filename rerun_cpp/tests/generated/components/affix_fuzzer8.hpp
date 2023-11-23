@@ -23,9 +23,6 @@ namespace rerun::components {
     struct AffixFuzzer8 {
         std::optional<float> single_float_optional;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         AffixFuzzer8() = default;
 
@@ -36,18 +33,30 @@ namespace rerun::components {
             single_float_optional = single_float_optional_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer8> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer8";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const AffixFuzzer8* elements, size_t num_elements
+            arrow::FloatBuilder* builder, const components::AffixFuzzer8* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer8 components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::AffixFuzzer8` components.
         static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer8* instances, size_t num_instances
+            const components::AffixFuzzer8* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

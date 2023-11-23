@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 
@@ -31,13 +32,30 @@ namespace rerun::datatypes {
             single_optional_union = std::move(single_optional_union_);
             return *this;
         }
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::AffixFuzzer5> {
+        static constexpr const char Name[] = "rerun.testing.datatypes.AffixFuzzer5";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const AffixFuzzer5* elements, size_t num_elements
+            arrow::StructBuilder* builder, const datatypes::AffixFuzzer5* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::AffixFuzzer5` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::AffixFuzzer5* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

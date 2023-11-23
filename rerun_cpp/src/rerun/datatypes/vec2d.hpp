@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <array>
@@ -45,13 +46,30 @@ namespace rerun::datatypes {
             xy = xy_;
             return *this;
         }
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::Vec2D> {
+        static constexpr const char Name[] = "rerun.datatypes.Vec2D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const Vec2D* elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const datatypes::Vec2D* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::Vec2D` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::Vec2D* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

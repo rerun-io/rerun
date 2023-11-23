@@ -36,9 +36,6 @@ namespace rerun::components {
         /// The directions of the [x, y, z] axes.
         std::array<uint8_t, 3> coordinates;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         // Extensions to generated type defined in 'view_coordinates_ext.cpp'
 
@@ -132,19 +129,30 @@ namespace rerun::components {
             coordinates = coordinates_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::ViewCoordinates> {
+        static constexpr const char Name[] = "rerun.components.ViewCoordinates";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const ViewCoordinates* elements,
+            arrow::FixedSizeListBuilder* builder, const components::ViewCoordinates* elements,
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of ViewCoordinates components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::ViewCoordinates` components.
         static Result<rerun::DataCell> to_data_cell(
-            const ViewCoordinates* instances, size_t num_instances
+            const components::ViewCoordinates* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

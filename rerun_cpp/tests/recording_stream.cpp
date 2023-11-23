@@ -15,8 +15,11 @@ namespace fs = std::filesystem;
 
 #define TEST_TAG "[recording_stream]"
 
-struct BadComponent {
-    static const char* NAME;
+struct BadComponent {};
+
+template <>
+struct rerun::Loggable<BadComponent> {
+    static constexpr const char* Name = "bad!";
     static rerun::Error error;
 
     static rerun::Result<rerun::DataCell> to_data_cell(const BadComponent*, size_t) {
@@ -24,8 +27,8 @@ struct BadComponent {
     }
 };
 
-const char* BadComponent::NAME = "bad!";
-rerun::Error BadComponent::error = rerun::Error(rerun::ErrorCode::Unknown, "BadComponent");
+rerun::Error rerun::Loggable<BadComponent>::error =
+    rerun::Error(rerun::ErrorCode::Unknown, "BadComponent");
 
 struct BadArchetype {
     size_t num_instances() const {
@@ -37,7 +40,7 @@ namespace rerun {
     template <>
     struct AsComponents<BadArchetype> {
         static rerun::Result<std::vector<rerun::DataCell>> serialize(const BadArchetype&) {
-            return BadComponent::error;
+            return Loggable<BadComponent>::error;
         }
     };
 } // namespace rerun
@@ -478,9 +481,12 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
     GIVEN("a new RecordingStream and a valid entity path") {
         rerun::RecordingStream stream("test");
         const char* path = "valid";
+        auto& expected_error = rerun::Loggable<BadComponent>::error;
+
         AND_GIVEN("an component that fails serialization") {
             const auto component = BadComponent();
-            BadComponent::error.code =
+
+            expected_error.code =
                 GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
             THEN("calling log with an array logs the serialization error") {
@@ -488,7 +494,7 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
                     [&] {
                         stream.log(path, std::array{component, component});
                     },
-                    component.error.code
+                    expected_error.code
                 );
             }
             THEN("calling log with a vector logs the serialization error") {
@@ -496,34 +502,34 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
                     [&] {
                         stream.log(path, std::vector{component, component});
                     },
-                    component.error.code
+                    expected_error.code
                 );
             }
             THEN("calling log with a c array logs the serialization error") {
                 const BadComponent components[] = {component, component};
-                check_logged_error([&] { stream.log(path, components); }, component.error.code);
+                check_logged_error([&] { stream.log(path, components); }, expected_error.code);
             }
             THEN("calling try_log with an array forwards the serialization error") {
-                CHECK(stream.try_log(path, std::array{component, component}) == component.error);
+                CHECK(stream.try_log(path, std::array{component, component}) == expected_error);
             }
             THEN("calling try_log with a vector forwards the serialization error") {
-                CHECK(stream.try_log(path, std::vector{component, component}) == component.error);
+                CHECK(stream.try_log(path, std::vector{component, component}) == expected_error);
             }
             THEN("calling try_log with a c array forwards the serialization error") {
                 const BadComponent components[] = {component, component};
-                CHECK(stream.try_log(path, components) == component.error);
+                CHECK(stream.try_log(path, components) == expected_error);
             }
         }
         AND_GIVEN("an archetype that fails serialization") {
             auto archetype = BadArchetype();
-            BadComponent::error.code =
+            expected_error.code =
                 GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
             THEN("calling log_archetype logs the serialization error") {
-                check_logged_error([&] { stream.log(path, archetype); }, BadComponent::error.code);
+                check_logged_error([&] { stream.log(path, archetype); }, expected_error.code);
             }
             THEN("calling log_archetype forwards the serialization error") {
-                CHECK(stream.try_log(path, archetype) == BadComponent::error);
+                CHECK(stream.try_log(path, archetype) == expected_error);
             }
         }
     }

@@ -19,9 +19,6 @@ namespace rerun::components {
     struct ScalarScattering {
         bool scattered;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         ScalarScattering() = default;
 
@@ -31,18 +28,30 @@ namespace rerun::components {
             scattered = scattered_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::ScalarScattering> {
+        static constexpr const char Name[] = "rerun.components.ScalarScattering";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::BooleanBuilder* builder, const ScalarScattering* elements, size_t num_elements
+            arrow::BooleanBuilder* builder, const components::ScalarScattering* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of ScalarScattering components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::ScalarScattering` components.
         static Result<rerun::DataCell> to_data_cell(
-            const ScalarScattering* instances, size_t num_instances
+            const components::ScalarScattering* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

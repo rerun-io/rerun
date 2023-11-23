@@ -5,9 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char LineStrips2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.LineStrips2DIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -19,7 +17,7 @@ namespace rerun {
         cells.reserve(8);
 
         {
-            auto result = rerun::components::LineStrip2D::to_data_cell(
+            auto result = Loggable<rerun::components::LineStrip2D>::to_data_cell(
                 archetype.strips.data(),
                 archetype.strips.size()
             );
@@ -27,7 +25,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            auto result = rerun::components::Radius::to_data_cell(
+            auto result = Loggable<rerun::components::Radius>::to_data_cell(
                 archetype.radii.value().data(),
                 archetype.radii.value().size()
             );
@@ -35,7 +33,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            auto result = rerun::components::Color::to_data_cell(
+            auto result = Loggable<rerun::components::Color>::to_data_cell(
                 archetype.colors.value().data(),
                 archetype.colors.value().size()
             );
@@ -43,7 +41,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.labels.has_value()) {
-            auto result = rerun::components::Text::to_data_cell(
+            auto result = Loggable<rerun::components::Text>::to_data_cell(
                 archetype.labels.value().data(),
                 archetype.labels.value().size()
             );
@@ -51,13 +49,15 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result =
-                rerun::components::DrawOrder::to_data_cell(&archetype.draw_order.value(), 1);
+            auto result = Loggable<rerun::components::DrawOrder>::to_data_cell(
+                &archetype.draw_order.value(),
+                1
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = rerun::components::ClassId::to_data_cell(
+            auto result = Loggable<rerun::components::ClassId>::to_data_cell(
                 archetype.class_ids.value().data(),
                 archetype.class_ids.value().size()
             );
@@ -65,7 +65,7 @@ namespace rerun {
             cells.emplace_back(std::move(result.value));
         }
         if (archetype.instance_keys.has_value()) {
-            auto result = rerun::components::InstanceKey::to_data_cell(
+            auto result = Loggable<rerun::components::InstanceKey>::to_data_cell(
                 archetype.instance_keys.value().data(),
                 archetype.instance_keys.value().size()
             );
@@ -74,7 +74,7 @@ namespace rerun {
         }
         {
             auto indicator = LineStrips2D::IndicatorComponent();
-            auto result = LineStrips2D::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<LineStrips2D::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

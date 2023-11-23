@@ -8,19 +8,19 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char TextLogLevel::NAME[] = "rerun.components.TextLogLevel";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& TextLogLevel::arrow_datatype() {
-        static const auto datatype = rerun::datatypes::Utf8::arrow_datatype();
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::TextLogLevel>::arrow_datatype() {
+        static const auto datatype = Loggable<rerun::datatypes::Utf8>::arrow_datatype();
         return datatype;
     }
 
-    rerun::Error TextLogLevel::fill_arrow_array_builder(
-        arrow::StringBuilder* builder, const TextLogLevel* elements, size_t num_elements
+    rerun::Error Loggable<components::TextLogLevel>::fill_arrow_array_builder(
+        arrow::StringBuilder* builder, const components::TextLogLevel* elements, size_t num_elements
     ) {
-        static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(TextLogLevel));
-        RR_RETURN_NOT_OK(rerun::datatypes::Utf8::fill_arrow_array_builder(
+        static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(components::TextLogLevel));
+        RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Utf8>::fill_arrow_array_builder(
             builder,
             reinterpret_cast<const rerun::datatypes::Utf8*>(elements),
             num_elements
@@ -29,8 +29,8 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> TextLogLevel::to_data_cell(
-        const TextLogLevel* instances, size_t num_instances
+    Result<rerun::DataCell> Loggable<components::TextLogLevel>::to_data_cell(
+        const components::TextLogLevel* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
@@ -38,7 +38,7 @@ namespace rerun::components {
 
         ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(TextLogLevel::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<components::TextLogLevel>::fill_arrow_array_builder(
                 static_cast<arrow::StringBuilder*>(builder.get()),
                 instances,
                 num_instances
@@ -48,7 +48,7 @@ namespace rerun::components {
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
         static const Result<ComponentTypeHandle> component_type =
-            ComponentType(NAME, datatype).register_component();
+            ComponentType(Name, datatype).register_component();
         RR_RETURN_NOT_OK(component_type.error);
 
         DataCell cell;
@@ -57,4 +57,4 @@ namespace rerun::components {
         cell.component_type = component_type.value;
         return cell;
     }
-} // namespace rerun::components
+} // namespace rerun

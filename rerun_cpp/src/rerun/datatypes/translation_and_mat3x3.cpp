@@ -9,18 +9,22 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::datatypes {
-    const std::shared_ptr<arrow::DataType>& TranslationAndMat3x3::arrow_datatype() {
+namespace rerun::datatypes {}
+
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>&
+        Loggable<datatypes::TranslationAndMat3x3>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
-            arrow::field("translation", rerun::datatypes::Vec3D::arrow_datatype(), true),
-            arrow::field("mat3x3", rerun::datatypes::Mat3x3::arrow_datatype(), true),
+            arrow::field("translation", Loggable<rerun::datatypes::Vec3D>::arrow_datatype(), true),
+            arrow::field("mat3x3", Loggable<rerun::datatypes::Mat3x3>::arrow_datatype(), true),
             arrow::field("from_parent", arrow::boolean(), false),
         });
         return datatype;
     }
 
-    rerun::Error TranslationAndMat3x3::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const TranslationAndMat3x3* elements, size_t num_elements
+    rerun::Error Loggable<datatypes::TranslationAndMat3x3>::fill_arrow_array_builder(
+        arrow::StructBuilder* builder, const datatypes::TranslationAndMat3x3* elements,
+        size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -39,7 +43,7 @@ namespace rerun::datatypes {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.translation.has_value()) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Vec3D>::fill_arrow_array_builder(
                         field_builder,
                         &element.translation.value(),
                         1
@@ -56,7 +60,7 @@ namespace rerun::datatypes {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.mat3x3.has_value()) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::Mat3x3::fill_arrow_array_builder(
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Mat3x3>::fill_arrow_array_builder(
                         field_builder,
                         &element.mat3x3.value(),
                         1
@@ -77,4 +81,33 @@ namespace rerun::datatypes {
 
         return Error::ok();
     }
-} // namespace rerun::datatypes
+
+    Result<rerun::DataCell> Loggable<datatypes::TranslationAndMat3x3>::to_data_cell(
+        const datatypes::TranslationAndMat3x3* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<datatypes::TranslationAndMat3x3>::fill_arrow_array_builder(
+                static_cast<arrow::StructBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+        static const Result<ComponentTypeHandle> component_type =
+            ComponentType(Name, datatype).register_component();
+        RR_RETURN_NOT_OK(component_type.error);
+
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.array = std::move(array);
+        cell.component_type = component_type.value;
+        return cell;
+    }
+} // namespace rerun

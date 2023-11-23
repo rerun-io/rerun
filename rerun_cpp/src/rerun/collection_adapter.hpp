@@ -39,5 +39,7 @@ namespace rerun {
             "rerun::CollectionAdapter<TElement, TContainer> for a given "
             "target type TElement and your input type TContainer."
         );
+
+        // TODO(andreas): List methods that the trait should implement.
     };
 } // namespace rerun
