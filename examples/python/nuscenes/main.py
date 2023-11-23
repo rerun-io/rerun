@@ -118,8 +118,6 @@ def log_nuscenes_sample_data(
     data_file_path = nusc.dataroot / sample_data["filename"]
 
     if sample_data["sensor_modality"] == "lidar":
-        # TODO optional color for lidar points (depth-like color map)
-        # log lidar points
         pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
         points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
         point_distances = np.linalg.norm(points, axis=1)
