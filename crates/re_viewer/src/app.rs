@@ -199,7 +199,7 @@ impl App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(screenshot_path) = startup_options.screenshot_to_path_then_quit.clone() {
-            screenshotter.screenshot_to_path_then_quit(screenshot_path);
+            screenshotter.screenshot_to_path_then_quit(&re_ui.egui_ctx, screenshot_path);
         }
 
         let (command_sender, command_receiver) = command_channel();
@@ -514,7 +514,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ScreenshotWholeApp => {
-                self.screenshotter.request_screenshot();
+                self.screenshotter.request_screenshot(_egui_ctx);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintDatastore => {
@@ -1046,14 +1046,6 @@ impl eframe::App for App {
                 }
                 self.open_files_promise = None;
             }
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.screenshotter.is_screenshotting() {
-            // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
-            egui_ctx.set_pixels_per_point(2.0);
-        } else {
-            // TODO: restore pixels-per-point post screnshotting
         }
 
         // TODO(andreas): store the re_renderer somewhere else.
