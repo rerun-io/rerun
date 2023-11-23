@@ -65,7 +65,7 @@ To do so, follow these following steps:
     * make sure you have permissions or use a target path, e.g. `--prefix ../rerun_sdk_install`
 * Now that you have an install you can use `find_package(rerun_sdk REQUIRED)` in your project
   * Make sure that the prefix path or the rerun_sdk location is correctly configured.
-  * Depending on your install path and OS this may work out of the box or require setting additional CMake variables (e.g. `-DDCMAKE_PREFIX_PATH=rerun_sdk_install`)
+  * Depending on your install path and OS this may work out of the box or require setting additional CMake variables (e.g. `-DCMAKE_PREFIX_PATH=rerun_sdk_install`)
 
 The exact CMake invocations may need to be adjusted for your needs.
 
