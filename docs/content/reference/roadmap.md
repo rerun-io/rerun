@@ -18,6 +18,7 @@ This page is meant to give an high level overview of ongoing and planned work.
 
 ### Last week of November: Release 0.11
 - Improvements to the C++ SDK
+    - Hosted api reference documentation
     - Even easier cmake build system integration
     - Logging non-rerun types is faster and easier
 - Expand the "Visual History" feature to "Visible Time Range"
