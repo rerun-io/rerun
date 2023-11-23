@@ -3,13 +3,13 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 
 namespace arrow {
+    class Array;
     class BooleanBuilder;
     class DataType;
 } // namespace arrow
@@ -50,8 +50,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::ClearIsRecursive` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::components::ClearIsRecursive` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::ClearIsRecursive* instances, size_t num_instances
         );
     };

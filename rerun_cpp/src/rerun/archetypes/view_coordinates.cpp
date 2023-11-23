@@ -17,15 +17,13 @@ namespace rerun {
         cells.reserve(2);
 
         {
-            auto result =
-                Loggable<rerun::components::ViewCoordinates>::to_data_cell(&archetype.xyz, 1);
+            auto result = DataCell::from_loggable(archetype.xyz);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = ViewCoordinates::IndicatorComponent();
-            auto result =
-                Loggable<ViewCoordinates::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

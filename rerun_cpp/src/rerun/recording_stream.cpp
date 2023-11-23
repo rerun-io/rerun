@@ -2,6 +2,7 @@
 #include "c/rerun.h"
 #include "components/instance_key.hpp"
 #include "config.hpp"
+#include "data_cell.hpp"
 #include "string_utils.hpp"
 
 #include <arrow/buffer.h>
@@ -198,7 +199,8 @@ namespace rerun {
         bool inject_time = !timeless;
 
         if (!splatted.empty()) {
-            splatted.push_back(Loggable<components::InstanceKey>::to_data_cell(&splat_key, 1).value
+            splatted.push_back(
+                std::move(DataCell::from_loggable<components::InstanceKey>(splat_key).value)
             );
             auto result =
                 try_log_data_row(entity_path, 1, splatted.size(), splatted.data(), inject_time);

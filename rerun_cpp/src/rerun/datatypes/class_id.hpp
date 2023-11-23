@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -14,6 +13,7 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
     class UInt16Type;
     using UInt16Builder = NumericBuilder<UInt16Type>;
@@ -53,8 +53,8 @@ namespace rerun {
             arrow::UInt16Builder* builder, const datatypes::ClassId* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::datatypes::ClassId` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::datatypes::ClassId` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::ClassId* instances, size_t num_instances
         );
     };

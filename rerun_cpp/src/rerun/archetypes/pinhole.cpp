@@ -17,32 +17,23 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = Loggable<rerun::components::PinholeProjection>::to_data_cell(
-                &archetype.image_from_camera,
-                1
-            );
+            auto result = DataCell::from_loggable(archetype.image_from_camera);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.resolution.has_value()) {
-            auto result = Loggable<rerun::components::Resolution>::to_data_cell(
-                &archetype.resolution.value(),
-                1
-            );
+            auto result = DataCell::from_loggable(archetype.resolution.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.camera_xyz.has_value()) {
-            auto result = Loggable<rerun::components::ViewCoordinates>::to_data_cell(
-                &archetype.camera_xyz.value(),
-                1
-            );
+            auto result = DataCell::from_loggable(archetype.camera_xyz.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Pinhole::IndicatorComponent();
-            auto result = Loggable<Pinhole::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }
