@@ -142,8 +142,13 @@ jobs:
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release
 
+      # This does not run in the pixi environment, doing so
+      # causes it to select the wrong compiler on macos-arm
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
+        env:
+          # this stops `re_web_viewer_server/build.rs` from running
+          RERUN_IS_PUBLISHING: true
         with:
           maturin-version: "0.14.17"
           manylinux: manylinux_2_31
@@ -155,9 +160,6 @@ jobs:
             --target ${{ needs.set-config.outputs.TARGET }}
             ${{ inputs.MATURIN_FEATURE_FLAGS }}
             --out dist
-        env:
-          # we're not actually publishing anything here, this stops `re_web_viewer_server/build.rs` from running
-          RERUN_IS_PUBLISHING: true
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
