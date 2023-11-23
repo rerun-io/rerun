@@ -16,7 +16,6 @@ namespace arrow {
 
     class DataType;
     class FloatType;
-    class MemoryPool;
     using FloatBuilder = NumericBuilder<FloatType>;
 } // namespace arrow
 
@@ -24,9 +23,6 @@ namespace rerun::components {
     /// **Component**: A Radius component.
     struct Radius {
         float value;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         Radius() = default;
@@ -37,21 +33,29 @@ namespace rerun::components {
             value = value_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::Radius> {
+        static constexpr const char Name[] = "rerun.components.Radius";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const Radius* elements, size_t num_elements
+            arrow::FloatBuilder* builder, const components::Radius* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of Radius components.
-        static Result<rerun::DataCell> to_data_cell(const Radius* instances, size_t num_instances);
+        /// Creates a Rerun DataCell from an array of `rerun::components::Radius` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const components::Radius* instances, size_t num_instances
+        );
     };
-} // namespace rerun::components
+} // namespace rerun

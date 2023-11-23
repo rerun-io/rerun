@@ -5,46 +5,43 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char Asset3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Asset3DIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Asset3D>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::Asset3D>::serialize(
         const archetypes::Asset3D& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(3);
+        std::vector<DataCell> cells;
+        cells.reserve(4);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::Blob::to_data_cell(&archetype.blob, size);
+            auto result = Loggable<rerun::components::Blob>::to_data_cell(&archetype.blob, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
-            const size_t size = 1;
-            auto result =
-                rerun::components::MediaType::to_data_cell(&archetype.media_type.value(), size);
-            RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
-        }
-        if (archetype.transform.has_value()) {
-            const size_t size = 1;
-            auto result = rerun::components::OutOfTreeTransform3D::to_data_cell(
-                &archetype.transform.value(),
-                size
+            auto result = Loggable<rerun::components::MediaType>::to_data_cell(
+                &archetype.media_type.value(),
+                1
             );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
+        }
+        if (archetype.transform.has_value()) {
+            auto result = Loggable<rerun::components::OutOfTreeTransform3D>::to_data_cell(
+                &archetype.transform.value(),
+                1
+            );
+            RR_RETURN_NOT_OK(result.error);
+            cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = Asset3D::IndicatorComponent();
-            auto result = Asset3D::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = Loggable<Asset3D::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

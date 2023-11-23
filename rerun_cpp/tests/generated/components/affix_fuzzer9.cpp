@@ -6,26 +6,16 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char AffixFuzzer9::NAME[] = "rerun.testing.components.AffixFuzzer9";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& AffixFuzzer9::arrow_datatype() {
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer9>::arrow_datatype() {
         static const auto datatype = arrow::utf8();
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::StringBuilder>> AffixFuzzer9::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::StringBuilder>(memory_pool));
-    }
-
-    rerun::Error AffixFuzzer9::fill_arrow_array_builder(
-        arrow::StringBuilder* builder, const AffixFuzzer9* elements, size_t num_elements
+    rerun::Error Loggable<components::AffixFuzzer9>::fill_arrow_array_builder(
+        arrow::StringBuilder* builder, const components::AffixFuzzer9* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -45,27 +35,32 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> AffixFuzzer9::to_data_cell(
-        const AffixFuzzer9* instances, size_t num_instances
+    Result<rerun::DataCell> Loggable<components::AffixFuzzer9>::to_data_cell(
+        const components::AffixFuzzer9* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
 
-        auto builder_result = AffixFuzzer9::new_arrow_array_builder(pool);
-        RR_RETURN_NOT_OK(builder_result.error);
-        auto builder = std::move(builder_result.value);
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(
-                AffixFuzzer9::fill_arrow_array_builder(builder.get(), instances, num_instances)
-            );
+            RR_RETURN_NOT_OK(Loggable<components::AffixFuzzer9>::fill_arrow_array_builder(
+                static_cast<arrow::StringBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
 
-        return rerun::DataCell::create(
-            AffixFuzzer9::NAME,
-            AffixFuzzer9::arrow_datatype(),
-            std::move(array)
-        );
+        static const Result<ComponentTypeHandle> component_type =
+            ComponentType(Name, datatype).register_component();
+        RR_RETURN_NOT_OK(component_type.error);
+
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.array = std::move(array);
+        cell.component_type = component_type.value;
+        return cell;
     }
-} // namespace rerun::components
+} // namespace rerun

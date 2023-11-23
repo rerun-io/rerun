@@ -13,7 +13,6 @@
 namespace arrow {
     class DataType;
     class DenseUnionBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
@@ -21,9 +20,6 @@ namespace rerun::components {
     struct Transform3D {
         /// Representation of the transform.
         rerun::datatypes::Transform3D repr;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         Transform3D() = default;
@@ -39,23 +35,30 @@ namespace rerun::components {
         operator rerun::datatypes::Transform3D() const {
             return repr;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::Transform3D> {
+        static constexpr const char Name[] = "rerun.components.Transform3D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const components::Transform3D* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of Transform3D components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::Transform3D` components.
         static Result<rerun::DataCell> to_data_cell(
-            const Transform3D* instances, size_t num_instances
+            const components::Transform3D* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

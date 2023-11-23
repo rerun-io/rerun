@@ -11,7 +11,6 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -80,10 +79,12 @@ namespace rerun::archetypes {
         /// Objects with higher values are drawn on top of those with lower values.
         std::optional<rerun::components::DrawOrder> draw_order;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] =
+            "rerun.components.DepthImageIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'depth_image_ext.cpp'
@@ -141,8 +142,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::DepthImage> {
         /// Serialize all set component batches.
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const archetypes::DepthImage& archetype
-        );
+        static Result<std::vector<DataCell>> serialize(const archetypes::DepthImage& archetype);
     };
 } // namespace rerun

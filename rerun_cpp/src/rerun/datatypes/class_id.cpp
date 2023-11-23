@@ -6,24 +6,16 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::datatypes {
-    const std::shared_ptr<arrow::DataType>& ClassId::arrow_datatype() {
+namespace rerun::datatypes {}
+
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<datatypes::ClassId>::arrow_datatype() {
         static const auto datatype = arrow::uint16();
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::UInt16Builder>> ClassId::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::UInt16Builder>(memory_pool));
-    }
-
-    rerun::Error ClassId::fill_arrow_array_builder(
-        arrow::UInt16Builder* builder, const ClassId* elements, size_t num_elements
+    rerun::Error Loggable<datatypes::ClassId>::fill_arrow_array_builder(
+        arrow::UInt16Builder* builder, const datatypes::ClassId* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -41,4 +33,33 @@ namespace rerun::datatypes {
 
         return Error::ok();
     }
-} // namespace rerun::datatypes
+
+    Result<rerun::DataCell> Loggable<datatypes::ClassId>::to_data_cell(
+        const datatypes::ClassId* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<datatypes::ClassId>::fill_arrow_array_builder(
+                static_cast<arrow::UInt16Builder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+        static const Result<ComponentTypeHandle> component_type =
+            ComponentType(Name, datatype).register_component();
+        RR_RETURN_NOT_OK(component_type.error);
+
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.array = std::move(array);
+        cell.component_type = component_type.value;
+        return cell;
+    }
+} // namespace rerun

@@ -406,7 +406,7 @@ namespace rerun {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            std::vector<SerializedComponentBatch> serialized_batches;
+            std::vector<DataCell> serialized_batches;
             Error err;
             (
                 [&] {
@@ -414,7 +414,7 @@ namespace rerun {
                         return;
                     }
 
-                    const Result<std::vector<SerializedComponentBatch>> serialization_result =
+                    const Result<std::vector<DataCell>> serialization_result =
                         AsComponents<Ts>().serialize(archetypes_or_collectiones);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
@@ -436,7 +436,7 @@ namespace rerun {
             );
             RR_RETURN_NOT_OK(err);
 
-            return try_log_serialized_batches(entity_path, timeless, serialized_batches);
+            return try_log_serialized_batches(entity_path, timeless, std::move(serialized_batches));
         }
 
         /// Logs several serialized batches batches, returning an error on failure.
@@ -456,8 +456,7 @@ namespace rerun {
         ///
         /// \see `log`, `try_log`, `log_timeless`, `try_log_timeless`, `try_log_with_timeless`
         Error try_log_serialized_batches(
-            std::string_view entity_path, bool timeless,
-            const std::vector<SerializedComponentBatch>& batches
+            std::string_view entity_path, bool timeless, std::vector<DataCell> batches
         ) const;
 
         /// Bottom level API that logs raw data cells to the recording stream.

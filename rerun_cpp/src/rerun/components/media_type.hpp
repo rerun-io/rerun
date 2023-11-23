@@ -14,7 +14,6 @@
 
 namespace arrow {
     class DataType;
-    class MemoryPool;
     class StringBuilder;
 } // namespace arrow
 
@@ -25,9 +24,6 @@ namespace rerun::components {
     /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
     struct MediaType {
         rerun::datatypes::Utf8 value;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'media_type_ext.cpp'
@@ -92,23 +88,30 @@ namespace rerun::components {
         operator rerun::datatypes::Utf8() const {
             return value;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::MediaType> {
+        static constexpr const char Name[] = "rerun.components.MediaType";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const MediaType* elements, size_t num_elements
+            arrow::StringBuilder* builder, const components::MediaType* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of MediaType components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::MediaType` components.
         static Result<rerun::DataCell> to_data_cell(
-            const MediaType* instances, size_t num_instances
+            const components::MediaType* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use ahash::HashMap;
 
 use re_data_store::{EntityPath, StoreDb};
-use re_log_types::{DataCell, DataRow, RowId, TimePoint};
-use re_types::Loggable as _;
+use re_log_types::{DataRow, RowId, TimePoint};
+use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
     CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
     ViewerContext,
@@ -334,7 +334,7 @@ pub fn load_space_view_blueprint(
 
     let mut space_view = blueprint_db
         .store()
-        .query_timeless_component::<SpaceViewComponent>(path)
+        .query_timeless_component_quiet::<SpaceViewComponent>(path)
         .map(|c| c.value.space_view);
 
     // Blueprint data migrations can leave us unable to parse the expected id from the source-data
@@ -360,10 +360,8 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         blueprint_db
             .entity_db()
             .tree
-            .children
-            .get(&re_data_store::EntityPathPart::Name(
-                SpaceViewId::SPACEVIEW_PREFIX.into(),
-            )) {
+            .subtree(SpaceViewId::registry())
+    {
         space_views
             .children
             .values()
@@ -376,7 +374,7 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
 
     let auto_space_views = blueprint_db
         .store()
-        .query_timeless_component::<AutoSpaceViews>(&VIEWPORT_PATH.into())
+        .query_timeless_component_quiet::<AutoSpaceViews>(&VIEWPORT_PATH.into())
         .map_or_else(
             || {
                 // Only enable auto-space-views if this is the app-default blueprint
@@ -391,13 +389,13 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
 
     let space_view_maximized = blueprint_db
         .store()
-        .query_timeless_component::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
+        .query_timeless_component_quiet::<SpaceViewMaximized>(&VIEWPORT_PATH.into())
         .map(|space_view| space_view.value)
         .unwrap_or_default();
 
     let viewport_layout: ViewportLayout = blueprint_db
         .store()
-        .query_timeless_component::<ViewportLayout>(&VIEWPORT_PATH.into())
+        .query_timeless_component_quiet::<ViewportLayout>(&VIEWPORT_PATH.into())
         .map(|space_view| space_view.value)
         .unwrap_or_default();
 
@@ -452,17 +450,18 @@ pub fn sync_space_view(
 }
 
 pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) {
-    let entity_path = space_view_id.as_entity_path();
-
     // TODO(jleibs): Seq instead of timeless?
     let timepoint = TimePoint::timeless();
 
-    let cell = DataCell::from_arrow_empty(
-        SpaceViewComponent::name(),
-        SpaceViewComponent::arrow_datatype(),
-    );
-
-    let row = DataRow::from_cells1_sized(RowId::random(), entity_path, timepoint, 0, cell).unwrap();
-
-    deltas.push(row);
+    if let Ok(row) = DataRow::from_component_batches(
+        RowId::random(),
+        timepoint,
+        space_view_id.as_entity_path(),
+        Clear::recursive()
+            .as_component_batches()
+            .iter()
+            .map(|b| b.as_ref()),
+    ) {
+        deltas.push(row);
+    }
 }

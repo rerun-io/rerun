@@ -15,15 +15,11 @@
 namespace arrow {
     class DataType;
     class DenseUnionBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
     struct AffixFuzzer15 {
         std::optional<rerun::datatypes::AffixFuzzer3> single_optional_union;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer15() = default;
@@ -42,23 +38,30 @@ namespace rerun::components {
         operator std::optional<rerun::datatypes::AffixFuzzer3>() const {
             return single_optional_union;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer15> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer15";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const AffixFuzzer15* elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const components::AffixFuzzer15* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer15 components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::AffixFuzzer15` components.
         static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer15* instances, size_t num_instances
+            const components::AffixFuzzer15* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

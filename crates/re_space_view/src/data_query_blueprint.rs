@@ -1,6 +1,6 @@
 use nohash_hasher::IntSet;
 use once_cell::sync::Lazy;
-use re_data_store::{EntityProperties, EntityPropertyMap, EntityTree};
+use re_data_store::{EntityProperties, EntityTree};
 use re_log_types::{EntityPath, EntityPathExpr};
 use re_viewer_context::{
     DataResult, EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName,
@@ -10,7 +10,7 @@ use smallvec::SmallVec;
 
 use crate::{
     blueprint::QueryExpressions, DataQuery, DataResultHandle, DataResultNode, DataResultTree,
-    PropertyResolver,
+    EntityOverrides, PropertyResolver,
 };
 
 /// An implementation of [`DataQuery`] that is built from a collection of [`QueryExpressions`]
@@ -48,8 +48,7 @@ impl DataQuery for DataQueryBlueprint {
 
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
 
-        let query_override = property_resolver.resolve_root_override(ctx);
-        let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
+        let overrides = property_resolver.resolve_entity_overrides(ctx);
 
         let per_system_entity_list = entities_per_system_per_class
             .get(&self.space_view_class_name)
@@ -60,8 +59,8 @@ impl DataQuery for DataQueryBlueprint {
         let root_handle = ctx.recording.and_then(|store| {
             executor.add_entity_tree_to_data_results_recursive(
                 &store.entity_db().tree,
-                &entity_overrides,
-                &query_override,
+                &overrides,
+                &overrides.root,
                 &mut data_results,
                 false,
             )
@@ -79,9 +78,10 @@ impl DataQuery for DataQueryBlueprint {
         ctx: &re_viewer_context::StoreContext<'_>,
         entities_per_system_per_class: &EntitiesPerSystemPerClass,
         entity_path: &re_log_types::EntityPath,
+        as_group: bool,
     ) -> re_viewer_context::DataResult {
         re_tracing::profile_function!();
-        let entity_overrides = property_resolver.resolve_entity_overrides(ctx);
+        let overrides = property_resolver.resolve_entity_overrides(ctx);
 
         let view_parts = if let Some(per_system_entity_list) =
             entities_per_system_per_class.get(&self.space_view_class_name)
@@ -100,16 +100,17 @@ impl DataQuery for DataQueryBlueprint {
             Default::default()
         };
 
-        let mut resolved_properties = property_resolver.resolve_root_override(ctx);
+        let mut resolved_properties = overrides.root.clone();
         for prefix in EntityPath::incremental_walk(None, entity_path) {
-            resolved_properties = resolved_properties.with_child(&entity_overrides.get(&prefix));
+            resolved_properties = resolved_properties.with_child(&overrides.group.get(&prefix));
         }
 
+        // TODO(jleibs): This needs to be updated to accommodate for groups
         DataResult {
             entity_path: entity_path.clone(),
             view_parts,
-            is_group: false,
-            individual_properties: entity_overrides.get_opt(entity_path).cloned(),
+            is_group: as_group,
+            individual_properties: overrides.individual.get_opt(entity_path).cloned(),
             resolved_properties,
             override_path: self
                 .blueprint_path
@@ -171,7 +172,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
     fn add_entity_tree_to_data_results_recursive(
         &self,
         tree: &EntityTree,
-        overrides: &EntityPropertyMap,
+        overrides: &EntityOverrides,
         inherited: &EntityProperties,
         data_results: &mut SlotMap<DataResultHandle, DataResultNode>,
         from_recursive: bool,
@@ -209,7 +210,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
 
         let mut resolved_properties = inherited.clone();
 
-        if let Some(props) = overrides.get_opt(&entity_path) {
+        if let Some(props) = overrides.group.get_opt(&entity_path) {
             resolved_properties = resolved_properties.with_child(props);
         }
 
@@ -223,7 +224,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path: entity_path.clone(),
                     view_parts,
                     is_group: false,
-                    individual_properties: overrides.get_opt(&entity_path).cloned(),
+                    individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
                     resolved_properties: resolved_properties.clone(),
                     override_path: override_path.clone(),
                 },
@@ -255,7 +256,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
         if children.is_empty() || children.len() == 1 && self_leaf.is_some() {
             self_leaf
         } else {
-            let individual_properties = overrides.get_opt(&entity_path).cloned();
+            let individual_properties = overrides.individual.get_opt(&entity_path).cloned();
             Some(data_results.insert(DataResultNode {
                 data_result: DataResult {
                     entity_path,
@@ -274,7 +275,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
 #[cfg(feature = "testing")]
 #[cfg(test)]
 mod tests {
-    use re_data_store::StoreDb;
+    use re_data_store::{EntityPropertyMap, StoreDb};
     use re_log_types::{example_components::MyPoint, DataRow, RowId, StoreId, TimePoint, Timeline};
     use re_viewer_context::StoreContext;
 
@@ -285,12 +286,12 @@ mod tests {
     }
 
     impl PropertyResolver for StaticPropertyResolver {
-        fn resolve_entity_overrides(&self, _ctx: &StoreContext<'_>) -> EntityPropertyMap {
-            self.overrides.clone()
-        }
-
-        fn resolve_root_override(&self, _ctx: &StoreContext<'_>) -> EntityProperties {
-            EntityProperties::default()
+        fn resolve_entity_overrides(&self, _ctx: &StoreContext<'_>) -> EntityOverrides {
+            EntityOverrides {
+                root: Default::default(),
+                individual: self.overrides.clone(),
+                group: self.overrides.clone(),
+            }
         }
     }
 
@@ -399,7 +400,7 @@ mod tests {
 
             let mut visited = vec![];
             result_tree.visit(&mut |handle| {
-                let result = result_tree.lookup(handle).unwrap();
+                let result = result_tree.lookup_result(handle).unwrap();
                 if result.is_group && result.entity_path != EntityPath::root() {
                     visited.push(format!("{}/", result.entity_path));
                 } else {

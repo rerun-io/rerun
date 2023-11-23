@@ -22,9 +22,14 @@ impl DataResultTree {
         }
     }
 
-    /// Look up a node in the tree based on its handle.
-    pub fn lookup(&self, handle: DataResultHandle) -> Option<&DataResult> {
+    /// Look up a [`DataResult`] in the tree based on its handle.
+    pub fn lookup_result(&self, handle: DataResultHandle) -> Option<&DataResult> {
         self.data_results.get(handle).map(|node| &node.data_result)
+    }
+
+    /// Look up a [`DataResultNode`] in the tree based on its handle.
+    pub fn lookup_node(&self, handle: DataResultHandle) -> Option<&DataResultNode> {
+        self.data_results.get(handle)
     }
 
     fn visit_recursive(
@@ -49,13 +54,18 @@ pub struct DataResultNode {
     pub children: SmallVec<[DataResultHandle; 4]>,
 }
 
+pub struct EntityOverrides {
+    pub root: EntityProperties,
+    pub individual: EntityPropertyMap,
+    pub group: EntityPropertyMap,
+}
+
 /// Trait for resolving properties needed by most implementations of [`DataQuery`]
 ///
 /// The `SpaceViewBlueprint` is the only thing that likely implements this today
 /// but we use a trait here so we don't have to pick up a full dependency on `re_viewport`.
 pub trait PropertyResolver {
-    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityPropertyMap;
-    fn resolve_root_override(&self, ctx: &StoreContext<'_>) -> EntityProperties;
+    fn resolve_entity_overrides(&self, ctx: &StoreContext<'_>) -> EntityOverrides;
 }
 
 /// The common trait implemented for data queries
@@ -87,5 +97,6 @@ pub trait DataQuery {
         ctx: &StoreContext<'_>,
         entities_per_system_per_class: &EntitiesPerSystemPerClass,
         entity_path: &EntityPath,
+        as_group: bool,
     ) -> DataResult;
 }

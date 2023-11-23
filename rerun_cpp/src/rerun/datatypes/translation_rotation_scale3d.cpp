@@ -10,37 +10,26 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::datatypes {
-    const std::shared_ptr<arrow::DataType>& TranslationRotationScale3D::arrow_datatype() {
+namespace rerun::datatypes {}
+
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>&
+        Loggable<datatypes::TranslationRotationScale3D>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
-            arrow::field("translation", rerun::datatypes::Vec3D::arrow_datatype(), true),
-            arrow::field("rotation", rerun::datatypes::Rotation3D::arrow_datatype(), true),
-            arrow::field("scale", rerun::datatypes::Scale3D::arrow_datatype(), true),
+            arrow::field("translation", Loggable<rerun::datatypes::Vec3D>::arrow_datatype(), true),
+            arrow::field(
+                "rotation",
+                Loggable<rerun::datatypes::Rotation3D>::arrow_datatype(),
+                true
+            ),
+            arrow::field("scale", Loggable<rerun::datatypes::Scale3D>::arrow_datatype(), true),
             arrow::field("from_parent", arrow::boolean(), false),
         });
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::StructBuilder>>
-        TranslationRotationScale3D::new_arrow_array_builder(arrow::MemoryPool* memory_pool) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::StructBuilder>(
-            arrow_datatype(),
-            memory_pool,
-            std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                rerun::datatypes::Vec3D::new_arrow_array_builder(memory_pool).value,
-                rerun::datatypes::Rotation3D::new_arrow_array_builder(memory_pool).value,
-                rerun::datatypes::Scale3D::new_arrow_array_builder(memory_pool).value,
-                std::make_shared<arrow::BooleanBuilder>(memory_pool),
-            })
-        ));
-    }
-
-    rerun::Error TranslationRotationScale3D::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const TranslationRotationScale3D* elements,
+    rerun::Error Loggable<datatypes::TranslationRotationScale3D>::fill_arrow_array_builder(
+        arrow::StructBuilder* builder, const datatypes::TranslationRotationScale3D* elements,
         size_t num_elements
     ) {
         if (builder == nullptr) {
@@ -60,7 +49,7 @@ namespace rerun::datatypes {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.translation.has_value()) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::Vec3D::fill_arrow_array_builder(
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Vec3D>::fill_arrow_array_builder(
                         field_builder,
                         &element.translation.value(),
                         1
@@ -76,11 +65,13 @@ namespace rerun::datatypes {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.rotation.has_value()) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::Rotation3D::fill_arrow_array_builder(
-                        field_builder,
-                        &element.rotation.value(),
-                        1
-                    ));
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::Rotation3D>::fill_arrow_array_builder(
+                            field_builder,
+                            &element.rotation.value(),
+                            1
+                        )
+                    );
                 } else {
                     ARROW_RETURN_NOT_OK(field_builder->AppendNull());
                 }
@@ -92,7 +83,7 @@ namespace rerun::datatypes {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 if (element.scale.has_value()) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::Scale3D::fill_arrow_array_builder(
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Scale3D>::fill_arrow_array_builder(
                         field_builder,
                         &element.scale.value(),
                         1
@@ -113,4 +104,35 @@ namespace rerun::datatypes {
 
         return Error::ok();
     }
-} // namespace rerun::datatypes
+
+    Result<rerun::DataCell> Loggable<datatypes::TranslationRotationScale3D>::to_data_cell(
+        const datatypes::TranslationRotationScale3D* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(
+                Loggable<datatypes::TranslationRotationScale3D>::fill_arrow_array_builder(
+                    static_cast<arrow::StructBuilder*>(builder.get()),
+                    instances,
+                    num_instances
+                )
+            );
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+
+        static const Result<ComponentTypeHandle> component_type =
+            ComponentType(Name, datatype).register_component();
+        RR_RETURN_NOT_OK(component_type.error);
+
+        DataCell cell;
+        cell.num_instances = num_instances;
+        cell.array = std::move(array);
+        cell.component_type = component_type.value;
+        return cell;
+    }
+} // namespace rerun

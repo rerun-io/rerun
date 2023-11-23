@@ -7,6 +7,8 @@ mod app;
 mod app_blueprint;
 mod app_state;
 mod background_tasks;
+#[cfg(not(target_arch = "wasm32"))]
+mod blueprint_validation;
 pub mod env_vars;
 #[cfg(not(target_arch = "wasm32"))]
 mod loading;

@@ -16,7 +16,6 @@ namespace arrow {
 
     class DataType;
     class FloatType;
-    class MemoryPool;
     using FloatBuilder = NumericBuilder<FloatType>;
 } // namespace arrow
 
@@ -31,9 +30,6 @@ namespace rerun::components {
     struct DrawOrder {
         float value;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         DrawOrder() = default;
 
@@ -43,23 +39,29 @@ namespace rerun::components {
             value = value_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::DrawOrder> {
+        static constexpr const char Name[] = "rerun.components.DrawOrder";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const DrawOrder* elements, size_t num_elements
+            arrow::FloatBuilder* builder, const components::DrawOrder* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of DrawOrder components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::DrawOrder` components.
         static Result<rerun::DataCell> to_data_cell(
-            const DrawOrder* instances, size_t num_instances
+            const components::DrawOrder* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

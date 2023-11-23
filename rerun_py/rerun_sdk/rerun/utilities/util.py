@@ -1,10 +1,17 @@
-"""Simpe utilities to be used for Rerun demos."""
+"""Simple utilities to be used for Rerun demos."""
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
+import numpy.typing as npt
+
+__all__ = ["bounce_lerp", "interleave"]
 
 
-def bounce_lerp(a, b, t):
+def bounce_lerp(
+    a: float, b: float, t: float | np.ndarray[Any, np.dtype[Any]]
+) -> float | np.ndarray[Any, np.dtype[Any]]:
     """
     A linear interpolator that bounces between `a` and `b` as `t` goes above `1.0`.
 
@@ -25,7 +32,7 @@ def bounce_lerp(a, b, t):
         return tf * a + (1.0 - tf) * b
 
 
-def interleave(arr1, arr2):
+def interleave(arr1: npt.NDArray[np.float64], arr2: npt.NDArray[np.float64]) -> npt.NDArray[np.float64]:
     """
     Interleaves two numpy arrays.
 

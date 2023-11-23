@@ -14,7 +14,6 @@
 namespace arrow {
     class DataType;
     class FixedSizeListBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
@@ -23,9 +22,6 @@ namespace rerun::components {
     /// Typically in integer units, but for some use cases floating point may be used.
     struct Resolution {
         rerun::datatypes::Vec2D resolution;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'resolution_ext.cpp'
@@ -60,23 +56,30 @@ namespace rerun::components {
         operator rerun::datatypes::Vec2D() const {
             return resolution;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::Resolution> {
+        static constexpr const char Name[] = "rerun.components.Resolution";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const Resolution* elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const components::Resolution* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of Resolution components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::Resolution` components.
         static Result<rerun::DataCell> to_data_cell(
-            const Resolution* instances, size_t num_instances
+            const components::Resolution* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

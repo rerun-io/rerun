@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <array>
@@ -12,7 +13,6 @@
 namespace arrow {
     class DataType;
     class FixedSizeListBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::datatypes {
@@ -54,18 +54,30 @@ namespace rerun::datatypes {
             xyzw = xyzw_;
             return *this;
         }
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::Vec4D> {
+        static constexpr const char Name[] = "rerun.datatypes.Vec4D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const Vec4D* elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const datatypes::Vec4D* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::Vec4D` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::Vec4D* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

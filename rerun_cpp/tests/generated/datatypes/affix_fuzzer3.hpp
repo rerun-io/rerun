@@ -12,13 +12,13 @@
 #include <new>
 #include <optional>
 #include <rerun/collection.hpp>
+#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 
 namespace arrow {
     class DataType;
     class DenseUnionBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::datatypes {
@@ -190,21 +190,43 @@ namespace rerun::datatypes {
             }
         }
 
-        /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// \private
+        const detail::AffixFuzzer3Data& get_union_data() const {
+            return _data;
+        }
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const AffixFuzzer3* elements, size_t num_elements
-        );
+        /// \private
+        detail::AffixFuzzer3Tag get_union_tag() const {
+            return _tag;
+        }
 
       private:
         detail::AffixFuzzer3Tag _tag;
         detail::AffixFuzzer3Data _data;
     };
 } // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::AffixFuzzer3> {
+        static constexpr const char Name[] = "rerun.testing.datatypes.AffixFuzzer3";
+
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const datatypes::AffixFuzzer3* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::AffixFuzzer3` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::AffixFuzzer3* instances, size_t num_instances
+        );
+    };
+} // namespace rerun

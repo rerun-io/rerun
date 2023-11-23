@@ -13,7 +13,6 @@
 
 namespace arrow {
     class DataType;
-    class MemoryPool;
     class StructBuilder;
 } // namespace arrow
 
@@ -21,9 +20,6 @@ namespace rerun::components {
     /// **Component**: A multi-dimensional `Tensor` with optionally named arguments.
     struct TensorData {
         rerun::datatypes::TensorData data;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'tensor_data_ext.cpp'
@@ -49,23 +45,30 @@ namespace rerun::components {
         operator rerun::datatypes::TensorData() const {
             return data;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::TensorData> {
+        static constexpr const char Name[] = "rerun.components.TensorData";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const TensorData* elements, size_t num_elements
+            arrow::StructBuilder* builder, const components::TensorData* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of TensorData components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::TensorData` components.
         static Result<rerun::DataCell> to_data_cell(
-            const TensorData* instances, size_t num_instances
+            const components::TensorData* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

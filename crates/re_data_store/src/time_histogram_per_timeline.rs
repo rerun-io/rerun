@@ -22,6 +22,11 @@ pub struct TimeHistogramPerTimeline {
 
 impl TimeHistogramPerTimeline {
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.times.is_empty() && self.num_timeless_messages == 0
+    }
+
+    #[inline]
     pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
         self.times.keys()
     }
@@ -76,10 +81,14 @@ impl TimeHistogramPerTimeline {
                 });
         } else {
             for (timeline, time_value) in timepoint.iter() {
-                self.times
+                let remaining_count = self
+                    .times
                     .entry(*timeline)
                     .or_default()
                     .decrement(time_value.as_i64(), n);
+                if remaining_count == 0 {
+                    self.times.remove(timeline);
+                }
             }
         }
     }

@@ -23,7 +23,7 @@ pub enum GarbageCollectionTarget {
     Everything,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct GarbageCollectionOptions {
     /// What target threshold should the GC try to meet.
     pub target: GarbageCollectionTarget,
@@ -36,6 +36,9 @@ pub struct GarbageCollectionOptions {
 
     /// Whether to purge tables that no longer contain any data
     pub purge_empty_tables: bool,
+
+    /// Components which should not be protected from GC when using `protect_latest`
+    pub dont_protect: HashSet<ComponentName>,
 }
 
 impl GarbageCollectionOptions {
@@ -45,6 +48,7 @@ impl GarbageCollectionOptions {
             gc_timeless: true,
             protect_latest: 0,
             purge_empty_tables: true,
+            dont_protect: Default::default(),
         }
     }
 }
@@ -92,7 +96,7 @@ impl DataStore {
     /// points in time may provide different results pre- and post- GC.
     //
     // TODO(#1823): Workload specific optimizations.
-    pub fn gc(&mut self, options: GarbageCollectionOptions) -> (Vec<StoreEvent>, DataStoreStats) {
+    pub fn gc(&mut self, options: &GarbageCollectionOptions) -> (Vec<StoreEvent>, DataStoreStats) {
         re_tracing::profile_function!();
 
         self.gc_id += 1;
@@ -102,7 +106,8 @@ impl DataStore {
         let (initial_num_rows, initial_num_bytes) =
             stats_before.total_rows_and_bytes_with_timeless(options.gc_timeless);
 
-        let protected_rows = self.find_all_protected_rows(options.protect_latest);
+        let protected_rows =
+            self.find_all_protected_rows(options.protect_latest, &options.dont_protect);
 
         let mut diffs = match options.target {
             GarbageCollectionTarget::DropAtLeastFraction(p) => {
@@ -304,7 +309,11 @@ impl DataStore {
     // HashSet might actually be sub-optimal here. Consider switching to a map of
     // `EntityPath` -> `HashSet<RowId>`.
     // Update: this is true-er than ever before now that RowIds are truly unique!
-    fn find_all_protected_rows(&mut self, target_count: usize) -> HashSet<RowId> {
+    fn find_all_protected_rows(
+        &mut self,
+        target_count: usize,
+        dont_protect: &HashSet<ComponentName>,
+    ) -> HashSet<RowId> {
         re_tracing::profile_function!();
 
         if target_count == 0 {
@@ -322,6 +331,7 @@ impl DataStore {
                 .all_components
                 .iter()
                 .filter(|c| **c != table.cluster_key)
+                .filter(|c| !dont_protect.contains(*c))
                 .map(|c| (*c, target_count))
                 .collect();
 
@@ -359,6 +369,7 @@ impl DataStore {
                 .columns
                 .keys()
                 .filter(|c| **c != table.cluster_key)
+                .filter(|c| !dont_protect.contains(*c))
                 .map(|c| (*c, target_count))
                 .collect();
 

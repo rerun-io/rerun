@@ -42,7 +42,8 @@ native_viewer = ["rerun/native_viewer"]
 #
 # You also need to install some additional tools, which you can do by running
 # [`scripts/setup_web.sh`](https://github.com/rerun-io/rerun/blob/main/scripts/setup_web.sh).
-web_viewer = ["rerun/web_viewer"]
+# TODO(#4295): web_viewer shouldn't require rerun/sdk
+web_viewer = ["rerun/web_viewer", "rerun/sdk"]
 
 [dependencies]
 re_build_info.workspace = true
@@ -50,10 +51,8 @@ re_log.workspace = true
 re_memory.workspace = true
 rerun = { workspace = true, features = [
   "analytics",
-  "demo",
   "glam",
   "image",
-  "sdk",
   "server",
 ] }
 

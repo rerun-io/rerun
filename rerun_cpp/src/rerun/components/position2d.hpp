@@ -14,16 +14,12 @@
 namespace arrow {
     class DataType;
     class FixedSizeListBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
     /// **Component**: A position in 2D space.
     struct Position2D {
         rerun::datatypes::Vec2D xy;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'position2d_ext.cpp'
@@ -60,23 +56,30 @@ namespace rerun::components {
         operator rerun::datatypes::Vec2D() const {
             return xy;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::Position2D> {
+        static constexpr const char Name[] = "rerun.components.Position2D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const Position2D* elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const components::Position2D* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of Position2D components.
+        /// Creates a Rerun DataCell from an array of `rerun::components::Position2D` components.
         static Result<rerun::DataCell> to_data_cell(
-            const Position2D* instances, size_t num_instances
+            const components::Position2D* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

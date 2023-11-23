@@ -5,37 +5,36 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char SegmentationImage::INDICATOR_COMPONENT_NAME[] =
-        "rerun.components.SegmentationImageIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<
-        archetypes::SegmentationImage>::serialize(const archetypes::SegmentationImage& archetype) {
+    Result<std::vector<DataCell>> AsComponents<archetypes::SegmentationImage>::serialize(
+        const archetypes::SegmentationImage& archetype
+    ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(2);
+        std::vector<DataCell> cells;
+        cells.reserve(3);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::TensorData::to_data_cell(&archetype.data, size);
+            auto result = Loggable<rerun::components::TensorData>::to_data_cell(&archetype.data, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            const size_t size = 1;
-            auto result =
-                rerun::components::DrawOrder::to_data_cell(&archetype.draw_order.value(), size);
+            auto result = Loggable<rerun::components::DrawOrder>::to_data_cell(
+                &archetype.draw_order.value(),
+                1
+            );
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.emplace_back(std::move(result.value));
         }
         {
             auto indicator = SegmentationImage::IndicatorComponent();
-            auto result = SegmentationImage::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result =
+                Loggable<SegmentationImage::IndicatorComponent>::to_data_cell(&indicator, 1);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

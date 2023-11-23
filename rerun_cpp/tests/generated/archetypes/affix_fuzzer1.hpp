@@ -30,7 +30,6 @@
 #include <rerun/data_cell.hpp>
 #include <rerun/indicator_component.hpp>
 #include <rerun/result.hpp>
-#include <rerun/serialized_component_batch.hpp>
 #include <utility>
 #include <vector>
 
@@ -78,10 +77,12 @@ namespace rerun::archetypes {
 
         rerun::components::AffixFuzzer21 fuzz1021;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] =
+            "rerun.testing.components.AffixFuzzer1Indicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         AffixFuzzer1() = default;
@@ -139,8 +140,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::AffixFuzzer1> {
         /// Serialize all set component batches.
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const archetypes::AffixFuzzer1& archetype
-        );
+        static Result<std::vector<DataCell>> serialize(const archetypes::AffixFuzzer1& archetype);
     };
 } // namespace rerun

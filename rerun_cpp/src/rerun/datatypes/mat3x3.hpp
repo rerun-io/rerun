@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../data_cell.hpp"
 #include "../result.hpp"
 #include "vec3d.hpp"
 
@@ -13,7 +14,6 @@
 namespace arrow {
     class DataType;
     class FixedSizeListBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::datatypes {
@@ -73,18 +73,30 @@ namespace rerun::datatypes {
             flat_columns = flat_columns_;
             return *this;
         }
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::Mat3x3> {
+        static constexpr const char Name[] = "rerun.datatypes.Mat3x3";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const Mat3x3* elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const datatypes::Mat3x3* elements,
+            size_t num_elements
+        );
+
+        /// Creates a Rerun DataCell from an array of `rerun::datatypes::Mat3x3` components.
+        static Result<rerun::DataCell> to_data_cell(
+            const datatypes::Mat3x3* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun
