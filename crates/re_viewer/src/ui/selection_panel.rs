@@ -164,7 +164,9 @@ fn space_view_button(
     item_ui::cursor_interact_with_selectable(ctx, response, item)
 }
 
-/// What is selected? Not the contents, just the short id of it.
+/// What is selected and where is it located?
+///
+/// This includes a title bar and contextual information about there this item is located.
 fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
@@ -269,6 +271,7 @@ fn what_is_selected_ui(
     }
 }
 
+/// A title bar for an item.
 fn item_title_ui(
     re_ui: &re_ui::ReUi,
     ui: &mut egui::Ui,
@@ -287,6 +290,7 @@ fn item_title_ui(
     list_item.show(ui).on_hover_text(hover)
 }
 
+/// Display a list of all the space views an entity appears in.
 fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
@@ -316,6 +320,11 @@ fn list_existing_data_blueprints(
     }
 }
 
+/// Display the top-level properties of a space view.
+///
+/// This includes the name, space origin entity, and space view type. These properties are singled
+/// out as needing to be edited in most case when creating a new Space View, which is why they are
+/// shown at the very top.
 fn space_view_top_level_properties(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
