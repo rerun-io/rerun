@@ -152,7 +152,8 @@ install(EXPORT rerun_sdkTargets
 
 include(CMakePackageConfigHelpers)
 
-set(RERUN_VERSION 0.11.0) # TODO: extract this from rerun.h. Solve together with sdk versioning? Only "major.minor.patch" is supported.
+# TODO(#3868): Extract version from rerun.h
+set(RERUN_VERSION 0.11.0)
 
 # Package config file, so find_package(rerun_sdk) produces a target.
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
