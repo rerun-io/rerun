@@ -26,7 +26,7 @@ namespace rerun {
             return Error(
                 ErrorCode::SdkVersionMismatch,
                 std::string(
-                    "Rerun_c SDK version and SDK header/source versions don't match match. "
+                    "Rerun_c SDK version and SDK header/source versions don't match. "
                     "Make sure to link against the correct version of the rerun_c library.\n"
                     "Rerun_c version:\n"
                 )
