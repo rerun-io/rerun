@@ -66,8 +66,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_custom_data");
     rec.spawn().exit_on_failure();
 
-    auto grid =
-        rerun::demo::grid<rerun::Position3D, float>({-5.0f, -5.0f, -5.0f}, {5.0f, 5.0f, 5.0f}, 3);
+    auto grid = rerun::demo::grid3d<rerun::Position3D, float>(-5.0f, 5.0f, 3);
 
     rec.log(
         "left/my_confident_point_cloud",
