@@ -85,7 +85,7 @@ For convenience, Rerun provides a C++ SDK bundle with every release.
 (this includes our regular [Development Builds](https://github.com/rerun-io/rerun/releases/tag/prerelease)!)
 
 This is a simple zip archive containing the SDK from the [repository](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp)
-(excluding the `tests` and `docs` folders) and a `lib` folder with prebuilt rerun_c libraries for all major desktop platforms.
+(excluding the `tests` folder) and a `lib` folder with prebuilt rerun_c libraries for all major desktop platforms.
 The rerun_c libraries follow a simple name schema that the CMake script can pick up.
 
 

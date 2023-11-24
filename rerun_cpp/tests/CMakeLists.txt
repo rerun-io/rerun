@@ -13,6 +13,10 @@ file(GLOB_RECURSE rerun_sdk_tests_SRC CONFIGURE_DEPENDS
     "*.hpp"
     "*.cpp"
 )
+
+# Add readme snippets to the tests to make sure they keep compiling.
+list(APPEND rerun_sdk_tests_SRC "../docs/readme_snippets.cpp")
+
 add_executable(rerun_sdk_tests ${rerun_sdk_tests_SRC})
 
 rerun_strict_warning_settings(rerun_sdk_tests)
