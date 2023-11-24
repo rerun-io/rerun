@@ -75,12 +75,13 @@ if(NOT TARGET rerun_c)
     set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION ${RERUN_C_LIB})
 endif()
 
+# These are technically required by rerun_c, but since rerun_c is an import library and can't be installed, we'd loose this on install otherwise.
 if(APPLE)
-    target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit")
+    target_link_libraries(rerun_sdk INTERFACE "-framework CoreFoundation" "-framework IOKit")
 elseif(UNIX) # if(LINUX) # CMake 3.25
-    target_link_libraries(rerun_c INTERFACE "-lm -ldl -pthread")
+    target_link_libraries(rerun_sdk INTERFACE "-lm -ldl -pthread")
 elseif(WIN32)
-    target_link_libraries(rerun_c INTERFACE ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
+    target_link_libraries(rerun_sdk INTERFACE ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_c)
