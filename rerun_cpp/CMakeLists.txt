@@ -77,14 +77,14 @@ endif()
 
 # These are technically required by rerun_c, but since rerun_c is an import library and can't be installed, we'd loose this on install otherwise.
 if(APPLE)
-    target_link_libraries(rerun_sdk INTERFACE "-framework CoreFoundation" "-framework IOKit")
+    target_link_libraries(rerun_sdk PUBLIC "-framework CoreFoundation" "-framework IOKit")
 elseif(UNIX) # if(LINUX) # CMake 3.25
-    target_link_libraries(rerun_sdk INTERFACE "-lm -ldl -pthread")
+    target_link_libraries(rerun_sdk PUBLIC "-lm -ldl -pthread")
 elseif(WIN32)
-    target_link_libraries(rerun_sdk INTERFACE ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
+    target_link_libraries(rerun_sdk PUBLIC ws2_32.dll Bcrypt.dll Userenv.dll ntdll.dll)
 endif()
 
-target_link_libraries(rerun_sdk PRIVATE rerun_c)
+target_link_libraries(rerun_sdk PUBLIC rerun_c)
 
 # -----------------------------------------------------------------------------
 # Arrow dependency.
