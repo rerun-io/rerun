@@ -8,18 +8,17 @@ cmake_minimum_required(VERSION 3.16...3.27)
 
 message("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
 
-# ------------------------------------------------------------------------------
-# Base setup for rerun_sdk C++ library.
+set(RERUN_CPP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src" CACHE PATH "Rerun include & source directory")
 
 file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
-    "src/*.hpp"
-    "src/*.cpp"
+    "${RERUN_CPP_SOURCE_DIR}/*.hpp"
+    "${RERUN_CPP_SOURCE_DIR}/*.cpp"
 )
 
 add_library(rerun_sdk ${rerun_sdk_SRC})
 
 # Make sure the compiler can find include files for rerun when other libraries or executables link to rerun:
-target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(rerun_sdk PUBLIC ${RERUN_CPP_SOURCE_DIR})
 
 # Rerun needs at least C++17.
 set_target_properties(rerun_sdk PROPERTIES CXX_STANDARD 17)
@@ -30,7 +29,7 @@ if(MSVC)
 endif()
 
 # Set default warning settings if defined.
-if (COMMAND rerun_strict_warning_settings)
+if(COMMAND rerun_strict_warning_settings)
     message("Building Rerun C++ SDK with strict compilation warnings.")
     rerun_strict_warning_settings(rerun_sdk)
 endif()
@@ -105,7 +104,6 @@ else()
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
-
 
 # -----------------------------------------------------------------------------
 # Add tests if they exist (they are not part of the distribution zip).

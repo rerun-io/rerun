@@ -74,6 +74,17 @@ It provides a minimalistic C interface that encapsulates the shared building blo
 By default points to where a pre-built library for the currently active platform
 is expected to be found in the Rerun C++ SDK distribution zip.
 
+### `RERUN_CPP_SOURCE_DIR`
+Path to the Rerun include and source directory, i.e. the directory that contains `rerun.hpp`.
+
+Note that rerun does not have separate folders for header (\*.hpp) and source (\*.cpp) files,
+both are found inside `RERUN_CPP_SOURCE_DIR`.
+
+By default is set to an absolute path that is determined by the location of Rerun's `CMakeLists.txt` itself.
+Setting this is rarely needed, but reading it may be useful for build setups that can not rely on
+the `rerun_cpp` target or for some reason aren't able to inherit the public target include path
+set on `rerun_cpp`.
+
 
 ## Tested compilers
 
