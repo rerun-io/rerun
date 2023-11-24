@@ -1,7 +1,6 @@
----
-title: Install arrow-cpp
-order: 6
----
+# Installing ArrowCpp separately
+
+\tableofcontents
 
 ## Automatically download & build arrow from source (default)
 
@@ -13,7 +12,7 @@ To instead use an existing install of Arrow, disable the CMake build option `RER
 (by passing `-DRERUN_DOWNLOAD_AND_BUILD_ARROW=OFF` to your CMake configure step).
 This will cause Rerun to instead use CMake's `find_package` to look for a ready-to-use install of the Arrow C++ library.
 
-For more information about CMake config options see [C++ SDK CMake](../reference/cpp-sdk-cmake.md).
+For more information about CMake config options see [C++ SDK CMake](cmake_setup_in_detail.md).
 
 ## Install arrow-cpp with Pixi
 
