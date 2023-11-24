@@ -6,7 +6,8 @@ your data into the components & datatypes provided by the Rerun SDK in order to 
 This example demonstrates how to solve this using [`rerun::ComponentAdapter`](https://ref.rerun.io/docs/cpp/latest/structrerun_1_1CollectionAdapter.html?speculative-link) for your own types:
 Whenever you have data that is continuous in memory and binary compatible with an existing Rerun component,
 you can adapt it to map to the respective Rerun component.
-For non-temporary objects that live until [`rerun::RecordingStream::log`](https://ref.rerun.io/docs/cpp/latest/classrerun_1_1RecordingStream.html#af7a14a7e2c3029ef1679ff9fd680129d?speculative-link) returns,
+<!-- direct link to log method? speculative-link doesn't seem to work with that https://ref.rerun.io/docs/cpp/latest/classrerun_1_1RecordingStream.html#af7a14a7e2c3029ef1679ff9fd680129d -->
+For non-temporary objects that live until [`rerun::RecordingStream::log`](https://ref.rerun.io/docs/cpp/latest/classrerun_1_1RecordingStream.html?speculative-link) returns,
 it is typically safe to do so with a zero-copy "borrow".
 This means that in those cases [`rerun::Collection`](https://ref.rerun.io/docs/cpp/latest/classrerun_1_1Collection.html?speculative-link) will merely store a pointer and a length to your data.
 

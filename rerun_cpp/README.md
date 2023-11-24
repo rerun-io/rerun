@@ -76,7 +76,7 @@ From a build system perspective, the SDK consists of three dependencies:
     which is why we offer pre-built libraries with every release for all major platforms
 * [Apache Arrow C++ library](https://arrow.apache.org/docs/cpp/index.html)
   * The SDK uses this library to perform all serialization before handing data over to rerun_c
-  * See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install) for how to install this library
+  * See [Install arrow-cpp](arrow_cpp_install.md) for how to install this library
 
 
 ### SDK bundle (rerun_cpp_sdk.zip)
@@ -91,7 +91,7 @@ The rerun_c libraries follow a simple name schema that the CMake script can pick
 
 ### Building with CMake
 
-See [C++ SDK CMake](https://www.rerun.io/docs/reference/cpp-sdk-cmake) for deeper dive on
+See [CMake Setup in Detail](cmake_setup_in_detail.md) for deeper dive on
 how to use the SDK's `CMakeLists.txt` and an overview over all CMake configuration options.
 
 ### Without CMake
@@ -102,7 +102,7 @@ but it should be possible to setup Rerun C++ without CMake fairly easily:
 You have to add all files from the [src/](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp/src/) folder
 either directly to your project or a library.
 In addition, you need to link the `rerun_c` libraries and the [Arrow C++ library](https://arrow.apache.org/docs/cpp/index.html).
-For more information on how to install Arrow, see [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install).
+For more information on how to install Arrow, see [Install arrow-cpp](arrow_cpp_install.md).
 
 Make sure to compile with C++17 or newer.
 
