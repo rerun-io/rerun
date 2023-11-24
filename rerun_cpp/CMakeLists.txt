@@ -15,10 +15,13 @@ file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
     "${RERUN_CPP_SOURCE_DIR}/*.cpp"
 )
 
-add_library(rerun_sdk ${rerun_sdk_SRC})
+add_library(rerun_sdk ${rerun_sdk_SRC} ${rerun_sdk_PUBLIC_HEADER})
 
 # Make sure the compiler can find include files for rerun when other libraries or executables link to rerun:
-target_include_directories(rerun_sdk PUBLIC ${RERUN_CPP_SOURCE_DIR})
+target_include_directories(rerun_sdk PUBLIC
+    $<BUILD_INTERFACE:${RERUN_CPP_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
 
 # Rerun needs at least C++17.
 set_target_properties(rerun_sdk PROPERTIES CXX_STANDARD 17)
@@ -87,7 +90,7 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 # This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
 # Additionally reduces risk of picking up system libraries on Mac / Linux.
 set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
-option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_LINK_SHARED_DEFAULT})
+option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library." ${RERUN_ARROW_LINK_SHARED_DEFAULT})
 option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
 if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
@@ -104,6 +107,74 @@ else()
 endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
+
+# -----------------------------------------------------------------------------
+# Installation.
+set(RERUN_SDK_INSTALL_CMAKE_DIR "lib/cmake/rerun_sdk")
+
+# Actual install setup.
+install(TARGETS rerun_sdk
+    EXPORT rerun_sdkTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    INCLUDES DESTINATION include
+)
+
+# Add all headers to the install.
+install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+
+# Add rerun_c to the lib folder.
+# CMake doesn't allow installing imported targets which is why we need to add this as a file.
+get_target_property(RERUN_C_LIB_LOCATION rerun_c IMPORTED_LOCATION)
+install(FILES ${RERUN_C_LIB_LOCATION} DESTINATION lib)
+
+# Similarly, we bundle the arrow library that was used during the build.
+# For the moment we only support this when building with the downloaded, static libarrow.
+# Otherwise, a system install of arrow has to be used.
+get_target_property(RERUN_ARROW_LIB_LOCATION rerun_arrow_target LOCATION)
+
+if(RERUN_DOWNLOAD_AND_BUILD_ARROW AND NOT RERUN_ARROW_LINK_SHARED)
+    get_target_property(RERUN_ARROW_LIBRARY_FILE rerun_arrow_target LOCATION)
+    get_target_property(RERUN_ARROW_BUNDLED_DEPENDENCIES_FILE arrow_targetBundledDeps LOCATION)
+    install(FILES
+        ${RERUN_ARROW_LIBRARY_FILE}
+        ${RERUN_ARROW_BUNDLED_DEPENDENCIES_FILE}
+        DESTINATION lib
+    )
+endif()
+
+# Export the target to a script.
+install(EXPORT rerun_sdkTargets
+    FILE rerun_sdkTargets.cmake
+    DESTINATION ${RERUN_SDK_INSTALL_CMAKE_DIR}
+)
+
+include(CMakePackageConfigHelpers)
+
+# TODO(#3868): Extract version from rerun.h
+set(RERUN_VERSION 0.11.0)
+
+# Package config file, so find_package(rerun_sdk) produces a target.
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfig.cmake" # file needs to follow convention of find_package.
+    INSTALL_DESTINATION ${RERUN_SDK_INSTALL_CMAKE_DIR}
+    NO_SET_AND_CHECK_MACRO
+    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+# Version file for find_package.
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfigVersion.cmake
+    VERSION ${RERUN_VERSION}
+    COMPATIBILITY ExactVersion
+)
+
+# Add the find_package dependent files.
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfigVersion.cmake"
+    DESTINATION ${RERUN_SDK_INSTALL_CMAKE_DIR}
+)
 
 # -----------------------------------------------------------------------------
 # Add tests if they exist (they are not part of the distribution zip).
