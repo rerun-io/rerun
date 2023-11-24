@@ -26,11 +26,11 @@ namespace rerun {
     ///
     /// The most notable feature of the `rerun::Collection` is that its data may be either **owned** or **borrowed**:
     /// * Borrowed: If data is borrowed it *must* outlive its source (in particular, the pointer to
-    /// the source musn't invalidate)
+    /// the source mustn't invalidate)
     /// * Owned: Owned data is copied into an internal std::vector
     ///         TODO(#3794): don't do std::vector
     ///
-    /// Collection are either filled explicitly using `Collection::borrow` &`Collection::take_ownership`
+    /// Collections are either filled explicitly using `Collection::borrow` &`Collection::take_ownership`
     /// or (most commonly in user code) implicitly using the `CollectionAdapter` trait
     /// (see documentation for `CollectionAdapter` for more information on how data can be adapted).
     ///

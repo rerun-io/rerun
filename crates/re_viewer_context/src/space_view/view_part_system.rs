@@ -83,7 +83,7 @@ pub trait ViewPartSystem {
 
     /// Queries the data store and performs data conversions to make it ready for display.
     ///
-    /// Musn't query any data outside of the archetype.
+    /// Mustn't query any data outside of the archetype.
     ///
     /// TODO(andreas): don't pass in `ViewerContext` if we want to restrict the queries here.
     /// If we want to make this restriction, then the trait-contract should be that something external

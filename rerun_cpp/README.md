@@ -51,7 +51,7 @@ The built-in types are distributed to the respective namespaces:
 * `rerun::components`
 * `rerun::datatypes`
 
-If you include `rerun.hpp`, all archetypes and selected components become part of the `rerun` namespace.
+If you include `rerun.hpp`, all archetypes and most component types become part of the `rerun` namespace.
 
 Check the [general doc page on types](https://www.rerun.io/docs/reference/types) to learn more.
 
@@ -65,12 +65,12 @@ the C++ SDK is expected to be built from source.
 From a build system perspective, the SDK consists of three dependencies:
 
 * [SDK source](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp/src/)
-  * this includes **both** source and header files!
+  * This includes **both** source and header files!
 * [rerun_c](https://github.com/rerun-io/rerun/tree/latest/crates/rerun_c/) static libraries
   * Rerun C is a minimal C SDK and forms the bridge to the shared Rust codebase
-  * due to the rigidity of the C ABI and lack of complex standard library types in the interface,
+  * Due to the rigidity of the C ABI and lack of complex standard library types in the interface,
     compatibility issues between compilers are less of a concern
-    which is why offer pre-built libraries with every release for all major platforms
+    which is why we offer pre-built libraries with every release for all major platforms
 * [Apache Arrow C++ library](https://arrow.apache.org/docs/cpp/index.html)
   * The SDK uses this library to perform all serialization before handing data over to rerun_c
   * See [Install arrow-cpp](https://www.rerun.io/docs/howto/arrow-cpp-install) for how to install this library
@@ -81,8 +81,8 @@ From a build system perspective, the SDK consists of three dependencies:
 For convenience, Rerun provides a C++ SDK bundle with every release.
 (this includes our regular [Development Builds](https://github.com/rerun-io/rerun/releases/tag/prerelease)!)
 
-This is a simple zip archive containing the SDK the [repository](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp)
-(excluding the tests folder) and a `lib` folder with prebuilt rerun_c libraries for all major desktop platforms.
+This is a simple zip archive containing the SDK from the [repository](https://github.com/rerun-io/rerun/tree/latest/rerun_cpp)
+(excluding the `tests` and `docs` folders) and a `lib` folder with prebuilt rerun_c libraries for all major desktop platforms.
 The rerun_c libraries follow a simple name schema that the CMake script can pick up.
 
 
