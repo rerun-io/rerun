@@ -1,24 +1,27 @@
-# Custom Component Adapter
+# Custom Collection Adapter
 
 Especially when dealing with large amounts of data, it can be both slow and inconvenient to convert
 your data into the components & datatypes provided by the Rerun SDK in order to log it.
 
-This example demonstrates how to solve this using `rerun::ComponentBatchAdapter` for your own types:
+This example demonstrates how to solve this using [`rerun::ComponentAdapter`](https://ref.rerun.io/docs/cpp/latest/structrerun_1_1CollectionAdapter.html?speculative-link) for your own types:
 Whenever you have data that is continuous in memory and binary compatible with an existing Rerun component,
 you can adapt it to map to the respective Rerun component.
-For non-temporary objects that live until `rerun::RecordingStream::log` returns,
+For non-temporary objects that live until [`rerun::RecordingStream::log`](https://ref.rerun.io/docs/cpp/latest/classrerun_1_1RecordingStream.html#af7a14a7e2c3029ef1679ff9fd680129d?speculative-link) returns,
 it is typically safe to do so with a zero-copy "borrow".
-This means that in those cases `rerun::ComponentBatch` will merely store a pointer and a length to your data.
+This means that in those cases [`rerun::Collection`](https://ref.rerun.io/docs/cpp/latest/classrerun_1_1Collection.html?speculative-link) will merely store a pointer and a length to your data.
 
-🚧 TODO(#3794): Right now only component batches can be adapted. This is most prominently an issue for tensors & images
-which are single components that store an `std::vector` internally. In the future we'll generalize the adapter concept allowing you to create tensors & images without an additional copy & allocation.
-🚧 TODO(#3794): In the future, adapters will be able to provide simple data transformations like strides to be done as a borrow.
+While collection adapters are primarily used with components, they are also useful for all other usages of
+rerun's collection type. E.g. the backing buffer of [`rerun::TensorData`](https://ref.rerun.io/docs/cpp/latest/structrerun_1_1datatypes_1_1TensorBuffer.html?speculative-link)
+is also a [`rerun::Collection`](https://ref.rerun.io/docs/cpp/latest/classrerun_1_1Collection.html?speculative-link)
+allowing you to ingest large amounts of data without a copy and the convenience custom adapters can provide.
+
+🚧 TODO(#4257): In the future, adapters will be able to provide simple data transformations like strides to be done as a borrow.  
 🚧 TODO(#3977): We plan to provide adapters for common types from Eigen and OpenCV.
 
 
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
 cmake .
-cmake --build . --target example_custom_component_adapter
-./examples/cpp/minimal/example_custom_component_adapter
+cmake --build . --target example_custom_collection_adapter
+./examples/cpp/minimal/example_custom_collection_adapter
 ```
