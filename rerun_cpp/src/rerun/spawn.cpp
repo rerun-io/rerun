@@ -1,6 +1,6 @@
 #include "spawn.hpp"
 #include "c/rerun.h"
-#include "config.hpp"
+#include "sdk_info.hpp"
 
 namespace rerun {
     Error spawn(const SpawnOptions& options) {

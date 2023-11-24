@@ -3,6 +3,7 @@
 #include "components/instance_key.hpp"
 #include "config.hpp"
 #include "data_cell.hpp"
+#include "sdk_info.hpp"
 #include "string_utils.hpp"
 
 #include <arrow/buffer.h>
