@@ -1,6 +1,8 @@
 #pragma once
 #include <atomic>
 
+#include "error.hpp"
+
 #ifndef RERUN_ENABLED
 #define RERUN_ENABLED 1
 #endif
@@ -49,4 +51,12 @@ namespace rerun {
         // in a more frequently used code-path.
         return RerunGlobalConfig::instance().default_enabled.load(std::memory_order_seq_cst);
     }
+
+    /// Returns a version string for the SDK's version.
+    extern const char* const sdk_version_string;
+
+    /// Checks whether the version reported by the rerun_c binary matches `sdk_version_string`.
+    ///
+    /// This method is called on various C++ API entry points, calling `Error::handle` on the return value.
+    Error check_binary_and_header_version_match();
 } // namespace rerun
