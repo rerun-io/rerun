@@ -1,0 +1,37 @@
+import edu.wpi.first.toolchain.NativePlatforms
+
+apply plugin: 'cpp'
+apply plugin: 'google-test-test-suite'
+apply plugin: 'edu.wpi.first.GradleRIO'
+
+model {
+  components {
+    Rerun(NativeLibrarySpec) {
+      targetPlatform NativePlatforms.desktop
+      targetPlatform NativePlatforms.roborio 
+
+      sources {
+        sources.cpp {
+          source {
+            srcDir 'src/rerun_cpp/rerun'
+            include '**/*.cpp', '**/*.cc'
+          }
+
+          exportedHeaders {
+            srcDir 'src/rerun_cpp/include'
+          }
+        } 
+      }
+
+      binaries.all {
+        if (it.targetPlatform.name == "linuxathena")
+          cppCompiler.define "PLATFORM_ROBORIO"
+        else
+          cppCompiler.define "PLATFORM_DESKTOP"
+      }
+
+      wpi.cpp.vendor.cpp(it)
+      wpi.cpp.deps.wpilib(it)
+    }
+  }
+}
