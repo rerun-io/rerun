@@ -205,7 +205,7 @@ class catch_and_log_exceptions:
         exc_tb: TracebackType | None,
     ) -> bool:
         try:
-            if exc_type is not None and not strict_mode():
+            if exc_type is not None and exc_type is not KeyboardInterrupt and not strict_mode():
                 if getattr(_rerun_exception_ctx, "pending_warnings", None) is None:
                     _rerun_exception_ctx.pending_warnings = []
 
