@@ -225,12 +225,12 @@ impl framework::Example for Render2D {
                 })
                 .collect_vec();
 
-            let sizes = std::iter::repeat(size).collect_vec();
+            let sizes = std::iter::repeat(size).take(num_points as usize).collect_vec();
 
-            let colors = std::iter::repeat(Color32::WHITE).collect_vec();
+            let colors = std::iter::repeat(Color32::WHITE).take(num_points as usize).collect_vec();
 
             let picking_ids =
-                std::iter::repeat(re_renderer::PickingLayerInstanceId::default()).collect_vec();
+                std::iter::repeat(re_renderer::PickingLayerInstanceId::default()).take(num_points as usize).collect_vec();
 
             point_cloud_builder
                 .batch("points overlapping with lines")
