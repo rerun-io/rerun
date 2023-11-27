@@ -15,7 +15,7 @@ namespace rerun {
         const char* binary_version = version_string();
 
         if (strcmp(binary_version, RERUN_SDK_HEADER_VERSION) == 0) {
-            return Error();
+            return Error::ok();
         } else {
             return Error(
                 ErrorCode::SdkVersionMismatch,
