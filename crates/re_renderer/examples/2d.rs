@@ -225,7 +225,7 @@ impl framework::Example for Render2D {
                 })
                 .collect_vec();
 
-            let sizes = std::iter::repeat(size).take(num_points as usize).collect_vec();
+            let sizes = vec![size; num_points];
 
             let colors = std::iter::repeat(Color32::WHITE).take(num_points as usize).collect_vec();
 
