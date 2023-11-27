@@ -261,6 +261,17 @@ namespace rerun {
             return 0;
         }
 
+        /// Returns true if the collection is empty.
+        bool empty() const {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed:
+                    return storage.borrowed.num_instances == 0;
+                case CollectionOwnership::VectorOwned:
+                    return storage.vector_owned.empty();
+            }
+            return 0;
+        }
+
         /// Returns a raw pointer to the underlying data.
         ///
         /// Do not use this if the data is not continuous in memory!
