@@ -141,6 +141,12 @@ jobs:
         run: |
           node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
 
+      - name: Update rerun_c version
+        shell: bash
+        # Configuring CMake is enough to change the version on rerun.h!
+        run: |
+          cmake -B build -S .
+
       - run: taplo fmt
         shell: bash
 
