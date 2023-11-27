@@ -6,7 +6,10 @@ use re_log_types::{EntityPath, RowId, TimeInt, TimeRange, Timeline};
 use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{
-    store::{ClusterCellCache, IndexedBucketInner, IndexedTable, PersistentIndexedTable},
+    store::{
+        ClusterCellCache, IndexedBucketInner, IndexedTable, PersistentIndexedTable,
+        PersistentIndexedTableInner,
+    },
     DataStore, DataStoreStats, StoreDiff, StoreDiffKind, StoreEvent,
 };
 
@@ -365,10 +368,12 @@ impl DataStore {
         // Find all protected rows in timeless tables
         // TODO(#1807): this is still based on insertion order.
         for table in self.timeless_tables.values() {
+            let cluster_key = table.cluster_key;
+            let table = table.inner.read();
             let mut components_to_find: HashMap<ComponentName, usize> = table
                 .columns
                 .keys()
-                .filter(|c| **c != table.cluster_key)
+                .filter(|c| **c != cluster_key)
                 .filter(|c| !dont_protect.contains(*c))
                 .map(|c| (*c, target_count))
                 .collect();
@@ -409,6 +414,9 @@ impl DataStore {
 
         // Drop any empty timeless tables
         self.timeless_tables.retain(|_, table| {
+            let entity_path = &table.ent_path;
+            let mut table = table.inner.write();
+
             // If any column is non-empty, we need to keep this table…
             for num in &table.col_num_instances {
                 if num.get() != 0 {
@@ -418,7 +426,7 @@ impl DataStore {
 
             // …otherwise we can drop it.
 
-            let entity_path = table.ent_path.clone();
+            let entity_path = entity_path.clone();
 
             for i in 0..table.col_row_id.len() {
                 let row_id = table.col_row_id[i];
@@ -683,11 +691,15 @@ impl PersistentIndexedTable {
         let PersistentIndexedTable {
             ent_path,
             cluster_key: _,
+            inner,
+        } = self;
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
-        } = self;
+            is_sorted: _,
+        } = &mut *inner.write();
 
         let mut diff: Option<StoreDiff> = None;
 
