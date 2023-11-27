@@ -5,6 +5,7 @@
   "private": false,
   "scripts": {
     "build:types": "dts-buddy",
+    "build": "npm run build:types",
     "prepublishOnly": "dts-buddy"
   },
   "repository": {
