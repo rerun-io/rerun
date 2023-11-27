@@ -14,10 +14,6 @@ on:
         description: "Name of the wheel built for linux"
         type: string
         required: true
-      linux-rrd-name:
-        description: "Name of the .rrd file built for linux"
-        type: string
-        required: true
       release-commit:
         description: "Which commit to build+publish"
         type: string
@@ -215,4 +211,3 @@ jobs:
         with:
           command: upload
           args: --skip-existing wheels/*
-
