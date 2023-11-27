@@ -13,7 +13,7 @@ Supports raw text and markdown.
 **Optional**: [`MediaType`](../components/media_type.md)
 
 ## Links
- * 🌊 [C++ API docs for `TextDocument`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextDocument.html?speculative-link)
+ * 🌊 [C++ API docs for `TextDocument`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextDocument.html)
  * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextDocument)
  * 🦀 [Rust API docs for `TextDocument`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TextDocument.html)
 

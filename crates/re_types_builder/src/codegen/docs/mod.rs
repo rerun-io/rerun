@@ -172,7 +172,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             object.name,
             object.kind.plural_snake_case(),
             object.name,
-            "?speculative-link", // speculative_marker // TODO(#4267): C++ is not yet released
+            speculative_marker,
         );
         putln!(
             page,
