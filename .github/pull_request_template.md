@@ -15,7 +15,7 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
 ### Checklist
 * [ ] I have read and agree to [Contributor Guide](https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md) and the [Code of Conduct](https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md)
 * [ ] I've included a screenshot or gif (if applicable)
-* [ ] I have tested [demo.rerun.io](https://demo.rerun.io/pr/{{ pr.number }}) (if applicable)
+* [ ] I have tested [app.rerun.io](https://app.rerun.io/pr/{{ pr.number }}) (if applicable)
 * [ ] The PR title and labels are set such as to maximize their usefulness for the next release's CHANGELOG
 
 - [PR Build Summary](https://build.rerun.io/pr/{{ pr.number }})
