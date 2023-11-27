@@ -59,12 +59,9 @@ impl SelectionPanel {
             // enclosing frame doesn't have inner margins.
             ui.set_clip_rect(ui.max_rect());
 
-            egui::Frame {
-                inner_margin: re_ui::ReUi::panel_margin(),
-                ..Default::default()
-            }
-            .show(ui, |ui| {
-                let hover = "The Selection View contains information and options about the currently selected object(s)";
+            ctx.re_ui.panel_content(ui, |_, ui| {
+                let hover = "The Selection View contains information and options about the \
+                    currently selected object(s)";
                 ctx.re_ui
                     .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
                         if let Some(selection) = self.selection_state_ui.selection_ui(
@@ -77,13 +74,20 @@ impl SelectionPanel {
                                 .set_selection(selection.iter().cloned());
                         }
                     });
+            });
 
-                egui::ScrollArea::both()
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| {
+            // move the vertical spacing between the title and the content to _inside_ the scroll
+            // area
+            ui.add_space(-ui.spacing().item_spacing.y);
+
+            egui::ScrollArea::both()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    ui.add_space(ui.spacing().item_spacing.y);
+                    ctx.re_ui.panel_content(ui, |_, ui| {
                         self.contents(ctx, ui, viewport);
                     });
-            });
+                });
         });
     }
 

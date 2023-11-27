@@ -3,14 +3,12 @@
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
 
-/// A custom component that is backed by a builtin `rerun::Float32` scalar `rerun::Datatype`.
-/// Using a rerun type allows us to re-use the existing arrow serialization code.
+/// A custom component type.
 struct Confidence {
-    rerun::Float32 value;
+    float value;
 };
 
-/// A custom component bundle that extends Rerun's builtin `rerun::Points3D` archetype with extra
-/// `rerun::Component`s.
+/// A custom archetype that extends Rerun's builtin `rerun::Points3D` archetype with a custom component.
 struct CustomPoints3D {
     static constexpr const char IndicatorName[] = "user.CustomPoints3DIndicator";
     using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorName>;
@@ -66,8 +64,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_custom_data");
     rec.spawn().exit_on_failure();
 
-    auto grid =
-        rerun::demo::grid<rerun::Position3D, float>({-5.0f, -5.0f, -5.0f}, {5.0f, 5.0f, 5.0f}, 3);
+    auto grid = rerun::demo::grid3d<rerun::Position3D, float>(-5.0f, 5.0f, 3);
 
     rec.log(
         "left/my_confident_point_cloud",

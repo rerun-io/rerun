@@ -8,18 +8,20 @@ cmake_minimum_required(VERSION 3.16...3.27)
 
 message("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
 
-# ------------------------------------------------------------------------------
-# Base setup for rerun_sdk C++ library.
+set(RERUN_CPP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src" CACHE PATH "Rerun include & source directory")
 
 file(GLOB_RECURSE rerun_sdk_SRC CONFIGURE_DEPENDS
-    "src/*.hpp"
-    "src/*.cpp"
+    "${RERUN_CPP_SOURCE_DIR}/*.hpp"
+    "${RERUN_CPP_SOURCE_DIR}/*.cpp"
 )
 
-add_library(rerun_sdk ${rerun_sdk_SRC})
+add_library(rerun_sdk ${rerun_sdk_SRC} ${rerun_sdk_PUBLIC_HEADER})
 
 # Make sure the compiler can find include files for rerun when other libraries or executables link to rerun:
-target_include_directories(rerun_sdk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_include_directories(rerun_sdk PUBLIC
+    $<BUILD_INTERFACE:${RERUN_CPP_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
 
 # Rerun needs at least C++17.
 set_target_properties(rerun_sdk PROPERTIES CXX_STANDARD 17)
@@ -30,7 +32,7 @@ if(MSVC)
 endif()
 
 # Set default warning settings if defined.
-if (COMMAND rerun_strict_warning_settings)
+if(COMMAND rerun_strict_warning_settings)
     message("Building Rerun C++ SDK with strict compilation warnings.")
     rerun_strict_warning_settings(rerun_sdk)
 endif()
@@ -88,7 +90,7 @@ target_link_libraries(rerun_sdk PRIVATE rerun_c)
 # This makes the setup a lot easier on Windows where we otherwise need to put Arrow.dll either in path or copy it with the executable.
 # Additionally reduces risk of picking up system libraries on Mac / Linux.
 set(RERUN_ARROW_LINK_SHARED_DEFAULT OFF)
-option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library" ${RERUN_ARROW_LINK_SHARED_DEFAULT})
+option(RERUN_ARROW_LINK_SHARED "Link to the Arrow shared library." ${RERUN_ARROW_LINK_SHARED_DEFAULT})
 option(RERUN_DOWNLOAD_AND_BUILD_ARROW "If enabled, arrow will be added as an external project and built with the minimal set required by the Rerun C++ SDK" ON)
 
 if(RERUN_DOWNLOAD_AND_BUILD_ARROW)
@@ -106,10 +108,81 @@ endif()
 
 target_link_libraries(rerun_sdk PRIVATE rerun_arrow_target)
 
+# -----------------------------------------------------------------------------
+# Installation.
+set(RERUN_SDK_INSTALL_CMAKE_DIR "lib/cmake/rerun_sdk")
+
+# Actual install setup.
+install(TARGETS rerun_sdk
+    EXPORT rerun_sdkTargets
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    INCLUDES DESTINATION include
+)
+
+# Add all headers to the install.
+install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp" PATTERN "*.h")
+
+# Add rerun_c to the lib folder.
+# CMake doesn't allow installing imported targets which is why we need to add this as a file.
+get_target_property(RERUN_C_LIB_LOCATION rerun_c IMPORTED_LOCATION)
+install(FILES ${RERUN_C_LIB_LOCATION} DESTINATION lib)
+
+# Similarly, we bundle the arrow library that was used during the build.
+# For the moment we only support this when building with the downloaded, static libarrow.
+# Otherwise, a system install of arrow has to be used.
+get_target_property(RERUN_ARROW_LIB_LOCATION rerun_arrow_target LOCATION)
+
+if(RERUN_DOWNLOAD_AND_BUILD_ARROW AND NOT RERUN_ARROW_LINK_SHARED)
+    get_target_property(RERUN_ARROW_LIBRARY_FILE rerun_arrow_target LOCATION)
+    get_target_property(RERUN_ARROW_BUNDLED_DEPENDENCIES_FILE arrow_targetBundledDeps LOCATION)
+    install(FILES
+        ${RERUN_ARROW_LIBRARY_FILE}
+        ${RERUN_ARROW_BUNDLED_DEPENDENCIES_FILE}
+        DESTINATION lib
+    )
+endif()
+
+# Export the target to a script.
+install(EXPORT rerun_sdkTargets
+    FILE rerun_sdkTargets.cmake
+    DESTINATION ${RERUN_SDK_INSTALL_CMAKE_DIR}
+)
+
+include(CMakePackageConfigHelpers)
+
+# Extract the version from rerun.h.
+# Intentionally only grab major.minor.patch, not the full version, since version file can't handle it otherwise.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h" RERUN_H_CONTENTS)
+string(REGEX MATCH "\n#define RERUN_SDK_HEADER_VERSION \"([0-9]+.[0-9]+.[0-9]+)" _ ${RERUN_H_CONTENTS})
+set(RERUN_INSTALL_VERSION ${CMAKE_MATCH_1})
+message(STATUS "Rerun SDK install version: ${RERUN_INSTALL_VERSION}")
+
+# Package config file, so find_package(rerun_sdk) produces a target.
+configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfig.cmake" # file needs to follow convention of find_package.
+    INSTALL_DESTINATION ${RERUN_SDK_INSTALL_CMAKE_DIR}
+    NO_SET_AND_CHECK_MACRO
+    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+# Version file for find_package.
+write_basic_package_version_file(
+    ${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfigVersion.cmake
+    VERSION ${RERUN_INSTALL_VERSION}
+    COMPATIBILITY ExactVersion
+)
+
+# Add the find_package dependent files.
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfigVersion.cmake"
+    DESTINATION ${RERUN_SDK_INSTALL_CMAKE_DIR}
+)
 
 # -----------------------------------------------------------------------------
 # Add tests if they exist (they are not part of the distribution zip).
-# Has direct dpeendency to arrow, so needs to happen last.
+# Has direct dependency to arrow, so needs to happen last.
 if(EXISTS tests)
     add_subdirectory(tests)
 endif()

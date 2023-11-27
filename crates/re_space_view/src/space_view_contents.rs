@@ -27,7 +27,7 @@ pub struct DataBlueprintGroup {
 
     /// Direct child entities of this blueprint group.
     ///
-    /// Musn't be a `HashSet` because we want to preserve order of entity paths.
+    /// Mustn't be a `HashSet` because we want to preserve order of entity paths.
     pub entities: BTreeSet<EntityPath>,
 }
 

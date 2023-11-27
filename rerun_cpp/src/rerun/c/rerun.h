@@ -223,7 +223,16 @@ typedef struct rr_error {
 // ----------------------------------------------------------------------------
 // Functions:
 
+/// Returns the version of the Rerun C SDK.
+///
+/// This should match the string returned by `rr_version_string`.
+/// If not, the SDK's binary and the C header are out of sync.
+#define RERUN_SDK_HEADER_VERSION "0.11.0-alpha.1+dev"
+
 /// Returns a human-readable version string of the Rerun C SDK.
+///
+/// This should match the string in `RERUN_SDK_HEADER_VERSION`.
+/// If not, the SDK's binary and the C header are out of sync.
 extern const char* rr_version_string(void);
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to

@@ -22,9 +22,11 @@ impl ViewportBlueprint<'_> {
             .id_source("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
             .show(ui, |ui| {
-                if let Some(root) = self.tree.root() {
-                    self.tile_ui(ctx, ui, root);
-                }
+                ctx.re_ui.panel_content(ui, |_, ui| {
+                    if let Some(root) = self.tree.root() {
+                        self.tile_ui(ctx, ui, root);
+                    }
+                });
             });
 
         let TreeActions { focus_tab, remove } = std::mem::take(&mut self.deferred_tree_actions);
