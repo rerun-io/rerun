@@ -45,5 +45,15 @@ export function stripSemverBuildMetadata(version) {
   }
 }
 
+/**
+ * Returns `true` if `package@version` is already published.
+ *
+ * @type {(packageName: string, version: string) => Promise<boolean>}
+ */
+export async function isPublished(packageName, version) {
+  const response = await fetch(`https://registry.npmjs.org/${packageName}/${version}`);
+  return response.status === 200;
+}
+
 export { path };
 
