@@ -207,7 +207,7 @@ class catch_and_log_exceptions:
         try:
             # Exceptions inheriting from `BaseException` others than via `Exception` are "exiting", and should be pass
             # through. This includes `KeyboardInterrupt` and `SystemExit`.
-            if issubclass(exc_type, Exception) and not strict_mode():
+            if exc_type is not None and issubclass(exc_type, Exception) and not strict_mode():
                 if getattr(_rerun_exception_ctx, "pending_warnings", None) is None:
                     _rerun_exception_ctx.pending_warnings = []
 
