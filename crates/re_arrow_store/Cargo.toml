@@ -114,11 +114,15 @@ required-features = ["polars"]
 
 
 [[bench]]
+name = "arrow2"
+harness = false
+
+[[bench]]
 name = "data_store"
 harness = false
 
 [[bench]]
-name = "arrow2"
+name = "gc"
 harness = false
 
 [[bench]]
