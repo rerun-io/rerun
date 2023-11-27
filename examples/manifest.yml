@@ -77,6 +77,9 @@ root:
           python: python/objectron
           rust: rust/objectron
 
+        - name: open-photogrammetry-format
+          python: python/open_photogrammetry_format
+
         - name: ros-node
           python: python/ros_node
 
