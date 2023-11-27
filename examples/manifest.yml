@@ -49,17 +49,25 @@ root:
         For the simplest possible examples showing how to use each api,
         check out [Types](/docs/reference/types).
       children:
+        # Keep this list lexicographically sorted:
+
         - name: arkit_scenes
           python: python/arkit_scenes
 
-        - name: structure-from-motion
-          python: python/structure_from_motion
+        - name: controlnet
+          python: python/controlnet
 
-        - name: signed-distance-fields
-          python: python/signed_distance_fields
+        - name: depth-guided-stable-diffusion
+          python: python/depth_guided_stable_diffusion
+
+        - name: detect-and-track-objects
+          python: python/detect_and_track_objects
 
         - name: dicom-mri
           python: python/dicom_mri
+
+        - name: face-tracking
+          python: python/face_tracking
 
         - name: human-pose-tracking
           python: python/human_pose_tracking
@@ -70,9 +78,6 @@ root:
         - name: live-depth-sensor
           python: python/live_depth_sensor
 
-        - name: rgbd
-          python: python/rgbd
-
         - name: objectron
           python: python/objectron
           rust: rust/objectron
@@ -80,27 +85,24 @@ root:
         - name: open-photogrammetry-format
           python: python/open_photogrammetry_format
 
-        - name: ros-node
-          python: python/ros_node
-
         - name: raw-mesh
           python: python/raw_mesh
           rust: rust/raw_mesh
 
+        - name: rgbd
+          python: python/rgbd
+
+        - name: ros-node
+          python: python/ros_node
+
         - name: segment-anything-model
           python: python/segment_anything_model
 
-        - name: depth-guided-stable-diffusion
-          python: python/depth_guided_stable_diffusion
+        - name: signed-distance-fields
+          python: python/signed_distance_fields
 
-        - name: controlnet
-          python: python/controlnet
-
-        - name: detect-and-track-objects
-          python: python/detect_and_track_objects
-
-        - name: face-tracking
-          python: python/face_tracking
+        - name: structure-from-motion
+          python: python/structure_from_motion
 
     - name: artificial-data
       title: Examples with Artificial Data
@@ -110,9 +112,12 @@ root:
         For the simplest possible examples showing how to use each api,
         check out [Types](/docs/reference/types).
       children:
+        # Always show the simple "minimal" example first:
         - name: minimal
           python: python/minimal
           rust: rust/minimal
+
+        # Keep the following examples lexicographically sorted:
 
         - name: car
           python: python/car
@@ -121,11 +126,11 @@ root:
           python: python/clock
           rust: rust/clock
 
-        - name: multiprocessing
-          python: python/multiprocessing
-
         - name: multithreading
           python: python/multithreading
+
+        - name: multiprocessing
+          python: python/multiprocessing
 
         - name: plots
           python: python/plots
@@ -139,22 +144,23 @@ root:
         For the simplest possible examples showing how to use each api,
         check out [Types](/docs/reference/types).
       children:
+        # Keep this list lexicographically sorted:
         - name: differentiable_blocks_world
           python: python/differentiable_blocks_world
+        - name: limap
+          python: python/limap
+        - name: mcc
+          python: python/mcc
+        - name: shape_pointe
+          python: python/shape_pointe
+        - name: simplerecon
+          python: python/simplerecon
+        - name: slahmr
+          python: python/slahmr
         - name: tapir
           python: python/tapir
         - name: widebaseline
           python: python/widebaseline
-        - name: shape_pointe
-          python: python/shape_pointe
-        - name: limap
-          python: python/limap
-        - name: simplerecon
-          python: python/simplerecon
-        - name: mcc
-          python: python/mcc
-        - name: slahmr
-          python: python/slahmr
 
     - name: setup
       title: Setup
