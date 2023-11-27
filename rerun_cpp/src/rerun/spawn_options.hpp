@@ -23,17 +23,19 @@ namespace rerun {
         /// When this limit is reached, Rerun will drop the oldest data.
         /// Example: `16GB` or `50%` (of system total).
         ///
-        /// Defaults to `75%` if null.
+        /// Defaults to `75%` if unset.
         std::string_view memory_limit = "75%";
 
         /// Specifies the name of the Rerun executable.
         ///
         /// You can omit the `.exe` suffix on Windows.
+        ///
+        /// Defaults to `rerun` if unset.
         std::string_view executable_name = "rerun";
 
         /// Enforce a specific executable to use instead of searching though PATH
         /// for `SpawnOptions::executable_name`.
-        std::string_view executable_path = "";
+        std::string_view executable_path;
 
         /// Convert to the corresponding rerun_c struct for internal use.
         ///
