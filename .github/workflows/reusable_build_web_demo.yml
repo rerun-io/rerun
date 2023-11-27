@@ -76,7 +76,7 @@ jobs:
         id: get-sha
         shell: bash
         run: |
-          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || github.sha }}"
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: Build web demo
