@@ -22,7 +22,7 @@ namespace rerun::archetypes {
     ///
     /// ## Example
     ///
-    /// ### `text_log_integration`:
+    /// ### text_log_integration:
     /// ![image](https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/full.png)
     ///
     /// ```cpp

@@ -21,8 +21,6 @@ namespace rerun {
     /// define `Collection<TElement> operator()(const T& input)`.
     /// It is *highly recommended* to also specify `Collection<TElement> operator()(T&&
     /// input)` in order to accidentally borrow data that is passed in as a temporary!
-    ///
-    /// TODO(andreas): Point to an example here and in the assert.
     template <typename TElement, typename TContainer, typename Enable = std::enable_if_t<true>>
     struct CollectionAdapter {
         /// \private
