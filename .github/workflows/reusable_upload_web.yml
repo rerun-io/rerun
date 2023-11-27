@@ -115,7 +115,7 @@ jobs:
           destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
           parent: false
 
-      - name: "Upload web demo (pr)"
+      - name: "Upload web-viewer (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
