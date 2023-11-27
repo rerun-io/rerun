@@ -104,6 +104,9 @@ root:
         - name: structure-from-motion
           python: python/structure_from_motion
 
+        - name: vrs
+          python: cpp/vrs
+
     - name: artificial-data
       title: Examples with Artificial Data
       prelude: |
