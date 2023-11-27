@@ -5,7 +5,9 @@ use nohash_hasher::IntMap;
 use re_log_types::{DataCellColumn, DataTable, DataTableResult, NumInstances, RowId, Timeline};
 use re_types_core::ComponentName;
 
-use crate::store::{IndexedBucket, IndexedBucketInner, PersistentIndexedTable};
+use crate::store::{
+    IndexedBucket, IndexedBucketInner, PersistentIndexedTable, PersistentIndexedTableInner,
+};
 
 // ---
 
@@ -66,11 +68,16 @@ impl PersistentIndexedTable {
         let Self {
             ent_path: _,
             cluster_key,
+            inner,
+        } = self;
+
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
-        } = self;
+            is_sorted: _,
+        } = &*inner.read();
 
         serialize(
             cluster_key,

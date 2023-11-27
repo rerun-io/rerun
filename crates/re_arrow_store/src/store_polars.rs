@@ -14,7 +14,7 @@ use re_types_core::ComponentName;
 
 use crate::{
     store::InsertIdVec, ArrayExt, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
-    PersistentIndexedTable,
+    PersistentIndexedTable, PersistentIndexedTableInner,
 };
 
 // TODO(#1692): all of this stuff should be defined by Data{Cell,Row,Table}, not the store.
@@ -173,13 +173,19 @@ impl PersistentIndexedTable {
         let Self {
             ent_path: _,
             cluster_key: _,
+            inner,
+        } = self;
+
+        let inner = &*inner.read();
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
-        } = self;
+            is_sorted,
+        } = inner;
 
-        let num_rows = self.num_rows() as usize;
+        let num_rows = inner.num_rows() as usize;
 
         let insert_ids = config
             .store_insert_ids

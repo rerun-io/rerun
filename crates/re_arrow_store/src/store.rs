@@ -563,7 +563,7 @@ impl Default for IndexedBucketInner {
 /// ```
 //
 // TODO(#1807): timeless should be row-id ordered too then
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PersistentIndexedTable {
     /// The entity this table is related to, for debugging purposes.
     pub ent_path: EntityPath,
@@ -572,6 +572,32 @@ pub struct PersistentIndexedTable {
     /// place.
     pub cluster_key: ComponentName,
 
+    // To simplify interior mutability.
+    pub inner: RwLock<PersistentIndexedTableInner>,
+}
+
+impl Clone for PersistentIndexedTable {
+    fn clone(&self) -> Self {
+        Self {
+            ent_path: self.ent_path.clone(),
+            cluster_key: self.cluster_key,
+            inner: RwLock::new(self.inner.read().clone()),
+        }
+    }
+}
+
+impl PersistentIndexedTable {
+    pub fn new(cluster_key: ComponentName, ent_path: EntityPath) -> Self {
+        Self {
+            cluster_key,
+            ent_path,
+            inner: RwLock::new(PersistentIndexedTableInner::default()),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PersistentIndexedTableInner {
     /// The entire column of insertion IDs, if enabled in [`DataStoreConfig`].
     ///
     /// Keeps track of insertion order from the point-of-view of the [`DataStore`].
@@ -592,21 +618,34 @@ pub struct PersistentIndexedTable {
     /// The cells are optional since not all rows will have data for every single component
     /// (i.e. the table is sparse).
     pub columns: IntMap<ComponentName, DataCellColumn>,
+
+    /// Are the rows in this table sorted?
+    ///
+    /// Querying a [`PersistentIndexedTable`] will always trigger a sort if the rows within
+    /// aren't already sorted.
+    pub is_sorted: bool,
 }
 
-impl PersistentIndexedTable {
-    pub fn new(cluster_key: ComponentName, ent_path: EntityPath) -> Self {
+impl Default for PersistentIndexedTableInner {
+    fn default() -> Self {
         Self {
-            cluster_key,
-            ent_path,
             col_insert_id: Default::default(),
             col_row_id: Default::default(),
             col_num_instances: Default::default(),
             columns: Default::default(),
+            is_sorted: true,
         }
     }
+}
 
+impl PersistentIndexedTableInner {
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        self.col_num_instances.is_empty()
+        self.num_rows() == 0
+    }
+
+    #[inline]
+    pub fn num_rows(&self) -> u64 {
+        self.col_row_id.len() as u64
     }
 }

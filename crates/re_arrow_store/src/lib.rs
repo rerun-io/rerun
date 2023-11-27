@@ -49,7 +49,7 @@ pub use self::store_write::{WriteError, WriteResult};
 
 pub(crate) use self::store::{
     ClusterCellCache, DataTypeRegistry, IndexedBucket, IndexedBucketInner, IndexedTable,
-    MetadataRegistry, PersistentIndexedTable,
+    MetadataRegistry, PersistentIndexedTable, PersistentIndexedTableInner,
 };
 
 // Re-exports
