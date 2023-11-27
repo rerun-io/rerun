@@ -16,9 +16,6 @@ rerun's collection type. E.g. the backing buffer of [`rerun::TensorData`](https:
 is also a [`rerun::Collection`](https://ref.rerun.io/docs/cpp/latest/classrerun_1_1Collection.html?speculative-link)
 allowing you to ingest large amounts of data without a copy and the convenience custom adapters can provide.
 
-🚧 TODO(#4257): In the future, adapters will be able to provide simple data transformations like strides to be done as a borrow.  
-🚧 TODO(#3977): We plan to provide adapters for common types from Eigen and OpenCV.
-
 
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash
@@ -26,3 +23,8 @@ cmake .
 cmake --build . --target example_custom_collection_adapter
 ./examples/cpp/minimal/example_custom_collection_adapter
 ```
+
+---
+
+* 🚧 TODO(#4257): In the future, adapters will be able to provide simple data transformations like strides to be done as a borrow.
+* 🚧 TODO(#3977): We plan to provide adapters for common types from Eigen and OpenCV.
