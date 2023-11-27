@@ -156,21 +156,12 @@ impl std::fmt::Display for IndexedBucket {
 impl std::fmt::Display for PersistentIndexedTable {
     #[allow(clippy::string_add)]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            ent_path,
-            cluster_key: _,
-            col_insert_id: _,
-            col_row_id: _,
-            col_num_instances: _,
-            columns: _,
-        } = self;
-
-        f.write_fmt(format_args!("entity: {ent_path}\n"))?;
+        f.write_fmt(format_args!("entity: {}\n", self.ent_path))?;
 
         f.write_fmt(format_args!(
             "size: {} across {} rows\n",
             format_bytes(self.total_size_bytes() as _),
-            format_number(self.num_rows() as _),
+            format_number(self.inner.read().num_rows() as _),
         ))?;
 
         let (schema, columns) = self.serialize().map_err(|err| {

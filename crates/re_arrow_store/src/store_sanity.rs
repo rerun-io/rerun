@@ -1,7 +1,10 @@
 use re_log_types::{DataCellColumn, NumInstances, RowId, TimeRange};
 use re_types_core::{ComponentName, Loggable, SizeBytes as _};
 
-use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
+use crate::{
+    store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
+    PersistentIndexedTable,
+};
 
 // ---
 
@@ -260,15 +263,21 @@ impl PersistentIndexedTable {
         let Self {
             ent_path: _,
             cluster_key,
+            inner,
+        } = self;
+
+        let inner = &*inner.read();
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
-        } = self;
+            is_sorted: _,
+        } = inner;
 
         // All columns should be `Self::num_rows` long.
         {
-            let num_rows = self.num_rows();
+            let num_rows = inner.num_rows();
 
             let column_lengths = [
                 (!col_insert_id.is_empty())
@@ -297,7 +306,7 @@ impl PersistentIndexedTable {
         }
 
         // The cluster column must be fully dense.
-        if self.num_rows() > 0 {
+        if inner.num_rows() > 0 {
             let cluster_column =
                 columns
                     .get(cluster_key)

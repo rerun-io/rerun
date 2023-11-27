@@ -13,8 +13,9 @@ use re_types_core::{
 };
 
 use crate::{
-    DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
-    PersistentIndexedTable, StoreDiff, StoreDiffKind, StoreEvent,
+    store::PersistentIndexedTableInner, DataStore, DataStoreConfig, IndexedBucket,
+    IndexedBucketInner, IndexedTable, MetadataRegistry, PersistentIndexedTable, StoreDiff,
+    StoreDiffKind, StoreEvent,
 };
 
 // --- Data store ---
@@ -809,16 +810,38 @@ impl PersistentIndexedTable {
     ) {
         re_tracing::profile_function!();
 
+        self.inner
+            .write()
+            .insert_row(self.cluster_key, insert_id, generated_cluster_cell, row);
+
+        #[cfg(debug_assertions)]
+        self.sanity_check().unwrap();
+    }
+}
+
+impl PersistentIndexedTableInner {
+    fn insert_row(
+        &mut self,
+        cluster_key: ComponentName,
+        insert_id: Option<u64>,
+        generated_cluster_cell: Option<DataCell>,
+        row: &DataRow,
+    ) {
+        re_tracing::profile_function!();
+
         let num_rows = self.num_rows() as usize;
 
-        let Self {
-            ent_path: _,
-            cluster_key: _,
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
+            is_sorted,
         } = self;
+
+        if let Some(last_row_id) = col_row_id.last() {
+            *is_sorted &= *last_row_id <= row.row_id();
+        }
 
         let components: IntSet<_> = row.component_names().collect();
 
@@ -853,7 +876,7 @@ impl PersistentIndexedTable {
         // fill unimpacted secondary indices with null values
         for (component, column) in &mut *columns {
             // The cluster key always gets added one way or another, don't try to force fill it!
-            if *component == self.cluster_key {
+            if *component == cluster_key {
                 continue;
             }
 
@@ -861,8 +884,5 @@ impl PersistentIndexedTable {
                 column.0.push(None);
             }
         }
-
-        #[cfg(debug_assertions)]
-        self.sanity_check().unwrap();
     }
 }
