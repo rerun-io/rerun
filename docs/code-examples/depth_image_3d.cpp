@@ -31,6 +31,6 @@ int main() {
 
     rec.log(
         "world/camera/depth",
-        rerun::DepthImage({HEIGHT, WIDTH}, std::move(data)).with_meter(10000.0)
+        rerun::DepthImage({HEIGHT, WIDTH}, data.data()).with_meter(10000.0)
     );
 }

@@ -56,7 +56,7 @@ namespace rerun::archetypes {
     ///         }
     ///     }
     ///
-    ///     rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, std::move(data)));
+    ///     rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, data.data()));
     /// }
     /// ```
     struct Image {
@@ -79,16 +79,34 @@ namespace rerun::archetypes {
 
         /// New Image from height/width/channel and tensor buffer.
         ///
-        /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
-        /// Calls `Error::handle()` if the shape is not rank 2 or 3.
-        Image(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
+        /// \param shape
+        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2 or 3.
+        /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
+        /// \param buffer
+        /// The tensor buffer containing the image data.
+        explicit Image(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
             : Image(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// New depth image from tensor data.
         ///
+        /// \param data_
+        /// The tensor buffer containing the image data.
         /// Sets the dimension names to "height",  "width" and "channel" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2 or 3.
         explicit Image(rerun::components::TensorData data_);
+
+        /// New image from dimensions and pointer to image data.
+        ///
+        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+        /// \param shape
+        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2 or 3.
+        /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
+        /// Determines the number of elements expected to be in `data`.
+        /// \param data_
+        /// Target of the pointer must outlive the archetype.
+        template <typename TElement>
+        explicit Image(Collection<datatypes::TensorDimension> shape, const TElement* data_)
+            : Image(datatypes::TensorData(std::move(shape), data_)) {}
 
       public:
         Image() = default;

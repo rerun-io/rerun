@@ -23,5 +23,5 @@ int main() {
         }
     }
 
-    rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, std::move(data)));
+    rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, data.data()));
 }
