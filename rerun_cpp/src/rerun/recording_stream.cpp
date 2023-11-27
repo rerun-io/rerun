@@ -3,6 +3,7 @@
 #include "components/instance_key.hpp"
 #include "config.hpp"
 #include "data_cell.hpp"
+#include "sdk_info.hpp"
 #include "string_utils.hpp"
 
 #include <arrow/buffer.h>
@@ -30,6 +31,8 @@ namespace rerun {
 
     RecordingStream::RecordingStream(std::string_view app_id, StoreKind store_kind)
         : _store_kind(store_kind) {
+        check_binary_and_header_version_match().handle();
+
         rr_store_info store_info;
         store_info.application_id = detail::to_rr_string(app_id);
         store_info.store_kind = store_kind_to_c(store_kind);
@@ -54,6 +57,8 @@ namespace rerun {
 
     RecordingStream::RecordingStream(uint32_t id, StoreKind store_kind)
         : _id(id), _store_kind(store_kind) {
+        check_binary_and_header_version_match().handle();
+
         rr_error status = {};
         this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
         Error(status).handle();
