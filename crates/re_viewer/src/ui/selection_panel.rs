@@ -193,7 +193,7 @@ fn what_is_selected_ui(
                 component_name.short_name(),
                 None,
                 &format!(
-                    "Component {} of entity \"{}\"", // NOLINT
+                    "Component {} of entity '{}'",
                     component_name.full_name(),
                     entity_path
                 ),
@@ -237,7 +237,7 @@ fn what_is_selected_ui(
                         instance_path.to_string().as_str(),
                         None,
                         &format!(
-                            "{typ} \"{instance_path}\" as shown in Space View {:?}", // NOLINT
+                            "{typ} '{instance_path}' as shown in Space View {:?}",
                             space_view.display_name
                         ),
                     );
@@ -253,7 +253,7 @@ fn what_is_selected_ui(
                     ui,
                     instance_path.to_string().as_str(),
                     None,
-                    &format!("{typ} \"{instance_path}\""), // NOLINT
+                    &format!("{typ} '{instance_path}'"),
                 );
 
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
