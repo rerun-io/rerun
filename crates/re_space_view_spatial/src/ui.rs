@@ -11,9 +11,9 @@ use re_types::components::{DepthMeter, InstanceKey, TensorData};
 use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
     resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewContextCollection, ViewPartCollection,
-    ViewQuery, ViewerContext,
+    SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache,
+    TensorStatsCache, UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
@@ -116,7 +116,6 @@ impl SpatialSpaceViewState {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
         spatial_kind: SpatialSpaceViewKind,
     ) {
         let re_ui = ctx.re_ui;

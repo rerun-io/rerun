@@ -131,6 +131,11 @@ impl SelectionPanel {
                             blueprint_ui(ui, ctx, viewport, item);
                         });
                 }
+
+                if i < selection.len() - 1 {
+                    // Add space some space between selections
+                    ui.add_space(8.);
+                }
             });
         }
     }
