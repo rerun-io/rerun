@@ -9,8 +9,8 @@ A 16-bit ID representing a type of semantic class.
 * id: [`ClassId`](../datatypes/class_id.md)
 
 ## Links
- * 🐍 [Python API docs for `ClassId`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ClassId)
  * 🌊 [C++ API docs for `ClassId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ClassId.html?speculative-link)
+ * 🐍 [Python API docs for `ClassId`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ClassId)
  * 🦀 [Rust API docs for `ClassId`](https://docs.rs/rerun/latest/rerun/components/struct.ClassId.html)
 
 

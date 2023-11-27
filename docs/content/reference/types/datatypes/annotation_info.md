@@ -13,8 +13,8 @@ The id refers either to a class or key-point id
 * color: [`Rgba32`](../datatypes/rgba32.md)
 
 ## Links
- * 🐍 [Python API docs for `AnnotationInfo`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.AnnotationInfo)
  * 🌊 [C++ API docs for `AnnotationInfo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1AnnotationInfo.html?speculative-link)
+ * 🐍 [Python API docs for `AnnotationInfo`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.AnnotationInfo)
  * 🦀 [Rust API docs for `AnnotationInfo`](https://docs.rs/rerun/latest/rerun/datatypes/struct.AnnotationInfo.html)
 
 

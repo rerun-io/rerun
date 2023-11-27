@@ -12,8 +12,8 @@ Negative sizes indicate that the box is flipped along the respective axis, but t
 * xy: [`Vec2D`](../datatypes/vec2d.md)
 
 ## Links
- * 🐍 [Python API docs for `HalfSizes2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.HalfSizes2D)
  * 🌊 [C++ API docs for `HalfSizes2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1HalfSizes2D.html?speculative-link)
+ * 🐍 [Python API docs for `HalfSizes2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.HalfSizes2D)
  * 🦀 [Rust API docs for `HalfSizes2D`](https://docs.rs/rerun/latest/rerun/components/struct.HalfSizes2D.html)
 
 

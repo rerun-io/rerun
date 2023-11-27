@@ -19,8 +19,8 @@ Example:
 * image_from_camera: [`Mat3x3`](../datatypes/mat3x3.md)
 
 ## Links
- * 🐍 [Python API docs for `PinholeProjection`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PinholeProjection)
  * 🌊 [C++ API docs for `PinholeProjection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PinholeProjection.html?speculative-link)
+ * 🐍 [Python API docs for `PinholeProjection`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PinholeProjection)
  * 🦀 [Rust API docs for `PinholeProjection`](https://docs.rs/rerun/latest/rerun/components/struct.PinholeProjection.html)
 
 

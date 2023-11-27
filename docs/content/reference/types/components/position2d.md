@@ -9,8 +9,8 @@ A position in 2D space.
 * xy: [`Vec2D`](../datatypes/vec2d.md)
 
 ## Links
- * 🐍 [Python API docs for `Position2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Position2D)
  * 🌊 [C++ API docs for `Position2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Position2D.html?speculative-link)
+ * 🐍 [Python API docs for `Position2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Position2D)
  * 🦀 [Rust API docs for `Position2D`](https://docs.rs/rerun/latest/rerun/components/struct.Position2D.html)
 
 

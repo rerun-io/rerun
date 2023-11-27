@@ -10,8 +10,8 @@ If a transform or pinhole is logged on the same path, this component will be ign
 
 
 ## Links
- * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.DisconnectedSpace)
  * 🌊 [C++ API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DisconnectedSpace.html?speculative-link)
+ * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.DisconnectedSpace)
  * 🦀 [Rust API docs for `DisconnectedSpace`](https://docs.rs/rerun/latest/rerun/components/struct.DisconnectedSpace.html)
 
 

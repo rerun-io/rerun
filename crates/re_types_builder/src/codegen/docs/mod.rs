@@ -163,15 +163,7 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         };
         putln!(page);
         putln!(page, "## Links");
-        putln!(
-            page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
-            object.name,
-            object.kind.plural_snake_case(),
-            speculative_marker,
-            object.kind.plural_snake_case(),
-            object.name
-        );
+        // In alphabetical order by language.
         putln!(
             page,
             // `_1` is doxygen's replacement for ':'
@@ -181,6 +173,15 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             object.kind.plural_snake_case(),
             object.name,
             "?speculative-link", // speculative_marker // TODO(#4267): C++ is not yet released
+        );
+        putln!(
+            page,
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
+            object.name,
+            object.kind.plural_snake_case(),
+            speculative_marker,
+            object.kind.plural_snake_case(),
+            object.name
         );
         putln!(
             page,
