@@ -227,7 +227,7 @@ impl framework::Example for Render2D {
 
             let sizes = vec![size; num_points];
 
-            let colors = std::iter::repeat(Color32::WHITE).take(num_points as usize).collect_vec();
+            let colors = vec![Color32::WHITE; num_points];
 
             let picking_ids =
                 std::iter::repeat(re_renderer::PickingLayerInstanceId::default()).take(num_points as usize).collect_vec();
