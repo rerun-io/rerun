@@ -132,7 +132,7 @@ def main() -> None:
 
         logging.info("Copying files…")
         shutil.copytree(
-            src="rerun_cpp/", dst=package_dir + "/", ignore=shutil.ignore_patterns("tests", "docs"), dirs_exist_ok=True
+            src="rerun_cpp/", dst=package_dir + "/", ignore=shutil.ignore_patterns("tests"), dirs_exist_ok=True
         )
 
         logging.info(f"Packaging {package_dir}.zip…")

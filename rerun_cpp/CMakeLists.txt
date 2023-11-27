@@ -178,7 +178,7 @@ install(FILES
 
 # -----------------------------------------------------------------------------
 # Add tests if they exist (they are not part of the distribution zip).
-# Has direct dpeendency to arrow, so needs to happen last.
+# Has direct dependency to arrow, so needs to happen last.
 if(EXISTS tests)
     add_subdirectory(tests)
 endif()
