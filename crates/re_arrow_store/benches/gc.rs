@@ -13,7 +13,7 @@ use re_log_types::{
 use re_types::components::InstanceKey;
 use re_types_core::{AsComponents, ComponentBatch, ComponentName, Loggable as _};
 
-criterion_group!(benches, plotting_dashboard);
+criterion_group!(benches, plotting_dashboard, timeless_logs);
 criterion_main!(benches);
 
 // ---
@@ -75,6 +75,75 @@ fn plotting_dashboard(c: &mut Criterion) {
 
     let mut datagen = |i| {
         Box::new(re_types::archetypes::TimeSeriesScalar::new(i as f64)) as Box<dyn AsComponents>
+    };
+
+    // Default config
+    group.bench_function("default", |b| {
+        let store = build_store(
+            Default::default(),
+            InstanceKey::name(),
+            false,
+            &mut timegen,
+            &mut datagen,
+        );
+        b.iter_batched(
+            || store.clone(),
+            |mut store| {
+                let (_, stats_diff) = store.gc(&gc_settings);
+                stats_diff
+            },
+            BatchSize::LargeInput,
+        );
+    });
+
+    // Emulate more or less bucket
+    for &num_rows_per_bucket in num_rows_per_bucket() {
+        group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
+            let store = build_store(
+                DataStoreConfig {
+                    indexed_bucket_num_rows: num_rows_per_bucket,
+                    ..Default::default()
+                },
+                InstanceKey::name(),
+                false,
+                &mut timegen,
+                &mut datagen,
+            );
+            b.iter_batched(
+                || store.clone(),
+                |mut store| {
+                    let (_, stats_diff) = store.gc(&gc_settings);
+                    stats_diff
+                },
+                BatchSize::LargeInput,
+            );
+        });
+    }
+}
+
+fn timeless_logs(c: &mut Criterion) {
+    const DROP_AT_LEAST: f64 = 0.3;
+
+    let mut group = c.benchmark_group(format!(
+        "datastore/num_entities={NUM_ENTITY_PATHS}/num_rows_per_entity={NUM_ROWS_PER_ENTITY_PATH}/timeless_logs/drop_at_least={DROP_AT_LEAST}"
+    ));
+    group.throughput(criterion::Throughput::Elements(
+        ((NUM_ENTITY_PATHS * NUM_ROWS_PER_ENTITY_PATH) as f64 * DROP_AT_LEAST) as _,
+    ));
+    group.sample_size(10);
+
+    let gc_settings = GarbageCollectionOptions {
+        target: GarbageCollectionTarget::DropAtLeastFraction(DROP_AT_LEAST),
+        gc_timeless: true,
+        protect_latest: 1,
+        purge_empty_tables: false,
+        dont_protect: Default::default(),
+    };
+
+    let mut timegen = |_| TimePoint::timeless();
+
+    let mut datagen = |i: usize| {
+        Box::new(re_types::archetypes::TextLog::new(i.to_string())) as Box<dyn AsComponents>
     };
 
     // Default config
