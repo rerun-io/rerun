@@ -98,17 +98,15 @@ void run_image_tests() {
         }
     }
 
-    GIVEN("constructing image data from a raw pointer") {
-        std::vector<uint8_t> data(100, 100);
-        THEN("no error occurs on image construction") {
+    GIVEN("a vector of data") {
+        std::vector<uint8_t> data(10 * 10, 0);
+        THEN("no error occurs on image construction with either the vector or a data pointer") {
+            auto image_from_vector = check_logged_error([&] { return ImageType({10, 10}, data); });
             auto image_from_ptr = check_logged_error([&] {
                 return ImageType({10, 10}, data.data());
             });
 
             AND_THEN("serialization succeeds") {
-                auto image_from_vector = check_logged_error([&] {
-                    return ImageType({10, 10}, data);
-                });
                 test_compare_archetype_serialization(image_from_ptr, image_from_vector);
             }
         }

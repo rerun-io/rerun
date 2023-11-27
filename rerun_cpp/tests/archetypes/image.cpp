@@ -126,17 +126,13 @@ SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
         }
     }
 
-    GIVEN("constructing image data from a raw pointer") {
-        std::vector<uint8_t> data(100, 100);
-        THEN("no error occurs on image construction") {
-            auto image_from_ptr = check_logged_error([&] {
-                return Image({10, 10, 1}, data.data());
-            });
+    GIVEN("a vector of data") {
+        std::vector<uint8_t> data(10 * 10, 0);
+        THEN("no error occurs on image construction with either the vector or a data pointer") {
+            auto image_from_vector = check_logged_error([&] { return Image({10, 10}, data); });
+            auto image_from_ptr = check_logged_error([&] { return Image({10, 10}, data.data()); });
 
             AND_THEN("serialization succeeds") {
-                auto image_from_vector = check_logged_error([&] {
-                    return Image({10, 10, 1}, data);
-                });
                 test_compare_archetype_serialization(image_from_ptr, image_from_vector);
             }
         }
