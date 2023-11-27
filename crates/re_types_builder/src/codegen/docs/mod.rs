@@ -163,7 +163,6 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
         };
         putln!(page);
         putln!(page, "## Links");
-        // TODO(#3974): link to C++ docs
         putln!(
             page,
             " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}{}#rerun.{}.{})",
@@ -172,6 +171,16 @@ fn object_page(reporter: &Reporter, object: &Object, object_map: &ObjectMap) -> 
             speculative_marker,
             object.kind.plural_snake_case(),
             object.name
+        );
+        putln!(
+            page,
+            // `_1` is doxygen's replacement for ':'
+            // https://github.com/doxygen/doxygen/blob/Release_1_9_8/src/util.cpp#L3532
+            " * 🌊 [C++ API docs for `{}`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1{}_1_1{}.html{})",
+            object.name,
+            object.kind.plural_snake_case(),
+            object.name,
+            "?speculative-link", // speculative_marker // TODO(#4267): C++ is not yet released
         );
         putln!(
             page,

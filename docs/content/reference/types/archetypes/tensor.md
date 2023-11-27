@@ -10,6 +10,7 @@ A generic n-dimensional Tensor.
 
 ## Links
  * 🐍 [Python API docs for `Tensor`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Tensor)
+ * 🌊 [C++ API docs for `Tensor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Tensor.html?speculative-link)
  * 🦀 [Rust API docs for `Tensor`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Tensor.html)
 
 ## Example

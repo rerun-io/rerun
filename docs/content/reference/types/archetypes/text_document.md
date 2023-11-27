@@ -14,6 +14,7 @@ Supports raw text and markdown.
 
 ## Links
  * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextDocument)
+ * 🌊 [C++ API docs for `TextDocument`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextDocument.html?speculative-link)
  * 🦀 [Rust API docs for `TextDocument`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TextDocument.html)
 
 ## Example

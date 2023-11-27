@@ -12,6 +12,7 @@ A log entry in a text log, comprised of a text body and its log level.
 
 ## Links
  * 🐍 [Python API docs for `TextLog`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextLog)
+ * 🌊 [C++ API docs for `TextLog`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextLog.html?speculative-link)
  * 🦀 [Rust API docs for `TextLog`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TextLog.html)
 
 ## Example

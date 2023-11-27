@@ -11,6 +11,7 @@ title: "RotationAxisAngle"
 
 ## Links
  * 🐍 [Python API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.RotationAxisAngle)
+ * 🌊 [C++ API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1RotationAxisAngle.html?speculative-link)
  * 🦀 [Rust API docs for `RotationAxisAngle`](https://docs.rs/rerun/latest/rerun/datatypes/struct.RotationAxisAngle.html)
 
 

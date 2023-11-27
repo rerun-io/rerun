@@ -10,6 +10,7 @@ A 16-bit ID representing a type of semantic keypoint within a class.
 
 ## Links
  * 🐍 [Python API docs for `KeypointId`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.KeypointId)
+ * 🌊 [C++ API docs for `KeypointId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1KeypointId.html?speculative-link)
  * 🦀 [Rust API docs for `KeypointId`](https://docs.rs/rerun/latest/rerun/components/struct.KeypointId.html)
 
 

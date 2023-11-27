@@ -18,6 +18,7 @@ Leading and trailing unit-dimensions are ignored, so that
 
 ## Links
  * 🐍 [Python API docs for `SegmentationImage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SegmentationImage)
+ * 🌊 [C++ API docs for `SegmentationImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SegmentationImage.html?speculative-link)
  * 🦀 [Rust API docs for `SegmentationImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SegmentationImage.html)
 
 ## Example

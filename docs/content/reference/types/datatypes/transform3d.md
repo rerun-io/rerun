@@ -11,6 +11,7 @@ Representation of a 3D affine transform.
 
 ## Links
  * 🐍 [Python API docs for `Transform3D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Transform3D)
+ * 🌊 [C++ API docs for `Transform3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Transform3D.html?speculative-link)
  * 🦀 [Rust API docs for `Transform3D`](https://docs.rs/rerun/latest/rerun/datatypes/enum.Transform3D.html)
 
 

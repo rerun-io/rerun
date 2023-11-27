@@ -13,6 +13,7 @@ Negative sizes indicate that the box is flipped along the respective axis, but t
 
 ## Links
  * 🐍 [Python API docs for `HalfSizes3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.HalfSizes3D)
+ * 🌊 [C++ API docs for `HalfSizes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1HalfSizes3D.html?speculative-link)
  * 🦀 [Rust API docs for `HalfSizes3D`](https://docs.rs/rerun/latest/rerun/components/struct.HalfSizes3D.html)
 
 

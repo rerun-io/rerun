@@ -12,6 +12,7 @@ An out-of-tree affine transform between two 3D spaces, represented in a given di
 
 ## Links
  * 🐍 [Python API docs for `OutOfTreeTransform3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.OutOfTreeTransform3D)
+ * 🌊 [C++ API docs for `OutOfTreeTransform3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1OutOfTreeTransform3D.html?speculative-link)
  * 🦀 [Rust API docs for `OutOfTreeTransform3D`](https://docs.rs/rerun/latest/rerun/components/struct.OutOfTreeTransform3D.html)
 
 
