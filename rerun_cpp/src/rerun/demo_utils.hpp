@@ -37,8 +37,8 @@ namespace rerun {
             return linspaced;
         }
 
-        /// Given two 3D vectors `from` and `to`, linearly interpolates between them in `n` steps along
-        /// the three axes, returning the intermediate result at each step.
+        /// Given a range `from`-`to`, linearly interpolates between them in `n` steps along
+        /// three axes each, returning the intermediate result at each step.
         template <typename T, typename Elem>
         std::vector<T> grid3d(Elem from, Elem to, size_t n) {
             std::vector<T> output;
