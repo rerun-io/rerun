@@ -12,6 +12,7 @@ First applies the matrix, then the translation.
 * mat3x3: [`Mat3x3`](../datatypes/mat3x3.md)
 
 ## Links
+ * 🌊 [C++ API docs for `TranslationAndMat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TranslationAndMat3x3.html?speculative-link)
  * 🐍 [Python API docs for `TranslationAndMat3x3`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.TranslationAndMat3x3)
  * 🦀 [Rust API docs for `TranslationAndMat3x3`](https://docs.rs/rerun/latest/rerun/datatypes/struct.TranslationAndMat3x3.html)
 

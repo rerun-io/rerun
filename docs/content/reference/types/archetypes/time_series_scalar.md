@@ -16,6 +16,7 @@ cannot be timeless!
 **Optional**: [`Text`](../components/text.md), [`ScalarScattering`](../components/scalar_scattering.md)
 
 ## Links
+ * 🌊 [C++ API docs for `TimeSeriesScalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TimeSeriesScalar.html?speculative-link)
  * 🐍 [Python API docs for `TimeSeriesScalar`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TimeSeriesScalar)
  * 🦀 [Rust API docs for `TimeSeriesScalar`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TimeSeriesScalar.html)
 

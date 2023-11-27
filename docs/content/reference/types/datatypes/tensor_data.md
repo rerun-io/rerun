@@ -17,6 +17,7 @@ which stores a contiguous array of typed values.
 * buffer: [`TensorBuffer`](../datatypes/tensor_buffer.md)
 
 ## Links
+ * 🌊 [C++ API docs for `TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorData.html?speculative-link)
  * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.TensorData)
  * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/latest/rerun/datatypes/struct.TensorData.html)
 

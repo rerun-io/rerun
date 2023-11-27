@@ -56,7 +56,7 @@ jobs:
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
-      PY_DOCS_VERSION_NAME: "nightly"
+      PY_AND_CPP_DOCS_VERSION_NAME: "nightly"
       UPDATE_LATEST: false
     secrets: inherit
 
@@ -393,4 +393,3 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}
       RELEASE_VERSION: prerelease
     secrets: inherit
-

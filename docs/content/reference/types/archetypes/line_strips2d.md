@@ -13,6 +13,7 @@ title: "LineStrips2D"
 **Optional**: [`Text`](../components/text.md), [`DrawOrder`](../components/draw_order.md), [`ClassId`](../components/class_id.md), [`InstanceKey`](../components/instance_key.md)
 
 ## Links
+ * 🌊 [C++ API docs for `LineStrips2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1LineStrips2D.html?speculative-link)
  * 🐍 [Python API docs for `LineStrips2D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.LineStrips2D)
  * 🦀 [Rust API docs for `LineStrips2D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.LineStrips2D.html)
 

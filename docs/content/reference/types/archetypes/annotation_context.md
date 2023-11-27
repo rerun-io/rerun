@@ -15,6 +15,7 @@ path.
 **Required**: [`AnnotationContext`](../components/annotation_context.md)
 
 ## Links
+ * 🌊 [C++ API docs for `AnnotationContext`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AnnotationContext.html?speculative-link)
  * 🐍 [Python API docs for `AnnotationContext`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.AnnotationContext)
  * 🦀 [Rust API docs for `AnnotationContext`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AnnotationContext.html)
 

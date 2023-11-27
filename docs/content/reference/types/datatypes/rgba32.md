@@ -9,6 +9,7 @@ byte is `R` and the least significant byte is `A`.
 
 
 ## Links
+ * 🌊 [C++ API docs for `Rgba32`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Rgba32.html?speculative-link)
  * 🐍 [Python API docs for `Rgba32`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Rgba32)
  * 🦀 [Rust API docs for `Rgba32`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Rgba32.html)
 
