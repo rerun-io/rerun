@@ -8,7 +8,7 @@ namespace rerun {
     /// There are default implementations for standard containers, as well as single
     /// elements. These can be found in `rerun/collection_adapter_builtins.hpp`.
     ///
-    /// An adapter may choose to either produce a owned or borrowed collection.
+    /// An adapter may choose to either produce an owned or borrowed collection.
     /// Borrowed collections required that a pointer to the passed in ("adapted") data
     /// outlives the collection. Owned component batches on the other hand take ownership by
     /// allocating a `std::vector` and moving the data into it. This is typically only required when
@@ -21,8 +21,6 @@ namespace rerun {
     /// define `Collection<TElement> operator()(const T& input)`.
     /// It is *highly recommended* to also specify `Collection<TElement> operator()(T&&
     /// input)` in order to accidentally borrow data that is passed in as a temporary!
-    ///
-    /// TODO(andreas): Point to an example here and in the assert.
     template <typename TElement, typename TContainer, typename Enable = std::enable_if_t<true>>
     struct CollectionAdapter {
         /// \private

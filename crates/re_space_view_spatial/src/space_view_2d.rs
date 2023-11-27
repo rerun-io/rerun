@@ -133,15 +133,9 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        _space_view_id: SpaceViewId,
     ) {
-        state.selection_ui(
-            ctx,
-            ui,
-            space_origin,
-            space_view_id,
-            SpatialSpaceViewKind::TwoD,
-        );
+        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::TwoD);
     }
 
     fn ui(

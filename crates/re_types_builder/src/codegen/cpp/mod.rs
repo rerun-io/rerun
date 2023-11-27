@@ -1995,7 +1995,8 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
             if let Some(title) = title {
                 lines.push(format!("### {title}"));
             } else {
-                lines.push(format!("### `{name}`:"));
+                // Other languages put the name in backticks but doxygen doesn't support this on headings.
+                lines.push(format!("### {name}:"));
             }
 
             if let Some(image) = image {

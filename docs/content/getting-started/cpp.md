@@ -31,7 +31,7 @@ FetchContent_MakeAvailable(rerun_sdk)
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
 all Rerun C++ sources and headers, as well as CMake build instructions for them.
 By default this will in turn download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++.
-See [Install arrow-cpp](../howto/arrow-cpp-install.md) to learn more about this step and how to use an existing install.
+See [Install arrow-cpp](https://ref.rerun.io/docs/cpp/latest/md__arrow__cpp__install.html?speculative-link) to learn more about this step and how to use an existing install.
 
 Currently, Rerun SDK works with C++17 or newer, so you need to add this property to your target:
 
@@ -83,8 +83,8 @@ int main() {
     rec.spawn().exit_on_failure();
 
     // Create some data using the `grid` utility function.
-    auto points = grid<rerun::Position3D, float>({-10.f, -10.f, -10.f}, {10.f, 10.f, 10.f}, 10);
-    auto colors = grid<rerun::Color, uint8_t>({0, 0, 0}, {255, 255, 255}, 10);
+    std::vector<rerun::Position3D> points = grid3d<rerun::Position3D, float>(-10.f, 10.f, 10);
+    std::vector<rerun::Color> colors = grid3d<rerun::Color, uint8_t>(0, 255, 10);
 
     // Log the "my_points" entity with our data, using the `Points3D` archetype.
     rec.log("my_points", rerun::Points3D(points).with_colors(colors).with_radii({0.5f}));
@@ -131,4 +131,4 @@ There's also a stand-alone example that shows [interop with Eigen and OpenCV](ht
 
 TODO(#3977): Note that this is still an area of active development and there's going to be major improvements for library interop in upcoming versions.
 
-To learn more about how to configure the C++ SDK's CMake file, check [C++ SDK CMake](../reference/cpp-sdk-cmake.md).
+To learn more about how to configure the C++ SDK's CMake file, check [CMake Setup in Detail](https://ref.rerun.io/docs/cpp/latest/md__cmake__setup__in__detail.html?speculative-link) .

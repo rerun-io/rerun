@@ -17,6 +17,10 @@ namespace rerun.archetypes;
 /// \py See also [`AnnotationContext`][rerun.archetypes.AnnotationContext] to associate each class with a color and a label.
 /// \rs See also [`AnnotationContext`][crate::archetypes::AnnotationContext] to associate each class with a color and a label.
 ///
+/// \cpp Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+/// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+/// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+///
 /// \example segmentation_image_simple title="Simple segmentation image" image="https://static.rerun.io/segmentation_image_simple/eb49e0b8cb870c75a69e2a47a2d202e5353115f6/1200w.png"
 table SegmentationImage (
   "attr.rust.derive": "PartialEq",

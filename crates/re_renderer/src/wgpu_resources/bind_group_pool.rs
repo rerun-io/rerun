@@ -80,7 +80,7 @@ impl DynamicResourcesDesc for BindGroupDesc {
 /// * owned [`wgpu::BindGroup`] should keep buffer/texture alive
 ///   (user should not need to hold buffer/texture manually)
 /// * [`GpuBindGroupPool`] should *try* to re-use previously created bind groups if they happen to match
-/// * musn't prevent buffer/texture re-use on next frame
+/// * mustn't prevent buffer/texture re-use on next frame
 ///   i.e. a internally cached [`GpuBindGroupPool`]s without owner shouldn't keep textures/buffers alive
 ///
 /// We satisfy these by retrieving the "weak" buffer/texture handles and make them part of the [`GpuBindGroup`].

@@ -151,8 +151,12 @@ install(EXPORT rerun_sdkTargets
 
 include(CMakePackageConfigHelpers)
 
-# TODO(#3868): Extract version from rerun.h
-set(RERUN_VERSION 0.11.0)
+# Extract the version from rerun.h.
+# Intentionally only grab major.minor.patch, not the full version, since version file can't handle it otherwise.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h" RERUN_H_CONTENTS)
+string(REGEX MATCH "\n#define RERUN_SDK_HEADER_VERSION \"([0-9]+.[0-9]+.[0-9]+)" _ ${RERUN_H_CONTENTS})
+set(RERUN_INSTALL_VERSION ${CMAKE_MATCH_1})
+message(STATUS "Rerun SDK install version: ${RERUN_INSTALL_VERSION}")
 
 # Package config file, so find_package(rerun_sdk) produces a target.
 configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
@@ -165,7 +169,7 @@ configure_package_config_file(${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in
 # Version file for find_package.
 write_basic_package_version_file(
     ${CMAKE_CURRENT_BINARY_DIR}/rerun_sdkConfigVersion.cmake
-    VERSION ${RERUN_VERSION}
+    VERSION ${RERUN_INSTALL_VERSION}
     COMPATIBILITY ExactVersion
 )
 
@@ -178,7 +182,7 @@ install(FILES
 
 # -----------------------------------------------------------------------------
 # Add tests if they exist (they are not part of the distribution zip).
-# Has direct dpeendency to arrow, so needs to happen last.
+# Has direct dependency to arrow, so needs to happen last.
 if(EXISTS tests)
     add_subdirectory(tests)
 endif()

@@ -1,9 +1,5 @@
 #include "config.hpp"
 
-#include <algorithm>
-#include <cstdlib>
-#include <string>
-
 namespace rerun {
 
     RerunGlobalConfig& RerunGlobalConfig::instance() {
@@ -12,5 +8,4 @@ namespace rerun {
     }
 
     RerunGlobalConfig::RerunGlobalConfig() : default_enabled(true) {}
-
 } // namespace rerun

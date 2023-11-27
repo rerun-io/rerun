@@ -121,6 +121,7 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
   build-web-demo:
