@@ -22,10 +22,10 @@ namespace rerun {
                 std::string(
                     "Rerun_c SDK version and SDK header/source versions don't match. "
                     "Make sure to link against the correct version of the rerun_c library.\n"
-                    "Rerun_c version:\n"
+                    "rerun_c binary version:\n"
                 )
                     .append(binary_version)
-                    .append("\nSDK header/source version:\n")
+                    .append("\nrerun_c header version:\n")
                     .append(RERUN_SDK_HEADER_VERSION)
             );
         }
