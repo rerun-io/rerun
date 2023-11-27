@@ -1,6 +1,6 @@
 ---
 title: C++ Quick Start
-order: 2
+order: 1
 ---
 
 ## Setup
