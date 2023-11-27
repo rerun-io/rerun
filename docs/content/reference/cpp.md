@@ -1,5 +1,5 @@
 ---
 title: 🌊 C++ APIs
-order: 10
+order: 9
 redirect: https://ref.rerun.io/docs/cpp?speculative-link
 ---
