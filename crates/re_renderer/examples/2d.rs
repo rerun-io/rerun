@@ -229,8 +229,7 @@ impl framework::Example for Render2D {
 
             let colors = vec![Color32::WHITE; num_points];
 
-            let picking_ids =
-                vec![re_renderer::PickingLayerInstanceId::default(); num_points];
+            let picking_ids = vec![re_renderer::PickingLayerInstanceId::default(); num_points];
 
             point_cloud_builder
                 .batch("points overlapping with lines")
