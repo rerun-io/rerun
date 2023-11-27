@@ -14,19 +14,19 @@ namespace rerun::archetypes {
     /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
     /// Sets the dimension names to "height" and "width" if they are not specified.
     /// \param buffer
-    /// The tensor buffer containing the image data.
+    /// The tensor buffer containing the segmentation image data.
     SegmentationImage(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
         : SegmentationImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
     /// New segmentation image from tensor data.
     ///
     /// \param data_
-    /// The tensor buffer containing the image data.
+    /// The tensor buffer containing the segmentation image data.
     /// Sets the dimension names to "height" and "width" if they are not specified.
     /// Calls `Error::handle()` if the shape is not rank 2.
     explicit SegmentationImage(components::TensorData data_);
 
-    /// New segmentation image from dimensions and pointer to image data.
+    /// New segmentation image from dimensions and pointer to segmentation image data.
     ///
     /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
     /// \param shape

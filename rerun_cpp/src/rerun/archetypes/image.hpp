@@ -27,6 +27,10 @@ namespace rerun::archetypes {
     /// Leading and trailing unit-dimensions are ignored, so that
     /// `1x640x480x3x1` is treated as a `640x480x3` RGB image.
     ///
+    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+    /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+    ///
     /// ## Example
     ///
     /// ### `image_simple`:
@@ -56,7 +60,7 @@ namespace rerun::archetypes {
     ///         }
     ///     }
     ///
-    ///     rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, data.data()));
+    ///     rec.log("image", rerun::Image({HEIGHT, WIDTH, 3}, data));
     /// }
     /// ```
     struct Image {

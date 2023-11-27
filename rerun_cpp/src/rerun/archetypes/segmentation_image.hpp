@@ -25,6 +25,10 @@ namespace rerun::archetypes {
     /// Leading and trailing unit-dimensions are ignored, so that
     /// `1x640x480x1` is treated as a `640x480` image.
     ///
+    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+    /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+    ///
     /// ## Example
     ///
     /// ### Simple segmentation image
@@ -60,7 +64,7 @@ namespace rerun::archetypes {
     ///         })
     ///     );
     ///
-    ///     rec.log("image", rerun::SegmentationImage({HEIGHT, WIDTH}, data.data()));
+    ///     rec.log("image", rerun::SegmentationImage({HEIGHT, WIDTH}, data));
     /// }
     /// ```
     struct SegmentationImage {
@@ -88,7 +92,7 @@ namespace rerun::archetypes {
         /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// \param buffer
-        /// The tensor buffer containing the image data.
+        /// The tensor buffer containing the segmentation image data.
         SegmentationImage(
             Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer
         )
@@ -97,12 +101,12 @@ namespace rerun::archetypes {
         /// New segmentation image from tensor data.
         ///
         /// \param data_
-        /// The tensor buffer containing the image data.
+        /// The tensor buffer containing the segmentation image data.
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
         explicit SegmentationImage(components::TensorData data_);
 
-        /// New segmentation image from dimensions and pointer to image data.
+        /// New segmentation image from dimensions and pointer to segmentation image data.
         ///
         /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
         /// \param shape

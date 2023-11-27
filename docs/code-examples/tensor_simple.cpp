@@ -19,7 +19,6 @@ int main() {
 
     rec.log(
         "tensor",
-        rerun::Tensor({8, 6, 3, 5}, data.data())
-            .with_dim_names({"width", "height", "channel", "batch"})
+        rerun::Tensor({8, 6, 3, 5}, data).with_dim_names({"width", "height", "channel", "batch"})
     );
 }

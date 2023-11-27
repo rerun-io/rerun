@@ -7,8 +7,8 @@ namespace rerun::datatypes {
 
     /// New tensor data from shape and tensor buffer.
     ///
-    /// \param shape Shape of the tensor.
-    /// \param buffer The tensor buffer containing the tensor's data.
+    /// \param shape_ Shape of the tensor.
+    /// \param buffer_ The tensor buffer containing the tensor's data.
     TensorData(
         Collection<rerun::datatypes::TensorDimension> shape_, datatypes::TensorBuffer buffer_
     )
@@ -17,7 +17,7 @@ namespace rerun::datatypes {
     /// New tensor data from dimensions and pointer to tensor data.
     ///
     /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
-    /// \param shape  Shape of the tensor. Determines the number of elements expected to be in `data`.
+    /// \param shape_ Shape of the tensor. Determines the number of elements expected to be in `data`.
     /// \param data Target of the pointer must outlive the archetype.
     template <typename TElement>
     explicit TensorData(Collection<datatypes::TensorDimension> shape_, const TElement* data) : shape(std::move(shape_)) {

@@ -23,6 +23,10 @@ namespace rerun::archetypes {
     /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
     /// Each pixel corresponds to a depth value in units specified by `meter`.
     ///
+    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+    /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+    ///
     /// ## Example
     ///
     /// ### Depth to 3D example
@@ -58,10 +62,7 @@ namespace rerun::archetypes {
     ///         )
     ///     );
     ///
-    ///     rec.log(
-    ///         "world/camera/depth",
-    ///         rerun::DepthImage({HEIGHT, WIDTH}, data.data()).with_meter(10000.0)
-    ///     );
+    ///     rec.log("world/camera/depth", rerun::DepthImage({HEIGHT, WIDTH}, data).with_meter(10000.0));
     /// }
     /// ```
     struct DepthImage {
@@ -95,19 +96,19 @@ namespace rerun::archetypes {
         /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// \param buffer
-        /// The tensor buffer containing the image data.
+        /// The tensor buffer containing the depth image data.
         DepthImage(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
             : DepthImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// New depth image from tensor data.
         ///
         /// \param data_
-        /// The tensor buffer containing the image data.
+        /// The tensor buffer containing the depth image data.
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
         explicit DepthImage(components::TensorData data_);
 
-        /// New depth image from dimensions and pointer to image data.
+        /// New depth image from dimensions and pointer to depth image data.
         ///
         /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
         /// \param shape
