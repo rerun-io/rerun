@@ -201,8 +201,8 @@ jobs:
     uses: ./.github/workflows/reusable_deploy_docs.yml
     with:
       CONCURRENCY: ${{ github.ref_name }}
-      PY_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
-      RS_AND_CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
+      PY_AND_CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
       UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
       RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
@@ -426,4 +426,3 @@ jobs:
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
-

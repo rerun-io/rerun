@@ -6,10 +6,10 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      PY_DOCS_VERSION_NAME:
+      PY_AND_CPP_DOCS_VERSION_NAME:
         required: true
         type: string
-      RS_AND_CPP_DOCS_VERSION_NAME:
+      RS_DOCS_VERSION_NAME:
         required: false
         type: string
         default: "head"
@@ -84,7 +84,7 @@ jobs:
         shell: bash
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_DOCS_VERSION_NAME}} stable
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_AND_CPP_DOCS_VERSION_NAME}} stable
           git checkout gh-pages
           git checkout --orphan gh-pages-orphan
           git commit -m "Update docs for ${GITHUB_SHA}"
@@ -98,7 +98,7 @@ jobs:
         shell: bash
         run: |
           git fetch
-          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python ${{inputs.PY_DOCS_VERSION_NAME}}
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python ${{inputs.PY_AND_CPP_DOCS_VERSION_NAME}}
           git checkout gh-pages
           git checkout --orphan gh-pages-orphan
           git commit -m "Update docs for ${GITHUB_SHA}"
@@ -174,7 +174,7 @@ jobs:
         shell: bash
         run: |
           git fetch
-          python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_AND_CPP_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
+          python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
 
   cpp-deploy-docs:
     name: Cpp
@@ -232,7 +232,7 @@ jobs:
         shell: bash
         run: |
           git fetch
-          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.RS_AND_CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
+          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.PY_AND_CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
 
   redeploy-rerun-io:
     runs-on: ubuntu-latest
@@ -249,4 +249,3 @@ jobs:
           vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
           release_commit: ${{ inputs.RELEASE_COMMIT }}
-
