@@ -147,6 +147,46 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         }
     }
 
+    // Timeless is RowId-ordered too!
+    //
+    // * Insert timeless `point1` with a random `RowId`.
+    // * Insert timeless `point2` using `point1`'s `RowId`, decremented by one.
+    // * Query timelessly and make sure we get `point1` because of timeless tie-breaks.
+    {
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
+
+        let row_id1 = RowId::random();
+        let row_id2 = row_id1.next();
+
+        let row = DataRow::from_component_batches(
+            row_id2,
+            TimePoint::timeless(),
+            entity_path.clone(),
+            [&[point1] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        let row = DataRow::from_component_batches(
+            row_id1,
+            TimePoint::timeless(),
+            entity_path.clone(),
+            [&[point2] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        {
+            let got_point = store
+                .query_timeless_component::<MyPoint>(&entity_path)
+                .unwrap()
+                .value;
+            similar_asserts::assert_eq!(point1, got_point);
+        }
+    }
+
     Ok(())
 }
 
