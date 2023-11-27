@@ -89,6 +89,32 @@ impl<'a> std::ops::Deref for MaybeOwnedComponentBatch<'a> {
     }
 }
 
+impl<'a> LoggableBatch for MaybeOwnedComponentBatch<'a> {
+    type Name = ComponentName;
+
+    #[inline]
+    fn name(&self) -> Self::Name {
+        self.as_ref().name()
+    }
+
+    #[inline]
+    fn num_instances(&self) -> usize {
+        self.as_ref().num_instances()
+    }
+
+    #[inline]
+    fn arrow_field(&self) -> arrow2::datatypes::Field {
+        self.as_ref().arrow_field()
+    }
+
+    #[inline]
+    fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
+        self.as_ref().to_arrow()
+    }
+}
+
+impl<'a> ComponentBatch for MaybeOwnedComponentBatch<'a> {}
+
 // --- Unary ---
 
 impl<L: Clone + Loggable> LoggableBatch for L {
