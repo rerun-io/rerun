@@ -15,7 +15,7 @@ thumbnail_dimensions: [480, 310]
 </picture>
 
 
-Use [pyopf](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the Open Photogrammetry Format (OPF).
+Uses [`pyopf`](https://github.com/Pix4D/pyopf) to load and display a photogrammetrically reconstructed 3D point cloud in the [Open Photogrammetry Format (OPF)](https://www.pix4d.com/open-photogrammetry-format/).
 
 
 ```bash
@@ -23,4 +23,4 @@ pip install -r examples/python/open_photogrammetry_format/requirements.txt
 python examples/python/open_photogrammetry_format/main.py
 ```
 
-Requires Python 3.10 or higher because of [pyopf](https://pypi.org/project/pyopf/).
+Requires Python 3.10 or higher because of [`pyopf`](https://pypi.org/project/pyopf/).
