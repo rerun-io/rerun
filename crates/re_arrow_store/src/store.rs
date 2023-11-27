@@ -561,8 +561,6 @@ impl Default for IndexedBucketInner {
 /// ```text
 /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
 /// ```
-//
-// TODO(#1807): timeless should be row-id ordered too then
 #[derive(Debug)]
 pub struct PersistentIndexedTable {
     /// The entity this table is related to, for debugging purposes.
