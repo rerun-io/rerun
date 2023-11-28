@@ -4,6 +4,7 @@ use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;
+use re_viewer_context::external::re_data_store::EntityProperties;
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
@@ -97,6 +98,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         _state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
     }
 
@@ -105,6 +107,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,

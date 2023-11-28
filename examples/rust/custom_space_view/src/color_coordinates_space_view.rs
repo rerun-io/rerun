@@ -1,3 +1,4 @@
+use re_viewer::external::re_data_store::EntityProperties;
 use re_viewer::external::{
     egui,
     re_data_store::InstancePath,
@@ -108,6 +109,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
         ui.horizontal(|ui| {
             ui.label("Coordinates mode");
@@ -132,6 +134,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         query: &ViewQuery<'_>,

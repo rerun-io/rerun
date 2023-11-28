@@ -2,6 +2,7 @@ use crate::{
     SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
+use re_data_store::EntityProperties;
 
 /// A placeholder space view class that can be used when the actual class is not registered.
 #[derive(Default)]
@@ -40,6 +41,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         _state: &mut (),
         _space_origin: &re_log_types::EntityPath,
         _space_view_id: crate::SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
     }
 
@@ -48,6 +50,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         _parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,

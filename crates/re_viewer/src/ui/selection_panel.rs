@@ -446,6 +446,7 @@ fn blueprint_ui(
                         space_view_state,
                         &space_view.space_origin,
                         space_view.id,
+                        &mut props,
                     );
 
                 visible_history_ui(
