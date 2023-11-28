@@ -204,6 +204,8 @@ To accommodate for this and other languages, strings on the C interface are almo
 ### Misc
 We don't add `inline` before class/struct member functions if they are inlined in the class/struct definition.
 
+Preprocessor directives/macros are usually prefixed with `RR_`
+
 Include what you use: if you use `std::vector`, then include `<vector>` - don't depend on a transitive include.
 
 

@@ -442,7 +442,7 @@ impl QuotedObject {
                     #field_ident = std::move(#parameter_ident);
                     #NEWLINE_TOKEN
                     #gcc_ignore_comment
-                    RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+                    RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
                 },
                 inline: true,
             });
