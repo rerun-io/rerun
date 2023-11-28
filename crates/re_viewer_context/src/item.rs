@@ -5,7 +5,7 @@ use re_log_types::{ComponentPath, DataPath, EntityPath};
 
 use crate::DataQueryId;
 
-use super::{DataBlueprintGroupHandle, SpaceViewId};
+use super::SpaceViewId;
 
 /// One "thing" in the UI.
 ///

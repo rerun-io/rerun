@@ -6,11 +6,8 @@ use re_arrow_store::{LatestAtQuery, Timeline};
 use re_data_store::{EntityPath, EntityTree};
 use re_log_types::{EntityPathExpr, TimeInt};
 use re_space_view::{DataQuery as _, DataQueryBlueprint, NOOP_RESOLVER};
-use re_types::{
-    archetypes::{Image, SegmentationImage},
-    components::{DisconnectedSpace, TensorData},
-    Archetype, ComponentNameSet,
-};
+use re_types::components::{DisconnectedSpace, TensorData};
+use re_types::ComponentNameSet;
 use re_viewer_context::{
     AutoSpawnHeuristic, DataQueryResult, EntitiesPerSystem, EntitiesPerSystemPerClass,
     HeuristicFilterContext, PerSystemEntities, SpaceViewClassName, ViewContextCollection,
@@ -18,7 +15,7 @@ use re_viewer_context::{
 };
 use tinyvec::TinyVec;
 
-use crate::{query_pinhole, space_view};
+use crate::query_pinhole;
 use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 
 // ---------------------------------------------------------------------------
@@ -110,16 +107,16 @@ pub fn all_possible_space_views(
 
             entities_used_by_any_part_system_of_class
                 .iter()
-                .filter_map(|(class_name, entities_used_by_any_part_system)| {
+                .filter_map(|(class_name, _entities_used_by_any_part_system)| {
                     let candidate_query = DataQueryBlueprint::new(
                         *class_name,
-                        [&EntityPathExpr::Recursive(candidate_space_path.clone())].into_iter(),
+                        std::iter::once(&EntityPathExpr::Recursive(candidate_space_path.clone())),
                     );
 
                     let results = candidate_query.execute_query(
                         &NOOP_RESOLVER,
                         ctx.store_context,
-                        &entities_per_system_per_class,
+                        entities_per_system_per_class,
                     );
 
                     if !results.is_empty() {
@@ -140,18 +137,8 @@ pub fn all_possible_space_views(
         .collect_vec()
 }
 
-fn contains_any_image(ent_path: &EntityPath, store: &re_arrow_store::DataStore) -> bool {
-    store
-        .all_components(&Timeline::log_time(), ent_path)
-        .unwrap_or_default()
-        .iter()
-        .any(|comp| {
-            *comp == SegmentationImage::indicator().name() || *comp == Image::indicator().name()
-        })
-}
-
 fn is_interesting_space_view_at_root(
-    data_store: &re_arrow_store::DataStore,
+    _data_store: &re_arrow_store::DataStore,
     query_results: &DataQueryResult,
 ) -> bool {
     if let Some(root) = query_results.tree.root_node() {
@@ -247,8 +234,8 @@ pub fn default_created_space_views(
 
     // Main pass through all candidates.
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
-    for (mut candidate, query_result) in candidates {
-        let Some(entities_per_system_for_class) =
+    for (candidate, query_result) in candidates {
+        let Some(_entities_per_system_for_class) =
             entities_per_system_per_class.get(candidate.class_name())
         else {
             // Should never reach this, but if we would there would be no entities in this candidate so skipping makes sense.
@@ -372,24 +359,24 @@ pub fn default_created_space_views(
                                             tensor.image_height_width_channels()
                                         {
                                             if store
-                                        .query_latest_component::<re_types::components::DrawOrder>(
-                                            entity_path,
-                                            &query,
-                                        )
-                                        .is_some()
-                                    {
-                                        // Put everything in the same bucket if it has a draw order.
-                                        images_by_bucket
-                                            .entry(ImageBucketing::ExplicitDrawOrder)
-                                            .or_default()
-                                            .push(entity_path.clone());
-                                    } else {
-                                        // Otherwise, distinguish buckets by image size.
-                                        images_by_bucket
-                                            .entry(ImageBucketing::BySize((height, width)))
-                                            .or_default()
-                                            .push(entity_path.clone());
-                                    }
+                                                .query_latest_component::<re_types::components::DrawOrder>(
+                                                    entity_path,
+                                                    &query,
+                                                )
+                                                .is_some()
+                                            {
+                                                // Put everything in the same bucket if it has a draw order.
+                                                images_by_bucket
+                                                    .entry(ImageBucketing::ExplicitDrawOrder)
+                                                    .or_default()
+                                                    .push(entity_path.clone());
+                                            } else {
+                                                // Otherwise, distinguish buckets by image size.
+                                                images_by_bucket
+                                                    .entry(ImageBucketing::BySize((height, width)))
+                                                    .or_default()
+                                                    .push(entity_path.clone());
+                                            }
                                         }
                                     }
                                 }

@@ -177,7 +177,7 @@ fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
             }
         }
         Item::InstancePath(_, entity_path) => entity_path.to_string(),
-        Item::DataBlueprintGroup(sid, qid, entity_path) => {
+        Item::DataBlueprintGroup(_sid, _qid, entity_path) => {
             // TODO(jleibs): How do we access the query in this context?
             entity_path.to_string()
         }

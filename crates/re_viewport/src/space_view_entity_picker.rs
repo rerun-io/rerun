@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_data_store::{EntityPath, EntityTree, InstancePath};
-use re_data_ui::item_ui;
+use re_data_store::{EntityPath, EntityTree};
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use crate::{
@@ -170,13 +169,13 @@ fn add_entities_tree_ui(
 }
 
 fn add_entities_line_ui(
-    ctx: &mut ViewerContext<'_>,
+    _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    spaces_info: &SpaceInfoCollection,
-    name: &str,
-    entity_tree: &EntityTree,
-    space_view: &mut SpaceViewBlueprint,
-    entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
+    _spaces_info: &SpaceInfoCollection,
+    _name: &str,
+    _entity_tree: &EntityTree,
+    _space_view: &mut SpaceViewBlueprint,
+    _entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
     ui.label("Not implemented");
     /*
@@ -278,6 +277,7 @@ impl CanAddToSpaceView {
     }
 
     /// Can be added and spaceview doesn't have it already.
+    #[allow(dead_code)]
     pub fn is_compatible_and_missing(&self) -> bool {
         self == &CanAddToSpaceView::Compatible {
             already_added: false,
@@ -303,6 +303,7 @@ impl CanAddToSpaceView {
 }
 
 #[derive(Default)]
+#[allow(dead_code)]
 struct EntityAddInfo {
     can_add: CanAddToSpaceView,
     can_add_self_or_descendant: CanAddToSpaceView,
@@ -313,7 +314,7 @@ fn create_entity_add_info(
     tree: &EntityTree,
     heuristic_context_per_entity: &HeuristicFilterContextPerEntity,
     space_view: &SpaceViewBlueprint,
-    spaces_info: &SpaceInfoCollection,
+    _spaces_info: &SpaceInfoCollection,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 

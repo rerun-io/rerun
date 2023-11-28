@@ -6,8 +6,7 @@ use egui::Ui;
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity,
-    ViewerContext,
+    DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
 };
 
 use super::DataUi;

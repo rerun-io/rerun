@@ -1,7 +1,7 @@
 use ahash::HashSet;
-use re_data_store::{EntityPath, EntityProperties, EntityTree, StoreDb, TimeInt, VisibleHistory};
+use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
-use re_log_types::EntityPathExpr;
+
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{
     DataQueryBlueprint, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
@@ -9,14 +9,9 @@ use re_space_view::{
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
-    DataQueryId, DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults,
-    PerSystemEntities, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
-    SpaceViewSystemRegistry, StoreContext, ViewerContext,
-};
-
-use crate::{
-    space_info::SpaceInfoCollection,
-    space_view_heuristics::{compute_heuristic_context_for_entities, is_entity_processed_by_class},
+    DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
+    SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry,
+    StoreContext, ViewerContext,
 };
 
 // ----------------------------------------------------------------------------

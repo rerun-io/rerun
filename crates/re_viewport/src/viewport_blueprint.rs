@@ -161,7 +161,7 @@ impl<'a> ViewportBlueprint<'a> {
                 .map(|space_view_id| self.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
             Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
-            Item::DataBlueprintGroup(space_view_id, query_id, entity_path) => self
+            Item::DataBlueprintGroup(space_view_id, query_id, _entity_path) => self
                 .space_views
                 .get(space_view_id)
                 .map_or(false, |sv| sv.queries.iter().any(|q| q.id == *query_id)),
@@ -226,7 +226,8 @@ impl<'a> ViewportBlueprint<'a> {
         space_view_id
     }
 
-    pub fn space_views_containing_entity_path(&self, path: &EntityPath) -> Vec<SpaceViewId> {
+    #[allow(clippy::unused_self)]
+    pub fn space_views_containing_entity_path(&self, _path: &EntityPath) -> Vec<SpaceViewId> {
         // TODO(jleibs): Need to search for entity path in query-results
         /*
         self.space_views

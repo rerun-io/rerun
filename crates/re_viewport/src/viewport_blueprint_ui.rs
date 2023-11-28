@@ -6,8 +6,8 @@ use re_data_ui::item_ui;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, HoverHighlight, Item,
-    SpaceViewId, ViewerContext,
+    DataQueryResult, DataResultHandle, DataResultNode, HoverHighlight, Item, SpaceViewId,
+    ViewerContext,
 };
 
 use crate::{
