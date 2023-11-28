@@ -6,7 +6,7 @@ set(RERUN_LIB_DIR "${CMAKE_CURRENT_LIST_DIR}/../..")
 
 # Setup `rerun_c` (imported libraries can't be exported!)
 add_library(rerun_c STATIC IMPORTED GLOBAL)
-get_filename_component(RERUN_C_LIB_NAME @RERUN_C_LIB_LOCATION@ NAME)
+get_filename_component(RERUN_C_LIB_NAME "@RERUN_C_LIB_LOCATION@" NAME)
 set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION "${RERUN_LIB_DIR}/${RERUN_C_LIB_NAME}")
 if(APPLE)
     target_link_libraries(rerun_c INTERFACE "-framework CoreFoundation" "-framework IOKit")
@@ -22,12 +22,12 @@ if(@RERUN_DOWNLOAD_AND_BUILD_ARROW@ AND NOT @RERUN_ARROW_LINK_SHARED@)
     message(STATUS "Rerun is using bundled arrow library.")
 
     add_library(rerun_arrow_target STATIC IMPORTED GLOBAL)
-    get_filename_component(RERUN_ARROW_LIB_NAME @RERUN_ARROW_LIBRARY_FILE@ NAME)
+    get_filename_component(RERUN_ARROW_LIB_NAME "@RERUN_ARROW_LIBRARY_FILE@" NAME)
     set_target_properties(rerun_arrow_target PROPERTIES IMPORTED_LOCATION "${RERUN_LIB_DIR}/${RERUN_ARROW_LIB_NAME}")
 
     # We have to explicitly opt in the arrow bundled dependencies, otherwise we're missing the symbols for mimalloc.
     add_library(arrow_targetBundledDeps STATIC IMPORTED)
-    get_filename_component(RERUN_ARROW_DEPS_LIB_NAME @RERUN_ARROW_BUNDLED_DEPENDENCIES_FILE@ NAME)
+    get_filename_component(RERUN_ARROW_DEPS_LIB_NAME "@RERUN_ARROW_BUNDLED_DEPENDENCIES_FILE@" NAME)
     set_target_properties(arrow_targetBundledDeps PROPERTIES IMPORTED_LOCATION "${RERUN_LIB_DIR}/${RERUN_ARROW_DEPS_LIB_NAME}")
     target_link_libraries(rerun_arrow_target INTERFACE arrow_targetBundledDeps)
 else()
