@@ -4,6 +4,7 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_types::{
     archetypes::{BarChart, Tensor},
+    components::Color,
     datatypes::TensorData,
     Archetype, ComponentNameSet,
 };
@@ -15,7 +16,7 @@ use re_viewer_context::{
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartViewPartSystem {
-    pub charts: BTreeMap<EntityPath, TensorData>,
+    pub charts: BTreeMap<EntityPath, (TensorData, Option<Color>)>,
 }
 
 impl NamedViewSystem for BarChartViewPartSystem {
@@ -82,10 +83,17 @@ impl ViewPartSystem for BarChartViewPartSystem {
                 &query,
             );
 
+            let color = store.query_latest_component::<re_types::components::Color>(
+                &data_result.entity_path,
+                &query,
+            );
+
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {
-                    self.charts
-                        .insert(data_result.entity_path.clone(), tensor.value.0.clone());
+                    self.charts.insert(
+                        data_result.entity_path.clone(),
+                        (tensor.value.0.clone(), color.map(|c| c.value)),
+                    );
                     // shallow clones
                 }
             }
