@@ -397,4 +397,4 @@ jobs:
           pixi-version: v0.6.0
 
       - name: prettier --check
-        run: pixi run fmt-misc-check
+        run: pixi run misc-fmt-check
