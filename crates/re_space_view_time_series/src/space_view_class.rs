@@ -4,6 +4,9 @@ use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;
+use re_viewer_context::external::re_data_store::{
+    EditableAutoValue, EntityProperties, LegendCorner,
+};
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
@@ -92,12 +95,61 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
     fn selection_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
-        _ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
         _state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        root_entity_properties: &mut EntityProperties,
     ) {
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui")
+            .show(ui, |ui| {
+                ctx.re_ui.grid_left_hand_label(ui, "Legend");
+
+                ui.vertical(|ui| {
+                    let mut selected = *root_entity_properties.show_legend.get();
+                    if ctx.re_ui.checkbox(ui, &mut selected, "Visible").changed() {
+                        root_entity_properties.show_legend =
+                            EditableAutoValue::UserEdited(selected);
+                    }
+
+                    let mut corner = root_entity_properties
+                        .legend_location
+                        .unwrap_or(LegendCorner::RightBottom);
+
+                    egui::ComboBox::from_id_source("legend_corner")
+                        .selected_text(corner.to_string())
+                        .show_ui(ui, |ui| {
+                            ui.style_mut().wrap = Some(false);
+                            ui.set_min_width(64.0);
+
+                            ui.selectable_value(
+                                &mut corner,
+                                LegendCorner::LeftTop,
+                                LegendCorner::LeftTop.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut corner,
+                                LegendCorner::RightTop,
+                                LegendCorner::RightTop.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut corner,
+                                LegendCorner::LeftBottom,
+                                LegendCorner::LeftBottom.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut corner,
+                                LegendCorner::RightBottom,
+                                LegendCorner::RightBottom.to_string(),
+                            );
+                        });
+
+                    root_entity_properties.legend_location = Some(corner);
+                });
+                ui.end_row();
+            });
     }
 
     fn ui(
@@ -105,6 +157,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
@@ -145,10 +198,6 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 x: true,
                 y: zoom_both_axis,
             })
-            .legend(Legend {
-                position: egui_plot::Corner::RightBottom,
-                ..Default::default()
-            })
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
@@ -170,6 +219,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     value.y,
                 )
             });
+
+        if *root_entity_properties.show_legend {
+            plot = plot.legend(Legend {
+                position: root_entity_properties
+                    .legend_location
+                    .unwrap_or(LegendCorner::RightBottom)
+                    .into(),
+                ..Default::default()
+            });
+        }
 
         if timeline.typ() == TimeType::Time {
             let canvas_size = ui.available_size();

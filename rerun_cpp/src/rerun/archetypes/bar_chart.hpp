@@ -172,7 +172,7 @@ namespace rerun::archetypes {
         BarChart with_color(rerun::components::Color _color) && {
             color = std::move(_color);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.
