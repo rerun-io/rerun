@@ -61,7 +61,7 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
       - A one-line summary of the release
       - A multi-line summary of the release
       - A gif showing a major new feature
-      - Run `git tag -d latest && git fetch --tags ; pip install GitPython && scripts/generate_changelog.py`
+      - Run `pip install GitPython && scripts/generate_changelog.py`
       - Edit PR descriptions/labels to improve the generated changelog
       - Copy-paste the results into `CHANGELOG.md`.
       - Editorialize the changelog if necessary
