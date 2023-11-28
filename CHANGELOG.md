@@ -10,6 +10,7 @@
   - [reference docs are live!](https://ref.rerun.io/docs/cpp/)
   - 2x-5x faster logging
   - CMake install support and other CMake setup improvements
+  - Support for custom components & archetypes
   - Zero copy logging for images, various API improvements
 - 📈 Visual History improvements
   - Time series plots can now limit its query to a range
