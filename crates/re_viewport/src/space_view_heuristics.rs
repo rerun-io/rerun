@@ -570,7 +570,7 @@ pub fn identify_entities_per_system_per_class(
             ComponentNameSet,
             IntMap<SpaceViewClassName, TinyVec<[ViewSystemName; 2]>>,
         > = HashMap::default();
-        for (class_name, (context_collection, part_collection)) in &system_collections_per_class {
+        for (class_name, (_context_collection, part_collection)) in &system_collections_per_class {
             for (system_name, part) in part_collection.iter_with_names() {
                 systems_per_required_components
                     .entry(part.required_components().into_iter().collect())
@@ -579,6 +579,8 @@ pub fn identify_entities_per_system_per_class(
                     .or_default()
                     .push(system_name);
             }
+            // TODO(#4377): Handle context systems but keep them parallel
+            /*
             for (system_name, part) in context_collection.iter_with_names() {
                 for components in part.compatible_component_sets() {
                     systems_per_required_components
@@ -589,6 +591,7 @@ pub fn identify_entities_per_system_per_class(
                         .push(system_name);
                 }
             }
+            */
         }
         systems_per_required_components
     };
