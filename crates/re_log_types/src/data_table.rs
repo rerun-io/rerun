@@ -51,19 +51,19 @@ pub type DataTableResult<T> = ::std::result::Result<T, DataTableError>;
 
 // ---
 
-pub type RowIdVec = SmallVec<[RowId; 4]>;
+pub type RowIdVec = VecDeque<RowId>;
 
-pub type TimeOptVec = SmallVec<[Option<i64>; 4]>;
+pub type TimeOptVec = VecDeque<Option<i64>>;
 
-pub type TimePointVec = SmallVec<[TimePoint; 4]>;
+pub type TimePointVec = VecDeque<TimePoint>;
 
-pub type ErasedTimeVec = SmallVec<[i64; 4]>;
+pub type ErasedTimeVec = VecDeque<i64>;
 
-pub type EntityPathVec = SmallVec<[EntityPath; 4]>;
+pub type EntityPathVec = VecDeque<EntityPath>;
 
-pub type NumInstancesVec = SmallVec<[NumInstances; 4]>;
+pub type NumInstancesVec = VecDeque<NumInstances>;
 
-pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
+pub type DataCellOptVec = VecDeque<Option<DataCell>>;
 
 /// A column's worth of [`DataCell`]s: a sparse collection of [`DataCell`]s that share the same
 /// underlying type and likely point to shared, contiguous memory.
