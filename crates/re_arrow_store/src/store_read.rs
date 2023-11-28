@@ -1,10 +1,9 @@
-use std::{ops::RangeBounds, sync::atomic::Ordering};
+use std::{collections::VecDeque, ops::RangeBounds, sync::atomic::Ordering};
 
 use itertools::Itertools;
 use re_log::trace;
 use re_log_types::{DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline};
 use re_types_core::{ComponentName, ComponentNameSet};
-use smallvec::SmallVec;
 
 use crate::{
     store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
@@ -990,8 +989,8 @@ impl IndexedBucketInner {
         {
             re_tracing::profile_scope!("control");
 
-            fn reshuffle_control_column<T: Copy, const N: usize>(
-                column: &mut SmallVec<[T; N]>,
+            fn reshuffle_control_column<T: Copy>(
+                column: &mut VecDeque<T>,
                 swaps: &[(usize, usize)],
             ) {
                 let source = {
@@ -1232,8 +1231,8 @@ impl PersistentIndexedTableInner {
         {
             re_tracing::profile_scope!("control");
 
-            fn reshuffle_control_column<T: Copy, const N: usize>(
-                column: &mut SmallVec<[T; N]>,
+            fn reshuffle_control_column<T: Copy>(
+                column: &mut VecDeque<T>,
                 swaps: &[(usize, usize)],
             ) {
                 let source = {

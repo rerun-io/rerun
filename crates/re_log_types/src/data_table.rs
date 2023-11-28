@@ -1,9 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use ahash::HashMap;
 use itertools::{izip, Itertools as _};
 use nohash_hasher::IntSet;
-use smallvec::SmallVec;
 
 use re_types_core::{ComponentName, Loggable, SizeBytes};
 
@@ -73,15 +72,13 @@ pub type DataCellOptVec = VecDeque<Option<DataCell>>;
 pub struct DataCellColumn(pub DataCellOptVec);
 
 impl std::ops::Deref for DataCellColumn {
-    type Target = [Option<DataCell>];
+    type Target = VecDeque<Option<DataCell>>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
-
-// TODO(cmc): Those Deref don't actually do their job most of the time for some reason…
 
 impl std::ops::DerefMut for DataCellColumn {
     #[inline]
@@ -109,7 +106,7 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 impl DataCellColumn {
     #[inline]
     pub fn empty(num_rows: usize) -> Self {
-        Self(smallvec::smallvec![None; num_rows])
+        Self(vec![None; num_rows].into())
     }
 
     /// Compute and cache the size of each individual underlying [`DataCell`].
@@ -418,12 +415,12 @@ impl DataTable {
                 match col_timelines.entry(*timeline) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         entry
-                            .insert(smallvec::smallvec![None; i])
-                            .push(Some(time.as_i64()));
+                            .insert(vec![None; i].into())
+                            .push_back(Some(time.as_i64()));
                     }
                     std::collections::btree_map::Entry::Occupied(mut entry) => {
                         let entry = entry.get_mut();
-                        entry.push(Some(time.as_i64()));
+                        entry.push_back(Some(time.as_i64()));
                     }
                 }
             }
@@ -431,7 +428,7 @@ impl DataTable {
             // handle potential sparseness
             for (timeline, col_time) in &mut col_timelines {
                 if timepoint.get(timeline).is_none() {
-                    col_time.push(None);
+                    col_time.push_back(None);
                 }
             }
         }
@@ -439,10 +436,7 @@ impl DataTable {
         // Pre-allocate all columns (one per component).
         let mut columns = BTreeMap::default();
         for component in components {
-            columns.insert(
-                component,
-                DataCellColumn(smallvec::smallvec![None; column.len()]),
-            );
+            columns.insert(component, DataCellColumn(vec![None; column.len()].into()));
         }
 
         // Fill all columns (where possible: data is likely sparse).
@@ -565,6 +559,7 @@ use arrow2::{
     chunk::Chunk,
     datatypes::{DataType, Field, Schema, TimeUnit},
     offset::Offsets,
+    types::NativeType,
 };
 
 pub const METADATA_KIND: &str = "rerun.kind";
@@ -624,7 +619,7 @@ impl DataTable {
             timeline: Timeline,
             times: &TimeOptVec,
         ) -> (Field, Box<dyn Array>) {
-            let data = PrimitiveArray::from(times.as_slice()).to(timeline.datatype());
+            let data = DataTable::serialize_primitive_deque_opt(times);
 
             let field = Field::new(timeline.name().as_str(), data.data_type().clone(), false)
                 .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_TIME.to_owned())].into());
@@ -694,7 +689,7 @@ impl DataTable {
 
     /// Serializes a single control column: an iterable of dense arrow-like data.
     pub fn serialize_control_column<'a, C: re_types_core::Component + 'a>(
-        values: &'a [C],
+        values: &'a VecDeque<C>,
     ) -> DataTableResult<(Field, Box<dyn Array>)>
     where
         std::borrow::Cow<'a, C>: std::convert::From<&'a C>,
@@ -720,12 +715,12 @@ impl DataTable {
     /// Serializes a single control column; optimized path for primitive datatypes.
     pub fn serialize_primitive_column<T: arrow2::types::NativeType>(
         name: &str,
-        values: &[T],
+        values: &VecDeque<T>,
         datatype: Option<DataType>,
     ) -> (Field, Box<dyn Array>) {
         re_tracing::profile_function!();
 
-        let data = PrimitiveArray::from_slice(values);
+        let data = DataTable::serialize_primitive_deque(values);
 
         let datatype = datatype.unwrap_or(data.data_type().clone());
         let data = data.to(datatype.clone()).boxed();
@@ -779,7 +774,7 @@ impl DataTable {
     /// Serializes a single data column.
     pub fn serialize_data_column(
         name: &str,
-        column: &[Option<DataCell>],
+        column: &VecDeque<Option<DataCell>>,
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
         re_tracing::profile_function!();
 
@@ -788,7 +783,7 @@ impl DataTable {
         /// * Before: `[C, C, C, C, C, C, C, …]`
         /// * After: `ListArray[ [[C, C], [C, C, C], None, [C], [C], …] ]`
         fn data_to_lists(
-            column: &[Option<DataCell>],
+            column: &VecDeque<Option<DataCell>>,
             data: Box<dyn Array>,
             ext_name: Option<String>,
         ) -> Box<dyn Array> {
@@ -857,6 +852,28 @@ impl DataTable {
             .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_DATA.to_owned())].into());
 
         Ok((field, data))
+    }
+
+    pub fn serialize_primitive_deque_opt<T: NativeType>(
+        data: &VecDeque<Option<T>>,
+    ) -> PrimitiveArray<T> {
+        let datatype = T::PRIMITIVE.into();
+        let values = data
+            .iter()
+            .copied()
+            .map(Option::unwrap_or_default)
+            .collect();
+        let validity = data
+            .iter()
+            .any(Option::is_none)
+            .then(|| data.iter().map(Option::is_some).collect());
+        PrimitiveArray::new(datatype, values, validity)
+    }
+
+    pub fn serialize_primitive_deque<T: NativeType>(data: &VecDeque<T>) -> PrimitiveArray<T> {
+        let datatype = T::PRIMITIVE.into();
+        let values = data.iter().copied().collect();
+        PrimitiveArray::new(datatype, values, None)
     }
 }
 

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 use nohash_hasher::IntMap;
@@ -94,10 +94,10 @@ impl PersistentIndexedTable {
 
 fn serialize(
     cluster_key: &ComponentName,
-    col_time: Option<(Timeline, &[i64])>,
-    col_insert_id: &[u64],
-    col_row_id: &[RowId],
-    col_num_instances: &[NumInstances],
+    col_time: Option<(Timeline, &VecDeque<i64>)>,
+    col_insert_id: &VecDeque<u64>,
+    col_row_id: &VecDeque<RowId>,
+    col_num_instances: &VecDeque<NumInstances>,
     table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
     re_tracing::profile_function!();
@@ -129,10 +129,10 @@ fn serialize(
 }
 
 fn serialize_control_columns(
-    col_time: Option<(Timeline, &[i64])>,
-    col_insert_id: &[u64],
-    col_row_id: &[RowId],
-    col_num_instances: &[NumInstances],
+    col_time: Option<(Timeline, &VecDeque<i64>)>,
+    col_insert_id: &VecDeque<u64>,
+    col_row_id: &VecDeque<RowId>,
+    col_num_instances: &VecDeque<NumInstances>,
 ) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
     re_tracing::profile_function!();
 
