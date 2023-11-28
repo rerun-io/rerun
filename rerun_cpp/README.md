@@ -11,7 +11,7 @@ Read the [getting started guide](https://www.rerun.io/docs/getting-started/cpp) 
 
 ### Logging
 
-After you've [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) and [added the SDK to your project](https://www.rerun.io/docs/reference/cpp-sdk-cmake), you can jump right in and try logging some data.
+After you've [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) and added the SDK to your project, you can jump right in and try logging some data.
 
 You first create a `rerun::RecordingStream` stream and spawn a viewer. You then use it to log some archetypes to a given entity path using `rerun::RecordingStream::log`:
 
