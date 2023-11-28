@@ -2,11 +2,157 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.11.0](https://github.com/rerun-io/rerun/compare/0.10.1...0.11.0)
+
+### Overview & Highlights
+
+- 🌊 C++ SDK improvements
+  - [reference docs are live!](https://ref.rerun.io/docs/cpp/)
+  - 2x-5x faster logging
+  - CMake install support and other CMake setup improvements
+  - Zero copy logging for images, various API improvements
+- 📈 Visual History improvements
+  - Time series plots can now limit its query to a range
+  - Much more powerful UI, allowing query ranges relative to time cursor
+- 🕸️ The viewer can now be easily embedded in your web apps via our [npm package](https://www.npmjs.com/package/@rerun-io/web-viewer)
+- 🐍 ⚠️ legacy Python API now removed, check the [migration guide](https://github.com/rerun-io/rerun/issues/723) if you're not using `rr.log` yet
+- 🦀 `StoreView` allows to track changes to the store. This is groundwork for upcoming performance improvements (but if you customize the viewer you have access to it as well!)
+
+⚠️ Known issues on Visual History:
+- Time cursor [sometimes stops scrolling correctly](https://github.com/rerun-io/rerun/issues/4246) on plot window
+- Still [doesn't work with transforms](https://github.com/rerun-io/rerun/issues/723)
+
+### Details
+
+#### 🌊 C++ SDK
+- Support std::chrono types for `set_time` on `rerun::RecordingStream` [#4134](https://github.com/rerun-io/rerun/pull/4134)
+- Improve rerun_cpp readme & CMakeLists.txt [#4126](https://github.com/rerun-io/rerun/pull/4126)
+- Replace the many parameters of  `rerun::spawn` / `rerun::RecordingStream::spawn` with a `struct` [#4149](https://github.com/rerun-io/rerun/pull/4149)
+- Make on TextLogLevel PascalCase (instead of SCREAMING CASE) to avoid clashes with preprocessor defines [#4152](https://github.com/rerun-io/rerun/pull/4152)
+- Reduce rerun_c library size (by depending on fewer unnecessary crates) [#4147](https://github.com/rerun-io/rerun/pull/4147)
+- Fix unnecessary includes in code generated headers [#4132](https://github.com/rerun-io/rerun/pull/4132)
+- Doxygen documentation & many doc improvements [#4191](https://github.com/rerun-io/rerun/pull/4191)
+- Rename `rerun::ComponentBatch` to `rerun::Collection` (and related constructs) [#4236](https://github.com/rerun-io/rerun/pull/4236)
+- Use `rerun::Collection` almost everywhere we'd use `std::vector` before [#4247](https://github.com/rerun-io/rerun/pull/4247)
+- Significantly improve C++ logging performance by using C FFI instead of arrow IPC [#4273](https://github.com/rerun-io/rerun/pull/4273)
+- Further improve C++ logging for many individual log calls by introducing a component type registry [#4296](https://github.com/rerun-io/rerun/pull/4296)
+- All C++ datatypes & components now implement a new Loggable trait [#4305](https://github.com/rerun-io/rerun/pull/4305)
+- Add C++ Custom Component example [#4309](https://github.com/rerun-io/rerun/pull/4309)
+- Expose Rerun source/include dir in CMakeLists.txt (`RERUN_CPP_SOURCE_DIR`) [#4313](https://github.com/rerun-io/rerun/pull/4313)
+- Support cmake install [#4326](https://github.com/rerun-io/rerun/pull/4326)
+- Export TensorBuffer & TensorDimension to rerun namespace [#4331](https://github.com/rerun-io/rerun/pull/4331)
+- C++ SDK sanity checks now header/source version against rerun_c binary version [#4330](https://github.com/rerun-io/rerun/pull/4330)
+- Allow creating Image/Tensor/DepthImage/SegmentationImage directly from shape & pointer [#4345](https://github.com/rerun-io/rerun/pull/4345)
+
+#### 🐍 Python SDK
+- Python: remove legacy APIs [#4037](https://github.com/rerun-io/rerun/pull/4037)
+- Remove deprecated `rerun_demo` package [#4293](https://github.com/rerun-io/rerun/pull/4293)
+- Python: don't catch `KeyboardInterrupt` and `SystemExit` [#4333](https://github.com/rerun-io/rerun/pull/4333) (thanks [@Dvad](https://github.com/Dvad)!)
+
+#### 🪳 Bug Fixes
+- Fix line & points (& depth clouds points) radii being unaffected by scale & projection via Pinhole [#4199](https://github.com/rerun-io/rerun/pull/4199)
+- Fix inaccessible entities being incorrectly added to space view [#4226](https://github.com/rerun-io/rerun/pull/4226)
+- Silence spammy blueprint warnings and validate blueprint on load [#4303](https://github.com/rerun-io/rerun/pull/4303)
+- Fix markdown heading size [#4178](https://github.com/rerun-io/rerun/pull/4178)
+
+#### 🌁 Viewer Improvements
+- Add command to copy direct link to fully qualified URL [#4165](https://github.com/rerun-io/rerun/pull/4165)
+- Implement recording/last-modified-at aware garbage collection [#4183](https://github.com/rerun-io/rerun/pull/4183)
+
+#### 🖼 UI Improvements
+- Improve Visible History to support more general time queries [#4123](https://github.com/rerun-io/rerun/pull/4123)
+- Add support for Visible History to time series space views [#4179](https://github.com/rerun-io/rerun/pull/4179)
+- Make Visible History UI more ergonomic and show inherited values [#4222](https://github.com/rerun-io/rerun/pull/4222)
+- Display Visible History on timeline when the mouse hovers the UI [#4259](https://github.com/rerun-io/rerun/pull/4259)
+- Improve the Selection Panel with better title, context, and Space View key properties [#4324](https://github.com/rerun-io/rerun/pull/4324)
+
+#### 🕸️ Web
+- Put web viewer on `npm` [#4003](https://github.com/rerun-io/rerun/pull/4003)
+- Auto-switch port when getting AddrInUse error [#4314](https://github.com/rerun-io/rerun/pull/4314) (thanks [@dangush](https://github.com/dangush)!)
+- Generate per-PR web apps [#4341](https://github.com/rerun-io/rerun/pull/4341)
+
+#### 🧑‍💻 Dev-experience
+- Simple logging benchmarks for C++ & Rust [#4181](https://github.com/rerun-io/rerun/pull/4181)
+- New debug option to show the blueprint in the streams view [#4189](https://github.com/rerun-io/rerun/pull/4189)
+- Use pixi over setup scripts on CI + local dev [#4302](https://github.com/rerun-io/rerun/pull/4302)
+- Run deploy docs jobs serially [#4232](https://github.com/rerun-io/rerun/pull/4232)
+- fix windows test config on main [#4242](https://github.com/rerun-io/rerun/pull/4242)
+
+#### 🗣 Refactors
+- `StoreView` -> `StoreSubscriber` [#4234](https://github.com/rerun-io/rerun/pull/4234)
+- `DataStore` introduce `StoreEvent`s [#4203](https://github.com/rerun-io/rerun/pull/4203)
+- `DataStore` introduce `StoreView`s [#4205](https://github.com/rerun-io/rerun/pull/4205)
+
+
+#### Chronological changes (don't include these)
+- Support std::chrono types for `set_time` on `rerun::RecordingStream` [#4134](https://github.com/rerun-io/rerun/pull/4134) 2f7af01410945f64b215e7cc1b8234784e37aa9e
+- Put web viewer on `npm` [#4003](https://github.com/rerun-io/rerun/pull/4003) 72a375323d537e27aa160ea023e4e93f05137233
+- Improve rerun_cpp readme & CMakeLists.txt [#4126](https://github.com/rerun-io/rerun/pull/4126) c62c6a3892a26e6389f91ef31fe5dfa62a853e9a
+- Replace the many parameters of  `rerun::spawn` / `rerun::RecordingStream::spawn` with a `struct` [#4149](https://github.com/rerun-io/rerun/pull/4149) 1f58d96d4ff5b2387da76ebffed8fd32287763ef
+- Improve Visible History to support more general time queries [#4123](https://github.com/rerun-io/rerun/pull/4123) ce2493cfcc25ddc6f01ee9d8f40a365d7a6f6623
+- Make on TextLogLevel PascalCase (instead of SCREAMING CASE) to avoid clashes with preprocessor defines [#4152](https://github.com/rerun-io/rerun/pull/4152) 8a9741679d2c0075b2012b430d112138b584c589
+- Reduce rerun_c library size (by depending on fewer unnecessary crates) [#4147](https://github.com/rerun-io/rerun/pull/4147) 316bdddde11c0869401e07754297c001473cb59e
+- Add command to copy direct link to fully qualified URL [#4165](https://github.com/rerun-io/rerun/pull/4165) 8a96b545ace5e32d4d89ec6f6bafb24bf32c0b76
+- Fix unnecessary includes in code generated headers [#4132](https://github.com/rerun-io/rerun/pull/4132) 3279714fdd7bc064b89e466003f8e9b378c0fdb1
+- Python: remove legacy APIs [#4037](https://github.com/rerun-io/rerun/pull/4037) 01bbdbce8224c6ee7c5006b2892986f236b86fa7
+- Fix markdown heading size [#4178](https://github.com/rerun-io/rerun/pull/4178) a586ae4d6bf0cceef7781decc6f6453509f916d0
+- Implement recording/last-modified-at aware garbage collection [#4183](https://github.com/rerun-io/rerun/pull/4183) b8ea6af02ca21fdf90a9880c915bd395130a348e
+- Simple logging benchmarks for C++ & Rust [#4181](https://github.com/rerun-io/rerun/pull/4181) 1aa220a680186e991531ece335aeac36f42c4e13
+- C++ Doxygen documentation & many doc improvements [#4191](https://github.com/rerun-io/rerun/pull/4191) 8bff99701b878822a7d2e4be07d078d09be616d8
+- Add support for Visible History to time series space views [#4179](https://github.com/rerun-io/rerun/pull/4179) a4cf64490fbbc948bd1921fc32cb2b467ac5b1a8
+- New debug option to show the blueprint in the streams view [#4189](https://github.com/rerun-io/rerun/pull/4189) 9b9f80041b0f5845aefa6bc944161dea8356dcb2
+- Fix line & points (& depth clouds points) radii being unaffected by scale & projection via Pinhole [#4199](https://github.com/rerun-io/rerun/pull/4199) 6ee3c6af9a02170b2f02a1a7031b4d95883e9707
+- Fix inaccessible entities being incorrectly added to space view [#4226](https://github.com/rerun-io/rerun/pull/4226) 6a96d0dd4403b407611702d872f1bf3cf6bd41c5
+- `DataStore` changelog 2: introduce `StoreEvent`s [#4203](https://github.com/rerun-io/rerun/pull/4203) 8263309ac57260ff9ded2ed774511e5b595fe8d5
+- `DataStore` changelog 3: introduce `StoreView`s [#4205](https://github.com/rerun-io/rerun/pull/4205) 5edaea85b6d99604f95e1e018a5cf55bdfca342f
+- Revert "Don't install python in docs deploy job" [#4230](https://github.com/rerun-io/rerun/pull/4230) 7dafa78979d55ccc6f979777d83c86a3d5117a0c
+- Revert "Merge all doc deploy jobs into a single one to avoid race conditions" [#4231](https://github.com/rerun-io/rerun/pull/4231) f8bce210f553f743dcca4469d41c3d5f789c3b1c
+- Run deploy docs jobs serially [#4232](https://github.com/rerun-io/rerun/pull/4232) f30ffe4d7904f4d6d3a0945a8960e29b5d735c58
+- `StoreView` -> `StoreSubscriber` [#4234](https://github.com/rerun-io/rerun/pull/4234) c640da8f2ebf5e19a624feca0cb34ad734cdde4d
+- [C++] Rename `rerun::ComponentBatch` to `rerun::Collection` (and related constructs) [#4236](https://github.com/rerun-io/rerun/pull/4236) b3f0ff492bc66b7b7eef6e6f715e8db9d5cd845b
+- fix windows test config on main [#4242](https://github.com/rerun-io/rerun/pull/4242) 4a2f0776d87366724e46ee8bd72675edc0dbcdba
+- Make Visible History UI more ergonomic and show inherited values [#4222](https://github.com/rerun-io/rerun/pull/4222) f586c0448b0aec9044ea1ba7d77b31f048b83bd7
+- Use `rerun::Collection` almost everywhere we'd use `std::vector` before [#4247](https://github.com/rerun-io/rerun/pull/4247) 907d0060a98f84fe3f6427b79e8612b49ac88590
+- Display Visible History on timeline when the mouse hovers the UI [#4259](https://github.com/rerun-io/rerun/pull/4259) a239748a52ee3057c4714390877a7a5da35f3f0d
+- Significantly improve C++ logging performance by using C FFI instead of arrow IPC [#4273](https://github.com/rerun-io/rerun/pull/4273) b5918ffae13d7feea292e97eb9949cad771f4366
+- Remove deprecated `rerun_demo` package [#4293](https://github.com/rerun-io/rerun/pull/4293) 55d81330a5f97f7179bb4e015f07cdafc90d4874
+- Further improve C++ logging for many individual log calls by introducing a component type registry [#4296](https://github.com/rerun-io/rerun/pull/4296) 562b919f8d2dbd03466461cab8753ff0dd7ff435
+- Silence spammy blueprint warnings and validate blueprint on load [#4303](https://github.com/rerun-io/rerun/pull/4303) c4126cf34d099eaf67c9469e831346104c120cb9
+- All C++ datatypes & components now implement a new Loggable trait [#4305](https://github.com/rerun-io/rerun/pull/4305) 13ac376c1ded00fc700c25c5d982656bd32c6ae7
+- Use pixi over setup scripts on CI + local dev [#4302](https://github.com/rerun-io/rerun/pull/4302) 73d570fadc6bc5c5385c5c77d90d28dd7e577ca1
+- Add C++ Custom Component example [#4309](https://github.com/rerun-io/rerun/pull/4309) 78f335801a0e0a94904abd8ab5431826bd366850
+- Auto-switch port when getting AddrInUse error [#4314](https://github.com/rerun-io/rerun/pull/4314) e003829c7bc268a68d940affe61e3f87646030ac
+- Expose Rerun source/include dir in CMakeLists.txt (`RERUN_CPP_SOURCE_DIR`) [#4313](https://github.com/rerun-io/rerun/pull/4313) d5153cbc47fc67831b1a1dcc6f92fb06758c3b16
+- Support cmake install [#4326](https://github.com/rerun-io/rerun/pull/4326) f18c4cb9b98ee47917091020bc23c460f20a7c6b
+- Export TensorBuffer & TensorDimension to rerun namespace [#4331](https://github.com/rerun-io/rerun/pull/4331) bf4b1876350511725221c21aac24fc3cf960f29d
+- C++ SDK sanity checks now header/source version against rerun_c binary version [#4330](https://github.com/rerun-io/rerun/pull/4330) 7e6924f628fbaef1dd20337989045cc0614cc97d
+- Generate per-PR web apps [#4341](https://github.com/rerun-io/rerun/pull/4341) e6e2a90e5f3028c2aa9d227d0f702b9edb0b563d
+- C++: Allow creating Image/Tensor/DepthImage/SegmentationImage directly from shape & pointer [#4345](https://github.com/rerun-io/rerun/pull/4345) 69fdded79007e05016ea4e73a83cd82d5ad6faeb
+- Improve the Selection Panel with better title, context, and Space View key properties [#4324](https://github.com/rerun-io/rerun/pull/4324) 77895173909f9850e5a3a1ef14f64b5e3c127c51
+- Python: don't catch `KeyboardInterrupt` and `SystemExit` [#4333](https://github.com/rerun-io/rerun/pull/4333) aca6976202b14b2bee24e00520abd8d7ac9dc3b3
+- small updates to releases.md [b172d475d2d164baaf925c660136cf354e870a9c](https://github.com/rerun-io/rerun/commit/b172d475d2d164baaf925c660136cf354e870a9c)
+- remove speculative links from all C++ doc links [1577491c4717e57aaf3a3c4b61ccc94d8fac2489](https://github.com/rerun-io/rerun/commit/1577491c4717e57aaf3a3c4b61ccc94d8fac2489)
+- remove remaining speculative-link [e6bc41e744a3c4a51056c0d715370212207e4a2d](https://github.com/rerun-io/rerun/commit/e6bc41e744a3c4a51056c0d715370212207e4a2d)
+- add rerun_c version update to versioning job [d9a9c6230a238a271e475733d1ebcd3e4f8641ee](https://github.com/rerun-io/rerun/commit/d9a9c6230a238a271e475733d1ebcd3e4f8641ee)
+- Bump versions to 0.11.0-rc.1 [5c79fb3bc81d6d5d59e8985540210b06cf51714d](https://github.com/rerun-io/rerun/commit/5c79fb3bc81d6d5d59e8985540210b06cf51714d)
+- Fix a few links [bb86a6fbfed4b2c679eb3913ae0af704752fa1e3](https://github.com/rerun-io/rerun/commit/bb86a6fbfed4b2c679eb3913ae0af704752fa1e3)
+- more reference doc link fixes [7d93132795e8364ac219022b59c14b8a80cd1160](https://github.com/rerun-io/rerun/commit/7d93132795e8364ac219022b59c14b8a80cd1160)
+- remove rrd handling from publish_web [774f3c5e453e733295dba3aee01da4e5350585d0](https://github.com/rerun-io/rerun/commit/774f3c5e453e733295dba3aee01da4e5350585d0)
+- removed previously missed rrd publish from publish_web [d9dc004fa93a51acca96bd67f21f7099642dc17b](https://github.com/rerun-io/rerun/commit/d9dc004fa93a51acca96bd67f21f7099642dc17b)
+- make publish do install+build+publish [cc7af2684c6b37afb65e86c49fc8dadc2230331b](https://github.com/rerun-io/rerun/commit/cc7af2684c6b37afb65e86c49fc8dadc2230331b)
+- add build to `web-viewer/react` [640cab4118c5200b54efb7e456b190e599246566](https://github.com/rerun-io/rerun/commit/640cab4118c5200b54efb7e456b190e599246566)
+- update CI to publish in one step via pixi [c839f35b258f992485037c91a4144b945dec00e2](https://github.com/rerun-io/rerun/commit/c839f35b258f992485037c91a4144b945dec00e2)
+- demoting timeless counter underflow warning to debug. See #4355 [badde3b16b6c2173a9398d8a72b1872e9956b65c](https://github.com/rerun-io/rerun/commit/badde3b16b6c2173a9398d8a72b1872e9956b65c)
+- Bump versions to 0.11.0-rc.2 [746dbf3512977c1f933f44c8a77043b1c1de46b3](https://github.com/rerun-io/rerun/commit/746dbf3512977c1f933f44c8a77043b1c1de46b3)
+
+
 
 ## [0.10.1](https://github.com/rerun-io/rerun/compare/0.10.0...0.10.1)
 
 ### Overview & Highlights
 This is a small release primarily to tie up some loose ends for our C++ SDK.
+
+### Details
 
 #### 🌊 C++ SDK
 - Avoid possible link/symbol errors but defaulting all OSes to static linking of arrow [#4101](https://github.com/rerun-io/rerun/pull/4101)
