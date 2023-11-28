@@ -108,6 +108,8 @@ pub fn all_possible_space_views(
             entities_used_by_any_part_system_of_class
                 .iter()
                 .filter_map(|(class_name, _entities_used_by_any_part_system)| {
+                    // TODO(#4377): The need to run a query-per-candidate for all possible candidates
+                    // is way too expensive. This needs to be optimized significantly.
                     let candidate_query = DataQueryBlueprint::new(
                         *class_name,
                         std::iter::once(&EntityPathExpr::Recursive(candidate_space_path.clone())),
@@ -242,7 +244,7 @@ pub fn default_created_space_views(
             continue;
         };
 
-        // TODO(jleibs): Can spawn heuristics consume the query_result directly?
+        // TODO(#4377): Can spawn heuristics consume the query_result directly?
         let mut per_system_entities = PerSystemEntities::default();
         {
             re_tracing::profile_scope!("per_system_data_results");

@@ -308,7 +308,7 @@ fn list_existing_data_blueprints(
     entity_path: &EntityPath,
     blueprint: &ViewportBlueprint<'_>,
 ) {
-    let space_views_with_path = blueprint.space_views_containing_entity_path(entity_path);
+    let space_views_with_path = blueprint.space_views_containing_entity_path(ctx, entity_path);
 
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");

@@ -227,21 +227,26 @@ impl<'a> ViewportBlueprint<'a> {
     }
 
     #[allow(clippy::unused_self)]
-    pub fn space_views_containing_entity_path(&self, _path: &EntityPath) -> Vec<SpaceViewId> {
-        // TODO(jleibs): Need to search for entity path in query-results
-        /*
+    pub fn space_views_containing_entity_path(
+        &self,
+        ctx: &ViewerContext<'_>,
+        path: &EntityPath,
+    ) -> Vec<SpaceViewId> {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {
-                if space_view.contents.contains_entity(path) {
+                let query_result = ctx.lookup_query_result(space_view.query_id());
+                if query_result
+                    .tree
+                    .lookup_result_by_path_and_group(path, false)
+                    .is_some()
+                {
                     Some(*space_view_id)
                 } else {
                     None
                 }
             })
             .collect()
-            */
-        vec![]
     }
 
     /// Compares the before and after snapshots and sends any necessary deltas to the store.
@@ -424,7 +429,6 @@ pub fn sync_space_view(
 
         add_delta_from_single_component(deltas, &space_view.entity_path(), &timepoint, component);
 
-        // TODO(jleibs): Query-removal logic
         for query in &space_view.queries {
             add_delta_from_single_component(
                 deltas,

@@ -161,7 +161,7 @@ impl SpaceViewBlueprint {
 
         let query_result = ctx.lookup_query_result(self.query_id()).clone();
 
-        // TODO(jleibs): Use PerSystemDataResults?
+        // TODO(#4377): Use PerSystemDataResults
         let mut per_system_entities = PerSystemEntities::default();
         {
             re_tracing::profile_scope!("per_system_data_results");

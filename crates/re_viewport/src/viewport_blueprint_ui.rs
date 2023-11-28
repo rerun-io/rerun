@@ -311,7 +311,7 @@ impl ViewportBlueprint<'_> {
                         let response =
                             remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                         if response.clicked() {
-                            // TODO(jleibs): Fix removal
+                            // TODO(#4377): Fix entity removal
                             //space_view.contents.remove_entity(entity_path);
                             space_view.entities_determined_by_user = true;
                         }
@@ -374,7 +374,7 @@ impl ViewportBlueprint<'_> {
                     });
 
                 if remove_group {
-                    // TODO(jleibs): Fix removal
+                    // TODO(#4377): Fix group removal
                     /*
                     if let Some(group_handle) = space_view
                         .contents

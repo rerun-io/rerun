@@ -41,7 +41,7 @@ pub fn highlights_for_space_view(
             Item::ComponentPath(_) | Item::SpaceView(_) => {}
 
             Item::DataBlueprintGroup(_space_view_id, _query_id, _entity_path) => {
-                // TODO(jleibs): Fix DataBlueprintGroup
+                // TODO(#4377): Fix DataBlueprintGroup
                 /*
                 if *group_space_view_id == space_view_id {
                     if let Some(space_view) = space_views.get(group_space_view_id) {
@@ -118,7 +118,7 @@ pub fn highlights_for_space_view(
             Item::ComponentPath(_) | Item::SpaceView(_) => {}
 
             Item::DataBlueprintGroup(_space_view_id, _query_id, _entity_path) => {
-                // TODO(jleibs): Fix DataBlueprintGroup
+                // TODO(#4377): Fix DataBlueprintGroup
                 /*
                 // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
                 // since they are truly local to a space view.

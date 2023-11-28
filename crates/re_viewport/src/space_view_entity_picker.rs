@@ -177,6 +177,7 @@ fn add_entities_line_ui(
     _space_view: &mut SpaceViewBlueprint,
     _entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
+    // TODO(#4377): Reformulate this in terms of modifying query expressions
     ui.label("Not implemented");
     /*
     ui.horizontal(|ui| {
@@ -322,6 +323,7 @@ fn create_entity_add_info(
         let heuristic_context_per_entity = heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default();
         let can_add: CanAddToSpaceView =
             if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
+                // TODO(#4377): Reformulate this in terms of modifying query expressions
                 CanAddToSpaceView::No {
                     reason: "Not implemented".to_owned(),
                 }
