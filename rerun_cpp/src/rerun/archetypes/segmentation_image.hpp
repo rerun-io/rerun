@@ -131,7 +131,7 @@ namespace rerun::archetypes {
         SegmentationImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
             draw_order = std::move(_draw_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

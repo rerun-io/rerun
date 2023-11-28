@@ -57,7 +57,7 @@ namespace rerun::datatypes {
               scale(other.scale),
               from_parent(other.from_parent) {}
 
-        RERUN_DISABLE_MAYBE_UNINITIALIZED_POP
+        RR_DISABLE_MAYBE_UNINITIALIZED_POP
 
         /// Creates a new 3D transform from translation/rotation/scale.
         ///
