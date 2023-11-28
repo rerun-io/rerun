@@ -167,6 +167,7 @@ impl SpatialSpaceViewState {
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
+                        self.scene_bbox_accum = self.scene_bbox;
                         self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
