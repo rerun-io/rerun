@@ -12,7 +12,7 @@ consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 * value: [`Utf8`](../datatypes/utf8.md)
 
 ## Links
- * 🌊 [C++ API docs for `MediaType`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1MediaType.html?speculative-link)
+ * 🌊 [C++ API docs for `MediaType`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1MediaType.html)
  * 🐍 [Python API docs for `MediaType`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.MediaType)
  * 🦀 [Rust API docs for `MediaType`](https://docs.rs/rerun/latest/rerun/components/struct.MediaType.html)
 

@@ -9,7 +9,7 @@ Material properties of a mesh.
 * material: [`Material`](../datatypes/material.md)
 
 ## Links
- * 🌊 [C++ API docs for `Material`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Material.html?speculative-link)
+ * 🌊 [C++ API docs for `Material`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Material.html)
  * 🐍 [Python API docs for `Material`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Material)
  * 🦀 [Rust API docs for `Material`](https://docs.rs/rerun/latest/rerun/components/struct.Material.html)
 

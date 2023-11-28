@@ -6,7 +6,7 @@ A vector in 3D space.
 
 
 ## Links
- * 🌊 [C++ API docs for `Vec3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Vec3D.html?speculative-link)
+ * 🌊 [C++ API docs for `Vec3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Vec3D.html)
  * 🐍 [Python API docs for `Vec3D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Vec3D)
  * 🦀 [Rust API docs for `Vec3D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Vec3D.html)
 

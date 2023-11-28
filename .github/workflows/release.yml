@@ -141,6 +141,12 @@ jobs:
         run: |
           node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
 
+      - name: Update rerun_c version
+        shell: bash
+        # Configuring CMake is enough to change the version on rerun.h!
+        run: |
+          cmake -B build -S .
+
       - run: taplo fmt
         shell: bash
 
@@ -224,7 +230,6 @@ jobs:
       release-version: ${{ needs.version.outputs.current }}
       concurrency: ${{ github.ref_name }}
       linux-wheel-name: linux-wheel
-      linux-rrd-name: linux-rrd
       release-commit: ${{ needs.version.outputs.release-commit }}
     secrets: inherit
 
@@ -237,7 +242,6 @@ jobs:
       release-commit: ${{ needs.version.outputs.release-commit }}
       concurrency: ${{ github.ref_name }}
       wheel-artifact-name: linux-wheel
-      rrd-artifact-name: linux-rrd
       update-latest: ${{ inputs.release-type == 'final' }}
     secrets: inherit
 
@@ -345,11 +349,6 @@ jobs:
           python3 scripts/ci/crates.py version --bump auto
           echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-      - name: Update NPM versions
-        shell: bash
-        run: |
-          node rerun_js/web-viewer/scripts/version.mjs ${{ steps.update-version.outputs.version }}
-
       - run: taplo fmt
         shell: bash
 
@@ -359,6 +358,7 @@ jobs:
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
           git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
+          git pull --rebase
           git push
 
   comment-artifact-links:
@@ -426,3 +426,4 @@ jobs:
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
+

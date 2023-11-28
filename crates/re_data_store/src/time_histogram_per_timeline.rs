@@ -76,7 +76,7 @@ impl TimeHistogramPerTimeline {
                 .num_timeless_messages
                 .checked_sub(n as u64)
                 .unwrap_or_else(|| {
-                    re_log::warn_once!("Timeless counter underflowed, store events are bugged!");
+                    re_log::debug_once!("Timeless counter underflowed, store events are bugged!"); // TODO(#4355): hitting this on plots demo
                     0
                 });
         } else {
