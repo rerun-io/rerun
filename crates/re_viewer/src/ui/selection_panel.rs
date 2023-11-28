@@ -512,7 +512,7 @@ fn blueprint_ui(
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
                     let group_path = group.group_path.clone();
-                    let as_group = false;
+                    let as_group = true;
 
                     let data_result = space_view.contents.resolve(
                         space_view,
