@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 pub trait VecDequeSortingExt<T> {
     /// Sorts `self`.
     ///
-    /// Makes sure to render `self` contigous first, if needed.
+    /// Makes sure to render `self` contiguous first, if needed.
     fn sort(&mut self);
 
     /// Check whether `self` is sorted.
@@ -77,7 +77,7 @@ fn is_sorted() {
 pub trait VecDequeRemovalExt<T> {
     /// Removes an element from anywhere in the deque and returns it, replacing it with
     /// whichever end element that this is closer to the removal point.
-    ///  
+    ///
     /// If `index` points to the front or back of the queue, the removal is guaranteed to preserve
     /// ordering; otherwise it doesn not.
     /// In either case, this is *O*(1).
