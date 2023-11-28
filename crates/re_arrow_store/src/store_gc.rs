@@ -599,7 +599,7 @@ impl IndexedBucketInner {
                 // We removed the last row
                 *time_range = TimeRange::EMPTY;
             } else {
-                *is_sorted = false;
+                *is_sorted = row_index == 0 || row_index.saturating_add(1) == col_row_id.len();
 
                 // We have at least two rows, so we can safely [index] here:
                 if row_index == 0 {
@@ -709,7 +709,7 @@ impl PersistentIndexedTable {
         let mut diff: Option<StoreDiff> = None;
 
         if let Ok(row_index) = col_row_id.binary_search(&row_id) {
-            *is_sorted = row_index.saturating_add(1) == col_row_id.len();
+            *is_sorted = row_index == 0 || row_index.saturating_add(1) == col_row_id.len();
 
             // col_row_id
             let Some(removed_row_id) = col_row_id.swap_remove(row_index) else {
