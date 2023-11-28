@@ -10,6 +10,8 @@ The x values will be the indices of the array, and the bar heights will be the p
 
 **Required**: [`TensorData`](../components/tensor_data.md)
 
+**Optional**: [`Color`](../components/color.md)
+
 ## Links
  * 🌊 [C++ API docs for `BarChart`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1BarChart.html)
  * 🐍 [Python API docs for `BarChart`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.BarChart)
