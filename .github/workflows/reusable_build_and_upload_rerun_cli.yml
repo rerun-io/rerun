@@ -137,7 +137,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.3.0
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
           pixi-version: v0.6.0
 
@@ -189,4 +189,3 @@ jobs:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.BIN_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun-cli/${{ inputs.PLATFORM }}"
           parent: false
-
