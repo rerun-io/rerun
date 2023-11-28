@@ -434,6 +434,100 @@ fn clears() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn row_id_ordering_semantics() -> anyhow::Result<()> {
+    init_logs();
+
+    let mut db = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+
+    let timeline_frame = Timeline::new_sequence("frame");
+
+    let entity_path: EntityPath = "ent".into();
+
+    // * Insert a 2D point for 'ent' at frame #10.
+    // * Clear (flat) 'ent' at frame #10 with a greater RowId.
+    // * Query 'ent' at frame #10 and make sure we find nothing.
+    {
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+
+        let row_id = RowId::random();
+        let point = MyPoint::new(1.0, 2.0);
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[point] as _],
+        )?;
+        db.add_data_row(row)?;
+
+        let row_id = row_id.next();
+        let clear = ClearIsRecursive(false);
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint,
+            entity_path.clone(),
+            [&[clear] as _],
+        )?;
+        db.add_data_row(row)?;
+
+        {
+            let query = LatestAtQuery {
+                timeline: timeline_frame,
+                at: 10.into(),
+            };
+
+            assert!(db
+                .store()
+                .query_latest_component::<MyPoint>(&entity_path, &query)
+                .is_none());
+        }
+    }
+
+    // * Insert a 2D point for 'ent' at frame #10.
+    // * Clear (flat) 'ent' at frame #10 with a lesser RowId.
+    // * Query 'ent' at frame #10 and make sure we find our point back.
+    {
+        let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
+
+        let row_id = RowId::random();
+        let clear = ClearIsRecursive(false);
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint.clone(),
+            entity_path.clone(),
+            [&[clear] as _],
+        )?;
+        db.add_data_row(row)?;
+
+        let row_id = row_id.next();
+        let point = MyPoint::new(1.0, 2.0);
+        let row = DataRow::from_component_batches(
+            row_id,
+            timepoint,
+            entity_path.clone(),
+            [&[point] as _],
+        )?;
+        db.add_data_row(row)?;
+
+        {
+            let query = LatestAtQuery {
+                timeline: timeline_frame,
+                at: 10.into(),
+            };
+
+            let got_point = db
+                .store()
+                .query_latest_component::<MyPoint>(&entity_path, &query)
+                .unwrap()
+                .value;
+
+            similar_asserts::assert_eq!(point, got_point);
+        }
+    }
+
+    Ok(())
+}
+
 /// Test for GC behavior following clear. This functionality is expected by blueprints.
 #[test]
 fn clear_and_gc() -> anyhow::Result<()> {
