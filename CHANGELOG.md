@@ -7,19 +7,19 @@
 ### Overview & Highlights
 
 - 🌊 C++ SDK improvements
-  - [reference docs are live!](https://ref.rerun.io/docs/cpp/)
+  - [Reference docs are live!](https://ref.rerun.io/docs/cpp/)
   - 2x-5x faster logging
   - CMake install support and other CMake setup improvements
   - Support for custom components & archetypes
   - Zero copy logging for images, various API improvements
-- 📈 Visual History improvements
+- 📈 Visual History -> Visual Time Range
   - Time series plots can now limit its query to a range
   - Much more powerful UI, allowing query ranges relative to time cursor
 - 🕸️ The viewer can now be easily embedded in your web apps via our [npm package](https://www.npmjs.com/package/@rerun-io/web-viewer)
-- 🐍 ⚠️ legacy Python API now removed, check the [migration guide](https://github.com/rerun-io/rerun/issues/723) if you're not using `rr.log` yet
-- 🦀 `StoreView` allows to track changes to the store. This is groundwork for upcoming performance improvements (but if you customize the viewer you have access to it as well!)
+- 🐍 ⚠️ Legacy Python API now removed, check the [migration guide](https://github.com/rerun-io/rerun/issues/723) if you're not using `rr.log` yet
+- 🦀 The new `StoreSubscriber` trait allows to be notified of all changes in the datastore. This can be used to build custom indices and trigger systems, and serves as a foundation for upcoming performance improvements. Check out [our example](https://github.com/rerun-io/rerun/blob/main/examples/rust/custom_store_subscriber/README.md) for more information.
 
-⚠️ Known issues on Visual History:
+⚠️ Known issues on Visual Time Range:
 - Time cursor [sometimes stops scrolling correctly](https://github.com/rerun-io/rerun/issues/4246) on plot window
 - Still [doesn't work with transforms](https://github.com/rerun-io/rerun/issues/723)
 
@@ -90,8 +90,6 @@ Special thanks to @dvad & @dangush for contributing!
 
 ### Overview & Highlights
 This is a small release primarily to tie up some loose ends for our C++ SDK.
-
-### Details
 
 #### 🌊 C++ SDK
 - Avoid possible link/symbol errors but defaulting all OSes to static linking of arrow [#4101](https://github.com/rerun-io/rerun/pull/4101)
