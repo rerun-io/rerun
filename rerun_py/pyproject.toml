@@ -16,7 +16,7 @@ dependencies = [
   "attrs>=23.1.0",
   "numpy>=1.23",
   "pillow",                 # Used for JPEG encoding
-  "pyarrow==14.0.0",
+  "pyarrow==14.0.1",
   "typing_extensions>=4.5", # Used for PEP-702 deprecated decorator
 ]
 description = "The Rerun Logging SDK"
