@@ -183,4 +183,3 @@ jobs:
           scripts/ci/render_bench.py sizes \
             --after $(date -d"180 days ago" +%Y-%m-%d) \
             --output "gs://rerun-builds/graphs"
-

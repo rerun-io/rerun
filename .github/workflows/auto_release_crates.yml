@@ -65,4 +65,3 @@ jobs:
     with:
       CONCURRENCY: weekly-release-${{ github.run_id }}
     secrets: inherit
-

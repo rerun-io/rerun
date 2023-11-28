@@ -166,4 +166,3 @@ jobs:
           path: "./target/${{ needs.set-config.outputs.TARGET }}/release/${{ needs.set-config.outputs.LIB_NAME }}"
           destination: "rerun-builds/adhoc/${{inputs.ADHOC_NAME}}/rerun_c/${{ inputs.PLATFORM }}"
           parent: false
-

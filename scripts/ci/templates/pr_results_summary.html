@@ -1,79 +1,96 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
+  <head>
     <title>Build Summary</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
+      body {
+        font-family: Arial, sans-serif;
+      }
 
-        .hosted-app {
-            margin-left: 20px;
-        }
+      .hosted-app {
+        margin-left: 20px;
+      }
 
-        .notebook-list {
-            margin-left: 20px;
-        }
+      .notebook-list {
+        margin-left: 20px;
+      }
 
-        .rerun_c-libraries {
-            margin-left: 20px;
-        }
+      .rerun_c-libraries {
+        margin-left: 20px;
+      }
 
-        .wheel-list {
-            margin-left: 20px;
-        }
-
+      .wheel-list {
+        margin-left: 20px;
+      }
     </style>
-</head>
+  </head>
 
-<body>
-    <h1>Build Summary for <a href="https://github.com/rerun-io/rerun/pull/{{pr_number}}">#{{pr_number}}</a></h1>
+  <body>
+    <h1>
+      Build Summary for
+      <a href="https://github.com/rerun-io/rerun/pull/{{pr_number}}"
+        >#{{pr_number}}</a
+      >
+    </h1>
 
     {% for build in found_builds %}
-    <div class=" commit-section">
-        <h2>Commit: <a href="https://github.com/rerun-io/rerun/commit/{{ build.commit }}">{{ build.commit }}</a></h2>
-        {% if build.hosted_app %}
-        <div class="hosted-app">
-            <h3>Hosted App:</h3>
-            <a href="{{ build.hosted_app }}" target="_blank">{{ build.hosted_app }}</a>
-        </div>
-        {% endif %}
-        {% if build.rerun_c_libraries %}
-        <div class="rerun_c-libraries">
-            <h3>Rerun C build:</h3>
-            <ul>
-                {% for library in build.rerun_c_libraries %}
-                <li><a href="{{ library }}" target="_blank">{{ library }}</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-        {% if build.bench_results %}
-        <h3><a href="{{ build.bench_results }}" target="_blank">Benchmark Results</a></h3>
-        {% endif %}
-        {% if build.notebooks %}
-        <div class="notebook-list">
-            <h3>Notebooks:</h3>
-            <ul>
-                {% for notebook in build.notebooks %}
-                <li><a href="{{ notebook }}" target="_blank">{{ notebook.split('/')[-1] }}</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
-        {% if build.wheels %}
-        <div class="wheel-list">
-            <h3>Wheels:</h3>
-            <ul>
-                {% for wheel in build.wheels %}
-                <li><a href="{{ wheel }}" target="_blank">{{ wheel.split('/')[-1] }}</a></li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
+    <div class="commit-section">
+      <h2>
+        Commit:
+        <a href="https://github.com/rerun-io/rerun/commit/{{ build.commit }}"
+          >{{ build.commit }}</a
+        >
+      </h2>
+      {% if build.hosted_app %}
+      <div class="hosted-app">
+        <h3>Hosted App:</h3>
+        <a href="{{ build.hosted_app }}" target="_blank"
+          >{{ build.hosted_app }}</a
+        >
+      </div>
+      {% endif %} {% if build.rerun_c_libraries %}
+      <div class="rerun_c-libraries">
+        <h3>Rerun C build:</h3>
+        <ul>
+          {% for library in build.rerun_c_libraries %}
+          <li>
+            <a href="{{ library }}" target="_blank">{{ library }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %} {% if build.bench_results %}
+      <h3>
+        <a href="{{ build.bench_results }}" target="_blank"
+          >Benchmark Results</a
+        >
+      </h3>
+      {% endif %} {% if build.notebooks %}
+      <div class="notebook-list">
+        <h3>Notebooks:</h3>
+        <ul>
+          {% for notebook in build.notebooks %}
+          <li>
+            <a href="{{ notebook }}" target="_blank"
+              >{{ notebook.split('/')[-1] }}</a
+            >
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %} {% if build.wheels %}
+      <div class="wheel-list">
+        <h3>Wheels:</h3>
+        <ul>
+          {% for wheel in build.wheels %}
+          <li>
+            <a href="{{ wheel }}" target="_blank">{{ wheel.split('/')[-1] }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
-</body>
-
+  </body>
 </html>

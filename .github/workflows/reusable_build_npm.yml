@@ -57,4 +57,3 @@ jobs:
       - name: Build package
         shell: bash
         run: node rerun_js/web-viewer/scripts/build.mjs
-

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -86,8 +86,14 @@
               xmlns="http://www.w3.org/2000/svg"
             >
               <g fill="none" fill-rule="evenodd" stroke="none" stroke-width="1">
-                <g fill="#000000" transform="translate(-215.000000, -257.000000)">
-                  <g id="fullscreen" transform="translate(215.000000, 257.000000)">
+                <g
+                  fill="#000000"
+                  transform="translate(-215.000000, -257.000000)"
+                >
+                  <g
+                    id="fullscreen"
+                    transform="translate(215.000000, 257.000000)"
+                  >
                     <path
                       d="M2,9 L0,9 L0,14 L5,14 L5,12 L2,12 L2,9 L2,9 Z M0,5 L2,5 L2,2 L5,2 L5,0 L0,0 L0,5 L0,5 Z M12,12 L9,12 L9,14 L14,14 L14,9 L12,9 L12,12 L12,12 Z M9,0 L9,2 L12,2 L12,5 L14,5 L14,0 L9,0 L9,0 Z"
                     />
@@ -117,7 +123,9 @@
 
       function createCanvas() {
         const main = document.querySelector("main");
-        main.appendChild(document.getElementById("chart-template").content.cloneNode(true));
+        main.appendChild(
+          document.getElementById("chart-template").content.cloneNode(true),
+        );
 
         const container = main.lastElementChild;
         const zoom = container.querySelector("button");
@@ -127,7 +135,8 @@
         function resizeCanvas() {
           if (fullscreen) {
             const style = getComputedStyle(container);
-            canvas._chart._aspectRatio = parseInt(style.width) / parseInt(style.height);
+            canvas._chart._aspectRatio =
+              parseInt(style.width) / parseInt(style.height);
           } else {
             canvas._chart._aspectRatio = 1;
           }
@@ -184,4 +193,3 @@
     </script>
   </body>
 </html>
-

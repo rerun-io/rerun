@@ -63,4 +63,3 @@ jobs:
             --github-token ${{ secrets.GITHUB_TOKEN }} \
             --wait ${{ inputs.WAIT_TIME_SECS }} \
             --remove --update
-

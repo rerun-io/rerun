@@ -122,4 +122,3 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}"
           parent: false
-

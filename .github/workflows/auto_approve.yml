@@ -44,4 +44,3 @@ jobs:
             --github-token "${{ secrets.GITHUB_TOKEN }}" \
             --github-repository "rerun-io/rerun" \
             --pr-number "${{ github.event.pull_request.number || github.event.issue.number }}"
-

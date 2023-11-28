@@ -426,4 +426,3 @@ jobs:
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
-

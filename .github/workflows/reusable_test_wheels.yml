@@ -199,4 +199,3 @@ jobs:
         # --no-py-build because rerun-sdk is already built and installed
         run: |
           RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
-

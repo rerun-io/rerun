@@ -54,15 +54,8 @@ jobs:
 
   bundle-and-upload-rerun_cpp:
     name: "Bundle and upload rerun_cpp_sdk.zip"
-    needs:
-      [
-        linux,
-        macos-intel,
-        macos-arm,
-        windows,
-      ]
+    needs: [linux, macos-intel, macos-arm, windows]
     uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
     with:
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
-

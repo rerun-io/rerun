@@ -68,4 +68,3 @@ jobs:
         shell: bash
         run: |
           pixi run node rerun_js/web-viewer/scripts/publish.mjs
-

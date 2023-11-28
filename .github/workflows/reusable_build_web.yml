@@ -65,4 +65,3 @@ jobs:
         with:
           name: web_viewer
           path: web_viewer
-

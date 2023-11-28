@@ -56,4 +56,3 @@ jobs:
       - name: "Bundle and upload rerun_cpp_sdk.zip"
         shell: bash
         run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.get-sha.outputs.sha }} --platform-filter=${{ inputs.PLATFORM_FILTER }}
-

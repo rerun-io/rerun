@@ -93,4 +93,3 @@ jobs:
           path: "/tmp/cube.html"
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/notebooks"
           parent: false
-
