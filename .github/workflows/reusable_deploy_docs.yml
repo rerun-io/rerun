@@ -1,251 +1,251 @@
 name: "Reusable Deploy Docs"
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            PY_AND_CPP_DOCS_VERSION_NAME:
-                required: true
-                type: string
-            RS_DOCS_VERSION_NAME:
-                required: false
-                type: string
-                default: "head"
-            RELEASE_COMMIT:
-                required: false
-                type: string
-            UPDATE_LATEST:
-                required: false
-                type: boolean
-                default: false
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      PY_AND_CPP_DOCS_VERSION_NAME:
+        required: true
+        type: string
+      RS_DOCS_VERSION_NAME:
+        required: false
+        type: string
+        default: "head"
+      RELEASE_COMMIT:
+        required: false
+        type: string
+      UPDATE_LATEST:
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-deploy-docs
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-deploy-docs
+  cancel-in-progress: true
 
 permissions:
-    contents: "write"
-    id-token: "write"
+  contents: "write"
+  id-token: "write"
 
 env:
-    PYTHON_VERSION: "3.8"
-    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-    RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+  PYTHON_VERSION: "3.8"
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-    # See https://github.com/ericseppanen/cargo-cranky/issues/8
-    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
-    # See: https://github.com/marketplace/actions/sccache-action
-    SCCACHE_GHA_ENABLED: "true"
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "true"
 
 jobs:
-    # ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
-    py-deploy-docs:
-        name: Python
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0 # Don't do a shallow clone
-                  ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
+  py-deploy-docs:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Don't do a shallow clone
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-            - name: Set up Python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: "3.8"
-                  cache: "pip"
-                  cache-dependency-path: "rerun_py/requirements-doc.txt"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+          cache: "pip"
+          cache-dependency-path: "rerun_py/requirements-doc.txt"
 
-            - name: Install Python dependencies
-              shell: bash
-              run: |
-                  pip install --upgrade pip
-                  pip install -r rerun_py/requirements-doc.txt
+      - name: Install Python dependencies
+        shell: bash
+        run: |
+          pip install --upgrade pip
+          pip install -r rerun_py/requirements-doc.txt
 
-            - name: Set up git author
-              shell: bash
-              run: |
-                  remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-                  git config --global user.name "${GITHUB_ACTOR}"
-                  git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up git author
+        shell: bash
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            # Mike will incrementally update the existing gh-pages branch
-            # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
-            # to make sure we don't accumulate unnecessary history in gh-pages branch
-            - name: Deploy via mike # https://github.com/jimporter/mike
-              if: ${{ inputs.UPDATE_LATEST }}
-              shell: bash
-              run: |
-                  git fetch
-                  mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_AND_CPP_DOCS_VERSION_NAME}} stable
-                  git checkout gh-pages
-                  git checkout --orphan gh-pages-orphan
-                  git commit -m "Update docs for ${GITHUB_SHA}"
-                  git push origin gh-pages-orphan:gh-pages -f
+      # Mike will incrementally update the existing gh-pages branch
+      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
+      # to make sure we don't accumulate unnecessary history in gh-pages branch
+      - name: Deploy via mike # https://github.com/jimporter/mike
+        if: ${{ inputs.UPDATE_LATEST }}
+        shell: bash
+        run: |
+          git fetch
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python -u ${{inputs.PY_AND_CPP_DOCS_VERSION_NAME}} stable
+          git checkout gh-pages
+          git checkout --orphan gh-pages-orphan
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
 
-            # Mike will incrementally update the existing gh-pages branch
-            # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
-            # to make sure we don't accumulate unnecessary history in gh-pages branch
-            - name: Deploy tag via mike # https://github.com/jimporter/mike
-              if: ${{ ! inputs.UPDATE_LATEST }}
-              shell: bash
-              run: |
-                  git fetch
-                  mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python ${{inputs.PY_AND_CPP_DOCS_VERSION_NAME}}
-                  git checkout gh-pages
-                  git checkout --orphan gh-pages-orphan
-                  git commit -m "Update docs for ${GITHUB_SHA}"
-                  git push origin gh-pages-orphan:gh-pages -f
+      # Mike will incrementally update the existing gh-pages branch
+      # We then check it out, and reset it to a new orphaned branch, which we force-push to origin
+      # to make sure we don't accumulate unnecessary history in gh-pages branch
+      - name: Deploy tag via mike # https://github.com/jimporter/mike
+        if: ${{ ! inputs.UPDATE_LATEST }}
+        shell: bash
+        run: |
+          git fetch
+          mike deploy -F rerun_py/mkdocs.yml --rebase -b gh-pages --prefix docs/python ${{inputs.PY_AND_CPP_DOCS_VERSION_NAME}}
+          git checkout gh-pages
+          git checkout --orphan gh-pages-orphan
+          git commit -m "Update docs for ${GITHUB_SHA}"
+          git push origin gh-pages-orphan:gh-pages -f
 
-    # ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
-    rs-deploy-docs:
-        name: Rust
-        needs: [py-deploy-docs]
-        runs-on: ubuntu-latest-16-cores
-        container:
-            image: rerunio/ci_docker:0.10.0
-        steps:
-            - name: Show context
-              shell: bash
-              run: |
-                  echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
-                  echo "JOB_CONTEXT": $JOB_CONTEXT
-                  echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
-                  echo "ENV_CONTEXT": $ENV_CONTEXT
-              env:
-                  ENV_CONTEXT: ${{ toJson(env) }}
-                  GITHUB_CONTEXT: ${{ toJson(github) }}
-                  JOB_CONTEXT: ${{ toJson(job) }}
-                  INPUTS_CONTEXT: ${{ toJson(inputs) }}
+  rs-deploy-docs:
+    name: Rust
+    needs: [py-deploy-docs]
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.10.0
+    steps:
+      - name: Show context
+        shell: bash
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
-            - uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
-                  ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-            - name: Set up Rust
-              uses: ./.github/actions/setup-rust
-              with:
-                  cache_key: "build-linux"
-                  # Cache will be produced by `reusable_checks/rs-lints`
-                  save_cache: false
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-linux"
+          # Cache will be produced by `reusable_checks/rs-lints`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - name: Delete existing /target/doc
-              shell: bash
-              run: rm -rf ./target/doc
+      - name: Delete existing /target/doc
+        shell: bash
+        run: rm -rf ./target/doc
 
-            - name: cargo doc --document-private-items
-              uses: actions-rs/cargo@v1
-              with:
-                  command: doc
-                  args: --document-private-items --no-deps --all-features --workspace --exclude rerun-cli
+      - name: cargo doc --document-private-items
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --document-private-items --no-deps --all-features --workspace --exclude rerun-cli
 
-            - name: Set up git author
-              shell: bash
-              run: |
-                  remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-                  git config --global user.name "${GITHUB_ACTOR}"
-                  git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up git author
+        shell: bash
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Set up ghp-import
-              shell: bash
-              run: pip install ghp-import
+      - name: Set up ghp-import
+        shell: bash
+        run: pip install ghp-import
 
-            - name: Patch in a redirect page
-              shell: bash
-              run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
-              env:
-                  REDIRECT_CRATE: rerun
+      - name: Patch in a redirect page
+        shell: bash
+        run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
+        env:
+          REDIRECT_CRATE: rerun
 
-            # See: https://github.com/c-w/ghp-import
-            - name: Deploy the docs
-              shell: bash
-              run: |
-                  git fetch
-                  python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
+      # See: https://github.com/c-w/ghp-import
+      - name: Deploy the docs
+        shell: bash
+        run: |
+          git fetch
+          python3 -m ghp_import -n -p -x docs/rust/${{ inputs.RS_DOCS_VERSION_NAME }} target/doc/ -m "Update the rust docs"
 
-    cpp-deploy-docs:
-        name: Cpp
-        needs: [rs-deploy-docs]
-        runs-on: ubuntu-latest
-        steps:
-            - name: Show context
-              shell: bash
-              run: |
-                  echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
-                  echo "JOB_CONTEXT": $JOB_CONTEXT
-                  echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
-                  echo "ENV_CONTEXT": $ENV_CONTEXT
-              env:
-                  ENV_CONTEXT: ${{ toJson(env) }}
-                  GITHUB_CONTEXT: ${{ toJson(github) }}
-                  JOB_CONTEXT: ${{ toJson(job) }}
-                  INPUTS_CONTEXT: ${{ toJson(inputs) }}
+  cpp-deploy-docs:
+    name: Cpp
+    needs: [rs-deploy-docs]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show context
+        shell: bash
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
-            - uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
-                  ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Don't do a shallow clone since we need to push gh-pages
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-            - uses: prefix-dev/setup-pixi@v0.4.1
-              with:
-                  pixi-version: v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
 
-            - name: Doxygen C++ docs
-              shell: bash
-              run: pixi run cpp-docs
+      - name: Doxygen C++ docs
+        shell: bash
+        run: pixi run cpp-docs
 
-            - name: Set up git author
-              shell: bash
-              run: |
-                  remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-                  git config --global user.name "${GITHUB_ACTOR}"
-                  git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up git author
+        shell: bash
+        run: |
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Set up ghp-import
-              shell: bash
-              run: pip install ghp-import
+      - name: Set up ghp-import
+        shell: bash
+        run: pip install ghp-import
 
-              # TODO(andreas): Do we need this?
-            # - name: Patch in a redirect page
-            #   shell: bash
-            #   run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
-            #   env:
-            #     REDIRECT_CRATE: rerun
+        # TODO(andreas): Do we need this?
+      # - name: Patch in a redirect page
+      #   shell: bash
+      #   run: echo "<meta http-equiv=\"refresh\" content=\"0; url=${REDIRECT_CRATE}\">" > target/doc/index.html
+      #   env:
+      #     REDIRECT_CRATE: rerun
 
-            # See: https://github.com/c-w/ghp-import
-            - name: Deploy the docs
-              shell: bash
-              run: |
-                  git fetch
-                  python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.PY_AND_CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
+      # See: https://github.com/c-w/ghp-import
+      - name: Deploy the docs
+        shell: bash
+        run: |
+          git fetch
+          python3 -m ghp_import -n -p -x docs/cpp/${{ inputs.PY_AND_CPP_DOCS_VERSION_NAME }} rerun_cpp/docs/html/ -m "Update the C++ docs"
 
-    redeploy-rerun-io:
-        runs-on: ubuntu-latest
-        if: inputs.UPDATE_LATEST
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
+  redeploy-rerun-io:
+    runs-on: ubuntu-latest
+    if: inputs.UPDATE_LATEST
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.ref || '') }}
 
-            - name: Re-deploy rerun.io
-              uses: ./.github/actions/deploy-vercel
-              with:
-                  vercel_token: ${{ secrets.VERCEL_TOKEN }}
-                  vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
-                  vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
-                  release_commit: ${{ inputs.RELEASE_COMMIT }}
+      - name: Re-deploy rerun.io
+        uses: ./.github/actions/deploy-vercel
+        with:
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
+          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          release_commit: ${{ inputs.RELEASE_COMMIT }}

@@ -1,34 +1,34 @@
 <!doctype html>
 <html>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-    <!-- Disable zooming: -->
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, user-scalable=no"
-    />
+  <!-- Disable zooming: -->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  />
 
-    <head>
-        <title>Compare Screenshot</title>
-        <link rel="stylesheet" href="index.css" />
-    </head>
+  <head>
+    <title>Compare Screenshot</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
 
-    <body>
-        <div class="screen_splitter">
-            <iframe id="iframe" allowfullscreen src=""></iframe>
-            <img alt="" src="{{ example.screenshot_url }}" />
-        </div>
+  <body>
+    <div class="screen_splitter">
+      <iframe id="iframe" allowfullscreen src=""></iframe>
+      <img alt="" src="{{ example.screenshot_url }}" />
+    </div>
 
-        <script>
-            // set the iframe URL
-            let encodedUrl = encodeURIComponent(
-                window.location.protocol +
-                    "//" +
-                    window.location.host +
-                    "/examples/{{ example.name }}/data.rrd",
-            );
-            document.getElementById("iframe").src =
-                "http://127.0.0.1:9090/?url=" + encodedUrl;
-        </script>
-    </body>
+    <script>
+      // set the iframe URL
+      let encodedUrl = encodeURIComponent(
+        window.location.protocol +
+          "//" +
+          window.location.host +
+          "/examples/{{ example.name }}/data.rrd",
+      );
+      document.getElementById("iframe").src =
+        "http://127.0.0.1:9090/?url=" + encodedUrl;
+    </script>
+  </body>
 </html>

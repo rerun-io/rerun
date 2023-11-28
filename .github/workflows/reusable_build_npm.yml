@@ -1,59 +1,59 @@
 name: Reusable Build Web
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-build-js
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-build-js
+  cancel-in-progress: true
 
 env:
-    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-    RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-    # See https://github.com/ericseppanen/cargo-cranky/issues/8
-    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 jobs:
-    build:
-        name: Build
-        permissions:
-            contents: "read"
-            id-token: "write"
+  build:
+    name: Build
+    permissions:
+      contents: "read"
+      id-token: "write"
 
-        runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-16-cores
 
-        container:
-            image: rerunio/ci_docker:0.10.0
+    container:
+      image: rerunio/ci_docker:0.10.0
 
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: "20.x"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
 
-            - name: Set up Rust
-              uses: ./.github/actions/setup-rust
-              with:
-                  cache_key: "build-web"
-                  # Cache will be produced by `reusable_checks/rs-check-wasm`
-                  save_cache: false
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-web"
+          # Cache will be produced by `reusable_checks/rs-check-wasm`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - name: Install dependencies
-              shell: bash
-              run: node rerun_js/web-viewer/scripts/install.mjs
+      - name: Install dependencies
+        shell: bash
+        run: node rerun_js/web-viewer/scripts/install.mjs
 
-            - name: Build package
-              shell: bash
-              run: node rerun_js/web-viewer/scripts/build.mjs
+      - name: Build package
+        shell: bash
+        run: node rerun_js/web-viewer/scripts/build.mjs

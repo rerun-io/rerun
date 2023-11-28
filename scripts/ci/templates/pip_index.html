@@ -1,41 +1,41 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <title>Pip Index</title>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-            }
+  <head>
+    <title>Pip Index</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
 
-            .hosted-app {
-                margin-left: 20px;
-            }
+      .hosted-app {
+        margin-left: 20px;
+      }
 
-            .wheel-list {
-                margin-left: 20px;
-            }
-        </style>
-    </head>
+      .wheel-list {
+        margin-left: 20px;
+      }
+    </style>
+  </head>
 
-    <body>
-        <h1>Minimum Pip Index</h1>
+  <body>
+    <h1>Minimum Pip Index</h1>
 
-        {% for build in found_builds %}
-        <div class="commit-section">
-            <h2>Commit: {{ build.commit }}</h2>
-            {% if build.wheels %}
-            <div class="wheel-list">
-                <h3>Wheels:</h3>
-                <ul>
-                    {% for wheel in build.wheels %}
-                    <li>
-                        <a href="{{ wheel }}" target="_blank">{{ wheel }}</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
-    </body>
+    {% for build in found_builds %}
+    <div class="commit-section">
+      <h2>Commit: {{ build.commit }}</h2>
+      {% if build.wheels %}
+      <div class="wheel-list">
+        <h3>Wheels:</h3>
+        <ul>
+          {% for wheel in build.wheels %}
+          <li>
+            <a href="{{ wheel }}" target="_blank">{{ wheel }}</a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </body>
 </html>

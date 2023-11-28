@@ -1,428 +1,428 @@
 name: Release
 
 on:
-    workflow_dispatch:
-        inputs:
-            release-type:
-                description: "What kind of release is this?"
-                type: choice
-                options:
-                    - alpha
-                    - rc
-                    - final
-                required: true
+  workflow_dispatch:
+    inputs:
+      release-type:
+        description: "What kind of release is this?"
+        type: choice
+        options:
+          - alpha
+          - rc
+          - final
+        required: true
 
 concurrency:
-    group: ${{ github.ref_name }}
-    cancel-in-progress: true
+  group: ${{ github.ref_name }}
+  cancel-in-progress: true
 
 permissions: # wants to push commits and create a PR
-    contents: write
-    id-token: write
+  contents: write
+  id-token: write
 
 jobs:
-    # Re-entrancy:
-    # - `version` is re-entrant because it doesn't commit/create PR if the version doesn't change,
-    #   and the version doesn't change if we're already on the final version specified by the branch name.
-    # - `update-docs` is re-entrant because it overwrites history of the `gh-pages` branch, so any
-    #   previous partial update will just be overwritten by the next successful run.
-    # - `publish-crates` is re-entrant because the `crates.py` script correctly handles publish failures
-    #   by first checking if a crate has already been published before attempting to publish it.
-    # - `build-and-publish-wheels` is re-entrant because all the uploaded artifacts will be overwritten
-    #   by any subsequent runs, and the final upload to PyPI has the `--skip-existing` flag, which ignores
-    #   any wheels already uploaded.
-    # - `build-and-publish-web` is re-entrant for the same reason as `build-and-publish-wheels`,
-    #   except that uploads are done to GCS instead of PyPI.
+  # Re-entrancy:
+  # - `version` is re-entrant because it doesn't commit/create PR if the version doesn't change,
+  #   and the version doesn't change if we're already on the final version specified by the branch name.
+  # - `update-docs` is re-entrant because it overwrites history of the `gh-pages` branch, so any
+  #   previous partial update will just be overwritten by the next successful run.
+  # - `publish-crates` is re-entrant because the `crates.py` script correctly handles publish failures
+  #   by first checking if a crate has already been published before attempting to publish it.
+  # - `build-and-publish-wheels` is re-entrant because all the uploaded artifacts will be overwritten
+  #   by any subsequent runs, and the final upload to PyPI has the `--skip-existing` flag, which ignores
+  #   any wheels already uploaded.
+  # - `build-and-publish-web` is re-entrant for the same reason as `build-and-publish-wheels`,
+  #   except that uploads are done to GCS instead of PyPI.
 
-    checks:
-        name: "Checks"
-        runs-on: ubuntu-latest
+  checks:
+    name: "Checks"
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-            - name: Setup Python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: 3.11
-
-            # TODO(emilk): We want to forbid `?speculative-link` just _after_ a release…
-            # - name: Check links for `?speculative-link`
-            #   # NOTE: We allow `?speculative-link` only in alpha releases
-            #   run: |
-            #     if [ ${{ inputs.release-type }} != "alpha" ]; then
-            #       python3 scripts/ci/check_links.py
-            #     fi
-
-    version:
-        name: "Versioning"
-        runs-on: ubuntu-latest
-        needs: [checks]
-        outputs:
-            previous: ${{ steps.versioning.outputs.previous }}
-            current: ${{ steps.versioning.outputs.current }}
-            final: ${{ steps.versioning.outputs.final }}
-            # will be set to `github.sha` if the pull request already exists
-            # this is the last (and not merge) commit in the release branch
-            release-commit: ${{ steps.commit.outputs.version_bump_commit_sha || github.sha }}
-
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-                  token: ${{ secrets.RERUN_BOT_TOKEN }}
-
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 18
-
-            - name: Set up Python
-              uses: actions/setup-python@v2
-              with:
-                  python-version: 3.11
-
-            - name: Install deps
-              shell: bash
-              run: |
-                  python3 -m pip install -r ./scripts/ci/requirements-crates.txt
-
-            - name: Install taplo-cli
-              uses: taiki-e/install-action@v2
-              with:
-                  tool: taplo-cli
-
-            - name: Update crate versions
-              id: versioning
-              shell: bash
-              run: |
-
-                  echo "release_version: $release_version"
-
-                  echo Parse the release version from the branch name…
-                  #   `release-0.8.1-meta.N` -> `0.8.1`
-                  release_version=$(python3 scripts/ci/crates.py get-version --from git --finalize)
-
-                  echo Store version before the update, so we can later detect if it changed…
-                  previous=$(python3 scripts/ci/crates.py get-version)
-
-                  echo If the version minus prerelease/build metadata is not the same as the release version, then update it.…
-                  if [ $(python3 scripts/ci/crates.py get-version --finalize) != $release_version ]; then
-                    python3 scripts/ci/crates.py version --exact $release_version
-                  fi
-
-                  echo If this is an 'rc', additionally set add '-rc.N'. This will also bump the 'N' if '-rc.N' is already set…
-                  if [ ${{ inputs.release-type }} = "rc" ]; then
-                    python3 scripts/ci/crates.py version --bump prerelease --pre-id=rc
-                  fi
-
-                  echo If this is an 'alpha', set the version to whatever is in the git branch name.…
-                  if [ ${{ inputs.release-type }} = "alpha" ]; then
-                    python3 scripts/ci/crates.py version --exact $(python3 scripts/ci/crates.py get-version --from git)
-                  fi
-
-                  echo If this is a 'final', set the version to the final release version…
-                  if [ ${{ inputs.release-type }} = "final" ]; then
-                    python3 scripts/ci/crates.py version --exact $release_version
-                  fi
-
-                  echo Store version after the update, and the expected "final" release version…
-                  current=$(python3 scripts/ci/crates.py get-version)
-                  final=$(python3 scripts/ci/crates.py get-version --finalize)
-
-                  echo Output everything for use in other steps…
-                  echo "previous=$previous" >> "$GITHUB_OUTPUT"
-                  echo "current=$current"   >> "$GITHUB_OUTPUT"
-                  echo "final=$final"       >> "$GITHUB_OUTPUT"
-
-            - name: Update NPM versions
-              shell: bash
-              run: |
-                  node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
-
-            - name: Update rerun_c version
-              shell: bash
-              # Configuring CMake is enough to change the version on rerun.h!
-              run: |
-                  cmake -B build -S .
-
-            - run: taplo fmt
-              shell: bash
-
-            - name: Commit new version
-              id: commit
-              if: steps.versioning.outputs.previous != steps.versioning.outputs.current
-              shell: bash
-              run: |
-                  git pull
-                  git config --global user.name "rerun-bot"
-                  git config --global user.email "bot@rerun.io"
-                  git commit -am "Bump versions to ${{ steps.versioning.outputs.current }}"
-                  git push
-                  echo "version_bump_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-            - name: Create pull request
-              env:
-                  GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
-              shell: bash
-              run: |
-                  set +e
-                  pr=$(gh pr view --json headRefName 2>/dev/null || echo "{}")
-                  if echo "$pr" | jq '. | has("headRefName")' | grep -q 'true'; then
-                    echo "PR already exists"
-                    exit 0
-                  fi
-                  set -e
-
-                  echo "PR does not exist, creating…"
-
-                  cat <<EOF > pr-body.txt
-                  ### Next steps
-                  - Test the release
-                  - If this is an 'alpha' release, you can just merge the pull request.
-                  - Otherwise:
-                    - For any added commits, run the release workflow in 'rc' mode again
-                    - After testing, run the release workflow in 'release' mode
-                    - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
-
-                  - [ ] Tests
-                    - [ ] Windows
-                    - [ ] Linux
-                    - [ ] MacOS
-                  EOF
-
-                  gh pr create \
-                    --base main \
-                    --head $(git branch --show-current) \
-                    --title "Release ${{ (inputs.release-type == 'alpha' && steps.versioning.outputs.current) || steps.versioning.outputs.final }}" \
-                    --label "⛴ release" \
-                    --label "exclude from changelog" \
-                    --fill \
-                    --body-file pr-body.txt
-
-    update-docs:
-        name: "Update Docs"
-        needs: [version]
-        uses: ./.github/workflows/reusable_deploy_docs.yml
+      - name: Setup Python
+        uses: actions/setup-python@v4
         with:
-            CONCURRENCY: ${{ github.ref_name }}
-            PY_AND_CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
-            RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
-            UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
-            RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
-        secrets: inherit
+          python-version: 3.11
 
-    publish-crates:
-        name: "Publish Crates"
-        needs: [version]
-        uses: ./.github/workflows/reusable_release_crates.yml
+      # TODO(emilk): We want to forbid `?speculative-link` just _after_ a release…
+      # - name: Check links for `?speculative-link`
+      #   # NOTE: We allow `?speculative-link` only in alpha releases
+      #   run: |
+      #     if [ ${{ inputs.release-type }} != "alpha" ]; then
+      #       python3 scripts/ci/check_links.py
+      #     fi
+
+  version:
+    name: "Versioning"
+    runs-on: ubuntu-latest
+    needs: [checks]
+    outputs:
+      previous: ${{ steps.versioning.outputs.previous }}
+      current: ${{ steps.versioning.outputs.current }}
+      final: ${{ steps.versioning.outputs.final }}
+      # will be set to `github.sha` if the pull request already exists
+      # this is the last (and not merge) commit in the release branch
+      release-commit: ${{ steps.commit.outputs.version_bump_commit_sha || github.sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-            CONCURRENCY: ${{ github.ref_name }}
-            RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
-        secrets: inherit
+          fetch-depth: 0
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
 
-    publish-wheels:
-        name: "Build and Publish Wheels"
-        needs: [version]
-        uses: ./.github/workflows/reusable_publish_wheels.yml
+      - uses: actions/setup-node@v4
         with:
-            release-version: ${{ needs.version.outputs.current }}
-            concurrency: ${{ github.ref_name }}
-            linux-wheel-name: linux-wheel
-            release-commit: ${{ needs.version.outputs.release-commit }}
-        secrets: inherit
+          node-version: 18
 
-    publish-web:
-        name: "Build and Publish Web"
-        needs: [version, publish-wheels]
-        uses: ./.github/workflows/reusable_publish_web.yml
+      - name: Set up Python
+        uses: actions/setup-python@v2
         with:
-            release-version: ${{ needs.version.outputs.current }}
-            release-commit: ${{ needs.version.outputs.release-commit }}
-            concurrency: ${{ github.ref_name }}
-            wheel-artifact-name: linux-wheel
-            update-latest: ${{ inputs.release-type == 'final' }}
-        secrets: inherit
+          python-version: 3.11
 
-    publish-rerun_c:
-        name: "Build and Publish rerun_c"
-        needs: [version]
-        uses: ./.github/workflows/reusable_publish_rerun_c.yml
+      - name: Install deps
+        shell: bash
+        run: |
+          python3 -m pip install -r ./scripts/ci/requirements-crates.txt
+
+      - name: Install taplo-cli
+        uses: taiki-e/install-action@v2
         with:
-            release-version: ${{ needs.version.outputs.current }}
-            release-commit: ${{ needs.version.outputs.release-commit }}
-            concurrency: ${{ github.ref_name }}
-        secrets: inherit
+          tool: taplo-cli
 
-    publish-rerun-cli:
-        name: "Publish rerun-cli"
-        needs: [version]
-        uses: ./.github/workflows/reusable_publish_rerun_cli.yml
+      - name: Update crate versions
+        id: versioning
+        shell: bash
+        run: |
+
+          echo "release_version: $release_version"
+
+          echo Parse the release version from the branch name…
+          #   `release-0.8.1-meta.N` -> `0.8.1`
+          release_version=$(python3 scripts/ci/crates.py get-version --from git --finalize)
+
+          echo Store version before the update, so we can later detect if it changed…
+          previous=$(python3 scripts/ci/crates.py get-version)
+
+          echo If the version minus prerelease/build metadata is not the same as the release version, then update it.…
+          if [ $(python3 scripts/ci/crates.py get-version --finalize) != $release_version ]; then
+            python3 scripts/ci/crates.py version --exact $release_version
+          fi
+
+          echo If this is an 'rc', additionally set add '-rc.N'. This will also bump the 'N' if '-rc.N' is already set…
+          if [ ${{ inputs.release-type }} = "rc" ]; then
+            python3 scripts/ci/crates.py version --bump prerelease --pre-id=rc
+          fi
+
+          echo If this is an 'alpha', set the version to whatever is in the git branch name.…
+          if [ ${{ inputs.release-type }} = "alpha" ]; then
+            python3 scripts/ci/crates.py version --exact $(python3 scripts/ci/crates.py get-version --from git)
+          fi
+
+          echo If this is a 'final', set the version to the final release version…
+          if [ ${{ inputs.release-type }} = "final" ]; then
+            python3 scripts/ci/crates.py version --exact $release_version
+          fi
+
+          echo Store version after the update, and the expected "final" release version…
+          current=$(python3 scripts/ci/crates.py get-version)
+          final=$(python3 scripts/ci/crates.py get-version --finalize)
+
+          echo Output everything for use in other steps…
+          echo "previous=$previous" >> "$GITHUB_OUTPUT"
+          echo "current=$current"   >> "$GITHUB_OUTPUT"
+          echo "final=$final"       >> "$GITHUB_OUTPUT"
+
+      - name: Update NPM versions
+        shell: bash
+        run: |
+          node rerun_js/web-viewer/scripts/version.mjs ${{ steps.versioning.outputs.current }}
+
+      - name: Update rerun_c version
+        shell: bash
+        # Configuring CMake is enough to change the version on rerun.h!
+        run: |
+          cmake -B build -S .
+
+      - run: taplo fmt
+        shell: bash
+
+      - name: Commit new version
+        id: commit
+        if: steps.versioning.outputs.previous != steps.versioning.outputs.current
+        shell: bash
+        run: |
+          git pull
+          git config --global user.name "rerun-bot"
+          git config --global user.email "bot@rerun.io"
+          git commit -am "Bump versions to ${{ steps.versioning.outputs.current }}"
+          git push
+          echo "version_bump_commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        shell: bash
+        run: |
+          set +e
+          pr=$(gh pr view --json headRefName 2>/dev/null || echo "{}")
+          if echo "$pr" | jq '. | has("headRefName")' | grep -q 'true'; then
+            echo "PR already exists"
+            exit 0
+          fi
+          set -e
+
+          echo "PR does not exist, creating…"
+
+          cat <<EOF > pr-body.txt
+          ### Next steps
+          - Test the release
+          - If this is an 'alpha' release, you can just merge the pull request.
+          - Otherwise:
+            - For any added commits, run the release workflow in 'rc' mode again
+            - After testing, run the release workflow in 'release' mode
+            - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+
+          - [ ] Tests
+            - [ ] Windows
+            - [ ] Linux
+            - [ ] MacOS
+          EOF
+
+          gh pr create \
+            --base main \
+            --head $(git branch --show-current) \
+            --title "Release ${{ (inputs.release-type == 'alpha' && steps.versioning.outputs.current) || steps.versioning.outputs.final }}" \
+            --label "⛴ release" \
+            --label "exclude from changelog" \
+            --fill \
+            --body-file pr-body.txt
+
+  update-docs:
+    name: "Update Docs"
+    needs: [version]
+    uses: ./.github/workflows/reusable_deploy_docs.yml
+    with:
+      CONCURRENCY: ${{ github.ref_name }}
+      PY_AND_CPP_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && needs.version.outputs.final || 'dev' }}
+      RS_DOCS_VERSION_NAME: ${{ inputs.release-type == 'final' && 'stable' || 'dev' }}
+      UPDATE_LATEST: ${{ inputs.release-type == 'final' }}
+      RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
+    secrets: inherit
+
+  publish-crates:
+    name: "Publish Crates"
+    needs: [version]
+    uses: ./.github/workflows/reusable_release_crates.yml
+    with:
+      CONCURRENCY: ${{ github.ref_name }}
+      RELEASE_COMMIT: ${{ needs.version.outputs.release-commit }}
+    secrets: inherit
+
+  publish-wheels:
+    name: "Build and Publish Wheels"
+    needs: [version]
+    uses: ./.github/workflows/reusable_publish_wheels.yml
+    with:
+      release-version: ${{ needs.version.outputs.current }}
+      concurrency: ${{ github.ref_name }}
+      linux-wheel-name: linux-wheel
+      release-commit: ${{ needs.version.outputs.release-commit }}
+    secrets: inherit
+
+  publish-web:
+    name: "Build and Publish Web"
+    needs: [version, publish-wheels]
+    uses: ./.github/workflows/reusable_publish_web.yml
+    with:
+      release-version: ${{ needs.version.outputs.current }}
+      release-commit: ${{ needs.version.outputs.release-commit }}
+      concurrency: ${{ github.ref_name }}
+      wheel-artifact-name: linux-wheel
+      update-latest: ${{ inputs.release-type == 'final' }}
+    secrets: inherit
+
+  publish-rerun_c:
+    name: "Build and Publish rerun_c"
+    needs: [version]
+    uses: ./.github/workflows/reusable_publish_rerun_c.yml
+    with:
+      release-version: ${{ needs.version.outputs.current }}
+      release-commit: ${{ needs.version.outputs.release-commit }}
+      concurrency: ${{ github.ref_name }}
+    secrets: inherit
+
+  publish-rerun-cli:
+    name: "Publish rerun-cli"
+    needs: [version]
+    uses: ./.github/workflows/reusable_publish_rerun_cli.yml
+    with:
+      release-version: ${{ needs.version.outputs.current }}
+      release-commit: ${{ needs.version.outputs.release-commit }}
+      concurrency: ${{ github.ref_name }}
+    secrets: inherit
+
+  publish-npm:
+    name: "Publish to NPM"
+    needs: [version]
+    uses: ./.github/workflows/reusable_publish_npm.yml
+    with:
+      release-commit: ${{ needs.version.outputs.release-commit }}
+      concurrency: ${{ github.ref_name }}
+    secrets: inherit
+
+  update-latest-branch:
+    name: "Update Latest Branch"
+    if: inputs.release-type == 'final'
+    needs:
+      [
+        version,
+        update-docs,
+        publish-crates,
+        publish-wheels,
+        publish-web,
+        publish-rerun_c,
+        publish-rerun-cli,
+        publish-npm,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-            release-version: ${{ needs.version.outputs.current }}
-            release-commit: ${{ needs.version.outputs.release-commit }}
-            concurrency: ${{ github.ref_name }}
-        secrets: inherit
+          ref: ${{ needs.version.outputs.release-commit }}
 
-    publish-npm:
-        name: "Publish to NPM"
-        needs: [version]
-        uses: ./.github/workflows/reusable_publish_npm.yml
+      - name: Update latest branch
+        shell: bash
+        run: |
+          git fetch
+          git checkout ${{ github.ref_name }}
+          git push --force origin ${{ github.ref_name }}:latest
+
+  post-release-version-bump:
+    name: "Post-Release Version Bump"
+    if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
+    needs:
+      [
+        version,
+        update-docs,
+        publish-crates,
+        publish-wheels,
+        publish-web,
+        publish-rerun_c,
+        publish-rerun-cli,
+        publish-npm,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-            release-commit: ${{ needs.version.outputs.release-commit }}
-            concurrency: ${{ github.ref_name }}
-        secrets: inherit
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
 
-    update-latest-branch:
-        name: "Update Latest Branch"
-        if: inputs.release-type == 'final'
-        needs:
-            [
-                version,
-                update-docs,
-                publish-crates,
-                publish-wheels,
-                publish-web,
-                publish-rerun_c,
-                publish-rerun-cli,
-                publish-npm,
-            ]
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ needs.version.outputs.release-commit }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
-            - name: Update latest branch
-              shell: bash
-              run: |
-                  git fetch
-                  git checkout ${{ github.ref_name }}
-                  git push --force origin ${{ github.ref_name }}:latest
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
 
-    post-release-version-bump:
-        name: "Post-Release Version Bump"
-        if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
-        needs:
-            [
-                version,
-                update-docs,
-                publish-crates,
-                publish-wheels,
-                publish-web,
-                publish-rerun_c,
-                publish-rerun-cli,
-                publish-npm,
-            ]
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  token: ${{ secrets.RERUN_BOT_TOKEN }}
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python3 -m pip install -r scripts/ci/requirements-crates.txt
 
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: 18
+      - name: Install taplo-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli
 
-            - name: Set up Python
-              uses: actions/setup-python@v2
-              with:
-                  python-version: 3.11
+      - name: Update version
+        id: update-version
+        shell: bash
+        run: |
+          python3 scripts/ci/crates.py version --bump auto
+          echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-            - name: Install dependencies
-              shell: bash
-              run: |
-                  python3 -m pip install -r scripts/ci/requirements-crates.txt
+      - run: taplo fmt
+        shell: bash
 
-            - name: Install taplo-cli
-              uses: taiki-e/install-action@v2
-              with:
-                  tool: taplo-cli
+      - name: Commit new version
+        shell: bash
+        run: |
+          git config --global user.name "rerun-bot"
+          git config --global user.email "bot@rerun.io"
+          git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
+          git pull --rebase
+          git push
 
-            - name: Update version
-              id: update-version
-              shell: bash
-              run: |
-                  python3 scripts/ci/crates.py version --bump auto
-                  echo "version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+  comment-artifact-links:
+    name: "Link to artifacts"
+    needs:
+      [
+        version,
+        update-docs,
+        publish-crates,
+        publish-wheels,
+        publish-web,
+        publish-rerun_c,
+        publish-rerun-cli,
+        publish-npm,
+      ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RERUN_BOT_TOKEN }}
 
-            - run: taplo fmt
-              shell: bash
+      - name: Create comment
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        shell: bash
+        run: |
+          pr_number=$(gh pr view --json number | jq '.number')
+          echo "pr_number: $pr_number"
+          short_commit_hash=$(echo ${{ needs.version.outputs.release-commit }} | cut -c1-7)
 
-            - name: Commit new version
-              shell: bash
-              run: |
-                  git config --global user.name "rerun-bot"
-                  git config --global user.email "bot@rerun.io"
-                  git commit -am "Bump versions to ${{ steps.update-version.outputs.version }}"
-                  git pull --rebase
-                  git push
+          if [ ${{ inputs.release-type }} = "final" ]; then
+            web_app_link="https://app.rerun.io/version/${{ needs.version.outputs.final }}"
+            rerun_io_docs_link="https://rerun.io/docs"
+            py_docs_link="https://ref.rerun.io/docs/python/${{ needs.version.outputs.final }}"
+          else
+            web_app_link="https://app.rerun.io/commit/$short_commit_hash"
+            rerun_io_docs_link="https://rerun.io/preview/$short_commit_hash/docs"
+            py_docs_link="https://ref.rerun.io/docs/python/dev"
+          fi
+          wheels_link="https://pypi.org/project/rerun-sdk/${{ needs.version.outputs.current }}"
+          crates_link="https://crates.io/crates/rerun/${{ needs.version.outputs.current }}"
+          npm_link="https://www.npmjs.com/package/@rerun-io/web-viewer/v/${{ needs.version.outputs.current }}"
+          rs_docs_link="https://docs.rs/rerun/${{ needs.version.outputs.current }}"
+          cpp_sdk_zip_link="https://build.rerun.io/commit/$short_commit_hash/rerun_cpp_sdk.zip"
 
-    comment-artifact-links:
-        name: "Link to artifacts"
-        needs:
-            [
-                version,
-                update-docs,
-                publish-crates,
-                publish-wheels,
-                publish-web,
-                publish-rerun_c,
-                publish-rerun-cli,
-                publish-npm,
-            ]
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-                  token: ${{ secrets.RERUN_BOT_TOKEN }}
+          pip_install="pip install rerun-sdk==${{ needs.version.outputs.current }}"
+          cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
+          npm_install="npm install @rerun-io/web-viewer@${{ needs.version.outputs.current }}"
 
-            - name: Create comment
-              env:
-                  GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
-              shell: bash
-              run: |
-                  pr_number=$(gh pr view --json number | jq '.number')
-                  echo "pr_number: $pr_number"
-                  short_commit_hash=$(echo ${{ needs.version.outputs.release-commit }} | cut -c1-7)
+          cat <<EOF > comment-body.txt
+          Version ${{ needs.version.outputs.current }} published successfully.
 
-                  if [ ${{ inputs.release-type }} = "final" ]; then
-                    web_app_link="https://app.rerun.io/version/${{ needs.version.outputs.final }}"
-                    rerun_io_docs_link="https://rerun.io/docs"
-                    py_docs_link="https://ref.rerun.io/docs/python/${{ needs.version.outputs.final }}"
-                  else
-                    web_app_link="https://app.rerun.io/commit/$short_commit_hash"
-                    rerun_io_docs_link="https://rerun.io/preview/$short_commit_hash/docs"
-                    py_docs_link="https://ref.rerun.io/docs/python/dev"
-                  fi
-                  wheels_link="https://pypi.org/project/rerun-sdk/${{ needs.version.outputs.current }}"
-                  crates_link="https://crates.io/crates/rerun/${{ needs.version.outputs.current }}"
-                  npm_link="https://www.npmjs.com/package/@rerun-io/web-viewer/v/${{ needs.version.outputs.current }}"
-                  rs_docs_link="https://docs.rs/rerun/${{ needs.version.outputs.current }}"
-                  cpp_sdk_zip_link="https://build.rerun.io/commit/$short_commit_hash/rerun_cpp_sdk.zip"
+          | artifact                          | install        |
+          | --------------------------------- | -------------- |
+          | [web app]($web_app_link)          |                |
+          | [wheels]($wheels_link)            | $pip_install   |
+          | [crates]($crates_link)            | $cargo_install |
+          | [npm]($npm_link)                  | $npm_install   |
+          | [docs]($rerun_io_docs_link)       |                |
+          | [py docs]($py_docs_link)          |                |
+          | [rs docs]($rs_docs_link)          |                |
+          | [cpp_sdk zip]($cpp_sdk_zip_link)  |                |
+          EOF
 
-                  pip_install="pip install rerun-sdk==${{ needs.version.outputs.current }}"
-                  cargo_install="cargo install rerun-cli@${{ needs.version.outputs.current }}"
-                  npm_install="npm install @rerun-io/web-viewer@${{ needs.version.outputs.current }}"
-
-                  cat <<EOF > comment-body.txt
-                  Version ${{ needs.version.outputs.current }} published successfully.
-
-                  | artifact                          | install        |
-                  | --------------------------------- | -------------- |
-                  | [web app]($web_app_link)          |                |
-                  | [wheels]($wheels_link)            | $pip_install   |
-                  | [crates]($crates_link)            | $cargo_install |
-                  | [npm]($npm_link)                  | $npm_install   |
-                  | [docs]($rerun_io_docs_link)       |                |
-                  | [py docs]($py_docs_link)          |                |
-                  | [rs docs]($rs_docs_link)          |                |
-                  | [cpp_sdk zip]($cpp_sdk_zip_link)  |                |
-                  EOF
-
-                  gh pr comment $pr_number --body-file comment-body.txt
+          gh pr comment $pr_number --body-file comment-body.txt

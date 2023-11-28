@@ -1,145 +1,145 @@
 name: Build and publish web
 
 on:
-    workflow_call:
-        inputs:
-            concurrency:
-                type: string
-                required: true
-            release-version:
-                description: "Release Version Number (Must match Cargo.toml)"
-                type: string
-                required: true
-            release-commit:
-                description: "Commit to release"
-                type: string
-                required: true
-            wheel-artifact-name:
-                description: "Name of the wheel to use when running examples"
-                type: string
-                required: true
-            update-latest:
-                description: "Whether to update the latest version of demo/app"
-                type: boolean
-                required: true
+  workflow_call:
+    inputs:
+      concurrency:
+        type: string
+        required: true
+      release-version:
+        description: "Release Version Number (Must match Cargo.toml)"
+        type: string
+        required: true
+      release-commit:
+        description: "Commit to release"
+        type: string
+        required: true
+      wheel-artifact-name:
+        description: "Name of the wheel to use when running examples"
+        type: string
+        required: true
+      update-latest:
+        description: "Whether to update the latest version of demo/app"
+        type: boolean
+        required: true
 
 permissions:
-    contents: "write"
-    id-token: "write"
+  contents: "write"
+  id-token: "write"
 
 jobs:
-    get-commit-sha:
-        name: Get Commit Sha
-        runs-on: ubuntu-latest
-        outputs:
-            short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
-            full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
-        steps:
-            - name: "Set short-sha"
-              id: get-short-sha
-              shell: bash
-              run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
+  get-commit-sha:
+    name: Get Commit Sha
+    runs-on: ubuntu-latest
+    outputs:
+      short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
+      full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
+    steps:
+      - name: "Set short-sha"
+        id: get-short-sha
+        shell: bash
+        run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-            - name: "Set full-sha"
-              id: get-full-sha
-              shell: bash
-              run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
+      - name: "Set full-sha"
+        id: get-full-sha
+        shell: bash
+        run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
-    build-web:
-        runs-on: ubuntu-latest-16-cores
-        needs: [get-commit-sha]
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ inputs.release-commit }}
+  build-web:
+    runs-on: ubuntu-latest-16-cores
+    needs: [get-commit-sha]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release-commit }}
 
-            - id: "auth"
-              uses: google-github-actions/auth@v1
-              with:
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - name: "Set up Cloud SDK"
-              uses: "google-github-actions/setup-gcloud@v1"
-              with:
-                  version: ">= 363.0.0"
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: ">= 363.0.0"
 
-            - name: Set up Rust
-              uses: ./.github/actions/setup-rust
-              with:
-                  cache_key: "build-web"
-                  save_cache: false
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-web"
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - uses: prefix-dev/setup-pixi@v0.4.1
-              with:
-                  pixi-version: v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
 
-            # built by `reusable_build_and_publish_wheels`
-            - name: Download Wheel
-              uses: actions/download-artifact@v3
-              with:
-                  name: ${{ inputs.wheel-artifact-name }}
-                  path: wheel
+      # built by `reusable_build_and_publish_wheels`
+      - name: Download Wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.wheel-artifact-name }}
+          path: wheel
 
-            - name: Install Python dependencies and wheel
-              shell: bash
-              run: |
-                  pixi run pip install -r scripts/ci/requirements.txt
-                  pixi run pip install -r scripts/ci/requirements-web-demo.txt
-                  pixi run pip uninstall rerun-sdk -y
-                  pixi run pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
-                  pixi run pip install rerun-sdk --no-index --find-links wheel
+      - name: Install Python dependencies and wheel
+        shell: bash
+        run: |
+          pixi run pip install -r scripts/ci/requirements.txt
+          pixi run pip install -r scripts/ci/requirements-web-demo.txt
+          pixi run pip uninstall rerun-sdk -y
+          pixi run pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+          pixi run pip install rerun-sdk --no-index --find-links wheel
 
-            - name: Installed wheel version
-              shell: bash
-              run: |
-                  pixi run python3 -m rerun --version
-                  pixi run which rerun
-                  pixi run rerun --version
+      - name: Installed wheel version
+        shell: bash
+        run: |
+          pixi run python3 -m rerun --version
+          pixi run which rerun
+          pixi run rerun --version
 
-            - name: Build app.rerun.io
-              shell: bash
-              run: |
-                  pixi run cargo run --locked -p re_build_web_viewer -- --release
+      - name: Build app.rerun.io
+        shell: bash
+        run: |
+          pixi run cargo run --locked -p re_build_web_viewer -- --release
 
-            - name: Build web demo
-              env:
-                  COMMIT_HASH: ${{ needs.get-commit-sha.outputs.short-sha }}
-              shell: bash
-              run: |
-                  pixi run python3 scripts/ci/build_demo_app.py --skip-build
+      - name: Build web demo
+        env:
+          COMMIT_HASH: ${{ needs.get-commit-sha.outputs.short-sha }}
+        shell: bash
+        run: |
+          pixi run python3 scripts/ci/build_demo_app.py --skip-build
 
-            - name: Upload app.rerun.io (versioned)
-              uses: google-github-actions/upload-cloud-storage@v1
-              with:
-                  path: "web_viewer"
-                  destination: "rerun-web-viewer/version/${{ inputs.release-version }}"
-                  parent: false
+      - name: Upload app.rerun.io (versioned)
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/version/${{ inputs.release-version }}"
+          parent: false
 
-            - name: Upload app.rerun.io (commit)
-              uses: google-github-actions/upload-cloud-storage@v1
-              with:
-                  path: "web_viewer"
-                  destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
-                  parent: false
+      - name: Upload app.rerun.io (commit)
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
+          parent: false
 
-            - name: Upload demo.rerun.io
-              uses: google-github-actions/upload-cloud-storage@v1
-              with:
-                  path: "web_demo"
-                  destination: "rerun-demo/version/${{ inputs.release-version }}"
-                  parent: false
+      - name: Upload demo.rerun.io
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/version/${{ inputs.release-version }}"
+          parent: false
 
-            - name: Publish app.rerun.io
-              if: inputs.update-latest
-              shell: bash
-              run: |
-                  gsutil -m cp -r 'gs://rerun-web-viewer/version/${{ inputs.release-version }}/*' gs://rerun-web-viewer/version/latest
+      - name: Publish app.rerun.io
+        if: inputs.update-latest
+        shell: bash
+        run: |
+          gsutil -m cp -r 'gs://rerun-web-viewer/version/${{ inputs.release-version }}/*' gs://rerun-web-viewer/version/latest
 
-            - name: Publish demo.rerun.io
-              if: inputs.update-latest
-              shell: bash
-              run: |
-                  gsutil -m cp -r 'gs://rerun-demo/version/${{ inputs.release-version }}/*' gs://rerun-demo/version/latest
+      - name: Publish demo.rerun.io
+        if: inputs.update-latest
+        shell: bash
+        run: |
+          gsutil -m cp -r 'gs://rerun-demo/version/${{ inputs.release-version }}/*' gs://rerun-demo/version/latest

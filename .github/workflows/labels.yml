@@ -5,35 +5,35 @@
 name: Pull Request Labels
 
 on:
-    pull_request_target:
-        types:
-            - opened
-            - synchronize
-            - reopened
-            - labeled
-            - unlabeled
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
 
 jobs:
-    label:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Check for a "do-not-merge" label
-              uses: mheap/github-action-required-labels@v3
-              with:
-                  mode: exactly
-                  count: 0
-                  labels: "do-not-merge"
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for a "do-not-merge" label
+        uses: mheap/github-action-required-labels@v3
+        with:
+          mode: exactly
+          count: 0
+          labels: "do-not-merge"
 
-            - name: Require label "include in changelog" or "exclude from changelog"
-              uses: mheap/github-action-required-labels@v3
-              with:
-                  mode: minimum
-                  count: 1
-                  labels: "exclude from changelog, include in changelog"
+      - name: Require label "include in changelog" or "exclude from changelog"
+        uses: mheap/github-action-required-labels@v3
+        with:
+          mode: minimum
+          count: 1
+          labels: "exclude from changelog, include in changelog"
 
-            - name: Require at least one label
-              uses: mheap/github-action-required-labels@v3
-              with:
-                  mode: minimum
-                  count: 1
-                  labels: "📊 analytics, , 🟦 blueprint, 🪳 bug, C/C++ SDK, codegen/idl, 🧑‍💻 dev experience, dependencies, 📖 documentation, 💬 discussion, examples, exclude from changelog, 📉 performance, 🐍 python API, ⛃ re_datastore, 📺 re_viewer, 🔺 re_renderer, 🚜 refactor, ⛴ release, 🦀 rust SDK, 🔨 testing, ui, 🕸️ web"
+      - name: Require at least one label
+        uses: mheap/github-action-required-labels@v3
+        with:
+          mode: minimum
+          count: 1
+          labels: "📊 analytics, , 🟦 blueprint, 🪳 bug, C/C++ SDK, codegen/idl, 🧑‍💻 dev experience, dependencies, 📖 documentation, 💬 discussion, examples, exclude from changelog, 📉 performance, 🐍 python API, ⛃ re_datastore, 📺 re_viewer, 🔺 re_renderer, 🚜 refactor, ⛴ release, 🦀 rust SDK, 🔨 testing, ui, 🕸️ web"

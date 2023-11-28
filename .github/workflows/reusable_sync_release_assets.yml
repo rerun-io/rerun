@@ -1,65 +1,65 @@
 name: Sync assets with release
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            RELEASE_VERSION:
-                required: true
-                type: string
-                default: ""
-            WAIT_TIME_SECS:
-                required: false
-                type: number
-                default: 0
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      RELEASE_VERSION:
+        required: true
+        type: string
+        default: ""
+      WAIT_TIME_SECS:
+        required: false
+        type: number
+        default: 0
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-sync-assets
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-sync-assets
+  cancel-in-progress: true
 
 jobs:
-    sync-assets:
-        name: Upload assets from build.rerun.io
+  sync-assets:
+    name: Upload assets from build.rerun.io
 
-        permissions:
-            contents: "write"
-            id-token: "write"
+    permissions:
+      contents: "write"
+      id-token: "write"
 
-        runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-            - name: Set up Python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: "3.11"
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
 
-            - name: Install Python dependencies
-              shell: bash
-              run: pip install google-cloud-storage "PyGithub==1.59.0" "requests>=2.31,<3"
+      - name: Install Python dependencies
+        shell: bash
+        run: pip install google-cloud-storage "PyGithub==1.59.0" "requests>=2.31,<3"
 
-            - id: "auth"
-              uses: google-github-actions/auth@v1
-              with:
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - name: "Set up Cloud SDK"
-              uses: "google-github-actions/setup-gcloud@v1"
-              with:
-                  version: ">= 363.0.0"
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: ">= 363.0.0"
 
-            - name: Sync release assets & build.rerun.io
-              shell: bash
-              run: |
-                  python ./scripts/ci/sync_release_assets.py \
-                    --github-release ${{ inputs.RELEASE_VERSION }} \
-                    --github-token ${{ secrets.GITHUB_TOKEN }} \
-                    --wait ${{ inputs.WAIT_TIME_SECS }} \
-                    --remove --update
+      - name: Sync release assets & build.rerun.io
+        shell: bash
+        run: |
+          python ./scripts/ci/sync_release_assets.py \
+            --github-release ${{ inputs.RELEASE_VERSION }} \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
+            --wait ${{ inputs.WAIT_TIME_SECS }} \
+            --remove --update

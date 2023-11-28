@@ -8,24 +8,24 @@
 name: Pull-Request (Contrib)
 
 on:
-    pull_request:
-        types:
-            - opened
-            - synchronize
+  pull_request:
+    types:
+      - opened
+      - synchronize
 
 jobs:
-    checks:
-        name: "Checks"
-        if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
-        uses: ./.github/workflows/contrib_checks.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            PR_NUMBER: ${{ github.event.pull_request.number }}
+  checks:
+    name: "Checks"
+    if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
+    uses: ./.github/workflows/contrib_checks.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
 
-    python:
-        name: "Python"
-        if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
-        uses: ./.github/workflows/contrib_rerun_py.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
+  python:
+    name: "Python"
+    if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
+    uses: ./.github/workflows/contrib_rerun_py.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"

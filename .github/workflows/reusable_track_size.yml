@@ -1,185 +1,185 @@
 name: "Track Size"
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            PR_NUMBER:
-                required: false
-                type: number
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      PR_NUMBER:
+        required: false
+        type: number
 
 permissions:
-    contents: write
-    id-token: write
-    deployments: write
-    pull-requests: write
+  contents: write
+  id-token: write
+  deployments: write
+  pull-requests: write
 
 jobs:
-    track-sizes:
-        name: "Track Sizes"
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0 # we need full history
-                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+  track-sizes:
+    name: "Track Sizes"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # we need full history
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-            - name: Get context
-              id: context
-              shell: bash
-              run: |
-                  echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+      - name: Get context
+        id: context
+        shell: bash
+        run: |
+          echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-            - id: "auth"
-              uses: google-github-actions/auth@v1
-              with:
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - name: "Set up Cloud SDK"
-              uses: "google-github-actions/setup-gcloud@v1"
-              with:
-                  version: ">= 363.0.0"
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v1"
+        with:
+          version: ">= 363.0.0"
 
-            - name: Download web_viewer
-              uses: actions/download-artifact@v3
-              with:
-                  name: web_viewer
-                  path: web_viewer
+      - name: Download web_viewer
+        uses: actions/download-artifact@v3
+        with:
+          name: web_viewer
+          path: web_viewer
 
-            - name: Download web_demo
-              uses: actions/download-artifact@v3
-              with:
-                  name: web_demo
-                  path: web_demo
+      - name: Download web_demo
+        uses: actions/download-artifact@v3
+        with:
+          name: web_demo
+          path: web_demo
 
-            - name: Download base results
-              shell: bash
-              run: |
-                  # Get base commit:
-                  # 1. From the index file
-                  # 2. From the latest commit in the base branch of the PR
-                  # 3. From the latest commit in the current branch
-                  index_path="gs://rerun-builds/sizes/index"
-                  if [ "$(gsutil -q stat $index_path ; echo $?)" = 0 ]; then
-                    gsutil cp $index_path "/tmp/base_index"
-                    base_commit=$(cat /tmp/base_index)
-                  else
-                    if [ -n ${{ inputs.PR_NUMBER }} ]; then
-                      base_commit=$(echo ${{ github.event.pull_request.base.sha }} | cut -c1-7)
-                    else
-                      base_commit=${{ steps.context.outputs.short_sha }}
-                    fi
-                  fi
-                  echo "base commit: $base_commit"
+      - name: Download base results
+        shell: bash
+        run: |
+          # Get base commit:
+          # 1. From the index file
+          # 2. From the latest commit in the base branch of the PR
+          # 3. From the latest commit in the current branch
+          index_path="gs://rerun-builds/sizes/index"
+          if [ "$(gsutil -q stat $index_path ; echo $?)" = 0 ]; then
+            gsutil cp $index_path "/tmp/base_index"
+            base_commit=$(cat /tmp/base_index)
+          else
+            if [ -n ${{ inputs.PR_NUMBER }} ]; then
+              base_commit=$(echo ${{ github.event.pull_request.base.sha }} | cut -c1-7)
+            else
+              base_commit=${{ steps.context.outputs.short_sha }}
+            fi
+          fi
+          echo "base commit: $base_commit"
 
-                  # Download data for base commit, or default to empty file
-                  data_path="gs://rerun-builds/sizes/commit/$base_commit/data.json"
-                  if [ "$(gsutil -q stat $data_path ; echo $?)" = 0 ]; then
-                    gsutil cp $data_path "/tmp/prev.json"
-                  else
-                    echo "[]" > "/tmp/prev.json"
-                  fi
+          # Download data for base commit, or default to empty file
+          data_path="gs://rerun-builds/sizes/commit/$base_commit/data.json"
+          if [ "$(gsutil -q stat $data_path ; echo $?)" = 0 ]; then
+            gsutil cp $data_path "/tmp/prev.json"
+          else
+            echo "[]" > "/tmp/prev.json"
+          fi
 
-            - name: Measure sizes
-              id: measure
-              shell: bash
-              run: |
-                  entries=()
+      - name: Measure sizes
+        id: measure
+        shell: bash
+        run: |
+          entries=()
 
-                  entries+=("Wasm:web_viewer/re_viewer_bg.wasm:MiB")
-                  entries+=("JS:web_viewer/re_viewer.js:kiB")
+          entries+=("Wasm:web_viewer/re_viewer_bg.wasm:MiB")
+          entries+=("JS:web_viewer/re_viewer.js:kiB")
 
-                  for file in web_demo/examples/**/*.rrd; do
-                    name=$(basename $(dirname "$file"))
-                    entries+=("$name.rrd:$file:MiB")
-                  done
+          for file in web_demo/examples/**/*.rrd; do
+            name=$(basename $(dirname "$file"))
+            entries+=("$name.rrd:$file:MiB")
+          done
 
-                  data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
-                  echo "$data" > "/tmp/data.json"
+          data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
+          echo "$data" > "/tmp/data.json"
 
-                  comparison=$(
-                    python3 scripts/ci/sizes.py compare \
-                      --threshold=5% \
-                      --before-header=${{ (inputs.PR_NUMBER && github.event.pull_request.base.ref) || 'Before' }} \
-                      --after-header=${{ github.ref_name }} \
-                      "/tmp/prev.json" "/tmp/data.json"
-                  )
-                  {
-                    echo 'comparison<<EOF'
-                    echo "$comparison"
-                    echo EOF
-                  } >> "$GITHUB_OUTPUT"
+          comparison=$(
+            python3 scripts/ci/sizes.py compare \
+              --threshold=5% \
+              --before-header=${{ (inputs.PR_NUMBER && github.event.pull_request.base.ref) || 'Before' }} \
+              --after-header=${{ github.ref_name }} \
+              "/tmp/prev.json" "/tmp/data.json"
+          )
+          {
+            echo 'comparison<<EOF'
+            echo "$comparison"
+            echo EOF
+          } >> "$GITHUB_OUTPUT"
 
-                  if [ -n "$comparison" ]; then
-                    echo "is_comparison_set=true" >> "$GITHUB_OUTPUT"
-                  else
-                    echo "is_comparison_set=false" >> "$GITHUB_OUTPUT"
-                  fi
+          if [ -n "$comparison" ]; then
+            echo "is_comparison_set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_comparison_set=false" >> "$GITHUB_OUTPUT"
+          fi
 
-                  echo "$entries"
-                  echo "previous: $(cat /tmp/prev.json)"
-                  echo "current: $(cat /tmp/data.json)"
-                  echo "$comparison"
-                  echo "is comparison set: $is_comparison_set"
+          echo "$entries"
+          echo "previous: $(cat /tmp/prev.json)"
+          echo "current: $(cat /tmp/data.json)"
+          echo "$comparison"
+          echo "is comparison set: $is_comparison_set"
 
-            - name: Upload data to GCS (commit)
-              uses: google-github-actions/upload-cloud-storage@v1
-              with:
-                  path: /tmp/data.json
-                  destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.short_sha }}"
+      - name: Upload data to GCS (commit)
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: /tmp/data.json
+          destination: "rerun-builds/sizes/commit/${{ steps.context.outputs.short_sha }}"
 
-            - name: Create index file
-              if: github.ref == 'refs/heads/main'
-              shell: bash
-              run: |
-                  echo "${{ steps.context.outputs.short_sha }}" > "/tmp/index"
+      - name: Create index file
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "${{ steps.context.outputs.short_sha }}" > "/tmp/index"
 
-            - name: Upload index
-              if: github.ref == 'refs/heads/main'
-              uses: google-github-actions/upload-cloud-storage@v1
-              with:
-                  path: /tmp/index
-                  destination: "rerun-builds/sizes"
+      - name: Upload index
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: /tmp/index
+          destination: "rerun-builds/sizes"
 
-            - name: Create PR comment
-              if: inputs.PR_NUMBER != '' && steps.measure.outputs.is_comparison_set == 'true'
-              # https://github.com/mshick/add-pr-comment
-              uses: mshick/add-pr-comment@v2.8.1
-              with:
-                  repo-token: ${{ secrets.GITHUB_TOKEN }}
-                  message: |
-                      # Size changes
+      - name: Create PR comment
+        if: inputs.PR_NUMBER != '' && steps.measure.outputs.is_comparison_set == 'true'
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            # Size changes
 
-                      ${{ steps.measure.outputs.comparison }}
+            ${{ steps.measure.outputs.comparison }}
 
-            - name: Alert on regression
-              if: github.ref == 'refs/heads/main'
-              # https://github.com/benchmark-action/github-action-benchmark
-              uses: benchmark-action/github-action-benchmark@v1
-              with:
-                  name: Sizes
-                  tool: customSmallerIsBetter
-                  output-file-path: /tmp/data.json
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Alert on regression
+        if: github.ref == 'refs/heads/main'
+        # https://github.com/benchmark-action/github-action-benchmark
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Sizes
+          tool: customSmallerIsBetter
+          output-file-path: /tmp/data.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-                  # Show alert with commit on detecting possible size regression
-                  comment-on-alert: true
-                  alert-threshold: "110%"
-                  fail-on-alert: false
-                  comment-always: false # Generates too much GitHub notification spam
+          # Show alert with commit on detecting possible size regression
+          comment-on-alert: true
+          alert-threshold: "110%"
+          fail-on-alert: false
+          comment-always: false # Generates too much GitHub notification spam
 
-                  # Don't push to gh-pages
-                  save-data-file: false
-                  auto-push: false
+          # Don't push to gh-pages
+          save-data-file: false
+          auto-push: false
 
-            - name: Render benchmark result
-              if: github.ref == 'refs/heads/main'
-              shell: bash
-              run: |
-                  python3 -m pip install google-cloud-storage==2.9.0
-                  scripts/ci/render_bench.py sizes \
-                    --after $(date -d"180 days ago" +%Y-%m-%d) \
-                    --output "gs://rerun-builds/graphs"
+      - name: Render benchmark result
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          python3 -m pip install google-cloud-storage==2.9.0
+          scripts/ci/render_bench.py sizes \
+            --after $(date -d"180 days ago" +%Y-%m-%d) \
+            --output "gs://rerun-builds/graphs"

@@ -6,23 +6,23 @@ name: "Deploy rerun.io"
 
 # Changing these inputs also requires changing their usage in `index.mjs`
 inputs:
-    vercel_token:
-        description: "Vercel access token"
-        type: string
-        required: true
-    vercel_team_name:
-        description: "Vercel team name under which `vercel_project_name` can be found"
-        type: string
-        required: true
-    vercel_project_name:
-        description: "Vercel project name to update and redeploy"
-        type: string
-        required: true
-    release_commit:
-        description: "Release commit to update the deployment to"
-        type: string
-        required: true
+  vercel_token:
+    description: "Vercel access token"
+    type: string
+    required: true
+  vercel_team_name:
+    description: "Vercel team name under which `vercel_project_name` can be found"
+    type: string
+    required: true
+  vercel_project_name:
+    description: "Vercel project name to update and redeploy"
+    type: string
+    required: true
+  release_commit:
+    description: "Release commit to update the deployment to"
+    type: string
+    required: true
 
 runs:
-    using: "node20"
-    main: "index.mjs"
+  using: "node20"
+  main: "index.mjs"

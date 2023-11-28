@@ -1,202 +1,195 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Benchmark</title>
-        <style>
-            html,
-            body,
-            main {
-                width: 100%;
-                height: 100%;
-                margin: 0;
-                padding: 0;
-            }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Benchmark</title>
+    <style>
+      html,
+      body,
+      main {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
 
-            header {
-                display: flex;
-                justify-content: center;
-            }
+      header {
+        display: flex;
+        justify-content: center;
+      }
 
-            main {
-                display: flex;
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 16px;
-            }
+      main {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 16px;
+      }
 
-            .container {
-                position: relative;
-                width: 320px;
-                height: 320px;
-            }
+      .container {
+        position: relative;
+        width: 320px;
+        height: 320px;
+      }
 
-            @media only screen and (min-width: 1024px) {
-                .container {
-                    width: 640px;
-                    height: 640px;
-                }
-            }
+      @media only screen and (min-width: 1024px) {
+        .container {
+          width: 640px;
+          height: 640px;
+        }
+      }
 
-            button.zoom {
-                position: absolute;
-                top: 0;
-                right: 0;
-                padding: 0;
-                margin: 0;
-                width: 24px;
-                height: 24px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                border: solid 1px black;
-                background: white;
-            }
+      button.zoom {
+        position: absolute;
+        top: 0;
+        right: 0;
+        padding: 0;
+        margin: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: solid 1px black;
+        background: white;
+      }
 
-            .container.fullscreen {
-                position: fixed;
-                top: 0;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                z-index: 100;
-                background: white;
-                width: 100%;
-                height: 100%;
-            }
+      .container.fullscreen {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        background: white;
+        width: 100%;
+        height: 100%;
+      }
 
-            body.fullscreen {
-                overflow: hidden;
-            }
-        </style>
-    </head>
-    <body>
-        <header><h1 id="title">Benchmark</h1></header>
-        <main>
-            <template id="chart-template">
-                <div class="container">
-                    <button class="zoom">
-                        <svg
-                            height="14px"
-                            version="1.1"
-                            viewBox="0 0 14 14"
-                            width="14px"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <g
-                                fill="none"
-                                fill-rule="evenodd"
-                                stroke="none"
-                                stroke-width="1"
-                            >
-                                <g
-                                    fill="#000000"
-                                    transform="translate(-215.000000, -257.000000)"
-                                >
-                                    <g
-                                        id="fullscreen"
-                                        transform="translate(215.000000, 257.000000)"
-                                    >
-                                        <path
-                                            d="M2,9 L0,9 L0,14 L5,14 L5,12 L2,12 L2,9 L2,9 Z M0,5 L2,5 L2,2 L5,2 L5,0 L0,0 L0,5 L0,5 Z M12,12 L9,12 L9,14 L14,14 L14,9 L12,9 L12,12 L12,12 Z M9,0 L9,2 L12,2 L12,5 L14,5 L14,0 L9,0 L9,0 Z"
-                                        />
-                                    </g>
-                                </g>
-                            </g>
-                        </svg>
-                    </button>
-                    <canvas style="width: 100%; height: 100%"></canvas>
-                </div>
-            </template>
-        </main>
+      body.fullscreen {
+        overflow: hidden;
+      }
+    </style>
+  </head>
+  <body>
+    <header><h1 id="title">Benchmark</h1></header>
+    <main>
+      <template id="chart-template">
+        <div class="container">
+          <button class="zoom">
+            <svg
+              height="14px"
+              version="1.1"
+              viewBox="0 0 14 14"
+              width="14px"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <g fill="none" fill-rule="evenodd" stroke="none" stroke-width="1">
+                <g
+                  fill="#000000"
+                  transform="translate(-215.000000, -257.000000)"
+                >
+                  <g
+                    id="fullscreen"
+                    transform="translate(215.000000, 257.000000)"
+                  >
+                    <path
+                      d="M2,9 L0,9 L0,14 L5,14 L5,12 L2,12 L2,9 L2,9 Z M0,5 L2,5 L2,2 L5,2 L5,0 L0,0 L0,5 L0,5 Z M12,12 L9,12 L9,14 L14,14 L14,9 L12,9 L12,12 L12,12 Z M9,0 L9,2 L12,2 L12,5 L14,5 L14,0 L9,0 L9,0 Z"
+                    />
+                  </g>
+                </g>
+              </g>
+            </svg>
+          </button>
+          <canvas style="width: 100%; height: 100%"></canvas>
+        </div>
+      </template>
+    </main>
 
-        <!-- https://www.chartjs.org/docs/latest/ -->
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-        <script>
-            const TITLE = "%%TITLE%%";
-            /**
-             * @type {Record<string, {
-             *   y_scale: {min: number, max: number},
-             *   unit: string,
-             *   labels: string[],
-             *   data: number[],
-             * }>}
-             */
-            const CHARTS = JSON.parse("%%CHARTS%%");
+    <!-- https://www.chartjs.org/docs/latest/ -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+      const TITLE = "%%TITLE%%";
+      /**
+       * @type {Record<string, {
+       *   y_scale: {min: number, max: number},
+       *   unit: string,
+       *   labels: string[],
+       *   data: number[],
+       * }>}
+       */
+      const CHARTS = JSON.parse("%%CHARTS%%");
 
-            function createCanvas() {
-                const main = document.querySelector("main");
-                main.appendChild(
-                    document
-                        .getElementById("chart-template")
-                        .content.cloneNode(true),
-                );
+      function createCanvas() {
+        const main = document.querySelector("main");
+        main.appendChild(
+          document.getElementById("chart-template").content.cloneNode(true),
+        );
 
-                const container = main.lastElementChild;
-                const zoom = container.querySelector("button");
-                const canvas = container.querySelector("canvas");
+        const container = main.lastElementChild;
+        const zoom = container.querySelector("button");
+        const canvas = container.querySelector("canvas");
 
-                let fullscreen = false;
-                function resizeCanvas() {
-                    if (fullscreen) {
-                        const style = getComputedStyle(container);
-                        canvas._chart._aspectRatio =
-                            parseInt(style.width) / parseInt(style.height);
-                    } else {
-                        canvas._chart._aspectRatio = 1;
-                    }
-                    canvas._chart.resize();
-                }
+        let fullscreen = false;
+        function resizeCanvas() {
+          if (fullscreen) {
+            const style = getComputedStyle(container);
+            canvas._chart._aspectRatio =
+              parseInt(style.width) / parseInt(style.height);
+          } else {
+            canvas._chart._aspectRatio = 1;
+          }
+          canvas._chart.resize();
+        }
 
-                zoom.onclick = () => {
-                    document.body.classList.toggle("fullscreen");
-                    container.classList.toggle("fullscreen");
-                    requestAnimationFrame(resizeCanvas);
-                    fullscreen = !fullscreen;
-                };
-                document.addEventListener("resize", resizeCanvas);
+        zoom.onclick = () => {
+          document.body.classList.toggle("fullscreen");
+          container.classList.toggle("fullscreen");
+          requestAnimationFrame(resizeCanvas);
+          fullscreen = !fullscreen;
+        };
+        document.addEventListener("resize", resizeCanvas);
 
-                return canvas;
-            }
+        return canvas;
+      }
 
-            document.title = TITLE;
-            document.getElementById("title").innerText = TITLE;
+      document.title = TITLE;
+      document.getElementById("title").innerText = TITLE;
 
-            for (const name of Object.keys(CHARTS)) {
-                const canvas = createCanvas();
-                canvas._chart = new Chart(canvas, {
-                    type: "line",
-                    data: {
-                        labels: CHARTS[name].labels,
-                        datasets: [
-                            {
-                                label: name,
-                                data: CHARTS[name].data,
-                                borderColor: "#dea584",
-                                backgroundColor: "#dea58460",
-                                fill: true,
-                            },
-                        ],
-                    },
-                    options: {
-                        scales: {
-                            x: {},
-                            y: {
-                                title: {
-                                    display: true,
-                                    text: CHARTS[name].unit,
-                                },
-                                min: CHARTS[name].y_scale.min,
-                                max: CHARTS[name].y_scale.max,
-                            },
-                        },
-                    },
-                    responsive: true,
-                    maintainAspectRatio: false,
-                });
-            }
-        </script>
-    </body>
+      for (const name of Object.keys(CHARTS)) {
+        const canvas = createCanvas();
+        canvas._chart = new Chart(canvas, {
+          type: "line",
+          data: {
+            labels: CHARTS[name].labels,
+            datasets: [
+              {
+                label: name,
+                data: CHARTS[name].data,
+                borderColor: "#dea584",
+                backgroundColor: "#dea58460",
+                fill: true,
+              },
+            ],
+          },
+          options: {
+            scales: {
+              x: {},
+              y: {
+                title: {
+                  display: true,
+                  text: CHARTS[name].unit,
+                },
+                min: CHARTS[name].y_scale.min,
+                max: CHARTS[name].y_scale.max,
+              },
+            },
+          },
+          responsive: true,
+          maintainAspectRatio: false,
+        });
+      }
+    </script>
+  </body>
 </html>

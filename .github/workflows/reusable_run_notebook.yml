@@ -1,95 +1,95 @@
 name: Reusable Buld and Upload Notebook
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            WHEEL_ARTIFACT_NAME:
-                required: false
-                type: string
-                default: ""
-            # We need this because PRs use a merged commit but we really want
-            # to track uploads based on the source commit.
-            UPLOAD_COMMIT_OVERRIDE:
-                required: false
-                type: string
-                default: ""
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ""
+      # We need this because PRs use a merged commit but we really want
+      # to track uploads based on the source commit.
+      UPLOAD_COMMIT_OVERRIDE:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-run-notebook
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-run-notebook
+  cancel-in-progress: true
 
 jobs:
-    run-notebook:
-        name: Run notebook
+  run-notebook:
+    name: Run notebook
 
-        permissions:
-            contents: "read"
-            id-token: "write"
+    permissions:
+      contents: "read"
+      id-token: "write"
 
-        runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-        container:
-            image: rerunio/ci_docker:0.10.0
+    container:
+      image: rerunio/ci_docker:0.10.0
 
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-            - name: Download Wheel Artifact
-              uses: actions/download-artifact@v3
-              with:
-                  name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
-                  path: wheel_artifact
+      - name: Download Wheel Artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
+          path: wheel_artifact
 
-            - name: Install wheel dependencies
-              # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-              # This needs to be a separate step for some reason or the following step fails
-              # TODO(jleibs): pull these deps from pyproject.toml
-              shell: bash
-              run: |
-                  pip install deprecated numpy>=1.23 pillow>=9.5.0 pyarrow==10.0.1 pytest==7.1.2
+      - name: Install wheel dependencies
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # This needs to be a separate step for some reason or the following step fails
+        # TODO(jleibs): pull these deps from pyproject.toml
+        shell: bash
+        run: |
+          pip install deprecated numpy>=1.23 pillow>=9.5.0 pyarrow==10.0.1 pytest==7.1.2
 
-            - name: Install downloaded wheel_artifact
-              # Now install the wheel using a specific version and --no-index to guarantee we get the version from
-              # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
-              # find the dependencies to reinstall them.
-              shell: bash
-              run: |
-                  pip install rerun-sdk --no-index --find-links wheel_artifact
+      - name: Install downloaded wheel_artifact
+        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
+        shell: bash
+        run: |
+          pip install rerun-sdk --no-index --find-links wheel_artifact
 
-            - name: Install Deps
-              shell: bash
-              run: |
-                  pip install -r examples/python/notebook/requirements.txt
+      - name: Install Deps
+        shell: bash
+        run: |
+          pip install -r examples/python/notebook/requirements.txt
 
-            - name: Create notebook
-              shell: bash
-              run: |
-                  jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
+      - name: Create notebook
+        shell: bash
+        run: |
+          jupyter nbconvert --to=html --ExecutePreprocessor.enabled=True examples/python/notebook/cube.ipynb --output /tmp/cube.html
 
-            - id: "auth"
-              uses: google-github-actions/auth@v1
-              with:
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - name: Add SHORT_SHA env property with commit short sha
-              shell: bash
-              run: |
-                  if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
-                    USED_SHA=${{ github.sha }}
-                  else
-                    USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
-                  fi
-                  echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+      - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
+        run: |
+          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
+            USED_SHA=${{ github.sha }}
+          else
+            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
+          fi
+          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
 
-            - name: "Upload Notebook"
-              uses: google-github-actions/upload-cloud-storage@v1
-              with:
-                  path: "/tmp/cube.html"
-                  destination: "rerun-builds/commit/${{env.SHORT_SHA}}/notebooks"
-                  parent: false
+      - name: "Upload Notebook"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "/tmp/cube.html"
+          destination: "rerun-builds/commit/${{env.SHORT_SHA}}/notebooks"
+          parent: false

@@ -1,61 +1,61 @@
 name: Clear cache
 
 on:
-    workflow_dispatch:
+  workflow_dispatch:
 
 permissions:
-    actions: write
+  actions: write
 
 jobs:
-    clear-cache:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Clear cache
-              uses: actions/github-script@v6
-              with:
-                  script: |
-                      const opts = {
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                      };
+  clear-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear cache
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const opts = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            };
 
-                      const cache_list = await github.rest.actions.getActionsCacheList({
-                        per_page: 1,
-                        ...opts,
-                      });
-                      const per_page = 100;
-                      const pages = Math.ceil(cache_list.data.total_count / per_page);
+            const cache_list = await github.rest.actions.getActionsCacheList({
+              per_page: 1,
+              ...opts,
+            });
+            const per_page = 100;
+            const pages = Math.ceil(cache_list.data.total_count / per_page);
 
-                      const total_count = cache_list.data.total_count;
-                      let deleted = 0;
-                      const _id = setInterval(() => {
-                        console.log(`${deleted}/${total_count}`);
-                      }, 500);
+            const total_count = cache_list.data.total_count;
+            let deleted = 0;
+            const _id = setInterval(() => {
+              console.log(`${deleted}/${total_count}`);
+            }, 500);
 
-                      let promises = [];
-                      for (let page = 1; page <= pages; page++) {
-                        const cache_page = await github.rest.actions.getActionsCacheList({
-                          per_page,
-                          page,
-                          ...opts,
-                        });
-                        for (const cache of cache_page.data.actions_caches) {
-                          promises.push(
-                            github.rest.actions
-                              .deleteActionsCacheById({
-                                cache_id: cache.id,
-                                ...opts,
-                              })
-                              .then(() => (deleted += 1))
-                          );
-                        }
-                        await Promise.all(promises);
-                        promises = [];
+            let promises = [];
+            for (let page = 1; page <= pages; page++) {
+              const cache_page = await github.rest.actions.getActionsCacheList({
+                per_page,
+                page,
+                ...opts,
+              });
+              for (const cache of cache_page.data.actions_caches) {
+                promises.push(
+                  github.rest.actions
+                    .deleteActionsCacheById({
+                      cache_id: cache.id,
+                      ...opts,
+                    })
+                    .then(() => (deleted += 1))
+                );
+              }
+              await Promise.all(promises);
+              promises = [];
 
-                        // wait 60 seconds every 4 pages (secondary rate limit)
-                        if (page % 4 === 0) {
-                          await new Promise(f => setTimeout(f, 60_000));
-                        }
-                      }
+              // wait 60 seconds every 4 pages (secondary rate limit)
+              if (page % 4 === 0) {
+                await new Promise(f => setTimeout(f, 60_000));
+              }
+            }
 
-                      clearInterval(_id);
+            clearInterval(_id);

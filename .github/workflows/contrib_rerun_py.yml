@@ -1,133 +1,133 @@
 name: Reusable Build and Test Wheels
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            MATURIN_FEATURE_FLAGS:
-                required: false
-                type: string
-                default: "--no-default-features --features pypi"
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      MATURIN_FEATURE_FLAGS:
+        required: false
+        type: string
+        default: "--no-default-features --features pypi"
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-build-wheels
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-build-wheels
+  cancel-in-progress: true
 
 env:
-    PYTHON_VERSION: "3.8"
-    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  PYTHON_VERSION: "3.8"
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
 
-    # TODO(jleibs) --deny warnings causes installation of wasm-bindgen to fail on mac
-    # RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
-    RUSTFLAGS: --cfg=web_sys_unstable_apis
+  # TODO(jleibs) --deny warnings causes installation of wasm-bindgen to fail on mac
+  # RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+  RUSTFLAGS: --cfg=web_sys_unstable_apis
 
-    # See https://github.com/ericseppanen/cargo-cranky/issues/8
-    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 permissions:
-    contents: "read"
+  contents: "read"
 
 jobs:
-    build-wheels:
-        name: Build Wheels
-        runs-on: ubuntu-latest-16-cores
-        container:
-            image: rerunio/ci_docker:0.10.0
-        steps:
-            - uses: actions/checkout@v4
+  build-wheels:
+    name: Build Wheels
+    runs-on: ubuntu-latest-16-cores
+    container:
+      image: rerunio/ci_docker:0.10.0
+    steps:
+      - uses: actions/checkout@v4
 
-            # These should already be in the docker container, but run for good measure. A no-op install
-            # should be fast, and this way things don't break if we add new packages without rebuilding
-            # docker
-            - run: pip install -r scripts/ci/requirements.txt
-              shell: bash
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
+      - run: pip install -r scripts/ci/requirements.txt
+        shell: bash
 
-            - name: Build Wheel
-              uses: PyO3/maturin-action@v1
-              with:
-                  maturin-version: "0.14.17"
-                  manylinux: manylinux_2_31
-                  container: off
-                  command: build
-                  args: |
-                      --manifest-path rerun_py/Cargo.toml
-                      --release
-                      --target x86_64-unknown-linux-gnu
-                      ${{ inputs.MATURIN_FEATURE_FLAGS }}
-                      --out dist
+      - name: Build Wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          maturin-version: "0.14.17"
+          manylinux: manylinux_2_31
+          container: off
+          command: build
+          args: |
+            --manifest-path rerun_py/Cargo.toml
+            --release
+            --target x86_64-unknown-linux-gnu
+            ${{ inputs.MATURIN_FEATURE_FLAGS }}
+            --out dist
 
-            # Test the wheel
-            - name: Install wheel dependencies
-              # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-              # This needs to be a separate step for some reason or the following step fails
-              # TODO(jleibs): pull these deps from pyproject.toml
-              # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
-              shell: bash
-              run: |
-                  pip install attrs>=23.1.0 numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
+      # Test the wheel
+      - name: Install wheel dependencies
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # This needs to be a separate step for some reason or the following step fails
+        # TODO(jleibs): pull these deps from pyproject.toml
+        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
+        shell: bash
+        run: |
+          pip install attrs>=23.1.0 numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
 
-            - name: Get version
-              id: get-version
-              shell: bash
-              run: |
-                  echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+      - name: Get version
+        id: get-version
+        shell: bash
+        run: |
+          echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-            - name: Install built wheel
-              # Now install the wheel using a specific version and --no-index to guarantee we get the version from
-              # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
-              # find the dependencies to reinstall them.
-              shell: bash
-              run: |
-                  pip uninstall rerun-sdk
-                  pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
+      - name: Install built wheel
+        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
+        shell: bash
+        run: |
+          pip uninstall rerun-sdk
+          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links dist
 
-            - name: Verify built wheel version
-              shell: bash
-              run: |
-                  python3 -m rerun --version
-                  which rerun
-                  rerun --version
+      - name: Verify built wheel version
+        shell: bash
+        run: |
+          python3 -m rerun --version
+          which rerun
+          rerun --version
 
-            - name: Run Python unit-tests
-              shell: bash
-              run: cd rerun_py/tests && pytest -c ../pyproject.toml
+      - name: Run Python unit-tests
+        shell: bash
+        run: cd rerun_py/tests && pytest -c ../pyproject.toml
 
-            - name: Run e2e test
-              shell: bash
-              run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+      - name: Run e2e test
+        shell: bash
+        run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
-            - name: Run tests/roundtrips.py
-              shell: bash
-              # --release so we can inherit from some of the artifacts that maturin has just built before
-              # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
-              # --no-py-build because rerun-sdk is already built and installed
-              run: |
-                  RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+      - name: Run tests/roundtrips.py
+        shell: bash
+        # --release so we can inherit from some of the artifacts that maturin has just built before
+        # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
+        # --no-py-build because rerun-sdk is already built and installed
+        run: |
+          RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
-            - name: Run docs/code-examples/roundtrips.py
-              shell: bash
-              # --release so we can inherit from some of the artifacts that maturin has just built before
-              # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
-              # --no-py-build because rerun-sdk is already built and installed
-              run: |
-                  RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+      - name: Run docs/code-examples/roundtrips.py
+        shell: bash
+        # --release so we can inherit from some of the artifacts that maturin has just built before
+        # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
+        # --no-py-build because rerun-sdk is already built and installed
+        run: |
+          RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
-            - name: Cache RRD dataset
-              id: dataset
-              uses: actions/cache@v3
-              with:
-                  path: examples/python/structure_from_motion/dataset/
-                  # TODO(jleibs): Derive this key from the invocation below
-                  key: structure-from-motion-dataset-structure-from-motion-fiat-v1
+      - name: Cache RRD dataset
+        id: dataset
+        uses: actions/cache@v3
+        with:
+          path: examples/python/structure_from_motion/dataset/
+          # TODO(jleibs): Derive this key from the invocation below
+          key: structure-from-motion-dataset-structure-from-motion-fiat-v1
 
-            - name: Generate Embedded RRD file
-              shell: bash
-              # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
-              run: |
-                  mkdir rrd
-                  pip install -r examples/python/structure_from_motion/requirements.txt
-                  python3 examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
+      - name: Generate Embedded RRD file
+        shell: bash
+        # If you change the line below you should almost definitely change the `key:` line above by giving it a new, unique name
+        run: |
+          mkdir rrd
+          pip install -r examples/python/structure_from_motion/requirements.txt
+          python3 examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd

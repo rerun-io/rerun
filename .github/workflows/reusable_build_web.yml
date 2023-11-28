@@ -1,67 +1,67 @@
 name: Reusable Build Web
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            RELEASE_VERSION:
-                required: false
-                type: string
-                default: "prerelease"
-            EXTRA_FLAGS:
-                required: false
-                type: string
-                default: ""
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      RELEASE_VERSION:
+        required: false
+        type: string
+        default: "prerelease"
+      EXTRA_FLAGS:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-build-web
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-build-web
+  cancel-in-progress: true
 
 env:
-    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-    RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-    # See https://github.com/ericseppanen/cargo-cranky/issues/8
-    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 jobs:
-    rs-build-web-viewer:
-        name: Build Web (wasm32 + wasm-bindgen)
-        permissions:
-            contents: "read"
-            id-token: "write"
+  rs-build-web-viewer:
+    name: Build Web (wasm32 + wasm-bindgen)
+    permissions:
+      contents: "read"
+      id-token: "write"
 
-        runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-16-cores
 
-        container:
-            image: rerunio/ci_docker:0.10.0
+    container:
+      image: rerunio/ci_docker:0.10.0
 
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-            - name: Set up Rust
-              uses: ./.github/actions/setup-rust
-              with:
-                  cache_key: "build-web"
-                  # Cache will be produced by `reusable_checks/rs-check-wasm`
-                  save_cache: false
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-web"
+          # Cache will be produced by `reusable_checks/rs-check-wasm`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - name: Build web-viewer (release)
-              uses: actions-rs/cargo@v1
-              with:
-                  command: run
-                  args: --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
+      - name: Build web-viewer (release)
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
 
-            - name: Upload web assets
-              uses: actions/upload-artifact@v3
-              with:
-                  name: web_viewer
-                  path: web_viewer
+      - name: Upload web assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: web_viewer
+          path: web_viewer

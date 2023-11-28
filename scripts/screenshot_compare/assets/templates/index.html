@@ -1,25 +1,25 @@
 <!doctype html>
 <html>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
-    <!-- Disable zooming: -->
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, user-scalable=no"
-    />
+  <!-- Disable zooming: -->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  />
 
-    <head>
-        <title>Screenshot compare</title>
-        <link rel="stylesheet" href="index.css" />
-    </head>
+  <head>
+    <title>Screenshot compare</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
 
-    <body>
-        <ul>
-            {% for entry in examples %}
-            <li>
-                <a href="examples/{{ entry.name }}">{{ entry.name }}</a>
-            </li>
-            {% endfor %}
-        </ul>
-    </body>
+  <body>
+    <ul>
+      {% for entry in examples %}
+      <li>
+        <a href="examples/{{ entry.name }}">{{ entry.name }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </body>
 </html>

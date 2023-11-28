@@ -6,181 +6,181 @@
 name: Pull-Request
 
 on:
-    pull_request:
-        types:
-            - opened
-            - synchronize
+  pull_request:
+    types:
+      - opened
+      - synchronize
 
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
-    checks:
-        name: Checks
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        uses: ./.github/workflows/reusable_checks.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            PR_NUMBER: ${{ github.event.pull_request.number }}
-        secrets: inherit
+  checks:
+    name: Checks
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_checks.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
 
-    cpp-paths-filter:
-        runs-on: ubuntu-latest
-        outputs:
-            cpp_changes: ${{ steps.filter.outputs.cpp_changes }}
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-            - uses: dorny/paths-filter@v2
-              id: filter
-              with:
-                  filters: |
-                      cpp_changes:
-                        - '**/*.hpp'
-                        - '**/.cpp'
-                        - '**/CMakeLists.txt'
-
-    cpp-tests:
-        name: "C++ tests"
-        # Wait for the cpp-paths-filter to be completed before starting.
-        needs: cpp-paths-filter
-        uses: ./.github/workflows/reusable_checks_cpp.yml
+  cpp-paths-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      cpp_changes: ${{ steps.filter.outputs.cpp_changes }}
+    steps:
+      - uses: actions/checkout@v4
         with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            FULL: "${{ needs.cpp-paths-filter.outputs.cpp_changes }}"
-        secrets: inherit
-
-    min-wheel-build:
-        name: "Minimum Wheel Build"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        uses: ./.github/workflows/reusable_build_wheels.yml
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+      - uses: dorny/paths-filter@v2
+        id: filter
         with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            PLATFORM: linux
-            MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
-            WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
-        secrets: inherit
+          filters: |
+            cpp_changes:
+              - '**/*.hpp'
+              - '**/.cpp'
+              - '**/CMakeLists.txt'
 
-    min-wheel-test:
-        name: "Minimum Wheel Test"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        needs: [min-wheel-build]
-        uses: ./.github/workflows/reusable_test_wheels.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            PLATFORM: linux
-            WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
-        secrets: inherit
+  cpp-tests:
+    name: "C++ tests"
+    # Wait for the cpp-paths-filter to be completed before starting.
+    needs: cpp-paths-filter
+    uses: ./.github/workflows/reusable_checks_cpp.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      FULL: "${{ needs.cpp-paths-filter.outputs.cpp_changes }}"
+    secrets: inherit
 
-    build-js:
-        name: "Build JS"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        uses: ./.github/workflows/reusable_build_npm.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-        secrets: inherit
+  min-wheel-build:
+    name: "Minimum Wheel Build"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_build_wheels.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PLATFORM: linux
+      MATURIN_FEATURE_FLAGS: "--no-default-features --features extension-module"
+      WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
+    secrets: inherit
 
-    build-rerun_c-and-upload:
-        name: "Build & Upload rerun_c (Linux x64)"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            PLATFORM: linux
-        secrets: inherit
+  min-wheel-test:
+    name: "Minimum Wheel Test"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [min-wheel-build]
+    uses: ./.github/workflows/reusable_test_wheels.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PLATFORM: linux
+      WHEEL_ARTIFACT_NAME: "linux-wheel-fast"
+    secrets: inherit
 
-    build-rerun-cli-and-upload:
-        name: "Build & Upload rerun-cli (Linux x64)"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            PLATFORM: linux
-        secrets: inherit
+  build-js:
+    name: "Build JS"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_build_npm.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+    secrets: inherit
 
-    bundle-and-upload-rerun_cpp:
-        name: "Bundle and upload rerun_cpp_sdk.zip"
-        needs: [build-rerun_c-and-upload]
-        uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
-        with:
-            PLATFORM_FILTER: "linux"
-        secrets: inherit
+  build-rerun_c-and-upload:
+    name: "Build & Upload rerun_c (Linux x64)"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_c.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PLATFORM: linux
+    secrets: inherit
 
-    build-web:
-        name: "Build Web"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        uses: ./.github/workflows/reusable_build_web.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-        secrets: inherit
+  build-rerun-cli-and-upload:
+    name: "Build & Upload rerun-cli (Linux x64)"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PLATFORM: linux
+    secrets: inherit
 
-    upload-web:
-        name: "Upload Web"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        needs: [build-web]
-        uses: ./.github/workflows/reusable_upload_web.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
-            PR_NUMBER: ${{ github.event.pull_request.number }}
-        secrets: inherit
+  bundle-and-upload-rerun_cpp:
+    name: "Bundle and upload rerun_cpp_sdk.zip"
+    needs: [build-rerun_c-and-upload]
+    uses: ./.github/workflows/reusable_bundle_and_upload_rerun_cpp.yml
+    with:
+      PLATFORM_FILTER: "linux"
+    secrets: inherit
 
-    build-web-demo:
-        name: "Build Web Demo"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        needs: [min-wheel-build, build-web]
-        uses: ./.github/workflows/reusable_build_web_demo.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            WHEEL_ARTIFACT_NAME: linux-wheel-fast
-        secrets: inherit
+  build-web:
+    name: "Build Web"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+    secrets: inherit
 
-    track-sizes:
-        name: "Track Sizes"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        needs: [build-web-demo]
-        uses: ./.github/workflows/reusable_track_size.yml
-        with:
-            CONCURRENCY: push-${{ github.ref_name }}
-            PR_NUMBER: ${{ github.event.pull_request.number }}
-        secrets: inherit
+  upload-web:
+    name: "Upload Web"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [build-web]
+    uses: ./.github/workflows/reusable_upload_web.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
 
-    upload-web-demo:
-        name: "Upload Web Demo"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        needs: [build-web-demo]
-        uses: ./.github/workflows/reusable_upload_web_demo.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
-            PR_NUMBER: ${{ github.event.pull_request.number }}
-        secrets: inherit
+  build-web-demo:
+    name: "Build Web Demo"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [min-wheel-build, build-web]
+    uses: ./.github/workflows/reusable_build_web_demo.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      WHEEL_ARTIFACT_NAME: linux-wheel-fast
+    secrets: inherit
 
-    run-notebook:
-        name: "Run Notebook"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        needs: [min-wheel-build]
-        uses: ./.github/workflows/reusable_run_notebook.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            WHEEL_ARTIFACT_NAME: linux-wheel-fast
-            UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
-        secrets: inherit
+  track-sizes:
+    name: "Track Sizes"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [build-web-demo]
+    uses: ./.github/workflows/reusable_track_size.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
 
-    save-pr-summary:
-        name: "Save PR Summary"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        needs: [upload-web, run-notebook, build-rerun_c-and-upload]
-        uses: ./.github/workflows/reusable_pr_summary.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            PR_NUMBER: ${{ github.event.pull_request.number }}
-        secrets: inherit
+  upload-web-demo:
+    name: "Upload Web Demo"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [build-web-demo]
+    uses: ./.github/workflows/reusable_upload_web_demo.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
 
-    update-pr-body:
-        name: "Update PR Body"
-        if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-        uses: ./.github/workflows/reusable_update_pr_body.yml
-        with:
-            CONCURRENCY: pr-${{ github.event.pull_request.number }}
-            PR_NUMBER: ${{ github.event.pull_request.number }}
-        secrets: inherit
+  run-notebook:
+    name: "Run Notebook"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [min-wheel-build]
+    uses: ./.github/workflows/reusable_run_notebook.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      WHEEL_ARTIFACT_NAME: linux-wheel-fast
+      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
+    secrets: inherit
+
+  save-pr-summary:
+    name: "Save PR Summary"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    needs: [upload-web, run-notebook, build-rerun_c-and-upload]
+    uses: ./.github/workflows/reusable_pr_summary.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit
+
+  update-pr-body:
+    name: "Update PR Body"
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    uses: ./.github/workflows/reusable_update_pr_body.yml
+    with:
+      CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    secrets: inherit

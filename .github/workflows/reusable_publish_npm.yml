@@ -1,70 +1,70 @@
 name: Build and publish NPM
 
 on:
-    workflow_call:
-        inputs:
-            concurrency:
-                type: string
-                required: true
-            release-commit:
-                description: "Commit to release"
-                type: string
-                required: true
+  workflow_call:
+    inputs:
+      concurrency:
+        type: string
+        required: true
+      release-commit:
+        description: "Commit to release"
+        type: string
+        required: true
 
 concurrency:
-    group: ${{ inputs.concurrency }}-publish-npm
-    cancel-in-progress: true
+  group: ${{ inputs.concurrency }}-publish-npm
+  cancel-in-progress: true
 
 permissions:
-    contents: "write"
-    id-token: "write"
+  contents: "write"
+  id-token: "write"
 
 jobs:
-    get-commit-sha:
-        name: Get Commit Sha
-        runs-on: ubuntu-latest
-        outputs:
-            short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
-            full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
-        steps:
-            - name: "Set short-sha"
-              id: get-short-sha
-              shell: bash
-              run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
+  get-commit-sha:
+    name: Get Commit Sha
+    runs-on: ubuntu-latest
+    outputs:
+      short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
+      full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
+    steps:
+      - name: "Set short-sha"
+        id: get-short-sha
+        shell: bash
+        run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-            - name: "Set full-sha"
-              id: get-full-sha
-              shell: bash
-              run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
+      - name: "Set full-sha"
+        id: get-full-sha
+        shell: bash
+        run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
-    build:
-        runs-on: ubuntu-latest-16-cores
-        needs: [get-commit-sha]
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ inputs.release-commit }}
+  build:
+    runs-on: ubuntu-latest-16-cores
+    needs: [get-commit-sha]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release-commit }}
 
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: "20.x"
-                  registry-url: "https://registry.npmjs.org"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
 
-            - name: Set up Rust
-              uses: ./.github/actions/setup-rust
-              with:
-                  cache_key: "build-web"
-                  save_cache: false
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-web"
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            - uses: prefix-dev/setup-pixi@v0.3.0
-              with:
-                  pixi-version: v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.3.0
+        with:
+          pixi-version: v0.6.0
 
-            - name: Publish packages
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-              shell: bash
-              run: |
-                  pixi run node rerun_js/web-viewer/scripts/publish.mjs
+      - name: Publish packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          pixi run node rerun_js/web-viewer/scripts/publish.mjs

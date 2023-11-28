@@ -3,45 +3,45 @@
 name: Pull Request Checkboxes
 
 on:
-    pull_request_target:
-        types:
-            - opened
-            - synchronize
-            - reopened
-            - edited
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - edited
 
 concurrency:
-    group: ${{ github.event.pull_request.number }}-pr-checkboxes
-    cancel-in-progress: true
+  group: ${{ github.event.pull_request.number }}-pr-checkboxes
+  cancel-in-progress: true
 
 permissions:
-    contents: "read"
-    pull-requests: "write"
+  contents: "read"
+  pull-requests: "write"
 
 jobs:
-    pr-checkboxes:
-        name: Check PR checkboxes
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+  pr-checkboxes:
+    name: Check PR checkboxes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-            - name: Set up Python
-              uses: actions/setup-python@v2
-              with:
-                  python-version: 3.11
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
 
-            - name: Install deps
-              shell: bash
-              run: |
-                  python3 -m pip install -r ./scripts/ci/requirements.txt
+      - name: Install deps
+        shell: bash
+        run: |
+          python3 -m pip install -r ./scripts/ci/requirements.txt
 
-            - name: Check PR checkboxes
-              shell: bash
-              run: |
-                  ./scripts/ci/check_pr_checkboxes.py \
-                    --github-token ${{ secrets.GITHUB_TOKEN }} \
-                    --github-repository ${{ github.repository }} \
-                    --pr-number ${{ github.event.pull_request.number }}
+      - name: Check PR checkboxes
+        shell: bash
+        run: |
+          ./scripts/ci/check_pr_checkboxes.py \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
+            --github-repository ${{ github.repository }} \
+            --pr-number ${{ github.event.pull_request.number }}

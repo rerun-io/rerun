@@ -1,50 +1,50 @@
 name: Update links in PR Body
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            PR_NUMBER:
-                required: true
-                type: string
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      PR_NUMBER:
+        required: true
+        type: string
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-pr-summary
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-pr-summary
+  cancel-in-progress: true
 
 jobs:
-    update-pr-body:
-        name: Update PR body
+  update-pr-body:
+    name: Update PR body
 
-        permissions:
-            contents: "read"
-            id-token: "write"
-            pull-requests: "write"
+    permissions:
+      contents: "read"
+      id-token: "write"
+      pull-requests: "write"
 
-        runs-on: ubuntu-latest
+    runs-on: ubuntu-latest
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
-              with:
-                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-            - name: Set up Python
-              uses: actions/setup-python@v2
-              with:
-                  python-version: 3.11
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.11
 
-            - name: Install deps
-              shell: bash
-              run: |
-                  python3 -m pip install -r ./scripts/ci/requirements.txt
+      - name: Install deps
+        shell: bash
+        run: |
+          python3 -m pip install -r ./scripts/ci/requirements.txt
 
-            - name: Update PR description
-              shell: bash
-              run: |
-                  ./scripts/ci/update_pr_body.py \
-                    --github-token '${{ secrets.GITHUB_TOKEN }}' \
-                    --github-repository '${{ github.repository }}' \
-                    --pr-number '${{ inputs.PR_NUMBER }}'
+      - name: Update PR description
+        shell: bash
+        run: |
+          ./scripts/ci/update_pr_body.py \
+            --github-token '${{ secrets.GITHUB_TOKEN }}' \
+            --github-repository '${{ github.repository }}' \
+            --pr-number '${{ inputs.PR_NUMBER }}'

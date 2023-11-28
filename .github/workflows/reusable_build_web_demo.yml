@@ -1,93 +1,93 @@
 name: Reusable Build Web Demo
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            WHEEL_ARTIFACT_NAME:
-                required: true
-                type: string
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      WHEEL_ARTIFACT_NAME:
+        required: true
+        type: string
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-build-web-demo
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-build-web-demo
+  cancel-in-progress: true
 
 env:
-    PYTHON_VERSION: "3.8"
-    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-    RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+  PYTHON_VERSION: "3.8"
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-    # See https://github.com/ericseppanen/cargo-cranky/issues/8
-    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 jobs:
-    rs-build-web-demo:
-        name: Build Web Demo
-        permissions:
-            contents: "read"
-            id-token: "write"
+  rs-build-web-demo:
+    name: Build Web Demo
+    permissions:
+      contents: "read"
+      id-token: "write"
 
-        runs-on: ubuntu-latest-16-cores
+    runs-on: ubuntu-latest-16-cores
 
-        container:
-            image: rerunio/ci_docker:0.10.0
+    container:
+      image: rerunio/ci_docker:0.10.0
 
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
 
-            - name: Download Web Viewer
-              uses: actions/download-artifact@v3
-              with:
-                  name: web_viewer
-                  path: web_viewer
+      - name: Download Web Viewer
+        uses: actions/download-artifact@v3
+        with:
+          name: web_viewer
+          path: web_viewer
 
-            - name: Download Wheel
-              uses: actions/download-artifact@v3
-              with:
-                  name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
-                  path: wheel
+      - name: Download Wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
+          path: wheel
 
-            - uses: prefix-dev/setup-pixi@v0.4.1
-              with:
-                  pixi-version: v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
 
-            - name: Install Python dependencies and wheel
-              shell: bash
-              run: |
-                  pixi run pip install -r scripts/ci/requirements-web-demo.txt
-                  pixi run pip uninstall rerun-sdk -y
-                  pixi run pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
-                  pixi run pip install rerun-sdk --no-index --find-links wheel
+      - name: Install Python dependencies and wheel
+        shell: bash
+        run: |
+          pixi run pip install -r scripts/ci/requirements-web-demo.txt
+          pixi run pip uninstall rerun-sdk -y
+          pixi run pip install deprecated numpy>=1.23 pyarrow==10.0.1 pytest==7.1.2
+          pixi run pip install rerun-sdk --no-index --find-links wheel
 
-            - name: Verify built wheel version
-              shell: bash
-              run: |
-                  pixi run python3 -m rerun --version
-                  pixi run which rerun
-                  pixi run rerun --version
+      - name: Verify built wheel version
+        shell: bash
+        run: |
+          pixi run python3 -m rerun --version
+          pixi run which rerun
+          pixi run rerun --version
 
-            - name: Get sha
-              id: get-sha
-              shell: bash
-              run: |
-                  full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
-                  echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
+      - name: Get sha
+        id: get-sha
+        shell: bash
+        run: |
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-            - name: Build web demo
-              env:
-                  COMMIT_HASH: ${{ steps.get-sha.outputs.sha }}
-              shell: bash
-              run: |
-                  pixi run python3 scripts/ci/build_demo_app.py --skip-build
+      - name: Build web demo
+        env:
+          COMMIT_HASH: ${{ steps.get-sha.outputs.sha }}
+        shell: bash
+        run: |
+          pixi run python3 scripts/ci/build_demo_app.py --skip-build
 
-            - name: Upload web demo assets
-              uses: actions/upload-artifact@v3
-              with:
-                  name: web_demo
-                  path: web_demo
+      - name: Upload web demo assets
+        uses: actions/upload-artifact@v3
+        with:
+          name: web_demo
+          path: web_demo

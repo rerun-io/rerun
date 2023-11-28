@@ -1,201 +1,201 @@
 name: Reusable Test Wheels
 
 on:
-    workflow_call:
-        inputs:
-            CONCURRENCY:
-                required: true
-                type: string
-            PLATFORM:
-                required: true
-                type: string
-            WHEEL_ARTIFACT_NAME:
-                required: false
-                type: string
-                default: ""
-            RELEASE_COMMIT:
-                required: false
-                type: string
-                default: ""
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      PLATFORM:
+        required: true
+        type: string
+      WHEEL_ARTIFACT_NAME:
+        required: false
+        type: string
+        default: ""
+      RELEASE_COMMIT:
+        required: false
+        type: string
+        default: ""
 
 concurrency:
-    group: ${{ inputs.CONCURRENCY }}-build-wheels
-    cancel-in-progress: true
+  group: ${{ inputs.CONCURRENCY }}-build-wheels
+  cancel-in-progress: true
 
 env:
-    PYTHON_VERSION: "3.8"
-    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+  PYTHON_VERSION: "3.8"
+  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
 
-    # TODO(jleibs) --deny warnings causes installation of wasm-bindgen to fail on mac
-    # RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
-    RUSTFLAGS: --cfg=web_sys_unstable_apis
+  # TODO(jleibs) --deny warnings causes installation of wasm-bindgen to fail on mac
+  # RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+  RUSTFLAGS: --cfg=web_sys_unstable_apis
 
-    # See https://github.com/ericseppanen/cargo-cranky/issues/8
-    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+  # See https://github.com/ericseppanen/cargo-cranky/issues/8
+  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
-    # See: https://github.com/marketplace/actions/sccache-action
-    SCCACHE_GHA_ENABLED: "false"
+  # See: https://github.com/marketplace/actions/sccache-action
+  SCCACHE_GHA_ENABLED: "false"
 
 permissions:
-    contents: "read"
-    id-token: "write"
+  contents: "read"
+  id-token: "write"
 
 jobs:
-    # ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
-    set-config:
-        name: Set Config (${{ inputs.PLATFORM }})
-        runs-on: ubuntu-latest-16-cores
-        outputs:
-            RUNNER: ${{ steps.set-config.outputs.runner }}
-            TARGET: ${{ steps.set-config.outputs.target }}
-            CONTAINER: ${{ steps.set-config.outputs.container }}
-        steps:
-            - name: Set runner and target based on platform
-              id: set-config
-              shell: bash
-              run: |
-                  case "${{ inputs.PLATFORM }}" in
-                    linux)
-                      runner="ubuntu-latest-16-cores"
-                      target="x86_64-unknown-linux-gnu"
-                      container="{'image': 'rerunio/ci_docker:0.10.0'}"
-                      ;;
-                    windows)
-                      runner="windows-latest-8-cores"
-                      target="x86_64-pc-windows-msvc"
-                      container="null"
-                      ;;
-                    macos-arm)
-                      runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
-                      target="aarch64-apple-darwin"
-                      container="null"
-                      ;;
-                    macos-intel)
-                      runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
-                      target="x86_64-apple-darwin"
-                      container="null"
-                      ;;
-                    *) echo "Invalid platform" && exit 1 ;;
-                  esac
-                  echo "runner=$runner" >> "$GITHUB_OUTPUT"
-                  echo "target=$target" >> "$GITHUB_OUTPUT"
-                  echo "container=$container" >> "$GITHUB_OUTPUT"
+  set-config:
+    name: Set Config (${{ inputs.PLATFORM }})
+    runs-on: ubuntu-latest-16-cores
+    outputs:
+      RUNNER: ${{ steps.set-config.outputs.runner }}
+      TARGET: ${{ steps.set-config.outputs.target }}
+      CONTAINER: ${{ steps.set-config.outputs.container }}
+    steps:
+      - name: Set runner and target based on platform
+        id: set-config
+        shell: bash
+        run: |
+          case "${{ inputs.PLATFORM }}" in
+            linux)
+              runner="ubuntu-latest-16-cores"
+              target="x86_64-unknown-linux-gnu"
+              container="{'image': 'rerunio/ci_docker:0.10.0'}"
+              ;;
+            windows)
+              runner="windows-latest-8-cores"
+              target="x86_64-pc-windows-msvc"
+              container="null"
+              ;;
+            macos-arm)
+              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              target="aarch64-apple-darwin"
+              container="null"
+              ;;
+            macos-intel)
+              runner="macos-latest-large" # See https://github.blog/2023-10-02-introducing-the-new-apple-silicon-powered-m1-macos-larger-runner-for-github-actions/
+              target="x86_64-apple-darwin"
+              container="null"
+              ;;
+            *) echo "Invalid platform" && exit 1 ;;
+          esac
+          echo "runner=$runner" >> "$GITHUB_OUTPUT"
+          echo "target=$target" >> "$GITHUB_OUTPUT"
+          echo "container=$container" >> "$GITHUB_OUTPUT"
 
-    # ---------------------------------------------------------------------------
+  # ---------------------------------------------------------------------------
 
-    test-wheels:
-        name: Test Wheels (${{ needs.set-config.outputs.RUNNER }})
+  test-wheels:
+    name: Test Wheels (${{ needs.set-config.outputs.RUNNER }})
 
-        needs: [set-config]
+    needs: [set-config]
 
-        runs-on: ${{ needs.set-config.outputs.RUNNER }}
-        container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
+    runs-on: ${{ needs.set-config.outputs.RUNNER }}
+    container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
 
-        steps:
-            - name: Show context
-              shell: bash
-              run: |
-                  echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
-                  echo "JOB_CONTEXT": $JOB_CONTEXT
-                  echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
-                  echo "ENV_CONTEXT": $ENV_CONTEXT
-              env:
-                  ENV_CONTEXT: ${{ toJson(env) }}
-                  GITHUB_CONTEXT: ${{ toJson(github) }}
-                  JOB_CONTEXT: ${{ toJson(job) }}
-                  INPUTS_CONTEXT: ${{ toJson(inputs) }}
+    steps:
+      - name: Show context
+        shell: bash
+        run: |
+          echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
+          echo "JOB_CONTEXT": $JOB_CONTEXT
+          echo "INPUTS_CONTEXT": $INPUTS_CONTEXT
+          echo "ENV_CONTEXT": $ENV_CONTEXT
+        env:
+          ENV_CONTEXT: ${{ toJson(env) }}
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+          JOB_CONTEXT: ${{ toJson(job) }}
+          INPUTS_CONTEXT: ${{ toJson(inputs) }}
 
-            - uses: actions/checkout@v4
-              with:
-                  ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-            - name: Set up Rust
-              uses: ./.github/actions/setup-rust
-              with:
-                  cache_key: "build-${{ inputs.PLATFORM }}"
-                  # Cache will be produced by `reusable_checks/rs-lints`
-                  save_cache: false
-                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-${{ inputs.PLATFORM }}"
+          # Cache will be produced by `reusable_checks/rs-lints`
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-            # The pip-cache setup logic doesn't work in the ubuntu docker container
-            # That's probably fine since we bake these deps into the container already
-            - name: Setup python
-              if: ${{ inputs.PLATFORM != 'linux' }}
-              uses: actions/setup-python@v4
-              with:
-                  python-version: ${{ env.PYTHON_VERSION }}
-                  cache: "pip"
-                  cache-dependency-path: "scripts/ci/requirements.txt"
+      # The pip-cache setup logic doesn't work in the ubuntu docker container
+      # That's probably fine since we bake these deps into the container already
+      - name: Setup python
+        if: ${{ inputs.PLATFORM != 'linux' }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: "scripts/ci/requirements.txt"
 
-            # These should already be in the docker container, but run for good measure. A no-op install
-            # should be fast, and this way things don't break if we add new packages without rebuilding
-            # docker
-            - run: pip install -r scripts/ci/requirements.txt
-              shell: bash
+      # These should already be in the docker container, but run for good measure. A no-op install
+      # should be fast, and this way things don't break if we add new packages without rebuilding
+      # docker
+      - run: pip install -r scripts/ci/requirements.txt
+        shell: bash
 
-            - name: Download Wheel
-              uses: actions/download-artifact@v3
-              with:
-                  name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
-                  path: wheel
+      - name: Download Wheel
+        uses: actions/download-artifact@v3
+        with:
+          name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
+          path: wheel
 
-            - name: Install wheel dependencies
-              # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
-              # This needs to be a separate step for some reason or the following step fails
-              # TODO(jleibs): pull these deps from pyproject.toml
-              # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
-              shell: bash
-              run: |
-                  pip install attrs>=23.1.0 numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
+      - name: Install wheel dependencies
+        # First we install the dependencies manually so we can use `--no-index` when installing the wheel.
+        # This needs to be a separate step for some reason or the following step fails
+        # TODO(jleibs): pull these deps from pyproject.toml
+        # TODO(jleibs): understand why deps can't be installed in the same step as the wheel
+        shell: bash
+        run: |
+          pip install attrs>=23.1.0 numpy>=1.23 pillow pyarrow==10.0.1 pytest==7.1.2 torch==2.1.0 typing_extensions>=4.5
 
-            - name: Get version
-              id: get-version
-              shell: bash
-              run: |
-                  echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
+      - name: Get version
+        id: get-version
+        shell: bash
+        run: |
+          echo "wheel_version=$(python3 scripts/ci/crates.py get-version)" >> "$GITHUB_OUTPUT"
 
-            - name: Install built wheel
-              # Now install the wheel using a specific version and --no-index to guarantee we get the version from
-              # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
-              # find the dependencies to reinstall them.
-              shell: bash
-              run: |
-                  pip uninstall rerun-sdk
-                  pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
+      - name: Install built wheel
+        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
+        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
+        # find the dependencies to reinstall them.
+        shell: bash
+        run: |
+          pip uninstall rerun-sdk
+          pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
 
-            - name: Verify built wheel version
-              shell: bash
-              run: |
-                  python3 -m rerun --version
-                  which rerun
-                  rerun --version
+      - name: Verify built wheel version
+        shell: bash
+        run: |
+          python3 -m rerun --version
+          which rerun
+          rerun --version
 
-            - name: Run unit tests
-              shell: bash
-              run: cd rerun_py/tests && pytest -c ../pyproject.toml
+      - name: Run unit tests
+        shell: bash
+        run: cd rerun_py/tests && pytest -c ../pyproject.toml
 
-            - name: Run e2e test
-              shell: bash
-              run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
+      - name: Run e2e test
+        shell: bash
+        run: RUST_LOG=debug scripts/run_python_e2e_test.py --no-build # rerun-sdk is already built and installed
 
-            - name: Run tests/roundtrips.py
-              if: ${{ inputs.PLATFORM != 'windows' }}
-              shell: bash
-              # --release so we can inherit from some of the artifacts that maturin has just built before
-              # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
-              # --no-py-build because rerun-sdk is already built and installed
-              run: |
-                  RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+      - name: Run tests/roundtrips.py
+        if: ${{ inputs.PLATFORM != 'windows' }}
+        shell: bash
+        # --release so we can inherit from some of the artifacts that maturin has just built before
+        # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
+        # --no-py-build because rerun-sdk is already built and installed
+        run: |
+          RUST_LOG=debug tests/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
 
-            - name: Run docs/code-examples/roundtrips.py
-              if: ${{ inputs.PLATFORM != 'windows' }}
-              shell: bash
-              # --release so we can inherit from some of the artifacts that maturin has just built before
-              # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
-              # --no-py-build because rerun-sdk is already built and installed
-              run: |
-                  RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
+      - name: Run docs/code-examples/roundtrips.py
+        if: ${{ inputs.PLATFORM != 'windows' }}
+        shell: bash
+        # --release so we can inherit from some of the artifacts that maturin has just built before
+        # --target x86_64-unknown-linux-gnu because otherwise cargo loses the target cache… even though this is the target anyhow…
+        # --no-py-build because rerun-sdk is already built and installed
+        run: |
+          RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
