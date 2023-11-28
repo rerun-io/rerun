@@ -1,6 +1,6 @@
 [package]
 name = "custom_space_view"
-version = "0.11.0-rc.2"
+version = "0.11.0"
 edition = "2021"
 rust-version = "1.72"
 license = "MIT OR Apache-2.0"
