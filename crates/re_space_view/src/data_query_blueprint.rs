@@ -43,14 +43,17 @@ impl DataQueryBlueprint {
     pub const INDIVIDUAL_OVERRIDES_PREFIX: &str = "individual_overrides";
     pub const RECURSIVE_OVERRIDES_PREFIX: &str = "recursive_overrides";
 
-    pub fn auto(space_view_class_name: SpaceViewClassName, space_path: &EntityPath) -> Self {
+    pub fn new<'a>(
+        space_view_class_name: SpaceViewClassName,
+        queries_entities: impl Iterator<Item = &'a EntityPathExpr>,
+    ) -> Self {
         Self {
             id: DataQueryId::random(),
             space_view_class_name,
-            expressions: vec![EntityPathExpr::Recursive(space_path.clone())
-                .to_string()
-                .into()]
-            .into(),
+            expressions: queries_entities
+                .map(|exp| exp.to_string().into())
+                .collect::<Vec<_>>()
+                .into(),
         }
     }
 

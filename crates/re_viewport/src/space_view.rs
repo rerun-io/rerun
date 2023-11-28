@@ -1,6 +1,7 @@
 use ahash::HashSet;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
+use re_log_types::EntityPathExpr;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{
     DataQueryBlueprint, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
@@ -33,9 +34,6 @@ pub struct SpaceViewBlueprint {
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     pub space_origin: EntityPath,
 
-    /// The legacy data blueprint tree
-    pub contents: SpaceViewContents,
-
     /// The data queries that are part of this space view.
     pub queries: Vec<DataQueryBlueprint>,
 
@@ -55,7 +53,6 @@ impl SpaceViewBlueprint {
             display_name,
             class_name,
             space_origin,
-            contents: _,
             queries,
             entities_determined_by_user,
             auto_properties: _,
@@ -72,10 +69,10 @@ impl SpaceViewBlueprint {
 }
 
 impl SpaceViewBlueprint {
-    pub fn new<'a>(
+    pub fn new(
         space_view_class: SpaceViewClassName,
         space_path: &EntityPath,
-        queries_entities: impl Iterator<Item = &'a EntityPath>,
+        query: DataQueryBlueprint,
     ) -> Self {
         // We previously named the [`SpaceView`] after the [`EntityPath`] if there was only a single entity. However,
         // this led to somewhat confusing and inconsistent behavior. See https://github.com/rerun-io/rerun/issues/1220
@@ -90,19 +87,12 @@ impl SpaceViewBlueprint {
 
         let id = SpaceViewId::random();
 
-        let mut contents = SpaceViewContents::new(id);
-        contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
-
-        // TODO(jleibs): Need to create a real query here
-        let queries = vec![DataQueryBlueprint::auto(space_view_class, space_path)];
-
         Self {
             display_name,
             class_name: space_view_class,
             id,
             space_origin: space_path.clone(),
-            contents,
-            queries,
+            queries: vec![query],
             entities_determined_by_user: false,
             auto_properties: Default::default(),
         }
@@ -137,7 +127,6 @@ impl SpaceViewBlueprint {
             display_name: display_name.to_string(),
             class_name,
             space_origin: space_origin.into(),
-            contents: SpaceViewContents::new(id),
             queries,
             entities_determined_by_user,
             auto_properties: Default::default(),
@@ -301,83 +290,6 @@ impl SpaceViewBlueprint {
         });
     }
 
-    /// Removes a subtree of entities from the blueprint tree.
-    ///
-    /// Ignores all entities that aren't part of the blueprint.
-    pub fn remove_entity_subtree(&mut self, tree: &EntityTree) {
-        re_tracing::profile_function!();
-
-        tree.visit_children_recursively(&mut |path: &EntityPath| {
-            self.contents.remove_entity(path);
-            self.entities_determined_by_user = true;
-        });
-    }
-
-    /// Adds a subtree of entities to the blueprint tree and creates groups as needed.
-    ///
-    /// Ignores all entities that can't be added or are already added.
-    pub fn add_entity_subtree(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        tree: &EntityTree,
-        spaces_info: &SpaceInfoCollection,
-    ) {
-        re_tracing::profile_function!();
-
-        let heuristic_context = compute_heuristic_context_for_entities(ctx.store_db);
-
-        let mut entities = Vec::new();
-        tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
-            if is_entity_processed_by_class(
-                ctx,
-                &self.class_name,
-                entity_path,
-                heuristic_context
-                    .get(entity_path)
-                    .copied()
-                    .unwrap_or_default(),
-                &ctx.current_query(),
-            ) && !self.contents.contains_entity(entity_path)
-                && spaces_info
-                    .is_reachable_by_transform(entity_path, &self.space_origin)
-                    .is_ok()
-            {
-                entities.push(entity_path.clone());
-            }
-        });
-
-        if !entities.is_empty() {
-            self.contents
-                .insert_entities_according_to_hierarchy(entities.iter(), &self.space_origin);
-            self.entities_determined_by_user = true;
-        }
-    }
-
-    /// Resets the [`SpaceViewContents::per_system_entities`] for all paths that are part of this space view.
-    pub fn reset_systems_per_entity_path(
-        &mut self,
-        entities_per_system_for_class: &EntitiesPerSystem,
-    ) {
-        re_tracing::profile_function!();
-
-        // TODO(andreas): We believe this is *correct* but not necessarily optimal. Pay attention
-        // to the algorithmic complexity here as we consider changing the indexing and
-        // access patterns of these structures in the future.
-        let mut per_system_entities = re_viewer_context::PerSystemEntities::new();
-        for (system, entities) in entities_per_system_for_class {
-            per_system_entities.insert(
-                *system,
-                self.contents
-                    .entity_paths()
-                    .filter(|ent_path| entities.contains(ent_path))
-                    .cloned()
-                    .collect(),
-            );
-        }
-
-        *self.contents.per_system_entities_mut() = per_system_entities;
-    }
-
     #[inline]
     pub fn entity_path(&self) -> EntityPath {
         self.id.as_entity_path()
@@ -501,12 +413,15 @@ mod tests {
         let space_view = SpaceViewBlueprint::new(
             "3D".into(),
             &EntityPath::root(),
-            [
-                &"parent".into(),
-                &"parent/skip/child1".into(),
-                &"parent/skip/child2".into(),
-            ]
-            .into_iter(),
+            DataQueryBlueprint::new(
+                "3D".into(),
+                [
+                    &"parent".into(),
+                    &"parent/skip/child1".into(),
+                    &"parent/skip/child2".into(),
+                ]
+                .into_iter(),
+            ),
         );
 
         let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
@@ -531,7 +446,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.contents.execute_query(
+            let query_result = space_view.queries.first().unwrap().execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
@@ -569,7 +484,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.contents.execute_query(
+            let query_result = space_view.queries.first().unwrap().execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
@@ -616,7 +531,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.contents.execute_query(
+            let query_result = space_view.queries.first().unwrap().execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
@@ -662,7 +577,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.contents.execute_query(
+            let query_result = space_view.queries.first().unwrap().execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
@@ -703,7 +618,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.contents.execute_query(
+            let query_result = space_view.queries.first().unwrap().execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,

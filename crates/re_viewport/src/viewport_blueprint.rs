@@ -161,16 +161,10 @@ impl<'a> ViewportBlueprint<'a> {
                 .map(|space_view_id| self.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
             Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
-            Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-                if let Some(space_view) = self.space_view(space_view_id) {
-                    space_view
-                        .contents
-                        .group(*data_blueprint_group_handle)
-                        .is_some()
-                } else {
-                    false
-                }
-            }
+            Item::DataBlueprintGroup(space_view_id, query_id, entity_path) => self
+                .space_views
+                .get(space_view_id)
+                .map_or(false, |sv| sv.queries.iter().any(|q| q.id == *query_id)),
         }
     }
 
@@ -233,6 +227,8 @@ impl<'a> ViewportBlueprint<'a> {
     }
 
     pub fn space_views_containing_entity_path(&self, path: &EntityPath) -> Vec<SpaceViewId> {
+        // TODO(jleibs): Need to search for entity path in query-results
+        /*
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {
@@ -243,6 +239,8 @@ impl<'a> ViewportBlueprint<'a> {
                 }
             })
             .collect()
+            */
+        vec![]
     }
 
     /// Compares the before and after snapshots and sends any necessary deltas to the store.

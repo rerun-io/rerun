@@ -150,7 +150,7 @@ fn has_data_section(item: &Item) -> bool {
     match item {
         Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => false,
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => false,
     }
 }
 
@@ -260,22 +260,23 @@ fn what_is_selected_ui(
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
             }
         }
-        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, _query_id, entity_path) => {
             if let Some(space_view) = viewport.space_view(space_view_id) {
-                if let Some(group) = space_view.contents.group(*data_blueprint_group_handle) {
-                    item_title_ui(
-                        ctx.re_ui,
-                        ui,
-                        group.display_name.as_str(),
-                        Some(&re_ui::icons::CONTAINER),
-                        &format!("Group {:?}", group.display_name),
-                    );
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    &entity_path.to_string(),
+                    Some(&re_ui::icons::CONTAINER),
+                    &format!(
+                        "Group {:?} as shown in Space View {:?}",
+                        entity_path, space_view.display_name
+                    ),
+                );
 
-                    ui.horizontal(|ui| {
-                        ui.label("in");
-                        space_view_button(ctx, ui, space_view);
-                    });
-                }
+                ui.horizontal(|ui| {
+                    ui.label("in");
+                    space_view_button(ctx, ui, space_view);
+                });
             }
         }
     }
@@ -550,37 +551,34 @@ fn blueprint_ui(
             }
         }
 
-        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, query_id, group_path) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
-                    let group_path = group.group_path.clone();
-                    let as_group = true;
+                let as_group = true;
 
-                    let query_result = ctx.lookup_query_result(space_view.query_id());
-                    if let Some(data_result) = query_result
-                        .tree
-                        .lookup_result_by_path_and_group(&group_path, as_group)
-                        .cloned()
-                    {
-                        let space_view_class = *space_view.class_name();
-                        let mut props = data_result
-                            .individual_properties
-                            .clone()
-                            .unwrap_or_default();
+                let query_result = ctx.lookup_query_result(*query_id);
+                if let Some(data_result) = query_result
+                    .tree
+                    .lookup_result_by_path_and_group(group_path, as_group)
+                    .cloned()
+                {
+                    let space_view_class = *space_view.class_name();
+                    let mut props = data_result
+                        .individual_properties
+                        .clone()
+                        .unwrap_or_default();
 
-                        entity_props_ui(
-                            ctx,
-                            ui,
-                            &space_view_class,
-                            None,
-                            &mut props,
-                            &data_result.resolved_properties,
-                        );
-                        data_result.save_override(Some(props), ctx);
-                    }
-                } else {
-                    ctx.selection_state_mut().clear_current();
+                    entity_props_ui(
+                        ctx,
+                        ui,
+                        &space_view_class,
+                        None,
+                        &mut props,
+                        &data_result.resolved_properties,
+                    );
+                    data_result.save_override(Some(props), ctx);
                 }
+            } else {
+                ctx.selection_state_mut().clear_current();
             }
         }
 

@@ -6,7 +6,8 @@ use egui::Ui;
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
+    DataBlueprintGroupHandle, DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity,
+    ViewerContext,
 };
 
 use super::DataUi;
@@ -197,9 +198,10 @@ pub fn data_blueprint_group_button_to(
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     space_view_id: SpaceViewId,
-    group_handle: DataBlueprintGroupHandle,
+    query_id: DataQueryId,
+    entity_path: EntityPath,
 ) -> egui::Response {
-    let item = Item::DataBlueprintGroup(space_view_id, group_handle);
+    let item = Item::DataBlueprintGroup(space_view_id, query_id, entity_path);
     let response = ctx
         .re_ui
         .selectable_label_with_icon(
