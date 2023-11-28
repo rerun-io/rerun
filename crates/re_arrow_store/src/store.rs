@@ -72,7 +72,7 @@ impl DataStoreConfig {
 
 // ---
 
-pub type InsertIdVec = SmallVec<[u64; 4]>;
+pub type InsertIdVec = VecDeque<u64>;
 
 /// Keeps track of datatype information for all component types that have been written to the store
 /// so far.
