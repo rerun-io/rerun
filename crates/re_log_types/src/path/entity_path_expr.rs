@@ -50,7 +50,13 @@ impl Display for EntityPathExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Exact(path) => path.fmt(f),
-            Self::Recursive(path) => write!(f, "{path}/"),
+            Self::Recursive(path) => {
+                if path.is_root() {
+                    write!(f, "/")
+                } else {
+                    write!(f, "{path}/")
+                }
+            }
         }
     }
 }

@@ -156,6 +156,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
             .expressions
             .expressions
             .iter()
+            .filter(|exp| !exp.as_str().is_empty())
             .map(|exp| EntityPathExpr::from(exp.as_str()))
             .collect();
 
