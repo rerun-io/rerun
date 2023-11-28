@@ -297,7 +297,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.3.0
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
           pixi-version: v0.6.0
 
@@ -317,4 +317,3 @@ jobs:
           pixi run cpp-clean
           RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-build-all
           RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-test
-

@@ -76,7 +76,7 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.3.0
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
           pixi-version: v0.6.0
 
@@ -166,4 +166,3 @@ jobs:
         shell: bash
         run: |
           gsutil -m cp -r 'gs://rerun-demo/version/${{ inputs.release-version }}/*' gs://rerun-demo/version/latest
-
