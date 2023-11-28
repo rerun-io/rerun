@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, fmt::Display};
 
 use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
+use re_data_store::EntityProperties;
 
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
@@ -169,6 +170,7 @@ impl SpaceViewClass for TensorSpaceView {
         state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
         if let Some(selected_tensor) = &state.selected_tensor {
             if let Some(state_tensor) = state.state_tensors.get_mut(selected_tensor) {
@@ -182,6 +184,7 @@ impl SpaceViewClass for TensorSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,

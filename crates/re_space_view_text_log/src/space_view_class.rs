@@ -1,3 +1,4 @@
+use re_data_store::EntityProperties;
 use std::collections::BTreeMap;
 
 use re_data_ui::item_ui;
@@ -89,6 +90,7 @@ impl SpaceViewClass for TextSpaceView {
         state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
         let ViewTextFilters {
             col_timelines,
@@ -134,6 +136,7 @@ impl SpaceViewClass for TextSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,

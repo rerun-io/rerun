@@ -1,4 +1,5 @@
 use egui::util::hash;
+use re_data_store::EntityProperties;
 use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_types::datatypes::TensorBuffer;
@@ -71,6 +72,7 @@ impl SpaceViewClass for BarChartSpaceView {
         _state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
     }
 
@@ -79,6 +81,7 @@ impl SpaceViewClass for BarChartSpaceView {
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,

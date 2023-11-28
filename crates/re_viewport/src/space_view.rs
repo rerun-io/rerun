@@ -268,8 +268,14 @@ impl SpaceViewBlueprint {
             highlights,
         };
 
+        let root_data_result = self.root_data_result(ctx.store_context);
+        let props = root_data_result
+            .individual_properties
+            .clone()
+            .unwrap_or_default();
+
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, system_registry, &query);
+            class.ui(ctx, ui, view_state, &props, system_registry, &query);
         });
     }
 

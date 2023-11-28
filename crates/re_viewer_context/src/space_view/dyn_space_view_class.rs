@@ -1,4 +1,4 @@
-use re_data_store::EntityPropertyMap;
+use re_data_store::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
@@ -114,6 +114,7 @@ pub trait DynSpaceViewClass {
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
+        root_entity_properties: &mut EntityProperties,
     );
 
     /// Draws the ui for this space view type and handles ui events.
@@ -124,6 +125,7 @@ pub trait DynSpaceViewClass {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
+        root_entity_properties: &EntityProperties,
         systems: &SpaceViewSystemRegistry,
         query: &ViewQuery<'_>,
     );

@@ -1,3 +1,4 @@
+use re_data_store::EntityProperties;
 use re_log_types::EntityPath;
 use re_viewer_context::{
     AutoSpawnHeuristic, NamedViewSystem as _, PerSystemEntities, SpaceViewClass,
@@ -109,6 +110,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         state: &mut Self::State,
         space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
         state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::ThreeD);
     }
@@ -118,6 +120,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
