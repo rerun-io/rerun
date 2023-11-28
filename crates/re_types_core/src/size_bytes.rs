@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use arrow2::datatypes::{DataType, Field};
 use smallvec::SmallVec;
@@ -59,6 +59,17 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
 }
 
 impl<T: SizeBytes> SizeBytes for Vec<T> {
+    /// Does not take capacity into account.
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // TODO(cmc): This is sub-optimal if these types are PODs.
+
+        // NOTE: It's all on the heap at this point.
+        self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for VecDeque<T> {
     /// Does not take capacity into account.
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
