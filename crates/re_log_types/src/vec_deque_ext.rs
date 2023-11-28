@@ -86,6 +86,18 @@ pub trait VecDequeRemovalExt<T> {
     ///
     /// Element at index 0 is the front of the queue.
     fn swap_remove(&mut self, index: usize) -> Option<T>;
+
+    /// Splits the deque into two at the given index.
+    ///
+    /// Returns a newly allocated `VecDeque`. `self` contains elements `[0, at)`,
+    /// and the returned deque contains elements `[at, len)`.
+    ///
+    /// If `at` is equal or greater than the length, the returned `VecDeque` is empty.
+    ///
+    /// Note that the capacity of `self` does not change.
+    ///
+    /// Element at index 0 is the front of the queue.
+    fn split_off_or_default(&mut self, at: usize) -> Self;
 }
 
 impl<T: Clone> VecDequeRemovalExt<T> for VecDeque<T> {
@@ -109,6 +121,14 @@ impl<T: Clone> VecDequeRemovalExt<T> for VecDeque<T> {
         } else {
             self.swap_remove_back(index)
         }
+    }
+
+    #[inline]
+    fn split_off_or_default(&mut self, at: usize) -> Self {
+        if at >= self.len() {
+            return Default::default();
+        }
+        self.split_off(at)
     }
 }
 
