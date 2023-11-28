@@ -65,7 +65,11 @@ impl From<&str> for EntityPathExpr {
     #[inline]
     fn from(path: &str) -> Self {
         if let Some(path) = path.strip_suffix('/') {
-            Self::Recursive(EntityPath::from(path))
+            if path.is_empty() {
+                Self::Recursive(EntityPath::root())
+            } else {
+                Self::Recursive(EntityPath::from(path))
+            }
         } else {
             Self::Exact(EntityPath::from(path))
         }
