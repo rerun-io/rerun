@@ -8832,6 +8832,102 @@ package:
   size: 279200
   timestamp: 1676838681615
 - platform: linux-64
+  name: nodejs
+  version: 20.9.0
+  category: main
+  manager: conda
+  dependencies:
+  - __glibc >=2.17,<3.0.a0
+  - icu >=73.2,<74.0a0
+  - libgcc-ng >=12
+  - libstdcxx-ng >=12
+  - libuv >=1.46.0,<1.47.0a0
+  - libzlib >=1.2.13,<1.3.0a0
+  - openssl >=3.1.4,<4.0a0
+  - zlib
+  url: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.9.0-hb753e55_0.conda
+  hash:
+    md5: ddfcb003b0a6804fabe7dfbf1be16651
+    sha256: 4d35f8151f83bc561e4bcb41b46dcf77ec708c88eb333d1376f37371288f46ad
+  build: hb753e55_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 17141416
+  timestamp: 1700390394425
+- platform: osx-64
+  name: nodejs
+  version: 20.9.0
+  category: main
+  manager: conda
+  dependencies:
+  - __osx >=10.9
+  - icu >=73.2,<74.0a0
+  - libcxx >=16.0.6
+  - libuv >=1.46.0,<1.47.0a0
+  - libzlib >=1.2.13,<1.3.0a0
+  - openssl >=3.1.4,<4.0a0
+  - zlib
+  url: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.9.0-h9adec40_0.conda
+  hash:
+    md5: eea3610c4b86886f545c0fe53d1e9438
+    sha256: b492f1478fbca841491fbb9feeca7e859a9f57ea6319eeef09d702e12140a44f
+  build: h9adec40_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  constrains:
+  - __osx >=10.15
+  license: MIT
+  license_family: MIT
+  size: 12232858
+  timestamp: 1700393211831
+- platform: osx-arm64
+  name: nodejs
+  version: 20.9.0
+  category: main
+  manager: conda
+  dependencies:
+  - __osx >=10.9
+  - icu >=73.2,<74.0a0
+  - libcxx >=16.0.6
+  - libuv >=1.46.0,<1.47.0a0
+  - libzlib >=1.2.13,<1.3.0a0
+  - openssl >=3.1.4,<4.0a0
+  - zlib
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.9.0-h0950e01_0.conda
+  hash:
+    md5: f51aebc416d466c13a719f3604b2426c
+    sha256: 2e2cb08f6525a7ac7b4d9785ac826e9663ee969d21298f9718906fb931cb85e9
+  build: h0950e01_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 11636727
+  timestamp: 1700400190792
+- platform: win-64
+  name: nodejs
+  version: 20.9.0
+  category: main
+  manager: conda
+  dependencies: []
+  url: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.9.0-h57928b3_0.conda
+  hash:
+    md5: 97d4628e7c293eb10516d35c6fb3c7e5
+    sha256: 7ec505ac95df1847bd0065ae587a4fd176a23e4ddccda246113e0b5426a8469e
+  build: h57928b3_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 22600407
+  timestamp: 1700384957633
+- platform: linux-64
   name: nox
   version: 2021.10.1
   category: main
@@ -9048,68 +9144,68 @@ package:
   timestamp: 1694920741486
 - platform: linux-64
   name: openssl
-  version: 3.1.3
+  version: 3.2.0
   category: main
   manager: conda
   dependencies:
-  - ca-certificates *
+  - ca-certificates
   - libgcc-ng >=12
-  url: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.1.3-hd590300_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.2.0-hd590300_1.conda
   hash:
-    md5: 7bb88ce04c8deb9f7d763ae04a1da72f
-    sha256: f4e35f506c7e8ab7dfdc47255b0d5aa8ce0c99028ae0affafd274333042c4f70
-  build: hd590300_0
+    md5: 603827b39ea2b835268adb8c821b8570
+    sha256: 80efc6f429bd8e622d999652e5cba2ca56fcdb9c16a439d2ce9b4313116e4a87
+  build: hd590300_1
   arch: x86_64
   subdir: linux-64
-  build_number: 0
+  build_number: 1
   constrains:
   - pyopenssl >=22.1
   license: Apache-2.0
   license_family: Apache
-  size: 2642850
-  timestamp: 1695158025027
+  size: 2854103
+  timestamp: 1701162437033
 - platform: osx-64
   name: openssl
-  version: 3.1.3
+  version: 3.2.0
   category: main
   manager: conda
   dependencies:
-  - ca-certificates *
-  url: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.1.3-h8a1eda9_0.conda
+  - ca-certificates
+  url: https://conda.anaconda.org/conda-forge/osx-64/openssl-3.2.0-hd75f5a5_1.conda
   hash:
-    md5: 26f9b58f905547e658e9587f8e8cfe43
-    sha256: 69731ce62d4b68e538af559747da53f837ae0bbca519b38f2eea28680eb9e8d1
-  build: h8a1eda9_0
+    md5: 06cb561619487c88891839b9beb5244c
+    sha256: 99161bf349f5dc80322f2a2c188588d11efa662566e4e19f2ac0a36d9fa3de25
+  build: hd75f5a5_1
   arch: x86_64
   subdir: osx-64
-  build_number: 0
+  build_number: 1
   constrains:
   - pyopenssl >=22.1
   license: Apache-2.0
   license_family: Apache
-  size: 2329752
-  timestamp: 1695158667922
+  size: 2508164
+  timestamp: 1701163123673
 - platform: osx-arm64
   name: openssl
-  version: 3.1.3
+  version: 3.2.0
   category: main
   manager: conda
   dependencies:
-  - ca-certificates *
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.1.3-h53f4e23_0.conda
+  - ca-certificates
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/openssl-3.2.0-h0d3ecfb_1.conda
   hash:
-    md5: 40d01d3f39589f54b618ddd28a5a48cb
-    sha256: d9af6208610d4985322b8eade79215f1ded6e2a2b41b0a885714b971a36a5bae
-  build: h53f4e23_0
+    md5: 47d16d26100f19ca495882882b7bc93b
+    sha256: a53e1c6c058b621fd1d13cca6f9cccd534d2b3f4b4ac789fe26f7902031d6c41
+  build: h0d3ecfb_1
   arch: aarch64
   subdir: osx-arm64
-  build_number: 0
+  build_number: 1
   constrains:
   - pyopenssl >=22.1
   license: Apache-2.0
   license_family: Apache
-  size: 2225422
-  timestamp: 1695158154709
+  size: 2856233
+  timestamp: 1701162541844
 - platform: win-64
   name: openssl
   version: 3.1.3
@@ -9666,6 +9762,83 @@ package:
   noarch: python
   size: 22548
   timestamp: 1693086745921
+- platform: linux-64
+  name: prettier
+  version: 3.1.0
+  category: main
+  manager: conda
+  dependencies:
+  - __glibc >=2.17,<3.0.a0
+  - nodejs >=20.8.1,<21.0a0
+  url: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.1.0-h31abb78_0.conda
+  hash:
+    md5: 825c43da21ded31f538a695cca2961ee
+    sha256: a836d8d87734c76e04b64f66d2a72262ac09ce7e23c92b3f77d47bdc20267a21
+  build: h31abb78_0
+  arch: x86_64
+  subdir: linux-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 1005605
+  timestamp: 1699847633602
+- platform: osx-64
+  name: prettier
+  version: 3.1.0
+  category: main
+  manager: conda
+  dependencies:
+  - nodejs >=20.8.1,<21.0a0
+  url: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.1.0-hbd11d21_0.conda
+  hash:
+    md5: 0f2d6f2c329df13e0ff0bd3748b2f74f
+    sha256: 9dfd2b3d2d4c3cbdeb341263d5107b7018197ad167633387832def6f68154e55
+  build: hbd11d21_0
+  arch: x86_64
+  subdir: osx-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 1002551
+  timestamp: 1699847747031
+- platform: osx-arm64
+  name: prettier
+  version: 3.1.0
+  category: main
+  manager: conda
+  dependencies:
+  - nodejs >=20.8.1,<21.0a0
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.1.0-hb67532b_0.conda
+  hash:
+    md5: dfa0c94c177b8163579301aa4672f245
+    sha256: c71c69ba2420da67a4bc1a5a85deab03e3c37cb4dea44a3bef01cc91e24bb1da
+  build: hb67532b_0
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 1004352
+  timestamp: 1699847777152
+- platform: win-64
+  name: prettier
+  version: 3.1.0
+  category: main
+  manager: conda
+  dependencies:
+  - nodejs >=20.8.1,<21.0a0
+  url: https://conda.anaconda.org/conda-forge/win-64/prettier-3.1.0-h98b3114_0.conda
+  hash:
+    md5: 7ad09d13bc00a0c025344ce159dd4234
+    sha256: 637c81650139f101e16d3358ca29140ce635b189cc272c612be7452bb6c52f04
+  build: h98b3114_0
+  arch: x86_64
+  subdir: win-64
+  build_number: 0
+  license: MIT
+  license_family: MIT
+  size: 1007428
+  timestamp: 1699847793435
 - platform: linux-64
   name: psutil
   version: 5.9.5
@@ -12452,6 +12625,64 @@ package:
   noarch: python
   size: 18954
   timestamp: 1695255262261
+- platform: linux-64
+  name: zlib
+  version: 1.2.13
+  category: main
+  manager: conda
+  dependencies:
+  - libgcc-ng >=12
+  - libzlib 1.2.13 hd590300_5
+  url: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.2.13-hd590300_5.conda
+  hash:
+    md5: 68c34ec6149623be41a1933ab996a209
+    sha256: 9887a04d7e7cb14bd2b52fa01858f05a6d7f002c890f618d9fcd864adbfecb1b
+  build: hd590300_5
+  arch: x86_64
+  subdir: linux-64
+  build_number: 5
+  license: Zlib
+  license_family: Other
+  size: 92825
+  timestamp: 1686575231103
+- platform: osx-64
+  name: zlib
+  version: 1.2.13
+  category: main
+  manager: conda
+  dependencies:
+  - libzlib 1.2.13 h8a1eda9_5
+  url: https://conda.anaconda.org/conda-forge/osx-64/zlib-1.2.13-h8a1eda9_5.conda
+  hash:
+    md5: 75a8a98b1c4671c5d2897975731da42d
+    sha256: d1f4c82fd7bd240a78ce8905e931e68dca5f523c7da237b6b63c87d5625c5b35
+  build: h8a1eda9_5
+  arch: x86_64
+  subdir: osx-64
+  build_number: 5
+  license: Zlib
+  license_family: Other
+  size: 90764
+  timestamp: 1686575574678
+- platform: osx-arm64
+  name: zlib
+  version: 1.2.13
+  category: main
+  manager: conda
+  dependencies:
+  - libzlib 1.2.13 h53f4e23_5
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.2.13-h53f4e23_5.conda
+  hash:
+    md5: a08383f223b10b71492d27566fafbf6c
+    sha256: de0ee1e24aa6867058d3b852a15c8d7f49f262f5828772700c647186d4a96bbe
+  build: h53f4e23_5
+  arch: aarch64
+  subdir: osx-arm64
+  build_number: 5
+  license: Zlib
+  license_family: Other
+  size: 79577
+  timestamp: 1686575471024
 - platform: linux-64
   name: zstd
   version: 1.5.5
