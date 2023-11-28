@@ -44,7 +44,7 @@ class BarChart(BarChartExt, Archetype):
     </center>
     """
 
-    def __init__(self: Any, values: datatypes.TensorDataLike):
+    def __init__(self: Any, values: datatypes.TensorDataLike, *, color: datatypes.Rgba32Like | None = None):
         """
         Create a new instance of the BarChart archetype.
 
@@ -52,11 +52,13 @@ class BarChart(BarChartExt, Archetype):
         ----------
         values:
             The values. Should always be a rank-1 tensor.
+        color:
+            The color of the bar chart
         """
 
         # You can define your own __init__ function as a member of BarChartExt in bar_chart_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(values=values)
+            self.__attrs_init__(values=values, color=color)
             return
         self.__attrs_clear__()
 
@@ -64,6 +66,7 @@ class BarChart(BarChartExt, Archetype):
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             values=None,  # type: ignore[arg-type]
+            color=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -78,6 +81,15 @@ class BarChart(BarChartExt, Archetype):
         converter=BarChartExt.values__field_converter_override,  # type: ignore[misc]
     )
     # The values. Should always be a rank-1 tensor.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    color: components.ColorBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
+    )
+    # The color of the bar chart
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
