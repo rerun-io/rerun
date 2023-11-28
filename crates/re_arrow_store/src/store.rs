@@ -1,12 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::AtomicU64;
 
 use ahash::HashMap;
 use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-use smallvec::SmallVec;
-
 use re_log_types::{
     DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
     RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
@@ -325,7 +323,7 @@ impl DataStore {
                 let entry = oldest_time_per_timeline
                     .entry(bucket.timeline)
                     .or_insert(TimeInt::MAX);
-                if let Some(time) = bucket.inner.read().col_time.first() {
+                if let Some(time) = bucket.inner.read().col_time.front() {
                     *entry = TimeInt::min(*entry, (*time).into());
                 }
             }

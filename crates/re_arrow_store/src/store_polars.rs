@@ -1,6 +1,6 @@
 #![allow(clippy::all, unused_variables, dead_code)]
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 
 use arrow2::{
     array::{new_empty_array, Array, BooleanArray, ListArray, Utf8Array},
@@ -268,7 +268,7 @@ impl IndexedBucket {
 fn insert_ids_as_series(col_insert_id: &InsertIdVec) -> Series {
     re_tracing::profile_function!();
 
-    let insert_ids = arrow2::array::UInt64Array::from_slice(col_insert_id.as_slice());
+    let insert_ids = DataTable::serialize_primitive_deque(col_insert_id);
     new_infallible_series(
         DataStore::insert_id_component_name().as_ref(),
         &insert_ids,
@@ -281,7 +281,7 @@ fn column_as_series(
     num_rows: usize,
     datatype: arrow2::datatypes::DataType,
     component: ComponentName,
-    cells: &[Option<DataCell>],
+    cells: &VecDeque<Option<DataCell>>,
 ) -> Series {
     re_tracing::profile_function!();
 

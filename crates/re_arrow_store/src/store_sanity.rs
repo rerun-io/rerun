@@ -171,6 +171,10 @@ impl IndexedBucket {
             // Time ranges are eagerly maintained.
             {
                 let mut times = col_time.clone();
+                times.make_contiguous();
+                let (times, &mut []) = times.as_mut_slices() else {
+                    unreachable!();
+                };
                 times.sort();
 
                 let expected_min = times.first().copied().unwrap_or(i64::MAX).into();
