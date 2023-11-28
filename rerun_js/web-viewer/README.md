@@ -47,6 +47,7 @@ The `rrd` in the snippet above should be a URL pointing to either:
 If `rrd` is not set, the viewer will display the same welcome screen as <https://app.rerun.io>.
 
 For a full example, see https://github.com/rerun-io/web-viewer-example.
+You can open the example via CodeSandbox: https://codesandbox.io/s/github/rerun-io/web-viewer-example
 
 ℹ️ Note:
 This package only targets recent versions of browsers.
