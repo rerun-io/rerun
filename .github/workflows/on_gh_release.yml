@@ -11,6 +11,7 @@ concurrency:
 permissions:
   # required for updating the release
   contents: write
+  id-token: write
 
 jobs:
   sync-release-assets:
@@ -20,3 +21,4 @@ jobs:
       CONCURRENCY: "${{ github.event.release.tag_name }}"
       RELEASE_VERSION: "${{ github.event.release.tag_name }}"
     secrets: inherit
+
