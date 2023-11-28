@@ -12,6 +12,8 @@ Embed the Rerun web viewer within your app.
   </picture>
 </p>
 
+This package is framework-agnostic. A React wrapper is available at <https://www.npmjs.com/package/@rerun-io/web-viewer-react>.
+
 ## Install
 
 ```
@@ -29,22 +31,26 @@ The web viewer is an object which manages a canvas element:
 ```js
 import { WebViewer } from "@rerun-io/web-viewer";
 
-const URL = "…";
+const rrd = "…";
 const parentElement = document.body;
 
 const viewer = new WebViewer();
-await viewer.start(URL, parentElement);
+await viewer.start(rrd, parentElement);
 // …
 viewer.stop();
 ```
 
-You can style this canvas element however you wish.
+The `rrd` in the snippet above should be a URL pointing to either:
+- A hosted `.rrd` file, such as <https://demo.rerun.io/version/0.11.0-rc.2/examples/dna/data.rrd>
+- A WebSocket connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk-operating-modes#serve) API
 
-For a live example, see https://github.com/rerun-io/web-viewer-example.
+If `rrd` is not set, the viewer will display the same welcome screen as <https://app.rerun.io>.
+
+For a full example, see https://github.com/rerun-io/web-viewer-example.
 
 ℹ️ Note:
 This package only targets recent versions of browsers.
-If your target browser does not support Wasm imports, you may need to install additional plugins for your bundler.
+If your target browser does not support Wasm imports or top-level await, you may need to install additional plugins for your bundler.
 
 ## Development
 
