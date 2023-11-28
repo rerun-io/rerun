@@ -438,6 +438,8 @@ fn blueprint_ui(
                     .clone()
                     .unwrap_or(resolved_entity_props.clone());
 
+                let cursor = ui.cursor();
+
                 space_view
                     .class(ctx.space_view_class_registry)
                     .selection_ui(
@@ -448,6 +450,12 @@ fn blueprint_ui(
                         space_view.id,
                         &mut props,
                     );
+
+                if cursor != ui.cursor() {
+                    // add some space if something was rendered by selection_ui
+                    //TODO(ab): use design token
+                    ui.add_space(16.0);
+                }
 
                 visible_history_ui(
                     ctx,
