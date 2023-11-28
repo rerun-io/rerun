@@ -118,7 +118,7 @@ namespace rerun {
             // having called the move constructor is suspicious though and hints of an actual bug.
             //
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
         }
 
         /// Construct from a initializer list of elements that are compatible with TElement.
@@ -289,7 +289,7 @@ namespace rerun {
 
             // We need to return something to avoid compiler warnings.
             // But if we don't mark this as unreachable, GCC will complain that we're dereferencing null down the line.
-            RERUN_UNREACHABLE();
+            RR_UNREACHABLE();
             // But with this in place, MSVC complains that the return statement is not reachable (GCC/clang on the other hand need it).
 #ifndef _MSC_VER
             return nullptr;
