@@ -6,6 +6,8 @@
 
 cmake_minimum_required(VERSION 3.16...3.27)
 
+project(rerun_sdk LANGUAGES CXX)
+
 message("Compiler: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION} (${CMAKE_CXX_COMPILER})")
 
 set(RERUN_CPP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src" CACHE PATH "Rerun include & source directory")
