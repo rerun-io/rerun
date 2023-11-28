@@ -13,7 +13,7 @@ slotmap::new_key_type! {
 
 /// The result of executing a single data query
 pub struct DataQueryResult {
-    /// Which [`DataQuery`] generated this result
+    /// The [`DataQueryId`] for the query that generated this result
     pub id: DataQueryId,
 
     /// The [`DataResultTree`] for the query
