@@ -1,65 +1,64 @@
 name: Reusable PR Summary
 
 on:
-  workflow_call:
-    inputs:
-      CONCURRENCY:
-        required: true
-        type: string
-      PR_NUMBER:
-        required: true
-        type: string
+    workflow_call:
+        inputs:
+            CONCURRENCY:
+                required: true
+                type: string
+            PR_NUMBER:
+                required: true
+                type: string
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-pr-summary
-  cancel-in-progress: true
+    group: ${{ inputs.CONCURRENCY }}-pr-summary
+    cancel-in-progress: true
 
 jobs:
-  pr-summary:
-    name: Create HTML summary for PR
+    pr-summary:
+        name: Create HTML summary for PR
 
-    permissions:
-      contents: "read"
-      id-token: "write"
-      pull-requests: "write"
+        permissions:
+            contents: "read"
+            id-token: "write"
+            pull-requests: "write"
 
-    runs-on: ubuntu-latest
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.11
+            - name: Set up Python
+              uses: actions/setup-python@v2
+              with:
+                  python-version: 3.11
 
-      - id: "auth"
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+            - id: "auth"
+              uses: google-github-actions/auth@v1
+              with:
+                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
-        with:
-          version: ">= 363.0.0"
+            - name: "Set up Cloud SDK"
+              uses: "google-github-actions/setup-gcloud@v1"
+              with:
+                  version: ">= 363.0.0"
 
-      - name: Install deps
-        shell: bash
-        run: pip install google-cloud-storage Jinja2 PyGithub
+            - name: Install deps
+              shell: bash
+              run: pip install google-cloud-storage Jinja2 PyGithub
 
-      - name: Render HTML template
-        shell: bash
-        run: |
-          python scripts/ci/generate_pr_summary.py \
-          --github-token ${{secrets.GITHUB_TOKEN}} \
-          --github-repository ${GITHUB_REPOSITORY} \
-          --pr-number ${{ inputs.PR_NUMBER }} \
-          --upload
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ inputs.PR_NUMBER }}
-
+            - name: Render HTML template
+              shell: bash
+              run: |
+                  python scripts/ci/generate_pr_summary.py \
+                  --github-token ${{secrets.GITHUB_TOKEN}} \
+                  --github-repository ${GITHUB_REPOSITORY} \
+                  --pr-number ${{ inputs.PR_NUMBER }} \
+                  --upload
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  PR_NUMBER: ${{ inputs.PR_NUMBER }}

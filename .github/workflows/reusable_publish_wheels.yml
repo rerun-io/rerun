@@ -1,213 +1,213 @@
 name: Build and publish wheels
 
 on:
-  workflow_call:
-    inputs:
-      concurrency:
-        type: string
-        required: true
-      release-version:
-        description: "Release Version Number (Must match Cargo.toml)"
-        type: string
-        required: true
-      linux-wheel-name:
-        description: "Name of the wheel built for linux"
-        type: string
-        required: true
-      release-commit:
-        description: "Which commit to build+publish"
-        type: string
-        required: true
+    workflow_call:
+        inputs:
+            concurrency:
+                type: string
+                required: true
+            release-version:
+                description: "Release Version Number (Must match Cargo.toml)"
+                type: string
+                required: true
+            linux-wheel-name:
+                description: "Name of the wheel built for linux"
+                type: string
+                required: true
+            release-commit:
+                description: "Which commit to build+publish"
+                type: string
+                required: true
 
 jobs:
-  get-commit-sha:
-    name: Get Commit Sha
-    runs-on: ubuntu-latest
-    outputs:
-      short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
-      full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
-    steps:
-      - name: "Set short-sha"
-        id: get-short-sha
-        shell: bash
-        run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
+    get-commit-sha:
+        name: Get Commit Sha
+        runs-on: ubuntu-latest
+        outputs:
+            short-sha: ${{ steps.get-short-sha.outputs.short-sha }}
+            full-sha: ${{ steps.get-full-sha.outputs.full-sha }}
+        steps:
+            - name: "Set short-sha"
+              id: get-short-sha
+              shell: bash
+              run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
-      - name: "Set full-sha"
-        id: get-full-sha
-        shell: bash
-        run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
+            - name: "Set full-sha"
+              id: get-full-sha
+              shell: bash
+              run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
-  ## Build
+    ## Build
 
-  build-linux:
-    name: "Linux: Build Wheels"
-    needs: [get-commit-sha]
-    uses: ./.github/workflows/reusable_build_wheels.yml
-    with:
-      CONCURRENCY: wheels-build-linux-${{ inputs.concurrency }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  build-windows:
-    name: "Windows: Build Wheels"
-    needs: [get-commit-sha]
-    uses: ./.github/workflows/reusable_build_wheels.yml
-    with:
-      CONCURRENCY: wheels-build-windows-${{ inputs.concurrency }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  build-macos-arm:
-    name: "Macos-Arm: Build Wheels"
-    needs: [get-commit-sha]
-    uses: ./.github/workflows/reusable_build_wheels.yml
-    with:
-      CONCURRENCY: wheels-build-macos-arm-${{ inputs.concurrency }}
-      PLATFORM: macos-arm
-      WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  build-macos-intel:
-    name: "Macos-Intel: Build Wheels"
-    needs: [get-commit-sha]
-    uses: ./.github/workflows/reusable_build_wheels.yml
-    with:
-      CONCURRENCY: wheels-build-macos-intel-${{ inputs.concurrency }}
-      PLATFORM: macos-intel
-      WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  ## Test
-
-  test-windows:
-    name: "Windows: Test Wheels"
-    needs: [build-windows]
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: wheels-test-windows-${{ inputs.concurrency }}
-      PLATFORM: windows
-      WHEEL_ARTIFACT_NAME: windows-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  test-linux:
-    name: "Linux: Test Wheels"
-    needs: [build-linux]
-    uses: ./.github/workflows/reusable_test_wheels.yml
-    with:
-      CONCURRENCY: wheels-test-linux-${{ inputs.concurrency }}
-      PLATFORM: linux
-      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  ## Upload
-
-  upload-wheels-linux:
-    name: "Linux: Upload Wheels"
-    needs: [test-linux]
-    uses: ./.github/workflows/reusable_upload_wheels.yml
-    with:
-      CONCURRENCY: wheels-upload-linux-${{ inputs.concurrency }}
-      WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  upload-wheels-windows:
-    name: "Windows: Upload Wheels"
-    needs: [test-windows]
-    uses: ./.github/workflows/reusable_upload_wheels.yml
-    with:
-      CONCURRENCY: wheels-upload-windows-${{ inputs.concurrency }}
-      WHEEL_ARTIFACT_NAME: windows-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  upload-wheels-macos-arm:
-    name: "Macos-Arm: Upload Wheels"
-    needs: [build-macos-arm]
-    uses: ./.github/workflows/reusable_upload_wheels.yml
-    with:
-      CONCURRENCY: wheels-upload-macos-arm-${{ inputs.concurrency }}
-      WHEEL_ARTIFACT_NAME: macos-arm-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  upload-wheels-macos-intel:
-    name: "Macos-Intel: Upload Wheels"
-    needs: [build-macos-intel]
-    uses: ./.github/workflows/reusable_upload_wheels.yml
-    with:
-      CONCURRENCY: wheels-upload-macos-intel-${{ inputs.concurrency }}
-      WHEEL_ARTIFACT_NAME: macos-intel-wheel
-      RELEASE_COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  generate-wheel-index:
-    name: "Generate Pip Index"
-    needs:
-      [
-        upload-wheels-linux,
-        upload-wheels-windows,
-        upload-wheels-macos-arm,
-        upload-wheels-macos-intel,
-      ]
-    uses: ./.github/workflows/reusable_pip_index.yml
-    with:
-      CONCURRENCY: generate-wheel-index-${{ inputs.concurrency }}
-      COMMIT: ${{ inputs.release-commit }}
-    secrets: inherit
-
-  publish-wheels:
-    name: "Publish Wheels"
-    needs: [get-commit-sha, generate-wheel-index]
-    runs-on: ubuntu-latest-16-cores
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    build-linux:
+        name: "Linux: Build Wheels"
+        needs: [get-commit-sha]
+        uses: ./.github/workflows/reusable_build_wheels.yml
         with:
-          fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
-          ref: ${{ inputs.release-commit }}
+            CONCURRENCY: wheels-build-linux-${{ inputs.concurrency }}
+            PLATFORM: linux
+            WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
 
-      - id: "auth"
-        uses: google-github-actions/auth@v1
+    build-windows:
+        name: "Windows: Build Wheels"
+        needs: [get-commit-sha]
+        uses: ./.github/workflows/reusable_build_wheels.yml
         with:
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+            CONCURRENCY: wheels-build-windows-${{ inputs.concurrency }}
+            PLATFORM: windows
+            WHEEL_ARTIFACT_NAME: windows-wheel
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
 
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
+    build-macos-arm:
+        name: "Macos-Arm: Build Wheels"
+        needs: [get-commit-sha]
+        uses: ./.github/workflows/reusable_build_wheels.yml
         with:
-          version: ">= 363.0.0"
+            CONCURRENCY: wheels-build-macos-arm-${{ inputs.concurrency }}
+            PLATFORM: macos-arm
+            WHEEL_ARTIFACT_NAME: macos-arm-wheel
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
 
-      - name: Install packaging
-        shell: bash
-        run: |
-          python3 -m pip install packaging google-cloud-storage
-
-      - name: Download wheels from Google Cloud Storage
-        shell: bash
-        run: |
-          mkdir wheels
-          gsutil cp "gs://rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels/*.whl" wheels/
-
-      - name: Verify wheels match the expected release
-        shell: bash
-        run: |
-          python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.release-version }}
-
-      - name: Publish to PyPI
-        uses: PyO3/maturin-action@v1
-        env:
-          # These are both set in the GitHub project configuration
-          MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
-          MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
+    build-macos-intel:
+        name: "Macos-Intel: Build Wheels"
+        needs: [get-commit-sha]
+        uses: ./.github/workflows/reusable_build_wheels.yml
         with:
-          command: upload
-          args: --skip-existing wheels/*
+            CONCURRENCY: wheels-build-macos-intel-${{ inputs.concurrency }}
+            PLATFORM: macos-intel
+            WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
+
+    ## Test
+
+    test-windows:
+        name: "Windows: Test Wheels"
+        needs: [build-windows]
+        uses: ./.github/workflows/reusable_test_wheels.yml
+        with:
+            CONCURRENCY: wheels-test-windows-${{ inputs.concurrency }}
+            PLATFORM: windows
+            WHEEL_ARTIFACT_NAME: windows-wheel
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
+
+    test-linux:
+        name: "Linux: Test Wheels"
+        needs: [build-linux]
+        uses: ./.github/workflows/reusable_test_wheels.yml
+        with:
+            CONCURRENCY: wheels-test-linux-${{ inputs.concurrency }}
+            PLATFORM: linux
+            WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
+
+    ## Upload
+
+    upload-wheels-linux:
+        name: "Linux: Upload Wheels"
+        needs: [test-linux]
+        uses: ./.github/workflows/reusable_upload_wheels.yml
+        with:
+            CONCURRENCY: wheels-upload-linux-${{ inputs.concurrency }}
+            WHEEL_ARTIFACT_NAME: ${{ inputs.linux-wheel-name }}
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
+
+    upload-wheels-windows:
+        name: "Windows: Upload Wheels"
+        needs: [test-windows]
+        uses: ./.github/workflows/reusable_upload_wheels.yml
+        with:
+            CONCURRENCY: wheels-upload-windows-${{ inputs.concurrency }}
+            WHEEL_ARTIFACT_NAME: windows-wheel
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
+
+    upload-wheels-macos-arm:
+        name: "Macos-Arm: Upload Wheels"
+        needs: [build-macos-arm]
+        uses: ./.github/workflows/reusable_upload_wheels.yml
+        with:
+            CONCURRENCY: wheels-upload-macos-arm-${{ inputs.concurrency }}
+            WHEEL_ARTIFACT_NAME: macos-arm-wheel
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
+
+    upload-wheels-macos-intel:
+        name: "Macos-Intel: Upload Wheels"
+        needs: [build-macos-intel]
+        uses: ./.github/workflows/reusable_upload_wheels.yml
+        with:
+            CONCURRENCY: wheels-upload-macos-intel-${{ inputs.concurrency }}
+            WHEEL_ARTIFACT_NAME: macos-intel-wheel
+            RELEASE_COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
+
+    generate-wheel-index:
+        name: "Generate Pip Index"
+        needs:
+            [
+                upload-wheels-linux,
+                upload-wheels-windows,
+                upload-wheels-macos-arm,
+                upload-wheels-macos-intel,
+            ]
+        uses: ./.github/workflows/reusable_pip_index.yml
+        with:
+            CONCURRENCY: generate-wheel-index-${{ inputs.concurrency }}
+            COMMIT: ${{ inputs.release-commit }}
+        secrets: inherit
+
+    publish-wheels:
+        name: "Publish Wheels"
+        needs: [get-commit-sha, generate-wheel-index]
+        runs-on: ubuntu-latest-16-cores
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # Don't do a shallow clone since we need it for finding the full commit hash
+                  ref: ${{ inputs.release-commit }}
+
+            - id: "auth"
+              uses: google-github-actions/auth@v1
+              with:
+                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+            - name: "Set up Cloud SDK"
+              uses: "google-github-actions/setup-gcloud@v1"
+              with:
+                  version: ">= 363.0.0"
+
+            - name: Install packaging
+              shell: bash
+              run: |
+                  python3 -m pip install packaging google-cloud-storage
+
+            - name: Download wheels from Google Cloud Storage
+              shell: bash
+              run: |
+                  mkdir wheels
+                  gsutil cp "gs://rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels/*.whl" wheels/
+
+            - name: Verify wheels match the expected release
+              shell: bash
+              run: |
+                  python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.release-version }}
+
+            - name: Publish to PyPI
+              uses: PyO3/maturin-action@v1
+              env:
+                  # These are both set in the GitHub project configuration
+                  MATURIN_REPOSITORY: ${{ vars.PYPI_REPOSITORY }}
+                  MATURIN_PYPI_TOKEN: ${{ secrets.MATURIN_PYPI_TOKEN }}
+              with:
+                  command: upload
+                  args: --skip-existing wheels/*

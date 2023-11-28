@@ -1,51 +1,51 @@
 html {
-  /* Remove touch delay: */
-  touch-action: manipulation;
+    /* Remove touch delay: */
+    touch-action: manipulation;
 }
 
 body {
-  background: #0d1011;
+    background: #0d1011;
 }
 
 html,
 body {
-  overflow: hidden;
-  margin: 0 !important;
-  padding: 0 !important;
-  height: 100%;
-  width: 100%;
+    overflow: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100%;
+    width: 100%;
 }
 
 .screen_splitter {
-  position: absolute;
-  height: 100vh;
-  width: 50vw;
+    position: absolute;
+    height: 100vh;
+    width: 50vw;
 }
 
 .screen_splitter img {
-  position: absolute;
-  left: 50vw;
-  width: 50vw;
+    position: absolute;
+    left: 50vw;
+    width: 50vw;
 }
 
 iframe {
-  margin-right: auto;
-  margin-left: auto;
-  display: block;
-  position: absolute;
-  box-sizing: border-box;
-  top: 0;
-  left: 0;
-  width: 50vw;
-  height: 100vh;
+    margin-right: auto;
+    margin-left: auto;
+    display: block;
+    position: absolute;
+    box-sizing: border-box;
+    top: 0;
+    left: 0;
+    width: 50vw;
+    height: 100vh;
 
-  border: none;
+    border: none;
 
-  /* canvas must be on top when visible */
-  z-index: 1000;
+    /* canvas must be on top when visible */
+    z-index: 1000;
 }
 
 * {
-  font-family: sans-serif;
-  color: #cad8de;
+    font-family: sans-serif;
+    color: #cad8de;
 }

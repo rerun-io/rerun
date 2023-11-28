@@ -13,72 +13,71 @@
 name: "Setup Rust"
 
 inputs:
-  cache_key:
-    type: string
-    required: true
-  save_cache:
-    type: boolean
-    required: false
-    default: false
-  workload_identity_provider:
-    type: string
-    required: true
-  service_account:
-    type: string
-    required: true
-  targets:
-    type: string
-    required: false
-    description: "One or more space separated target triplets that will be ensured to be supported."
+    cache_key:
+        type: string
+        required: true
+    save_cache:
+        type: boolean
+        required: false
+        default: false
+    workload_identity_provider:
+        type: string
+        required: true
+    service_account:
+        type: string
+        required: true
+    targets:
+        type: string
+        required: false
+        description: "One or more space separated target triplets that will be ensured to be supported."
 
 runs:
-  using: "composite"
-  steps:
-    - name: Set up GCP credentials
-      uses: google-github-actions/auth@v1
-      with:
-        workload_identity_provider: ${{ inputs.workload_identity_provider }}
-        service_account: ${{ inputs.service_account }}
+    using: "composite"
+    steps:
+        - name: Set up GCP credentials
+          uses: google-github-actions/auth@v1
+          with:
+              workload_identity_provider: ${{ inputs.workload_identity_provider }}
+              service_account: ${{ inputs.service_account }}
 
-    - name: Ensure correct version of Rust is installed
-      run: |
-        # This is the only way to force rustup to install the version of Rust
-        # and the components/targets specified in our `rust-toolchain` file.
-        # It might break at some point: https://github.com/rust-lang/rustup/issues/1397
-        rustup show
-      shell: bash
+        - name: Ensure correct version of Rust is installed
+          run: |
+              # This is the only way to force rustup to install the version of Rust
+              # and the components/targets specified in our `rust-toolchain` file.
+              # It might break at some point: https://github.com/rust-lang/rustup/issues/1397
+              rustup show
+          shell: bash
 
-    - name: Install additional targets
-      if: ${{ inputs.targets != '' }}
-      run: rustup target add ${{ inputs.targets }}
-      shell: bash
+        - name: Install additional targets
+          if: ${{ inputs.targets != '' }}
+          run: rustup target add ${{ inputs.targets }}
+          shell: bash
 
-    # Rust-cache will cache our dependencies, which is a large chunk of the build
-    # See: https://github.com/Swatinem/rust-cache
-    - name: Set up rust-cache
-      uses: Swatinem/rust-cache@v2
-      with:
-        # Only save the cache when on the main branch.
-        # The cache is quite limited in size (~10 GB), and the
-        # individual rust-cache entries are as much as 2 GB.
-        save-if: ${{ inputs.save_cache && github.ref == 'refs/heads/main' }}
-        shared-key: ${{ inputs.cache_key }}
+        # Rust-cache will cache our dependencies, which is a large chunk of the build
+        # See: https://github.com/Swatinem/rust-cache
+        - name: Set up rust-cache
+          uses: Swatinem/rust-cache@v2
+          with:
+              # Only save the cache when on the main branch.
+              # The cache is quite limited in size (~10 GB), and the
+              # individual rust-cache entries are as much as 2 GB.
+              save-if: ${{ inputs.save_cache && github.ref == 'refs/heads/main' }}
+              shared-key: ${{ inputs.cache_key }}
 
-    - name: Set up sccache
-      uses: rerun-io/sccache-action@v0.7.0
-      with:
-        version: "v0.5.2"
-        use_gcs: true
-        gcs_bucket: rerun-sccache
-        gcs_read_only: false
+        - name: Set up sccache
+          uses: rerun-io/sccache-action@v0.7.0
+          with:
+              version: "v0.5.2"
+              use_gcs: true
+              gcs_bucket: rerun-sccache
+              gcs_read_only: false
 
-    - name: Display sccache config
-      shell: bash
-      run: |
-        cat $HOME/.config/sccache/config
+        - name: Display sccache config
+          shell: bash
+          run: |
+              cat $HOME/.config/sccache/config
 
-    - name: Verify sccache
-      shell: bash
-      run: |
-        sccache --show-stats
-
+        - name: Verify sccache
+          shell: bash
+          run: |
+              sccache --show-stats

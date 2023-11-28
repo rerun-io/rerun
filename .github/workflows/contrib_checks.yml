@@ -1,319 +1,319 @@
 name: "Checks: Lints, Tests, Docs"
 
 on:
-  workflow_call:
-    inputs:
-      CONCURRENCY:
-        required: true
-        type: string
-      PR_NUMBER:
-        required: false
-        type: string
-        default: ""
+    workflow_call:
+        inputs:
+            CONCURRENCY:
+                required: true
+                type: string
+            PR_NUMBER:
+                required: false
+                type: string
+                default: ""
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-checks
-  cancel-in-progress: true
+    group: ${{ inputs.CONCURRENCY }}-checks
+    cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.8"
-  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+    PYTHON_VERSION: "3.8"
+    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+    RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-  # See https://github.com/ericseppanen/cargo-cranky/issues/8
-  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+    # See https://github.com/ericseppanen/cargo-cranky/issues/8
+    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 permissions:
-  contents: "read"
+    contents: "read"
 
 jobs:
-  py-lints:
-    name: Python lints (ruff, mypy, …)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    py-lints:
+        name: Python lints (ruff, mypy, …)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: extractions/setup-just@v1
-        with:
-          just-version: 1.5
+            - uses: extractions/setup-just@v1
+              with:
+                  just-version: 1.5
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.11"
 
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-lint.txt
+            - name: Install Python dependencies
+              shell: bash
+              run: |
+                  pip install --upgrade pip
+                  pip install -r rerun_py/requirements-lint.txt
 
-      - name: Lint Python
-        shell: bash
-        run: |
-          just py-lint
+            - name: Lint Python
+              shell: bash
+              run: |
+                  just py-lint
 
-      - name: Check requirements
-        shell: bash
-        run: |
-          just py-requirements
+            - name: Check requirements
+              shell: bash
+              run: |
+                  just py-requirements
 
-  py-test-docs:
-    name: Test Python Docs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    py-test-docs:
+        name: Test Python Docs
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.8"
 
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-doc.txt
+            - name: Install Python dependencies
+              shell: bash
+              run: |
+                  pip install --upgrade pip
+                  pip install -r rerun_py/requirements-doc.txt
 
-      - name: Build via mkdocs
-        shell: bash
-        run: |
-          mkdocs build --strict -f rerun_py/mkdocs.yml
+            - name: Build via mkdocs
+              shell: bash
+              run: |
+                  mkdocs build --strict -f rerun_py/mkdocs.yml
 
-  no-codegen-changes:
-    name: Check if running codegen would produce any changes
-    runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.10.0
-    steps:
-      # Note: We explicitly don't override `ref` here. We need to see if changes would be made
-      # in a context where we have merged with main. Otherwise we might miss changes such as one
-      # PR introduces a new type and another PR changes the codegen.
-      - uses: actions/checkout@v4
+    no-codegen-changes:
+        name: Check if running codegen would produce any changes
+        runs-on: ubuntu-latest-16-cores
+        container:
+            image: rerunio/ci_docker:0.10.0
+        steps:
+            # Note: We explicitly don't override `ref` here. We need to see if changes would be made
+            # in a context where we have merged with main. Otherwise we might miss changes such as one
+            # PR introduces a new type and another PR changes the codegen.
+            - uses: actions/checkout@v4
 
-      # So we can format the Python code
-      - name: Set up Python
-        shell: bash
-        run: |
-          pip install -r rerun_py/requirements-lint.txt
+            # So we can format the Python code
+            - name: Set up Python
+              shell: bash
+              run: |
+                  pip install -r rerun_py/requirements-lint.txt
 
-      - name: Codegen
-        uses: actions-rs/cargo@v1
-        with:
-          command: codegen
-          args: --force --check
+            - name: Codegen
+              uses: actions-rs/cargo@v1
+              with:
+                  command: codegen
+                  args: --force --check
 
-  rs-lints:
-    name: Rust lints (fmt, check, cranky, tests, doc)
-    runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.10.0
-    steps:
-      - uses: actions/checkout@v4
+    rs-lints:
+        name: Rust lints (fmt, check, cranky, tests, doc)
+        runs-on: ubuntu-latest-16-cores
+        container:
+            image: rerunio/ci_docker:0.10.0
+        steps:
+            - uses: actions/checkout@v4
 
-      # First do our check with --locked to make sure `Cargo.lock` is up to date
-      - name: Check all features
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --all-features
+            # First do our check with --locked to make sure `Cargo.lock` is up to date
+            - name: Check all features
+              uses: actions-rs/cargo@v1
+              with:
+                  command: check
+                  args: --locked --all-features
 
-      - name: Rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+            - name: Rustfmt
+              uses: actions-rs/cargo@v1
+              with:
+                  command: fmt
+                  args: --all -- --check
 
-      - name: Cranky
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --all-targets --all-features -- --deny warnings
+            - name: Cranky
+              uses: actions-rs/cargo@v1
+              with:
+                  command: cranky
+                  args: --all-targets --all-features -- --deny warnings
 
-      # Check a few important permutations of the feature flags for our `rerun` library:
-      - name: Check rerun with `--no-default-features``
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --locked -p rerun --no-default-features
+            # Check a few important permutations of the feature flags for our `rerun` library:
+            - name: Check rerun with `--no-default-features``
+              uses: actions-rs/cargo@v1
+              with:
+                  command: cranky
+                  args: --locked -p rerun --no-default-features
 
-      - name: Check rerun with `--features sdk`
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --locked -p rerun --no-default-features --features sdk
+            - name: Check rerun with `--features sdk`
+              uses: actions-rs/cargo@v1
+              with:
+                  command: cranky
+                  args: --locked -p rerun --no-default-features --features sdk
 
-      - name: Test doc-tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --doc --all-features
+            - name: Test doc-tests
+              uses: actions-rs/cargo@v1
+              with:
+                  command: test
+                  args: --doc --all-features
 
-      - name: cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps --all-features --workspace
+            - name: cargo doc
+              uses: actions-rs/cargo@v1
+              with:
+                  command: doc
+                  args: --no-deps --all-features --workspace
 
-      - name: cargo doc --document-private-items
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --document-private-items --no-deps --all-features --workspace
+            - name: cargo doc --document-private-items
+              uses: actions-rs/cargo@v1
+              with:
+                  command: doc
+                  args: --document-private-items --no-deps --all-features --workspace
 
-      # Just a normal `cargo test` should always work:
-      - name: cargo test --all-targets
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+            # Just a normal `cargo test` should always work:
+            - name: cargo test --all-targets
+              uses: actions-rs/cargo@v1
+              with:
+                  command: test
 
-      # Full test of everything:
-      - name: cargo test --all-targets --all-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-targets --all-features
+            # Full test of everything:
+            - name: cargo test --all-targets --all-features
+              uses: actions-rs/cargo@v1
+              with:
+                  command: test
+                  args: --all-targets --all-features
 
-  rs-check-wasm:
-    name: Check Rust web build (wasm32 + wasm-bindgen)
-    runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.10.0
-    steps:
-      - uses: actions/checkout@v4
+    rs-check-wasm:
+        name: Check Rust web build (wasm32 + wasm-bindgen)
+        runs-on: ubuntu-latest-16-cores
+        container:
+            image: rerunio/ci_docker:0.10.0
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: clippy check re_viewer wasm32
-        shell: bash
-        run: ./scripts/clippy_wasm.sh
+            - name: clippy check re_viewer wasm32
+              shell: bash
+              run: ./scripts/clippy_wasm.sh
 
-      - name: Check re_renderer examples wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
+            - name: Check re_renderer examples wasm32
+              uses: actions-rs/cargo@v1
+              with:
+                  command: check
+                  args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
 
-      - name: Build web-viewer (debug)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked -p re_build_web_viewer -- --debug
+            - name: Build web-viewer (debug)
+              uses: actions-rs/cargo@v1
+              with:
+                  command: run
+                  args: --locked -p re_build_web_viewer -- --debug
 
-  toml-lints:
-    name: Lint TOML files
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    toml-lints:
+        name: Lint TOML files
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Install taplo-cli
-        uses: taiki-e/install-action@v2
-        with:
-          tool: taplo-cli
+            - name: Install taplo-cli
+              uses: taiki-e/install-action@v2
+              with:
+                  tool: taplo-cli
 
-      - name: Taplo check
-        shell: bash
-        run: |
-          taplo fmt --check --diff
+            - name: Taplo check
+              shell: bash
+              run: |
+                  taplo fmt --check --diff
 
-  misc-rerun-lints:
-    name: Rerun lints
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    misc-rerun-lints:
+        name: Rerun lints
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.8"
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          pip install gitignore_parser python-frontmatter
-          pip install -r ./scripts/ci/requirements.txt
+            - name: Install dependencies
+              shell: bash
+              run: |
+                  pip install gitignore_parser python-frontmatter
+                  pip install -r ./scripts/ci/requirements.txt
 
-      - name: Rerun lints
-        shell: bash
-        run: |
-          ./scripts/lint.py
+            - name: Rerun lints
+              shell: bash
+              run: |
+                  ./scripts/lint.py
 
-      - name: Check for too large files
-        shell: bash
-        run: |
-          ./scripts/ci/check_large_files.sh
+            - name: Check for too large files
+              shell: bash
+              run: |
+                  ./scripts/ci/check_large_files.sh
 
-      - name: Check Python example requirements
-        shell: bash
-        run: |
-          ./scripts/ci/check_requirements.py
+            - name: Check Python example requirements
+              shell: bash
+              run: |
+                  ./scripts/ci/check_requirements.py
 
-      - name: Check Python example thumbnails
-        shell: bash
-        run: |
-          ./scripts/ci/thumbnails.py check
+            - name: Check Python example thumbnails
+              shell: bash
+              run: |
+                  ./scripts/ci/thumbnails.py check
 
-  spell-check:
-    name: Spell Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Actions Repository
-        uses: actions/checkout@v4
+    spell-check:
+        name: Spell Check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Actions Repository
+              uses: actions/checkout@v4
 
-      - name: Check spelling of entire workspace
-        uses: crate-ci/typos@master
+            - name: Check spelling of entire workspace
+              uses: crate-ci/typos@master
 
-  rs-cargo-deny:
-    name: Cargo Deny
-    runs-on: ubuntu-latest
-    container:
-      image: rerunio/ci_docker:0.10.0
-    steps:
-      - uses: actions/checkout@v4
+    rs-cargo-deny:
+        name: Cargo Deny
+        runs-on: ubuntu-latest
+        container:
+            image: rerunio/ci_docker:0.10.0
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Cargo Deny
-        shell: bash
-        id: expected_version
-        run: ./scripts/ci/cargo_deny.sh
+            - name: Cargo Deny
+              shell: bash
+              id: expected_version
+              run: ./scripts/ci/cargo_deny.sh
 
-  cpp-formatting:
-    name: C++ formatting check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    cpp-formatting:
+        name: C++ formatting check
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Run clang format on all relevant files
-        uses: jidicula/clang-format-action@v4.11.0
-        with:
-          clang-format-version: "16"
-          # Only check c/cpp/h/hpp (default checks also .proto and others)
-          include-regex: ^.*\.(c|cpp|h|hpp)$
+            - name: Run clang format on all relevant files
+              uses: jidicula/clang-format-action@v4.11.0
+              with:
+                  clang-format-version: "16"
+                  # Only check c/cpp/h/hpp (default checks also .proto and others)
+                  include-regex: ^.*\.(c|cpp|h|hpp)$
 
-  cpp-tests:
-    name: C++ tests
-    runs-on: ubuntu-latest
-    container:
-      image: rerunio/ci_docker:0.10.0
-    steps:
-      - uses: actions/checkout@v4
+    cpp-tests:
+        name: C++ tests
+        runs-on: ubuntu-latest
+        container:
+            image: rerunio/ci_docker:0.10.0
+        steps:
+            - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.6.0
+            - uses: prefix-dev/setup-pixi@v0.4.1
+              with:
+                  pixi-version: v0.6.0
 
-      # TODO(emilk): make this work somehow. Right now this just results in
-      # > Compiler: GNU 12.3.0 (/__w/rerun/rerun/.pixi/env/bin/x86_64-conda-linux-gnu-c++)
-      # 😭
-      # - name: Build and run C++ tests with clang++
-      #   shell: bash
-      #   run: |
-      #     pixi run cpp-clean
-      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-build-all
-      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-test
+            # TODO(emilk): make this work somehow. Right now this just results in
+            # > Compiler: GNU 12.3.0 (/__w/rerun/rerun/.pixi/env/bin/x86_64-conda-linux-gnu-c++)
+            # 😭
+            # - name: Build and run C++ tests with clang++
+            #   shell: bash
+            #   run: |
+            #     pixi run cpp-clean
+            #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-build-all
+            #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-test
 
-      - name: Build and run C++ tests with g++
-        shell: bash
-        run: |
-          pixi run cpp-clean
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-build-all
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-test
+            - name: Build and run C++ tests with g++
+              shell: bash
+              run: |
+                  pixi run cpp-clean
+                  RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-build-all
+                  RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-test

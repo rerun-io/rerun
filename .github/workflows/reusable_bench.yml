@@ -1,160 +1,159 @@
 name: Reusable Bench
 
 on:
-  workflow_call:
-    inputs:
-      CONCURRENCY:
-        required: true
-        type: string
-      SAVE_BENCHES:
-        required: false
-        type: boolean
-        default: false
-      BENCH_NAME:
-        required: false
-        type: string
-        default: ""
-      COMPARE_TO:
-        required: false
-        type: string
-        default: ""
+    workflow_call:
+        inputs:
+            CONCURRENCY:
+                required: true
+                type: string
+            SAVE_BENCHES:
+                required: false
+                type: boolean
+                default: false
+            BENCH_NAME:
+                required: false
+                type: string
+                default: ""
+            COMPARE_TO:
+                required: false
+                type: string
+                default: ""
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-bench
-  cancel-in-progress: true
+    group: ${{ inputs.CONCURRENCY }}-bench
+    cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.8"
-  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+    PYTHON_VERSION: "3.8"
+    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+    RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-  # See https://github.com/ericseppanen/cargo-cranky/issues/8
-  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+    # See https://github.com/ericseppanen/cargo-cranky/issues/8
+    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
+    # See: https://github.com/marketplace/actions/sccache-action
+    SCCACHE_GHA_ENABLED: "false"
 
 jobs:
-  # ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
 
-  rs-benchmarks:
-    name: Rust Criterion benchmarks
+    rs-benchmarks:
+        name: Rust Criterion benchmarks
 
-    permissions:
-      # contents permission to update benchmark contents in gh-pages branch
-      contents: write
-      id-token: "write"
-      # deployments permission to deploy GitHub pages website
-      deployments: write
+        permissions:
+            # contents permission to update benchmark contents in gh-pages branch
+            contents: write
+            id-token: "write"
+            # deployments permission to deploy GitHub pages website
+            deployments: write
 
-    runs-on: ubuntu-latest-16-cores
+        runs-on: ubuntu-latest-16-cores
 
-    container:
-      image: rerunio/ci_docker:0.10.0
+        container:
+            image: rerunio/ci_docker:0.10.0
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # we need full history
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0 # we need full history
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          # Cache will be produced by `reusable_checks/rs-lints`
-          save_cache: false
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+            - name: Set up Rust
+              uses: ./.github/actions/setup-rust
+              with:
+                  cache_key: "build-linux"
+                  # Cache will be produced by `reusable_checks/rs-lints`
+                  save_cache: false
+                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Add SHORT_SHA env property with commit short sha
-        shell: bash
-        run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
+            - name: Add SHORT_SHA env property with commit short sha
+              shell: bash
+              run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
-      - name: Run benchmark
-        # Use bash shell so we get pipefail behavior with tee
-        shell: bash
-        run: |
-          cargo bench \
-            --all-features \
-            -p re_arrow_store \
-            -p re_data_store \
-            -p re_log_encoding \
-            -p re_query \
-            -p re_tuid \
-            -- --output-format=bencher | tee /tmp/${{ env.SHORT_SHA }}
+            - name: Run benchmark
+              # Use bash shell so we get pipefail behavior with tee
+              shell: bash
+              run: |
+                  cargo bench \
+                    --all-features \
+                    -p re_arrow_store \
+                    -p re_data_store \
+                    -p re_log_encoding \
+                    -p re_query \
+                    -p re_tuid \
+                    -- --output-format=bencher | tee /tmp/${{ env.SHORT_SHA }}
 
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
-        with:
-          version: ">= 363.0.0"
+            - name: "Set up Cloud SDK"
+              uses: "google-github-actions/setup-gcloud@v1"
+              with:
+                  version: ">= 363.0.0"
 
-      # TODO(jleibs) make this whole thing a python script
-      - name: "Upload bench to GCS based on SHA"
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: /tmp/${{ env.SHORT_SHA }}
-          destination: "rerun-builds/benches/"
+            # TODO(jleibs) make this whole thing a python script
+            - name: "Upload bench to GCS based on SHA"
+              uses: google-github-actions/upload-cloud-storage@v1
+              with:
+                  path: /tmp/${{ env.SHORT_SHA }}
+                  destination: "rerun-builds/benches/"
 
-      - name: Download comparison bench from GCS
-        if: ${{ inputs.COMPARE_TO != '' }}
-        shell: bash
-        run: |
-          mkdir /tmp/compare/
-          gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/compare/${{ inputs.COMPARE_TO }}
+            - name: Download comparison bench from GCS
+              if: ${{ inputs.COMPARE_TO != '' }}
+              shell: bash
+              run: |
+                  mkdir /tmp/compare/
+                  gsutil cp gs://rerun-builds/benches/${{inputs.COMPARE_TO}} /tmp/compare/${{ inputs.COMPARE_TO }}
 
-      - name: Compare results with benchcmp
-        if: ${{ inputs.COMPARE_TO != '' }}
-        shell: bash
-        run: cargo benchcmp /tmp/compare/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
+            - name: Compare results with benchcmp
+              if: ${{ inputs.COMPARE_TO != '' }}
+              shell: bash
+              run: cargo benchcmp /tmp/compare/${{ inputs.COMPARE_TO }} /tmp/${{ env.SHORT_SHA }} > /tmp/bench_results.txt
 
-      - name: "Upload bench-results to GCS"
-        if: ${{ inputs.COMPARE_TO != '' }}
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: /tmp/bench_results.txt
-          destination: "rerun-builds/commit/${{env.SHORT_SHA}}/"
+            - name: "Upload bench-results to GCS"
+              if: ${{ inputs.COMPARE_TO != '' }}
+              uses: google-github-actions/upload-cloud-storage@v1
+              with:
+                  path: /tmp/bench_results.txt
+                  destination: "rerun-builds/commit/${{env.SHORT_SHA}}/"
 
-      - name: "Copy bench to named file"
-        if: ${{ inputs.BENCH_NAME != '' }}
-        shell: bash
-        run: cp /tmp/${{ env.SHORT_SHA }} /tmp/${{ inputs.BENCH_NAME }}
+            - name: "Copy bench to named file"
+              if: ${{ inputs.BENCH_NAME != '' }}
+              shell: bash
+              run: cp /tmp/${{ env.SHORT_SHA }} /tmp/${{ inputs.BENCH_NAME }}
 
-      # Don't upload the new named bench until the end in case the names are the same
-      - name: "Upload named bench to GCS"
-        if: ${{ inputs.BENCH_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: /tmp/${{ inputs.BENCH_NAME }}
-          destination: "rerun-builds/benches/"
+            # Don't upload the new named bench until the end in case the names are the same
+            - name: "Upload named bench to GCS"
+              if: ${{ inputs.BENCH_NAME != '' }}
+              uses: google-github-actions/upload-cloud-storage@v1
+              with:
+                  path: /tmp/${{ inputs.BENCH_NAME }}
+                  destination: "rerun-builds/benches/"
 
-      - name: Alert on regression
-        # https://github.com/benchmark-action/github-action-benchmark
-        uses: benchmark-action/github-action-benchmark@v1
-        with:
-          name: Rust Benchmark
-          tool: "cargo"
-          output-file-path: /tmp/${{ env.SHORT_SHA }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+            - name: Alert on regression
+              # https://github.com/benchmark-action/github-action-benchmark
+              uses: benchmark-action/github-action-benchmark@v1
+              with:
+                  name: Rust Benchmark
+                  tool: "cargo"
+                  output-file-path: /tmp/${{ env.SHORT_SHA }}
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
 
-          # Show alert with commit comment on detecting possible performance regression
-          comment-on-alert: true
-          alert-threshold: "125%"
-          fail-on-alert: false
-          comment-always: false # Generates too much GitHub notification spam
+                  # Show alert with commit comment on detecting possible performance regression
+                  comment-on-alert: true
+                  alert-threshold: "125%"
+                  fail-on-alert: false
+                  comment-always: false # Generates too much GitHub notification spam
 
-          # Don't push to gh-pages
-          save-data-file: false
-          auto-push: false
+                  # Don't push to gh-pages
+                  save-data-file: false
+                  auto-push: false
 
-      - name: Render benchmark result
-        if: github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          python3 -m pip install google-cloud-storage==2.9.0
-          scripts/ci/render_bench.py crates \
-            --after $(date -d"30 days ago" +%Y-%m-%d) \
-            --output "gs://rerun-builds/graphs"
-
+            - name: Render benchmark result
+              if: github.ref == 'refs/heads/main'
+              shell: bash
+              run: |
+                  python3 -m pip install google-cloud-storage==2.9.0
+                  scripts/ci/render_bench.py crates \
+                    --after $(date -d"30 days ago" +%Y-%m-%d) \
+                    --output "gs://rerun-builds/graphs"

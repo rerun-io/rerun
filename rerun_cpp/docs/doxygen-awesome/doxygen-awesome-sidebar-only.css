@@ -43,7 +43,6 @@ html {
     white-space: nowrap;
 }
 
-
 @media screen and (min-width: 768px) {
     html {
         --searchbar-background: var(--page-background-color);
@@ -56,7 +55,8 @@ html {
         overflow: visible;
     }
 
-    #nav-tree, #side-nav {
+    #nav-tree,
+    #side-nav {
         height: calc(100vh - var(--top-height)) !important;
     }
 
@@ -102,11 +102,15 @@ html {
     }
 
     #MSearchBox {
-        width: calc(var(--side-nav-fixed-width) - calc(2 * var(--spacing-medium)));
+        width: calc(
+            var(--side-nav-fixed-width) - calc(2 * var(--spacing-medium))
+        );
     }
 
     #MSearchField {
-        width: calc(var(--side-nav-fixed-width) - calc(2 * var(--spacing-medium)) - 65px);
+        width: calc(
+            var(--side-nav-fixed-width) - calc(2 * var(--spacing-medium)) - 65px
+        );
     }
 
     #MSearchResultsWindow {

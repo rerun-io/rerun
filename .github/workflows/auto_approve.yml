@@ -1,47 +1,46 @@
 name: "Approve Workflow Runs"
 
 on:
-  pull_request_target:
-  issue_comment:
-    types: [created, edited]
+    pull_request_target:
+    issue_comment:
+        types: [created, edited]
 
 permissions:
-  contents: "read"
-  actions: "write"
+    contents: "read"
+    actions: "write"
 
 jobs:
-  approve-workflow-runs:
-    name: "Check for approval"
-    runs-on: ubuntu-latest
-    if: |
-      github.event.pull_request.head.repo.owner.login != 'rerun-io' &&
-      (github.event_name == 'pull_request_target' || github.event.issue.pull_request)
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+    approve-workflow-runs:
+        name: "Check for approval"
+        runs-on: ubuntu-latest
+        if: |
+            github.event.pull_request.head.repo.owner.login != 'rerun-io' &&
+            (github.event_name == 'pull_request_target' || github.event.issue.pull_request)
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.11
+            - name: Setup Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: 3.11
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          python3 -m pip install --upgrade pip
-          python3 -m pip install "PyGithub==1.59.0" "requests>=2.31,<3"
+            - name: Install dependencies
+              shell: bash
+              run: |
+                  python3 -m pip install --upgrade pip
+                  python3 -m pip install "PyGithub==1.59.0" "requests>=2.31,<3"
 
-      - name: Wait a few seconds
-        shell: bash
-        run: |
-          # Give GitHub a bit of time to synchronize everything
-          sleep 5s
+            - name: Wait a few seconds
+              shell: bash
+              run: |
+                  # Give GitHub a bit of time to synchronize everything
+                  sleep 5s
 
-      - name: Approve workflow runs
-        shell: bash
-        run: |
-          python3 scripts/ci/approve_workflow_runs.py \
-            --github-token "${{ secrets.GITHUB_TOKEN }}" \
-            --github-repository "rerun-io/rerun" \
-            --pr-number "${{ github.event.pull_request.number || github.event.issue.number }}"
-
+            - name: Approve workflow runs
+              shell: bash
+              run: |
+                  python3 scripts/ci/approve_workflow_runs.py \
+                    --github-token "${{ secrets.GITHUB_TOKEN }}" \
+                    --github-repository "rerun-io/rerun" \
+                    --pr-number "${{ github.event.pull_request.number || github.event.issue.number }}"

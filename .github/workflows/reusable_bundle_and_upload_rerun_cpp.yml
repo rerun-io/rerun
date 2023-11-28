@@ -1,59 +1,58 @@
 name: Reusable C++ bundling and upload
 
 on:
-  workflow_call:
-    inputs:
-      PLATFORM_FILTER:
-        required: false
-        type: string
-      RELEASE_COMMIT:
-        required: false
-        type: string
-        default: ""
+    workflow_call:
+        inputs:
+            PLATFORM_FILTER:
+                required: false
+                type: string
+            RELEASE_COMMIT:
+                required: false
+                type: string
+                default: ""
 
 jobs:
-  bundle-and-upload-rerun_cpp:
-    name: Bundle and upload rerun_cpp_sdk.zip
+    bundle-and-upload-rerun_cpp:
+        name: Bundle and upload rerun_cpp_sdk.zip
 
-    permissions:
-      contents: "read"
-      id-token: "write"
+        permissions:
+            contents: "read"
+            id-token: "write"
 
-    runs-on: ubuntu-latest
-    # Need container for arrow dependency.
-    container:
-      image: rerunio/ci_docker:0.10.0
+        runs-on: ubuntu-latest
+        # Need container for arrow dependency.
+        container:
+            image: rerunio/ci_docker:0.10.0
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '') }}
 
-      - id: "auth"
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+            - id: "auth"
+              uses: google-github-actions/auth@v1
+              with:
+                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: "Set up Cloud SDK"
-        uses: "google-github-actions/setup-gcloud@v1"
-        with:
-          version: ">= 363.0.0"
+            - name: "Set up Cloud SDK"
+              uses: "google-github-actions/setup-gcloud@v1"
+              with:
+                  version: ">= 363.0.0"
 
-      - name: Install python gcs library
-        shell: bash
-        run: |
-          python3 -m pip install google-cloud-storage
+            - name: Install python gcs library
+              shell: bash
+              run: |
+                  python3 -m pip install google-cloud-storage
 
-      - name: Get sha
-        id: get-sha
-        shell: bash
-        run: |
-          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
-          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
+            - name: Get sha
+              id: get-sha
+              shell: bash
+              run: |
+                  full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
+                  echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-      - name: "Bundle and upload rerun_cpp_sdk.zip"
-        shell: bash
-        run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.get-sha.outputs.sha }} --platform-filter=${{ inputs.PLATFORM_FILTER }}
-
+            - name: "Bundle and upload rerun_cpp_sdk.zip"
+              shell: bash
+              run: python3 ./scripts/ci/bundle_and_upload_rerun_cpp.py --git-hash ${{ steps.get-sha.outputs.sha }} --platform-filter=${{ inputs.PLATFORM_FILTER }}

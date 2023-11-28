@@ -1,43 +1,42 @@
 name: Markdown spellcheck and link check
 
 on:
-  pull_request:
-  push:
-    branches:
-      - "main"
+    pull_request:
+    push:
+        branches:
+            - "main"
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
-  # BEWARE(streetsidesoftware/cspell-action#187): a misconfigured cspell will _not_ have a non-zero exit code…
-  spellcheck:
-    name: Spellcheck
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: streetsidesoftware/cspell-action@v3
-        with:
-          config: "docs/cspell.json"
-          files: "**/*.md"
-          strict: true
-          incremental_files_only: false
+    # BEWARE(streetsidesoftware/cspell-action#187): a misconfigured cspell will _not_ have a non-zero exit code…
+    spellcheck:
+        name: Spellcheck
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: streetsidesoftware/cspell-action@v3
+              with:
+                  config: "docs/cspell.json"
+                  files: "**/*.md"
+                  strict: true
+                  incremental_files_only: false
 
-  linkinator:
-    name: linkinator
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: jprochazk/linkinator-action@main
-        with:
-          # This list of file extensions matches the one in `scripts/lint.py`, except .html is omitted due to relative links.
-          paths: "**/*.c, **/*.cpp, **/*.fbs, **/*.h, **/*.hpp, **/*.js, **/*.md, **/*.py, **/*.rs, **/*.sh, **/*.toml, **/*.txt, **/*.wgsl, **/*.yml"
+    linkinator:
+        name: linkinator
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: jprochazk/linkinator-action@main
+              with:
+                  # This list of file extensions matches the one in `scripts/lint.py`, except .html is omitted due to relative links.
+                  paths: "**/*.c, **/*.cpp, **/*.fbs, **/*.h, **/*.hpp, **/*.js, **/*.md, **/*.py, **/*.rs, **/*.sh, **/*.toml, **/*.txt, **/*.wgsl, **/*.yml"
 
-          # Avoid crates.io rate-limiting, skip changelog PR links (so many), and skip speculative links
-          # TODO(#4085): https://rerun-io.github.io/rerun/dev/bench/ often 404:s for unknown reasons
-          linksToSkip: "https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*, .*?speculative-link, https://rerun-io.github.io/rerun/dev/bench/"
-          retry: true
-          retryErrors: true
-          retryErrorsCount: 5
-          retryErrorsJitter: 2000
-
+                  # Avoid crates.io rate-limiting, skip changelog PR links (so many), and skip speculative links
+                  # TODO(#4085): https://rerun-io.github.io/rerun/dev/bench/ often 404:s for unknown reasons
+                  linksToSkip: "https://crates.io/crates/.*, https://github.com/rerun-io/rerun/pull/.*, .*?speculative-link, https://rerun-io.github.io/rerun/dev/bench/"
+                  retry: true
+                  retryErrors: true
+                  retryErrorsCount: 5
+                  retryErrorsJitter: 2000

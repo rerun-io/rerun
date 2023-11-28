@@ -3,41 +3,40 @@
 name: Pull-Request-Target (Contrib)
 
 on:
-  # This will run workflows triggered by a pull request from the _base_ branch.
-  # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
-  pull_request_target:
-    types:
-      - opened
-      - synchronize
+    # This will run workflows triggered by a pull request from the _base_ branch.
+    # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request_target
+    pull_request_target:
+        types:
+            - opened
+            - synchronize
 
 permissions:
-  contents: "read"
-  pull-requests: "write" # Updates PR body
+    contents: "read"
+    pull-requests: "write" # Updates PR body
 
 jobs:
-  update-pr-body:
-    name: Update PR body
-    if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    update-pr-body:
+        name: Update PR body
+        if: github.event.pull_request.head.repo.owner.login != 'rerun-io'
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.11
+            - name: Set up Python
+              uses: actions/setup-python@v2
+              with:
+                  python-version: 3.11
 
-      - name: Install deps
-        shell: bash
-        run: |
-          python3 -m pip install -r ./scripts/ci/requirements.txt
+            - name: Install deps
+              shell: bash
+              run: |
+                  python3 -m pip install -r ./scripts/ci/requirements.txt
 
-      - name: Update PR description
-        shell: bash
-        run: |
-          ./scripts/ci/update_pr_body.py \
-            --github-token '${{ secrets.GITHUB_TOKEN }}' \
-            --github-repository '${{ github.repository }}' \
-            --pr-number '${{ github.event.pull_request.number }}'
-
+            - name: Update PR description
+              shell: bash
+              run: |
+                  ./scripts/ci/update_pr_body.py \
+                    --github-token '${{ secrets.GITHUB_TOKEN }}' \
+                    --github-repository '${{ github.repository }}' \
+                    --pr-number '${{ github.event.pull_request.number }}'

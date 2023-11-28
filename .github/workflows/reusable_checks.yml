@@ -1,386 +1,385 @@
 name: "Checks: Lints, Tests, Docs"
 
 on:
-  workflow_call:
-    inputs:
-      CONCURRENCY:
-        required: true
-        type: string
-      SAVE_PY_DOCS:
-        required: false
-        type: boolean
-        default: false
-      SAVE_PY_DOCS_AS:
-        required: false
-        type: string
-        default: ""
-      SAVE_RUST_DOCS:
-        required: false
-        type: boolean
-        default: false
-      PR_NUMBER:
-        required: false
-        type: string
-        default: ""
+    workflow_call:
+        inputs:
+            CONCURRENCY:
+                required: true
+                type: string
+            SAVE_PY_DOCS:
+                required: false
+                type: boolean
+                default: false
+            SAVE_PY_DOCS_AS:
+                required: false
+                type: string
+                default: ""
+            SAVE_RUST_DOCS:
+                required: false
+                type: boolean
+                default: false
+            PR_NUMBER:
+                required: false
+                type: string
+                default: ""
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-checks
-  cancel-in-progress: true
+    group: ${{ inputs.CONCURRENCY }}-checks
+    cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.8"
-  # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
-  # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
-  # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-  RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
+    PYTHON_VERSION: "3.8"
+    # web_sys_unstable_apis is required to enable the web_sys clipboard API which egui_web uses
+    # https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+    # https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
+    RUSTFLAGS: --cfg=web_sys_unstable_apis --deny warnings
 
-  # See https://github.com/ericseppanen/cargo-cranky/issues/8
-  RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
+    # See https://github.com/ericseppanen/cargo-cranky/issues/8
+    RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
-  # See: https://github.com/marketplace/actions/sccache-action
-  SCCACHE_GHA_ENABLED: "false"
+    # See: https://github.com/marketplace/actions/sccache-action
+    SCCACHE_GHA_ENABLED: "false"
 
 permissions:
-  contents: "read"
-  id-token: "write"
+    contents: "read"
+    id-token: "write"
 
 jobs:
-  # ---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
 
-  py-lints:
-    name: Python lints (ruff, mypy, …)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    py-lints:
+        name: Python lints (ruff, mypy, …)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: extractions/setup-just@v1
+            - uses: extractions/setup-just@v1
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              with:
+                  just-version: 1.5
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.11"
+                  cache: "pip"
+                  cache-dependency-path: "rerun_py/requirements-lint.txt"
+
+            - name: Install Python dependencies
+              shell: bash
+              run: |
+                  pip install --upgrade pip
+                  pip install -r rerun_py/requirements-lint.txt
+
+            - name: Lint Python
+              shell: bash
+              run: |
+                  just py-lint
+
+            - name: Check requirements
+              shell: bash
+              run: |
+                  just py-requirements
+
+    # ---------------------------------------------------------------------------
+
+    py-test-docs:
+        name: Test Python Docs
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.8"
+                  cache: "pip"
+                  cache-dependency-path: "rerun_py/requirements-doc.txt"
+
+            - name: Install Python dependencies
+              shell: bash
+              run: |
+                  pip install --upgrade pip
+                  pip install -r rerun_py/requirements-doc.txt
+
+            - name: Build via mkdocs
+              shell: bash
+              run: |
+                  mkdocs build --strict -f rerun_py/mkdocs.yml
+
+    # ---------------------------------------------------------------------------
+
+    no-codegen-changes:
+        name: Check if running codegen would produce any changes
+        runs-on: ubuntu-latest-16-cores
+        container:
+            image: rerunio/ci_docker:0.10.0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          just-version: 1.5
+            RUSTC_WRAPPER: "sccache"
+        steps:
+            # Note: We explicitly don't override `ref` here. We need to see if changes would be made
+            # in a context where we have merged with main. Otherwise we might miss changes such as one
+            # PR introduces a new type and another PR changes the codegen.
+            - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-lint.txt"
+            - name: Set up Rust
+              uses: ./.github/actions/setup-rust
+              with:
+                  cache_key: "build-linux"
+                  save_cache: true
+                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-lint.txt
+            # So we can format the Python code
+            - name: Set up Python
+              shell: bash
+              run: |
+                  pip install -r rerun_py/requirements-lint.txt
 
-      - name: Lint Python
-        shell: bash
-        run: |
-          just py-lint
+            - name: Codegen
+              uses: actions-rs/cargo@v1
+              with:
+                  command: codegen
+                  args: --force --check
 
-      - name: Check requirements
-        shell: bash
-        run: |
-          just py-requirements
+    rs-lints:
+        name: Rust lints (fmt, check, cranky, tests, doc)
+        runs-on: ubuntu-latest-16-cores
+        container:
+            image: rerunio/ci_docker:0.10.0
+        env:
+            RUSTC_WRAPPER: "sccache"
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-  # ---------------------------------------------------------------------------
+            - name: Set up Rust
+              uses: ./.github/actions/setup-rust
+              with:
+                  cache_key: "build-linux"
+                  save_cache: true
+                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-  py-test-docs:
-    name: Test Python Docs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+            # First do our check with --locked to make sure `Cargo.lock` is up to date
+            - name: Check all features
+              uses: actions-rs/cargo@v1
+              with:
+                  command: check
+                  args: --locked --all-features
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-doc.txt"
+            - name: Rustfmt
+              uses: actions-rs/cargo@v1
+              with:
+                  command: fmt
+                  args: --all -- --check
 
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-doc.txt
+            - name: Cranky
+              uses: actions-rs/cargo@v1
+              with:
+                  command: cranky
+                  args: --all-targets --all-features -- --deny warnings
 
-      - name: Build via mkdocs
-        shell: bash
-        run: |
-          mkdocs build --strict -f rerun_py/mkdocs.yml
+            # Check a few important permutations of the feature flags for our `rerun` library:
+            - name: Check rerun with `--no-default-features``
+              uses: actions-rs/cargo@v1
+              with:
+                  command: cranky
+                  args: --locked -p rerun --no-default-features
 
-  # ---------------------------------------------------------------------------
+            - name: Check rerun with `--features sdk`
+              uses: actions-rs/cargo@v1
+              with:
+                  command: cranky
+                  args: --locked -p rerun --no-default-features --features sdk
 
-  no-codegen-changes:
-    name: Check if running codegen would produce any changes
-    runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.10.0
-    env:
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      # Note: We explicitly don't override `ref` here. We need to see if changes would be made
-      # in a context where we have merged with main. Otherwise we might miss changes such as one
-      # PR introduces a new type and another PR changes the codegen.
-      - uses: actions/checkout@v4
+            - name: Test doc-tests
+              uses: actions-rs/cargo@v1
+              with:
+                  command: test
+                  args: --doc --all-features
 
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+            - name: cargo doc
+              uses: actions-rs/cargo@v1
+              with:
+                  command: doc
+                  args: --no-deps --all-features --workspace
 
-      # So we can format the Python code
-      - name: Set up Python
-        shell: bash
-        run: |
-          pip install -r rerun_py/requirements-lint.txt
+            - name: cargo doc --document-private-items
+              uses: actions-rs/cargo@v1
+              with:
+                  command: doc
+                  args: --document-private-items --no-deps --all-features --workspace
 
-      - name: Codegen
-        uses: actions-rs/cargo@v1
-        with:
-          command: codegen
-          args: --force --check
+            # Just a normal `cargo test` should always work:
+            - name: cargo test --all-targets
+              uses: actions-rs/cargo@v1
+              with:
+                  command: test
 
-  rs-lints:
-    name: Rust lints (fmt, check, cranky, tests, doc)
-    runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.10.0
-    env:
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+            # Full test of everything:
+            - name: cargo test --all-targets --all-features
+              uses: actions-rs/cargo@v1
+              with:
+                  command: test
+                  args: --all-targets --all-features
 
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-linux"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+    # ---------------------------------------------------------------------------
 
-      # First do our check with --locked to make sure `Cargo.lock` is up to date
-      - name: Check all features
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --all-features
+    rs-check-wasm:
+        name: Check Rust web build (wasm32 + wasm-bindgen)
+        runs-on: ubuntu-latest-16-cores
+        container:
+            image: rerunio/ci_docker:0.10.0
+        env:
+            RUSTC_WRAPPER: "sccache"
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+            - name: Set up Rust
+              uses: ./.github/actions/setup-rust
+              with:
+                  cache_key: "build-web"
+                  save_cache: true
+                  workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+                  service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Cranky
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --all-targets --all-features -- --deny warnings
+            - name: clippy check re_viewer wasm32
+              shell: bash
+              run: ./scripts/clippy_wasm.sh
 
-      # Check a few important permutations of the feature flags for our `rerun` library:
-      - name: Check rerun with `--no-default-features``
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --locked -p rerun --no-default-features
+            - name: Check re_renderer examples wasm32
+              uses: actions-rs/cargo@v1
+              with:
+                  command: check
+                  args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
 
-      - name: Check rerun with `--features sdk`
-        uses: actions-rs/cargo@v1
-        with:
-          command: cranky
-          args: --locked -p rerun --no-default-features --features sdk
+            - name: Build web-viewer (debug)
+              uses: actions-rs/cargo@v1
+              with:
+                  command: run
+                  args: --locked -p re_build_web_viewer -- --debug
 
-      - name: Test doc-tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --doc --all-features
+    # ---------------------------------------------------------------------------
 
-      - name: cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps --all-features --workspace
+    toml-lints:
+        name: Lint TOML files
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: cargo doc --document-private-items
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --document-private-items --no-deps --all-features --workspace
+            - name: Install taplo-cli
+              uses: taiki-e/install-action@v2
+              with:
+                  tool: taplo-cli
 
-      # Just a normal `cargo test` should always work:
-      - name: cargo test --all-targets
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
+            - name: Taplo check
+              shell: bash
+              run: |
+                  taplo fmt --check --diff
 
-      # Full test of everything:
-      - name: cargo test --all-targets --all-features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-targets --all-features
+    # ---------------------------------------------------------------------------
 
-  # ---------------------------------------------------------------------------
+    misc-rerun-lints:
+        name: Rerun lints
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-  rs-check-wasm:
-    name: Check Rust web build (wasm32 + wasm-bindgen)
-    runs-on: ubuntu-latest-16-cores
-    container:
-      image: rerunio/ci_docker:0.10.0
-    env:
-      RUSTC_WRAPPER: "sccache"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.8"
 
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
-        with:
-          cache_key: "build-web"
-          save_cache: true
-          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+            - name: Install dependencies
+              shell: bash
+              run: |
+                  pip install gitignore_parser python-frontmatter
+                  pip install -r ./scripts/ci/requirements.txt
 
-      - name: clippy check re_viewer wasm32
-        shell: bash
-        run: ./scripts/clippy_wasm.sh
+            - name: Rerun lints
+              shell: bash
+              run: |
+                  ./scripts/lint.py
 
-      - name: Check re_renderer examples wasm32
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --locked --target wasm32-unknown-unknown --target-dir target_wasm -p re_renderer --examples
+            # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
+            # at least for the time being.
+            # - name: Check for zombie TODOs
+            #   shell: bash
+            #   run: |
+            #     ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build web-viewer (debug)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked -p re_build_web_viewer -- --debug
+            - name: Check for too large files
+              shell: bash
+              run: |
+                  ./scripts/ci/check_large_files.sh
 
-  # ---------------------------------------------------------------------------
+            - name: Check Python example requirements
+              shell: bash
+              run: |
+                  ./scripts/ci/check_requirements.py
 
-  toml-lints:
-    name: Lint TOML files
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+            - name: Check Python example thumbnails
+              shell: bash
+              run: |
+                  ./scripts/ci/thumbnails.py check
 
-      - name: Install taplo-cli
-        uses: taiki-e/install-action@v2
-        with:
-          tool: taplo-cli
+    # ---------------------------------------------------------------------------
 
-      - name: Taplo check
-        shell: bash
-        run: |
-          taplo fmt --check --diff
+    spell-check:
+        name: Spell Check
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Actions Repository
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-  # ---------------------------------------------------------------------------
+            - name: Check spelling of entire workspace
+              uses: crate-ci/typos@master
 
-  misc-rerun-lints:
-    name: Rerun lints
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+    # ---------------------------------------------------------------------------
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
+    rs-cargo-deny:
+        name: Cargo Deny
+        runs-on: ubuntu-latest
+        container:
+            image: rerunio/ci_docker:0.10.0
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Install dependencies
-        shell: bash
-        run: |
-          pip install gitignore_parser python-frontmatter
-          pip install -r ./scripts/ci/requirements.txt
+            - name: Cargo Deny
+              shell: bash
+              id: expected_version
+              run: ./scripts/ci/cargo_deny.sh
 
-      - name: Rerun lints
-        shell: bash
-        run: |
-          ./scripts/lint.py
+    # ---------------------------------------------------------------------------
 
-      # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
-      # at least for the time being.
-      # - name: Check for zombie TODOs
-      #   shell: bash
-      #   run: |
-      #     ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
+    cpp-formatting:
+        name: C++ formatting check
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Check for too large files
-        shell: bash
-        run: |
-          ./scripts/ci/check_large_files.sh
-
-      - name: Check Python example requirements
-        shell: bash
-        run: |
-          ./scripts/ci/check_requirements.py
-
-      - name: Check Python example thumbnails
-        shell: bash
-        run: |
-          ./scripts/ci/thumbnails.py check
-
-  # ---------------------------------------------------------------------------
-
-  spell-check:
-    name: Spell Check
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Actions Repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Check spelling of entire workspace
-        uses: crate-ci/typos@master
-
-  # ---------------------------------------------------------------------------
-
-  rs-cargo-deny:
-    name: Cargo Deny
-    runs-on: ubuntu-latest
-    container:
-      image: rerunio/ci_docker:0.10.0
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Cargo Deny
-        shell: bash
-        id: expected_version
-        run: ./scripts/ci/cargo_deny.sh
-
-  # ---------------------------------------------------------------------------
-
-  cpp-formatting:
-    name: C++ formatting check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Run clang format on all relevant files
-        uses: jidicula/clang-format-action@v4.11.0
-        with:
-          clang-format-version: "16"
-          # Only check c/cpp/h/hpp (default checks also .proto and others)
-          include-regex: ^.*\.(c|cpp|h|hpp)$
-
+            - name: Run clang format on all relevant files
+              uses: jidicula/clang-format-action@v4.11.0
+              with:
+                  clang-format-version: "16"
+                  # Only check c/cpp/h/hpp (default checks also .proto and others)
+                  include-regex: ^.*\.(c|cpp|h|hpp)$

@@ -3,61 +3,61 @@
 
 /* Indentation. */
 div.doc-contents:not(.first) {
-  padding-left: 25px;
-  border-left: 0.05rem solid var(--md-typeset-table-color);
+    padding-left: 25px;
+    border-left: 0.05rem solid var(--md-typeset-table-color);
 }
 
 /* Avoid breaking parameters name, etc. in table cells. */
 td code {
-  word-break: normal !important;
+    word-break: normal !important;
 }
 
 /* Add extra spacing between doc-objects. */
 div.doc-object {
-  margin-bottom: 2rem;
+    margin-bottom: 2rem;
 }
 
 :root {
-  --md-primary-fg-color: #111;
-  color-scheme: dark;
+    --md-primary-fg-color: #111;
+    color-scheme: dark;
 }
 
 html {
-  /* !!! This filter must match the img.filter exactly! */
-  filter: invert(1) contrast(100%) hue-rotate(180deg);
-  background: white;
+    /* !!! This filter must match the img.filter exactly! */
+    filter: invert(1) contrast(100%) hue-rotate(180deg);
+    background: white;
 }
 
 img {
-  /* !!! This filter must match the html.filter exactly to undo it! */
-  filter: invert(1) contrast(100%) hue-rotate(180deg);
+    /* !!! This filter must match the html.filter exactly to undo it! */
+    filter: invert(1) contrast(100%) hue-rotate(180deg);
 }
 
 body {
-  font-family: "Plus Jakarta Sans", sans-serif;
-  font-weight: 500;
+    font-family: "Plus Jakarta Sans", sans-serif;
+    font-weight: 500;
 }
 
 .md-typeset h1,
 .md-typeset h2 {
-  margin-bottom: 1rem;
-  font-weight: 700;
-  color: inherit;
+    margin-bottom: 1rem;
+    font-weight: 700;
+    color: inherit;
 }
 
-.md-typeset p+h1 {
-  margin-top: 2rem;
+.md-typeset p + h1 {
+    margin-top: 2rem;
 }
 
 header {
-  filter: invert(1);
+    filter: invert(1);
 }
 
 code {
-  --md-code-bg-color: #e3e3e3;
-  font-family: "JetBrains Mono", monospace;
+    --md-code-bg-color: #e3e3e3;
+    font-family: "JetBrains Mono", monospace;
 }
 
 .md-typeset a {
-  --md-typeset-a-color: #526cfe;
+    --md-typeset-a-color: #526cfe;
 }
