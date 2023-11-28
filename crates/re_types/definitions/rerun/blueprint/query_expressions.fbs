@@ -16,6 +16,9 @@ table QueryExpressions (
   "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.override_crate": "re_space_view"
 ) {
-  /// A set of strings that can be parsed as `EntityPathExpression`s.
-  expressions: [string] (order: 100);
+  /// A set of strings representing `EntityPathExpression`s to be included.
+  inclusions: [string] (order: 100);
+
+  /// A set of strings representing `EntityPathExpression`s to be excluded.
+  exclusions: [string] (order: 200);
 }

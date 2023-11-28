@@ -50,10 +50,12 @@ impl DataQueryBlueprint {
         Self {
             id: DataQueryId::random(),
             space_view_class_name,
-            expressions: queries_entities
-                .map(|exp| exp.to_string().into())
-                .collect::<Vec<_>>()
-                .into(),
+            expressions: QueryExpressions {
+                inclusions: queries_entities
+                    .map(|exp| exp.to_string().into())
+                    .collect::<Vec<_>>(),
+                exclusions: vec![],
+            },
         }
     }
 
@@ -154,7 +156,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
     ) -> Self {
         let expressions: Vec<EntityPathExpr> = blueprint
             .expressions
-            .expressions
+            .inclusions
             .iter()
             .filter(|exp| !exp.as_str().is_empty())
             .map(|exp| EntityPathExpr::from(exp.as_str()))
@@ -505,11 +507,10 @@ mod tests {
             let query = DataQueryBlueprint {
                 id: DataQueryId::random(),
                 space_view_class_name: "3D".into(),
-                expressions: input
-                    .into_iter()
-                    .map(|s| s.into())
-                    .collect::<Vec<_>>()
-                    .into(),
+                expressions: QueryExpressions {
+                    inclusions: input.into_iter().map(|s| s.into()).collect::<Vec<_>>(),
+                    exclusions: vec![],
+                },
             };
 
             let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
