@@ -33,6 +33,17 @@ mod constants {
 
 use constants::{NUM_ENTITY_PATHS, NUM_ROWS_PER_ENTITY_PATH};
 
+fn gc_batching() -> &'static [bool] {
+    #[cfg(feature = "core_benchmarks_only")]
+    {
+        &[false]
+    }
+    #[cfg(not(feature = "core_benchmarks_only"))]
+    {
+        &[false, true]
+    }
+}
+
 fn num_rows_per_bucket() -> &'static [u64] {
     #[cfg(feature = "core_benchmarks_only")]
     {
@@ -63,6 +74,7 @@ fn plotting_dashboard(c: &mut Criterion) {
         protect_latest: 1,
         purge_empty_tables: false,
         dont_protect: Default::default(),
+        enable_batching: false,
     };
 
     let mut timegen = |i| {
@@ -98,26 +110,33 @@ fn plotting_dashboard(c: &mut Criterion) {
 
     // Emulate more or less bucket
     for &num_rows_per_bucket in num_rows_per_bucket() {
-        group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
-            let store = build_store(
-                DataStoreConfig {
-                    indexed_bucket_num_rows: num_rows_per_bucket,
-                    ..Default::default()
+        for &gc_batching in gc_batching() {
+            group.bench_function(
+                format!("bucketsz={num_rows_per_bucket}/gc_batching={gc_batching}"),
+                |b| {
+                    let store = build_store(
+                        DataStoreConfig {
+                            indexed_bucket_num_rows: num_rows_per_bucket,
+                            ..Default::default()
+                        },
+                        InstanceKey::name(),
+                        false,
+                        &mut timegen,
+                        &mut datagen,
+                    );
+                    let mut gc_settings = gc_settings.clone();
+                    gc_settings.enable_batching = gc_batching;
+                    b.iter_batched(
+                        || store.clone(),
+                        |mut store| {
+                            let (_, stats_diff) = store.gc(&gc_settings);
+                            stats_diff
+                        },
+                        BatchSize::LargeInput,
+                    );
                 },
-                InstanceKey::name(),
-                false,
-                &mut timegen,
-                &mut datagen,
             );
-            b.iter_batched(
-                || store.clone(),
-                |mut store| {
-                    let (_, stats_diff) = store.gc(&gc_settings);
-                    stats_diff
-                },
-                BatchSize::LargeInput,
-            );
-        });
+        }
     }
 }
 
@@ -138,6 +157,7 @@ fn timeless_logs(c: &mut Criterion) {
         protect_latest: 1,
         purge_empty_tables: false,
         dont_protect: Default::default(),
+        enable_batching: false,
     };
 
     let mut timegen = |_| TimePoint::timeless();
@@ -165,28 +185,34 @@ fn timeless_logs(c: &mut Criterion) {
         );
     });
 
-    // Emulate more or less bucket
     for &num_rows_per_bucket in num_rows_per_bucket() {
-        group.bench_function(format!("bucketsz={num_rows_per_bucket}"), |b| {
-            let store = build_store(
-                DataStoreConfig {
-                    indexed_bucket_num_rows: num_rows_per_bucket,
-                    ..Default::default()
+        for &gc_batching in gc_batching() {
+            group.bench_function(
+                format!("bucketsz={num_rows_per_bucket}/gc_batching={gc_batching}"),
+                |b| {
+                    let store = build_store(
+                        DataStoreConfig {
+                            indexed_bucket_num_rows: num_rows_per_bucket,
+                            ..Default::default()
+                        },
+                        InstanceKey::name(),
+                        false,
+                        &mut timegen,
+                        &mut datagen,
+                    );
+                    let mut gc_settings = gc_settings.clone();
+                    gc_settings.enable_batching = gc_batching;
+                    b.iter_batched(
+                        || store.clone(),
+                        |mut store| {
+                            let (_, stats_diff) = store.gc(&gc_settings);
+                            stats_diff
+                        },
+                        BatchSize::LargeInput,
+                    );
                 },
-                InstanceKey::name(),
-                false,
-                &mut timegen,
-                &mut datagen,
             );
-            b.iter_batched(
-                || store.clone(),
-                |mut store| {
-                    let (_, stats_diff) = store.gc(&gc_settings);
-                    stats_diff
-                },
-                BatchSize::LargeInput,
-            );
-        });
+        }
     }
 }
 

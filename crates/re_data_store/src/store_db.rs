@@ -433,6 +433,7 @@ impl StoreDb {
             ]
             .into_iter()
             .collect(),
+            enable_batching: false,
         });
     }
 
@@ -449,6 +450,7 @@ impl StoreDb {
             protect_latest: 1,
             purge_empty_tables: false,
             dont_protect: Default::default(),
+            enable_batching: false,
         });
     }
 

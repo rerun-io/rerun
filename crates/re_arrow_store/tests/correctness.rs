@@ -588,6 +588,7 @@ fn gc_metadata_size() -> anyhow::Result<()> {
             protect_latest: 1,
             purge_empty_tables: false,
             dont_protect: Default::default(),
+            enable_batching: false,
         });
         _ = store.gc(&GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
@@ -595,6 +596,7 @@ fn gc_metadata_size() -> anyhow::Result<()> {
             protect_latest: 1,
             purge_empty_tables: false,
             dont_protect: Default::default(),
+            enable_batching: false,
         });
     }
 
