@@ -17,8 +17,8 @@ pub trait PropertyResolver {
 
 /// The common trait implemented for data queries
 ///
-/// Both interfaces return `DataResult`s, which are self-contained description of the data
-/// to be added to a `SpaceView` including both the `EntityPath` and context for any overrides.
+/// Both interfaces return [`re_viewer_context::DataResult`]s, which are self-contained description of the data
+/// to be added to a `SpaceView` including both the [`re_log_types::EntityPath`] and context for any overrides.
 pub trait DataQuery {
     /// Execute a full query, returning a `DataResultTree` containing all results.
     ///
