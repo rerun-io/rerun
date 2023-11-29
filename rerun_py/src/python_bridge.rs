@@ -767,8 +767,10 @@ fn add_space_view(
     _origin: &str,
     _entity_paths: Vec<&str>,
     _blueprint: Option<&PyRecordingStream>,
-) {
-    re_log::error!("add_space_view is currently broken");
+) -> PyResult<()> {
+    Err(PyRuntimeError::new_err(
+        "add_space_view is broken until blueprint refactoring is complete: https://github.com/rerun-io/rerun/issues/4167",
+    ))
 
     /*
     let Some(blueprint) = get_blueprint_recording(blueprint) else {
