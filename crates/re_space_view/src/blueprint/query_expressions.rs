@@ -26,22 +26,11 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Unstable. Used for the ongoing blueprint experimentations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QueryExpressions {
-    /// A set of strings that can be parsed as `EntityPathExpression`s.
-    pub expressions: Vec<::re_types_core::ArrowString>,
-}
+    /// A set of strings representing `EntityPathExpression`s to be included.
+    pub inclusions: Vec<::re_types_core::ArrowString>,
 
-impl From<Vec<::re_types_core::ArrowString>> for QueryExpressions {
-    #[inline]
-    fn from(expressions: Vec<::re_types_core::ArrowString>) -> Self {
-        Self { expressions }
-    }
-}
-
-impl From<QueryExpressions> for Vec<::re_types_core::ArrowString> {
-    #[inline]
-    fn from(value: QueryExpressions) -> Self {
-        value.expressions
-    }
+    /// A set of strings representing `EntityPathExpression`s to be excluded.
+    pub exclusions: Vec<::re_types_core::ArrowString>,
 }
 
 ::re_types_core::macros::impl_into_cow!(QueryExpressions);
@@ -58,17 +47,30 @@ impl ::re_types_core::Loggable for QueryExpressions {
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::*;
-        DataType::Struct(vec![Field {
-            name: "expressions".to_owned(),
-            data_type: DataType::List(Box::new(Field {
-                name: "item".to_owned(),
-                data_type: DataType::Utf8,
+        DataType::Struct(vec![
+            Field {
+                name: "inclusions".to_owned(),
+                data_type: DataType::List(Box::new(Field {
+                    name: "item".to_owned(),
+                    data_type: DataType::Utf8,
+                    is_nullable: false,
+                    metadata: [].into(),
+                })),
                 is_nullable: false,
                 metadata: [].into(),
-            })),
-            is_nullable: false,
-            metadata: [].into(),
-        }])
+            },
+            Field {
+                name: "exclusions".to_owned(),
+                data_type: DataType::List(Box::new(Field {
+                    name: "item".to_owned(),
+                    data_type: DataType::Utf8,
+                    is_nullable: false,
+                    metadata: [].into(),
+                })),
+                is_nullable: false,
+                metadata: [].into(),
+            },
+        ])
     }
 
     #[allow(clippy::wildcard_imports)]
@@ -95,75 +97,152 @@ impl ::re_types_core::Loggable for QueryExpressions {
             };
             StructArray::new(
                 <crate::blueprint::QueryExpressions>::arrow_datatype(),
-                vec![{
-                    let (somes, expressions): (Vec<_>, Vec<_>) = data
-                        .iter()
-                        .map(|datum| {
-                            let datum = datum.as_ref().map(|datum| {
-                                let Self { expressions, .. } = &**datum;
-                                expressions.clone()
-                            });
-                            (datum.is_some(), datum)
-                        })
-                        .unzip();
-                    let expressions_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                vec![
                     {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let expressions_inner_data: Vec<_> = expressions
+                        let (somes, inclusions): (Vec<_>, Vec<_>) = data
                             .iter()
-                            .flatten()
-                            .flatten()
-                            .cloned()
-                            .map(Some)
-                            .collect();
-                        let expressions_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            expressions.iter().map(|opt| {
-                                opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                            }),
-                        )
-                        .unwrap()
-                        .into();
-                        ListArray::new(
-                            DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
-                                is_nullable: false,
-                                metadata: [].into(),
-                            })),
-                            offsets,
-                            {
-                                let inner_data: arrow2::buffer::Buffer<u8> = expressions_inner_data
-                                    .iter()
-                                    .flatten()
-                                    .flat_map(|s| s.0.clone())
-                                    .collect();
-                                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                    expressions_inner_data.iter().map(|opt| {
-                                        opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                    }),
-                                )
-                                .unwrap()
-                                .into();
-                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                unsafe {
-                                    Utf8Array::<i32>::new_unchecked(
-                                        DataType::Utf8,
-                                        offsets,
-                                        inner_data,
-                                        expressions_inner_bitmap,
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { inclusions, .. } = &**datum;
+                                    inclusions.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let inclusions_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let inclusions_inner_data: Vec<_> = inclusions
+                                .iter()
+                                .flatten()
+                                .flatten()
+                                .cloned()
+                                .map(Some)
+                                .collect();
+                            let inclusions_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                inclusions.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                {
+                                    let inner_data: arrow2::buffer::Buffer<u8> =
+                                        inclusions_inner_data
+                                            .iter()
+                                            .flatten()
+                                            .flat_map(|s| s.0.clone())
+                                            .collect();
+                                    let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                        inclusions_inner_data.iter().map(|opt| {
+                                            opt.as_ref()
+                                                .map(|datum| datum.0.len())
+                                                .unwrap_or_default()
+                                        }),
                                     )
-                                }
-                                .boxed()
-                            },
-                            expressions_bitmap,
-                        )
-                        .boxed()
-                    }
-                }],
+                                    .unwrap()
+                                    .into();
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe {
+                                        Utf8Array::<i32>::new_unchecked(
+                                            DataType::Utf8,
+                                            offsets,
+                                            inner_data,
+                                            inclusions_inner_bitmap,
+                                        )
+                                    }
+                                    .boxed()
+                                },
+                                inclusions_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                    {
+                        let (somes, exclusions): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| {
+                                    let Self { exclusions, .. } = &**datum;
+                                    exclusions.clone()
+                                });
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let exclusions_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
+                            let exclusions_inner_data: Vec<_> = exclusions
+                                .iter()
+                                .flatten()
+                                .flatten()
+                                .cloned()
+                                .map(Some)
+                                .collect();
+                            let exclusions_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                exclusions.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
+                                }),
+                            )
+                            .unwrap()
+                            .into();
+                            ListArray::new(
+                                DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                offsets,
+                                {
+                                    let inner_data: arrow2::buffer::Buffer<u8> =
+                                        exclusions_inner_data
+                                            .iter()
+                                            .flatten()
+                                            .flat_map(|s| s.0.clone())
+                                            .collect();
+                                    let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                        exclusions_inner_data.iter().map(|opt| {
+                                            opt.as_ref()
+                                                .map(|datum| datum.0.len())
+                                                .unwrap_or_default()
+                                        }),
+                                    )
+                                    .unwrap()
+                                    .into();
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    unsafe {
+                                        Utf8Array::<i32>::new_unchecked(
+                                            DataType::Utf8,
+                                            offsets,
+                                            inner_data,
+                                            exclusions_inner_bitmap,
+                                        )
+                                    }
+                                    .boxed()
+                                },
+                                exclusions_bitmap,
+                            )
+                            .boxed()
+                        }
+                    },
+                ],
                 bitmap,
             )
             .boxed()
@@ -186,17 +265,30 @@ impl ::re_types_core::Loggable for QueryExpressions {
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
                     DeserializationError::datatype_mismatch(
-                        DataType::Struct(vec![Field {
-                            name: "expressions".to_owned(),
-                            data_type: DataType::List(Box::new(Field {
-                                name: "item".to_owned(),
-                                data_type: DataType::Utf8,
+                        DataType::Struct(vec![
+                            Field {
+                                name: "inclusions".to_owned(),
+                                data_type: DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
                                 is_nullable: false,
                                 metadata: [].into(),
-                            })),
-                            is_nullable: false,
-                            metadata: [].into(),
-                        }]),
+                            },
+                            Field {
+                                name: "exclusions".to_owned(),
+                                data_type: DataType::List(Box::new(Field {
+                                    name: "item".to_owned(),
+                                    data_type: DataType::Utf8,
+                                    is_nullable: false,
+                                    metadata: [].into(),
+                                })),
+                                is_nullable: false,
+                                metadata: [].into(),
+                            },
+                        ]),
                         arrow_data.data_type().clone(),
                     )
                 })
@@ -211,15 +303,15 @@ impl ::re_types_core::Loggable for QueryExpressions {
                     .map(|field| field.name.as_str())
                     .zip(arrow_data_arrays)
                     .collect();
-                let expressions = {
-                    if !arrays_by_name.contains_key("expressions") {
+                let inclusions = {
+                    if !arrays_by_name.contains_key("inclusions") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "expressions",
+                            "inclusions",
                         ))
                         .with_context("rerun.blueprint.QueryExpressions");
                     }
-                    let arrow_data = &**arrays_by_name["expressions"];
+                    let arrow_data = &**arrays_by_name["inclusions"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -235,7 +327,7 @@ impl ::re_types_core::Loggable for QueryExpressions {
                                     arrow_data.data_type().clone(),
                                 )
                             })
-                            .with_context("rerun.blueprint.QueryExpressions#expressions")?;
+                            .with_context("rerun.blueprint.QueryExpressions#inclusions")?;
                         if arrow_data.is_empty() {
                             Vec::new()
                         } else {
@@ -252,7 +344,7 @@ impl ::re_types_core::Loggable for QueryExpressions {
                                             )
                                         })
                                         .with_context(
-                                            "rerun.blueprint.QueryExpressions#expressions",
+                                            "rerun.blueprint.QueryExpressions#inclusions",
                                         )?;
                                     let arrow_data_inner_buf = arrow_data_inner.values();
                                     let offsets = arrow_data_inner.offsets();
@@ -292,7 +384,127 @@ impl ::re_types_core::Loggable for QueryExpressions {
                                         })
                                     })
                                     .collect::<DeserializationResult<Vec<Option<_>>>>()
-                                    .with_context("rerun.blueprint.QueryExpressions#expressions")?
+                                    .with_context("rerun.blueprint.QueryExpressions#inclusions")?
+                                    .into_iter()
+                                }
+                                .collect::<Vec<_>>()
+                            };
+                            let offsets = arrow_data.offsets();
+                            arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                offsets.iter().zip(offsets.lengths()),
+                                arrow_data.validity(),
+                            )
+                            .map(|elem| {
+                                elem.map(|(start, len)| {
+                                    let start = *start as usize;
+                                    let end = start + len;
+                                    if end as usize > arrow_data_inner.len() {
+                                        return Err(DeserializationError::offset_slice_oob(
+                                            (start, end),
+                                            arrow_data_inner.len(),
+                                        ));
+                                    }
+
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    let data = unsafe {
+                                        arrow_data_inner.get_unchecked(start as usize..end as usize)
+                                    };
+                                    let data = data
+                                        .iter()
+                                        .cloned()
+                                        .map(Option::unwrap_or_default)
+                                        .collect();
+                                    Ok(data)
+                                })
+                                .transpose()
+                            })
+                            .collect::<DeserializationResult<Vec<Option<_>>>>()?
+                        }
+                        .into_iter()
+                    }
+                };
+                let exclusions = {
+                    if !arrays_by_name.contains_key("exclusions") {
+                        return Err(DeserializationError::missing_struct_field(
+                            Self::arrow_datatype(),
+                            "exclusions",
+                        ))
+                        .with_context("rerun.blueprint.QueryExpressions");
+                    }
+                    let arrow_data = &**arrays_by_name["exclusions"];
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<arrow2::array::ListArray<i32>>()
+                            .ok_or_else(|| {
+                                DeserializationError::datatype_mismatch(
+                                    DataType::List(Box::new(Field {
+                                        name: "item".to_owned(),
+                                        data_type: DataType::Utf8,
+                                        is_nullable: false,
+                                        metadata: [].into(),
+                                    })),
+                                    arrow_data.data_type().clone(),
+                                )
+                            })
+                            .with_context("rerun.blueprint.QueryExpressions#exclusions")?;
+                        if arrow_data.is_empty() {
+                            Vec::new()
+                        } else {
+                            let arrow_data_inner = {
+                                let arrow_data_inner = &**arrow_data.values();
+                                {
+                                    let arrow_data_inner = arrow_data_inner
+                                        .as_any()
+                                        .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                                        .ok_or_else(|| {
+                                            DeserializationError::datatype_mismatch(
+                                                DataType::Utf8,
+                                                arrow_data_inner.data_type().clone(),
+                                            )
+                                        })
+                                        .with_context(
+                                            "rerun.blueprint.QueryExpressions#exclusions",
+                                        )?;
+                                    let arrow_data_inner_buf = arrow_data_inner.values();
+                                    let offsets = arrow_data_inner.offsets();
+                                    arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                                        offsets.iter().zip(offsets.lengths()),
+                                        arrow_data_inner.validity(),
+                                    )
+                                    .map(|elem| {
+                                        elem.map(|(start, len)| {
+                                            let start = *start as usize;
+                                            let end = start + len;
+                                            if end as usize > arrow_data_inner_buf.len() {
+                                                return Err(
+                                                    DeserializationError::offset_slice_oob(
+                                                        (start, end),
+                                                        arrow_data_inner_buf.len(),
+                                                    ),
+                                                );
+                                            }
+
+                                            #[allow(
+                                                unsafe_code,
+                                                clippy::undocumented_unsafe_blocks
+                                            )]
+                                            let data = unsafe {
+                                                arrow_data_inner_buf
+                                                    .clone()
+                                                    .sliced_unchecked(start, len)
+                                            };
+                                            Ok(data)
+                                        })
+                                        .transpose()
+                                    })
+                                    .map(|res_or_opt| {
+                                        res_or_opt.map(|res_or_opt| {
+                                            res_or_opt.map(|v| ::re_types_core::ArrowString(v))
+                                        })
+                                    })
+                                    .collect::<DeserializationResult<Vec<Option<_>>>>()
+                                    .with_context("rerun.blueprint.QueryExpressions#exclusions")?
                                     .into_iter()
                                 }
                                 .collect::<Vec<_>>()
@@ -332,15 +544,22 @@ impl ::re_types_core::Loggable for QueryExpressions {
                     }
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(expressions),
+                    ::itertools::izip!(inclusions, exclusions),
                     arrow_data.validity(),
                 )
                 .map(|opt| {
-                    opt.map(|(expressions)| {
+                    opt.map(|(inclusions, exclusions)| {
                         Ok(Self {
-                            expressions: expressions
+                            inclusions: inclusions
                                 .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.blueprint.QueryExpressions#expressions")?,
+                                .with_context(
+                                "rerun.blueprint.QueryExpressions#inclusions",
+                            )?,
+                            exclusions: exclusions
+                                .ok_or_else(DeserializationError::missing_data)
+                                .with_context(
+                                "rerun.blueprint.QueryExpressions#exclusions",
+                            )?,
                         })
                     })
                     .transpose()

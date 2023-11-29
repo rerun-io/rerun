@@ -417,16 +417,22 @@ fn blueprint_ui(
 
             if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
                 if let Some(query) = space_view.queries.first() {
-                    let expressions = query.expressions.expressions.join("\n");
-                    let mut edited_expressions = expressions.clone();
+                    let inclusions = query.expressions.inclusions.join("\n");
+                    let mut edited_inclusions = inclusions.clone();
+                    let exclusions = query.expressions.exclusions.join("\n");
+                    let mut edited_exclusions = exclusions.clone();
 
-                    ui.text_edit_multiline(&mut edited_expressions);
+                    ui.label("Inclusion expressions");
+                    ui.text_edit_multiline(&mut edited_inclusions);
+                    ui.label("Exclusion expressions");
+                    ui.text_edit_multiline(&mut edited_exclusions);
 
-                    if edited_expressions != expressions {
+                    if edited_inclusions != inclusions || edited_exclusions != exclusions {
                         let timepoint = TimePoint::timeless();
 
                         let expressions_component = QueryExpressions {
-                            expressions: edited_expressions.split('\n').map(|s| s.into()).collect(),
+                            inclusions: edited_inclusions.split('\n').map(|s| s.into()).collect(),
+                            exclusions: edited_exclusions.split('\n').map(|s| s.into()).collect(),
                         };
 
                         let row = DataRow::from_cells1_sized(
