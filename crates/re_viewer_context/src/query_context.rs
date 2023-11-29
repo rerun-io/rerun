@@ -30,14 +30,14 @@ impl DataQueryResult {
     pub fn contains_entity(&self, path: &EntityPath) -> bool {
         self.tree
             .lookup_result_by_path_and_group(path, false)
-            .is_some()
+            .map_or(false, |result| !result.prefix_only)
     }
 
     #[inline]
     pub fn contains_group(&self, path: &EntityPath) -> bool {
         self.tree
             .lookup_result_by_path_and_group(path, true)
-            .is_some()
+            .map_or(false, |result| !result.prefix_only)
     }
 
     #[inline]

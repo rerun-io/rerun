@@ -33,6 +33,8 @@ pub struct DataResult {
     // TODO(jleibs): Maybe make this an enum instead?
     pub is_group: bool,
 
+    pub prefix_only: bool,
+
     /// The resolved properties (including any hierarchical flattening) to apply.
     // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
     // For now, bundling this here acts as a good proxy for that future data-override mechanism.

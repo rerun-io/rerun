@@ -389,7 +389,7 @@ fn create_entity_add_info(
             if is_entity_processed_by_class(ctx, space_view.class_identifier(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
-                        already_added: query_result.contains_entity(entity_path),
+                        already_added: query_result.contains_any(entity_path),
                     },
                     Err(reason) => CanAddToSpaceView::No {
                         reason: reason.to_string(),

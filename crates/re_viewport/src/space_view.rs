@@ -328,6 +328,7 @@ impl SpaceViewBlueprint {
             entity_path: entity_path.clone(),
             view_parts: Default::default(),
             is_group: true,
+            prefix_only: false,
             resolved_properties,
             individual_properties,
             override_path: entity_path,
