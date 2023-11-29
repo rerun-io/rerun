@@ -4069,6 +4069,7 @@ dependencies = [
  "polars-core",
  "polars-ops",
  "rand",
+ "rayon",
  "re_error",
  "re_format",
  "re_log",

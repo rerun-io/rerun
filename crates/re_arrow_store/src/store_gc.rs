@@ -1,8 +1,13 @@
-use std::collections::BTreeMap;
+use std::{
+    collections::BTreeMap,
+    sync::{atomic::AtomicU64, Arc},
+};
 
 use ahash::{HashMap, HashSet};
 
+use itertools::Itertools;
 use nohash_hasher::IntMap;
+use rayon::iter::IntoParallelRefMutIterator;
 use re_log_types::{
     EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, TimeRange, Timeline,
     VecDequeRemovalExt as _,
@@ -360,38 +365,77 @@ impl DataStore {
         // NOTE: The batch is already sorted by definition since it's extracted from the registry's btreemap.
         let max_row_id = batch.last().map(|(_, (_, row_id))| *row_id);
 
-        if enable_batching && max_row_id.is_some() && !batch_is_protected {
+        if true {
+            let kek = Arc::new(AtomicU64::new(0));
+
+            // if enable_batching && max_row_id.is_some() && !batch_is_protected {
             // NOTE: unwrap cannot fail but just a precaution in case this code moves around…
             let max_row_id = max_row_id.unwrap_or(RowId::ZERO);
 
-            let mut batch_removed: HashMap<RowId, StoreDiff> = HashMap::default();
-            let mut cur_entity_path_hash = None;
-
             // NOTE: We _must_  go through all tables no matter what, since the batch might contain
             // any number of distinct entities.
-            for ((entity_path_hash, _), table) in &mut *tables {
-                let (removed, num_bytes_removed) =
-                    table.try_drop_bucket(cluster_cell_cache, cluster_key, max_row_id);
+            use rayon::prelude::*;
+            let xxx = tables.par_iter_mut().flat_map({
+                let kek = Arc::clone(&kek);
+                move |((_, _), table)| {
+                    let mut batch_removed: HashMap<RowId, StoreDiff> = HashMap::default();
 
-                *num_bytes_to_drop -= num_bytes_removed as f64;
+                    let (removed, num_bytes_removed) =
+                        table.try_drop_bucket(cluster_cell_cache, cluster_key, max_row_id);
 
-                if cur_entity_path_hash != Some(*entity_path_hash) {
-                    diffs.extend(batch_removed.drain().map(|(_, diff)| diff));
+                    kek.fetch_add(num_bytes_removed, std::sync::atomic::Ordering::Relaxed);
 
-                    cur_entity_path_hash = Some(*entity_path_hash);
+                    removed
+                    //
+                    // for mut removed in removed {
+                    //     batch_removed
+                    //         .entry(removed.row_id)
+                    //         .and_modify(|diff| {
+                    //             diff.times.extend(std::mem::take(&mut removed.times));
+                    //         })
+                    //         .or_insert(removed);
+                    // }
+                    //
+                    // batch_removed.into_par_iter().map(|(_, diff)| diff)
                 }
+            });
+            // for ((entity_path_hash, _), table) in tables.par_iter_mut() {
+            //     let (removed, num_bytes_removed) =
+            //         table.try_drop_bucket(cluster_cell_cache, cluster_key, max_row_id);
+            //
+            //     *num_bytes_to_drop -= num_bytes_removed as f64;
+            //
+            //     if cur_entity_path_hash != Some(*entity_path_hash) {
+            //         diffs.extend(batch_removed.drain().map(|(_, diff)| diff));
+            //
+            //         cur_entity_path_hash = Some(*entity_path_hash);
+            //     }
+            //
+            //     for mut removed in removed {
+            //         batch_removed
+            //             .entry(removed.row_id)
+            //             .and_modify(|diff| {
+            //                 diff.times.extend(std::mem::take(&mut removed.times));
+            //             })
+            //             .or_insert(removed);
+            //     }
+            // }
 
-                for mut removed in removed {
-                    batch_removed
-                        .entry(removed.row_id)
-                        .and_modify(|diff| {
-                            diff.times.extend(std::mem::take(&mut removed.times));
-                        })
-                        .or_insert(removed);
-                }
+            let xxx: Vec<_> = xxx.collect();
+
+            let mut batch_removed: HashMap<RowId, StoreDiff> = HashMap::default();
+            for mut removed in xxx {
+                batch_removed
+                    .entry(removed.row_id)
+                    .and_modify(|diff| {
+                        diff.times.extend(std::mem::take(&mut removed.times));
+                    })
+                    .or_insert(removed);
             }
 
-            diffs.extend(batch_removed.drain().map(|(_, diff)| diff));
+            diffs = batch_removed.into_values().collect();
+
+            *num_bytes_to_drop -= kek.load(std::sync::atomic::Ordering::Relaxed) as f64;
         }
 
         if *num_bytes_to_drop <= 0.0 {

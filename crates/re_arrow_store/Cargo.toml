@@ -48,6 +48,7 @@ itertools = { workspace = true }
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+rayon.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 
