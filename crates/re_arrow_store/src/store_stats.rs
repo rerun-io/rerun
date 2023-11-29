@@ -394,6 +394,7 @@ impl IndexedBucketInner {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id,
             col_num_instances,
             columns,
             size_bytes,
@@ -404,6 +405,7 @@ impl IndexedBucketInner {
             + col_time.total_size_bytes()
             + col_insert_id.total_size_bytes()
             + col_row_id.total_size_bytes()
+            + max_row_id.total_size_bytes()
             + col_num_instances.total_size_bytes()
             + columns.total_size_bytes()
             + size_bytes.total_size_bytes();
