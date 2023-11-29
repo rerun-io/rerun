@@ -418,7 +418,7 @@ fn blueprint_ui(
                 }
             });
 
-            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 if let Some(query) = space_view.queries.first() {
                     let inclusions = query.expressions.inclusions.join("\n");
                     let mut edited_inclusions = inclusions.clone();
@@ -452,6 +452,8 @@ fn blueprint_ui(
                                 ctx.store_context.blueprint.store_id().clone(),
                                 vec![row],
                             ));
+
+                        space_view.entities_determined_by_user = true;
                     }
                 }
             }
