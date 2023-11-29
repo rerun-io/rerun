@@ -252,7 +252,7 @@ impl DataStore {
         timeline: re_log_types::Timeline,
         entity_path_hash: re_log_types::EntityPathHash,
     ) -> EntityStats {
-        let mut entity_stats = self.tables.get(&(timeline, entity_path_hash)).map_or(
+        let mut entity_stats = self.tables.get(&(entity_path_hash, timeline)).map_or(
             EntityStats::default(),
             |table| EntityStats {
                 num_rows: table.buckets_num_rows,
