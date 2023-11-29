@@ -87,6 +87,11 @@ impl<T: BlueprintIdRegistry> BlueprintId<T> {
     pub fn registry() -> &'static EntityPath {
         T::registry()
     }
+
+    #[inline]
+    pub fn uuid(&self) -> uuid::Uuid {
+        self.id
+    }
 }
 
 impl<T: BlueprintIdRegistry> From<uuid::Uuid> for BlueprintId<T> {
@@ -96,6 +101,23 @@ impl<T: BlueprintIdRegistry> From<uuid::Uuid> for BlueprintId<T> {
             id,
             _registry: std::marker::PhantomData,
         }
+    }
+}
+
+impl<T: BlueprintIdRegistry> From<re_types::datatypes::Uuid> for BlueprintId<T> {
+    #[inline]
+    fn from(id: re_types::datatypes::Uuid) -> Self {
+        Self {
+            id: id.into(),
+            _registry: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T: BlueprintIdRegistry> From<BlueprintId<T>> for re_types::datatypes::Uuid {
+    #[inline]
+    fn from(id: BlueprintId<T>) -> Self {
+        id.id.into()
     }
 }
 

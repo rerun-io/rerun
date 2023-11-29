@@ -9,6 +9,7 @@ mod caches;
 mod command_sender;
 mod component_ui_registry;
 mod item;
+mod query_context;
 mod selection_history;
 mod selection_state;
 mod space_view;
@@ -34,6 +35,7 @@ pub use command_sender::{
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
 use nohash_hasher::{IntMap, IntSet};
+pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
 use re_log_types::EntityPath;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{

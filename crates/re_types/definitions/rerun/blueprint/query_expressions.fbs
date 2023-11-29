@@ -13,7 +13,7 @@ namespace rerun.blueprint;
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
 table QueryExpressions (
-  "attr.rust.derive_only": "Clone",
+  "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.override_crate": "re_space_view"
 ) {
   /// A set of strings that can be parsed as `EntityPathExpression`s.

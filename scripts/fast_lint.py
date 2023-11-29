@@ -151,7 +151,9 @@ def main() -> None:
         ),
         LintJob("lint-py-fmt-check", extensions=[".py"], no_filter_args=PY_FOLDERS),
         LintJob("lint-py-blackdoc", extensions=[".py"], no_filter_args=PY_FOLDERS),
-        LintJob("lint-py-mypy", extensions=[".py"]),
+        # Even though mypy will accept a list of files, the results it generates are inconsistent
+        # with running on the full project.
+        LintJob("lint-py-mypy", extensions=[".py"], accepts_files=False),
         LintJob("lint-py-ruff", extensions=[".py"], no_filter_args=PY_FOLDERS),
         LintJob("lint-taplo", extensions=[".toml"]),
         LintJob("lint-typos"),

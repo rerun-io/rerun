@@ -3,15 +3,14 @@ use std::collections::{BTreeMap, BTreeSet};
 use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, DataResult, EntitiesPerSystemPerClass, PerSystemEntities,
-    SpaceViewId, StoreContext, ViewSystemName,
+    DataBlueprintGroupHandle, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
+    DataResultTree, EntitiesPerSystemPerClass, PerSystemEntities, SpaceViewId, StoreContext,
+    ViewSystemName,
 };
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
 
-use crate::{
-    DataQuery, DataResultHandle, DataResultNode, DataResultTree, EntityOverrides, PropertyResolver,
-};
+use crate::{DataQuery, EntityOverrides, PropertyResolver};
 
 /// A grouping of several data-blueprints.
 #[derive(Clone, serde::Deserialize, serde::Serialize)]
@@ -484,7 +483,7 @@ impl DataQuery for SpaceViewContents {
         property_resolver: &impl PropertyResolver,
         ctx: &StoreContext<'_>,
         _entities_per_system_per_class: &EntitiesPerSystemPerClass,
-    ) -> DataResultTree {
+    ) -> DataQueryResult {
         re_tracing::profile_function!();
         let overrides = property_resolver.resolve_entity_overrides(ctx);
         let mut data_results = SlotMap::<DataResultHandle, DataResultNode>::default();
@@ -495,74 +494,11 @@ impl DataQuery for SpaceViewContents {
             &overrides.root,
             &mut data_results,
         ));
-        DataResultTree {
-            data_results,
-            root_handle,
-        }
-    }
-
-    fn resolve(
-        &self,
-        property_resolver: &impl PropertyResolver,
-        ctx: &StoreContext<'_>,
-        _entities_per_system_per_class: &EntitiesPerSystemPerClass,
-        entity_path: &EntityPath,
-        as_group: bool,
-    ) -> DataResult {
-        re_tracing::profile_function!();
-        let overrides = property_resolver.resolve_entity_overrides(ctx);
-
-        let view_parts = self
-            .per_system_entities()
-            .iter()
-            .filter_map(|(part, ents)| {
-                if ents.contains(entity_path) {
-                    Some(*part)
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        // Start with the root override
-        let mut resolved_properties = overrides.root;
-
-        // Merge in any group overrides
-        for prefix in EntityPath::incremental_walk(None, entity_path) {
-            if let Some(props) = overrides.group.get_opt(&prefix) {
-                resolved_properties = resolved_properties.with_child(props);
-            }
-        }
-
-        if as_group {
-            DataResult {
-                entity_path: entity_path.clone(),
-                view_parts,
-                is_group: true,
-                resolved_properties,
-                individual_properties: overrides.group.get_opt(entity_path).cloned(),
-                override_path: self
-                    .entity_path()
-                    .join(&SpaceViewContents::GROUP_OVERRIDES_PREFIX.into())
-                    .join(entity_path),
-            }
-        } else {
-            // Finally apply the individual overrides
-            if let Some(props) = overrides.individual.get_opt(entity_path) {
-                resolved_properties = resolved_properties.with_child(props);
-            }
-
-            DataResult {
-                entity_path: entity_path.clone(),
-                view_parts,
-                is_group: false,
-                resolved_properties,
-                individual_properties: overrides.individual.get_opt(entity_path).cloned(),
-                override_path: self
-                    .entity_path()
-                    .join(&SpaceViewContents::INDIVIDUAL_OVERRIDES_PREFIX.into())
-                    .join(entity_path),
-            }
+        DataQueryResult {
+            // Create a fake `DataQueryId` based on the SpaceView since each
+            // SpaceView contains a single "Query" based on its contents.
+            id: self.space_view_id.uuid().into(),
+            tree: DataResultTree::new(data_results, root_handle),
         }
     }
 }
