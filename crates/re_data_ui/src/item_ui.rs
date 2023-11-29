@@ -238,7 +238,11 @@ pub fn time_button(
     timeline: &Timeline,
     value: TimeInt,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.is_time_selected(timeline, value);
+    let is_selected = ctx
+        .rec_cfg
+        .time_ctrl
+        .read()
+        .is_time_selected(timeline, value);
 
     let response = ui.selectable_label(
         is_selected,
@@ -249,8 +253,9 @@ pub fn time_button(
     if response.clicked() {
         ctx.rec_cfg
             .time_ctrl
+            .write()
             .set_timeline_and_time(*timeline, value);
-        ctx.rec_cfg.time_ctrl.pause();
+        ctx.rec_cfg.time_ctrl.write().pause();
     }
     response
 }
@@ -269,14 +274,15 @@ pub fn timeline_button_to(
     text: impl Into<egui::WidgetText>,
     timeline: &Timeline,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.timeline() == timeline;
+    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline() == timeline;
 
     let response = ui
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
-        ctx.rec_cfg.time_ctrl.set_timeline(*timeline);
-        ctx.rec_cfg.time_ctrl.pause();
+        let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
+        time_ctrl.set_timeline(*timeline);
+        time_ctrl.pause();
     }
     response
 }

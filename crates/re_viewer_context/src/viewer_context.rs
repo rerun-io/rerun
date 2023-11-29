@@ -1,14 +1,13 @@
 use ahash::HashMap;
-use re_data_store::store_db::StoreDb;
-use re_data_store::{EntityTree, TimeHistogramPerTimeline};
-use re_log_types::TimeRange;
+use parking_lot::RwLock;
 
-use crate::query_context::DataQueryResult;
+use re_data_store::{store_db::StoreDb, EntityTree, TimeHistogramPerTimeline};
+
 use crate::{
-    item::resolve_mono_instance_path_item, AppOptions, Caches, CommandSender, ComponentUiRegistry,
-    Item, ItemCollection, SelectionState, SpaceViewClassRegistry, StoreContext, TimeControl,
+    item::resolve_mono_instance_path_item, query_context::DataQueryResult, AppOptions, Caches,
+    CommandSender, ComponentUiRegistry, DataQueryId, EntitiesPerSystemPerClass, Item,
+    ItemCollection, SelectionState, SpaceViewClassRegistry, StoreContext, TimeControl,
 };
-use crate::{DataQueryId, EntitiesPerSystemPerClass};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -40,7 +39,7 @@ pub struct ViewerContext<'a> {
     pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,
 
     /// UI config for the current recording (found in [`StoreDb`]).
-    pub rec_cfg: &'a mut RecordingConfig,
+    pub rec_cfg: &'a RecordingConfig,
 
     /// The look and feel of the UI.
     pub re_ui: &'a re_ui::ReUi,
@@ -58,7 +57,7 @@ impl<'a> ViewerContext<'a> {
         self.rec_cfg
             .selection_state
             .set_single_selection(resolve_mono_instance_path_item(
-                &self.rec_cfg.time_ctrl.current_query(),
+                &self.rec_cfg.time_ctrl.read().current_query(),
                 self.store_db.store(),
                 item,
             ));
@@ -80,7 +79,7 @@ impl<'a> ViewerContext<'a> {
             .selection_state
             .set_hovered(hovered.map(|item| {
                 resolve_mono_instance_path_item(
-                    &self.rec_cfg.time_ctrl.current_query(),
+                    &self.rec_cfg.time_ctrl.read().current_query(),
                     self.store_db.store(),
                     item,
                 )
@@ -93,13 +92,13 @@ impl<'a> ViewerContext<'a> {
 
     /// The current time query, based on the current time control.
     pub fn current_query(&self) -> re_arrow_store::LatestAtQuery {
-        self.rec_cfg.time_ctrl.current_query()
+        self.rec_cfg.time_ctrl.read().current_query()
     }
 
     /// Returns whether the given tree has any data logged in the current timeline.
     pub fn tree_has_data_in_current_timeline(&self, tree: &EntityTree) -> bool {
         tree.recursive_time_histogram
-            .has_timeline(self.rec_cfg.time_ctrl.timeline())
+            .has_timeline(self.rec_cfg.time_ctrl.read().timeline())
             || tree.num_timeless_messages() > 0
     }
 
@@ -108,7 +107,7 @@ impl<'a> ViewerContext<'a> {
         &self,
         component_stat: &TimeHistogramPerTimeline,
     ) -> bool {
-        component_stat.has_timeline(self.rec_cfg.time_ctrl.timeline())
+        component_stat.has_timeline(self.rec_cfg.time_ctrl.read().timeline())
             || component_stat.num_timeless_messages() > 0
     }
 }
@@ -120,14 +119,8 @@ impl<'a> ViewerContext<'a> {
 #[serde(default)]
 pub struct RecordingConfig {
     /// The current time of the time panel, how fast it is moving, etc.
-    pub time_ctrl: TimeControl,
+    pub time_ctrl: RwLock<TimeControl>,
 
     /// Selection & hovering state.
     pub selection_state: SelectionState,
-
-    /// Should the visible history time range be highlighted?
-    ///
-    /// This is used during UI interactions to show the range of time that is being edited.
-    #[serde(skip)]
-    pub visible_history_highlight: Option<TimeRange>,
 }

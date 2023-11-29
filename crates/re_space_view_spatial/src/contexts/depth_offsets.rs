@@ -51,7 +51,7 @@ impl ViewContextSystem for EntityDepthOffsets {
         for data_result in query.iter_visible_data_results(Self::name()) {
             if let Some(draw_order) = store.query_latest_component::<DrawOrder>(
                 &data_result.entity_path,
-                &ctx.rec_cfg.time_ctrl.current_query(),
+                &ctx.rec_cfg.time_ctrl.read().current_query(),
             ) {
                 entities_per_draw_order
                     .entry(draw_order.value)

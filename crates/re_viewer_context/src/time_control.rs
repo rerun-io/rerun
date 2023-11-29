@@ -79,7 +79,7 @@ pub enum PlayState {
 }
 
 /// Controls the global view and progress of the time.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct TimeControl {
     /// Name of the timeline (e.g. "log_time").
@@ -97,6 +97,12 @@ pub struct TimeControl {
     speed: f32,
 
     looping: Looping,
+
+    /// Range with special highlight.
+    ///
+    /// This is used during UI interactions. E.g. to show visual history range that's highlighted.
+    #[serde(skip)]
+    pub highlighted_range: Option<TimeRange>,
 }
 
 impl Default for TimeControl {
@@ -108,6 +114,7 @@ impl Default for TimeControl {
             following: true,
             speed: 1.0,
             looping: Looping::Off,
+            highlighted_range: None,
         }
     }
 }

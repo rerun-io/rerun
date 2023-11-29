@@ -475,7 +475,7 @@ fn space_view_ui(
     space_view_state: &mut dyn SpaceViewState,
     space_view_highlights: &SpaceViewHighlights,
 ) {
-    let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
+    let Some(latest_at) = ctx.rec_cfg.time_ctrl.read().time_int() else {
         ui.centered_and_justified(|ui| {
             ui.weak("No time selected");
         });

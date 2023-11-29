@@ -165,7 +165,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let time_ctrl = &ctx.rec_cfg.time_ctrl;
+        let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone(); // Avoid holding the lock for long
         let current_time = time_ctrl.time_i64();
         let time_type = time_ctrl.time_type();
         let timeline = time_ctrl.timeline();
@@ -241,12 +241,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             transform,
         } = plot.show(ui, |plot_ui| {
             if plot_ui.response().secondary_clicked() {
-                let timeline = ctx.rec_cfg.time_ctrl.timeline();
-                ctx.rec_cfg.time_ctrl.set_timeline_and_time(
-                    *timeline,
+                let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
+                let timeline = *time_ctrl_write.timeline();
+                time_ctrl_write.set_timeline_and_time(
+                    timeline,
                     plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
                 );
-                ctx.rec_cfg.time_ctrl.pause();
+                time_ctrl_write.pause();
             }
 
             for line in &time_series.lines {
@@ -306,7 +307,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     let time =
                         time_offset + transform.value_from_position(pointer_pos).x.round() as i64;
 
-                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                    let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
                     time_ctrl.set_time(time);
                     time_ctrl.pause();
 

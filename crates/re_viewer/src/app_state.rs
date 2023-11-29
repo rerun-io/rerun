@@ -66,10 +66,10 @@ impl AppState {
                     .get(rec_id)
                     // is there an active loop selection?
                     .and_then(|rec_cfg| {
-                        rec_cfg
-                            .time_ctrl
+                        let time_ctrl = rec_cfg.time_ctrl.read();
+                        time_ctrl
                             .loop_selection()
-                            .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
+                            .map(|q| (*time_ctrl.timeline(), q))
                     })
             })
     }
@@ -112,7 +112,7 @@ impl AppState {
         let entities_per_system_per_class = identify_entities_per_system_per_class(
             space_view_class_registry,
             store_db,
-            &rec_cfg.time_ctrl.current_query(),
+            &rec_cfg.time_ctrl.get_mut().current_query(),
         );
 
         // Execute the queries for every `SpaceView`
@@ -276,7 +276,7 @@ impl AppState {
                 false
             };
 
-            let needs_repaint = ctx.rec_cfg.time_ctrl.update(
+            let needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
                 store_db.times_per_timeline(),
                 dt,
                 more_data_is_coming,
@@ -333,6 +333,7 @@ fn recording_config_entry<'cfgs>(
 
         rec_cfg
             .time_ctrl
+            .get_mut()
             .set_play_state(store_db.times_per_timeline(), play_state);
 
         rec_cfg

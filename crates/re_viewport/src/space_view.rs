@@ -270,7 +270,7 @@ impl SpaceViewBlueprint {
             space_view_id: self.id,
             space_origin: &self.space_origin,
             per_system_data_results: &per_system_data_results,
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
             latest_at,
             highlights,
         };

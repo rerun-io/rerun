@@ -543,7 +543,7 @@ impl App {
         let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else {
             return;
         };
-        let time_ctrl = &mut rec_cfg.time_ctrl;
+        let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let times_per_timeline = store_db.times_per_timeline();
 

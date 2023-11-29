@@ -168,6 +168,7 @@ impl SpaceViewClass for TextSpaceView {
             let time = ctx
                 .rec_cfg
                 .time_ctrl
+                .read()
                 .time_i64()
                 .unwrap_or(state.latest_time);
 
@@ -278,8 +279,10 @@ fn table_ui(
 
     use egui_extras::Column;
 
-    let global_timeline = *ctx.rec_cfg.time_ctrl.timeline();
-    let global_time = ctx.rec_cfg.time_ctrl.time_int();
+    let (global_timeline, global_time) = {
+        let time_ctrl = ctx.rec_cfg.time_ctrl.read();
+        (*time_ctrl.timeline(), time_ctrl.time_int())
+    };
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .resizable(true)
