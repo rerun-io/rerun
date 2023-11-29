@@ -111,7 +111,7 @@ jobs:
     needs: [py-deploy-docs]
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - name: Show context
         shell: bash
