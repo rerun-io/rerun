@@ -258,11 +258,18 @@ fn write_used_by(o: &mut String, reporter: &Reporter, object: &Object, object_ma
     for ty in object_map.values() {
         for field in &ty.fields {
             if field.typ.fqname() == Some(object.fqname.as_str()) {
+                let is_unreleased = ty.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
+                let speculative_marker = if is_unreleased {
+                    "?speculative-link"
+                } else {
+                    ""
+                };
                 used_by.push(format!(
-                    "* [`{}`](../{}/{}.md)",
+                    "* [`{}`](../{}/{}.md{})",
                     ty.name,
                     ty.kind.plural_snake_case(),
-                    ty.snake_case_name()
+                    ty.snake_case_name(),
+                    speculative_marker
                 ));
             }
         }
