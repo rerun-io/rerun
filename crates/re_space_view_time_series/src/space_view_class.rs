@@ -165,10 +165,14 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone(); // Avoid holding the lock for long
-        let current_time = time_ctrl.time_i64();
-        let time_type = time_ctrl.time_type();
-        let timeline = time_ctrl.timeline();
+        let (current_time, time_type, timeline) = {
+            // Avoid holding the lock for long
+            let time_ctrl = ctx.rec_cfg.time_ctrl.read();
+            let current_time = time_ctrl.time_i64();
+            let time_type = time_ctrl.time_type();
+            let timeline = *time_ctrl.timeline();
+            (current_time, time_type, timeline)
+        };
 
         let timeline_name = timeline.name().to_string();
 
