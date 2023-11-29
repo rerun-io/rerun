@@ -577,6 +577,7 @@ impl IndexedBucketInner {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id,
             col_num_instances,
             columns,
             size_bytes,
@@ -661,6 +662,12 @@ impl IndexedBucketInner {
                             .into();
                     }
                 }
+            }
+
+            if *max_row_id == removed_row_id {
+                // NOTE: We _have_ to fullscan here: the bucket is sorted by `(Time, RowId)`, there
+                // could very well be a greater lurking in a lesser entry.
+                *max_row_id = col_row_id.iter().max().copied().unwrap_or(RowId::ZERO);
             }
 
             // NOTE: A single `RowId` cannot possibly have more than one datapoint for
