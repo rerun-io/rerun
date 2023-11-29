@@ -416,8 +416,7 @@ fn blueprint_ui(
             });
 
             if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
-                if space_view.queries.len() == 1 {
-                    let query = space_view.queries.first().unwrap();
+                if let Some(query) = space_view.queries.first() {
                     let expressions = query.expressions.expressions.join("\n");
                     let mut edited_expressions = expressions.clone();
 
