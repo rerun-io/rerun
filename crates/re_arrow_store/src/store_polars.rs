@@ -114,7 +114,7 @@ impl DataStore {
         let timelines: BTreeSet<&str> = self
             .tables
             .keys()
-            .map(|(timeline, _)| timeline.name().as_str())
+            .map(|(_, timeline)| timeline.name().as_str())
             .collect();
         let df = sort_df_columns(&df, self.config.store_insert_ids, &timelines);
 
