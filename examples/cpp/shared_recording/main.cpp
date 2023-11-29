@@ -1,6 +1,12 @@
-#include <unistd.h>
 #include <iostream>
 #include <sstream>
+
+#if defined(WIN32)
+#include <process.h>
+#define getpid _getpid
+#else
+#include <unistd.h>
+#endif
 
 #include <rerun.hpp>
 #include <rerun/demo_utils.hpp>
