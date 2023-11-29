@@ -30,6 +30,7 @@ re_analytics = { path = "crates/re_analytics", version = "=0.12.0-alpha.1", defa
 re_arrow_store = { path = "crates/re_arrow_store", version = "=0.12.0-alpha.1", default-features = false }
 re_build_info = { path = "crates/re_build_info", version = "=0.12.0-alpha.1", default-features = false }
 re_build_tools = { path = "crates/re_build_tools", version = "=0.12.0-alpha.1", default-features = false }
+re_build_examples_manifest = { path = "crates/re_build_examples_manifest", version = "=0.12.0-alpha.1", default-features = false }
 re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "=0.12.0-alpha.1", default-features = false }
 re_crash_handler = { path = "crates/re_crash_handler", version = "=0.12.0-alpha.1", default-features = false }
 re_data_source = { path = "crates/re_data_source", version = "=0.12.0-alpha.1", default-features = false }
