@@ -2,6 +2,7 @@ use ahash::HashSet;
 use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 
+use re_log_types::EntityPathExpr;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{
     DataQueryBlueprint, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
@@ -325,6 +326,12 @@ impl SpaceViewBlueprint {
             resolved_properties,
             individual_properties,
             override_path: entity_path,
+        }
+    }
+
+    pub fn remove_entity_expr(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+        if let Some(query) = self.queries.first() {
+            query.remove_entity_expr(ctx, expr);
         }
     }
 }

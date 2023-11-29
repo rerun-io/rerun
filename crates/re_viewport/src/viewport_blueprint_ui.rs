@@ -3,6 +3,7 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
+use re_log_types::EntityPathExpr;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
@@ -311,8 +312,10 @@ impl ViewportBlueprint<'_> {
                         let response =
                             remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                         if response.clicked() {
-                            // TODO(#4377): Fix entity removal
-                            //space_view.contents.remove_entity(entity_path);
+                            space_view.remove_entity_expr(
+                                ctx,
+                                EntityPathExpr::Exact(entity_path.clone()),
+                            );
                             space_view.entities_determined_by_user = true;
                         }
 
@@ -374,16 +377,9 @@ impl ViewportBlueprint<'_> {
                     });
 
                 if remove_group {
-                    // TODO(#4377): Fix group removal
-                    /*
-                    if let Some(group_handle) = space_view
-                        .contents
-                        .group_handle_for_entity_path(entity_path)
-                    {
-                        space_view.contents.remove_group(group_handle);
-                        space_view.entities_determined_by_user = true;
-                    }
-                    */
+                    space_view
+                        .remove_entity_expr(ctx, EntityPathExpr::Recursive(entity_path.clone()));
+                    space_view.entities_determined_by_user = true;
                 }
 
                 response

@@ -3,10 +3,11 @@ use once_cell::sync::Lazy;
 use re_data_store::{
     EntityProperties, EntityPropertiesComponent, EntityPropertyMap, EntityTree, StoreDb,
 };
-use re_log_types::{EntityPath, EntityPathExpr};
+use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
     EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName, SpaceViewId, StoreContext,
+    SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -94,6 +95,64 @@ impl DataQueryBlueprint {
                 .id
                 .as_entity_path()
                 .join(&Self::RECURSIVE_OVERRIDES_PREFIX.into()),
+        }
+    }
+
+    pub fn remove_entity_expr(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+        let mut edited = false;
+
+        let mut inclusions: Vec<EntityPathExpr> = self
+            .expressions
+            .inclusions
+            .iter()
+            .filter(|exp| !exp.as_str().is_empty())
+            .map(|exp| EntityPathExpr::from(exp.as_str()))
+            .collect();
+
+        let mut exclusions: Vec<EntityPathExpr> = self
+            .expressions
+            .exclusions
+            .iter()
+            .filter(|exp| !exp.as_str().is_empty())
+            .map(|exp| EntityPathExpr::from(exp.as_str()))
+            .collect();
+
+        inclusions.retain(|inc_expr| {
+            if inc_expr == &expr {
+                edited = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        if !exclusions.iter().any(|exc_expr| exc_expr == &expr) {
+            edited = true;
+            exclusions.push(expr);
+        }
+
+        if edited {
+            let timepoint = TimePoint::timeless();
+
+            let expressions_component = QueryExpressions {
+                inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
+                exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
+            };
+
+            let row = DataRow::from_cells1_sized(
+                RowId::random(),
+                self.id.as_entity_path(),
+                timepoint.clone(),
+                1,
+                [expressions_component],
+            )
+            .unwrap();
+
+            ctx.command_sender
+                .send_system(SystemCommand::UpdateBlueprint(
+                    ctx.store_context.blueprint.store_id().clone(),
+                    vec![row],
+                ));
         }
     }
 }
