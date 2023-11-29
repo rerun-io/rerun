@@ -27,6 +27,10 @@ fn is_spatial_class(class: &SpaceViewClassName) -> bool {
     class.as_str() == "3D" || class.as_str() == "2D"
 }
 
+fn is_spatial_2d_class(class: &SpaceViewClassName) -> bool {
+    class.as_str() == "2D"
+}
+
 fn spawn_one_space_view_per_entity(class: &SpaceViewClassName) -> bool {
     // For tensors create one space view for each tensor (even though we're able to stack them in one view)
     // TODO(emilk): query the actual [`ViewPartSystem`] instead.
@@ -264,76 +268,6 @@ pub fn default_created_space_views(
             continue;
         }
 
-        // Spatial views with images get extra treatment as well.
-        if is_spatial_class(candidate.class_name()) {
-            #[derive(Hash, PartialEq, Eq)]
-            enum ImageBucketing {
-                BySize((u64, u64)),
-                ExplicitDrawOrder,
-            }
-
-            let mut images_by_bucket: HashMap<ImageBucketing, Vec<EntityPath>> = HashMap::default();
-
-            // For this we're only interested in the direct children.
-            for entity_path in &candidate.contents.root_group().entities {
-                if let Some(tensor) =
-                    store.query_latest_component::<TensorData>(entity_path, &query)
-                {
-                    if let Some([height, width, _]) = tensor.image_height_width_channels() {
-                        if store
-                            .query_latest_component::<re_types::components::DrawOrder>(
-                                entity_path,
-                                &query,
-                            )
-                            .is_some()
-                        {
-                            // Put everything in the same bucket if it has a draw order.
-                            images_by_bucket
-                                .entry(ImageBucketing::ExplicitDrawOrder)
-                                .or_default()
-                                .push(entity_path.clone());
-                        } else {
-                            // Otherwise, distinguish buckets by image size.
-                            images_by_bucket
-                                .entry(ImageBucketing::BySize((height, width)))
-                                .or_default()
-                                .push(entity_path.clone());
-                        }
-                    }
-                }
-            }
-
-            if images_by_bucket.len() > 1 {
-                // If all images end up in the same bucket, proceed as normal. Otherwise stack images as instructed.
-                for bucket in images_by_bucket.keys() {
-                    // Ignore every image from another bucket. Keep all other entities.
-                    let images_of_different_size = images_by_bucket
-                        .iter()
-                        .filter_map(|(other_bucket, images)| {
-                            (bucket != other_bucket).then_some(images)
-                        })
-                        .flatten()
-                        .cloned()
-                        .collect::<IntSet<_>>();
-                    let entities = candidate
-                        .contents
-                        .entity_paths()
-                        .filter(|path| !images_of_different_size.contains(path))
-                        .cloned()
-                        .collect_vec();
-
-                    let mut space_view = SpaceViewBlueprint::new(
-                        *candidate.class_name(),
-                        &candidate.space_origin,
-                        entities.iter(),
-                    );
-                    space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
-                    space_views.push((space_view, AutoSpawnHeuristic::AlwaysSpawn));
-                }
-                continue;
-            }
-        }
-
         // TODO(andreas): Interaction of [`AutoSpawnHeuristic`] with above hardcoded heuristics is a bit wonky.
 
         // `AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot` means we're competing with other candidates for the same root.
@@ -367,6 +301,77 @@ pub fn default_created_space_views(
             }
 
             if should_spawn_new {
+                // 2D views with images get extra treatment as well.
+                if is_spatial_2d_class(candidate.class_name()) {
+                    #[derive(Hash, PartialEq, Eq)]
+                    enum ImageBucketing {
+                        BySize((u64, u64)),
+                        ExplicitDrawOrder,
+                    }
+
+                    let mut images_by_bucket: HashMap<ImageBucketing, Vec<EntityPath>> =
+                        HashMap::default();
+
+                    // For this we're only interested in the direct children.
+                    for entity_path in &candidate.contents.root_group().entities {
+                        if let Some(tensor) =
+                            store.query_latest_component::<TensorData>(entity_path, &query)
+                        {
+                            if let Some([height, width, _]) = tensor.image_height_width_channels() {
+                                if store
+                                    .query_latest_component::<re_types::components::DrawOrder>(
+                                        entity_path,
+                                        &query,
+                                    )
+                                    .is_some()
+                                {
+                                    // Put everything in the same bucket if it has a draw order.
+                                    images_by_bucket
+                                        .entry(ImageBucketing::ExplicitDrawOrder)
+                                        .or_default()
+                                        .push(entity_path.clone());
+                                } else {
+                                    // Otherwise, distinguish buckets by image size.
+                                    images_by_bucket
+                                        .entry(ImageBucketing::BySize((height, width)))
+                                        .or_default()
+                                        .push(entity_path.clone());
+                                }
+                            }
+                        }
+                    }
+
+                    if images_by_bucket.len() > 1 {
+                        // If all images end up in the same bucket, proceed as normal. Otherwise stack images as instructed.
+                        for bucket in images_by_bucket.keys() {
+                            // Ignore every image from another bucket. Keep all other entities.
+                            let images_of_different_size = images_by_bucket
+                                .iter()
+                                .filter_map(|(other_bucket, images)| {
+                                    (bucket != other_bucket).then_some(images)
+                                })
+                                .flatten()
+                                .cloned()
+                                .collect::<IntSet<_>>();
+                            let entities = candidate
+                                .contents
+                                .entity_paths()
+                                .filter(|path| !images_of_different_size.contains(path))
+                                .cloned()
+                                .collect_vec();
+
+                            let mut space_view = SpaceViewBlueprint::new(
+                                *candidate.class_name(),
+                                &candidate.space_origin,
+                                entities.iter(),
+                            );
+                            space_view.entities_determined_by_user = true; // Suppress auto adding of entities.
+                            space_views.push((space_view, AutoSpawnHeuristic::AlwaysSpawn));
+                        }
+                        continue;
+                    }
+                }
+
                 space_views.push((candidate, spawn_heuristic));
             }
         } else {
