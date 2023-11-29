@@ -170,6 +170,21 @@ impl<'a> ViewportBlueprint<'a> {
                     false
                 }
             }
+            Item::Container(tile_id) => {
+                if Some(*tile_id) == self.tree.root {
+                    // the root tile is always visible
+                    true
+                } else if let Some(tile) = self.tree.tiles.get(*tile_id) {
+                    if let egui_tiles::Tile::Container(container) = tile {
+                        // single children containers are generally hidden
+                        container.num_children() > 1
+                    } else {
+                        true
+                    }
+                } else {
+                    false
+                }
+            }
         }
     }
 

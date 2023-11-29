@@ -544,7 +544,7 @@ fn show_row_ids_tooltip(
             Item::InstancePath(_, path) => {
                 item_ui::instance_path_button(ctx, ui, None, path);
             }
-            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
+            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) | Item::Container(_) => {
                 // No extra info. This should never happen, but not worth printing a warning over.
                 // Even if it does go here, the ui after will still look ok.
             }

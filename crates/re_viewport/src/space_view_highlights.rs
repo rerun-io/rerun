@@ -38,7 +38,7 @@ pub fn highlights_for_space_view(
 
     for current_selection in selection_state.current().iter() {
         match current_selection {
-            Item::ComponentPath(_) | Item::SpaceView(_) => {}
+            Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
             Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                 if *group_space_view_id == space_view_id {
@@ -112,7 +112,7 @@ pub fn highlights_for_space_view(
 
     for current_hover in selection_state.hovered().iter() {
         match current_hover {
-            Item::ComponentPath(_) | Item::SpaceView(_) => {}
+            Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
             Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
                 // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
