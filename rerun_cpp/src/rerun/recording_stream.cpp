@@ -29,12 +29,15 @@ namespace rerun {
         return RR_STORE_KIND_RECORDING;
     }
 
-    RecordingStream::RecordingStream(std::string_view app_id, StoreKind store_kind)
+    RecordingStream::RecordingStream(
+        std::string_view app_id, std::optional<std::string_view> recording_id, StoreKind store_kind
+    )
         : _store_kind(store_kind) {
         check_binary_and_header_version_match().handle();
 
         rr_store_info store_info;
         store_info.application_id = detail::to_rr_string(app_id);
+        store_info.recording_id = detail::to_rr_string(recording_id);
         store_info.store_kind = store_kind_to_c(store_kind);
 
         rr_error status = {};
