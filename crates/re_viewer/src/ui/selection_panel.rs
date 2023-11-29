@@ -397,8 +397,6 @@ fn blueprint_ui(
     match item {
         Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
-                // TODO(#4377): Don't bother showing add/remove entities dialog since it's broken
-                /*
                 if ui
                     .button("Add/remove Entities")
                     .on_hover_text("Manually add or remove Entities from the Space View")
@@ -407,7 +405,6 @@ fn blueprint_ui(
                     viewport
                         .show_add_remove_entities_window(*space_view_id);
                 }
-                */
 
                 if ui
                     .button("Clone Space View")

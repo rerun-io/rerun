@@ -334,10 +334,35 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    // TODO(jleibs): Get rid of mut by sending blueprint update
+    pub fn add_entity_exclusion(&mut self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         if let Some(query) = self.queries.first() {
             query.add_entity_exclusion(ctx, expr);
         }
+        self.entities_determined_by_user = true;
+    }
+
+    // TODO(jleibs): Get rid of mut by sending blueprint update
+    pub fn add_entity_inclusion(&mut self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+        if let Some(query) = self.queries.first() {
+            query.add_entity_inclusion(ctx, expr);
+        }
+        self.entities_determined_by_user = true;
+    }
+
+    pub fn clear_entity_expression(&mut self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
+        if let Some(query) = self.queries.first() {
+            query.clear_entity_expression(ctx, expr);
+        }
+        self.entities_determined_by_user = true;
+    }
+
+    pub fn exclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
+        self.queries.iter().flat_map(|q| q.exclusions())
+    }
+
+    pub fn inclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
+        self.queries.iter().flat_map(|q| q.inclusions())
     }
 }
 

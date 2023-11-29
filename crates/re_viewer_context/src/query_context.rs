@@ -25,6 +25,25 @@ impl DataQueryResult {
     pub fn is_empty(&self) -> bool {
         self.tree.is_empty()
     }
+
+    #[inline]
+    pub fn contains_entity(&self, path: &EntityPath) -> bool {
+        self.tree
+            .lookup_result_by_path_and_group(path, false)
+            .is_some()
+    }
+
+    #[inline]
+    pub fn contains_group(&self, path: &EntityPath) -> bool {
+        self.tree
+            .lookup_result_by_path_and_group(path, true)
+            .is_some()
+    }
+
+    #[inline]
+    pub fn contains_any(&self, path: &EntityPath) -> bool {
+        self.contains_entity(path) || self.contains_group(path)
+    }
 }
 
 impl Clone for DataQueryResult {
