@@ -1,4 +1,5 @@
 include "arrow/attributes.fbs";
+include "docs/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
@@ -12,6 +13,7 @@ namespace rerun.datatypes;
 /// A path to an entity in the `DataStore`.
 table EntityPath  (
   "attr.arrow.transparent",
+  "attr.docs.unreleased",
   "attr.rust.derive": "Default",
   "attr.rust.repr": "transparent",
   "attr.rust.tuple_struct",

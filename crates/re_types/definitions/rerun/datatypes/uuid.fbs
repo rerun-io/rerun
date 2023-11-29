@@ -1,4 +1,5 @@
 include "arrow/attributes.fbs";
+include "docs/attributes.fbs";
 include "python/attributes.fbs";
 include "rust/attributes.fbs";
 
@@ -14,6 +15,7 @@ struct Uuid  (
   // TODO(jleibs): Figure out why we can't make this transparent.
   // The deserializer barfs on list of fixed-sized-list.
   //"attr.arrow.transparent",
+  "attr.docs.unreleased",
   "attr.rust.derive": "Default",
   "attr.rust.repr": "transparent"
 ) {
