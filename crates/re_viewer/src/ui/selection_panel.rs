@@ -392,6 +392,8 @@ fn blueprint_ui(
     match item {
         Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
+                // TODO(#4377): Don't bother showing add/remove entities dialog since it's broken
+                /*
                 if ui
                     .button("Add/remove Entities")
                     .on_hover_text("Manually add or remove Entities from the Space View")
@@ -400,6 +402,7 @@ fn blueprint_ui(
                     viewport
                         .show_add_remove_entities_window(*space_view_id);
                 }
+                */
 
                 if ui
                     .button("Clone Space View")
@@ -415,7 +418,7 @@ fn blueprint_ui(
                 }
             });
 
-            if let Some(space_view) = viewport.blueprint.space_view(space_view_id) {
+            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
                 if let Some(query) = space_view.queries.first() {
                     let inclusions = query.expressions.inclusions.join("\n");
                     let mut edited_inclusions = inclusions.clone();
@@ -449,6 +452,8 @@ fn blueprint_ui(
                                 ctx.store_context.blueprint.store_id().clone(),
                                 vec![row],
                             ));
+
+                        space_view.entities_determined_by_user = true;
                     }
                 }
             }
