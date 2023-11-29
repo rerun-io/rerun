@@ -2,7 +2,9 @@ use std::{collections::VecDeque, ops::RangeBounds, sync::atomic::Ordering};
 
 use itertools::Itertools;
 use re_log::trace;
-use re_log_types::{DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline};
+use re_log_types::{
+    DataCell, EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, TimeRange, Timeline,
+};
 use re_types_core::{ComponentName, ComponentNameSet};
 
 use crate::{
@@ -495,9 +497,8 @@ impl DataStore {
         }
     }
 
-    pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&TimePoint> {
-        re_tracing::profile_function!();
-
+    #[inline]
+    pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&(TimePoint, EntityPathHash)> {
         self.metadata_registry.get(row_id)
     }
 
