@@ -224,7 +224,7 @@ impl DataStore {
         // 2. Find all tables that potentially hold data associated with that `RowId`
         // 3. Drop the associated row and account for the space we got back
 
-        for (row_id, timepoint) in &self.metadata_registry.registry {
+        for (row_id, (timepoint, entity_path_hash)) in &self.metadata_registry.registry {
             if num_bytes_to_drop <= 0.0 {
                 break;
             }
@@ -272,8 +272,9 @@ impl DataStore {
             // Only decrement the metadata size trackers if we're actually certain that we'll drop
             // that RowId in the end.
             if diff.is_some() {
-                let metadata_dropped_size_bytes =
-                    row_id.total_size_bytes() + timepoint.total_size_bytes();
+                let metadata_dropped_size_bytes = row_id.total_size_bytes()
+                    + timepoint.total_size_bytes()
+                    + entity_path_hash.total_size_bytes();
                 self.metadata_registry.heap_size_bytes = self
                     .metadata_registry
                     .heap_size_bytes
