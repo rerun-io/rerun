@@ -10,6 +10,13 @@ use crate::{hash::Hash64, path::entity_path_impl::EntityPathImpl, EntityPathPart
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub struct EntityPathHash(Hash64);
 
+impl re_types_core::SizeBytes for EntityPathHash {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+}
+
 impl EntityPathHash {
     /// Sometimes used as the hash of `None`.
     pub const NONE: EntityPathHash = EntityPathHash(Hash64::ZERO);
