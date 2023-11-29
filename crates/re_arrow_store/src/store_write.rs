@@ -443,6 +443,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id,
             col_num_instances,
             columns,
             size_bytes,
@@ -465,6 +466,7 @@ impl IndexedBucket {
             size_bytes_added += insert_id.total_size_bytes();
         }
         col_row_id.push_back(row.row_id());
+        *max_row_id = RowId::max(*max_row_id, row.row_id());
         size_bytes_added += row.row_id().total_size_bytes();
         col_num_instances.push_back(row.num_instances());
         size_bytes_added += row.num_instances().total_size_bytes();
@@ -563,6 +565,7 @@ impl IndexedBucket {
             col_time: col_time1,
             col_insert_id: col_insert_id1,
             col_row_id: col_row_id1,
+            max_row_id: max_row_id1,
             col_num_instances: col_num_instances1,
             columns: columns1,
             size_bytes: _, // NOTE: recomputed below
@@ -603,6 +606,9 @@ impl IndexedBucket {
                     col_num_instances1.split_off_or_default(split_idx),
                 )
             };
+            // NOTE: We _have_ to fullscan here: the bucket is sorted by `(Time, RowId)`, there
+            // could very well be a greater lurking in a lesser entry.
+            *max_row_id1 = col_row_id1.iter().max().copied().unwrap_or(RowId::ZERO);
 
             // this updates `columns1` in-place!
             let columns2: IntMap<_, _> = {
@@ -622,12 +628,16 @@ impl IndexedBucket {
             };
 
             let inner2 = {
+                // NOTE: We _have_ to fullscan here: the bucket is sorted by `(Time, RowId)`, there
+                // could very well be a greater lurking in a lesser entry.
+                let max_row_id2 = col_row_id2.iter().max().copied().unwrap_or(RowId::ZERO);
                 let mut inner2 = IndexedBucketInner {
                     is_sorted: true,
                     time_range: time_range2,
                     col_time: col_time2,
                     col_insert_id: col_insert_id2,
                     col_row_id: col_row_id2,
+                    max_row_id: max_row_id2,
                     col_num_instances: col_num_instances2,
                     columns: columns2,
                     size_bytes: 0, // NOTE: computed below

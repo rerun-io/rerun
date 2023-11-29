@@ -18,6 +18,11 @@ pub enum SanityError {
     )]
     TimeRangeOutOfSync { expected: TimeRange, got: TimeRange },
 
+    #[error(
+        "Reported max RowId for indexed bucket is out of sync: got {got}, expected {expected}"
+    )]
+    MaxRowIdOutOfSync { expected: RowId, got: RowId },
+
     #[error("Reported size for {origin} is out of sync: got {got}, expected {expected}")]
     SizeOutOfSync {
         origin: &'static str,
@@ -163,6 +168,7 @@ impl IndexedBucket {
                 col_time,
                 col_insert_id,
                 col_row_id,
+                max_row_id,
                 col_num_instances,
                 columns,
                 size_bytes: _,
@@ -185,6 +191,17 @@ impl IndexedBucket {
                     return Err(SanityError::TimeRangeOutOfSync {
                         expected: expected_time_range,
                         got: *time_range,
+                    });
+                }
+            }
+
+            // Make sure `max_row_id` isn't out of sync
+            {
+                let expected = col_row_id.iter().max().copied().unwrap_or(RowId::ZERO);
+                if expected != *max_row_id {
+                    return Err(SanityError::MaxRowIdOutOfSync {
+                        expected,
+                        got: *max_row_id,
                     });
                 }
             }
