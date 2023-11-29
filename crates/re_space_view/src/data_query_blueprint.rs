@@ -98,7 +98,7 @@ impl DataQueryBlueprint {
         }
     }
 
-    pub fn remove_entity_expr(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         let mut edited = false;
 
         let mut inclusions: Vec<EntityPathExpr> = self

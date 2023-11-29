@@ -312,7 +312,7 @@ impl ViewportBlueprint<'_> {
                         let response =
                             remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                         if response.clicked() {
-                            space_view.remove_entity_expr(
+                            space_view.add_entity_exclusion(
                                 ctx,
                                 EntityPathExpr::Exact(entity_path.clone()),
                             );
@@ -378,7 +378,7 @@ impl ViewportBlueprint<'_> {
 
                 if remove_group {
                     space_view
-                        .remove_entity_expr(ctx, EntityPathExpr::Recursive(entity_path.clone()));
+                        .add_entity_exclusion(ctx, EntityPathExpr::Recursive(entity_path.clone()));
                     space_view.entities_determined_by_user = true;
                 }
 

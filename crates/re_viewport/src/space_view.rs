@@ -329,9 +329,9 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn remove_entity_expr(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         if let Some(query) = self.queries.first() {
-            query.remove_entity_expr(ctx, expr);
+            query.add_entity_exclusion(ctx, expr);
         }
     }
 }
