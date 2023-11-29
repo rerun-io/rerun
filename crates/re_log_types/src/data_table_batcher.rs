@@ -101,13 +101,13 @@ impl DataTableBatcherConfig {
     };
 
     /// Environment variable to configure [`Self::flush_tick`].
-    pub const ENV_FLUSH_TICK: &str = "RERUN_FLUSH_TICK_SECS";
+    pub const ENV_FLUSH_TICK: &'static str = "RERUN_FLUSH_TICK_SECS";
 
     /// Environment variable to configure [`Self::flush_num_bytes`].
-    pub const ENV_FLUSH_NUM_BYTES: &str = "RERUN_FLUSH_NUM_BYTES";
+    pub const ENV_FLUSH_NUM_BYTES: &'static str = "RERUN_FLUSH_NUM_BYTES";
 
     /// Environment variable to configure [`Self::flush_num_rows`].
-    pub const ENV_FLUSH_NUM_ROWS: &str = "RERUN_FLUSH_NUM_ROWS";
+    pub const ENV_FLUSH_NUM_ROWS: &'static str = "RERUN_FLUSH_NUM_ROWS";
 
     /// Creates a new `DataTableBatcherConfig` using the default values, optionally overridden
     /// through the environment.

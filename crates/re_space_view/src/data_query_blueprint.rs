@@ -30,7 +30,7 @@ pub struct DataQueryBlueprint {
 }
 
 impl DataQueryBlueprint {
-    pub const OVERRIDES_PREFIX: &str = "overrides";
+    pub const OVERRIDES_PREFIX: &'static str = "overrides";
 }
 
 impl DataQuery for DataQueryBlueprint {
