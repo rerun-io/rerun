@@ -224,7 +224,7 @@ impl DataStore {
         // 2. Find all tables that potentially hold data associated with that `RowId`
         // 3. Drop the associated row and account for the space we got back
 
-        for (row_id, timepoint) in &self.metadata_registry.registry {
+        for (row_id, (timepoint, entity_path_hash)) in &self.metadata_registry.registry {
             if num_bytes_to_drop <= 0.0 {
                 break;
             }

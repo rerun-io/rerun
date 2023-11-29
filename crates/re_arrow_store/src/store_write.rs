@@ -5,8 +5,8 @@ use parking_lot::RwLock;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    DataCell, DataCellColumn, DataCellError, DataRow, RowId, TimeInt, TimePoint, TimeRange,
-    VecDequeRemovalExt as _,
+    DataCell, DataCellColumn, DataCellError, DataRow, EntityPathHash, RowId, TimeInt, TimePoint,
+    TimeRange, VecDequeRemovalExt as _,
 };
 use re_types_core::{
     components::InstanceKey, ComponentName, ComponentNameSet, Loggable, SizeBytes as _,
@@ -72,12 +72,13 @@ impl DataStore {
         let DataRow {
             row_id,
             timepoint,
-            entity_path: ent_path,
+            entity_path,
             num_instances,
             cells,
         } = row;
 
-        self.metadata_registry.upsert(*row_id, timepoint.clone())?;
+        self.metadata_registry
+            .upsert(*row_id, (timepoint.clone(), entity_path.hash()))?;
 
         re_tracing::profile_function!();
 
@@ -113,7 +114,7 @@ impl DataStore {
             }
         }
 
-        let ent_path_hash = ent_path.hash();
+        let ent_path_hash = entity_path.hash();
         let num_instances = *num_instances;
 
         trace!(
@@ -123,7 +124,7 @@ impl DataStore {
             timelines = ?timepoint.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format_utc(*time)))
                 .collect::<Vec<_>>(),
-            entity = %ent_path,
+            entity = %entity_path,
             components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
             "insertion started…"
         );
@@ -165,12 +166,14 @@ impl DataStore {
             let index = self
                 .timeless_tables
                 .entry(ent_path_hash)
-                .or_insert_with(|| PersistentIndexedTable::new(self.cluster_key, ent_path.clone()));
+                .or_insert_with(|| {
+                    PersistentIndexedTable::new(self.cluster_key, entity_path.clone())
+                });
 
             index.insert_row(insert_id, generated_cluster_cell.clone(), row);
         } else {
             for (timeline, time) in timepoint.iter() {
-                let ent_path = ent_path.clone(); // shallow
+                let ent_path = entity_path.clone(); // shallow
                 let index = self
                     .tables
                     .entry((*timeline, ent_path_hash))
@@ -186,7 +189,7 @@ impl DataStore {
             }
         }
 
-        let diff = StoreDiff::addition(*row_id, ent_path.clone())
+        let diff = StoreDiff::addition(*row_id, entity_path.clone())
             .at_timepoint(timepoint.clone())
             .with_cells(cells.iter().cloned());
 
@@ -249,8 +252,12 @@ impl DataStore {
     }
 }
 
-impl MetadataRegistry<TimePoint> {
-    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) -> WriteResult<()> {
+impl MetadataRegistry<(TimePoint, EntityPathHash)> {
+    fn upsert(
+        &mut self,
+        row_id: RowId,
+        (timepoint, entity_path_hash): (TimePoint, EntityPathHash),
+    ) -> WriteResult<()> {
         match self.entry(row_id) {
             std::collections::btree_map::Entry::Occupied(_) => Err(WriteError::ReusedRowId(row_id)),
             std::collections::btree_map::Entry::Vacant(entry) => {
@@ -258,7 +265,7 @@ impl MetadataRegistry<TimePoint> {
                 let added_size_bytes = row_id.total_size_bytes() + timepoint.total_size_bytes();
 
                 // This is valuable information even for a timeless timepoint!
-                entry.insert(timepoint);
+                entry.insert((timepoint, entity_path_hash));
 
                 self.heap_size_bytes += added_size_bytes;
 
