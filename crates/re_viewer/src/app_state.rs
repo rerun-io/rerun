@@ -42,6 +42,10 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub fn set_examples_manifest_url(&mut self, url: String) {
+        self.welcome_screen.set_examples_manifest_url(url);
+    }
+
     pub fn app_options(&self) -> &AppOptions {
         &self.app_options
     }

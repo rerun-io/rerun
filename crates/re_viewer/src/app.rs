@@ -249,6 +249,10 @@ impl App {
         self.profiler = profiler;
     }
 
+    pub fn set_examples_manifest_url(&mut self, url: String) {
+        self.state.set_examples_manifest_url(url);
+    }
+
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
         &self.build_info
     }

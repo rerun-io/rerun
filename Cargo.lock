@@ -4770,6 +4770,7 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui_plot",
+ "ehttp",
  "image",
  "itertools 0.11.0",
  "once_cell",
