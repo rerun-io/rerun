@@ -105,7 +105,7 @@ impl CompactedStoreEvents {
                         event.delta().unsigned_abs();
                 }
             } else {
-                for (&timeline, &time) in &event.timepoint {
+                for &(timeline, time) in &event.times {
                     let per_timeline = this.timeful.entry(event.entity_path.hash()).or_default();
                     let per_component = per_timeline.entry(timeline).or_default();
                     for component_name in event.cells.keys() {
@@ -205,7 +205,7 @@ impl EntityTree {
             let leaf = self.create_subtrees_recursively(
                 event.diff.entity_path.as_slice(),
                 0,
-                &event.diff.timepoint,
+                &event.diff.times,
                 event.num_components() as _,
             );
 
@@ -235,7 +235,7 @@ impl EntityTree {
                     pending_clears = self.flat_clears.clone().into_iter().collect_vec();
                     Default::default()
                 });
-            per_component.add(&store_diff.timepoint, 1);
+            per_component.add(&store_diff.times, 1);
 
             // Is the newly added component under the influence of previously logged `Clear`
             // component?
@@ -343,7 +343,7 @@ impl EntityTree {
                     next,
                     is_recursive,
                     store_diff.row_id,
-                    store_diff.timepoint.clone(),
+                    store_diff.timepoint(),
                 ));
                 stack.extend(next.children.values_mut().collect::<Vec<&mut Self>>());
             }
@@ -352,7 +352,7 @@ impl EntityTree {
                 self,
                 is_recursive,
                 store_diff.row_id,
-                store_diff.timepoint.clone(),
+                store_diff.timepoint(),
             ));
         }
 
@@ -387,7 +387,7 @@ impl EntityTree {
                 .entry(component_path.entity_path().clone())
                 .or_default();
 
-            *timepoint = store_diff.timepoint.clone().union_max(timepoint);
+            *timepoint = store_diff.timepoint().union_max(timepoint);
             component_paths.insert(component_path.clone());
         }
     }
@@ -433,7 +433,7 @@ impl EntityTree {
         for event in filtered_events.iter().filter(|e| &e.entity_path == path) {
             for component_name in event.cells.keys() {
                 if let Some(histo) = self.time_histograms_per_component.get_mut(component_name) {
-                    histo.remove(&event.timepoint, 1);
+                    histo.remove(&event.timepoint(), 1);
                     if histo.is_empty() {
                         self.time_histograms_per_component.remove(component_name);
                     }
@@ -442,7 +442,7 @@ impl EntityTree {
         }
 
         for event in &filtered_events {
-            recursive_time_histogram.remove(&event.timepoint, event.num_components() as _);
+            recursive_time_histogram.remove(&event.timepoint(), event.num_components() as _);
         }
 
         children.retain(|_, child| {
@@ -458,10 +458,10 @@ impl EntityTree {
         &mut self,
         full_path: &[EntityPathPart],
         depth: usize,
-        timepoint: &TimePoint,
+        times: &[(Timeline, TimeInt)],
         num_components: u32,
     ) -> &mut Self {
-        self.recursive_time_histogram.add(timepoint, num_components);
+        self.recursive_time_histogram.add(times, num_components);
 
         match full_path.get(depth) {
             None => {
@@ -473,7 +473,7 @@ impl EntityTree {
                 .or_insert_with(|| {
                     EntityTree::new(full_path[..depth + 1].into(), self.recursive_clears.clone())
                 })
-                .create_subtrees_recursively(full_path, depth + 1, timepoint, num_components),
+                .create_subtrees_recursively(full_path, depth + 1, times, num_components),
         }
     }
 
