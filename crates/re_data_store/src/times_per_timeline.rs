@@ -54,7 +54,7 @@ impl StoreSubscriber for TimesPerTimeline {
         re_tracing::profile_function!(format!("num_events={}", events.len()));
 
         for event in events {
-            for (&timeline, &time) in &event.timepoint {
+            for &(timeline, time) in &event.times {
                 let per_time = self.0.entry(timeline).or_default();
                 let count = per_time.entry(time).or_default();
 
