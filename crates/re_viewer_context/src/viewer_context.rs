@@ -48,17 +48,15 @@ pub struct ViewerContext<'a> {
 }
 
 impl<'a> ViewerContext<'a> {
-    /// Sets a single selection, updating history as needed.
-    ///
-    /// Returns the previous selection.
-    pub fn set_single_selection(&mut self, item: &Item) -> ItemCollection {
+    /// Sets a single selection on the next frame, updating history as needed.
+    pub fn set_single_selection(&self, item: &Item) {
         self.rec_cfg
             .selection_state
             .set_single_selection(resolve_mono_instance_path_item(
                 &self.rec_cfg.time_ctrl.current_query(),
                 self.store_db.store(),
                 item,
-            ))
+            ));
     }
 
     /// Returns the current selection.
@@ -72,7 +70,7 @@ impl<'a> ViewerContext<'a> {
     }
 
     /// Set the hovered objects. Will be in [`Self::hovered`] on the next frame.
-    pub fn set_hovered<'b>(&mut self, hovered: impl Iterator<Item = &'b Item>) {
+    pub fn set_hovered<'b>(&self, hovered: impl Iterator<Item = &'b Item>) {
         self.rec_cfg
             .selection_state
             .set_hovered(hovered.map(|item| {
@@ -86,10 +84,6 @@ impl<'a> ViewerContext<'a> {
 
     pub fn selection_state(&self) -> &SelectionState {
         &self.rec_cfg.selection_state
-    }
-
-    pub fn selection_state_mut(&mut self) -> &mut SelectionState {
-        &mut self.rec_cfg.selection_state
     }
 
     /// The current time query, based on the current time control.

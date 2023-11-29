@@ -64,13 +64,14 @@ impl SelectionPanel {
                     currently selected object(s)";
                 ctx.re_ui
                     .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
+                        let mut history = ctx.selection_state().history.lock();
                         if let Some(selection) = self.selection_state_ui.selection_ui(
                             ctx.re_ui,
                             ui,
                             &viewport.blueprint,
-                            &mut ctx.selection_state_mut().history,
+                            &mut history,
                         ) {
-                            ctx.selection_state_mut()
+                            ctx.selection_state()
                                 .set_selection(selection.iter().cloned());
                         }
                     });
@@ -547,7 +548,7 @@ fn blueprint_ui(
                     );
                     data_result.save_override(Some(props), ctx);
                 } else {
-                    ctx.selection_state_mut().clear_current();
+                    ctx.selection_state().clear_current();
                 }
             }
         }

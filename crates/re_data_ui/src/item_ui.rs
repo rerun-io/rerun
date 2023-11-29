@@ -308,15 +308,14 @@ pub fn select_hovered_on_click(
     re_tracing::profile_function!();
 
     if response.hovered() {
-        ctx.selection_state_mut().set_hovered(items.iter().cloned());
+        ctx.set_hovered(items.iter());
     }
 
     if response.clicked() {
         if response.ctx.input(|i| i.modifiers.command) {
-            ctx.selection_state_mut().toggle_selection(items.to_vec());
+            ctx.selection_state().toggle_selection(items.to_vec());
         } else {
-            ctx.selection_state_mut()
-                .set_selection(items.iter().cloned());
+            ctx.selection_state().set_selection(items.iter().cloned());
         }
     }
 }
