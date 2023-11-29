@@ -67,8 +67,9 @@ impl TimePanel {
         time_panel_expanded: bool,
     ) {
         // Naturally, many parts of the time panel need the time control.
-        // Copy it once, read/edit, and then write back at the end.
-        let mut time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
+        // Copy it once, read/edit, and then write back at the end if there was a change.
+        let time_ctrl_before = ctx.rec_cfg.time_ctrl.read().clone();
+        let mut time_ctrl_after = time_ctrl_before.clone();
 
         // this is the size of everything above the central panel (window title bar, top bar on web,
         // etc.)
@@ -115,7 +116,7 @@ impl TimePanel {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
                         ui.visuals_mut().button_frame = true;
-                        self.collapsed_ui(ctx, ui, &mut time_ctrl);
+                        self.collapsed_ui(ctx, ui, &mut time_ctrl_after);
                     });
                 } else {
                     // Expanded:
@@ -129,7 +130,7 @@ impl TimePanel {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
                                     ui.visuals_mut().button_frame = true;
-                                    self.top_row_ui(ctx, ui, &mut time_ctrl);
+                                    self.top_row_ui(ctx, ui, &mut time_ctrl_after);
                                 });
                             })
                             .response
@@ -148,15 +149,20 @@ impl TimePanel {
                         let mut streams_frame = egui::Frame::default();
                         streams_frame.inner_margin.left = margin.x;
                         streams_frame.show(ui, |ui| {
-                            self.expanded_ui(ctx, ui, &mut time_ctrl);
+                            self.expanded_ui(ctx, ui, &mut time_ctrl_after);
                         });
                     });
                 }
             },
         );
 
-        // Apply potential changes of the time control:
-        *ctx.rec_cfg.time_ctrl.write() = time_ctrl;
+        // Apply time control if there were any changes.
+        // This means that if anyone else meanwhile changed the time control, these changes are lost now.
+        // At least though we don't overwrite them if we didn't change anything at all.
+        // Since changes on the time control via the time panel are rare, this should be fine.
+        if time_ctrl_before != time_ctrl_after {
+            *ctx.rec_cfg.time_ctrl.write() = time_ctrl_after;
+        }
     }
 
     #[allow(clippy::unused_self)]
