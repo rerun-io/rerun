@@ -9,7 +9,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <utility>
 
 namespace arrow {
     class Array;
@@ -22,19 +21,14 @@ namespace rerun::blueprint {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct QueryExpressions {
-        /// A set of strings that can be parsed as `EntityPathExpression`s.
-        rerun::Collection<std::string> expressions;
+        /// A set of strings representing `EntityPathExpression`s to be included.
+        rerun::Collection<std::string> inclusions;
+
+        /// A set of strings representing `EntityPathExpression`s to be excluded.
+        rerun::Collection<std::string> exclusions;
 
       public:
         QueryExpressions() = default;
-
-        QueryExpressions(rerun::Collection<std::string> expressions_)
-            : expressions(std::move(expressions_)) {}
-
-        QueryExpressions& operator=(rerun::Collection<std::string> expressions_) {
-            expressions = std::move(expressions_);
-            return *this;
-        }
     };
 } // namespace rerun::blueprint
 

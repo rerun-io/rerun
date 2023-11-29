@@ -1,12 +1,14 @@
+use ahash::HashMap;
 use re_data_store::store_db::StoreDb;
 use re_data_store::{EntityTree, TimeHistogramPerTimeline};
 use re_log_types::TimeRange;
 
-use crate::EntitiesPerSystemPerClass;
+use crate::query_context::DataQueryResult;
 use crate::{
     item::resolve_mono_instance_path_item, AppOptions, Caches, CommandSender, ComponentUiRegistry,
     Item, ItemCollection, SelectionState, SpaceViewClassRegistry, StoreContext, TimeControl,
 };
+use crate::{DataQueryId, EntitiesPerSystemPerClass};
 
 /// Common things needed by many parts of the viewer.
 pub struct ViewerContext<'a> {
@@ -33,6 +35,9 @@ pub struct ViewerContext<'a> {
 
     /// Mapping from class and system to entities for the store
     pub entities_per_system_per_class: &'a EntitiesPerSystemPerClass,
+
+    /// All the query results for this frame
+    pub query_results: &'a HashMap<DataQueryId, DataQueryResult>,
 
     /// UI config for the current recording (found in [`StoreDb`]).
     pub rec_cfg: &'a mut RecordingConfig,

@@ -1,7 +1,6 @@
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_data_store::{EntityPath, EntityTree, InstancePath};
-use re_data_ui::item_ui;
+use re_data_store::{EntityPath, EntityTree};
 use re_viewer_context::{SpaceViewId, ViewerContext};
 
 use crate::{
@@ -170,14 +169,17 @@ fn add_entities_tree_ui(
 }
 
 fn add_entities_line_ui(
-    ctx: &mut ViewerContext<'_>,
+    _ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    spaces_info: &SpaceInfoCollection,
-    name: &str,
-    entity_tree: &EntityTree,
-    space_view: &mut SpaceViewBlueprint,
-    entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
+    _spaces_info: &SpaceInfoCollection,
+    _name: &str,
+    _entity_tree: &EntityTree,
+    _space_view: &mut SpaceViewBlueprint,
+    _entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
+    // TODO(#4377): Reformulate this in terms of modifying query expressions
+    ui.label("Not implemented");
+    /*
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
 
@@ -248,6 +250,7 @@ fn add_entities_line_ui(
             }
         });
     });
+    */
 }
 
 /// Describes if an entity path can be added to a space view.
@@ -275,6 +278,7 @@ impl CanAddToSpaceView {
     }
 
     /// Can be added and spaceview doesn't have it already.
+    #[allow(dead_code)]
     pub fn is_compatible_and_missing(&self) -> bool {
         self == &CanAddToSpaceView::Compatible {
             already_added: false,
@@ -300,6 +304,7 @@ impl CanAddToSpaceView {
 }
 
 #[derive(Default)]
+#[allow(dead_code)]
 struct EntityAddInfo {
     can_add: CanAddToSpaceView,
     can_add_self_or_descendant: CanAddToSpaceView,
@@ -310,7 +315,7 @@ fn create_entity_add_info(
     tree: &EntityTree,
     heuristic_context_per_entity: &HeuristicFilterContextPerEntity,
     space_view: &SpaceViewBlueprint,
-    spaces_info: &SpaceInfoCollection,
+    _spaces_info: &SpaceInfoCollection,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
@@ -318,6 +323,11 @@ fn create_entity_add_info(
         let heuristic_context_per_entity = heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default();
         let can_add: CanAddToSpaceView =
             if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
+                // TODO(#4377): Reformulate this in terms of modifying query expressions
+                CanAddToSpaceView::No {
+                    reason: "Not implemented".to_owned(),
+                }
+                /*
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
                         already_added: space_view.contents.contains_entity(entity_path),
@@ -326,6 +336,7 @@ fn create_entity_add_info(
                         reason: reason.to_string(),
                     },
                 }
+                */
             } else {
                 CanAddToSpaceView::No {
                     reason: format!(

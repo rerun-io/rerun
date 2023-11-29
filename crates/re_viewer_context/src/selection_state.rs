@@ -215,7 +215,7 @@ impl SelectionState {
             .hovered_previous_frame
             .iter()
             .any(|current| match current {
-                Item::ComponentPath(_) | Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
+                Item::ComponentPath(_) | Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => {
                     current == test
                 }
 
