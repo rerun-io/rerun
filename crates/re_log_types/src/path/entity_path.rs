@@ -261,6 +261,20 @@ impl From<EntityPath> for String {
     }
 }
 
+impl From<re_types_core::datatypes::EntityPath> for EntityPath {
+    #[inline]
+    fn from(value: re_types_core::datatypes::EntityPath) -> Self {
+        EntityPath::parse_forgiving(&value.0)
+    }
+}
+
+impl From<&EntityPath> for re_types_core::datatypes::EntityPath {
+    #[inline]
+    fn from(value: &EntityPath) -> Self {
+        Self(value.to_string().into())
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 use re_types_core::Loggable;

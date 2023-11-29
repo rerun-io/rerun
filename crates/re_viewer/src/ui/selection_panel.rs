@@ -4,6 +4,7 @@ use re_data_store::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
+use re_log_types::{DataRow, RowId, TimePoint};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
@@ -12,10 +13,10 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
-    ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, SystemCommand,
+    SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
-use re_viewport::{Viewport, ViewportBlueprint};
+use re_viewport::{external::re_space_view::QueryExpressions, Viewport, ViewportBlueprint};
 
 use crate::ui::visible_history::visible_history_ui;
 
@@ -149,7 +150,7 @@ fn has_data_section(item: &Item) -> bool {
     match item {
         Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => false,
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => false,
     }
 }
 
@@ -259,22 +260,23 @@ fn what_is_selected_ui(
                 list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
             }
         }
-        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, _query_id, entity_path) => {
             if let Some(space_view) = viewport.space_view(space_view_id) {
-                if let Some(group) = space_view.contents.group(*data_blueprint_group_handle) {
-                    item_title_ui(
-                        ctx.re_ui,
-                        ui,
-                        group.display_name.as_str(),
-                        Some(&re_ui::icons::CONTAINER),
-                        &format!("Group {:?}", group.display_name),
-                    );
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    &entity_path.to_string(),
+                    Some(&re_ui::icons::CONTAINER),
+                    &format!(
+                        "Group {:?} as shown in Space View {:?}",
+                        entity_path, space_view.display_name
+                    ),
+                );
 
-                    ui.horizontal(|ui| {
-                        ui.label("in");
-                        space_view_button(ctx, ui, space_view);
-                    });
-                }
+                ui.horizontal(|ui| {
+                    ui.label("in");
+                    space_view_button(ctx, ui, space_view);
+                });
             }
         }
     }
@@ -306,7 +308,7 @@ fn list_existing_data_blueprints(
     entity_path: &EntityPath,
     blueprint: &ViewportBlueprint<'_>,
 ) {
-    let space_views_with_path = blueprint.space_views_containing_entity_path(entity_path);
+    let space_views_with_path = blueprint.space_views_containing_entity_path(ctx, entity_path);
 
     if space_views_with_path.is_empty() {
         ui.weak("(Not shown in any Space View)");
@@ -390,6 +392,8 @@ fn blueprint_ui(
     match item {
         Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
+                // TODO(#4377): Don't bother showing add/remove entities dialog since it's broken
+                /*
                 if ui
                     .button("Add/remove Entities")
                     .on_hover_text("Manually add or remove Entities from the Space View")
@@ -398,6 +402,7 @@ fn blueprint_ui(
                     viewport
                         .show_add_remove_entities_window(*space_view_id);
                 }
+                */
 
                 if ui
                     .button("Clone Space View")
@@ -412,6 +417,46 @@ fn blueprint_ui(
                     }
                 }
             });
+
+            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+                if let Some(query) = space_view.queries.first() {
+                    let inclusions = query.expressions.inclusions.join("\n");
+                    let mut edited_inclusions = inclusions.clone();
+                    let exclusions = query.expressions.exclusions.join("\n");
+                    let mut edited_exclusions = exclusions.clone();
+
+                    ui.label("Inclusion expressions");
+                    ui.text_edit_multiline(&mut edited_inclusions);
+                    ui.label("Exclusion expressions");
+                    ui.text_edit_multiline(&mut edited_exclusions);
+
+                    if edited_inclusions != inclusions || edited_exclusions != exclusions {
+                        let timepoint = TimePoint::timeless();
+
+                        let expressions_component = QueryExpressions {
+                            inclusions: edited_inclusions.split('\n').map(|s| s.into()).collect(),
+                            exclusions: edited_exclusions.split('\n').map(|s| s.into()).collect(),
+                        };
+
+                        let row = DataRow::from_cells1_sized(
+                            RowId::random(),
+                            query.id.as_entity_path(),
+                            timepoint.clone(),
+                            1,
+                            [expressions_component],
+                        )
+                        .unwrap();
+
+                        ctx.command_sender
+                            .send_system(SystemCommand::UpdateBlueprint(
+                                ctx.store_context.blueprint.store_id().clone(),
+                                vec![row],
+                            ));
+
+                        space_view.entities_determined_by_user = true;
+                    }
+                }
+            }
 
             ui.add_space(ui.spacing().item_spacing.y);
 
@@ -516,37 +561,34 @@ fn blueprint_ui(
             }
         }
 
-        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, query_id, group_path) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
-                    let group_path = group.group_path.clone();
-                    let as_group = true;
+                let as_group = true;
 
-                    let query_result = ctx.lookup_query_result(space_view.query_id());
-                    if let Some(data_result) = query_result
-                        .tree
-                        .lookup_result_by_path_and_group(&group_path, as_group)
-                        .cloned()
-                    {
-                        let space_view_class = *space_view.class_name();
-                        let mut props = data_result
-                            .individual_properties
-                            .clone()
-                            .unwrap_or_default();
+                let query_result = ctx.lookup_query_result(*query_id);
+                if let Some(data_result) = query_result
+                    .tree
+                    .lookup_result_by_path_and_group(group_path, as_group)
+                    .cloned()
+                {
+                    let space_view_class = *space_view.class_name();
+                    let mut props = data_result
+                        .individual_properties
+                        .clone()
+                        .unwrap_or_default();
 
-                        entity_props_ui(
-                            ctx,
-                            ui,
-                            &space_view_class,
-                            None,
-                            &mut props,
-                            &data_result.resolved_properties,
-                        );
-                        data_result.save_override(Some(props), ctx);
-                    }
-                } else {
-                    ctx.selection_state_mut().clear_current();
+                    entity_props_ui(
+                        ctx,
+                        ui,
+                        &space_view_class,
+                        None,
+                        &mut props,
+                        &data_result.resolved_properties,
+                    );
+                    data_result.save_override(Some(props), ctx);
                 }
+            } else {
+                ctx.selection_state_mut().clear_current();
             }
         }
 
