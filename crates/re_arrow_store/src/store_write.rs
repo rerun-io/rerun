@@ -189,8 +189,8 @@ impl DataStore {
             }
         }
 
-        let diff = StoreDiff::addition(*row_id, entity_path.clone())
-            .at_timepoint(timepoint.clone())
+        let mut diff = StoreDiff::addition(*row_id, entity_path.clone());
+        diff.at_timepoint(timepoint.clone())
             .with_cells(cells.iter().cloned());
 
         // TODO(#4220): should we fire for auto-generated data?

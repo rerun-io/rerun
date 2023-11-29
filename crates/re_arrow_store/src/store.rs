@@ -474,7 +474,7 @@ impl Clone for IndexedBucket {
 }
 
 impl IndexedBucket {
-    fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
+    pub(crate) fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
         Self {
             timeline,
             inner: RwLock::new(IndexedBucketInner::default()),
