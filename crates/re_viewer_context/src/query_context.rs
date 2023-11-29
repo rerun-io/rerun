@@ -20,6 +20,13 @@ pub struct DataQueryResult {
     pub tree: DataResultTree,
 }
 
+impl DataQueryResult {
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.tree.is_empty()
+    }
+}
+
 impl Clone for DataQueryResult {
     fn clone(&self) -> Self {
         re_tracing::profile_function!();
@@ -119,6 +126,11 @@ impl DataResultTree {
         self.data_results_by_path
             .get(&(path.clone(), is_group))
             .and_then(|handle| self.lookup_result(*handle))
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.data_results_by_path.is_empty()
     }
 
     fn visit_recursive(

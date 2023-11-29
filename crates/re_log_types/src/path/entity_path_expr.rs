@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::EntityPath;
 
 /// An expression that corresponds to multiple [`EntityPath`]s within a tree.
@@ -44,11 +46,30 @@ impl EntityPathExpr {
     }
 }
 
+impl Display for EntityPathExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Exact(path) => path.fmt(f),
+            Self::Recursive(path) => {
+                if path.is_root() {
+                    write!(f, "/")
+                } else {
+                    write!(f, "{path}/")
+                }
+            }
+        }
+    }
+}
+
 impl From<&str> for EntityPathExpr {
     #[inline]
     fn from(path: &str) -> Self {
         if let Some(path) = path.strip_suffix('/') {
-            Self::Recursive(EntityPath::from(path))
+            if path.is_empty() {
+                Self::Recursive(EntityPath::root())
+            } else {
+                Self::Recursive(EntityPath::from(path))
+            }
         } else {
             Self::Exact(EntityPath::from(path))
         }

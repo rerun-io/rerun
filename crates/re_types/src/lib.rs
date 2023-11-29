@@ -245,6 +245,9 @@ pub mod datatypes {
     pub use re_types_core::datatypes::*;
 }
 
+/// The blueprint-specific components.
+pub mod blueprint;
+
 #[cfg(feature = "datagen")]
 pub mod datagen;
 

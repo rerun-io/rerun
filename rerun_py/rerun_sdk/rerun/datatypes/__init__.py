@@ -25,6 +25,7 @@ from .class_description_map_elem import (
     ClassDescriptionMapElemType,
 )
 from .class_id import ClassId, ClassIdArrayLike, ClassIdBatch, ClassIdLike, ClassIdType
+from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike, EntityPathType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike, KeypointPairType
@@ -75,6 +76,7 @@ from .translation_rotation_scale3d import (
 )
 from .uint32 import UInt32, UInt32ArrayLike, UInt32Batch, UInt32Like, UInt32Type
 from .utf8 import Utf8, Utf8ArrayLike, Utf8Batch, Utf8Like, Utf8Type
+from .uuid import Uuid, UuidArrayLike, UuidBatch, UuidLike, UuidType
 from .uvec2d import UVec2D, UVec2DArrayLike, UVec2DBatch, UVec2DLike, UVec2DType
 from .uvec3d import UVec3D, UVec3DArrayLike, UVec3DBatch, UVec3DLike, UVec3DType
 from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike, UVec4DType
@@ -108,6 +110,11 @@ __all__ = [
     "ClassIdBatch",
     "ClassIdLike",
     "ClassIdType",
+    "EntityPath",
+    "EntityPathArrayLike",
+    "EntityPathBatch",
+    "EntityPathLike",
+    "EntityPathType",
     "Float32",
     "Float32ArrayLike",
     "Float32Batch",
@@ -223,6 +230,11 @@ __all__ = [
     "Utf8Batch",
     "Utf8Like",
     "Utf8Type",
+    "Uuid",
+    "UuidArrayLike",
+    "UuidBatch",
+    "UuidLike",
+    "UuidType",
     "Vec2D",
     "Vec2DArrayLike",
     "Vec2DBatch",

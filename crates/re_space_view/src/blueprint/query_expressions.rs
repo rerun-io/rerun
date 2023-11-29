@@ -24,7 +24,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Blueprint**: A set of expressions used for a `DataQueryBlueprint`.
 ///
 /// Unstable. Used for the ongoing blueprint experimentations.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct QueryExpressions {
     /// A set of strings that can be parsed as `EntityPathExpression`s.
     pub expressions: Vec<::re_types_core::ArrowString>,
