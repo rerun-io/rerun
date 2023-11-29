@@ -118,7 +118,9 @@ impl Boxes3DPart {
 }
 
 impl NamedViewSystem for Boxes3DPart {
-    const NAME: &'static str = "Boxes3D";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Boxes3D".into()
+    }
 }
 
 impl ViewPartSystem for Boxes3DPart {

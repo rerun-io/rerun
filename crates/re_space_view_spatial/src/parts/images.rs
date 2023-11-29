@@ -638,7 +638,9 @@ impl ImagesPart {
 }
 
 impl NamedViewSystem for ImagesPart {
-    const NAME: &'static str = "Images";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Images".into()
+    }
 }
 
 impl ViewPartSystem for ImagesPart {

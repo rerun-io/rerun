@@ -163,7 +163,9 @@ impl Arrows3DPart {
 }
 
 impl NamedViewSystem for Arrows3DPart {
-    const NAME: &'static str = "Arrows3D";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Arrows3D".into()
+    }
 }
 
 impl ViewPartSystem for Arrows3DPart {

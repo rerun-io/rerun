@@ -10,7 +10,9 @@ use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 pub struct NonInteractiveEntities(pub IntSet<EntityPathHash>);
 
 impl NamedViewSystem for NonInteractiveEntities {
-    const NAME: &'static str = "NonInteractiveEntities";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "NonInteractiveEntities".into()
+    }
 }
 
 impl ViewContextSystem for NonInteractiveEntities {

@@ -22,13 +22,8 @@ pub type PerSystemEntities = BTreeMap<ViewSystemName, BTreeSet<EntityPath>>;
 ///
 /// Required to be implemented for registration.
 pub trait NamedViewSystem {
-    /// Unique name for this system.
-    const NAME: &'static str;
-
     /// Unique name for a system within a given [`crate::SpaceViewClass`].
     ///
     /// Note that this is *not* unique across the entire application.
-    fn name() -> ViewSystemName {
-        Self::NAME.into()
-    }
+    fn name() -> ViewSystemName;
 }

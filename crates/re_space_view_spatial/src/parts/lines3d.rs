@@ -163,7 +163,9 @@ impl Lines3DPart {
 }
 
 impl NamedViewSystem for Lines3DPart {
-    const NAME: &'static str = "Lines3D";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Lines3D".into()
+    }
 }
 
 impl ViewPartSystem for Lines3DPart {

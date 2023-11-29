@@ -8,7 +8,7 @@ use re_viewer::external::{
     },
     re_viewer_context::{
         NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
-        ViewQuery, ViewerContext,
+        ViewQuery, ViewSystemName, ViewerContext,
     },
 };
 
@@ -38,7 +38,9 @@ impl re_types::Archetype for ColorArchetype {
 }
 
 impl NamedViewSystem for InstanceColorSystem {
-    const NAME: &'static str = "InstanceColor";
+    fn name() -> ViewSystemName {
+        "InstanceColor".into()
+    }
 }
 
 impl ViewPartSystem for InstanceColorSystem {

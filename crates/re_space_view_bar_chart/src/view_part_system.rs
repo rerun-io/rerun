@@ -20,7 +20,9 @@ pub struct BarChartViewPartSystem {
 }
 
 impl NamedViewSystem for BarChartViewPartSystem {
-    const NAME: &'static str = "BarChartView";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "BarChartView".into()
+    }
 }
 
 impl ViewPartSystem for BarChartViewPartSystem {

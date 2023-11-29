@@ -38,7 +38,9 @@ impl Default for CamerasPart {
 }
 
 impl NamedViewSystem for CamerasPart {
-    const NAME: &'static str = "Cameras";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Cameras".into()
+    }
 }
 
 impl CamerasPart {

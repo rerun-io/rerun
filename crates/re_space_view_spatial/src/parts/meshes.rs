@@ -126,7 +126,9 @@ impl Mesh3DPart {
 }
 
 impl NamedViewSystem for Mesh3DPart {
-    const NAME: &'static str = "Mesh3D";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Mesh3D".into()
+    }
 }
 
 impl ViewPartSystem for Mesh3DPart {

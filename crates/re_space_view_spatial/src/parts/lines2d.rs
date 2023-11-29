@@ -156,7 +156,9 @@ impl Lines2DPart {
 }
 
 impl NamedViewSystem for Lines2DPart {
-    const NAME: &'static str = "Lines2D";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Lines2D".into()
+    }
 }
 
 impl ViewPartSystem for Lines2DPart {

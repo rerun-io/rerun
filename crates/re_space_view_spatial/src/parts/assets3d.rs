@@ -94,7 +94,9 @@ impl Asset3DPart {
 }
 
 impl NamedViewSystem for Asset3DPart {
-    const NAME: &'static str = "Asset3D";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Asset3D".into()
+    }
 }
 
 impl ViewPartSystem for Asset3DPart {

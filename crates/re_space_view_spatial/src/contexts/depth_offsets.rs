@@ -20,7 +20,9 @@ pub struct EntityDepthOffsets {
 }
 
 impl NamedViewSystem for EntityDepthOffsets {
-    const NAME: &'static str = "EntityDepthOffsets";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "EntityDepthOffsets".into()
+    }
 }
 
 impl ViewContextSystem for EntityDepthOffsets {

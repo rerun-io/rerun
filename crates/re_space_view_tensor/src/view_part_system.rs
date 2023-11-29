@@ -17,7 +17,9 @@ pub struct TensorSystem {
 }
 
 impl NamedViewSystem for TensorSystem {
-    const NAME: &'static str = "Tensor";
+    fn name() -> re_viewer_context::ViewSystemName {
+        "Tensor".into()
+    }
 }
 
 impl ViewPartSystem for TensorSystem {
