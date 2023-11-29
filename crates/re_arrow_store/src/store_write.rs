@@ -176,7 +176,7 @@ impl DataStore {
                 let ent_path = entity_path.clone(); // shallow
                 let index = self
                     .tables
-                    .entry((*timeline, ent_path_hash))
+                    .entry((ent_path_hash, *timeline))
                     .or_insert_with(|| IndexedTable::new(self.cluster_key, *timeline, ent_path));
 
                 index.insert_row(

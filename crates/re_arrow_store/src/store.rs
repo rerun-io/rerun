@@ -1,7 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::AtomicU64;
 
-use ahash::HashMap;
 use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
@@ -210,7 +209,7 @@ pub struct DataStore {
     /// All temporal [`IndexedTable`]s for all entities on all timelines.
     ///
     /// See also [`Self::timeless_tables`].
-    pub(crate) tables: HashMap<(Timeline, EntityPathHash), IndexedTable>,
+    pub(crate) tables: BTreeMap<(EntityPathHash, Timeline), IndexedTable>,
 
     /// All timeless indexed tables for all entities. Never garbage collected.
     ///
@@ -335,9 +334,9 @@ impl DataStore {
     /// Do _not_ use this to try and assert the internal state of the datastore.
     pub fn iter_indices(
         &self,
-    ) -> impl ExactSizeIterator<Item = ((Timeline, EntityPath), &IndexedTable)> {
-        self.tables.iter().map(|((timeline, _), table)| {
-            ((*timeline, table.ent_path.clone() /* shallow */), table)
+    ) -> impl ExactSizeIterator<Item = ((EntityPath, Timeline), &IndexedTable)> {
+        self.tables.iter().map(|((_, timeline), table)| {
+            ((table.ent_path.clone() /* shallow */, *timeline), table)
         })
     }
 }
