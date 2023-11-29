@@ -478,43 +478,49 @@ mod tests {
             all_recordings: vec![],
         };
 
-        let scenarios: Vec<(Vec<&str>, Vec<&str>, Vec<&str>)> = vec![
-            (
-                vec!["/"],
-                vec![],
-                vec![
+        struct Scenario {
+            inclusions: Vec<&'static str>,
+            exclusions: Vec<&'static str>,
+            outputs: Vec<&'static str>,
+        }
+
+        let scenarios: Vec<Scenario> = vec![
+            Scenario {
+                inclusions: vec!["/"],
+                exclusions: vec![],
+                outputs: vec![
                     "/",
                     "parent/",
                     "parent",
                     "parent/skipped/", // Not an exact match and not found in tree
                     "parent/skipped/child1", // Only child 1 has ViewParts
                 ],
-            ),
-            (
-                vec!["parent/skipped/"],
-                vec![],
-                vec![
+            },
+            Scenario {
+                inclusions: vec!["parent/skipped/"],
+                exclusions: vec![],
+                outputs: vec![
                     "/",
                     "parent/",               // Only included because is a prefix
                     "parent/skipped/",       // Not an exact match and not found in tree
                     "parent/skipped/child1", // Only child 1 has ViewParts
                 ],
-            ),
-            (
-                vec!["parent", "parent/skipped/child2"],
-                vec![],
-                vec![
+            },
+            Scenario {
+                inclusions: vec!["parent", "parent/skipped/child2"],
+                exclusions: vec![],
+                outputs: vec![
                     "/", // Trivial intermediate group -- could be collapsed
                     "parent/",
                     "parent",
                     "parent/skipped/", // Trivial intermediate group -- could be collapsed
                     "parent/skipped/child2",
                 ],
-            ),
-            (
-                vec!["parent/skipped", "parent/skipped/child2", "parent/"],
-                vec![],
-                vec![
+            },
+            Scenario {
+                inclusions: vec!["parent/skipped", "parent/skipped/child2", "parent/"],
+                exclusions: vec![],
+                outputs: vec![
                     "/",
                     "parent/",
                     "parent",
@@ -523,11 +529,11 @@ mod tests {
                     "parent/skipped/child1", // Included because an exact match
                     "parent/skipped/child2",
                 ],
-            ),
-            (
-                vec!["parent/skipped", "parent/skipped/child2", "parent/"],
-                vec!["parent"],
-                vec![
+            },
+            Scenario {
+                inclusions: vec!["parent/skipped", "parent/skipped/child2", "parent/"],
+                exclusions: vec!["parent"],
+                outputs: vec![
                     "/",
                     "parent/", // Parent leaf has been excluded
                     "parent/skipped/",
@@ -535,34 +541,39 @@ mod tests {
                     "parent/skipped/child1", // Included because an exact match
                     "parent/skipped/child2",
                 ],
-            ),
-            (
-                vec!["parent/"],
-                vec!["parent/skipped/"],
-                vec!["/", "parent"], // None of the children are hit since excluded
-            ),
-            (
-                vec!["parent/", "parent/skipped/child2"],
-                vec!["parent/skipped/child1"],
-                vec![
+            },
+            Scenario {
+                inclusions: vec!["parent/"],
+                exclusions: vec!["parent/skipped/"],
+                outputs: vec!["/", "parent"], // None of the children are hit since excluded
+            },
+            Scenario {
+                inclusions: vec!["parent/", "parent/skipped/child2"],
+                exclusions: vec!["parent/skipped/child1"],
+                outputs: vec![
                     "/",
                     "parent/",
                     "parent",
                     "parent/skipped/",
                     "parent/skipped/child2", // No child1 since skipped.
                 ],
-            ),
-            (
-                vec!["not/found"],
-                vec![],
+            },
+            Scenario {
+                inclusions: vec!["not/found"],
+                exclusions: vec![],
                 // TODO(jleibs): Making this work requires merging the EntityTree walk with a minimal-coverage ExactMatchTree walk
                 // not crucial for now until we expose a free-form UI for entering paths.
                 // vec!["/", "not/", "not/found"]),
-                vec![],
-            ),
+                outputs: vec![],
+            },
         ];
 
-        for (inclusions, exclusions, outputs) in scenarios {
+        for Scenario {
+            inclusions,
+            exclusions,
+            outputs,
+        } in scenarios
+        {
             let query = DataQueryBlueprint {
                 id: DataQueryId::random(),
                 space_view_class_name: "3D".into(),
