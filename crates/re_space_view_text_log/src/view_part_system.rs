@@ -36,9 +36,7 @@ pub struct TextLogSystem {
 }
 
 impl NamedViewSystem for TextLogSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "TextLog".into()
-    }
+    const NAME: &'static str = "TextLog";
 }
 
 impl ViewPartSystem for TextLogSystem {

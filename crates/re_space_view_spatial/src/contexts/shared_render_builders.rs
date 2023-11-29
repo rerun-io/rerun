@@ -16,9 +16,7 @@ pub struct SharedRenderBuilders {
 }
 
 impl NamedViewSystem for SharedRenderBuilders {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "SharedRenderBuilders".into()
-    }
+    const NAME: &'static str = "SharedRenderBuilders";
 }
 
 impl SharedRenderBuilders {

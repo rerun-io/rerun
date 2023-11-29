@@ -7,9 +7,9 @@ use re_space_view::{
 };
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
-    DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClassName,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, StoreContext,
-    ViewerContext,
+    DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClass,
+    SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry,
+    StoreContext, ViewerContext,
 };
 
 use crate::{

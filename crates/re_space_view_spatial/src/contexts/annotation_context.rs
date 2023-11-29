@@ -1,13 +1,11 @@
 use re_types::{archetypes::AnnotationContext, Archetype, ComponentNameSet};
-use re_viewer_context::{AnnotationMap, NamedViewSystem, ViewContextSystem, ViewSystemName};
+use re_viewer_context::{AnnotationMap, NamedViewSystem, ViewContextSystem};
 
 #[derive(Default)]
 pub struct AnnotationSceneContext(pub AnnotationMap);
 
 impl NamedViewSystem for AnnotationSceneContext {
-    fn name() -> ViewSystemName {
-        "AnnotationSceneContext".into()
-    }
+    const NAME: &'static str = "AnnotationSceneContext";
 }
 
 impl ViewContextSystem for AnnotationSceneContext {

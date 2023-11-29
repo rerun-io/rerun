@@ -68,9 +68,7 @@ pub struct TimeSeriesSystem {
 }
 
 impl NamedViewSystem for TimeSeriesSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "TimeSeries".into()
-    }
+    const NAME: &'static str = "TimeSeries";
 }
 
 impl ViewPartSystem for TimeSeriesSystem {

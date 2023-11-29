@@ -1,5 +1,5 @@
 use crate::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
 use re_data_store::EntityProperties;
@@ -11,9 +11,7 @@ pub struct SpaceViewClassPlaceholder;
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     type State = ();
 
-    fn name(&self) -> SpaceViewClassName {
-        "Unknown Space View Class".into()
-    }
+    const NAME: &'static str = "Unknown Space View Class";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_UNKNOWN

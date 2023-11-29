@@ -37,9 +37,7 @@ pub struct PrimitiveCounter {
 }
 
 impl NamedViewSystem for PrimitiveCounter {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "PrimitiveCounter".into()
-    }
+    const NAME: &'static str = "PrimitiveCounter";
 }
 
 impl ViewContextSystem for PrimitiveCounter {

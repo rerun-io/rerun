@@ -49,9 +49,7 @@ pub struct TransformContext {
 }
 
 impl NamedViewSystem for TransformContext {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "TransformContext".into()
-    }
+    const NAME: &'static str = "TransformContext";
 }
 
 impl Default for TransformContext {

@@ -8,7 +8,7 @@ use re_viewer_context::external::re_data_store::{
     EditableAutoValue, EntityProperties, LegendCorner,
 };
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
     ViewerContext,
 };
@@ -34,16 +34,10 @@ impl SpaceViewState for TimeSeriesSpaceViewState {
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;
 
-impl TimeSeriesSpaceView {
-    pub const NAME: &'static str = "Time Series";
-}
-
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = TimeSeriesSpaceViewState;
 
-    fn name(&self) -> SpaceViewClassName {
-        Self::NAME.into()
-    }
+    const NAME: &'static str = "Time Series";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_CHART

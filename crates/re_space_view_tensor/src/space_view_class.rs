@@ -13,7 +13,7 @@ use re_types::{
     tensor_data::{DecodedTensor, TensorDataMeaning},
 };
 use re_viewer_context::{
-    gpu_bridge, gpu_bridge::colormap_dropdown_button_ui, SpaceViewClass, SpaceViewClassName,
+    gpu_bridge, gpu_bridge::colormap_dropdown_button_ui, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
     TensorStatsCache, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
@@ -136,9 +136,7 @@ impl PerTensorState {
 impl SpaceViewClass for TensorSpaceView {
     type State = ViewTensorState;
 
-    fn name(&self) -> SpaceViewClassName {
-        "Tensor".into()
-    }
+    const NAME: &'static str = "Tensor";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TENSOR

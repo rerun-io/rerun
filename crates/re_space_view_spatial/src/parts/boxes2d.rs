@@ -161,9 +161,7 @@ impl Boxes2DPart {
 }
 
 impl NamedViewSystem for Boxes2DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "Boxes2D".into()
-    }
+    const NAME: &'static str = "Boxes2D";
 }
 
 impl ViewPartSystem for Boxes2DPart {

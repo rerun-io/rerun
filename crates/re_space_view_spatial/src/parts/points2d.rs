@@ -183,9 +183,7 @@ impl Points2DPart {
 }
 
 impl NamedViewSystem for Points2DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "Points2D".into()
-    }
+    const NAME: &'static str = "Points2D";
 }
 
 impl ViewPartSystem for Points2DPart {

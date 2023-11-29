@@ -24,9 +24,7 @@ pub struct TextDocumentSystem {
 }
 
 impl NamedViewSystem for TextDocumentSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "TextDocument".into()
-    }
+    const NAME: &'static str = "TextDocument";
 }
 
 impl ViewPartSystem for TextDocumentSystem {

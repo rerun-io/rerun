@@ -26,9 +26,7 @@ impl Default for Transform3DArrowsPart {
 }
 
 impl NamedViewSystem for Transform3DArrowsPart {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "Transform3DArrows".into()
-    }
+    const NAME: &'static str = "Transform3DArrows";
 }
 
 impl ViewPartSystem for Transform3DArrowsPart {

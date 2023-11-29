@@ -164,9 +164,7 @@ impl Points3DPart {
 }
 
 impl NamedViewSystem for Points3DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
-        "Points3D".into()
-    }
+    const NAME: &'static str = "Points3D";
 }
 
 impl ViewPartSystem for Points3DPart {
