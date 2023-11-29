@@ -7,7 +7,7 @@ A common need is to log data from multiple processes  and then visualize all of 
 
 Rerun has the notion of a [Recording ID](../concepts/apps-and-recordings) for that: any recorded datasets that share the same Recording ID will be visualized as one shared dataset.
 
-The data can be logged from any number of processes, whether they run on the same machine or not, or implemented in different programming languages.  
+The data can be logged from any number of processes, whether they run on the same machine or not, or implemented in different programming languages.
 All that matter is that they share the same Recording ID.
 
 By default, Rerun generates a random Recording ID everytime you start a new logging session, but you can override that behavior, e.g.:
