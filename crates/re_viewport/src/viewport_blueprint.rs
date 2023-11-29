@@ -429,13 +429,17 @@ pub fn sync_space_view(
 
         add_delta_from_single_component(deltas, &space_view.entity_path(), &timepoint, component);
 
-        for query in &space_view.queries {
-            add_delta_from_single_component(
-                deltas,
-                &query.id.as_entity_path(),
-                &timepoint,
-                query.expressions.clone(),
-            );
+        // The only time we need to create a query is if this is a new space-view. All other edits
+        // happen directly via `UpdateBlueprint` commands.
+        if snapshot.is_none() {
+            for query in &space_view.queries {
+                add_delta_from_single_component(
+                    deltas,
+                    &query.id.as_entity_path(),
+                    &timepoint,
+                    query.expressions.clone(),
+                );
+            }
         }
     }
 }
