@@ -112,11 +112,13 @@ pub struct StoreDiff {
     /// one addition and (optionally) one deletion (in that order!).
     pub row_id: RowId,
 
-    /// The [`TimePoint`] associated with that row.
+    /// The time data associated with that row.
     ///
     /// Since insertions and deletions both work on a row-level basis, this is guaranteed to be the
     /// same value for both the insertion and deletion events (if any).
-    pub timepoint: TimePoint,
+    ///
+    /// This is not a [`TimePoint`] for performance reasons.
+    pub times: Vec<(Timeline, TimeInt)>,
 
     /// The [`EntityPath`] associated with that row.
     ///
@@ -137,7 +139,7 @@ impl StoreDiff {
         Self {
             kind: StoreDiffKind::Addition,
             row_id: row_id.into(),
-            timepoint: TimePoint::timeless(),
+            times: Default::default(),
             entity_path: entity_path.into(),
             cells: Default::default(),
         }
@@ -148,75 +150,43 @@ impl StoreDiff {
         Self {
             kind: StoreDiffKind::Deletion,
             row_id: row_id.into(),
-            timepoint: TimePoint::timeless(),
+            times: Default::default(),
             entity_path: entity_path.into(),
             cells: Default::default(),
         }
     }
 
     #[inline]
-    pub fn at_timepoint(mut self, timepoint: impl Into<TimePoint>) -> StoreDiff {
-        self.timepoint = self.timepoint.union_max(&timepoint.into());
+    pub fn at_timepoint(&mut self, timepoint: impl Into<TimePoint>) -> &mut Self {
+        self.times.extend(timepoint.into());
         self
     }
 
     #[inline]
     pub fn at_timestamp(
-        mut self,
+        &mut self,
         timeline: impl Into<Timeline>,
         time: impl Into<TimeInt>,
-    ) -> StoreDiff {
-        self.timepoint.insert(timeline.into(), time.into());
+    ) -> &mut Self {
+        self.times.push((timeline.into(), time.into()));
         self
     }
 
     #[inline]
-    pub fn with_cells(mut self, cells: impl IntoIterator<Item = DataCell>) -> Self {
+    pub fn with_cells(&mut self, cells: impl IntoIterator<Item = DataCell>) -> &mut Self {
         self.cells
             .extend(cells.into_iter().map(|cell| (cell.component_name(), cell)));
         self
     }
 
-    /// Returns the union of two [`StoreDiff`]s.
-    ///
-    /// They must share the same [`RowId`], [`EntityPath`] and [`StoreDiffKind`].
     #[inline]
-    pub fn union(&self, rhs: &Self) -> Option<Self> {
-        let Self {
-            kind: lhs_kind,
-            row_id: lhs_row_id,
-            timepoint: lhs_timepoint,
-            entity_path: lhs_entity_path,
-            cells: lhs_cells,
-        } = self;
-        let Self {
-            kind: rhs_kind,
-            row_id: rhs_row_id,
-            timepoint: rhs_timepoint,
-            entity_path: rhs_entity_path,
-            cells: rhs_cells,
-        } = rhs;
-
-        let same_kind = lhs_kind == rhs_kind;
-        let same_row_id = lhs_row_id == rhs_row_id;
-        let same_entity_path = lhs_entity_path == rhs_entity_path;
-
-        (same_kind && same_row_id && same_entity_path).then(|| Self {
-            kind: *lhs_kind,
-            row_id: *lhs_row_id,
-            timepoint: lhs_timepoint.clone().union_max(rhs_timepoint),
-            entity_path: lhs_entity_path.clone(),
-            cells: [lhs_cells.values(), rhs_cells.values()]
-                .into_iter()
-                .flatten()
-                .map(|cell| (cell.component_name(), cell.clone()))
-                .collect(),
-        })
+    pub fn timepoint(&self) -> TimePoint {
+        self.times.clone().into_iter().collect()
     }
 
     #[inline]
     pub fn is_timeless(&self) -> bool {
-        self.timepoint.is_timeless()
+        self.times.is_empty()
     }
 
     /// `-1` for deletions, `+1` for additions.
@@ -297,7 +267,7 @@ mod tests {
                 if event.is_timeless() {
                     self.timeless += delta;
                 } else {
-                    for (&timeline, &time) in &event.timepoint {
+                    for &(timeline, time) in &event.times {
                         *self.timelines.entry(timeline).or_default() += delta;
                         *self.times.entry(time).or_default() += delta;
                     }
