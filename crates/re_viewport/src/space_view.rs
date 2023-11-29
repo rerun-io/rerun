@@ -2,14 +2,12 @@ use nohash_hasher::IntMap;
 use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
 use re_renderer::ScreenshotProcessor;
-use re_space_view::{
-    DataQuery, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
-};
+use re_space_view::{EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_viewer_context::{
-    DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClassName,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, StoreContext,
-    ViewerContext,
+    DataQueryId, DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults,
+    SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry,
+    StoreContext, ViewerContext,
 };
 
 use crate::{
@@ -238,16 +236,16 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let data_results =
-            self.contents
-                .execute_query(self, ctx.store_context, ctx.entities_per_system_per_class);
+        // TODO(jleibs): Sort out borrow-checker to avoid the need to clone here
+        // while still being able to pass &ViewerContext down the chain.
+        let query_result = ctx.lookup_query_result(self.query_id()).clone();
 
         let mut per_system_data_results = PerSystemDataResults::default();
         {
             re_tracing::profile_scope!("per_system_data_results");
 
-            data_results.visit(&mut |handle| {
-                if let Some(result) = data_results.lookup_result(handle) {
+            query_result.tree.visit(&mut |handle| {
+                if let Some(result) = query_result.tree.lookup_result(handle) {
                     for system in &result.view_parts {
                         per_system_data_results
                             .entry(*system)
@@ -356,8 +354,14 @@ impl SpaceViewBlueprint {
         *self.contents.per_system_entities_mut() = per_system_entities;
     }
 
+    #[inline]
     pub fn entity_path(&self) -> EntityPath {
         self.id.as_entity_path()
+    }
+
+    #[inline]
+    pub fn query_id(&self) -> DataQueryId {
+        self.id.uuid().into()
     }
 
     pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {
@@ -443,26 +447,10 @@ impl PropertyResolver for SpaceViewBlueprint {
 mod tests {
     use re_data_store::StoreDb;
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
-    use re_space_view::DataResultTree;
+    use re_space_view::DataQuery as _;
     use re_viewer_context::{EntitiesPerSystemPerClass, StoreContext};
 
     use super::*;
-
-    fn find_in_tree<'a>(
-        tree: &'a DataResultTree,
-        path: &EntityPath,
-        is_group: bool,
-    ) -> Option<&'a DataResult> {
-        let mut return_result = None;
-        tree.visit(&mut |handle| {
-            if let Some(result) = tree.lookup_result(handle) {
-                if result.entity_path == *path && result.is_group == is_group {
-                    return_result = Some(result);
-                }
-            }
-        });
-        return_result
-    }
 
     fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
         let component = EntityPropertiesComponent { props };
@@ -516,17 +504,24 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
+            let query_result = space_view.contents.execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
             );
 
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert_eq!(result.resolved_properties, EntityProperties::default(),);
@@ -547,19 +542,28 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
+            let query_result = space_view.contents.execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
             );
 
-            let parent_group =
-                find_in_tree(&result_tree, &EntityPath::from("parent"), true).unwrap();
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent_group = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), true)
+                .unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             assert!(!parent.resolved_properties.visible);
 
@@ -585,17 +589,24 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
+            let query_result = space_view.contents.execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
             );
 
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert!(!result.resolved_properties.visible);
@@ -624,17 +635,24 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
+            let query_result = space_view.contents.execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
             );
 
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert!(result.resolved_properties.visible_history.enabled);
@@ -658,17 +676,24 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
+            let query_result = space_view.contents.execute_query(
                 &space_view,
                 &ctx,
                 &entities_per_system_per_class,
             );
 
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1] {
                 assert!(result.resolved_properties.visible_history.enabled);

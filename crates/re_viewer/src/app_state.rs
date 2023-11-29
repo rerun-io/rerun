@@ -3,6 +3,7 @@ use ahash::HashMap;
 use re_data_store::StoreDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
+use re_space_view::DataQuery as _;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SelectionState, SpaceViewClassRegistry, StoreContext, ViewerContext,
@@ -114,6 +115,26 @@ impl AppState {
             &rec_cfg.time_ctrl.current_query(),
         );
 
+        // Execute the queries for every `SpaceView`
+        let query_results = {
+            re_tracing::profile_scope!("query_results");
+            viewport
+                .blueprint
+                .space_views
+                .values_mut()
+                .map(|space_view| {
+                    (
+                        space_view.query_id(),
+                        space_view.contents.execute_query(
+                            space_view,
+                            store_context,
+                            &entities_per_system_per_class,
+                        ),
+                    )
+                })
+                .collect::<_>()
+        };
+
         let mut ctx = ViewerContext {
             app_options,
             cache,
@@ -122,6 +143,7 @@ impl AppState {
             store_db,
             store_context,
             entities_per_system_per_class: &entities_per_system_per_class,
+            query_results: &query_results,
             rec_cfg,
             re_ui,
             render_ctx,
@@ -140,6 +162,29 @@ impl AppState {
         }
 
         viewport.on_frame_start(&mut ctx, &spaces_info);
+
+        // TODO(jleibs): Running the queries a second time is annoying, but we need
+        // to do this or else the auto_properties aren't right since they get populated
+        // in on_frame_start, but on_frame_start also needs the queries.
+        let updated_query_results = {
+            re_tracing::profile_scope!("updated_query_results");
+            viewport
+                .blueprint
+                .space_views
+                .values_mut()
+                .map(|space_view| {
+                    (
+                        space_view.query_id(),
+                        space_view.contents.execute_query(
+                            space_view,
+                            store_context,
+                            &entities_per_system_per_class,
+                        ),
+                    )
+                })
+                .collect::<_>()
+        };
+        ctx.query_results = &updated_query_results;
 
         time_panel.show_panel(&mut ctx, ui, app_blueprint.time_panel_expanded);
         selection_panel.show_panel(

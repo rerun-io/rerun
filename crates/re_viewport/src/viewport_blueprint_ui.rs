@@ -3,10 +3,12 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_space_view::{DataQuery as _, DataResultHandle, DataResultNode, DataResultTree};
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
-use re_viewer_context::{HoverHighlight, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    DataResultHandle, DataResultNode, DataResultTree, HoverHighlight, Item, SpaceViewId,
+    ViewerContext,
+};
 
 use crate::{
     space_view_heuristics::all_possible_space_views, viewport_blueprint::TreeActions,
@@ -150,11 +152,11 @@ impl ViewportBlueprint<'_> {
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
-        let result_tree = space_view.contents.execute_query(
-            space_view,
-            ctx.store_context,
-            ctx.entities_per_system_per_class,
-        );
+        // TODO(jleibs): Sort out borrow-checker to avoid the need to clone here
+        // while still being able to pass &ViewerContext down the chain.
+        let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
+
+        let result_tree = &query_result.tree;
 
         let mut visibility_changed = false;
         let mut visible = self.tree.is_visible(tile_id);
@@ -162,8 +164,7 @@ impl ViewportBlueprint<'_> {
         let item = Item::SpaceView(space_view.id);
 
         let default_open = result_tree
-            .root_handle
-            .and_then(|handle| result_tree.lookup_node(handle))
+            .root_node()
             .map_or(false, Self::default_open_for_data_result);
 
         let collapsing_header_id = ui.id().with(space_view.id);
@@ -187,14 +188,14 @@ impl ViewportBlueprint<'_> {
                 response | vis_response
             })
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                if let Some(result_handle) = result_tree.root_handle {
+                if let Some(result_handle) = result_tree.root_handle() {
                     // TODO(jleibs): handle the case where the only result
                     // in the tree is a single path (no groups). This should never
                     // happen for a SpaceViewContents.
                     Self::space_view_blueprint_ui(
                         ctx,
                         ui,
-                        &result_tree,
+                        result_tree,
                         result_handle,
                         space_view,
                         visible_child,
