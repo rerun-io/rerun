@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use re_arrow_store::{StoreEvent, StoreSubscriber};
-use re_log_types::{TimePoint, Timeline};
+use re_log_types::{TimeInt, TimePoint, Timeline};
 
 // ---
 
@@ -51,8 +51,8 @@ impl TimeHistogramPerTimeline {
         self.num_timeless_messages
     }
 
-    pub fn add(&mut self, timepoint: &TimePoint, n: u32) {
-        if timepoint.is_timeless() {
+    pub fn add(&mut self, times: &[(Timeline, TimeInt)], n: u32) {
+        if times.is_empty() {
             self.num_timeless_messages = self
                 .num_timeless_messages
                 .checked_add(n as u64)
@@ -61,11 +61,11 @@ impl TimeHistogramPerTimeline {
                     u64::MAX
                 });
         } else {
-            for (timeline, time_value) in timepoint.iter() {
+            for &(timeline, time) in times {
                 self.times
-                    .entry(*timeline)
+                    .entry(timeline)
                     .or_default()
-                    .increment(time_value.as_i64(), n);
+                    .increment(time.as_i64(), n);
             }
         }
     }
