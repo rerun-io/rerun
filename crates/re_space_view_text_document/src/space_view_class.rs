@@ -2,9 +2,9 @@ use egui::Label;
 
 use re_viewer_context::external::re_data_store::EntityProperties;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection,
+    ViewQuery, ViewerContext,
 };
 
 use crate::view_part_system::TextDocumentEntry;
@@ -49,9 +49,7 @@ pub struct TextDocumentSpaceView;
 impl SpaceViewClass for TextDocumentSpaceView {
     type State = TextDocumentSpaceViewState;
 
-    fn name(&self) -> SpaceViewClassName {
-        "Text Document".into()
-    }
+    const NAME: &'static str = "Text Document";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
