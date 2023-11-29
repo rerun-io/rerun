@@ -10,8 +10,8 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
-    SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry,
-    StoreContext, ViewerContext,
+    SpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
+    SpaceViewSystemRegistry, StoreContext, ViewerContext,
 };
 
 // ----------------------------------------------------------------------------
