@@ -59,8 +59,12 @@ namespace rerun {
         /// Creates a new recording stream to log to.
         ///
         /// \param app_id The user-chosen name of the application doing the logging.
+        /// \param recording_id The user-chosen name of the recording being logged to.
         /// \param store_kind Whether to log to the recording store or the blueprint store.
-        RecordingStream(std::string_view app_id, StoreKind store_kind = StoreKind::Recording);
+        RecordingStream(
+            std::string_view app_id, std::optional<std::string_view> recording_id = std::nullopt,
+            StoreKind store_kind = StoreKind::Recording
+        );
         ~RecordingStream();
 
         /// \private

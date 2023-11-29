@@ -134,6 +134,11 @@ typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     rr_string application_id;
 
+    /// The user-chosen name of the recording being logged to.
+    ///
+    /// Defaults to a random ID if unspecified.
+    rr_string recording_id;
+
     /// `RR_STORE_KIND_RECORDING` or `RR_STORE_KIND_BLUEPRINT`
     rr_store_kind store_kind;
 } rr_store_info;
