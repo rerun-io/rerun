@@ -382,6 +382,7 @@ mod tests {
     use re_data_store::StoreDb;
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
     use re_space_view::DataQuery as _;
+    use re_types::archetypes::Points3D;
     use re_viewer_context::{EntitiesPerSystemPerClass, StoreContext};
 
     use super::*;
@@ -402,8 +403,21 @@ mod tests {
 
     #[test]
     fn test_overrides() {
-        let recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut blueprint = StoreDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+
+        let points = Points3D::new(vec![[1.0, 2.0, 3.0]]);
+
+        for path in [
+            "parent".into(),
+            "parent/skip/child1".into(),
+            "parent/skip/child2".into(),
+        ] {
+            let row =
+                DataRow::from_archetype(RowId::random(), TimePoint::timeless(), path, &points)
+                    .unwrap();
+            recording.add_data_row(row).ok();
+        }
 
         let space_view = SpaceViewBlueprint::new(
             "3D".into(),
@@ -433,6 +447,10 @@ mod tests {
                 .collect()
             });
 
+        let query = space_view.queries.first().unwrap();
+
+        let resolver = query.build_resolver(space_view.id, &space_view.auto_properties);
+
         // No overrides set. Everybody has default values.
         {
             let ctx = StoreContext {
@@ -441,11 +459,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.queries.first().unwrap().execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
             let parent = query_result
                 .tree
@@ -479,11 +493,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.queries.first().unwrap().execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
             let parent_group = query_result
                 .tree
@@ -526,11 +536,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.queries.first().unwrap().execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
             let parent = query_result
                 .tree
@@ -572,11 +578,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.queries.first().unwrap().execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
             let parent = query_result
                 .tree
@@ -613,11 +615,7 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let query_result = space_view.queries.first().unwrap().execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
             let parent = query_result
                 .tree
