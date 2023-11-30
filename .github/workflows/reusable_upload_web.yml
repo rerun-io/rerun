@@ -82,23 +82,6 @@ jobs:
           destination: "rerun-web-viewer/commit/${{env.SHORT_SHA}}"
           parent: false
 
-      - name: "Upload web-viewer (prerelease)"
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_viewer"
-          destination: "rerun-web-viewer/prerelease"
-          parent: false
-
-      - name: "Upload web-viewer (nightly)"
-        # TEMP: Tracking `main` until we can do actual nightly builds.
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_viewer"
-          destination: "rerun-web-viewer/version/nightly"
-          parent: false
-
       - name: "Upload web-viewer (tagged)"
         if: inputs.MARK_TAGGED_VERSION
         uses: google-github-actions/upload-cloud-storage@v1
@@ -115,6 +98,27 @@ jobs:
           destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
           parent: false
 
+      - name: "Upload web-viewer (prerelease)"
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/prerelease"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+
+      - name: "Upload web-viewer (nightly)"
+        # TEMP: Tracking `main` until we can do actual nightly builds.
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/version/nightly"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+
       - name: "Upload web-viewer (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
@@ -122,3 +126,5 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}"
           parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
