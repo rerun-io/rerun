@@ -52,6 +52,9 @@ pub(crate) use self::store::{
     MetadataRegistry, PersistentIndexedTable,
 };
 
+#[allow(unused_imports)] // only used with some sets of feature flags atm
+pub(crate) use self::store::PersistentIndexedTableInner;
+
 // Re-exports
 #[doc(no_inline)]
 pub use arrow2::io::ipc::read::{StreamReader, StreamState};
