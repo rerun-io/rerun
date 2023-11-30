@@ -52,7 +52,7 @@ impl SelectionPanel {
             });
 
         // Always reset the VH highlight, and let the UI re-set it if needed.
-        ctx.rec_cfg.visible_history_highlight = None;
+        ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             // Set the clip rectangle to the panel for the benefit of nested, "full span" widgets
