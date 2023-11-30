@@ -70,6 +70,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     type State = ColorCoordinatesSpaceViewState;
 
     const NAME: &'static str = "Color Coordinates";
+    const UI_NAME: &'static str = "Color Coordinates";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_SCATTERPLOT

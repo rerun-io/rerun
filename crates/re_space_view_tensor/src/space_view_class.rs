@@ -137,6 +137,7 @@ impl SpaceViewClass for TensorSpaceView {
     type State = ViewTensorState;
 
     const NAME: &'static str = "Tensor";
+    const UI_NAME: &'static str = "Tensor";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TENSOR

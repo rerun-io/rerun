@@ -219,7 +219,7 @@ fn what_is_selected_ui(
                     &format!(
                         "Space View {:?} of type {}",
                         space_view.display_name,
-                        space_view_class.name(),
+                        space_view_class.ui_name(),
                     ),
                 );
             }
@@ -369,7 +369,7 @@ fn space_view_top_level_properties(
 
                 ui.label("Type")
                     .on_hover_text("The type of this Space View");
-                ui.label(&*space_view.class(ctx.space_view_class_registry).name());
+                ui.label(&*space_view.class(ctx.space_view_class_registry).ui_name());
                 ui.end_row();
             });
     }

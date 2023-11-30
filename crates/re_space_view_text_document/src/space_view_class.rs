@@ -50,6 +50,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
     type State = TextDocumentSpaceViewState;
 
     const NAME: &'static str = "Text Document";
+    const UI_NAME: &'static str = "Text Document";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
