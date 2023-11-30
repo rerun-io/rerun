@@ -118,6 +118,10 @@ pub struct StoreDiff {
     /// same value for both the insertion and deletion events (if any).
     ///
     /// This is not a [`TimePoint`] for performance reasons.
+    //
+    // NOTE: Empirical testing shows that a SmallVec isn't any better in the best case, and can be a
+    // significant performant drop at worst.
+    // pub times: SmallVec<[(Timeline, TimeInt); 5]>, // "5 timelines ought to be enough for anyone"
     pub times: Vec<(Timeline, TimeInt)>,
 
     /// The [`EntityPath`] associated with that row.
