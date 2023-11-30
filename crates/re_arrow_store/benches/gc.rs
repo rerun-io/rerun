@@ -77,6 +77,7 @@ fn plotting_dashboard(c: &mut Criterion) {
         enable_batching: false,
     };
 
+    // NOTE: insert in multiple timelines to more closely match real world scenarios.
     let mut timegen = |i| {
         [
             build_log_time(Time::from_seconds_since_epoch(i as _)),
@@ -275,7 +276,6 @@ where
         (0..NUM_ROWS_PER_ENTITY_PATH).map(move |i| {
             DataRow::from_component_batches(
                 RowId::random(),
-                // NOTE: insert in multiple timelines to more closely match real world scenarios.
                 timegen(i),
                 entity_path.clone(),
                 datagen(i)
