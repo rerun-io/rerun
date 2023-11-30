@@ -46,15 +46,16 @@ where
 
     for data_result in query.iter_visible_data_results(System::name()) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
-        let world_from_entity = if view_ctx.space_view_class_name() == SpatialSpaceView3D.name() {
-            transforms.reference_from_entity(&data_result.entity_path)
-        } else {
-            transforms.reference_from_entity_ignoring_pinhole(
-                &data_result.entity_path,
-                ctx.store_db.store(),
-                &query.latest_at_query(),
-            )
-        };
+        let world_from_entity =
+            if view_ctx.space_view_class_identifier() == SpatialSpaceView3D.identifier() {
+                transforms.reference_from_entity(&data_result.entity_path)
+            } else {
+                transforms.reference_from_entity_ignoring_pinhole(
+                    &data_result.entity_path,
+                    ctx.store_db.store(),
+                    &query.latest_at_query(),
+                )
+            };
 
         let Some(world_from_entity) = world_from_entity else {
             continue;
@@ -70,7 +71,7 @@ where
             highlight: query
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash()),
-            space_view_class_name: view_ctx.space_view_class_name(),
+            space_view_class_identifier: view_ctx.space_view_class_identifier(),
         };
 
         match query_archetype_with_history::<A, N>(

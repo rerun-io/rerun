@@ -41,7 +41,7 @@ class SpaceViewComponent:
     def __init__(
         self: Any,
         display_name: str,
-        class_name: str,
+        class_identifier: str,
         space_origin: datatypes.EntityPathLike,
         entities_determined_by_user: bool,
         contents: datatypes.UuidArrayLike,
@@ -53,7 +53,7 @@ class SpaceViewComponent:
         ----------
         display_name:
             The name of the view.
-        class_name:
+        class_identifier:
             The class of the view.
         space_origin:
             The "anchor point" of this space view.
@@ -72,7 +72,7 @@ class SpaceViewComponent:
         # You can define your own __init__ function as a member of SpaceViewComponentExt in space_view_component_ext.py
         self.__attrs_init__(
             display_name=display_name,
-            class_name=class_name,
+            class_identifier=class_identifier,
             space_origin=space_origin,
             entities_determined_by_user=entities_determined_by_user,
             contents=contents,
@@ -83,7 +83,7 @@ class SpaceViewComponent:
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    class_name: str = field(converter=str)
+    class_identifier: str = field(converter=str)
     # The class of the view.
     #
     # (Docstring intentionally commented out to hide this field from the docs)

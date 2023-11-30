@@ -11,7 +11,7 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    AutoSpawnHeuristic, NamedViewSystem, PerSystemEntities, SpaceViewClassName, ViewerContext,
+    AutoSpawnHeuristic, NamedViewSystem, PerSystemEntities, SpaceViewClassIdentifier, ViewerContext,
 };
 
 use crate::{
@@ -21,7 +21,7 @@ use crate::{
 };
 
 pub fn auto_spawn_heuristic(
-    class: &SpaceViewClassName,
+    class: &SpaceViewClassIdentifier,
     ctx: &ViewerContext<'_>,
     per_system_entities: &PerSystemEntities,
     view_kind: SpatialSpaceViewKind,

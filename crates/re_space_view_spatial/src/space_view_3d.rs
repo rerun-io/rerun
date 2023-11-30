@@ -20,7 +20,7 @@ pub struct SpatialSpaceView3D;
 impl SpaceViewClass for SpatialSpaceView3D {
     type State = SpatialSpaceViewState;
 
-    const NAME: &'static str = "3D";
+    const IDENTIFIER: &'static str = "3D";
     const DISPLAY_NAME: &'static str = "3D";
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -56,7 +56,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         let score = auto_spawn_heuristic(
-            &self.name(),
+            &self.identifier(),
             ctx,
             per_system_entities,
             SpatialSpaceViewKind::ThreeD,

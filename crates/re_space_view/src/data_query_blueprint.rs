@@ -6,8 +6,8 @@ use re_data_store::{
 use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName, SpaceViewId, StoreContext,
-    SystemCommand, SystemCommandSender as _, ViewerContext,
+    EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassIdentifier, SpaceViewId,
+    StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -29,13 +29,14 @@ use crate::{blueprint::QueryExpressions, DataQuery, EntityOverrides, PropertyRes
 #[derive(Clone, PartialEq, Eq)]
 pub struct DataQueryBlueprint {
     pub id: DataQueryId,
-    pub space_view_class_name: SpaceViewClassName,
+    pub space_view_class_identifier: SpaceViewClassIdentifier,
     pub expressions: QueryExpressions,
 }
 
 impl DataQueryBlueprint {
     pub fn is_equivalent(&self, other: &DataQueryBlueprint) -> bool {
-        self.space_view_class_name.eq(&other.space_view_class_name)
+        self.space_view_class_identifier
+            .eq(&other.space_view_class_identifier)
             && self.expressions.eq(&other.expressions)
     }
 }
@@ -45,12 +46,12 @@ impl DataQueryBlueprint {
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
     pub fn new<'a>(
-        space_view_class_name: SpaceViewClassName,
+        space_view_class_identifier: SpaceViewClassIdentifier,
         queries_entities: impl Iterator<Item = &'a EntityPathExpr>,
     ) -> Self {
         Self {
             id: DataQueryId::random(),
-            space_view_class_name,
+            space_view_class_identifier,
             expressions: QueryExpressions {
                 inclusions: queries_entities
                     .map(|exp| exp.to_string().into())
@@ -63,7 +64,7 @@ impl DataQueryBlueprint {
     pub fn try_from_db(
         path: &EntityPath,
         blueprint_db: &StoreDb,
-        space_view_class_name: SpaceViewClassName,
+        space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> Option<Self> {
         let expressions = blueprint_db
             .store()
@@ -74,7 +75,7 @@ impl DataQueryBlueprint {
 
         Some(Self {
             id,
-            space_view_class_name,
+            space_view_class_identifier,
             expressions,
         })
     }
@@ -173,7 +174,7 @@ impl DataQuery for DataQueryBlueprint {
         let overrides = property_resolver.resolve_entity_overrides(ctx);
 
         let per_system_entity_list = entities_per_system_per_class
-            .get(&self.space_view_class_name)
+            .get(&self.space_view_class_identifier)
             .unwrap_or(&EMPTY_ENTITY_LIST);
 
         let executor = QueryExpressionEvaluator::new(self, per_system_entity_list);
@@ -635,7 +636,7 @@ mod tests {
         {
             let query = DataQueryBlueprint {
                 id: DataQueryId::random(),
-                space_view_class_name: "3D".into(),
+                space_view_class_identifier: "3D".into(),
                 expressions: QueryExpressions {
                     inclusions: inclusions.into_iter().map(|s| s.into()).collect::<Vec<_>>(),
                     exclusions: exclusions.into_iter().map(|s| s.into()).collect::<Vec<_>>(),

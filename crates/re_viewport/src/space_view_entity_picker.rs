@@ -322,7 +322,7 @@ fn create_entity_add_info(
     tree.visit_children_recursively(&mut |entity_path| {
         let heuristic_context_per_entity = heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default();
         let can_add: CanAddToSpaceView =
-            if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
+            if is_entity_processed_by_class(ctx, space_view.class_identifier(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
                 // TODO(#4377): Reformulate this in terms of modifying query expressions
                 CanAddToSpaceView::No {
                     reason: "Not implemented".to_owned(),
@@ -341,7 +341,7 @@ fn create_entity_add_info(
                 CanAddToSpaceView::No {
                     reason: format!(
                         "Entity can't be displayed by this class of Space View ({}), since it doesn't match any archetype that the Space View can process.",
-                        space_view.class_name()
+                        space_view.class_identifier()
                     ),
                 }
             };

@@ -5,8 +5,8 @@ use re_log_types::EntityPath;
 use re_types::ComponentNameSet;
 
 use crate::{
-    NamedViewSystem, SpaceViewClassName, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewSystemName, ViewerContext,
+    NamedViewSystem, SpaceViewClassIdentifier, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewQuery, ViewSystemName, ViewerContext,
 };
 
 /// This is additional context made available to the `heuristic_filter`.
@@ -15,21 +15,21 @@ use crate::{
 /// each entity do their own tree-walk.
 #[derive(Clone, Copy, Debug)]
 pub struct HeuristicFilterContext {
-    pub class: SpaceViewClassName,
+    pub class: SpaceViewClassIdentifier,
     pub has_ancestor_pinhole: bool,
 }
 
 impl Default for HeuristicFilterContext {
     fn default() -> HeuristicFilterContext {
         Self {
-            class: SpaceViewClassName::invalid(),
+            class: SpaceViewClassIdentifier::invalid(),
             has_ancestor_pinhole: false,
         }
     }
 }
 
 impl HeuristicFilterContext {
-    pub fn with_class(&self, class: SpaceViewClassName) -> Self {
+    pub fn with_class(&self, class: SpaceViewClassIdentifier) -> Self {
         Self {
             class,
             has_ancestor_pinhole: self.has_ancestor_pinhole,

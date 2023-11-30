@@ -1,7 +1,7 @@
 use ahash::HashMap;
 
 use crate::{
-    DynSpaceViewClass, NamedViewSystem, SpaceViewClassName, ViewContextCollection,
+    DynSpaceViewClass, NamedViewSystem, SpaceViewClassIdentifier, ViewContextCollection,
     ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemName,
 };
 
@@ -11,7 +11,7 @@ use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
 #[allow(clippy::enum_variant_names)]
 pub enum SpaceViewClassRegistryError {
     #[error("Space View with class name {0:?} was already registered.")]
-    DuplicateClassName(SpaceViewClassName),
+    DuplicateClassName(SpaceViewClassIdentifier),
 
     #[error("A Context System with name {0:?} was already registered.")]
     NameAlreadyInUseForContextSystem(&'static str),
@@ -77,7 +77,7 @@ impl SpaceViewSystemRegistry {
 
     pub fn new_context_collection(
         &self,
-        space_view_class_name: SpaceViewClassName,
+        space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> ViewContextCollection {
         ViewContextCollection {
             systems: self
@@ -88,7 +88,7 @@ impl SpaceViewSystemRegistry {
                     (*name, part)
                 })
                 .collect(),
-            space_view_class_name,
+            space_view_class_identifier,
         }
     }
 
@@ -127,7 +127,7 @@ impl Default for SpaceViewClassRegistryEntry {
 /// Expected to be populated on viewer startup.
 #[derive(Default)]
 pub struct SpaceViewClassRegistry {
-    registry: HashMap<SpaceViewClassName, SpaceViewClassRegistryEntry>,
+    registry: HashMap<SpaceViewClassIdentifier, SpaceViewClassRegistryEntry>,
     placeholder: SpaceViewClassRegistryEntry,
 }
 
@@ -145,7 +145,7 @@ impl SpaceViewClassRegistry {
 
         entry.class.on_register(&mut entry.systems)?;
 
-        let type_name = entry.class.name();
+        let type_name = entry.class.identifier();
         if self.registry.insert(type_name, entry).is_some() {
             return Err(SpaceViewClassRegistryError::DuplicateClassName(type_name));
         }
@@ -154,14 +154,14 @@ impl SpaceViewClassRegistry {
     }
 
     /// Queries a Space View type by class name, returning `None` if it is not registered.
-    fn get_class(&self, name: &SpaceViewClassName) -> Option<&dyn DynSpaceViewClass> {
+    fn get_class(&self, name: &SpaceViewClassIdentifier) -> Option<&dyn DynSpaceViewClass> {
         self.registry.get(name).map(|boxed| boxed.class.as_ref())
     }
 
     /// Returns the user-facing name for the given space view class.
     ///
     /// If the class is unknown, returns a placeholder name.
-    pub fn display_name(&self, name: &SpaceViewClassName) -> &'static str {
+    pub fn display_name(&self, name: &SpaceViewClassIdentifier) -> &'static str {
         self.registry
             .get(name)
             .map_or("<unknown space view class>", |boxed| {
@@ -170,12 +170,18 @@ impl SpaceViewClassRegistry {
     }
 
     /// Queries a Space View type's system registry by class name, returning `None` if the class is not registered.
-    fn get_system_registry(&self, name: &SpaceViewClassName) -> Option<&SpaceViewSystemRegistry> {
+    fn get_system_registry(
+        &self,
+        name: &SpaceViewClassIdentifier,
+    ) -> Option<&SpaceViewSystemRegistry> {
         self.registry.get(name).map(|boxed| &boxed.systems)
     }
 
     /// Queries a Space View type by class name and logs if it fails, returning a placeholder class.
-    pub fn get_class_or_log_error(&self, name: &SpaceViewClassName) -> &dyn DynSpaceViewClass {
+    pub fn get_class_or_log_error(
+        &self,
+        name: &SpaceViewClassIdentifier,
+    ) -> &dyn DynSpaceViewClass {
         if let Some(result) = self.get_class(name) {
             result
         } else {
@@ -187,7 +193,7 @@ impl SpaceViewClassRegistry {
     /// Queries a Space View's system registry by class name and logs if it fails, returning a placeholder class.
     pub fn get_system_registry_or_log_error(
         &self,
-        name: &SpaceViewClassName,
+        name: &SpaceViewClassIdentifier,
     ) -> &SpaceViewSystemRegistry {
         if let Some(result) = self.get_system_registry(name) {
             result
@@ -200,7 +206,7 @@ impl SpaceViewClassRegistry {
     /// Iterates over all registered Space View class names and their system registries.
     pub fn iter_system_registries(
         &self,
-    ) -> impl Iterator<Item = (&SpaceViewClassName, &SpaceViewSystemRegistry)> {
+    ) -> impl Iterator<Item = (&SpaceViewClassIdentifier, &SpaceViewSystemRegistry)> {
         self.registry
             .iter()
             .map(|(name, entry)| (name, &entry.systems))

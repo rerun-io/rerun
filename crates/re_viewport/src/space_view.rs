@@ -11,7 +11,7 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
-    SpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
     SpaceViewSystemRegistry, StoreContext, ViewerContext,
 };
 
@@ -22,7 +22,7 @@ use re_viewer_context::{
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
-    class_name: SpaceViewClassName,
+    class_identifier: SpaceViewClassIdentifier,
 
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
@@ -47,7 +47,7 @@ impl SpaceViewBlueprint {
         let Self {
             id,
             display_name,
-            class_name,
+            class_identifier,
             space_origin,
             queries,
             entities_determined_by_user,
@@ -56,7 +56,7 @@ impl SpaceViewBlueprint {
 
         id != &other.id
             || display_name != &other.display_name
-            || class_name != &other.class_name
+            || class_identifier != &other.class_identifier
             || space_origin != &other.space_origin
             || queries.iter().map(|q| q.id).collect::<HashSet<_>>()
                 != other.queries.iter().map(|q| q.id).collect::<HashSet<_>>()
@@ -66,7 +66,7 @@ impl SpaceViewBlueprint {
 
 impl SpaceViewBlueprint {
     pub fn new(
-        space_view_class: SpaceViewClassName,
+        space_view_class: SpaceViewClassIdentifier,
         space_view_class_display_name: &'static str,
         space_path: &EntityPath,
         query: DataQueryBlueprint,
@@ -86,7 +86,7 @@ impl SpaceViewBlueprint {
 
         Self {
             display_name,
-            class_name: space_view_class,
+            class_identifier: space_view_class,
             id,
             space_origin: space_path.clone(),
             queries: vec![query],
@@ -98,7 +98,7 @@ impl SpaceViewBlueprint {
     pub fn try_from_db(path: &EntityPath, blueprint_db: &StoreDb) -> Option<Self> {
         let SpaceViewComponent {
             display_name,
-            class_name,
+            class_identifier,
             space_origin,
             entities_determined_by_user,
             contents,
@@ -109,20 +109,24 @@ impl SpaceViewBlueprint {
 
         let id = SpaceViewId::from_entity_path(path);
 
-        let class_name = class_name.as_str().into();
+        let class_identifier = class_identifier.as_str().into();
 
         let queries = contents
             .into_iter()
             .map(DataQueryId::from)
             .filter_map(|id| {
-                DataQueryBlueprint::try_from_db(&id.as_entity_path(), blueprint_db, class_name)
+                DataQueryBlueprint::try_from_db(
+                    &id.as_entity_path(),
+                    blueprint_db,
+                    class_identifier,
+                )
             })
             .collect();
 
         Some(Self {
             id,
             display_name: display_name.to_string(),
-            class_name,
+            class_identifier,
             space_origin: space_origin.into(),
             queries,
             entities_determined_by_user,
@@ -130,22 +134,22 @@ impl SpaceViewBlueprint {
         })
     }
 
-    pub fn class_name(&self) -> &SpaceViewClassName {
-        &self.class_name
+    pub fn class_identifier(&self) -> &SpaceViewClassIdentifier {
+        &self.class_identifier
     }
 
     pub fn class<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     ) -> &'a dyn DynSpaceViewClass {
-        space_view_class_registry.get_class_or_log_error(&self.class_name)
+        space_view_class_registry.get_class_or_log_error(&self.class_identifier)
     }
 
     pub fn class_system_registry<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     ) -> &'a SpaceViewSystemRegistry {
-        space_view_class_registry.get_system_registry_or_log_error(&self.class_name)
+        space_view_class_registry.get_system_registry_or_log_error(&self.class_identifier)
     }
 
     pub fn on_frame_start(
@@ -313,7 +317,7 @@ impl SpaceViewBlueprint {
             let mut props = EntityProperties::default();
             // better defaults for the time series space view
             // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
-            if self.class_name == TimeSeriesSpaceView::NAME {
+            if self.class_identifier == TimeSeriesSpaceView::IDENTIFIER {
                 props.visible_history.nanos = VisibleHistory::ALL;
                 props.visible_history.sequences = VisibleHistory::ALL;
             }

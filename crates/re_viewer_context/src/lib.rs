@@ -44,7 +44,7 @@ pub use selection_state::{
 pub use space_view::{
     default_heuristic_filter, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
     HeuristicFilterContext, NamedViewSystem, PerSystemDataResults, PerSystemEntities,
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewClassRegistry,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
     ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
@@ -70,7 +70,7 @@ pub mod external {
 
 pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
 
-pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
+pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassIdentifier, EntitiesPerSystem>;
 
 slotmap::new_key_type! {
     /// Identifier for a blueprint group.
