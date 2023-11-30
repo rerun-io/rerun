@@ -52,76 +52,37 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
 
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
 
-    current_sample = nusc.get("sample", scene["first_sample_token"])
-    start_timestamp = current_sample["timestamp"]
-    while True:
-        log_nuscenes_sample(current_sample, nusc, logged_sensor_tokens, start_timestamp)
+    first_sample_token = scene["first_sample_token"]
+    first_sample = nusc.get("sample", scene["first_sample_token"])
+    start_timestamp = first_sample["timestamp"]
 
-        if current_sample["next"] == "":
-            break
-        current_sample = nusc.get("sample", current_sample["next"])
+    first_lidar_token = ""
+    first_radar_tokens = []
+    first_camera_tokens = []
+    for sample_data_token in first_sample["data"].values():
+        sample_data = nusc.get("sample_data", sample_data_token)
+        log_sensor_calibration(sample_data, nusc)
 
+        if sample_data["sensor_modality"] == "lidar":
+            first_lidar_token = sample_data_token
+        elif sample_data["sensor_modality"] == "radar":
+            first_radar_tokens.append(sample_data_token)
+        elif sample_data["sensor_modality"] == "camera":
+            first_camera_tokens.append(sample_data_token)
 
-def log_nuscenes_sample(
-    sample: dict[str, Any],
-    nusc: nuscenes.NuScenes,
-    logged_sensor_tokens: set[str],
-    start_timestamp: numbers.Number,
-) -> None:
-    # each sample is a keyframe with annotations
-    for sensor_name, sample_data_token in sample["data"].items():
-        # TODO optional log annotations
-        while True:
-            sample_data = nusc.get("sample_data", sample_data_token)
-            log_nuscenes_sample_data(sample_data, nusc, logged_sensor_tokens, start_timestamp)
-
-            sample_data_token = sample_data["next"]
-            if sample_data_token == "" or nusc.get("sample_data", sample_data_token)["is_key_frame"]:
-                break
+    log_lidar_and_ego_pose(first_lidar_token, start_timestamp, nusc)
+    log_cameras(first_camera_tokens, start_timestamp, nusc)
+    log_radars(first_radar_tokens, start_timestamp, nusc)
+    log_annotations(first_sample_token, start_timestamp, nusc)
 
 
-def log_nuscenes_sample_data(
-    sample_data: dict[str, Any],
-    nusc: nuscenes.NuScenes,
-    logged_sensor_tokens: set[str],
-    start_timestamp: numbers.Number,
-):
-    sensor_name = sample_data["channel"]
-    calibrated_sensor_token = sample_data["calibrated_sensor_token"]
-    if calibrated_sensor_token not in logged_sensor_tokens:
-        calibrated_sensor = nusc.get("calibrated_sensor", calibrated_sensor_token)
-        rotation_xyzw = np.roll(calibrated_sensor["rotation"], shift=-1)
-        rr.log(
-            f"world/ego_vehicle/{sensor_name}",
-            rr.Transform3D(
-                translation=calibrated_sensor["translation"],
-                rotation=rr.Quaternion(xyzw=rotation_xyzw),
-                from_parent=False,
-            ),
-            timeless=True,
-        )
-        logged_sensor_tokens.add(calibrated_sensor_token)
-        if len(calibrated_sensor["camera_intrinsic"]) != 0:
-            rr.log(
-                f"world/ego_vehicle/{sensor_name}",
-                rr.Pinhole(
-                    image_from_camera=calibrated_sensor["camera_intrinsic"],
-                    width=sample_data["width"],
-                    height=sample_data["height"],
-                ),
-                timeless=True,
-            )
+def log_lidar_and_ego_pose(first_lidar_token: str, start_timestamp: numbers.Number, nusc: nuscenes.NuScenes):
+    current_lidar_token = first_lidar_token
 
-    rr.set_time_seconds("timestamp", (sample_data["timestamp"] - start_timestamp) * 1e-6)
-
-    data_file_path = nusc.dataroot / sample_data["filename"]
-
-    if sample_data["sensor_modality"] == "lidar":
-        pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
-        points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
-        point_distances = np.linalg.norm(points, axis=1)
-        point_colors = cmap(norm(point_distances))
-        rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
+    while current_lidar_token != "":
+        sample_data = nusc.get("sample_data", current_lidar_token)
+        sensor_name = sample_data["channel"]
+        rr.set_time_seconds("timestamp", (sample_data["timestamp"] - start_timestamp) * 1e-6)
 
         ego_pose = nusc.get("ego_pose", sample_data["ego_pose_token"])
         rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)
@@ -133,12 +94,98 @@ def log_nuscenes_sample_data(
                 from_parent=False,
             ),
         )
-    elif sample_data["sensor_modality"] == "radar":
-        pointcloud = nuscenes.RadarPointCloud.from_file(str(data_file_path))
+        current_lidar_token = sample_data["next"]
+
+        data_file_path = nusc.dataroot / sample_data["filename"]
+        pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
         points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
-        rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points))
-    elif sample_data["sensor_modality"] == "camera":
-        rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
+        point_distances = np.linalg.norm(points, axis=1)
+        point_colors = cmap(norm(point_distances))
+        rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
+
+
+def log_cameras(first_camera_tokens: list[str], start_timestamp: numbers.Number, nusc: nuscenes.NuScenes):
+    for first_camera_token in first_camera_tokens:
+        current_camera_token = first_camera_token
+        while current_camera_token != "":
+            sample_data = nusc.get("sample_data", current_camera_token)
+            sensor_name = sample_data["channel"]
+            rr.set_time_seconds("timestamp", (sample_data["timestamp"] - start_timestamp) * 1e-6)
+            data_file_path = nusc.dataroot / sample_data["filename"]
+            rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
+            current_camera_token = sample_data["next"]
+
+
+def log_radars(first_radar_tokens: list[str], start_timestamp: numbers.Number, nusc: nuscenes.NuScenes):
+    for first_radar_token in first_radar_tokens:
+        current_camera_token = first_radar_token
+        while current_camera_token != "":
+            sample_data = nusc.get("sample_data", current_camera_token)
+            sensor_name = sample_data["channel"]
+            rr.set_time_seconds("timestamp", (sample_data["timestamp"] - start_timestamp) * 1e-6)
+            data_file_path = nusc.dataroot / sample_data["filename"]
+            pointcloud = nuscenes.RadarPointCloud.from_file(str(data_file_path))
+            points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
+            point_distances = np.linalg.norm(points, axis=1)
+            point_colors = cmap(norm(point_distances))
+            rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
+            current_camera_token = sample_data["next"]
+
+
+def log_annotations(first_sample_token: str, start_timestamp: numbers.Number, nusc: nuscenes.NuScenes):
+    label2id = {}
+    current_sample_token = first_sample_token
+    while current_sample_token != "":
+        sample = nusc.get("sample", current_sample_token)
+        rr.set_time_seconds("timestamp", (sample["timestamp"] - start_timestamp) * 1e-6)
+        ann_tokens = sample["anns"]
+        sizes = []
+        centers = []
+        rotations = []
+        class_ids = []
+        for ann_token in ann_tokens:
+            ann = nusc.get("sample_annotation", ann_token)
+
+            rotation_xyzw = np.roll(ann["rotation"], shift=-1)
+            width, length, height = ann["size"]
+            sizes.append((length, width, height))  # x, y, z sizes
+            centers.append(ann["translation"])
+            rotations.append(rr.Quaternion(xyzw=rotation_xyzw))
+            if ann["category_name"] not in label2id:
+                label2id[ann["category_name"]] = len(label2id)
+            class_ids.append(label2id[ann["category_name"]])
+
+        rr.log(
+            "world/anns",
+            rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids)
+        )
+        current_sample_token = sample["next"]
+
+
+def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes) -> None:
+    sensor_name = sample_data["channel"]
+    calibrated_sensor_token = sample_data["calibrated_sensor_token"]
+    calibrated_sensor = nusc.get("calibrated_sensor", calibrated_sensor_token)
+    rotation_xyzw = np.roll(calibrated_sensor["rotation"], shift=-1)
+    rr.log(
+        f"world/ego_vehicle/{sensor_name}",
+        rr.Transform3D(
+            translation=calibrated_sensor["translation"],
+            rotation=rr.Quaternion(xyzw=rotation_xyzw),
+            from_parent=False,
+        ),
+        timeless=True,
+    )
+    if len(calibrated_sensor["camera_intrinsic"]) != 0:
+        rr.log(
+            f"world/ego_vehicle/{sensor_name}",
+            rr.Pinhole(
+                image_from_camera=calibrated_sensor["camera_intrinsic"],
+                width=sample_data["width"],
+                height=sample_data["height"],
+            ),
+            timeless=True,
+        )
 
 
 def main() -> None:
