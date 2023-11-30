@@ -74,7 +74,7 @@ jobs:
             linux)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.10.0'}"
+              container="{'image': 'rerunio/ci_docker:0.11.0'}"
               bin_name="rerun"
               ;;
             windows)

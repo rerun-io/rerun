@@ -19,7 +19,7 @@ use crate::{
 ///
 /// In the future `resolved_properties` will be replaced by a `StoreView` that contains
 /// the relevant data overrides for the given query.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct DataResult {
     /// Where to retrieve the data from.
     // TODO(jleibs): This should eventually become a more generalized (StoreView + EntityPath) reference to handle

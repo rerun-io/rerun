@@ -25,6 +25,64 @@ EXAMPLES_PREVIEW_BARE_LINK = (
     "- [Examples preview](https://rerun.io/preview/{{ pr.commit }}/examples) <!--EXAMPLES-PREVIEW-->"
 )
 
+# Need to protect code-blocks in the PR template.
+# See https://github.com/rerun-io/rerun/issues/3972
+#
+# Could not get this to work with jinja-markdown extension so replicating the functionality from:
+# https://github.com/digital-land/design-system/commit/14e678ccb3e1e62da18072ccf035f3d0e7467f3c
+
+CODE_BLOCK_PLACEHOLDER = "{CODE BLOCK PLACEHOLDER}"
+
+
+def index_code_block(lines: list[str]) -> tuple[bool, int, int]:
+    if "```" in lines:
+        opening_line = lines.index("```")
+        closing_line = lines.index("```", opening_line + 1)
+        return True, opening_line, closing_line
+    return False, 0, 0
+
+
+# extracts code blocks from lines of text
+# also replaces code_blocks with a placeholder string
+def extract_code_blocks(lines: list[str]) -> list[list[str]]:
+    code_blocks = []
+    has_code_blocks = True
+    while has_code_blocks:
+        if "```" in lines:
+            block, op, cl = index_code_block(lines)
+            if block:
+                code_blocks.append(lines[op : cl + 1])
+                del lines[op + 1 : cl + 1]
+                lines[op] = CODE_BLOCK_PLACEHOLDER
+            else:
+                has_code_blocks = False
+        else:
+            has_code_blocks = False
+    return code_blocks
+
+
+def insert_lines(lines: list[str], lines_to_insert: list[str], start_from: int) -> None:
+    insert_pt = start_from
+    for line in lines_to_insert:
+        lines.insert(insert_pt, line)
+        insert_pt = insert_pt + 1
+
+
+def insert_code_blocks(lines: list[str], code_blocks: list[list[str]]) -> list[str]:
+    has_placeholders = True
+    while has_placeholders:
+        if CODE_BLOCK_PLACEHOLDER in lines:
+            idx = lines.index(CODE_BLOCK_PLACEHOLDER)
+            try:
+                block = code_blocks.pop(0)
+                insert_lines(lines, block, idx + 1)
+                del lines[idx]
+            except IndexError:
+                lines[idx] = "{Error: Couldn't re-insert code-block}"
+        else:
+            has_placeholders = False
+    return lines
+
 
 def encode_uri_component(value: str) -> str:
     return urllib.parse.quote(value, safe="")
@@ -71,13 +129,20 @@ def main() -> None:
             new_body[:examples_preview_link_start] + EXAMPLES_PREVIEW_BARE_LINK + new_body[examples_preview_link_end:]
         )
 
-    new_body = env.from_string(new_body).render(
+    lines = new_body.splitlines()
+    codeblocks = extract_code_blocks(lines)
+    text = "\n".join(lines)
+
+    new_body = env.from_string(text).render(
         pr={
             "number": args.pr_number,
             "branch": pr.head.ref,
             "commit": latest_commit.sha,
         },
     )
+
+    lines = new_body.split("\n")
+    new_body = "\n".join(insert_code_blocks(lines, codeblocks))
 
     if new_body != pr.body:
         print("updated pr body")

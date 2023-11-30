@@ -3,6 +3,7 @@ use ahash::HashMap;
 use re_data_store::StoreDb;
 use re_log_types::{LogMsg, StoreId, TimeRangeF};
 use re_smart_channel::ReceiveSet;
+use re_space_view::DataQuery as _;
 use re_viewer_context::{
     AppOptions, Caches, CommandSender, ComponentUiRegistry, PlayState, RecordingConfig,
     SelectionState, SpaceViewClassRegistry, StoreContext, ViewerContext,
@@ -69,10 +70,10 @@ impl AppState {
                     .get(rec_id)
                     // is there an active loop selection?
                     .and_then(|rec_cfg| {
-                        rec_cfg
-                            .time_ctrl
+                        let time_ctrl = rec_cfg.time_ctrl.read();
+                        time_ctrl
                             .loop_selection()
-                            .map(|q| (*rec_cfg.time_ctrl.timeline(), q))
+                            .map(|q| (*time_ctrl.timeline(), q))
                     })
             })
     }
@@ -115,8 +116,32 @@ impl AppState {
         let entities_per_system_per_class = identify_entities_per_system_per_class(
             space_view_class_registry,
             store_db,
-            &rec_cfg.time_ctrl.current_query(),
+            &rec_cfg.time_ctrl.get_mut().current_query(),
         );
+
+        // Execute the queries for every `SpaceView`
+        let query_results = {
+            re_tracing::profile_scope!("query_results");
+            viewport
+                .blueprint
+                .space_views
+                .values_mut()
+                .flat_map(|space_view| {
+                    space_view.queries.iter().map(|query| {
+                        let resolver =
+                            query.build_resolver(space_view.id, &space_view.auto_properties);
+                        (
+                            query.id,
+                            query.execute_query(
+                                &resolver,
+                                store_context,
+                                &entities_per_system_per_class,
+                            ),
+                        )
+                    })
+                })
+                .collect::<_>()
+        };
 
         let mut ctx = ViewerContext {
             app_options,
@@ -126,6 +151,7 @@ impl AppState {
             store_db,
             store_context,
             entities_per_system_per_class: &entities_per_system_per_class,
+            query_results: &query_results,
             rec_cfg,
             re_ui,
             render_ctx,
@@ -144,6 +170,33 @@ impl AppState {
         }
 
         viewport.on_frame_start(&mut ctx, &spaces_info);
+
+        // TODO(jleibs): Running the queries a second time is annoying, but we need
+        // to do this or else the auto_properties aren't right since they get populated
+        // in on_frame_start, but on_frame_start also needs the queries.
+        let updated_query_results = {
+            re_tracing::profile_scope!("updated_query_results");
+            viewport
+                .blueprint
+                .space_views
+                .values_mut()
+                .flat_map(|space_view| {
+                    space_view.queries.iter().map(|query| {
+                        let resolver =
+                            query.build_resolver(space_view.id, &space_view.auto_properties);
+                        (
+                            query.id,
+                            query.execute_query(
+                                &resolver,
+                                store_context,
+                                &entities_per_system_per_class,
+                            ),
+                        )
+                    })
+                })
+                .collect::<_>()
+        };
+        ctx.query_results = &updated_query_results;
 
         time_panel.show_panel(&mut ctx, ui, app_blueprint.time_panel_expanded);
         selection_panel.show_panel(
@@ -227,7 +280,7 @@ impl AppState {
                 false
             };
 
-            let needs_repaint = ctx.rec_cfg.time_ctrl.update(
+            let needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
                 store_db.times_per_timeline(),
                 dt,
                 more_data_is_coming,
@@ -284,6 +337,7 @@ fn recording_config_entry<'cfgs>(
 
         rec_cfg
             .time_ctrl
+            .get_mut()
             .set_play_state(store_db.times_per_timeline(), play_state);
 
         rec_cfg

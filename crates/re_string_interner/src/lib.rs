@@ -83,12 +83,14 @@ impl std::hash::Hash for InternedString {
 impl nohash_hasher::IsEnabled for InternedString {}
 
 impl std::cmp::PartialOrd for InternedString {
+    #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.string.partial_cmp(other.string)
+        Some(self.string.cmp(other.string))
     }
 }
 
 impl std::cmp::Ord for InternedString {
+    #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.string.cmp(other.string)
     }

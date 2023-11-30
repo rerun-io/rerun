@@ -17,16 +17,11 @@ use crate::{
 #[derive(Default)]
 pub struct SpatialSpaceView2D;
 
-impl SpatialSpaceView2D {
-    pub const NAME: &'static str = "2D";
-}
-
 impl SpaceViewClass for SpatialSpaceView2D {
     type State = SpatialSpaceViewState;
 
-    fn name(&self) -> re_viewer_context::SpaceViewClassName {
-        Self::NAME.into()
-    }
+    const NAME: &'static str = "2D";
+    const DISPLAY_NAME: &'static str = "2D";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_2D

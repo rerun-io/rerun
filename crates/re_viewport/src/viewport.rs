@@ -183,7 +183,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
                 space_view.class_name(),
             );
 
-            space_view.on_frame_start(ctx, spaces_info, space_view_state);
+            space_view.on_frame_start(ctx, space_view_state);
         }
 
         if self.blueprint.auto_space_views {
@@ -208,8 +208,10 @@ impl<'a, 'b> Viewport<'a, 'b> {
                     return false;
                 }
                 if existing_view
-                    .contents
-                    .contains_all_entities_from(&space_view_candidate.contents)
+                    .queries
+                    .iter()
+                    .zip(space_view_candidate.queries.iter())
+                    .all(|(q1, q2)| q1.is_equivalent(q2))
                 {
                     // This space view wouldn't add anything we haven't already
                     return false;
@@ -473,7 +475,7 @@ fn space_view_ui(
     space_view_state: &mut dyn SpaceViewState,
     space_view_highlights: &SpaceViewHighlights,
 ) {
-    let Some(latest_at) = ctx.rec_cfg.time_ctrl.time_int() else {
+    let Some(latest_at) = ctx.rec_cfg.time_ctrl.read().time_int() else {
         ui.centered_and_justified(|ui| {
             ui.weak("No time selected");
         });

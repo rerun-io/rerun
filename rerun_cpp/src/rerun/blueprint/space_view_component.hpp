@@ -4,11 +4,13 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../datatypes/entity_path.hpp"
+#include "../datatypes/uuid.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-#include <utility>
+#include <string>
 
 namespace arrow {
     class Array;
@@ -21,18 +23,29 @@ namespace rerun::blueprint {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct SpaceViewComponent {
-        rerun::Collection<uint8_t> space_view;
+        /// The name of the view.
+        std::string display_name;
+
+        /// The class of the view.
+        std::string class_name;
+
+        /// The "anchor point" of this space view.
+        ///
+        /// The transform at this path forms the reference point for all scene->world transforms in this space view.
+        /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
+        /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+        rerun::datatypes::EntityPath space_origin;
+
+        /// True if the user is expected to add entities themselves. False otherwise.
+        bool entities_determined_by_user;
+
+        /// `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+        ///
+        /// It determines which entities are part of the spaceview.
+        rerun::Collection<rerun::datatypes::Uuid> contents;
 
       public:
         SpaceViewComponent() = default;
-
-        SpaceViewComponent(rerun::Collection<uint8_t> space_view_)
-            : space_view(std::move(space_view_)) {}
-
-        SpaceViewComponent& operator=(rerun::Collection<uint8_t> space_view_) {
-            space_view = std::move(space_view_);
-            return *this;
-        }
     };
 } // namespace rerun::blueprint
 
