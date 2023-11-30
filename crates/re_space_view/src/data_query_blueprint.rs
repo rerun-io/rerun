@@ -99,6 +99,35 @@ impl DataQueryBlueprint {
         }
     }
 
+    fn save_expressions(
+        &self,
+        ctx: &ViewerContext<'_>,
+        inclusions: &[EntityPathExpr],
+        exclusions: &[EntityPathExpr],
+    ) {
+        let timepoint = TimePoint::timeless();
+
+        let expressions_component = QueryExpressions {
+            inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
+            exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
+        };
+
+        let row = DataRow::from_cells1_sized(
+            RowId::random(),
+            self.id.as_entity_path(),
+            timepoint.clone(),
+            1,
+            [expressions_component],
+        )
+        .unwrap();
+
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                vec![row],
+            ));
+    }
+
     pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         let mut edited = false;
 
@@ -142,27 +171,7 @@ impl DataQueryBlueprint {
         }
 
         if edited {
-            let timepoint = TimePoint::timeless();
-
-            let expressions_component = QueryExpressions {
-                inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
-                exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
-            };
-
-            let row = DataRow::from_cells1_sized(
-                RowId::random(),
-                self.id.as_entity_path(),
-                timepoint.clone(),
-                1,
-                [expressions_component],
-            )
-            .unwrap();
-
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                ));
+            self.save_expressions(ctx, &inclusions, &exclusions);
         }
     }
 
@@ -187,27 +196,7 @@ impl DataQueryBlueprint {
         }
 
         if edited {
-            let timepoint = TimePoint::timeless();
-
-            let expressions_component = QueryExpressions {
-                inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
-                exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
-            };
-
-            let row = DataRow::from_cells1_sized(
-                RowId::random(),
-                self.id.as_entity_path(),
-                timepoint.clone(),
-                1,
-                [expressions_component],
-            )
-            .unwrap();
-
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                ));
+            self.save_expressions(ctx, &inclusions, &exclusions);
         }
     }
 
@@ -236,27 +225,7 @@ impl DataQueryBlueprint {
         });
 
         if edited {
-            let timepoint = TimePoint::timeless();
-
-            let expressions_component = QueryExpressions {
-                inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
-                exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
-            };
-
-            let row = DataRow::from_cells1_sized(
-                RowId::random(),
-                self.id.as_entity_path(),
-                timepoint.clone(),
-                1,
-                [expressions_component],
-            )
-            .unwrap();
-
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                ));
+            self.save_expressions(ctx, &inclusions, &exclusions);
         }
     }
 
