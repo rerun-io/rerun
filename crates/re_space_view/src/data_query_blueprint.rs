@@ -457,7 +457,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path: entity_path.clone(),
                     view_parts,
                     is_group: false,
-                    prefix_only: !any_match, // This didn't actually match anything
+                    direct_included: any_match,
                     individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
                     resolved_properties: leaf_resolved_properties,
                     override_path: individual_override_path,
@@ -497,7 +497,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path,
                     view_parts: Default::default(),
                     is_group: true,
-                    prefix_only: !any_match, // This didn't actually match anything
+                    direct_included: any_match,
                     individual_properties,
                     resolved_properties,
                     override_path: recursive_override_path,
