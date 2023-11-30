@@ -2,22 +2,22 @@ use super::TextLogLevel;
 
 impl TextLogLevel {
     /// Designates catastrophic failures.
-    pub const CRITICAL: &str = "CRITICAL";
+    pub const CRITICAL: &'static str = "CRITICAL";
 
     /// Designates very serious errors.
-    pub const ERROR: &str = "ERROR";
+    pub const ERROR: &'static str = "ERROR";
 
     /// Designates hazardous situations.
-    pub const WARN: &str = "WARN";
+    pub const WARN: &'static str = "WARN";
 
     /// Designates useful information.
-    pub const INFO: &str = "INFO";
+    pub const INFO: &'static str = "INFO";
 
     /// Designates lower priority information.
-    pub const DEBUG: &str = "DEBUG";
+    pub const DEBUG: &'static str = "DEBUG";
 
     /// Designates very low priority, often extremely verbose, information.
-    pub const TRACE: &str = "TRACE";
+    pub const TRACE: &'static str = "TRACE";
 
     #[inline]
     pub fn as_str(&self) -> &str {

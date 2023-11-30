@@ -149,7 +149,7 @@ fn crate_version_from_build_info_string() {
             patch: 0,
             meta: Some(crate::crate_version::Meta::DevAlpha(7)),
         },
-        rustc_version: "1.72.1 (d5c2e9c34 2023-09-13)",
+        rustc_version: "1.74.0 (d5c2e9c34 2023-09-13)",
         llvm_version: "16.0.5",
         git_hash: "",
         git_branch: "",

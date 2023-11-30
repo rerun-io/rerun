@@ -333,7 +333,7 @@ impl DataRow {
 
         let data_cells = comp_batches
             .into_iter()
-            .map(|batch| DataCell::from_component_batch(batch))
+            .map(DataCell::from_component_batch)
             .collect::<Result<Vec<DataCell>, _>>()?;
 
         // TODO(emilk): should `DataRow::from_cells` calculate `num_instances` instead?

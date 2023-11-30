@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.10.0"
+LABEL version="0.11.0"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
@@ -65,7 +65,7 @@ RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.72.1 \
+    RUST_VERSION=1.74.0 \
     RUSTUP_VERSION=1.26.0
 
 # Install Rust

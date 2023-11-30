@@ -91,8 +91,8 @@ pub struct SpaceViewContents {
 
 /// Determine whether this `DataBlueprintTree` has user-edits relative to another `DataBlueprintTree`
 impl SpaceViewContents {
-    pub const INDIVIDUAL_OVERRIDES_PREFIX: &str = "individual_overrides";
-    pub const GROUP_OVERRIDES_PREFIX: &str = "group_overrides";
+    pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
+    pub const GROUP_OVERRIDES_PREFIX: &'static str = "group_overrides";
 
     pub fn has_edits(&self, other: &Self) -> bool {
         let Self {

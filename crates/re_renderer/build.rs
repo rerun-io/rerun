@@ -31,7 +31,7 @@ pub struct ImportClause {
 }
 
 impl ImportClause {
-    pub const PREFIX: &str = "#import ";
+    pub const PREFIX: &'static str = "#import ";
 }
 
 impl<P: Into<PathBuf>> From<P> for ImportClause {
@@ -171,7 +171,7 @@ pub fn init() {
 "#
     .to_owned();
 
-    let walker = WalkDir::new(&shader_dir).into_iter();
+    let walker = WalkDir::new(shader_dir).into_iter();
     let entries = {
         let mut entries = walker
             .filter_entry(is_wgsl_or_dir)

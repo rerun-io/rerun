@@ -41,8 +41,8 @@ impl DataQueryBlueprint {
 }
 
 impl DataQueryBlueprint {
-    pub const INDIVIDUAL_OVERRIDES_PREFIX: &str = "individual_overrides";
-    pub const RECURSIVE_OVERRIDES_PREFIX: &str = "recursive_overrides";
+    pub const INDIVIDUAL_OVERRIDES_PREFIX: &'static str = "individual_overrides";
+    pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
     pub fn new<'a>(
         space_view_class_name: SpaceViewClassName,
