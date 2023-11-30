@@ -721,32 +721,7 @@ impl IndexedTable {
         self.buckets
             .retain(|bucket_time, _| !dropped_bucket_times.contains(bucket_time));
 
-        if self.buckets.is_empty() {
-            let Self {
-                timeline,
-                ent_path: _,
-                cluster_key,
-                buckets,
-                all_components: _, // keep the history on purpose
-                buckets_num_rows,
-                buckets_size_bytes,
-            } = self;
-
-            let bucket = IndexedBucket::new(*cluster_key, *timeline);
-            let size_bytes = bucket.total_size_bytes();
-
-            *buckets = [(i64::MIN.into(), bucket)].into();
-            *buckets_num_rows = 0;
-            *buckets_size_bytes = size_bytes;
-
-            return (diffs, dropped_num_bytes);
-        }
-
-        // NOTE: Make sure the first bucket is responsible for `-∞`, which might or might not be
-        // the case now that we've been moving buckets around.
-        if let Some((_, bucket)) = self.buckets.pop_first() {
-            self.buckets.insert(TimeInt::MIN, bucket);
-        }
+        self.uphold_indexing_invariants();
 
         self.buckets_num_rows -= dropped_num_rows;
         self.buckets_size_bytes -= dropped_num_bytes;
@@ -799,11 +774,7 @@ impl IndexedTable {
             dropped_num_bytes = bucket_num_bytes;
             self.buckets.remove(&bucket_key);
 
-            // NOTE: Make sure the first bucket is responsible for `-∞`, which might or might not be
-            // the case now that we've been moving buckets around.
-            if let Some((_, bucket)) = self.buckets.pop_first() {
-                self.buckets.insert(TimeInt::MIN, bucket);
-            }
+            self.uphold_indexing_invariants();
         }
 
         self.buckets_size_bytes -= dropped_num_bytes;
