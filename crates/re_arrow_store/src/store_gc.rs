@@ -4,14 +4,13 @@ use ahash::{HashMap, HashSet};
 
 use nohash_hasher::IntMap;
 use re_log_types::{
-    EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, TimeRange, Timeline,
-    VecDequeRemovalExt as _,
+    EntityPath, EntityPathHash, RowId, TimePoint, TimeRange, Timeline, VecDequeRemovalExt as _,
 };
 use re_types_core::{ComponentName, SizeBytes as _};
 
 use crate::{
     store::{
-        ClusterCellCache, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable,
+        ClusterCellCache, IndexedBucketInner, IndexedTable, PersistentIndexedTable,
         PersistentIndexedTableInner,
     },
     DataStore, DataStoreStats, StoreDiff, StoreDiffKind, StoreEvent,
@@ -639,12 +638,10 @@ impl DataStore {
                 }
             }
 
+            table.uphold_indexing_invariants();
+
             false
         });
-
-        // TODO(cmc): Hmm, this is dropping buckets but doesn't seem to handle the case where all
-        // buckets are removed (which is an illegal state).
-        // Doesn't seem to handle the case where the only bucket left isn't indexed at -inf either.
 
         diffs.into_values()
     }
