@@ -1,31 +1,22 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
-import pathlib
-from typing import Any, Union
-
-import numpy as np
-from nuscenes import nuscenes
 import numbers
-import matplotlib
+import pathlib
+from typing import Any
 
+import matplotlib
+import numpy as np
 import rerun as rr
+from download_dataset import MINISPLIT_SCENES, download_minisplit
+from nuscenes import nuscenes
 
 cmap = matplotlib.colormaps["turbo_r"]
 norm = matplotlib.colors.Normalize(
     vmin=3.0,
     vmax=50.0,
 )
-
-
-def download_minisplit(root_dir: pathlib.Path) -> None:
-    """
-    Download nuScenes minisplit.
-
-    Adopted from https://colab.research.google.com/github/nutonomy/nuscenes-devkit/blob/master/python-sdk/tutorials/nuscenes_tutorial.ipynb
-    """
-    print("Downloading nuScenes minisplit...")
-    # TODO(leo) implement this
-    pass
 
 
 def ensure_scene_available(root_dir: pathlib.Path, dataset_version: str, scene_name: str) -> None:
@@ -38,20 +29,7 @@ def ensure_scene_available(root_dir: pathlib.Path, dataset_version: str, scene_n
     """
     try:
         nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
-    except AssertionError as e:
-        MINISPLIT_SCENES = [
-            "scene-0061",
-            "scene-0103",
-            "scene-0553",
-            "scene-0655",
-            "scene-0757",
-            "scene-0796",
-            "scene-0916",
-            "scene-1077",
-            "scene-1094",
-            "scene-1100",
-        ]
-
+    except AssertionError:  # dataset initialization failed
         if dataset_version == "v1.0-mini" and scene_name in MINISPLIT_SCENES:
             download_minisplit(root_dir)
             nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
@@ -85,7 +63,10 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
 
 
 def log_nuscenes_sample(
-    sample: dict[str, Any], nusc: nuscenes.NuScenes, logged_sensor_tokens: set[str], start_timestamp: numbers.Number
+    sample: dict[str, Any],
+    nusc: nuscenes.NuScenes,
+    logged_sensor_tokens: set[str],
+    start_timestamp: numbers.Number,
 ) -> None:
     # each sample is a keyframe with annotations
     for sensor_name, sample_data_token in sample["data"].items():
@@ -178,9 +159,9 @@ def main() -> None:
     rr.script_add_args(parser)
     args = parser.parse_args()
 
-    rr.script_setup(args, "rerun_example_nuscenes")
-
     ensure_scene_available(args.root_dir, args.dataset_version, args.scene_name)
+
+    rr.script_setup(args, "rerun_example_nuscenes")
     log_nuscenes(args.root_dir, args.dataset_version, args.scene_name)
 
     rr.script_teardown(args)
