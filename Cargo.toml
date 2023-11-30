@@ -71,26 +71,26 @@ re_ws_comms = { path = "crates/re_ws_comms", version = "=0.12.0-alpha.1", defaul
 rerun = { path = "crates/rerun", version = "=0.12.0-alpha.1", default-features = false }
 
 # egui-crates:
-ecolor = "0.24"
-eframe = { version = "0.24", default-features = false, features = [
+ecolor = "0.24.1"
+eframe = { version = "0.24.1", default-features = false, features = [
   "accesskit",
   "default_fonts",
   "puffin",
   "wayland",
   "x11",
 ] }
-egui = { version = "0.24", features = [
+egui = { version = "0.24.1", features = [
   "callstack",
   "extra_debug_asserts",
   "log",
   "puffin",
 ] }
 egui_commonmark = { version = "0.10", default-features = false }
-egui_extras = { version = "0.24", features = ["http", "image", "puffin"] }
-egui_plot = "0.24"
+egui_extras = { version = "0.24.1", features = ["http", "image", "puffin"] }
+egui_plot = "0.24.1"
 egui_tiles = "0.4"
-egui-wgpu = "0.24"
-emath = "0.24.0"
+egui-wgpu = "0.24.1"
+emath = "0.24.1"
 
 # All of our direct external dependencies should be found here:
 ahash = "0.8"
@@ -235,6 +235,7 @@ debug = true
 # If that is not possible, patch to a branch that has a PR open on the upstream repo.
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
+
 # ecolor = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
 # eframe = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
 # egui = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }        # egui master 2023-11-23
@@ -251,5 +252,3 @@ debug = true
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 # epaint = { path = "../../egui/crates/epaint" }
-
-# puffin = { path = "../../embark/puffin/puffin" }
