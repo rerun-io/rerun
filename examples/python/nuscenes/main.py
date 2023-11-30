@@ -12,8 +12,10 @@ import rerun as rr
 
 cmap = matplotlib.colormaps["turbo_r"]
 norm = matplotlib.colors.Normalize(
-    vmin=3.0, vmax=50.0,
+    vmin=3.0,
+    vmax=50.0,
 )
+
 
 def download_minisplit(root_dir: pathlib.Path) -> None:
     """
@@ -21,6 +23,7 @@ def download_minisplit(root_dir: pathlib.Path) -> None:
 
     Adopted from https://colab.research.google.com/github/nutonomy/nuscenes-devkit/blob/master/python-sdk/tutorials/nuscenes_tutorial.ipynb
     """
+    print("Downloading nuScenes minisplit...")
     # TODO(leo) implement this
     pass
 
@@ -33,13 +36,28 @@ def ensure_scene_available(root_dir: pathlib.Path, dataset_version: str, scene_n
 
     Raises ValueError if scene is not available and cannot be downloaded.
     """
-    nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
-    # TODO handle this
-    # try:
-    # except:
-    #     if dataset_version == "v1.0-mini":
-    #         # TODO handle download case
-    #     nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
+    try:
+        nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
+    except AssertionError as e:
+        MINISPLIT_SCENES = [
+            "scene-0061",
+            "scene-0103",
+            "scene-0553",
+            "scene-0655",
+            "scene-0757",
+            "scene-0796",
+            "scene-0916",
+            "scene-1077",
+            "scene-1094",
+            "scene-1100",
+        ]
+
+        if dataset_version == "v1.0-mini" and scene_name in MINISPLIT_SCENES:
+            download_minisplit(root_dir)
+            nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
+        else:
+            print(f"Could not find dataset at {root_dir} and could not automatically download specified scene.")
+            exit()
 
     scene_names = [s["name"] for s in nusc.scene]
     if scene_name not in scene_names:
