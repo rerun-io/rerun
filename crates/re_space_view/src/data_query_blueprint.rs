@@ -99,24 +99,62 @@ impl DataQueryBlueprint {
         }
     }
 
+    fn save_expressions(
+        &self,
+        ctx: &ViewerContext<'_>,
+        inclusions: &[EntityPathExpr],
+        exclusions: &[EntityPathExpr],
+    ) {
+        let timepoint = TimePoint::timeless();
+
+        let expressions_component = QueryExpressions {
+            inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
+            exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
+        };
+
+        let row = DataRow::from_cells1_sized(
+            RowId::random(),
+            self.id.as_entity_path(),
+            timepoint.clone(),
+            1,
+            [expressions_component],
+        )
+        .unwrap();
+
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                vec![row],
+            ));
+    }
+
     pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         let mut edited = false;
 
-        let mut inclusions: Vec<EntityPathExpr> = self
-            .expressions
-            .inclusions
-            .iter()
-            .filter(|exp| !exp.as_str().is_empty())
-            .map(|exp| EntityPathExpr::from(exp.as_str()))
-            .collect();
+        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
+        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
 
-        let mut exclusions: Vec<EntityPathExpr> = self
-            .expressions
-            .exclusions
-            .iter()
-            .filter(|exp| !exp.as_str().is_empty())
-            .map(|exp| EntityPathExpr::from(exp.as_str()))
-            .collect();
+        // This exclusion would cancel out any inclusions or exclusions that are descendants of it
+        // so clean them up.
+        if let Some(recursive_exclude) = expr.recursive_entity_path() {
+            inclusions.retain(|inc_expr| {
+                if inc_expr.entity_path().is_descendant_of(recursive_exclude) {
+                    edited = true;
+                    false
+                } else {
+                    true
+                }
+            });
+
+            exclusions.retain(|exc_expr| {
+                if exc_expr.entity_path().is_descendant_of(recursive_exclude) {
+                    edited = true;
+                    false
+                } else {
+                    true
+                }
+            });
+        }
 
         inclusions.retain(|inc_expr| {
             if inc_expr == &expr {
@@ -133,28 +171,78 @@ impl DataQueryBlueprint {
         }
 
         if edited {
-            let timepoint = TimePoint::timeless();
-
-            let expressions_component = QueryExpressions {
-                inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
-                exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
-            };
-
-            let row = DataRow::from_cells1_sized(
-                RowId::random(),
-                self.id.as_entity_path(),
-                timepoint.clone(),
-                1,
-                [expressions_component],
-            )
-            .unwrap();
-
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                ));
+            self.save_expressions(ctx, &inclusions, &exclusions);
         }
+    }
+
+    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+        let mut edited = false;
+
+        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
+        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
+
+        exclusions.retain(|exc_expr| {
+            if exc_expr == &expr {
+                edited = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        if !inclusions.iter().any(|inc_expr| inc_expr == &expr) {
+            edited = true;
+            inclusions.push(expr);
+        }
+
+        if edited {
+            self.save_expressions(ctx, &inclusions, &exclusions);
+        }
+    }
+
+    pub fn clear_entity_expression(&self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
+        let mut edited = false;
+
+        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
+        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
+
+        exclusions.retain(|exc_expr| {
+            if exc_expr == expr {
+                edited = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        inclusions.retain(|inc_expr| {
+            if inc_expr == expr {
+                edited = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        if edited {
+            self.save_expressions(ctx, &inclusions, &exclusions);
+        }
+    }
+
+    pub fn inclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
+        self.expressions
+            .inclusions
+            .iter()
+            .filter(|exp| !exp.as_str().is_empty())
+            .map(|exp| EntityPathExpr::from(exp.as_str()))
+    }
+
+    pub fn exclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
+        self.expressions
+            .exclusions
+            .iter()
+            .filter(|exp| !exp.as_str().is_empty())
+            .map(|exp| EntityPathExpr::from(exp.as_str()))
     }
 }
 
@@ -338,6 +426,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path: entity_path.clone(),
                     view_parts,
                     is_group: false,
+                    direct_included: any_match,
                     individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
                     resolved_properties: leaf_resolved_properties,
                     override_path: individual_override_path,
@@ -377,6 +466,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path,
                     view_parts: Default::default(),
                     is_group: true,
+                    direct_included: any_match,
                     individual_properties,
                     resolved_properties,
                     override_path: recursive_override_path,
