@@ -37,13 +37,14 @@ fn toggle_switch_ui(ui: &mut egui::Ui, on: &mut bool) -> egui::Response {
     response
 }
 
-// A wrapper that allows the more idiomatic usage pattern: `ui.add(toggle_switch(&mut my_bool))`
+/// A wrapper that allows the more idiomatic usage pattern: `ui.add(toggle_switch(&mut my_bool))`
 /// iOS-style toggle switch.
 ///
 /// ## Example:
 /// ``` ignore
 /// ui.add(toggle_switch(&mut my_bool));
 /// ```
+#[allow(clippy::needless_pass_by_ref_mut)] // False positive, toggle_switch_ui needs &mut
 pub fn toggle_switch(on: &mut bool) -> impl egui::Widget + '_ {
     move |ui: &mut egui::Ui| toggle_switch_ui(ui, on)
 }

@@ -168,7 +168,7 @@ fn entity_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, stats: &re_arrow_stor
 
 /// Show a component path and make it selectable.
 pub fn component_path_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     component_path: &ComponentPath,
 ) -> egui::Response {
@@ -182,7 +182,7 @@ pub fn component_path_button(
 
 /// Show a component path and make it selectable.
 pub fn component_path_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     component_path: &ComponentPath,
@@ -193,7 +193,7 @@ pub fn component_path_button_to(
 }
 
 pub fn data_blueprint_group_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     space_view_id: SpaceViewId,
@@ -233,7 +233,7 @@ pub fn data_blueprint_button_to(
 }
 
 pub fn time_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     timeline: &Timeline,
     value: TimeInt,
@@ -261,7 +261,7 @@ pub fn time_button(
 }
 
 pub fn timeline_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     timeline: &Timeline,
 ) -> egui::Response {
@@ -269,7 +269,7 @@ pub fn timeline_button(
 }
 
 pub fn timeline_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     timeline: &Timeline,
@@ -289,7 +289,7 @@ pub fn timeline_button_to(
 
 // TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
 pub fn cursor_interact_with_selectable(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     response: egui::Response,
     item: Item,
 ) -> egui::Response {
@@ -307,11 +307,7 @@ pub fn cursor_interact_with_selectable(
 }
 
 // TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
-pub fn select_hovered_on_click(
-    ctx: &mut ViewerContext<'_>,
-    response: &egui::Response,
-    items: &[Item],
-) {
+pub fn select_hovered_on_click(ctx: &ViewerContext<'_>, response: &egui::Response, items: &[Item]) {
     re_tracing::profile_function!();
 
     if response.hovered() {

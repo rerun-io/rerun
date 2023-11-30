@@ -241,7 +241,7 @@ impl TimeRangesUi {
     }
 
     // Make sure playback time doesn't get stuck between non-continuous regions:
-    pub fn snap_time_control(&self, ctx: &mut ViewerContext<'_>) {
+    pub fn snap_time_control(&self, ctx: &ViewerContext<'_>) {
         let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
 
         if time_ctrl.play_state() != PlayState::Playing {
