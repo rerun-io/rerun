@@ -171,6 +171,9 @@ fn apply_design_tokens(ctx: &egui::Context) -> DesignTokens {
     egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
     egui_style.spacing.menu_margin = crate::ReUi::view_padding().into();
 
+    // avoid some visual glitches with the default non-zero value
+    egui_style.visuals.clip_rect_margin = 0.0;
+
     // Add stripes to grids and tables?
     egui_style.visuals.striped = false;
     egui_style.visuals.indent_has_left_vline = false;

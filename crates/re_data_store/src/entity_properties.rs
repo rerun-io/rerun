@@ -1,6 +1,7 @@
 #[cfg(feature = "serde")]
 use re_log_types::EntityPath;
 use re_log_types::TimeInt;
+use std::fmt::Formatter;
 
 #[cfg(feature = "serde")]
 use crate::EditableAutoValue;
@@ -116,6 +117,15 @@ pub struct EntityProperties {
 
     /// The length of the arrows in the entity's own coordinate system (space).
     pub transform_3d_size: EditableAutoValue<f32>,
+
+    /// Should the legend be shown (for plot space views).
+    pub show_legend: EditableAutoValue<bool>,
+
+    /// The location of the legend (for plot space views).
+    ///
+    /// This is an Option instead of an EditableAutoValue to let each space view class decide on
+    /// what's the best default.
+    pub legend_location: Option<LegendCorner>,
 }
 
 #[cfg(feature = "serde")]
@@ -132,6 +142,8 @@ impl Default for EntityProperties {
             backproject_radius_scale: EditableAutoValue::Auto(1.0),
             transform_3d_visible: EditableAutoValue::Auto(false),
             transform_3d_size: EditableAutoValue::Auto(1.0),
+            show_legend: EditableAutoValue::Auto(true),
+            legend_location: None,
         }
     }
 }
@@ -167,6 +179,9 @@ impl EntityProperties {
                 .or(&child.transform_3d_visible)
                 .clone(),
             transform_3d_size: self.transform_3d_size.or(&child.transform_3d_size).clone(),
+
+            show_legend: self.show_legend.or(&child.show_legend).clone(),
+            legend_location: self.legend_location.or(child.legend_location),
         }
     }
 
@@ -205,6 +220,9 @@ impl EntityProperties {
                 .or(&self.transform_3d_visible)
                 .clone(),
             transform_3d_size: self.transform_3d_size.or(&other.transform_3d_size).clone(),
+
+            show_legend: other.show_legend.or(&self.show_legend).clone(),
+            legend_location: other.legend_location.or(self.legend_location),
         }
     }
 
@@ -221,6 +239,8 @@ impl EntityProperties {
             backproject_radius_scale,
             transform_3d_visible,
             transform_3d_size,
+            show_legend,
+            legend_location,
         } = self;
 
         visible != &other.visible
@@ -233,6 +253,8 @@ impl EntityProperties {
             || backproject_radius_scale.has_edits(&other.backproject_radius_scale)
             || transform_3d_visible.has_edits(&other.transform_3d_visible)
             || transform_3d_size.has_edits(&other.transform_3d_size)
+            || show_legend.has_edits(&other.show_legend)
+            || *legend_location != other.legend_location
     }
 }
 
@@ -385,5 +407,41 @@ impl Default for ColorMapper {
     #[inline]
     fn default() -> Self {
         Self::Colormap(Colormap::default())
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+/// Where to put the legend?
+///
+/// This type duplicates `egui_plot::Corner` to add serialization support.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum LegendCorner {
+    LeftTop,
+    RightTop,
+    LeftBottom,
+    RightBottom,
+}
+
+impl std::fmt::Display for LegendCorner {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LegendCorner::LeftTop => write!(f, "Top Left"),
+            LegendCorner::RightTop => write!(f, "Top Right"),
+            LegendCorner::LeftBottom => write!(f, "Bottom Left"),
+            LegendCorner::RightBottom => write!(f, "Bottom Right"),
+        }
+    }
+}
+
+impl From<LegendCorner> for egui_plot::Corner {
+    fn from(value: LegendCorner) -> Self {
+        match value {
+            LegendCorner::LeftTop => egui_plot::Corner::LeftTop,
+            LegendCorner::RightTop => egui_plot::Corner::RightTop,
+            LegendCorner::LeftBottom => egui_plot::Corner::LeftBottom,
+            LegendCorner::RightBottom => egui_plot::Corner::RightBottom,
+        }
     }
 }

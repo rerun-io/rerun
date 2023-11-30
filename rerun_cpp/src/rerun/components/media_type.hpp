@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/utf8.hpp"
 #include "../result.hpp"
 
@@ -13,6 +12,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StringBuilder;
 } // namespace arrow
@@ -109,8 +109,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::MediaType` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::components::MediaType` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::MediaType* instances, size_t num_instances
         );
     };

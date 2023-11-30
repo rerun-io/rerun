@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/tensor_data.hpp"
 #include "../result.hpp"
 
@@ -12,6 +11,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -24,12 +24,24 @@ namespace rerun::components {
       public:
         // Extensions to generated type defined in 'tensor_data_ext.cpp'
 
-        /// New Tensor from dimensions and tensor buffer.
+        /// New tensor data from shape and tensor buffer.
+        ///
+        /// \param shape Shape of the tensor.
+        /// \param buffer The tensor buffer containing the tensor's data.
         TensorData(
             rerun::Collection<rerun::datatypes::TensorDimension> shape,
             rerun::datatypes::TensorBuffer buffer
         )
             : data(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
+        /// New tensor data from dimensions and pointer to tensor data.
+        ///
+        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+        /// \param shape  Shape of the tensor. Determines the number of elements expected to be in `data_`.
+        /// \param data_ Target of the pointer must outlive the archetype.
+        template <typename TElement>
+        explicit TensorData(Collection<datatypes::TensorDimension> shape, const TElement* data_)
+            : data(rerun::datatypes::TensorData(std::move(shape), data_)) {}
 
       public:
         TensorData() = default;
@@ -66,8 +78,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::TensorData` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::components::TensorData` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::TensorData* instances, size_t num_instances
         );
     };

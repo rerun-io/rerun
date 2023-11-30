@@ -21,7 +21,7 @@ for GitHub Actions is highly recommended.
 - [reusable_bench.yml](reusable_bench.yml) - This job runs the benchmarks to check for performance regressions.
   - `SAVE_BENCH` - If true, then the benchmark results are saved to update https://ref.rerun.io/dev/bench/
 - [reusable_deploy_docs](reusable_deploy_docs.yml) - This job deploys the python and rust documentation to https://ref.rerun.io
-  - `PY_DOCS_VERSION_NAME` - The name to use for versioning the python docs. This should generally match the version in
+  - `PY_AND_CPP_DOCS_VERSION_NAME` - The name to use for versioning the python docs. This should generally match the version in
     `Cargo.toml`.
   - `UPDATE_LATEST` - If true, then the docs will be deployed to `latest/` as well as the versioned directory.
 - [reusable_build_and_test_wheels.yml](reusable_build_and_test_wheels.yml) - This job builds the wheels, runs the

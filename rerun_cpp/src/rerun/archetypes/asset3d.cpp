@@ -17,29 +17,23 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = Loggable<rerun::components::Blob>::to_data_cell(&archetype.blob, 1);
+            auto result = DataCell::from_loggable(archetype.blob);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.media_type.has_value()) {
-            auto result = Loggable<rerun::components::MediaType>::to_data_cell(
-                &archetype.media_type.value(),
-                1
-            );
+            auto result = DataCell::from_loggable(archetype.media_type.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.transform.has_value()) {
-            auto result = Loggable<rerun::components::OutOfTreeTransform3D>::to_data_cell(
-                &archetype.transform.value(),
-                1
-            );
+            auto result = DataCell::from_loggable(archetype.transform.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Asset3D::IndicatorComponent();
-            auto result = Loggable<Asset3D::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

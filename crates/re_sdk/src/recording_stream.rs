@@ -803,8 +803,7 @@ impl RecordingStream {
                 // extension.
                 use re_log_types::external::arrow2::datatypes::DataType;
                 let DataType::Extension(fqname, _, _) = field.data_type else {
-                    return Err(SerializationError::missing_extension_metadata(field.name))
-                        .map_err(Into::into);
+                    return Err(SerializationError::missing_extension_metadata(field.name).into());
                 };
                 DataCell::try_from_arrow(fqname.into(), array)
             })

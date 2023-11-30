@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/vec3d.hpp"
 #include "../result.hpp"
 
@@ -12,6 +11,7 @@
 #include <memory>
 
 namespace arrow {
+    class Array;
     class DataType;
     class FixedSizeListBuilder;
 } // namespace arrow
@@ -84,8 +84,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::Vector3D` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::components::Vector3D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Vector3D* instances, size_t num_instances
         );
     };

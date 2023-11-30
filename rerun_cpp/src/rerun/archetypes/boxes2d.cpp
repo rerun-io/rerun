@@ -17,72 +17,48 @@ namespace rerun {
         cells.reserve(9);
 
         {
-            auto result = Loggable<rerun::components::HalfSizes2D>::to_data_cell(
-                archetype.half_sizes.data(),
-                archetype.half_sizes.size()
-            );
+            auto result = DataCell::from_loggable(archetype.half_sizes);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.centers.has_value()) {
-            auto result = Loggable<rerun::components::Position2D>::to_data_cell(
-                archetype.centers.value().data(),
-                archetype.centers.value().size()
-            );
+            auto result = DataCell::from_loggable(archetype.centers.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            auto result = Loggable<rerun::components::Color>::to_data_cell(
-                archetype.colors.value().data(),
-                archetype.colors.value().size()
-            );
+            auto result = DataCell::from_loggable(archetype.colors.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            auto result = Loggable<rerun::components::Radius>::to_data_cell(
-                archetype.radii.value().data(),
-                archetype.radii.value().size()
-            );
+            auto result = DataCell::from_loggable(archetype.radii.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.labels.has_value()) {
-            auto result = Loggable<rerun::components::Text>::to_data_cell(
-                archetype.labels.value().data(),
-                archetype.labels.value().size()
-            );
+            auto result = DataCell::from_loggable(archetype.labels.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result = Loggable<rerun::components::DrawOrder>::to_data_cell(
-                &archetype.draw_order.value(),
-                1
-            );
+            auto result = DataCell::from_loggable(archetype.draw_order.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = Loggable<rerun::components::ClassId>::to_data_cell(
-                archetype.class_ids.value().data(),
-                archetype.class_ids.value().size()
-            );
+            auto result = DataCell::from_loggable(archetype.class_ids.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.instance_keys.has_value()) {
-            auto result = Loggable<rerun::components::InstanceKey>::to_data_cell(
-                archetype.instance_keys.value().data(),
-                archetype.instance_keys.value().size()
-            );
+            auto result = DataCell::from_loggable(archetype.instance_keys.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Boxes2D::IndicatorComponent();
-            auto result = Loggable<Boxes2D::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

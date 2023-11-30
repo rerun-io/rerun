@@ -207,9 +207,20 @@ impl WebViewerServer {
     /// ```
     pub fn new(bind_ip: &str, port: WebViewerServerPort) -> Result<Self, WebViewerServerError> {
         let bind_addr = format!("{bind_ip}:{port}").parse()?;
+
         let server = hyper::Server::try_bind(&bind_addr)
+            .or_else(|hyper_err| {
+                if hyper_err.to_string().contains("Address already in use") {
+                    let fallback_addr = format!("{bind_ip}:0").parse().map_err(|_err| hyper_err)?;
+
+                    hyper::Server::try_bind(&fallback_addr)
+                } else {
+                    Err(hyper_err)
+                }
+            })
             .map_err(|err| WebViewerServerError::BindFailed(port, err))?
             .serve(MakeSvc);
+
         Ok(Self { server })
     }
 

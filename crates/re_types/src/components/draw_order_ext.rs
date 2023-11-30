@@ -28,19 +28,19 @@ impl std::cmp::Eq for DrawOrder {}
 impl std::cmp::PartialOrd for DrawOrder {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        if other == self {
-            Some(std::cmp::Ordering::Equal)
-        } else if other.0.is_nan() || self.0 < other.0 {
-            Some(std::cmp::Ordering::Less)
-        } else {
-            Some(std::cmp::Ordering::Greater)
-        }
+        Some(self.cmp(other))
     }
 }
 
 impl std::cmp::Ord for DrawOrder {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        if other == self {
+            std::cmp::Ordering::Equal
+        } else if other.0.is_nan() || self.0 < other.0 {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Greater
+        }
     }
 }

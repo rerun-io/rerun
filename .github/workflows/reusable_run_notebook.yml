@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
 
     steps:
       - uses: actions/checkout@v4
@@ -78,6 +78,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
         run: |
           if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
             USED_SHA=${{ github.sha }}
@@ -92,4 +93,3 @@ jobs:
           path: "/tmp/cube.html"
           destination: "rerun-builds/commit/${{env.SHORT_SHA}}/notebooks"
           parent: false
-

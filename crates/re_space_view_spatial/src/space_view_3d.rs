@@ -1,3 +1,4 @@
+use re_data_store::EntityProperties;
 use re_log_types::EntityPath;
 use re_viewer_context::{
     AutoSpawnHeuristic, NamedViewSystem as _, PerSystemEntities, SpaceViewClass,
@@ -16,16 +17,11 @@ use crate::{
 #[derive(Default)]
 pub struct SpatialSpaceView3D;
 
-impl SpatialSpaceView3D {
-    pub const NAME: &'static str = "3D";
-}
-
 impl SpaceViewClass for SpatialSpaceView3D {
     type State = SpatialSpaceViewState;
 
-    fn name(&self) -> re_viewer_context::SpaceViewClassName {
-        Self::NAME.into()
-    }
+    const NAME: &'static str = "3D";
+    const DISPLAY_NAME: &'static str = "3D";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_3D
@@ -108,15 +104,10 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
-        state.selection_ui(
-            ctx,
-            ui,
-            space_origin,
-            space_view_id,
-            SpatialSpaceViewKind::ThreeD,
-        );
+        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::ThreeD);
     }
 
     fn ui(
@@ -124,6 +115,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         query: &ViewQuery<'_>,

@@ -13,11 +13,16 @@ else()
 
     # Set the path to the rerun_c build.
     set(RERUN_CPP_URL "https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip" CACHE STRING "URL to the rerun_cpp zip.")
+    option(RERUN_FIND_PACKAGE "Whether to use find_package to find a preinstalled rerun package (instead of using FetchContent)." OFF)
 
-    # Download the rerun_sdk
-    include(FetchContent)
-    FetchContent_Declare(rerun_sdk URL ${RERUN_CPP_URL})
-    FetchContent_MakeAvailable(rerun_sdk)
+    if(RERUN_FIND_PACKAGE)
+        find_package(rerun_sdk REQUIRED)
+    else()
+        # Download the rerun_sdk
+        include(FetchContent)
+        FetchContent_Declare(rerun_sdk URL ${RERUN_CPP_URL})
+        FetchContent_MakeAvailable(rerun_sdk)
+    endif()
 
     # Rerun requires at least C++17, but it should be compatible with newer versions.
     set_property(TARGET example_minimal PROPERTY CXX_STANDARD 17)

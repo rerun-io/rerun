@@ -42,6 +42,10 @@ impl CStringView {
     pub fn is_null(&self) -> bool {
         self.string.is_null()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
 }
 
 pub type CRecordingStream = u32;
@@ -71,15 +75,15 @@ impl CSpawnOptions {
             spawn_opts.port = self.port;
         }
 
-        if !self.memory_limit.is_null() {
+        if !self.memory_limit.is_empty() {
             spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
         }
 
-        if !self.executable_name.is_null() {
+        if !self.executable_name.is_empty() {
             spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
         }
 
-        if !self.executable_path.is_null() {
+        if !self.executable_path.is_empty() {
             spawn_opts.executable_path =
                 Some(self.executable_path.as_str("executable_path")?.to_owned());
         }
@@ -179,7 +183,7 @@ pub struct CError {
 #[no_mangle]
 pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: Lazy<CString> =
-        Lazy::new(|| CString::new(re_sdk::build_info().to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
+        Lazy::new(|| CString::new(re_sdk::build_info().version.to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
 }

@@ -55,12 +55,13 @@ jobs:
     steps:
       - name: Set runner and target based on platform
         id: set-config
+        shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.10.0'}"
+              container="{'image': 'rerunio/ci_docker:0.11.0'}"
               ;;
             windows)
               runner="windows-latest-8-cores"
@@ -95,6 +96,7 @@ jobs:
 
     steps:
       - name: Show context
+        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT
@@ -133,6 +135,7 @@ jobs:
       # should be fast, and this way things don't break if we add new packages without rebuilding
       # docker
       - run: pip install -r scripts/ci/requirements.txt
+        shell: bash
 
       - name: Download Wheel
         uses: actions/download-artifact@v3
@@ -196,4 +199,3 @@ jobs:
         # --no-py-build because rerun-sdk is already built and installed
         run: |
           RUST_LOG=debug docs/code-examples/roundtrips.py --release --target x86_64-unknown-linux-gnu --no-py-build
-

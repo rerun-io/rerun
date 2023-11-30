@@ -45,7 +45,7 @@ body {
   color: inherit;
 }
 
-.md-typeset p+h1 {
+.md-typeset p + h1 {
   margin-top: 2rem;
 }
 

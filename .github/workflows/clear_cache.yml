@@ -59,4 +59,3 @@ jobs:
             }
 
             clearInterval(_id);
-

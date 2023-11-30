@@ -16,6 +16,17 @@ namespace rerun::archetypes {
     Tensor(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
         : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
+    /// New tensor from dimensions and pointer to tensor data.
+    ///
+    /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+    /// \param shape
+    /// Shape of the image. Determines the number of elements expected to be in `data`.
+    /// \param data_
+    /// Target of the pointer must outlive the archetype.
+    template <typename TElement>
+    explicit Tensor(Collection<datatypes::TensorDimension> shape, const TElement* data_)
+        : Tensor(datatypes::TensorData(std::move(shape), data_)) {}
+
     /// Update the `names` of the contained `TensorData` dimensions.
     ///
     /// Any existing Dimension names will be overwritten.

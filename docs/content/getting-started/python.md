@@ -1,6 +1,6 @@
 ---
 title: Python Quick Start
-order: 1
+order: 2
 ---
 
 ## Installing Rerun

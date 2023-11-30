@@ -2,7 +2,7 @@ FROM ubuntu:20.04
 LABEL maintainer="opensource@rerun.io"
 # Remember to update the version in publish.sh
 # TODO(jleibs) use this version in the publish.sh script and below in the CACHE_KEY
-LABEL version="0.10.0"
+LABEL version="0.11.0"
 LABEL description="Docker image used for the CI of https://github.com/rerun-io/rerun"
 
 # Install the ubuntu package dependencies
@@ -65,7 +65,7 @@ RUN curl -L https://github.com/NixOS/patchelf/releases/download/0.17.2/patchelf-
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
     PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.72.1 \
+    RUST_VERSION=1.74.0 \
     RUSTUP_VERSION=1.26.0
 
 # Install Rust
@@ -84,6 +84,12 @@ RUN set -eux; \
     cargo --version; \
     rustc --version;
 
+# Install stuff from `rust-toolchain`
+ADD rust-toolchain rust-toolchain
+# `show` is currently the only way to install whatever is in `rust-toolchain`
+# This is subject to change, but there is no alternative: https://github.com/rust-lang/rustup/issues/1397
+RUN rustup show
+
 # Install some cargo tools we know we'll always need
 # We can't do this until after we've installed rust / cargo above
 # Latest cargo-deny requires a rust update!
@@ -97,10 +103,6 @@ RUN pip install -r requirements-build.txt
 ADD rerun_py/requirements-lint.txt requirements-lint.txt
 RUN pip install -r requirements-lint.txt
 
-# Install tools from setup_web.sh
-ADD scripts/setup_web.sh setup_web.sh
-# Installing binaryen is going to cause this script to fail, but that's ok -- we install it manually
-RUN ./setup_web.sh || true
 # Note: We need a more modern binaryen than ships on ubuntu-20.4, so we pull it from github
 RUN curl -L https://github.com/WebAssembly/binaryen/releases/download/version_112/binaryen-version_112-x86_64-linux.tar.gz | tar xzk --strip-components 1
 

@@ -22,7 +22,11 @@ struct rerun::Loggable<BadComponent> {
     static constexpr const char* Name = "bad!";
     static rerun::Error error;
 
-    static rerun::Result<rerun::DataCell> to_data_cell(const BadComponent*, size_t) {
+    static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+        return rerun::Loggable<rerun::components::Position2D>::arrow_datatype();
+    }
+
+    static rerun::Result<std::shared_ptr<arrow::Array>> to_arrow(const BadComponent*, size_t) {
         return error;
     }
 };

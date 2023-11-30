@@ -18,9 +18,11 @@ pub fn blueprint_panel_ui(
                 reset_button_ui(blueprint, ctx, ui, spaces_info);
             },
         );
-
-        blueprint.tree_ui(ctx, ui);
     });
+
+    // This call is excluded from `panel_content` because it has a ScrollArea, which should not be
+    // inset. Instead, it calls panel_content itself inside the ScrollArea.
+    blueprint.tree_ui(ctx, ui);
 }
 
 fn reset_button_ui(

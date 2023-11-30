@@ -3,10 +3,13 @@ use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_space_view::{DataQuery as _, DataResultHandle, DataResultNode, DataResultTree};
+use re_log_types::EntityPathExpr;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
-use re_viewer_context::{HoverHighlight, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    DataQueryResult, DataResultHandle, DataResultNode, HoverHighlight, Item, SpaceViewId,
+    ViewerContext,
+};
 
 use crate::{
     space_view_heuristics::all_possible_space_views, viewport_blueprint::TreeActions,
@@ -22,9 +25,11 @@ impl ViewportBlueprint<'_> {
             .id_source("blueprint_tree_scroll_area")
             .auto_shrink([true, false])
             .show(ui, |ui| {
-                if let Some(root) = self.tree.root() {
-                    self.tile_ui(ctx, ui, root);
-                }
+                ctx.re_ui.panel_content(ui, |_, ui| {
+                    if let Some(root) = self.tree.root() {
+                        self.tile_ui(ctx, ui, root);
+                    }
+                });
             });
 
         let TreeActions { focus_tab, remove } = std::mem::take(&mut self.deferred_tree_actions);
@@ -148,11 +153,11 @@ impl ViewportBlueprint<'_> {
         };
         debug_assert_eq!(space_view.id, *space_view_id);
 
-        let result_tree = space_view.contents.execute_query(
-            space_view,
-            ctx.store_context,
-            ctx.entities_per_system_per_class,
-        );
+        // TODO(jleibs): Sort out borrow-checker to avoid the need to clone here
+        // while still being able to pass &ViewerContext down the chain.
+        let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
+
+        let result_tree = &query_result.tree;
 
         let mut visibility_changed = false;
         let mut visible = self.tree.is_visible(tile_id);
@@ -160,8 +165,7 @@ impl ViewportBlueprint<'_> {
         let item = Item::SpaceView(space_view.id);
 
         let default_open = result_tree
-            .root_handle
-            .and_then(|handle| result_tree.lookup_node(handle))
+            .root_node()
             .map_or(false, Self::default_open_for_data_result);
 
         let collapsing_header_id = ui.id().with(space_view.id);
@@ -185,14 +189,14 @@ impl ViewportBlueprint<'_> {
                 response | vis_response
             })
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
-                if let Some(result_handle) = result_tree.root_handle {
+                if let Some(result_handle) = result_tree.root_handle() {
                     // TODO(jleibs): handle the case where the only result
                     // in the tree is a single path (no groups). This should never
                     // happen for a SpaceViewContents.
                     Self::space_view_blueprint_ui(
                         ctx,
                         ui,
-                        &result_tree,
+                        &query_result,
                         result_handle,
                         space_view,
                         visible_child,
@@ -223,12 +227,12 @@ impl ViewportBlueprint<'_> {
     fn space_view_blueprint_ui(
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
-        result_tree: &DataResultTree,
+        query_result: &DataQueryResult,
         result_handle: DataResultHandle,
         space_view: &mut SpaceViewBlueprint,
         space_view_visible: bool,
     ) {
-        let Some(top_node) = result_tree.lookup_node(result_handle) else {
+        let Some(top_node) = query_result.tree.lookup_node(result_handle) else {
             debug_assert!(false, "Invalid data result handle in data result tree");
             return;
         };
@@ -241,18 +245,19 @@ impl ViewportBlueprint<'_> {
             .children
             .iter()
             .filter(|c| {
-                result_tree
+                query_result
+                    .tree
                     .lookup_result(**c)
                     .map_or(false, |c| !c.is_group)
             })
-            .chain(
-                top_node
-                    .children
-                    .iter()
-                    .filter(|c| result_tree.lookup_result(**c).map_or(false, |c| c.is_group)),
-            )
+            .chain(top_node.children.iter().filter(|c| {
+                query_result
+                    .tree
+                    .lookup_result(**c)
+                    .map_or(false, |c| c.is_group)
+            }))
         {
-            let Some(child_node) = result_tree.lookup_node(*child) else {
+            let Some(child_node) = query_result.tree.lookup_node(*child) else {
                 debug_assert!(false, "DataResultNode {top_node:?} has an invalid child");
                 continue;
             };
@@ -261,11 +266,8 @@ impl ViewportBlueprint<'_> {
             let entity_path = &child_node.data_result.entity_path;
 
             let item = if data_result.is_group {
-                let group_handle = space_view
-                    .contents
-                    .group_handle_for_entity_path(entity_path);
                 // If we can't find a group_handle for some reason, use the default, null handle.
-                Item::DataBlueprintGroup(space_view.id, group_handle.unwrap_or_default())
+                Item::DataBlueprintGroup(space_view.id, query_result.id, entity_path.clone())
             } else {
                 Item::InstancePath(
                     Some(space_view.id),
@@ -310,7 +312,10 @@ impl ViewportBlueprint<'_> {
                         let response =
                             remove_button_ui(re_ui, ui, "Remove Entity from the Space View");
                         if response.clicked() {
-                            space_view.contents.remove_entity(entity_path);
+                            space_view.add_entity_exclusion(
+                                ctx,
+                                EntityPathExpr::Exact(entity_path.clone()),
+                            );
                             space_view.entities_determined_by_user = true;
                         }
 
@@ -356,7 +361,7 @@ impl ViewportBlueprint<'_> {
                         Self::space_view_blueprint_ui(
                             ctx,
                             ui,
-                            result_tree,
+                            query_result,
                             *child,
                             space_view,
                             space_view_visible,
@@ -372,13 +377,9 @@ impl ViewportBlueprint<'_> {
                     });
 
                 if remove_group {
-                    if let Some(group_handle) = space_view
-                        .contents
-                        .group_handle_for_entity_path(entity_path)
-                    {
-                        space_view.contents.remove_group(group_handle);
-                        space_view.entities_determined_by_user = true;
-                    }
+                    space_view
+                        .add_entity_exclusion(ctx, EntityPathExpr::Recursive(entity_path.clone()));
+                    space_view.entities_determined_by_user = true;
                 }
 
                 response
@@ -391,7 +392,7 @@ impl ViewportBlueprint<'_> {
 
     pub fn add_new_spaceview_button_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
     ) {
@@ -404,10 +405,10 @@ impl ViewportBlueprint<'_> {
             |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                for space_view in
+                for (space_view, _) in
                     all_possible_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
                         .into_iter()
-                        .sorted_by_key(|space_view| space_view.space_origin.to_string())
+                        .sorted_by_key(|(space_view, _)| space_view.space_origin.to_string())
                 {
                     if ctx
                         .re_ui

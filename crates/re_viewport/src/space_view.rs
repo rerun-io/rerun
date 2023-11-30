@@ -1,29 +1,24 @@
-use nohash_hasher::IntMap;
-use re_data_store::{EntityPath, EntityProperties, EntityTree, TimeInt, VisibleHistory};
+use ahash::HashSet;
+use re_data_store::{EntityPath, EntityProperties, StoreDb, TimeInt, VisibleHistory};
 use re_data_store::{EntityPropertiesComponent, EntityPropertyMap};
+
+use re_log_types::EntityPathExpr;
 use re_renderer::ScreenshotProcessor;
 use re_space_view::{
-    DataQuery, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
+    DataQueryBlueprint, EntityOverrides, PropertyResolver, ScreenshotMode, SpaceViewContents,
 };
 use re_space_view_time_series::TimeSeriesSpaceView;
+use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
-    DataResult, DynSpaceViewClass, EntitiesPerSystem, PerSystemDataResults, SpaceViewClassName,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemRegistry, StoreContext,
-    ViewerContext,
-};
-
-use crate::{
-    space_info::SpaceInfoCollection,
-    space_view_heuristics::{
-        compute_heuristic_context_for_entities, is_entity_processed_by_class,
-        reachable_entities_from_root,
-    },
+    DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
+    SpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
+    SpaceViewSystemRegistry, StoreContext, ViewerContext,
 };
 
 // ----------------------------------------------------------------------------
 
 /// A view of a space.
-#[derive(Clone, serde::Deserialize, serde::Serialize)]
+#[derive(Clone)]
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
@@ -35,33 +30,15 @@ pub struct SpaceViewBlueprint {
     /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
     pub space_origin: EntityPath,
 
-    /// The data blueprint tree, has blueprint settings for all blueprint groups and entities in this spaceview.
-    /// It determines which entities are part of the spaceview.
-    pub contents: SpaceViewContents,
+    /// The data queries that are part of this space view.
+    pub queries: Vec<DataQueryBlueprint>,
 
     /// True if the user is expected to add entities themselves. False otherwise.
     pub entities_determined_by_user: bool,
 
     /// Auto Properties
     // TODO(jleibs): This needs to be per-query
-    #[serde(skip)]
     pub auto_properties: EntityPropertyMap,
-}
-
-// Default needed for deserialization when adding/changing fields.
-impl Default for SpaceViewBlueprint {
-    fn default() -> Self {
-        let id = SpaceViewId::invalid();
-        Self {
-            id,
-            display_name: "invalid".to_owned(),
-            class_name: SpaceViewClassName::invalid(),
-            space_origin: EntityPath::root(),
-            contents: SpaceViewContents::new(id),
-            entities_determined_by_user: Default::default(),
-            auto_properties: Default::default(),
-        }
-    }
 }
 
 /// Determine whether this `SpaceViewBlueprint` has user-edits relative to another `SpaceViewBlueprint`
@@ -72,7 +49,7 @@ impl SpaceViewBlueprint {
             display_name,
             class_name,
             space_origin,
-            contents,
+            queries,
             entities_determined_by_user,
             auto_properties: _,
         } = self;
@@ -81,16 +58,18 @@ impl SpaceViewBlueprint {
             || display_name != &other.display_name
             || class_name != &other.class_name
             || space_origin != &other.space_origin
-            || contents.has_edits(&other.contents)
+            || queries.iter().map(|q| q.id).collect::<HashSet<_>>()
+                != other.queries.iter().map(|q| q.id).collect::<HashSet<_>>()
             || entities_determined_by_user != &other.entities_determined_by_user
     }
 }
 
 impl SpaceViewBlueprint {
-    pub fn new<'a>(
+    pub fn new(
         space_view_class: SpaceViewClassName,
+        space_view_class_display_name: &'static str,
         space_path: &EntityPath,
-        queries_entities: impl Iterator<Item = &'a EntityPath>,
+        query: DataQueryBlueprint,
     ) -> Self {
         // We previously named the [`SpaceView`] after the [`EntityPath`] if there was only a single entity. However,
         // this led to somewhat confusing and inconsistent behavior. See https://github.com/rerun-io/rerun/issues/1220
@@ -100,23 +79,55 @@ impl SpaceViewBlueprint {
             name.to_string()
         } else {
             // Include class name in the display for root paths because they look a tad bit too short otherwise.
-            format!("/ ({space_view_class})")
+            format!("/ ({space_view_class_display_name})")
         };
 
         let id = SpaceViewId::random();
-
-        let mut contents = SpaceViewContents::new(id);
-        contents.insert_entities_according_to_hierarchy(queries_entities, space_path);
 
         Self {
             display_name,
             class_name: space_view_class,
             id,
             space_origin: space_path.clone(),
-            contents,
+            queries: vec![query],
             entities_determined_by_user: false,
             auto_properties: Default::default(),
         }
+    }
+
+    pub fn try_from_db(path: &EntityPath, blueprint_db: &StoreDb) -> Option<Self> {
+        let SpaceViewComponent {
+            display_name,
+            class_name,
+            space_origin,
+            entities_determined_by_user,
+            contents,
+        } = blueprint_db
+            .store()
+            .query_timeless_component::<SpaceViewComponent>(path)
+            .map(|c| c.value)?;
+
+        let id = SpaceViewId::from_entity_path(path);
+
+        let class_name = class_name.as_str().into();
+
+        let queries = contents
+            .into_iter()
+            .map(DataQueryId::from)
+            .filter_map(|id| {
+                DataQueryBlueprint::try_from_db(&id.as_entity_path(), blueprint_db, class_name)
+            })
+            .collect();
+
+        Some(Self {
+            id,
+            display_name: display_name.to_string(),
+            class_name,
+            space_origin: space_origin.into(),
+            queries,
+            entities_determined_by_user,
+            auto_properties: Default::default(),
+        })
     }
 
     pub fn class_name(&self) -> &SpaceViewClassName {
@@ -140,30 +151,8 @@ impl SpaceViewBlueprint {
     pub fn on_frame_start(
         &mut self,
         ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
         view_state: &mut dyn SpaceViewState,
     ) {
-        let empty_map = IntMap::default();
-
-        let entities_per_system_for_class = ctx
-            .entities_per_system_per_class
-            .get(self.class_name())
-            .unwrap_or(&empty_map);
-
-        if !self.entities_determined_by_user {
-            // Add entities that have been logged since we were created.
-            let reachable_entities = reachable_entities_from_root(&self.space_origin, spaces_info);
-            let queries_entities = reachable_entities.iter().filter(|ent_path| {
-                entities_per_system_for_class
-                    .iter()
-                    .any(|(_, ents)| ents.contains(ent_path))
-            });
-            self.contents
-                .insert_entities_according_to_hierarchy(queries_entities, &self.space_origin);
-        }
-
-        self.reset_systems_per_entity_path(entities_per_system_for_class);
-
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
             self.id.gpu_readback_id(),
@@ -172,10 +161,29 @@ impl SpaceViewBlueprint {
         .is_some()
         {}
 
+        let query_result = ctx.lookup_query_result(self.query_id()).clone();
+
+        // TODO(#4377): Use PerSystemDataResults
+        let mut per_system_entities = PerSystemEntities::default();
+        {
+            re_tracing::profile_scope!("per_system_data_results");
+
+            query_result.tree.visit(&mut |handle| {
+                if let Some(result) = query_result.tree.lookup_result(handle) {
+                    for system in &result.view_parts {
+                        per_system_entities
+                            .entry(*system)
+                            .or_default()
+                            .insert(result.entity_path.clone());
+                    }
+                }
+            });
+        }
+
         self.class(ctx.space_view_class_registry).on_frame_start(
             ctx,
             view_state,
-            self.contents.per_system_entities(),
+            &per_system_entities,
             &mut self.auto_properties,
         );
     }
@@ -238,16 +246,16 @@ impl SpaceViewBlueprint {
 
         let class = self.class(ctx.space_view_class_registry);
 
-        let data_results =
-            self.contents
-                .execute_query(self, ctx.store_context, ctx.entities_per_system_per_class);
+        // TODO(jleibs): Sort out borrow-checker to avoid the need to clone here
+        // while still being able to pass &ViewerContext down the chain.
+        let query_result = ctx.lookup_query_result(self.query_id()).clone();
 
         let mut per_system_data_results = PerSystemDataResults::default();
         {
             re_tracing::profile_scope!("per_system_data_results");
 
-            data_results.visit(&mut |handle| {
-                if let Some(result) = data_results.lookup_result(handle) {
+            query_result.tree.visit(&mut |handle| {
+                if let Some(result) = query_result.tree.lookup_result(handle) {
                     for system in &result.view_parts {
                         per_system_data_results
                             .entry(*system)
@@ -263,95 +271,33 @@ impl SpaceViewBlueprint {
             space_view_id: self.id,
             space_origin: &self.space_origin,
             per_system_data_results: &per_system_data_results,
-            timeline: *ctx.rec_cfg.time_ctrl.timeline(),
+            timeline: *ctx.rec_cfg.time_ctrl.read().timeline(),
             latest_at,
             highlights,
         };
 
+        let root_data_result = self.root_data_result(ctx.store_context);
+        let props = root_data_result
+            .individual_properties
+            .clone()
+            .unwrap_or_default();
+
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, system_registry, &query);
+            class.ui(ctx, ui, view_state, &props, system_registry, &query);
         });
     }
 
-    /// Removes a subtree of entities from the blueprint tree.
-    ///
-    /// Ignores all entities that aren't part of the blueprint.
-    pub fn remove_entity_subtree(&mut self, tree: &EntityTree) {
-        re_tracing::profile_function!();
-
-        tree.visit_children_recursively(&mut |path: &EntityPath| {
-            self.contents.remove_entity(path);
-            self.entities_determined_by_user = true;
-        });
-    }
-
-    /// Adds a subtree of entities to the blueprint tree and creates groups as needed.
-    ///
-    /// Ignores all entities that can't be added or are already added.
-    pub fn add_entity_subtree(
-        &mut self,
-        ctx: &ViewerContext<'_>,
-        tree: &EntityTree,
-        spaces_info: &SpaceInfoCollection,
-    ) {
-        re_tracing::profile_function!();
-
-        let heuristic_context = compute_heuristic_context_for_entities(ctx.store_db);
-
-        let mut entities = Vec::new();
-        tree.visit_children_recursively(&mut |entity_path: &EntityPath| {
-            if is_entity_processed_by_class(
-                ctx,
-                &self.class_name,
-                entity_path,
-                heuristic_context
-                    .get(entity_path)
-                    .copied()
-                    .unwrap_or_default(),
-                &ctx.current_query(),
-            ) && !self.contents.contains_entity(entity_path)
-                && spaces_info
-                    .is_reachable_by_transform(entity_path, &self.space_origin)
-                    .is_ok()
-            {
-                entities.push(entity_path.clone());
-            }
-        });
-
-        if !entities.is_empty() {
-            self.contents
-                .insert_entities_according_to_hierarchy(entities.iter(), &self.space_origin);
-            self.entities_determined_by_user = true;
-        }
-    }
-
-    /// Resets the [`SpaceViewContents::per_system_entities`] for all paths that are part of this space view.
-    pub fn reset_systems_per_entity_path(
-        &mut self,
-        entities_per_system_for_class: &EntitiesPerSystem,
-    ) {
-        re_tracing::profile_function!();
-
-        // TODO(andreas): We believe this is *correct* but not necessarily optimal. Pay attention
-        // to the algorithmic complexity here as we consider changing the indexing and
-        // access patterns of these structures in the future.
-        let mut per_system_entities = re_viewer_context::PerSystemEntities::new();
-        for (system, entities) in entities_per_system_for_class {
-            per_system_entities.insert(
-                *system,
-                self.contents
-                    .entity_paths()
-                    .filter(|ent_path| entities.contains(ent_path))
-                    .cloned()
-                    .collect(),
-            );
-        }
-
-        *self.contents.per_system_entities_mut() = per_system_entities;
-    }
-
+    #[inline]
     pub fn entity_path(&self) -> EntityPath {
         self.id.as_entity_path()
+    }
+
+    #[inline]
+    pub fn query_id(&self) -> DataQueryId {
+        // TODO(jleibs): Return all queries
+        self.queries
+            .first()
+            .map_or(DataQueryId::invalid(), |q| q.id)
     }
 
     pub fn root_data_result(&self, ctx: &StoreContext<'_>) -> DataResult {
@@ -381,6 +327,12 @@ impl SpaceViewBlueprint {
             resolved_properties,
             individual_properties,
             override_path: entity_path,
+        }
+    }
+
+    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+        if let Some(query) = self.queries.first() {
+            query.add_entity_exclusion(ctx, expr);
         }
     }
 }
@@ -437,26 +389,11 @@ impl PropertyResolver for SpaceViewBlueprint {
 mod tests {
     use re_data_store::StoreDb;
     use re_log_types::{DataCell, DataRow, RowId, StoreId, TimePoint};
-    use re_space_view::DataResultTree;
+    use re_space_view::DataQuery as _;
+    use re_types::archetypes::Points3D;
     use re_viewer_context::{EntitiesPerSystemPerClass, StoreContext};
 
     use super::*;
-
-    fn find_in_tree<'a>(
-        tree: &'a DataResultTree,
-        path: &EntityPath,
-        is_group: bool,
-    ) -> Option<&'a DataResult> {
-        let mut return_result = None;
-        tree.visit(&mut |handle| {
-            if let Some(result) = tree.lookup_result(handle) {
-                if result.entity_path == *path && result.is_group == is_group {
-                    return_result = Some(result);
-                }
-            }
-        });
-        return_result
-    }
 
     fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
         let component = EntityPropertiesComponent { props };
@@ -474,18 +411,35 @@ mod tests {
 
     #[test]
     fn test_overrides() {
-        let recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+        let mut recording = StoreDb::new(StoreId::random(re_log_types::StoreKind::Recording));
         let mut blueprint = StoreDb::new(StoreId::random(re_log_types::StoreKind::Blueprint));
+
+        let points = Points3D::new(vec![[1.0, 2.0, 3.0]]);
+
+        for path in [
+            "parent".into(),
+            "parent/skip/child1".into(),
+            "parent/skip/child2".into(),
+        ] {
+            let row =
+                DataRow::from_archetype(RowId::random(), TimePoint::timeless(), path, &points)
+                    .unwrap();
+            recording.add_data_row(row).ok();
+        }
 
         let space_view = SpaceViewBlueprint::new(
             "3D".into(),
+            "3D",
             &EntityPath::root(),
-            [
-                &"parent".into(),
-                &"parent/skip/child1".into(),
-                &"parent/skip/child2".into(),
-            ]
-            .into_iter(),
+            DataQueryBlueprint::new(
+                "3D".into(),
+                [
+                    &"parent".into(),
+                    &"parent/skip/child1".into(),
+                    &"parent/skip/child2".into(),
+                ]
+                .into_iter(),
+            ),
         );
 
         let mut entities_per_system_per_class = EntitiesPerSystemPerClass::default();
@@ -502,6 +456,10 @@ mod tests {
                 .collect()
             });
 
+        let query = space_view.queries.first().unwrap();
+
+        let resolver = query.build_resolver(space_view.id, &space_view.auto_properties);
+
         // No overrides set. Everybody has default values.
         {
             let ctx = StoreContext {
@@ -510,17 +468,20 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert_eq!(result.resolved_properties, EntityProperties::default(),);
@@ -541,19 +502,24 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
-            let parent_group =
-                find_in_tree(&result_tree, &EntityPath::from("parent"), true).unwrap();
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent_group = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), true)
+                .unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             assert!(!parent.resolved_properties.visible);
 
@@ -579,17 +545,20 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert!(!result.resolved_properties.visible);
@@ -618,17 +587,20 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1, child2] {
                 assert!(result.resolved_properties.visible_history.enabled);
@@ -652,17 +624,20 @@ mod tests {
                 all_recordings: vec![],
             };
 
-            let result_tree = space_view.contents.execute_query(
-                &space_view,
-                &ctx,
-                &entities_per_system_per_class,
-            );
+            let query_result = query.execute_query(&resolver, &ctx, &entities_per_system_per_class);
 
-            let parent = find_in_tree(&result_tree, &EntityPath::from("parent"), false).unwrap();
-            let child1 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child1"), false).unwrap();
-            let child2 =
-                find_in_tree(&result_tree, &EntityPath::from("parent/skip/child2"), false).unwrap();
+            let parent = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent"), false)
+                .unwrap();
+            let child1 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child1"), false)
+                .unwrap();
+            let child2 = query_result
+                .tree
+                .lookup_result_by_path_and_group(&EntityPath::from("parent/skip/child2"), false)
+                .unwrap();
 
             for result in [parent, child1] {
                 assert!(result.resolved_properties.visible_history.enabled);

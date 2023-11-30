@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../data_cell.hpp"
 #include "../half.hpp"
 #include "../result.hpp"
 #include "../type_traits.hpp"
@@ -16,6 +15,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
 } // namespace arrow
@@ -527,8 +527,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::datatypes::TensorBuffer` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::datatypes::TensorBuffer` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::TensorBuffer* instances, size_t num_instances
         );
     };

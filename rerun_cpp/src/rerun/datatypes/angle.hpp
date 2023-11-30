@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -13,6 +12,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
 } // namespace arrow
@@ -147,8 +147,8 @@ namespace rerun {
             arrow::DenseUnionBuilder* builder, const datatypes::Angle* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::datatypes::Angle` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::datatypes::Angle` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const datatypes::Angle* instances, size_t num_instances
         );
     };

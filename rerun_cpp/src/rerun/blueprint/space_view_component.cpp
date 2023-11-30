@@ -3,6 +3,9 @@
 
 #include "space_view_component.hpp"
 
+#include "../datatypes/entity_path.hpp"
+#include "../datatypes/uuid.hpp"
+
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
@@ -12,9 +15,19 @@ namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<blueprint::SpaceViewComponent>::arrow_datatype(
     ) {
         static const auto datatype = arrow::struct_({
+            arrow::field("display_name", arrow::utf8(), false),
+            arrow::field("class_name", arrow::utf8(), false),
             arrow::field(
-                "space_view",
-                arrow::list(arrow::field("item", arrow::uint8(), false)),
+                "space_origin",
+                Loggable<rerun::datatypes::EntityPath>::arrow_datatype(),
+                false
+            ),
+            arrow::field("entities_determined_by_user", arrow::boolean(), false),
+            arrow::field(
+                "contents",
+                arrow::list(
+                    arrow::field("item", Loggable<rerun::datatypes::Uuid>::arrow_datatype(), false)
+                ),
                 false
             ),
         });
@@ -36,19 +49,55 @@ namespace rerun {
         }
 
         {
-            auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(0));
-            auto value_builder = static_cast<arrow::UInt8Builder*>(field_builder->value_builder());
+            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(0));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].display_name));
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(1));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].class_name));
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(2));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::EntityPath>::fill_arrow_array_builder(
+                    field_builder,
+                    &elements[elem_idx].space_origin,
+                    1
+                ));
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::BooleanBuilder*>(builder->field_builder(3));
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                ARROW_RETURN_NOT_OK(
+                    field_builder->Append(elements[elem_idx].entities_determined_by_user)
+                );
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(4));
+            auto value_builder = static_cast<arrow::StructBuilder*>(field_builder->value_builder());
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
 
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
-                ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                    element.space_view.data(),
-                    static_cast<int64_t>(element.space_view.size()),
-                    nullptr
-                ));
+                if (element.contents.data()) {
+                    RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Uuid>::fill_arrow_array_builder(
+                        value_builder,
+                        element.contents.data(),
+                        element.contents.size()
+                    ));
+                }
             }
         }
         ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));
@@ -56,7 +105,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<blueprint::SpaceViewComponent>::to_data_cell(
+    Result<std::shared_ptr<arrow::Array>> Loggable<blueprint::SpaceViewComponent>::to_arrow(
         const blueprint::SpaceViewComponent* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
@@ -73,15 +122,6 @@ namespace rerun {
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-        static const Result<ComponentTypeHandle> component_type =
-            ComponentType(Name, datatype).register_component();
-        RR_RETURN_NOT_OK(component_type.error);
-
-        DataCell cell;
-        cell.num_instances = num_instances;
-        cell.array = std::move(array);
-        cell.component_type = component_type.value;
-        return cell;
+        return array;
     }
 } // namespace rerun

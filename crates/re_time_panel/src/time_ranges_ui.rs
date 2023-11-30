@@ -241,16 +241,18 @@ impl TimeRangesUi {
     }
 
     // Make sure playback time doesn't get stuck between non-continuous regions:
-    pub fn snap_time_control(&self, ctx: &mut ViewerContext<'_>) {
-        if ctx.rec_cfg.time_ctrl.play_state() != PlayState::Playing {
+    pub fn snap_time_control(&self, ctx: &ViewerContext<'_>) {
+        let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
+
+        if time_ctrl.play_state() != PlayState::Playing {
             return;
         }
 
         // Make sure time doesn't get stuck between non-continuous regions:
-        if let Some(time) = ctx.rec_cfg.time_ctrl.time() {
+        if let Some(time) = time_ctrl.time() {
             let time = self.snap_time_to_segments(time);
-            ctx.rec_cfg.time_ctrl.set_time(time);
-        } else if let Some(selection) = ctx.rec_cfg.time_ctrl.loop_selection() {
+            time_ctrl.set_time(time);
+        } else if let Some(selection) = time_ctrl.loop_selection() {
             let snapped_min = self.snap_time_to_segments(selection.min);
             let snapped_max = self.snap_time_to_segments(selection.max);
 
@@ -262,7 +264,7 @@ impl TimeRangesUi {
             }
 
             // Keeping max works better when looping
-            ctx.rec_cfg.time_ctrl.set_loop_selection(TimeRangeF::new(
+            time_ctrl.set_loop_selection(TimeRangeF::new(
                 snapped_max - selection.length(),
                 snapped_max,
             ));

@@ -14,10 +14,6 @@ on:
         description: "Name of the wheel built for linux"
         type: string
         required: true
-      linux-rrd-name:
-        description: "Name of the .rrd file built for linux"
-        type: string
-        required: true
       release-commit:
         description: "Which commit to build+publish"
         type: string
@@ -33,10 +29,12 @@ jobs:
     steps:
       - name: "Set short-sha"
         id: get-short-sha
+        shell: bash
         run: echo "short-sha=$(echo ${{ inputs.release-commit }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: "Set full-sha"
         id: get-full-sha
+        shell: bash
         run: echo "full-sha=${{ inputs.release-commit }}" >> $GITHUB_OUTPUT
 
   ## Build
@@ -189,15 +187,18 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Install packaging
+        shell: bash
         run: |
           python3 -m pip install packaging google-cloud-storage
 
       - name: Download wheels from Google Cloud Storage
+        shell: bash
         run: |
           mkdir wheels
           gsutil cp "gs://rerun-builds/commit/${{ needs.get-commit-sha.outputs.short-sha }}/wheels/*.whl" wheels/
 
       - name: Verify wheels match the expected release
+        shell: bash
         run: |
           python3 scripts/ci/verify_wheels.py --folder wheels --version ${{ inputs.release-version }}
 
@@ -210,4 +211,3 @@ jobs:
         with:
           command: upload
           args: --skip-existing wheels/*
-

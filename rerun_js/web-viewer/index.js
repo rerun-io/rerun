@@ -29,18 +29,22 @@ export class WebViewer {
   #canvas = null;
 
   /**
-   * @param {string} url
-   * @param {HTMLElement} [parent]
+   * Start the viewer.
+   *
+   * @param {string} [rrd] Optional URL to an `.rrd` file or a WebSocket connection to our SDK.
+   * @param {HTMLElement} [parent] The element to attach the canvas onto.
    * @returns {Promise<this>}
    */
-  async start(url, parent = document.body) {
+  async start(rrd, parent = document.body) {
+    if (this.#canvas || this.#handle) return this;
+
     const canvas = document.createElement("canvas");
     canvas.id = randomId();
     parent.append(canvas);
 
     let WebHandle_class = await load();
     const handle = new WebHandle_class();
-    await handle.start(canvas.id, url);
+    await handle.start(canvas.id, rrd);
     if (handle.has_panicked()) {
       throw new Error(`Web viewer crashed: ${handle.panic_message()}`);
     }
@@ -51,6 +55,11 @@ export class WebViewer {
     return this;
   }
 
+  /**
+   * Stop the viewer, freeing all associated memory.
+   *
+   * The same viewer instance may be started multiple times.
+   */
   stop() {
     const canvas = this.#canvas;
     this.#canvas = null;
@@ -66,4 +75,3 @@ export class WebViewer {
     }
   }
 }
-

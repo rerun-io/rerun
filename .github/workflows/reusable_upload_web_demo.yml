@@ -64,6 +64,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Add SHORT_SHA env property with commit short sha
+        shell: bash
         run: |
           if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
             USED_SHA=${{ github.sha }}
@@ -120,4 +121,3 @@ jobs:
           path: "web_demo"
           destination: "rerun-demo/pr/${{ inputs.PR_NUMBER }}"
           parent: false
-

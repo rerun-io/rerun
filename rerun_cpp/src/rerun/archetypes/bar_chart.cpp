@@ -14,17 +14,21 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<DataCell> cells;
-        cells.reserve(2);
+        cells.reserve(3);
 
         {
-            auto result =
-                Loggable<rerun::components::TensorData>::to_data_cell(&archetype.values, 1);
+            auto result = DataCell::from_loggable(archetype.values);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.color.has_value()) {
+            auto result = DataCell::from_loggable(archetype.color.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = BarChart::IndicatorComponent();
-            auto result = Loggable<BarChart::IndicatorComponent>::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

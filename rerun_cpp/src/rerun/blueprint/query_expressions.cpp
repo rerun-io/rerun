@@ -13,7 +13,12 @@ namespace rerun {
     ) {
         static const auto datatype = arrow::struct_({
             arrow::field(
-                "expressions",
+                "inclusions",
+                arrow::list(arrow::field("item", arrow::utf8(), false)),
+                false
+            ),
+            arrow::field(
+                "exclusions",
                 arrow::list(arrow::field("item", arrow::utf8(), false)),
                 false
             ),
@@ -44,8 +49,22 @@ namespace rerun {
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
-                for (size_t item_idx = 0; item_idx < element.expressions.size(); item_idx += 1) {
-                    ARROW_RETURN_NOT_OK(value_builder->Append(element.expressions[item_idx]));
+                for (size_t item_idx = 0; item_idx < element.inclusions.size(); item_idx += 1) {
+                    ARROW_RETURN_NOT_OK(value_builder->Append(element.inclusions[item_idx]));
+                }
+            }
+        }
+        {
+            auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(1));
+            auto value_builder = static_cast<arrow::StringBuilder*>(field_builder->value_builder());
+            ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
+            ARROW_RETURN_NOT_OK(value_builder->Reserve(static_cast<int64_t>(num_elements * 2)));
+
+            for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                const auto& element = elements[elem_idx];
+                ARROW_RETURN_NOT_OK(field_builder->Append());
+                for (size_t item_idx = 0; item_idx < element.exclusions.size(); item_idx += 1) {
+                    ARROW_RETURN_NOT_OK(value_builder->Append(element.exclusions[item_idx]));
                 }
             }
         }
@@ -54,7 +73,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<blueprint::QueryExpressions>::to_data_cell(
+    Result<std::shared_ptr<arrow::Array>> Loggable<blueprint::QueryExpressions>::to_arrow(
         const blueprint::QueryExpressions* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
@@ -71,15 +90,6 @@ namespace rerun {
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-        static const Result<ComponentTypeHandle> component_type =
-            ComponentType(Name, datatype).register_component();
-        RR_RETURN_NOT_OK(component_type.error);
-
-        DataCell cell;
-        cell.num_instances = num_instances;
-        cell.array = std::move(array);
-        cell.component_type = component_type.value;
-        return cell;
+        return array;
     }
 } // namespace rerun

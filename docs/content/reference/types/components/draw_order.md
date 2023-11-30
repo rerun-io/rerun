@@ -12,6 +12,7 @@ Draw order for entities with the same draw order is generally undefined.
 
 
 ## Links
+ * 🌊 [C++ API docs for `DrawOrder`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DrawOrder.html)
  * 🐍 [Python API docs for `DrawOrder`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.DrawOrder)
  * 🦀 [Rust API docs for `DrawOrder`](https://docs.rs/rerun/latest/rerun/components/struct.DrawOrder.html)
 

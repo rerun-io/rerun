@@ -26,11 +26,11 @@ namespace rerun {
     ///
     /// The most notable feature of the `rerun::Collection` is that its data may be either **owned** or **borrowed**:
     /// * Borrowed: If data is borrowed it *must* outlive its source (in particular, the pointer to
-    /// the source musn't invalidate)
+    /// the source mustn't invalidate)
     /// * Owned: Owned data is copied into an internal std::vector
     ///         TODO(#3794): don't do std::vector
     ///
-    /// Collection are either filled explicitly using `Collection::borrow` &`Collection::take_ownership`
+    /// Collections are either filled explicitly using `Collection::borrow` &`Collection::take_ownership`
     /// or (most commonly in user code) implicitly using the `CollectionAdapter` trait
     /// (see documentation for `CollectionAdapter` for more information on how data can be adapted).
     ///
@@ -118,7 +118,7 @@ namespace rerun {
             // having called the move constructor is suspicious though and hints of an actual bug.
             //
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(this->swap(other);)
         }
 
         /// Construct from a initializer list of elements that are compatible with TElement.
@@ -261,6 +261,17 @@ namespace rerun {
             return 0;
         }
 
+        /// Returns true if the collection is empty.
+        bool empty() const {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed:
+                    return storage.borrowed.num_instances == 0;
+                case CollectionOwnership::VectorOwned:
+                    return storage.vector_owned.empty();
+            }
+            return 0;
+        }
+
         /// Returns a raw pointer to the underlying data.
         ///
         /// Do not use this if the data is not continuous in memory!
@@ -278,7 +289,7 @@ namespace rerun {
 
             // We need to return something to avoid compiler warnings.
             // But if we don't mark this as unreachable, GCC will complain that we're dereferencing null down the line.
-            RERUN_UNREACHABLE();
+            RR_UNREACHABLE();
             // But with this in place, MSVC complains that the return statement is not reachable (GCC/clang on the other hand need it).
 #ifndef _MSC_VER
             return nullptr;

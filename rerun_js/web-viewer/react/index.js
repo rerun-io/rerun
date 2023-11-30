@@ -51,7 +51,7 @@ export default function WebViewer(props) {
     // The web viewer will be restarted when:
     // - `parent` is added/moved/removed in the DOM
     // - `rrd` changes
-    [parent.current, rrd]
+    [parent.current, rrd],
   );
 
   return React.createElement("div", {
@@ -60,4 +60,3 @@ export default function WebViewer(props) {
     ref: parent,
   });
 }
-

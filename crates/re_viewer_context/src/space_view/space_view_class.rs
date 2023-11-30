@@ -1,4 +1,4 @@
-use re_data_store::EntityPropertyMap;
+use re_data_store::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
@@ -17,11 +17,27 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
 
+    /// Name for this space view class.
+    ///
+    /// Used as identifier.
+    const NAME: &'static str;
+
+    /// User-facing name for this space view class
+    const DISPLAY_NAME: &'static str;
+
     /// Name of this space view class.
     ///
-    /// Used for both ui display and identification.
-    /// Must be unique within a viewer session.
-    fn name(&self) -> SpaceViewClassName;
+    /// Used for identification. Must be unique within a viewer session.
+    fn name(&self) -> SpaceViewClassName {
+        Self::NAME.into()
+    }
+
+    /// User-facing name for this space view class.
+    ///
+    /// Used for UI display.
+    fn display_name(&self) -> &'static str {
+        Self::DISPLAY_NAME
+    }
 
     /// Icon used to identify this space view class.
     fn icon(&self) -> &'static re_ui::Icon;
@@ -89,6 +105,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         state: &mut Self::State,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
+        root_entity_properties: &mut EntityProperties,
     );
 
     /// Draws the ui for this space view class and handles ui events.
@@ -108,6 +125,7 @@ pub trait SpaceViewClass: std::marker::Sized {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        root_entity_properties: &EntityProperties,
         view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
@@ -119,6 +137,11 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn name(&self) -> SpaceViewClassName {
         self.name()
+    }
+
+    #[inline]
+    fn display_name(&self) -> &'static str {
+        self.display_name()
     }
 
     #[inline]
@@ -187,9 +210,17 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
+        root_entity_properties: &mut EntityProperties,
     ) {
         typed_state_wrapper_mut(state, |state| {
-            self.selection_ui(ctx, ui, state, space_origin, space_view_id);
+            self.selection_ui(
+                ctx,
+                ui,
+                state,
+                space_origin,
+                space_view_id,
+                root_entity_properties,
+            );
         });
     }
 
@@ -199,6 +230,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
+        root_entity_properties: &EntityProperties,
         systems: &SpaceViewSystemRegistry,
         query: &ViewQuery<'_>,
     ) {
@@ -231,7 +263,16 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         };
 
         typed_state_wrapper_mut(state, |state| {
-            if let Err(err) = self.ui(ctx, ui, state, &view_ctx, &parts, query, draw_data) {
+            if let Err(err) = self.ui(
+                ctx,
+                ui,
+                state,
+                root_entity_properties,
+                &view_ctx,
+                &parts,
+                query,
+                draw_data,
+            ) {
                 // TODO(andreas): Draw an error message on top of the space view ui instead of logging.
                 re_log::error_once!("Error drawing ui for space view: {err}");
             }

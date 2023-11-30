@@ -45,15 +45,18 @@ jobs:
           python-version: "3.11"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-lint.txt
 
       - name: Lint Python
+        shell: bash
         run: |
           just py-lint
 
       - name: Check requirements
+        shell: bash
         run: |
           just py-requirements
 
@@ -69,11 +72,13 @@ jobs:
           python-version: "3.8"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-doc.txt
 
       - name: Build via mkdocs
+        shell: bash
         run: |
           mkdocs build --strict -f rerun_py/mkdocs.yml
 
@@ -81,7 +86,7 @@ jobs:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       # Note: We explicitly don't override `ref` here. We need to see if changes would be made
       # in a context where we have merged with main. Otherwise we might miss changes such as one
@@ -90,6 +95,7 @@ jobs:
 
       # So we can format the Python code
       - name: Set up Python
+        shell: bash
         run: |
           pip install -r rerun_py/requirements-lint.txt
 
@@ -103,7 +109,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 
@@ -174,11 +180,12 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 
       - name: clippy check re_viewer wasm32
+        shell: bash
         run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
@@ -205,6 +212,7 @@ jobs:
           tool: taplo-cli
 
       - name: Taplo check
+        shell: bash
         run: |
           taplo fmt --check --diff
 
@@ -220,23 +228,28 @@ jobs:
           python-version: "3.8"
 
       - name: Install dependencies
+        shell: bash
         run: |
           pip install gitignore_parser python-frontmatter
           pip install -r ./scripts/ci/requirements.txt
 
       - name: Rerun lints
+        shell: bash
         run: |
           ./scripts/lint.py
 
       - name: Check for too large files
+        shell: bash
         run: |
           ./scripts/ci/check_large_files.sh
 
       - name: Check Python example requirements
+        shell: bash
         run: |
           ./scripts/ci/check_requirements.py
 
       - name: Check Python example thumbnails
+        shell: bash
         run: |
           ./scripts/ci/thumbnails.py check
 
@@ -254,7 +267,7 @@ jobs:
     name: Cargo Deny
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 
@@ -280,14 +293,13 @@ jobs:
     name: C++ tests
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.3.0
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
           pixi-version: v0.6.0
-          cache: true
 
       # TODO(emilk): make this work somehow. Right now this just results in
       # > Compiler: GNU 12.3.0 (/__w/rerun/rerun/.pixi/env/bin/x86_64-conda-linux-gnu-c++)

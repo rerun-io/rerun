@@ -1,4 +1,4 @@
-use re_data_store::EntityPropertyMap;
+use re_data_store::{EntityProperties, EntityPropertyMap};
 use re_log_types::EntityPath;
 use re_types::ComponentName;
 
@@ -44,11 +44,13 @@ pub enum SpaceViewClassLayoutPriority {
 pub trait DynSpaceViewClass {
     /// Name of this space view class.
     ///
-    /// Used for both ui display and identification.
-    /// Must be unique within a viewer session.
-    ///
-    /// TODO(#2336): Display name and identifier should be separate.
+    /// Used for identification. Must be unique within a viewer session.
     fn name(&self) -> SpaceViewClassName;
+
+    /// User-facing name of this space view class.
+    ///
+    /// Used for UI display.
+    fn display_name(&self) -> &'static str;
 
     /// Icon used to identify this space view class.
     fn icon(&self) -> &'static re_ui::Icon;
@@ -114,6 +116,7 @@ pub trait DynSpaceViewClass {
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
         space_view_id: SpaceViewId,
+        root_entity_properties: &mut EntityProperties,
     );
 
     /// Draws the ui for this space view type and handles ui events.
@@ -124,6 +127,7 @@ pub trait DynSpaceViewClass {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
+        root_entity_properties: &EntityProperties,
         systems: &SpaceViewSystemRegistry,
         query: &ViewQuery<'_>,
     );
