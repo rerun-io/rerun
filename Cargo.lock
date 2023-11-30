@@ -4819,7 +4819,6 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
- "serde_yaml",
  "thiserror",
  "time",
  "wasm-bindgen-futures",
