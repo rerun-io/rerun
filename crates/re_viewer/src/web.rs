@@ -116,9 +116,7 @@ fn create_app(
     };
     if let Some(url) = manifest_url {
         app.set_examples_manifest_url(url.into());
-        re_log::info!("Using manifest_url={url}");
-    } else {
-        re_log::info!("Using default manifest URL");
+        re_log::info!("Using manifest_url={url:?}");
     }
 
     let url = match &url {
