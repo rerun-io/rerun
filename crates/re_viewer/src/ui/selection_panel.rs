@@ -13,8 +13,8 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClass, SpaceViewClassName, SpaceViewId,
-    SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClass, SpaceViewClassIdentifier,
+    SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
 use re_viewport::{external::re_space_view::QueryExpressions, Viewport, ViewportBlueprint};
 
@@ -466,18 +466,18 @@ fn blueprint_ui(
             ui.add_space(ui.spacing().item_spacing.y);
 
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                let space_view_class = *space_view.class_name();
+                let space_view_class = *space_view.class_identifier();
                 let space_view_state = viewport.state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
-                    space_view.class_name(),
+                    space_view.class_identifier(),
                 );
 
                 // Space View don't inherit properties.
                 let mut resolved_entity_props = EntityProperties::default();
 
                 // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-                if space_view_class == TimeSeriesSpaceView::NAME {
+                if space_view_class == TimeSeriesSpaceView::IDENTIFIER {
                     resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
                     resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
                 }
@@ -537,7 +537,7 @@ fn blueprint_ui(
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
                         // splat - the whole entity
-                        let space_view_class = *space_view.class_name();
+                        let space_view_class = *space_view.class_identifier();
                         let entity_path = &instance_path.entity_path;
                         let as_group = false;
 
@@ -576,7 +576,7 @@ fn blueprint_ui(
                     .lookup_result_by_path_and_group(group_path, as_group)
                     .cloned()
                 {
-                    let space_view_class = *space_view.class_name();
+                    let space_view_class = *space_view.class_identifier();
                     let mut props = data_result
                         .individual_properties
                         .clone()
@@ -604,7 +604,7 @@ fn blueprint_ui(
 fn entity_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view_class: &SpaceViewClassName,
+    space_view_class: &SpaceViewClassIdentifier,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
     resolved_entity_props: &EntityProperties,

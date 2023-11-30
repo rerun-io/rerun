@@ -7,7 +7,7 @@ use re_log_types::{DataRow, RowId, TimePoint};
 use re_types::blueprint::SpaceViewComponent;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
+    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender,
     ViewerContext,
 };
 
@@ -76,7 +76,7 @@ impl<'a> ViewportBlueprint<'a> {
             && self
                 .space_views
                 .values()
-                .all(|sv| sv.class_name() == &SpaceViewClassName::invalid())
+                .all(|sv| sv.class_identifier() == &SpaceViewClassIdentifier::invalid())
     }
 
     /// Reset the blueprint to a default state using some heuristics.
@@ -421,7 +421,7 @@ pub fn sync_space_view(
 
         let component = SpaceViewComponent {
             display_name: space_view.display_name.clone().into(),
-            class_name: space_view.class_name().as_str().into(),
+            class_identifier: space_view.class_identifier().as_str().into(),
             space_origin: (&space_view.space_origin).into(),
             entities_determined_by_user: space_view.entities_determined_by_user,
             contents: space_view.queries.iter().map(|q| q.id.into()).collect(),

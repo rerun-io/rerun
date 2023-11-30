@@ -7,8 +7,9 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, HeuristicFilterContext, IdentifiedViewSystem,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -155,8 +156,8 @@ impl Lines2DPart {
     }
 }
 
-impl NamedViewSystem for Lines2DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for Lines2DPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Lines2D".into()
     }
 }

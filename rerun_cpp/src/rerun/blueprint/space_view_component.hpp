@@ -27,7 +27,7 @@ namespace rerun::blueprint {
         std::string display_name;
 
         /// The class of the view.
-        std::string class_name;
+        std::string class_identifier;
 
         /// The "anchor point" of this space view.
         ///

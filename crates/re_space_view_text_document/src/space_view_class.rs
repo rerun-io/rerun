@@ -49,7 +49,7 @@ pub struct TextDocumentSpaceView;
 impl SpaceViewClass for TextDocumentSpaceView {
     type State = TextDocumentSpaceViewState;
 
-    const NAME: &'static str = "Text Document";
+    const IDENTIFIER: &'static str = "Text Document";
     const DISPLAY_NAME: &'static str = "Text Document";
 
     fn icon(&self) -> &'static re_ui::Icon {

@@ -37,7 +37,7 @@ pub struct TimeSeriesSpaceView;
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = TimeSeriesSpaceViewState;
 
-    const NAME: &'static str = "Time Series";
+    const IDENTIFIER: &'static str = "Time Series";
     const DISPLAY_NAME: &'static str = "Time Series";
 
     fn icon(&self) -> &'static re_ui::Icon {
