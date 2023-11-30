@@ -71,7 +71,7 @@ fn has_visible_history(
 }
 
 pub fn visible_history_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_class: &SpaceViewClassName,
     is_space_view: bool,
@@ -238,7 +238,7 @@ pub fn visible_history_ui(
 }
 
 fn current_range_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     current_time: i64,
     is_sequence_timeline: bool,
@@ -278,7 +278,7 @@ fn current_range_ui(
 
 #[allow(clippy::too_many_arguments)]
 fn resolved_visible_history_boundary_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &VisibleHistoryBoundary,
     is_sequence_timeline: bool,
@@ -388,7 +388,7 @@ fn visible_history_boundary_combo_label(
 
 #[allow(clippy::too_many_arguments)]
 fn visible_history_boundary_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &mut VisibleHistoryBoundary,
     is_sequence_timeline: bool,

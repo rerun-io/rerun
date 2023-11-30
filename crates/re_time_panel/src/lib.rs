@@ -168,7 +168,7 @@ impl TimePanel {
     #[allow(clippy::unused_self)]
     fn collapsed_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_ctrl: &mut TimeControl,
     ) {
@@ -691,7 +691,7 @@ impl TimePanel {
 
     fn top_row_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_ctrl: &mut TimeControl,
     ) {
@@ -773,7 +773,7 @@ fn highlight_timeline_row(
 
 fn collapsed_time_marker_and_time(
     ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     time_ctrl: &mut TimeControl,
 ) {
     let space_needed_for_current_time = match time_ctrl.timeline().typ() {

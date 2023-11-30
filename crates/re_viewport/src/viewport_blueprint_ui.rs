@@ -392,7 +392,7 @@ impl ViewportBlueprint<'_> {
 
     pub fn add_new_spaceview_button_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
     ) {

@@ -113,7 +113,7 @@ impl SpatialSpaceViewState {
 
     pub fn selection_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         space_origin: &EntityPath,
         spatial_kind: SpatialSpaceViewKind,

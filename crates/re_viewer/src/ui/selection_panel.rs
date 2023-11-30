@@ -156,7 +156,7 @@ fn has_data_section(item: &Item) -> bool {
 }
 
 fn space_view_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view: &re_viewport::SpaceViewBlueprint,
 ) -> egui::Response {
