@@ -6,14 +6,14 @@ use std::collections::BTreeMap;
 
 use itertools::Itertools as _;
 
-use re_viewer_context::{SpaceViewClassName, SpaceViewId};
+use re_viewer_context::{SpaceViewClassIdentifier, SpaceViewId};
 
 use super::space_view::SpaceViewBlueprint;
 
 #[derive(Clone, Debug)]
 struct SpaceMakeInfo {
     id: SpaceViewId,
-    class_name: SpaceViewClassName,
+    class_identifier: SpaceViewClassIdentifier,
     layout_priority: re_viewer_context::SpaceViewClassLayoutPriority,
 }
 
@@ -38,13 +38,13 @@ pub(crate) fn tree_from_space_views(
             )
         })
         .map(|(space_view_id, space_view)| {
-            let class_name = *space_view.class_name();
+            let class_identifier = *space_view.class_identifier();
             let layout_priority = space_view
                 .class(space_view_class_registry)
                 .layout_priority();
             SpaceMakeInfo {
                 id: *space_view_id,
-                class_name,
+                class_identifier,
                 layout_priority,
             }
         })
@@ -73,11 +73,11 @@ pub(crate) fn tree_from_space_views(
         tiles.insert_grid_tile(child_tile_ids)
     } else {
         // So many space views - lets group by class and put the members of each group into tabs:
-        let mut grouped_by_class: BTreeMap<SpaceViewClassName, Vec<SpaceMakeInfo>> =
+        let mut grouped_by_class: BTreeMap<SpaceViewClassIdentifier, Vec<SpaceMakeInfo>> =
             Default::default();
         for smi in space_make_infos {
             grouped_by_class
-                .entry(smi.class_name)
+                .entry(smi.class_identifier)
                 .or_default()
                 .push(smi);
         }

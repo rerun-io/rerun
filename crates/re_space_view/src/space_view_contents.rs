@@ -5,7 +5,7 @@ use re_data_store::{EntityPath, EntityProperties};
 use re_viewer_context::{
     DataBlueprintGroupHandle, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
     DataResultTree, EntitiesPerSystemPerClass, PerSystemEntities, SpaceViewId, StoreContext,
-    ViewSystemName,
+    ViewSystemIdentifier,
 };
 use slotmap::SlotMap;
 use smallvec::{smallvec, SmallVec};
@@ -455,7 +455,7 @@ impl SpaceViewContents {
     pub fn view_parts_for_entity_path(
         &self,
         entity_path: &EntityPath,
-    ) -> SmallVec<[ViewSystemName; 4]> {
+    ) -> SmallVec<[ViewSystemIdentifier; 4]> {
         re_tracing::profile_function!();
         self.per_system_entities()
             .iter()
@@ -564,6 +564,7 @@ impl DataBlueprintGroup {
                         entity_path,
                         view_parts,
                         is_group: false,
+                        direct_included: true,
                         individual_properties,
                         resolved_properties,
                         override_path,
@@ -602,6 +603,7 @@ impl DataBlueprintGroup {
                 entity_path: group_path,
                 view_parts: group_view_parts,
                 is_group: true,
+                direct_included: true,
                 individual_properties,
                 resolved_properties: group_resolved_properties,
                 override_path: group_override_path,

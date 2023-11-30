@@ -1,7 +1,7 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPathHash;
 use re_types::ComponentNameSet;
-use re_viewer_context::{NamedViewSystem, ViewContextSystem};
+use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
 /// List of all non-interactive entities for lookup during picking evaluation.
 ///
@@ -9,8 +9,8 @@ use re_viewer_context::{NamedViewSystem, ViewContextSystem};
 #[derive(Default)]
 pub struct NonInteractiveEntities(pub IntSet<EntityPathHash>);
 
-impl NamedViewSystem for NonInteractiveEntities {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for NonInteractiveEntities {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "NonInteractiveEntities".into()
     }
 }

@@ -67,23 +67,6 @@ jobs:
           destination: "rerun-demo/commit/${{ steps.get-sha.outputs.sha }}"
           parent: false
 
-      - name: "Upload web demo (prerelease)"
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_demo"
-          destination: "rerun-demo/prerelease"
-          parent: false
-
-      - name: "Upload web demo (nightly)"
-        # TEMP: Tracking `main` until we can do actual nightly builds.
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_demo"
-          destination: "rerun-demo/version/nightly"
-          parent: false
-
       - name: "Upload web demo (tagged)"
         if: inputs.MARK_TAGGED_VERSION
         uses: google-github-actions/upload-cloud-storage@v1
@@ -100,6 +83,27 @@ jobs:
           destination: "rerun-demo/adhoc/${{inputs.ADHOC_NAME}}"
           parent: false
 
+      - name: "Upload web demo (prerelease)"
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/prerelease"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+
+      - name: "Upload web demo (nightly)"
+        # TEMP: Tracking `main` until we can do actual nightly builds.
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/version/nightly"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+
       - name: "Upload web demo (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
@@ -107,3 +111,5 @@ jobs:
           path: "web_demo"
           destination: "rerun-demo/pr/${{ inputs.PR_NUMBER }}"
           parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0

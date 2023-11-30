@@ -8,8 +8,8 @@ use re_types::Loggable;
 use smallvec::SmallVec;
 
 use crate::{
-    SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _, ViewSystemName,
-    ViewerContext,
+    SpaceViewHighlights, SpaceViewId, SystemCommand, SystemCommandSender as _,
+    ViewSystemIdentifier, ViewerContext,
 };
 
 /// This is the primary mechanism through which data is passed to a `SpaceView`.
@@ -27,11 +27,15 @@ pub struct DataResult {
     pub entity_path: EntityPath,
 
     /// Which `ViewSystems`s to pass the `DataResult` to.
-    pub view_parts: SmallVec<[ViewSystemName; 4]>,
+    pub view_parts: SmallVec<[ViewSystemIdentifier; 4]>,
 
     /// This DataResult represents a group
     // TODO(jleibs): Maybe make this an enum instead?
     pub is_group: bool,
+
+    // This result was actually in the query results, not just a group that
+    // exists due to a common prefix.
+    pub direct_included: bool,
 
     /// The resolved properties (including any hierarchical flattening) to apply.
     // TODO(jleibs): Eventually this goes away and becomes implicit as an override layer in the StoreView.
@@ -102,7 +106,7 @@ impl DataResult {
     }
 }
 
-pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemName, Vec<&'a DataResult>>;
+pub type PerSystemDataResults<'a> = BTreeMap<ViewSystemIdentifier, Vec<&'a DataResult>>;
 
 pub struct ViewQuery<'s> {
     /// The id of the space in which context the query happens.
@@ -132,7 +136,7 @@ impl<'s> ViewQuery<'s> {
     /// Iter over all of the currently visible [`DataResult`]s for a given `ViewSystem`
     pub fn iter_visible_data_results(
         &self,
-        system: ViewSystemName,
+        system: ViewSystemIdentifier,
     ) -> impl Iterator<Item = &DataResult> {
         self.per_system_data_results.get(&system).map_or(
             itertools::Either::Left(std::iter::empty()),

@@ -1,7 +1,7 @@
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder, RenderContext};
 use re_types::ComponentNameSet;
-use re_viewer_context::{NamedViewSystem, ViewContextSystem};
+use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
 use crate::parts::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -15,8 +15,8 @@ pub struct SharedRenderBuilders {
     pub points: Mutex<Option<PointCloudBuilder>>,
 }
 
-impl NamedViewSystem for SharedRenderBuilders {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for SharedRenderBuilders {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "SharedRenderBuilders".into()
     }
 }

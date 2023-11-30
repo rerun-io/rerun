@@ -69,7 +69,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
     type State = ColorCoordinatesSpaceViewState;
 
-    const NAME: &'static str = "Color Coordinates";
+    const IDENTIFIER: &'static str = "Color Coordinates";
     const DISPLAY_NAME: &'static str = "Color Coordinates";
 
     fn icon(&self) -> &'static re_ui::Icon {
