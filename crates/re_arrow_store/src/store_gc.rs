@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Duration};
 
 use ahash::{HashMap, HashSet};
 
@@ -34,6 +34,17 @@ pub struct GarbageCollectionOptions {
     /// What target threshold should the GC try to meet.
     pub target: GarbageCollectionTarget,
 
+    /// How long the garbage collection in allowed to run for.
+    ///
+    /// Trades off latency for throughput:
+    /// - A smaller `time_budget` will clear less data in a shorter amount of time, allowing for a
+    ///   more responsive UI at the cost of more GC overhead and more frequent runs.
+    /// - A larger `time_budget` will clear more data in a longer amount of time, increasing the
+    ///   chance of UI freeze frames but decreasing GC overhead and running less often.
+    ///
+    /// The default is an unbounded time budget (i.e. throughput only).
+    pub time_budget: Duration,
+
     /// Whether to also GC timeless data.
     pub gc_timeless: bool,
 
@@ -56,6 +67,7 @@ impl GarbageCollectionOptions {
     pub fn gc_everything() -> Self {
         GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
+            time_budget: std::time::Duration::MAX,
             gc_timeless: true,
             protect_latest: 0,
             purge_empty_tables: true,
