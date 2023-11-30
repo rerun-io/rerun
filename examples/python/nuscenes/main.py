@@ -157,10 +157,7 @@ def log_annotations(first_sample_token: str, start_timestamp: numbers.Number, nu
                 label2id[ann["category_name"]] = len(label2id)
             class_ids.append(label2id[ann["category_name"]])
 
-        rr.log(
-            "world/anns",
-            rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids)
-        )
+        rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids))
         current_sample_token = sample["next"]
 
 
