@@ -434,6 +434,7 @@ impl StoreDb {
             .into_iter()
             .collect(),
             enable_batching: false,
+            time_budget: std::time::Duration::MAX,
         });
     }
 
@@ -451,6 +452,7 @@ impl StoreDb {
             purge_empty_tables: false,
             dont_protect: Default::default(),
             enable_batching: false,
+            time_budget: std::time::Duration::MAX,
         });
     }
 

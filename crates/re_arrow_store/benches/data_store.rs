@@ -292,6 +292,7 @@ fn gc(c: &mut Criterion) {
                 purge_empty_tables: false,
                 dont_protect: Default::default(),
                 enable_batching: false,
+                time_budget: std::time::Duration::MAX,
             });
             stats_diff
         });
@@ -317,6 +318,7 @@ fn gc(c: &mut Criterion) {
                     purge_empty_tables: false,
                     dont_protect: Default::default(),
                     enable_batching: false,
+                    time_budget: std::time::Duration::MAX,
                 });
                 stats_diff
             });
