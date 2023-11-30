@@ -72,11 +72,17 @@ root:
         - name: human-pose-tracking
           python: python/human_pose_tracking
 
+        - name: lidar
+          python: python/lidar
+
         - name: live-camera-edge-detection
           python: python/live_camera_edge_detection
 
         - name: live-depth-sensor
           python: python/live_depth_sensor
+
+        - name: nuscenes
+          python: python/nuscenes
 
         - name: objectron
           python: python/objectron

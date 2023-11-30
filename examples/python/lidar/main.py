@@ -85,7 +85,7 @@ def main() -> None:
 
     ensure_scene_available(args.root_dir, args.dataset_version, args.scene_name)
 
-    rr.script_setup(args, "rerun_example_minimal_lidar")
+    rr.script_setup(args, "rerun_example_lidar")
     log_nuscenes_lidar(args.root_dir, args.dataset_version, args.scene_name)
 
     rr.script_teardown(args)
