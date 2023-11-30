@@ -1,7 +1,10 @@
+use ahash::HashSet;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
-use re_data_store::{EntityPath, EntityTree};
-use re_viewer_context::{SpaceViewId, ViewerContext};
+use re_data_store::{EntityPath, EntityTree, InstancePath};
+use re_data_ui::item_ui;
+use re_log_types::EntityPathExpr;
+use re_viewer_context::{DataQueryResult, SpaceViewId, ViewerContext};
 
 use crate::{
     space_info::SpaceInfoCollection,
@@ -88,42 +91,54 @@ fn add_entities_ui(
     let spaces_info = SpaceInfoCollection::new(ctx.store_db.entity_db());
     let tree = &ctx.store_db.entity_db().tree;
     let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx.store_db);
+    // TODO(jleibs): Avoid clone
+    let query_result = ctx.lookup_query_result(space_view.query_id()).clone();
+    let inclusions: HashSet<EntityPathExpr> = space_view.inclusions().collect();
+    let exclusions: HashSet<EntityPathExpr> = space_view.exclusions().collect();
     let entities_add_info = create_entity_add_info(
         ctx,
         tree,
         &heuristic_context_per_entity,
         space_view,
+        &query_result,
         &spaces_info,
     );
 
     add_entities_tree_ui(
         ctx,
         ui,
-        &spaces_info,
         &tree.path.to_string(),
         tree,
         space_view,
+        &query_result,
+        &inclusions,
+        &exclusions,
         &entities_add_info,
     );
 }
 
+#[allow(clippy::too_many_arguments)]
 fn add_entities_tree_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    spaces_info: &SpaceInfoCollection,
     name: &str,
     tree: &EntityTree,
     space_view: &mut SpaceViewBlueprint,
+    query_result: &DataQueryResult,
+    inclusions: &HashSet<EntityPathExpr>,
+    exclusions: &HashSet<EntityPathExpr>,
     entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
     if tree.is_leaf() {
         add_entities_line_ui(
             ctx,
             ui,
-            spaces_info,
             &format!("🔹 {name}"),
             tree,
             space_view,
+            query_result,
+            inclusions,
+            exclusions,
             entities_add_info,
         );
     } else {
@@ -140,10 +155,12 @@ fn add_entities_tree_ui(
             add_entities_line_ui(
                 ctx,
                 ui,
-                spaces_info,
                 name,
                 tree,
                 space_view,
+                query_result,
+                inclusions,
+                exclusions,
                 entities_add_info,
             );
         })
@@ -157,10 +174,12 @@ fn add_entities_tree_ui(
                 add_entities_tree_ui(
                     ctx,
                     ui,
-                    spaces_info,
                     &path_comp.to_string(),
                     child_tree,
                     space_view,
+                    query_result,
+                    inclusions,
+                    exclusions,
                     entities_add_info,
                 );
             }
@@ -168,30 +187,38 @@ fn add_entities_tree_ui(
     };
 }
 
+#[allow(clippy::too_many_arguments)]
 fn add_entities_line_ui(
-    _ctx: &mut ViewerContext<'_>,
+    ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    _spaces_info: &SpaceInfoCollection,
-    _name: &str,
-    _entity_tree: &EntityTree,
-    _space_view: &mut SpaceViewBlueprint,
-    _entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
+    name: &str,
+    entity_tree: &EntityTree,
+    space_view: &mut SpaceViewBlueprint,
+    query_result: &DataQueryResult,
+    inclusions: &HashSet<EntityPathExpr>,
+    exclusions: &HashSet<EntityPathExpr>,
+    entities_add_info: &IntMap<EntityPath, EntityAddInfo>,
 ) {
-    // TODO(#4377): Reformulate this in terms of modifying query expressions
-    ui.label("Not implemented");
-    /*
     ui.horizontal(|ui| {
         let entity_path = &entity_tree.path;
 
-        let space_view_id = if space_view.contents.contains_entity(entity_path) {
-            Some(space_view.id)
-        } else {
-            None
-        };
         let add_info = entities_add_info.get(entity_path).unwrap();
 
+        let included = query_result.contains_any(entity_path);
+
+        // TODO(jleibs): Speed this up
+        let excluded = exclusions.iter().any(|expr| match expr {
+            EntityPathExpr::Exact(expr) => expr == entity_path,
+            EntityPathExpr::Recursive(expr) => {
+                expr == entity_path || entity_path.is_descendant_of(expr)
+            }
+        });
+
         ui.add_enabled_ui(add_info.can_add_self_or_descendant.is_compatible(), |ui| {
-            let widget_text = if entity_path == &space_view.space_origin {
+            let widget_text = if excluded {
+                // TODO(jleibs): Better design-language for excluded.
+                egui::RichText::new(name).italics()
+            } else if entity_path == &space_view.space_origin {
                 egui::RichText::new(name).strong()
             } else {
                 egui::RichText::new(name)
@@ -199,58 +226,101 @@ fn add_entities_line_ui(
             let response = item_ui::instance_path_button_to(
                 ctx,
                 ui,
-                space_view_id,
+                Some(space_view.id),
                 &InstancePath::entity_splat(entity_path.clone()),
                 widget_text,
             );
-            if entity_path == &space_view.space_origin {
+            if query_result.contains_entity(entity_path) {
                 response.highlight();
             }
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if space_view.contents.contains_entity(entity_path) {
-                if ctx
-                    .re_ui
-                    .small_icon_button(ui, &re_ui::icons::REMOVE)
-                    .on_hover_text("Remove this Entity and all its descendants from the Space View")
-                    .clicked()
-                {
-                    space_view.remove_entity_subtree(entity_tree);
-                }
-            } else {
-                ui.add_enabled_ui(
-                    add_info
-                        .can_add_self_or_descendant
-                        .is_compatible_and_missing(),
-                    |ui| {
-                        let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
-                        if response.clicked() {
-                            space_view.add_entity_subtree(ctx, entity_tree, spaces_info);
-                        }
+            // Reset Remove Button
+            {
+                let enabled = add_info.can_add_self_or_descendant.is_compatible()
+                    && (exclusions.contains(&EntityPathExpr::Recursive(entity_path.clone()))
+                        || inclusions.contains(&EntityPathExpr::Recursive(entity_path.clone())));
 
-                        if add_info
-                            .can_add_self_or_descendant
-                            .is_compatible_and_missing()
+                ui.add_enabled_ui(enabled, |ui| {
+                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::RESET);
+
+                    if response.clicked() {
+                        space_view.clear_entity_expression(
+                            ctx,
+                            &EntityPathExpr::Recursive(entity_tree.path.clone()),
+                        );
+                    }
+
+                    if enabled {
+                        if exclusions.contains(&EntityPathExpr::Recursive(entity_path.clone())) {
+                            response.on_hover_text("Stop excluding this EntityPath.");
+                        } else if inclusions
+                            .contains(&EntityPathExpr::Recursive(entity_path.clone()))
                         {
-                            if add_info.can_add.is_compatible_and_missing() {
-                                response.on_hover_text(
-                                    "Add this Entity and all its descendants to the Space View",
-                                );
-                            } else {
-                                response.on_hover_text(
-                                    "Add descendants of this Entity to the Space View",
-                                );
-                            }
-                        } else if let CanAddToSpaceView::No { reason } = &add_info.can_add {
-                            response.on_disabled_hover_text(reason);
+                            response.on_hover_text("Stop including this EntityPath.");
                         }
-                    },
-                );
+                    }
+                });
+            }
+
+            // Remove Button
+            {
+                let enabled = query_result.contains_any(&entity_tree.path)
+                    && add_info.can_add_self_or_descendant.is_compatible()
+                    && !exclusions.contains(&EntityPathExpr::Recursive(entity_path.clone()));
+
+                ui.add_enabled_ui(enabled, |ui| {
+                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::REMOVE);
+
+                    if response.clicked() {
+                        space_view.add_entity_exclusion(
+                            ctx,
+                            EntityPathExpr::Recursive(entity_tree.path.clone()),
+                        );
+                    }
+
+                    if enabled {
+                        response.on_hover_text(
+                            "Exclude this Entity and all its descendants from the Space View",
+                        );
+                    }
+                });
+            }
+
+            // Add Button
+            {
+                let enabled = !included
+                    && !excluded
+                    && add_info.can_add_self_or_descendant.is_compatible()
+                    && !inclusions.contains(&EntityPathExpr::Recursive(entity_path.clone()));
+
+                ui.add_enabled_ui(enabled, |ui| {
+                    let response = ctx.re_ui.small_icon_button(ui, &re_ui::icons::ADD);
+
+                    if response.clicked() {
+                        space_view.add_entity_inclusion(
+                            ctx,
+                            EntityPathExpr::Recursive(entity_tree.path.clone()),
+                        );
+                    }
+
+                    if enabled {
+                        if add_info.can_add.is_compatible_and_missing() {
+                            response.on_hover_text(
+                                "Include this Entity and all its descendants in the Space View",
+                            );
+                        } else {
+                            response
+                                .on_hover_text("Add descendants of this Entity to the Space View");
+                        }
+                    } else if let CanAddToSpaceView::No { reason } = &add_info.can_add {
+                        response.on_disabled_hover_text(reason);
+                    }
+                });
             }
         });
     });
-    */
 }
 
 /// Describes if an entity path can be added to a space view.
@@ -278,7 +348,6 @@ impl CanAddToSpaceView {
     }
 
     /// Can be added and spaceview doesn't have it already.
-    #[allow(dead_code)]
     pub fn is_compatible_and_missing(&self) -> bool {
         self == &CanAddToSpaceView::Compatible {
             already_added: false,
@@ -315,33 +384,28 @@ fn create_entity_add_info(
     tree: &EntityTree,
     heuristic_context_per_entity: &HeuristicFilterContextPerEntity,
     space_view: &SpaceViewBlueprint,
-    _spaces_info: &SpaceInfoCollection,
+    query_result: &DataQueryResult,
+    spaces_info: &SpaceInfoCollection,
 ) -> IntMap<EntityPath, EntityAddInfo> {
     let mut meta_data: IntMap<EntityPath, EntityAddInfo> = IntMap::default();
 
     tree.visit_children_recursively(&mut |entity_path| {
         let heuristic_context_per_entity = heuristic_context_per_entity.get(entity_path).copied().unwrap_or_default();
         let can_add: CanAddToSpaceView =
-            if is_entity_processed_by_class(ctx, space_view.class_name(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
-                // TODO(#4377): Reformulate this in terms of modifying query expressions
-                CanAddToSpaceView::No {
-                    reason: "Not implemented".to_owned(),
-                }
-                /*
+            if is_entity_processed_by_class(ctx, space_view.class_identifier(), entity_path, heuristic_context_per_entity, &ctx.current_query()) {
                 match spaces_info.is_reachable_by_transform(entity_path, &space_view.space_origin) {
                     Ok(()) => CanAddToSpaceView::Compatible {
-                        already_added: space_view.contents.contains_entity(entity_path),
+                        already_added: query_result.contains_any(entity_path),
                     },
                     Err(reason) => CanAddToSpaceView::No {
                         reason: reason.to_string(),
                     },
                 }
-                */
             } else {
                 CanAddToSpaceView::No {
                     reason: format!(
                         "Entity can't be displayed by this class of Space View ({}), since it doesn't match any archetype that the Space View can process.",
-                        space_view.class_name()
+                        space_view.class_identifier()
                     ),
                 }
             };

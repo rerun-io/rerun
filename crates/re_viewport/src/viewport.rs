@@ -9,7 +9,7 @@ use egui_tiles::Behavior as _;
 
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewHighlights,
+    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewHighlights,
     SpaceViewId, SpaceViewState, ViewerContext,
 };
 
@@ -34,7 +34,7 @@ impl ViewportState {
         &mut self,
         space_view_class_registry: &SpaceViewClassRegistry,
         space_view_id: SpaceViewId,
-        space_view_class: &SpaceViewClassName,
+        space_view_class: &SpaceViewClassIdentifier,
     ) -> &mut dyn SpaceViewState {
         self.space_view_states
             .entry(space_view_id)
@@ -180,7 +180,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
             let space_view_state = self.state.space_view_state_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
-                space_view.class_name(),
+                space_view.class_identifier(),
             );
 
             space_view.on_frame_start(ctx, space_view_state);
@@ -263,7 +263,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let space_view_state = self.viewport_state.space_view_state_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
-            space_view_blueprint.class_name(),
+            space_view_blueprint.class_identifier(),
         );
 
         space_view_ui(

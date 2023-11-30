@@ -10,8 +10,8 @@ use re_types::components::{DisconnectedSpace, TensorData};
 use re_types::ComponentNameSet;
 use re_viewer_context::{
     AutoSpawnHeuristic, DataQueryResult, EntitiesPerSystem, EntitiesPerSystemPerClass,
-    HeuristicFilterContext, PerSystemEntities, SpaceViewClassName, ViewContextCollection,
-    ViewPartCollection, ViewSystemName, ViewerContext,
+    HeuristicFilterContext, PerSystemEntities, SpaceViewClassIdentifier, ViewContextCollection,
+    ViewPartCollection, ViewSystemIdentifier, ViewerContext,
 };
 use tinyvec::TinyVec;
 
@@ -22,15 +22,15 @@ use crate::{space_info::SpaceInfoCollection, space_view::SpaceViewBlueprint};
 // TODO(#3079): Knowledge of specific space view classes should not leak here.
 
 /// Returns true if a class is one of our spatial classes.
-fn is_spatial_class(class: &SpaceViewClassName) -> bool {
+fn is_spatial_class(class: &SpaceViewClassIdentifier) -> bool {
     class.as_str() == "3D" || class.as_str() == "2D"
 }
 
-fn is_spatial_2d_class(class: &SpaceViewClassName) -> bool {
+fn is_spatial_2d_class(class: &SpaceViewClassIdentifier) -> bool {
     class.as_str() == "2D"
 }
 
-fn spawn_one_space_view_per_entity(class: &SpaceViewClassName) -> bool {
+fn spawn_one_space_view_per_entity(class: &SpaceViewClassIdentifier) -> bool {
     // For tensors create one space view for each tensor (even though we're able to stack them in one view)
     // TODO(emilk): query the actual [`ViewPartSystem`] instead.
     class == "Tensor" || class == "Text Document"
@@ -60,13 +60,13 @@ pub fn all_possible_space_views(
 ) -> Vec<(SpaceViewBlueprint, DataQueryResult)> {
     re_tracing::profile_function!();
 
-    for (class_name, entities_per_system) in entities_per_system_per_class {
+    for (class_identifier, entities_per_system) in entities_per_system_per_class {
         for (system_name, entities) in entities_per_system {
             if entities.is_empty() {
                 re_log::debug!(
                     "SpaceViewClassRegistry: No entities for system {:?} of class {:?}",
                     system_name,
-                    class_name
+                    class_identifier
                 );
             }
         }
@@ -81,15 +81,15 @@ pub fn all_possible_space_views(
     let entities_used_by_any_part_system_of_class: IntMap<_, _> = ctx
         .space_view_class_registry
         .iter_system_registries()
-        .map(|(class_name, system_registry)| {
+        .map(|(class_identifier, system_registry)| {
             let parts = system_registry.new_part_collection();
             (
-                *class_name,
+                *class_identifier,
                 entities_per_system_per_class
-                    .get(class_name)
+                    .get(class_identifier)
                     .unwrap_or(&empty_entities_per_system)
                     .iter()
-                    .filter(|(system, _)| parts.get_by_name(**system).is_ok())
+                    .filter(|(system, _)| parts.get_by_identifier(**system).is_ok())
                     .flat_map(|(_, entities)| entities.iter().cloned())
                     .collect::<IntSet<_>>(),
             )
@@ -107,11 +107,11 @@ pub fn all_possible_space_views(
 
             entities_used_by_any_part_system_of_class
                 .iter()
-                .filter_map(|(class_name, _entities_used_by_any_part_system)| {
+                .filter_map(|(class_identifier, _entities_used_by_any_part_system)| {
                     // TODO(#4377): The need to run a query-per-candidate for all possible candidates
                     // is way too expensive. This needs to be optimized significantly.
                     let candidate_query = DataQueryBlueprint::new(
-                        *class_name,
+                        *class_identifier,
                         std::iter::once(&EntityPathExpr::Recursive(candidate_space_path.clone())),
                     );
 
@@ -124,8 +124,8 @@ pub fn all_possible_space_views(
                     if !results.is_empty() {
                         Some((
                             SpaceViewBlueprint::new(
-                                *class_name,
-                                ctx.space_view_class_registry.display_name(class_name),
+                                *class_identifier,
+                                ctx.space_view_class_registry.display_name(class_identifier),
                                 candidate_space_path,
                                 candidate_query,
                             ),
@@ -180,14 +180,14 @@ fn is_interesting_space_view_at_root(
 fn is_interesting_space_view_not_at_root(
     store: &re_arrow_store::DataStore,
     candidate: &SpaceViewBlueprint,
-    classes_with_interesting_roots: &[SpaceViewClassName],
+    classes_with_interesting_roots: &[SpaceViewClassIdentifier],
     query: &LatestAtQuery,
 ) -> bool {
     // TODO(andreas): Can we express this with [`AutoSpawnHeuristic`] instead?
 
     // Consider children of the root interesting, *unless* a root with the same category was already considered interesting!
     if candidate.space_origin.len() == 1
-        && !classes_with_interesting_roots.contains(candidate.class_name())
+        && !classes_with_interesting_roots.contains(candidate.class_identifier())
     {
         return true;
     }
@@ -196,7 +196,7 @@ fn is_interesting_space_view_not_at_root(
     // -> If there is ..
     //    .. a disconnect transform, the children can't be shown otherwise
     //    .. an pinhole transform, we'd like to see the world from this camera's pov as well!
-    if is_spatial_class(candidate.class_name())
+    if is_spatial_class(candidate.class_identifier())
         && (query_pinhole(store, query, &candidate.space_origin).is_some()
             || store
                 .query_latest_component::<DisconnectedSpace>(&candidate.space_origin, query)
@@ -229,7 +229,7 @@ pub fn default_created_space_views(
         .filter_map(|(space_view_candidate, query_results)| {
             (space_view_candidate.space_origin.is_root()
                 && is_interesting_space_view_at_root(store, query_results))
-            .then_some(*space_view_candidate.class_name())
+            .then_some(*space_view_candidate.class_identifier())
         })
         .collect::<Vec<_>>();
 
@@ -239,7 +239,7 @@ pub fn default_created_space_views(
     // We first check if a candidate is "interesting" and then split it up/modify it further if required.
     for (candidate, query_result) in candidates {
         let Some(_entities_per_system_for_class) =
-            entities_per_system_per_class.get(candidate.class_name())
+            entities_per_system_per_class.get(candidate.class_identifier())
         else {
             // Should never reach this, but if we would there would be no entities in this candidate so skipping makes sense.
             continue;
@@ -271,7 +271,7 @@ pub fn default_created_space_views(
         }
         if spawn_heuristic != AutoSpawnHeuristic::AlwaysSpawn {
             if candidate.space_origin.is_root() {
-                if !classes_with_interesting_roots.contains(candidate.class_name()) {
+                if !classes_with_interesting_roots.contains(candidate.class_identifier()) {
                     continue;
                 }
             } else if !is_interesting_space_view_not_at_root(
@@ -284,18 +284,18 @@ pub fn default_created_space_views(
             }
         }
 
-        if spawn_one_space_view_per_entity(candidate.class_name()) {
+        if spawn_one_space_view_per_entity(candidate.class_identifier()) {
             query_result.tree.visit(&mut |handle| {
                 if let Some(result) = query_result.tree.lookup_result(handle) {
                     if !result.view_parts.is_empty() {
                         let query = DataQueryBlueprint::new(
-                            *candidate.class_name(),
+                            *candidate.class_identifier(),
                             std::iter::once(&EntityPathExpr::Exact(result.entity_path.clone())),
                         );
                         let mut space_view = SpaceViewBlueprint::new(
-                            *candidate.class_name(),
+                            *candidate.class_identifier(),
                             ctx.space_view_class_registry
-                                .display_name(candidate.class_name()),
+                                .display_name(candidate.class_identifier()),
                             &result.entity_path,
                             query,
                         );
@@ -341,7 +341,7 @@ pub fn default_created_space_views(
 
             if should_spawn_new {
                 // Spatial views with images get extra treatment as well.
-                if is_spatial_2d_class(candidate.class_name()) {
+                if is_spatial_2d_class(candidate.class_identifier()) {
                     #[derive(Hash, PartialEq, Eq)]
                     enum ImageBucketing {
                         BySize((u64, u64)),
@@ -398,14 +398,14 @@ pub fn default_created_space_views(
                                 .collect();
 
                             let query = DataQueryBlueprint::new(
-                                *candidate.class_name(),
+                                *candidate.class_identifier(),
                                 expressions.iter(),
                             );
 
                             let mut space_view = SpaceViewBlueprint::new(
-                                *candidate.class_name(),
+                                *candidate.class_identifier(),
                                 ctx.space_view_class_registry
-                                    .display_name(candidate.class_name()),
+                                    .display_name(candidate.class_identifier()),
                                 &candidate.space_origin,
                                 query,
                             );
@@ -457,7 +457,7 @@ pub fn reachable_entities_from_root(
 // TODO(andreas): Still used in a bunch of places. Should instead use the global `EntitiesPerSystemPerClass` list.
 pub fn is_entity_processed_by_class(
     ctx: &ViewerContext<'_>,
-    class: &SpaceViewClassName,
+    class: &SpaceViewClassIdentifier,
     ent_path: &EntityPath,
     heuristic_ctx: HeuristicFilterContext,
     query: &LatestAtQuery,
@@ -525,7 +525,7 @@ pub fn compute_heuristic_context_for_entities(
         heuristic_context.insert(
             tree.path.clone(),
             HeuristicFilterContext {
-                class: SpaceViewClassName::invalid(),
+                class: SpaceViewClassIdentifier::invalid(),
                 has_ancestor_pinhole: has_parent_pinhole,
             },
         );
@@ -553,15 +553,15 @@ pub fn identify_entities_per_system_per_class(
     re_tracing::profile_function!();
 
     let system_collections_per_class: IntMap<
-        SpaceViewClassName,
+        SpaceViewClassIdentifier,
         (ViewContextCollection, ViewPartCollection),
     > = space_view_class_registry
         .iter_system_registries()
-        .map(|(class_name, entry)| {
+        .map(|(class_identifier, entry)| {
             (
-                *class_name,
+                *class_identifier,
                 (
-                    entry.new_context_collection(*class_name),
+                    entry.new_context_collection(*class_identifier),
                     entry.new_part_collection(),
                 ),
             )
@@ -573,16 +573,18 @@ pub fn identify_entities_per_system_per_class(
 
         let mut systems_per_required_components: HashMap<
             ComponentNameSet,
-            IntMap<SpaceViewClassName, TinyVec<[ViewSystemName; 2]>>,
+            IntMap<SpaceViewClassIdentifier, TinyVec<[ViewSystemIdentifier; 2]>>,
         > = HashMap::default();
-        for (class_name, (_context_collection, part_collection)) in &system_collections_per_class {
-            for (system_name, part) in part_collection.iter_with_names() {
+        for (class_identifier, (_context_collection, part_collection)) in
+            &system_collections_per_class
+        {
+            for (system_identifier, part) in part_collection.iter_with_identifiers() {
                 systems_per_required_components
                     .entry(part.required_components().into_iter().collect())
                     .or_default()
-                    .entry(*class_name)
+                    .entry(*class_identifier)
                     .or_default()
-                    .push(system_name);
+                    .push(system_identifier);
             }
             // TODO(#4377): Handle context systems but keep them parallel
             /*
@@ -591,7 +593,7 @@ pub fn identify_entities_per_system_per_class(
                     systems_per_required_components
                         .entry(components.into_iter().collect())
                         .or_default()
-                        .entry(*class_name)
+                        .entry(*class_identifier)
                         .or_default()
                         .push(system_name);
                 }
@@ -624,7 +626,7 @@ pub fn identify_entities_per_system_per_class(
                 };
 
                 for system in systems {
-                    if let Ok(view_part_system) = part_collection.get_by_name(*system) {
+                    if let Ok(view_part_system) = part_collection.get_by_identifier(*system) {
                         if !view_part_system.heuristic_filter(
                             store,
                             ent_path,

@@ -8,7 +8,7 @@ use re_types::{
     Archetype as _, ComponentNameSet, DeserializationResult,
 };
 use re_viewer_context::{
-    Annotations, NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
+    Annotations, IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -163,8 +163,8 @@ impl Points3DPart {
     }
 }
 
-impl NamedViewSystem for Points3DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for Points3DPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Points3D".into()
     }
 }

@@ -9,7 +9,7 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem,
+    default_heuristic_filter, HeuristicFilterContext, IdentifiedViewSystem,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
@@ -19,8 +19,8 @@ pub struct BarChartViewPartSystem {
     pub charts: BTreeMap<EntityPath, (TensorData, Option<Color>)>,
 }
 
-impl NamedViewSystem for BarChartViewPartSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for BarChartViewPartSystem {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "BarChartView".into()
     }
 }
@@ -76,7 +76,7 @@ impl ViewPartSystem for BarChartViewPartSystem {
 
         let store = ctx.store_db.store();
 
-        for data_result in query.iter_visible_data_results(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
             let tensor = store.query_latest_component::<re_types::components::TensorData>(
                 &data_result.entity_path,

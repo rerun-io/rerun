@@ -20,7 +20,7 @@ pub struct SpatialSpaceView2D;
 impl SpaceViewClass for SpatialSpaceView2D {
     type State = SpatialSpaceViewState;
 
-    const NAME: &'static str = "2D";
+    const IDENTIFIER: &'static str = "2D";
     const DISPLAY_NAME: &'static str = "2D";
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -73,7 +73,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         let mut score = auto_spawn_heuristic(
-            &self.name(),
+            &self.identifier(),
             ctx,
             per_system_entities,
             SpatialSpaceViewKind::TwoD,
@@ -93,11 +93,11 @@ impl SpaceViewClass for SpatialSpaceView2D {
         if space_origin.is_root() {
             let parts = ctx
                 .space_view_class_registry
-                .get_system_registry_or_log_error(&self.name())
+                .get_system_registry_or_log_error(&self.identifier())
                 .new_part_collection();
 
             for part in per_system_entities.keys() {
-                if let Ok(part) = parts.get_by_name(*part) {
+                if let Ok(part) = parts.get_by_identifier(*part) {
                     if let Some(part_data) = part
                         .data()
                         .and_then(|d| d.downcast_ref::<SpatialViewPartData>())

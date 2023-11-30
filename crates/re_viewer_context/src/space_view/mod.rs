@@ -17,10 +17,10 @@ mod view_query;
 
 pub use auto_spawn_heuristic::AutoSpawnHeuristic;
 pub use dyn_space_view_class::{
-    DynSpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewState,
+    DynSpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewState,
 };
 pub use highlights::{SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks};
-pub use named_system::{NamedViewSystem, PerSystemEntities, ViewSystemName};
+pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,

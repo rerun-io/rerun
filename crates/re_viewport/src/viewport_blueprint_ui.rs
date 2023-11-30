@@ -316,7 +316,6 @@ impl ViewportBlueprint<'_> {
                                 ctx,
                                 EntityPathExpr::Exact(entity_path.clone()),
                             );
-                            space_view.entities_determined_by_user = true;
                         }
 
                         response | vis_response
@@ -379,7 +378,6 @@ impl ViewportBlueprint<'_> {
                 if remove_group {
                     space_view
                         .add_entity_exclusion(ctx, EntityPathExpr::Recursive(entity_path.clone()));
-                    space_view.entities_determined_by_user = true;
                 }
 
                 response

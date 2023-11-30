@@ -6,8 +6,8 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -162,8 +162,8 @@ impl Lines3DPart {
     }
 }
 
-impl NamedViewSystem for Lines3DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for Lines3DPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Lines3D".into()
     }
 }
