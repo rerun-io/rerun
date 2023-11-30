@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!-- The version of index.html that will be served by app.rerun.io -->
 <html>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -195,7 +195,7 @@
       // On mobile platforms show a warning, but provide a link to try anyways
       if (
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent
+          navigator.userAgent,
         )
       ) {
         show_center_html(`
@@ -253,7 +253,7 @@
           // If the content is gzip encoded, try to get the uncompressed size.
           if (response.headers.get("content-encoding") == "gzip") {
             content_length = response.headers.get(
-              "x-goog-meta-uncompressed-size"
+              "x-goog-meta-uncompressed-size",
             );
 
             // If the uncompressed size wasn't found 3 seems to be a very good approximation
@@ -285,7 +285,7 @@
             {
               status: response.status,
               statusText: response.statusText,
-            }
+            },
           );
 
           for (const [key, value] of response.headers.entries()) {
@@ -309,7 +309,7 @@
           typeof navigator.gpu === "undefined"
         ) {
           console.debug(
-            "`navigator.gpu` is undefined. This indicates lack of WebGPU support."
+            "`navigator.gpu` is undefined. This indicates lack of WebGPU support.",
           );
           show_center_html(`
                     <p class="strong">
