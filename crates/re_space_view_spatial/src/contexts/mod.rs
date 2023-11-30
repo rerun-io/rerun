@@ -16,7 +16,7 @@ pub use transform_context::TransformContext;
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    Annotations, NamedViewSystem, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
+    Annotations, IdentifiedViewSystem, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
     ViewContextSystem,
 };
 
@@ -36,8 +36,8 @@ pub struct PrimitiveCounter {
     pub num_primitives: AtomicUsize,
 }
 
-impl NamedViewSystem for PrimitiveCounter {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for PrimitiveCounter {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "PrimitiveCounter".into()
     }
 }

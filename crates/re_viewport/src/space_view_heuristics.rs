@@ -11,7 +11,7 @@ use re_types::ComponentNameSet;
 use re_viewer_context::{
     AutoSpawnHeuristic, DataQueryResult, EntitiesPerSystem, EntitiesPerSystemPerClass,
     HeuristicFilterContext, PerSystemEntities, SpaceViewClassIdentifier, ViewContextCollection,
-    ViewPartCollection, ViewSystemName, ViewerContext,
+    ViewPartCollection, ViewSystemIdentifier, ViewerContext,
 };
 use tinyvec::TinyVec;
 
@@ -89,7 +89,7 @@ pub fn all_possible_space_views(
                     .get(class_identifier)
                     .unwrap_or(&empty_entities_per_system)
                     .iter()
-                    .filter(|(system, _)| parts.get_by_name(**system).is_ok())
+                    .filter(|(system, _)| parts.get_by_identifier(**system).is_ok())
                     .flat_map(|(_, entities)| entities.iter().cloned())
                     .collect::<IntSet<_>>(),
             )
@@ -573,18 +573,18 @@ pub fn identify_entities_per_system_per_class(
 
         let mut systems_per_required_components: HashMap<
             ComponentNameSet,
-            IntMap<SpaceViewClassIdentifier, TinyVec<[ViewSystemName; 2]>>,
+            IntMap<SpaceViewClassIdentifier, TinyVec<[ViewSystemIdentifier; 2]>>,
         > = HashMap::default();
         for (class_identifier, (_context_collection, part_collection)) in
             &system_collections_per_class
         {
-            for (system_name, part) in part_collection.iter_with_names() {
+            for (system_identifier, part) in part_collection.iter_with_identifiers() {
                 systems_per_required_components
                     .entry(part.required_components().into_iter().collect())
                     .or_default()
                     .entry(*class_identifier)
                     .or_default()
-                    .push(system_name);
+                    .push(system_identifier);
             }
             // TODO(#4377): Handle context systems but keep them parallel
             /*
@@ -626,7 +626,7 @@ pub fn identify_entities_per_system_per_class(
                 };
 
                 for system in systems {
-                    if let Ok(view_part_system) = part_collection.get_by_name(*system) {
+                    if let Ok(view_part_system) = part_collection.get_by_identifier(*system) {
                         if !view_part_system.heuristic_filter(
                             store,
                             ent_path,

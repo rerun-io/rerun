@@ -4,7 +4,7 @@ use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
 use re_renderer::DepthOffset;
 use re_types::Archetype;
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
+    IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewQuery, ViewerContext,
 };
 
@@ -21,7 +21,7 @@ use crate::{
 /// The callback passed in gets passed a long an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 #[allow(dead_code)]
-pub fn process_archetype_views<'a, System: NamedViewSystem, A, const N: usize, F>(
+pub fn process_archetype_views<'a, System: IdentifiedViewSystem, A, const N: usize, F>(
     ctx: &mut ViewerContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
@@ -44,7 +44,7 @@ where
     let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-    for data_result in query.iter_visible_data_results(System::name()) {
+    for data_result in query.iter_visible_data_results(System::identifier()) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
         let world_from_entity =
             if view_ctx.space_view_class_identifier() == SpatialSpaceView3D.identifier() {

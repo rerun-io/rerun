@@ -23,7 +23,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
-use re_viewer_context::{NamedViewSystem, ViewContextCollection};
+use re_viewer_context::{IdentifiedViewSystem, ViewContextCollection};
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
@@ -637,8 +637,8 @@ impl ImagesPart {
     }
 }
 
-impl NamedViewSystem for ImagesPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for ImagesPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Images".into()
     }
 }

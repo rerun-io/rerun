@@ -97,7 +97,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
                 .new_part_collection();
 
             for part in per_system_entities.keys() {
-                if let Ok(part) = parts.get_by_name(*part) {
+                if let Ok(part) = parts.get_by_identifier(*part) {
                     if let Some(part_data) = part
                         .data()
                         .and_then(|d| d.downcast_ref::<SpatialViewPartData>())

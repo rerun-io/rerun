@@ -43,12 +43,12 @@ pub use selection_state::{
 };
 pub use space_view::{
     default_heuristic_filter, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
-    HeuristicFilterContext, NamedViewSystem, PerSystemDataResults, PerSystemEntities,
+    HeuristicFilterContext, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
     SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
     ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
-    ViewSystemName,
+    ViewSystemIdentifier,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
@@ -68,7 +68,7 @@ pub mod external {
 
 // ---------------------------------------------------------------------------
 
-pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
+pub type EntitiesPerSystem = IntMap<ViewSystemIdentifier, IntSet<EntityPath>>;
 
 pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassIdentifier, EntitiesPerSystem>;
 

@@ -1,8 +1,8 @@
 use ahash::HashMap;
 
 use crate::{
-    DynSpaceViewClass, NamedViewSystem, SpaceViewClassIdentifier, ViewContextCollection,
-    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemName,
+    DynSpaceViewClass, IdentifiedViewSystem, SpaceViewClassIdentifier, ViewContextCollection,
+    ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewSystemIdentifier,
 };
 
 use super::space_view_class_placeholder::SpaceViewClassPlaceholder;
@@ -26,51 +26,59 @@ pub enum SpaceViewClassRegistryError {
 /// for every instance of the space view class this belongs to.
 #[derive(Default)]
 pub struct SpaceViewSystemRegistry {
-    contexts: HashMap<ViewSystemName, Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
-    parts: HashMap<ViewSystemName, Box<dyn Fn() -> Box<dyn ViewPartSystem>>>,
+    contexts: HashMap<ViewSystemIdentifier, Box<dyn Fn() -> Box<dyn ViewContextSystem>>>,
+    parts: HashMap<ViewSystemIdentifier, Box<dyn Fn() -> Box<dyn ViewPartSystem>>>,
 }
 
 impl SpaceViewSystemRegistry {
     /// Registers a new [`ViewContextSystem`] type for this space view class that will be created and executed every frame.
     ///
     /// It is not allowed to register a given type more than once.
-    pub fn register_context_system<T: ViewContextSystem + NamedViewSystem + Default + 'static>(
+    pub fn register_context_system<
+        T: ViewContextSystem + IdentifiedViewSystem + Default + 'static,
+    >(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         // Name should also not overlap with part systems.
-        if self.parts.contains_key(&T::name()) {
+        if self.parts.contains_key(&T::identifier()) {
             return Err(SpaceViewClassRegistryError::NameAlreadyInUseForViewSystem(
-                T::name().as_str(),
+                T::identifier().as_str(),
             ));
         }
 
-        if let std::collections::hash_map::Entry::Vacant(e) = self.contexts.entry(T::name()) {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.contexts.entry(T::identifier()) {
             e.insert(Box::new(|| Box::<T>::default()));
             Ok(())
         } else {
-            Err(SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(T::name().as_str()))
+            Err(
+                SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(
+                    T::identifier().as_str(),
+                ),
+            )
         }
     }
 
     /// Registers a new [`ViewPartSystem`] type for this space view class that will be created and executed every frame.
     ///
     /// It is not allowed to register a given type more than once.
-    pub fn register_part_system<T: ViewPartSystem + NamedViewSystem + Default + 'static>(
+    pub fn register_part_system<T: ViewPartSystem + IdentifiedViewSystem + Default + 'static>(
         &mut self,
     ) -> Result<(), SpaceViewClassRegistryError> {
         // Name should also not overlap with context systems.
-        if self.parts.contains_key(&T::name()) {
+        if self.parts.contains_key(&T::identifier()) {
             return Err(
-                SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(T::name().as_str()),
+                SpaceViewClassRegistryError::NameAlreadyInUseForContextSystem(
+                    T::identifier().as_str(),
+                ),
             );
         }
 
-        if let std::collections::hash_map::Entry::Vacant(e) = self.parts.entry(T::name()) {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.parts.entry(T::identifier()) {
             e.insert(Box::new(|| Box::<T>::default()));
             Ok(())
         } else {
             Err(SpaceViewClassRegistryError::NameAlreadyInUseForViewSystem(
-                T::name().as_str(),
+                T::identifier().as_str(),
             ))
         }
     }

@@ -11,7 +11,8 @@ use re_types::{
     Archetype as _,
 };
 use re_viewer_context::{
-    AutoSpawnHeuristic, NamedViewSystem, PerSystemEntities, SpaceViewClassIdentifier, ViewerContext,
+    AutoSpawnHeuristic, IdentifiedViewSystem, PerSystemEntities, SpaceViewClassIdentifier,
+    ViewerContext,
 };
 
 use crate::{
@@ -37,7 +38,7 @@ pub fn auto_spawn_heuristic(
 
     // Gather all systems that advertise a "preferred view kind" matching the passed in kind.
     let system_names_with_matching_view_kind = parts
-        .iter_with_names()
+        .iter_with_identifiers()
         .filter_map(|(name, part)| {
             part.data()
                 .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
@@ -116,7 +117,7 @@ fn update_pinhole_property_heuristics(
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
-        .get(&CamerasPart::name())
+        .get(&CamerasPart::identifier())
         .unwrap_or(&BTreeSet::new())
     {
         let mut properties = entity_properties.get(ent_path);
@@ -145,7 +146,7 @@ fn update_depth_cloud_property_heuristics(
 ) {
     // TODO(andreas): There should be a depth cloud system
     for ent_path in per_system_entities
-        .get(&ImagesPart::name())
+        .get(&ImagesPart::identifier())
         .unwrap_or(&BTreeSet::new())
     {
         let store = ctx.store_db.store();
@@ -196,7 +197,7 @@ fn update_transform3d_lines_heuristics(
     scene_bbox_accum: &macaw::BoundingBox,
 ) {
     for ent_path in per_system_entities
-        .get(&Transform3DArrowsPart::name())
+        .get(&Transform3DArrowsPart::identifier())
         .unwrap_or(&BTreeSet::new())
     {
         fn is_pinhole_extrinsics_of<'a>(
