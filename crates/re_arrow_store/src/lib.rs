@@ -40,7 +40,7 @@ pub mod test_util;
 pub use self::arrow_util::ArrayExt;
 pub use self::store::{DataStore, DataStoreConfig, StoreGeneration};
 pub use self::store_event::{StoreDiff, StoreDiffKind, StoreEvent};
-pub use self::store_gc::{GarbageCollectionOptions, GarbageCollectionTarget};
+pub use self::store_gc::{GarbageCollectionOptions, GarbageCollectionTarget, VecDequeExt};
 pub use self::store_helpers::VersionedComponent;
 pub use self::store_read::{LatestAtQuery, RangeQuery};
 pub use self::store_stats::{DataStoreRowStats, DataStoreStats, EntityStats};

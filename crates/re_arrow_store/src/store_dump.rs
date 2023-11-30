@@ -100,6 +100,7 @@ impl DataStore {
                 bucket.sort_indices_if_needed();
 
                 let IndexedBucket {
+                    id: _,
                     timeline,
                     cluster_key: _,
                     inner,
@@ -111,6 +112,7 @@ impl DataStore {
                     col_time,
                     col_insert_id: _,
                     col_row_id,
+                    newest_row_id: _,
                     col_num_instances,
                     columns,
                     size_bytes: _,
@@ -151,6 +153,7 @@ impl DataStore {
                     bucket.sort_indices_if_needed();
 
                     let IndexedBucket {
+                        id: _,
                         timeline,
                         cluster_key: _,
                         inner,
@@ -162,6 +165,7 @@ impl DataStore {
                         col_time,
                         col_insert_id: _,
                         col_row_id,
+                        newest_row_id: _,
                         col_num_instances,
                         columns,
                         size_bytes: _,

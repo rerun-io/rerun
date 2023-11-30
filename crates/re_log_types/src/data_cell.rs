@@ -493,7 +493,7 @@ impl DataCell {
         fn is_sorted_and_unique_primitive<T: NativeType + PartialOrd>(arr: &dyn Array) -> bool {
             // NOTE: unwrap cannot fail, checked by caller just below
             let values = arr.as_any().downcast_ref::<PrimitiveArray<T>>().unwrap();
-            values.values().windows(2).all(|v| v[0] < v[1])
+            !values.values().windows(2).any(|v| v[0] >= v[1])
         }
 
         // TODO(cmc): support more datatypes as the need arise.

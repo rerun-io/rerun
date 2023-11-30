@@ -1,5 +1,6 @@
+use itertools::Itertools;
 use re_arrow_store::TimeRange;
-use re_query::{range_archetype, QueryError};
+use re_query::QueryError;
 use re_types::{
     archetypes::TimeSeriesScalar,
     components::{Color, Radius, Scalar, ScalarScattering, Text},
@@ -9,6 +10,8 @@ use re_viewer_context::{
     AnnotationMap, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewPartSystem,
     ViewQuery, ViewerContext,
 };
+
+use crate::space_view_class::TimeSeriesSpaceViewFeedback;
 
 #[derive(Clone, Debug)]
 pub struct PlotPointAttrs {
@@ -48,6 +51,7 @@ pub enum PlotSeriesKind {
     Scatter,
 }
 
+// TODO: we need custom view cache for this stuff, on top of generic query cache
 #[derive(Clone, Debug)]
 pub struct PlotSeries {
     pub label: String,
@@ -122,8 +126,14 @@ impl TimeSeriesSystem {
 
         let store = ctx.store_db.store();
 
+        let ui_feedback = TimeSeriesSpaceViewFeedback::remove(&query.space_view_id);
+        let x_tick_size = ui_feedback
+            .map(|feedback| {
+                feedback.plot_bounds.width() / feedback.plot_canvas_size.x.max(0.001) as f64
+            })
+            .unwrap_or(0.0);
+
         for data_result in query.iter_visible_data_results(Self::name()) {
-            let mut points = Vec::new();
             let annotations = self.annotation_map.find(&data_result.entity_path);
             let annotation_info = annotations
                 .resolved_class_description(None)
@@ -150,65 +160,181 @@ impl TimeSeriesSystem {
 
             let query = re_arrow_store::RangeQuery::new(query.timeline, TimeRange::new(from, to));
 
-            let arch_views = range_archetype::<
-                TimeSeriesScalar,
+            re_query_cache::query_cached_archetype_r1o4::<
                 { TimeSeriesScalar::NUM_COMPONENTS },
-            >(store, &query, &data_result.entity_path);
+                TimeSeriesScalar,
+                Scalar,
+                ScalarScattering,
+                Color,
+                Radius,
+                Text,
+                _,
+            >(
+                store,
+                &query.clone().into(),
+                &data_result.entity_path,
+                |it| {
+                    re_tracing::profile_function!();
 
-            for (time, arch_view) in arch_views {
-                let Some(time) = time else {
-                    continue;
-                }; // scalars cannot be timeless
+                    let mut points = Vec::new();
 
-                for (scalar, scattered, color, radius, label) in itertools::izip!(
-                    arch_view.iter_required_component::<Scalar>()?,
-                    arch_view.iter_optional_component::<ScalarScattering>()?,
-                    arch_view.iter_optional_component::<Color>()?,
-                    arch_view.iter_optional_component::<Radius>()?,
-                    arch_view.iter_optional_component::<Text>()?,
-                ) {
-                    let color = annotation_info.color(color.map(|c| c.to_array()), default_color);
-                    let label = annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                    // if x_tick_size.floor() > 1.0 {
+                    //     re_tracing::profile_scope!("build (decimated)");
+                    //
+                    //     for ((time, _row_id), _, scalars, scatterings, colors, radii, labels) in
+                    //         it.step_by(x_tick_size.floor() as usize)
+                    //     {
+                    //         for (scalar, scattered, color, radius, label) in
+                    //             itertools::izip!(scalars, scatterings, colors, radii, labels)
+                    //         {
+                    //             let color = annotation_info
+                    //                 .color(color.map(|c| c.to_array()), default_color);
+                    //             let label =
+                    //                 annotation_info.label(label.as_ref().map(|l| l.as_str()));
+                    //
+                    //             const DEFAULT_RADIUS: f32 = 0.75;
+                    //
+                    //             points.push(PlotPoint {
+                    //                 time: time.as_i64(),
+                    //                 value: scalar.0,
+                    //                 attrs: PlotPointAttrs {
+                    //                     label,
+                    //                     color,
+                    //                     radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                    //                     scattered: scattered.map_or(false, |s| s.0),
+                    //                 },
+                    //             });
+                    //         }
+                    //     }
+                    // } else
+                    if x_tick_size > 1.0 {
+                        // eprintln!("aggregating! {x_tick_size}");
+                        re_tracing::profile_scope!("build (aggregated)");
 
-                    const DEFAULT_RADIUS: f32 = 0.75;
+                        let windowsz = x_tick_size.ceil() as usize;
 
-                    points.push(PlotPoint {
-                        time: time.as_i64(),
-                        value: scalar.0,
-                        attrs: PlotPointAttrs {
-                            label,
-                            color,
-                            radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
-                            scattered: scattered.map_or(false, |s| s.0),
-                        },
-                    });
-                }
-            }
+                        // TODO: decimal values means including extra data, but not stealing it
+                        // from your neighbor!!
 
-            points.sort_by_key(|s| s.time);
+                        loop {
+                            let mut acc: Vec<Option<PlotPoint>> = vec![None; windowsz];
 
-            if points.is_empty() {
-                continue;
-            }
+                            for i in 0..windowsz {
+                                let Some((
+                                    (time, _row_id),
+                                    _,
+                                    scalars,
+                                    scatterings,
+                                    colors,
+                                    radii,
+                                    labels,
+                                )) = it.next()
+                                else {
+                                    break;
+                                };
 
-            let min_time = store
-                .entity_min_time(&query.timeline, &data_result.entity_path)
-                .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+                                for (scalar, scattered, color, radius, label) in
+                                    itertools::izip!(scalars, scatterings, colors, radii, labels)
+                                {
+                                    let color = annotation_info
+                                        .color(color.map(|c| c.to_array()), default_color);
+                                    let label =
+                                        annotation_info.label(label.as_ref().map(|l| l.as_str()));
 
-            self.min_time = Some(self.min_time.map_or(min_time, |time| time.min(min_time)));
+                                    const DEFAULT_RADIUS: f32 = 0.75;
 
-            // If all points within a line share the label (and it isn't `None`), then we use it
-            // as the whole line label for the plot legend.
-            // Otherwise, we just use the entity path as-is.
-            let same_label = |points: &[PlotPoint]| -> Option<String> {
-                let label = points[0].attrs.label.as_ref()?;
-                (points.iter().all(|p| p.attrs.label.as_ref() == Some(label)))
-                    .then(|| label.clone())
-            };
-            let line_label =
-                same_label(&points).unwrap_or_else(|| data_result.entity_path.to_string());
+                                    acc[i] = Some(PlotPoint {
+                                        time: time.as_i64(),
+                                        value: scalar.0,
+                                        attrs: PlotPointAttrs {
+                                            label,
+                                            color,
+                                            radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                                            scattered: scattered.map_or(false, |s| s.0),
+                                        },
+                                    });
+                                }
+                            }
 
-            self.add_line_segments(&line_label, points);
+                            let aggregated = acc.drain(..).flatten().reduce(|mut acc, point| {
+                                // TODO: destruct for fwd compat
+                                acc.time = i64::max(acc.time, point.time);
+                                acc.value = f64::max(acc.value, point.value);
+                                acc.attrs.label = point.attrs.label;
+                                acc.attrs.color = point.attrs.color;
+                                acc.attrs.radius = f32::max(acc.attrs.radius, point.attrs.radius);
+                                acc.attrs.scattered =
+                                    bool::max(acc.attrs.scattered, point.attrs.scattered);
+                                acc
+                            });
+
+                            if aggregated.is_none() {
+                                break;
+                            }
+
+                            points.extend(aggregated);
+                        }
+                    } else {
+                        re_tracing::profile_scope!("build");
+                        for ((time, _row_id), _, scalars, scatterings, colors, radii, labels) in it
+                        {
+                            for (scalar, scattered, color, radius, label) in
+                                itertools::izip!(scalars, scatterings, colors, radii, labels)
+                            {
+                                let color = annotation_info
+                                    .color(color.map(|c| c.to_array()), default_color);
+                                let label =
+                                    annotation_info.label(label.as_ref().map(|l| l.as_str()));
+
+                                const DEFAULT_RADIUS: f32 = 0.75;
+
+                                points.push(PlotPoint {
+                                    time: time.as_i64(),
+                                    value: scalar.0,
+                                    attrs: PlotPointAttrs {
+                                        label,
+                                        color,
+                                        radius: radius.map_or(DEFAULT_RADIUS, |r| r.0),
+                                        scattered: scattered.map_or(false, |s| s.0),
+                                    },
+                                });
+                            }
+                        }
+                    }
+
+                    // TODO: seriously i dont get it, what's with the sort? doesnt seem to have
+                    // much impact though (because it's already sorted i assume).
+                    // TODO: cache should already be sorted at this point.
+                    // points.sort_by_key(|s| s.time);
+                    assert!(!points.windows(2).any(|p| p[0].time > p[1].time));
+
+                    if points.is_empty() {
+                        return;
+                    }
+
+                    let points = &points;
+
+                    // TODO: can be cached too
+                    // If all points within a line share the label (and it isn't `None`), then we use it
+                    // as the whole line label for the plot legend.
+                    // Otherwise, we just use the entity path as-is.
+                    let same_label = |points: &[PlotPoint]| -> Option<String> {
+                        let label = points[0].attrs.label.as_ref()?;
+                        (points.iter().all(|p| p.attrs.label.as_ref() == Some(label)))
+                            .then(|| label.clone())
+                    };
+                    let line_label =
+                        same_label(points).unwrap_or_else(|| data_result.entity_path.to_string());
+
+                    self.add_line_segments(&line_label, points);
+
+                    let min_time = store
+                        .entity_min_time(&query.timeline, &data_result.entity_path)
+                        .map_or(points.first().map_or(0, |p| p.time), |time| time.as_i64());
+
+                    self.min_time = Some(self.min_time.map_or(min_time, |time| time.min(min_time)));
+                },
+            );
         }
 
         Ok(())
@@ -218,8 +344,16 @@ impl TimeSeriesSystem {
     // segments.
     // A line segment is a continuous run of points with identical attributes: each time
     // we notice a change in attributes, we need a new line segment.
+    //
+    // TODO: sure it's slow, but that's because it needs:
+    // - to be done on the GPU
+    // - to compute level of details
+    // - to not split lines for imperceptible changes
+    // - etc
+    //
+    // and then does it really make sense to even cache it? who knows
     #[inline(never)] // Better callstacks on crashes
-    fn add_line_segments(&mut self, line_label: &str, points: Vec<PlotPoint>) {
+    fn add_line_segments(&mut self, line_label: &str, points: &[PlotPoint]) {
         re_tracing::profile_function!();
 
         let num_points = points.len();
@@ -236,7 +370,7 @@ impl TimeSeriesSystem {
             points: Vec::with_capacity(num_points),
         };
 
-        for (i, p) in points.into_iter().enumerate() {
+        for (i, p) in points.iter().enumerate() {
             if p.attrs == attrs {
                 // Same attributes, just add to the current line segment.
 

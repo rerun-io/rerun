@@ -22,7 +22,7 @@ pub use space_view_2d::SpatialSpaceView2D;
 pub use space_view_3d::SpatialSpaceView3D;
 
 #[doc(hidden)] // Public for benchmarks
-pub use parts::LoadedPoints;
+pub use parts::{LoadedPoints, Points3DComponentData};
 
 // ---
 

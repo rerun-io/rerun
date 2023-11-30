@@ -20,6 +20,7 @@ re_arrow_store.workspace = true
 re_format.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
+re_query_cache.workspace = true
 re_renderer.workspace = true
 re_space_view.workspace = true
 re_tracing.workspace = true
@@ -27,6 +28,8 @@ re_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 
+ahash.workspace = true
 egui_plot.workspace = true
 egui.workspace = true
 itertools.workspace = true
+parking_lot.workspace = true

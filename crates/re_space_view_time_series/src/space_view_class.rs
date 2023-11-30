@@ -1,4 +1,7 @@
+use std::collections::{BTreeMap, HashMap};
+
 use egui_plot::{Legend, Line, Plot, Points};
+use parking_lot::Mutex;
 
 use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
@@ -15,9 +18,9 @@ use re_viewer_context::{
 
 use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
 
-#[derive(Clone, Default)]
+#[derive(Default, Clone)]
 pub struct TimeSeriesSpaceViewState {
-    /// track across frames when the user moves the time cursor
+    /// Track across frames when the user moves the time cursor.
     is_dragging_time_cursor: bool,
 }
 
@@ -28,6 +31,39 @@ impl SpaceViewState for TimeSeriesSpaceViewState {
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TimeSeriesSpaceViewFeedback {
+    /// What was the size of the plot canvas in the last frame?
+    pub plot_canvas_size: egui::Vec2,
+
+    /// What were the plot bounds in the last frame?
+    pub plot_bounds: egui_plot::PlotBounds,
+}
+
+impl Default for TimeSeriesSpaceViewFeedback {
+    fn default() -> Self {
+        Self {
+            plot_canvas_size: Default::default(),
+            plot_bounds: egui_plot::PlotBounds::NOTHING,
+        }
+    }
+}
+
+static TIME_SERIES_SPACE_VIEW_FEEDBACK: Mutex<BTreeMap<SpaceViewId, TimeSeriesSpaceViewFeedback>> =
+    Mutex::new(BTreeMap::new());
+
+impl TimeSeriesSpaceViewFeedback {
+    pub fn insert(space_view_id: SpaceViewId, feedback: TimeSeriesSpaceViewFeedback) {
+        TIME_SERIES_SPACE_VIEW_FEEDBACK
+            .lock()
+            .insert(space_view_id, feedback);
+    }
+
+    pub fn remove(space_view_id: &SpaceViewId) -> Option<TimeSeriesSpaceViewFeedback> {
+        TIME_SERIES_SPACE_VIEW_FEEDBACK.lock().remove(space_view_id)
     }
 }
 
@@ -154,7 +190,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
-        _query: &ViewQuery<'_>,
+        query: &ViewQuery<'_>,
         _draw_data: Vec<re_renderer::QueueableDrawData>,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
@@ -229,11 +265,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
         }
 
+        // plot.x_grid_spacer
+        let mut feedback = TimeSeriesSpaceViewFeedback::default();
+        feedback.plot_canvas_size = ui.available_size();
         let egui_plot::PlotResponse {
             inner: time_x,
             response,
             transform,
         } = plot.show(ui, |plot_ui| {
+            feedback.plot_bounds = plot_ui.plot_bounds();
+
             if plot_ui.response().secondary_clicked() {
                 let timeline = ctx.rec_cfg.time_ctrl.timeline();
                 ctx.rec_cfg.time_ctrl.set_timeline_and_time(
@@ -283,6 +324,8 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 })
                 .map(|x| plot_ui.screen_from_plot([x, 0.0].into()).x)
         });
+
+        TimeSeriesSpaceViewFeedback::insert(query.space_view_id, feedback);
 
         if let Some(time_x) = time_x {
             let interact_radius = ui.style().interaction.resize_grab_radius_side;

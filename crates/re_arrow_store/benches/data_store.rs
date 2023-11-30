@@ -287,6 +287,7 @@ fn gc(c: &mut Criterion) {
             let mut store = store.clone();
             let (_, stats_diff) = store.gc(&GarbageCollectionOptions {
                 target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
+                time_budget: std::time::Duration::from_secs(1000000),
                 gc_timeless: false,
                 protect_latest: 0,
                 purge_empty_tables: false,
@@ -311,6 +312,7 @@ fn gc(c: &mut Criterion) {
                 let mut store = store.clone();
                 let (_, stats_diff) = store.gc(&GarbageCollectionOptions {
                     target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
+                    time_budget: std::time::Duration::from_secs(1000000),
                     gc_timeless: false,
                     protect_latest: 0,
                     purge_empty_tables: false,

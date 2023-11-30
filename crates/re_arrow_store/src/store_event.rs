@@ -522,7 +522,7 @@ mod tests {
             assert!(event.cells.contains_key(&store.cluster_key()));
 
             let (events, _) = store.gc(&GarbageCollectionOptions::gc_everything());
-            assert!(events.len() == 1);
+            assert_eq!(1, events.len());
             assert!(events[0].cells.contains_key(&store.cluster_key()));
         }
 
@@ -539,7 +539,7 @@ mod tests {
             assert!(!event.cells.contains_key(&store.cluster_key()));
 
             let (events, _) = store.gc(&GarbageCollectionOptions::gc_everything());
-            assert!(events.len() == 1);
+            assert_eq!(1, events.len());
             assert!(!events[0].cells.contains_key(&store.cluster_key()));
         }
 

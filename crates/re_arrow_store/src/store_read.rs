@@ -1,10 +1,13 @@
-use std::{ops::RangeBounds, sync::atomic::Ordering};
+use std::{collections::VecDeque, ops::RangeBounds, sync::atomic::Ordering};
 
 use itertools::Itertools;
-use re_log::trace;
-use re_log_types::{DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline};
-use re_types_core::{ComponentName, ComponentNameSet};
 use smallvec::SmallVec;
+
+use re_log::trace;
+use re_log_types::{
+    DataCell, EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, TimeRange, Timeline,
+};
+use re_types_core::{ComponentName, ComponentNameSet};
 
 use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
 
@@ -13,7 +16,7 @@ use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, Persiste
 /// A query at a given time, for a given timeline.
 ///
 /// Get the latest version of the data available at this time.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct LatestAtQuery {
     pub timeline: Timeline,
     pub at: TimeInt,
@@ -48,7 +51,7 @@ impl LatestAtQuery {
 /// interval.
 ///
 /// Motivation: all data is considered alive until the next logging to the same component path.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct RangeQuery {
     pub timeline: Timeline,
     pub range: TimeRange,
@@ -491,13 +494,13 @@ impl DataStore {
         }
     }
 
-    pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&TimePoint> {
-        re_tracing::profile_function!();
-
+    #[inline]
+    pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&(TimePoint, EntityPathHash)> {
         self.metadata_registry.get(row_id)
     }
 
     /// Sort all unsorted indices in the store.
+    #[inline]
     pub fn sort_indices_if_needed(&mut self) {
         for index in self.tables.values_mut() {
             index.sort_indices_if_needed();
@@ -725,6 +728,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id: _,
             col_row_id,
+            newest_row_id: _,
             col_num_instances: _,
             columns,
             size_bytes: _,
@@ -838,6 +842,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id: _,
             col_row_id,
+            newest_row_id: _,
             col_num_instances: _,
             columns,
             size_bytes: _,
@@ -950,6 +955,7 @@ impl IndexedBucketInner {
             col_time,
             col_insert_id,
             col_row_id,
+            newest_row_id: _,
             col_num_instances,
             columns,
             size_bytes: _,
@@ -959,10 +965,10 @@ impl IndexedBucketInner {
             return;
         }
 
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(); // TODO: too costly
 
         let swaps = {
-            re_tracing::profile_scope!("swaps");
+            // re_tracing::profile_scope!("swaps"); // TODO: too costly
             let mut swaps = (0..col_time.len()).collect::<Vec<_>>();
             // NOTE: Within a single timestamp, we must use the Row ID as tie-breaker!
             // The Row ID is how we define ordering within a client's thread, and our public APIs
@@ -980,20 +986,26 @@ impl IndexedBucketInner {
         // TODO(#442): re_datastore: implement efficient shuffling on the read path.
 
         {
-            re_tracing::profile_scope!("control");
+            // re_tracing::profile_scope!("control"); // TODO: too costly
 
-            fn reshuffle_control_column<T: Copy, const N: usize>(
-                column: &mut SmallVec<[T; N]>,
+            fn reshuffle_control_column<T: Copy>(
+                column: &mut VecDeque<T>,
                 swaps: &[(usize, usize)],
             ) {
                 let source = {
-                    re_tracing::profile_scope!("clone");
+                    // re_tracing::profile_scope!("clone"); // TODO: too costly
                     column.clone()
                 };
                 {
-                    re_tracing::profile_scope!("rotate");
-                    for (from, to) in swaps.iter().copied() {
-                        column[to] = source[from];
+                    // re_tracing::profile_scope!("rotate"); // TODO: too costly
+
+                    column.make_contiguous();
+                    let (column, &mut []) = column.as_mut_slices() else {
+                        unreachable!();
+                    };
+
+                    for (from, to) in swaps {
+                        column[*to] = source[*from];
                     }
                 }
             }
@@ -1007,7 +1019,7 @@ impl IndexedBucketInner {
         }
 
         {
-            re_tracing::profile_scope!("data");
+            // re_tracing::profile_scope!("data"); // TODO: too costly
             // shuffle component columns back into a sorted state
             for column in columns.values_mut() {
                 let mut source = column.clone();
@@ -1016,6 +1028,7 @@ impl IndexedBucketInner {
                         column[to] = source[from].take();
                     }
                 }
+                column.make_contiguous();
             }
         }
 

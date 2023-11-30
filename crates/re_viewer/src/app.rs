@@ -508,7 +508,7 @@ impl App {
             UICommand::ScreenshotWholeApp => {
                 self.screenshotter.request_screenshot();
             }
-            #[cfg(not(target_arch = "wasm32"))]
+
             UICommand::PrintDatastore => {
                 if let Some(ctx) = store_context {
                     if let Some(recording) = ctx.recording {
@@ -524,6 +524,11 @@ impl App {
                     }
                 }
             }
+
+            UICommand::PrintQueryCache => {
+                println!("{}", re_query_cache::Caches::stats());
+            }
+
             #[cfg(target_arch = "wasm32")]
             UICommand::CopyDirectLink => {
                 self.run_copy_direct_link_command(store_context);

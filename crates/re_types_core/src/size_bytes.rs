@@ -1,9 +1,11 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 
 use arrow2::datatypes::{DataType, Field};
 use smallvec::SmallVec;
 
 // ---
+
+// TODO: is_pod -> dont walk datastructure, just multiply by len
 
 /// Approximations of stack and heap size for both internal and external types.
 ///
@@ -58,6 +60,39 @@ impl<K: SizeBytes, V: SizeBytes, S> SizeBytes for HashMap<K, V, S> {
     }
 }
 
+impl<T: SizeBytes> SizeBytes for VecDeque<T> {
+    /// Does not take capacity into account.
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // TODO(cmc): This is sub-optimal if these types are PODs.
+
+        // NOTE: It's all on the heap at this point.
+        self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for &[T] {
+    /// Does not take capacity into account.
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // TODO(cmc): This is sub-optimal if these types are PODs.
+
+        // NOTE: It's all on the heap at this point.
+        self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+    }
+}
+
+impl<T: SizeBytes> SizeBytes for [T] {
+    /// Does not take capacity into account.
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        // TODO(cmc): This is sub-optimal if these types are PODs.
+
+        // NOTE: It's all on the heap at this point.
+        self.iter().map(SizeBytes::total_size_bytes).sum::<u64>()
+    }
+}
+
 impl<T: SizeBytes> SizeBytes for Vec<T> {
     /// Does not take capacity into account.
     #[inline]
@@ -103,6 +138,45 @@ macro_rules! impl_size_bytes_pod {
 }
 
 impl_size_bytes_pod!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, bool, f32, f64);
+
+impl<T, U> SizeBytes for (T, U)
+where
+    T: SizeBytes,
+    U: SizeBytes,
+{
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let (a, b) = self;
+        a.heap_size_bytes() + b.heap_size_bytes()
+    }
+}
+
+impl<T, U, V> SizeBytes for (T, U, V)
+where
+    T: SizeBytes,
+    U: SizeBytes,
+    V: SizeBytes,
+{
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let (a, b, c) = self;
+        a.heap_size_bytes() + b.heap_size_bytes() + c.heap_size_bytes()
+    }
+}
+
+impl<T, U, V, W> SizeBytes for (T, U, V, W)
+where
+    T: SizeBytes,
+    U: SizeBytes,
+    V: SizeBytes,
+    W: SizeBytes,
+{
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let (a, b, c, d) = self;
+        a.heap_size_bytes() + b.heap_size_bytes() + c.heap_size_bytes() + d.heap_size_bytes()
+    }
+}
 
 // --- Arrow ---
 

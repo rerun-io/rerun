@@ -215,6 +215,16 @@ where
     }
 }
 
+impl<IIter1, IIter2, VIter, C> ExactSizeIterator
+    for ComponentJoinedIterator<IIter1, IIter2, VIter, C>
+where
+    IIter1: ExactSizeIterator<Item = InstanceKey>,
+    IIter2: ExactSizeIterator<Item = InstanceKey>,
+    VIter: ExactSizeIterator<Item = Option<C>>,
+    C: Clone,
+{
+}
+
 /// A view of an [`Archetype`] at a particular point in time returned by [`crate::get_component_with_instances`]
 ///
 /// The required [`Component`]s of an [`ArchetypeView`] determines the length of an entity
@@ -222,7 +232,10 @@ where
 /// the required [`Component`]s using [`InstanceKey`] values.
 #[derive(Clone, Debug)]
 pub struct ArchetypeView<A: Archetype> {
+    // TODO: timeline, time, storegeneration?
+    // TODO: this is the RowId of
     pub(crate) primary_row_id: RowId,
+    // TODO:
     pub(crate) components: BTreeMap<ComponentName, ComponentWithInstances>,
     pub(crate) phantom: PhantomData<A>,
 }
@@ -271,7 +284,7 @@ impl<A: Archetype> ArchetypeView<A> {
 
     /// Returns an iterator over [`InstanceKey`]s.
     #[inline]
-    pub fn iter_instance_keys(&self) -> impl Iterator<Item = InstanceKey> {
+    pub fn iter_instance_keys(&self) -> impl ExactSizeIterator<Item = InstanceKey> {
         re_tracing::profile_function!();
         // TODO(#2750): Maybe make this an intersection instead
         self.required_comp().instance_keys().into_iter()
@@ -288,7 +301,7 @@ impl<A: Archetype> ArchetypeView<A> {
     #[inline]
     pub fn iter_required_component<'a, C: Component + 'a>(
         &'a self,
-    ) -> DeserializationResult<impl Iterator<Item = C> + '_> {
+    ) -> DeserializationResult<impl ExactSizeIterator<Item = C> + '_> {
         re_tracing::profile_function!();
 
         debug_assert!(A::required_components()
@@ -338,7 +351,7 @@ impl<A: Archetype> ArchetypeView<A> {
     #[inline]
     pub fn iter_optional_component<'a, C: Component + Clone + 'a>(
         &'a self,
-    ) -> DeserializationResult<impl Iterator<Item = Option<C>> + '_> {
+    ) -> DeserializationResult<impl ExactSizeIterator<Item = Option<C>> + '_> {
         re_tracing::profile_function!(C::name());
 
         let component = self.components.get(&C::name());

@@ -424,6 +424,7 @@ impl StoreDb {
 
         self.gc(&GarbageCollectionOptions {
             target: re_arrow_store::GarbageCollectionTarget::Everything,
+            time_budget: std::time::Duration::from_millis(4),
             gc_timeless: true,
             protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
             purge_empty_tables: true,
@@ -445,6 +446,7 @@ impl StoreDb {
             target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(
                 fraction_to_purge as _,
             ),
+            time_budget: std::time::Duration::from_millis(4),
             gc_timeless: true,
             protect_latest: 1,
             purge_empty_tables: false,

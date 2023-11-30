@@ -1,0 +1,80 @@
+flat_vec_deque/extend_back/empty
+                        time:   [254.99 ns 255.07 ns 255.17 ns]
+                        thrpt:  [3.9190 Gelem/s 3.9204 Gelem/s 3.9218 Gelem/s]
+                 change:
+                        time:   [+1.2523% +1.3478% +1.4341%] (p = 0.00 < 0.05)
+                        thrpt:  [-1.4138% -1.3299% -1.2369%]
+                        Performance has regressed.
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) low mild
+  5 (5.00%) high mild
+  1 (1.00%) high severe
+
+flat_vec_deque/extend_back/prefilled
+                        time:   [27.141 µs 27.258 µs 27.398 µs]
+                        thrpt:  [36.499 Melem/s 36.687 Melem/s 36.845 Melem/s]
+                 change:
+                        time:   [-0.1048% +0.9630% +2.0348%] (p = 0.08 > 0.05)
+                        thrpt:  [-1.9942% -0.9538% +0.1049%]
+                        No change in performance detected.
+Found 7 outliers among 100 measurements (7.00%)
+  3 (3.00%) high mild
+  4 (4.00%) high severe
+
+flat_vec_deque/extend_back_with/empty
+                        time:   [368.91 ns 370.40 ns 372.11 ns]
+                        thrpt:  [2.6874 Gelem/s 2.6998 Gelem/s 2.7107 Gelem/s]
+Found 14 outliers among 100 measurements (14.00%)
+  8 (8.00%) high mild
+  6 (6.00%) high severe
+
+flat_vec_deque/extend_back_with/prefilled
+                        time:   [29.620 µs 29.669 µs 29.732 µs]
+                        thrpt:  [33.634 Melem/s 33.705 Melem/s 33.761 Melem/s]
+Found 7 outliers among 100 measurements (7.00%)
+  1 (1.00%) high mild
+  6 (6.00%) high severe
+
+flat_vec_deque/extend_at/empty
+                        time:   [262.59 ns 262.85 ns 263.31 ns]
+                        thrpt:  [3.7978 Gelem/s 3.8044 Gelem/s 3.8082 Gelem/s]
+                 change:
+                        time:   [-0.2437% -0.0409% +0.1528%] (p = 0.71 > 0.05)
+                        thrpt:  [-0.1526% +0.0409% +0.2443%]
+                        No change in performance detected.
+Found 8 outliers among 100 measurements (8.00%)
+  4 (4.00%) high mild
+  4 (4.00%) high severe
+
+flat_vec_deque/extend_at/prefilled/front
+                        time:   [56.916 µs 57.113 µs 57.373 µs]
+                        thrpt:  [17.430 Melem/s 17.509 Melem/s 17.570 Melem/s]
+                 change:
+                        time:   [+0.4248% +1.1496% +1.9347%] (p = 0.00 < 0.05)
+                        thrpt:  [-1.8979% -1.1366% -0.4230%]
+                        Change within noise threshold.
+Found 10 outliers among 100 measurements (10.00%)
+  5 (5.00%) high mild
+  5 (5.00%) high severe
+flat_vec_deque/extend_at/prefilled/middle
+                        time:   [41.045 µs 41.200 µs 41.436 µs]
+                        thrpt:  [24.133 Melem/s 24.272 Melem/s 24.363 Melem/s]
+                 change:
+                        time:   [-2.1605% -1.6283% -1.0169%] (p = 0.00 < 0.05)
+                        thrpt:  [+1.0273% +1.6552% +2.2082%]
+                        Performance has improved.
+Found 11 outliers among 100 measurements (11.00%)
+  3 (3.00%) high mild
+  8 (8.00%) high severe
+flat_vec_deque/extend_at/prefilled/back
+                        time:   [28.889 µs 29.016 µs 29.134 µs]
+                        thrpt:  [34.325 Melem/s 34.464 Melem/s 34.615 Melem/s]
+                 change:
+                        time:   [+6.4513% +7.1286% +7.9055%] (p = 0.00 < 0.05)
+                        thrpt:  [-7.3263% -6.6543% -6.0603%]
+                        Performance has regressed.
+Found 14 outliers among 100 measurements (14.00%)
+  4 (4.00%) low severe
+  4 (4.00%) high mild
+  6 (6.00%) high severe
+

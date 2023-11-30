@@ -11,6 +11,12 @@ use std::hash::BuildHasher;
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub struct Hash64(u64);
 
+impl re_types_core::SizeBytes for Hash64 {
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 impl Hash64 {
     pub const ZERO: Hash64 = Hash64(0);
 

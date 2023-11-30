@@ -1,7 +1,6 @@
 use re_arrow_store::TimeRange;
 use re_data_store::EntityPath;
 use re_log_types::RowId;
-use re_query::range_archetype;
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
@@ -66,28 +65,32 @@ impl ViewPartSystem for TextLogSystem {
             let timeline_query =
                 re_arrow_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);
 
-            let arch_views = range_archetype::<TextLog, { TextLog::NUM_COMPONENTS }>(
+            re_query_cache::query_cached_archetype_r1o2::<
+                { TextLog::NUM_COMPONENTS },
+                TextLog,
+                Text,
+                TextLogLevel,
+                Color,
+                _,
+            >(
                 store,
-                &timeline_query,
+                &timeline_query.clone().into(),
                 &data_result.entity_path,
+                |it| {
+                    for ((time, row_id), _, bodies, levels, colors) in it {
+                        for (body, level, color) in itertools::izip!(bodies, levels, colors) {
+                            self.entries.push(Entry {
+                                row_id: *row_id,
+                                entity_path: data_result.entity_path.clone(),
+                                time: Some(time.as_i64()), // TODO: timeless
+                                color: *color,
+                                body: body.clone(),
+                                level: level.clone(),
+                            });
+                        }
+                    }
+                },
             );
-
-            for (time, arch_view) in arch_views {
-                let bodies = arch_view.iter_required_component::<Text>()?;
-                let levels = arch_view.iter_optional_component::<TextLogLevel>()?;
-                let colors = arch_view.iter_optional_component::<Color>()?;
-
-                for (body, level, color) in itertools::izip!(bodies, levels, colors) {
-                    self.entries.push(Entry {
-                        row_id: arch_view.primary_row_id(),
-                        entity_path: data_result.entity_path.clone(),
-                        time: time.map(|time| time.as_i64()),
-                        color,
-                        body,
-                        level,
-                    });
-                }
-            }
         }
 
         {

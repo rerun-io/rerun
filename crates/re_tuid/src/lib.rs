@@ -17,6 +17,13 @@ pub struct Tuid {
     inc: u64,
 }
 
+impl re_types_core::SizeBytes for Tuid {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 #[cfg(feature = "arrow")]
 pub mod arrow;
 
@@ -177,7 +184,7 @@ fn test_tuid() {
     where
         T: Ord,
     {
-        data.windows(2).all(|w| w[0] <= w[1])
+        !data.windows(2).any(|w| w[0] > w[1])
     }
 
     let num = 100_000;

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use ahash::HashMap;
 use itertools::{izip, Itertools as _};
@@ -51,19 +51,19 @@ pub type DataTableResult<T> = ::std::result::Result<T, DataTableError>;
 
 // ---
 
-pub type RowIdVec = SmallVec<[RowId; 4]>;
+pub type RowIdVec = VecDeque<RowId>;
 
-pub type TimeOptVec = SmallVec<[Option<i64>; 4]>;
+pub type TimeOptVec = VecDeque<Option<i64>>;
 
-pub type TimePointVec = SmallVec<[TimePoint; 4]>;
+pub type TimePointVec = VecDeque<TimePoint>;
 
-pub type ErasedTimeVec = SmallVec<[i64; 4]>;
+pub type ErasedTimeVec = VecDeque<i64>;
 
-pub type EntityPathVec = SmallVec<[EntityPath; 4]>;
+pub type EntityPathVec = VecDeque<EntityPath>;
 
-pub type NumInstancesVec = SmallVec<[NumInstances; 4]>;
+pub type NumInstancesVec = VecDeque<NumInstances>;
 
-pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
+pub type DataCellOptVec = VecDeque<Option<DataCell>>;
 
 /// A column's worth of [`DataCell`]s: a sparse collection of [`DataCell`]s that share the same
 /// underlying type and likely point to shared, contiguous memory.
@@ -72,8 +72,28 @@ pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
 #[derive(Debug, Clone, PartialEq)]
 pub struct DataCellColumn(pub DataCellOptVec);
 
+// TODO: that would require making it contiguous and shit
+
+// impl std::ops::Deref for DataCellColumn {
+//     type Target = [Option<DataCell>];
+//
+//     #[inline]
+//     fn deref(&self) -> &Self::Target {
+//         &self.0
+//     }
+// }
+//
+// // TODO(cmc): Those Deref don't actually do their job most of the time for some reason…
+//
+// impl std::ops::DerefMut for DataCellColumn {
+//     #[inline]
+//     fn deref_mut(&mut self) -> &mut Self::Target {
+//         &mut self.0
+//     }
+// }
+
 impl std::ops::Deref for DataCellColumn {
-    type Target = [Option<DataCell>];
+    type Target = VecDeque<Option<DataCell>>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -109,7 +129,7 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 impl DataCellColumn {
     #[inline]
     pub fn empty(num_rows: usize) -> Self {
-        Self(smallvec::smallvec![None; num_rows])
+        Self(vec![None; num_rows].into())
     }
 
     /// Compute and cache the size of each individual underlying [`DataCell`].
@@ -418,12 +438,12 @@ impl DataTable {
                 match col_timelines.entry(*timeline) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         entry
-                            .insert(smallvec::smallvec![None; i])
-                            .push(Some(time.as_i64()));
+                            .insert(vec![None; i].into())
+                            .push_back(Some(time.as_i64()));
                     }
                     std::collections::btree_map::Entry::Occupied(mut entry) => {
                         let entry = entry.get_mut();
-                        entry.push(Some(time.as_i64()));
+                        entry.push_back(Some(time.as_i64()));
                     }
                 }
             }
@@ -431,7 +451,7 @@ impl DataTable {
             // handle potential sparseness
             for (timeline, col_time) in &mut col_timelines {
                 if timepoint.get(timeline).is_none() {
-                    col_time.push(None);
+                    col_time.push_back(None);
                 }
             }
         }
@@ -439,10 +459,7 @@ impl DataTable {
         // Pre-allocate all columns (one per component).
         let mut columns = BTreeMap::default();
         for component in components {
-            columns.insert(
-                component,
-                DataCellColumn(smallvec::smallvec![None; column.len()]),
-            );
+            columns.insert(component, DataCellColumn(vec![None; column.len()].into()));
         }
 
         // Fill all columns (where possible: data is likely sparse).
@@ -624,7 +641,10 @@ impl DataTable {
             timeline: Timeline,
             times: &TimeOptVec,
         ) -> (Field, Box<dyn Array>) {
-            let data = PrimitiveArray::from(times.as_slice()).to(timeline.datatype());
+            let (times, &[]) = times.as_slices() else {
+                panic!("XXXXXXXX"); // TODO
+            };
+            let data = PrimitiveArray::from(times).to(timeline.datatype());
 
             let field = Field::new(timeline.name().as_str(), data.data_type().clone(), false)
                 .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_TIME.to_owned())].into());
@@ -694,7 +714,7 @@ impl DataTable {
 
     /// Serializes a single control column: an iterable of dense arrow-like data.
     pub fn serialize_control_column<'a, C: re_types_core::Component + 'a>(
-        values: &'a [C],
+        values: &'a VecDeque<C>,
     ) -> DataTableResult<(Field, Box<dyn Array>)>
     where
         std::borrow::Cow<'a, C>: std::convert::From<&'a C>,
@@ -720,11 +740,14 @@ impl DataTable {
     /// Serializes a single control column; optimized path for primitive datatypes.
     pub fn serialize_primitive_column<T: arrow2::types::NativeType>(
         name: &str,
-        values: &[T],
+        values: &VecDeque<T>,
         datatype: Option<DataType>,
     ) -> (Field, Box<dyn Array>) {
         re_tracing::profile_function!();
 
+        let (values, &[]) = values.as_slices() else {
+            unreachable!(); // TODO
+        };
         let data = PrimitiveArray::from_slice(values);
 
         let datatype = datatype.unwrap_or(data.data_type().clone());
@@ -779,7 +802,7 @@ impl DataTable {
     /// Serializes a single data column.
     pub fn serialize_data_column(
         name: &str,
-        column: &[Option<DataCell>],
+        column: &VecDeque<Option<DataCell>>,
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
         re_tracing::profile_function!();
 
@@ -788,7 +811,7 @@ impl DataTable {
         /// * Before: `[C, C, C, C, C, C, C, …]`
         /// * After: `ListArray[ [[C, C], [C, C, C], None, [C], [C], …] ]`
         fn data_to_lists(
-            column: &[Option<DataCell>],
+            column: &VecDeque<Option<DataCell>>,
             data: Box<dyn Array>,
             ext_name: Option<String>,
         ) -> Box<dyn Array> {

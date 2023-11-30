@@ -50,33 +50,29 @@ def clamp(n, smallest, largest):  # type: ignore[no-untyped-def]
 def log_bar_chart() -> None:
     rr.set_time_sequence("frame_nr", 0)
     # Log a gauss bell as a bar chart
-    mean = 0
-    std = 1
-    variance = np.square(std)
-    x = np.arange(-5, 5, 0.1)
-    y = np.exp(-np.square(x - mean) / 2 * variance) / (np.sqrt(2 * np.pi * variance))
-    rr.log("bar_chart", rr.BarChart(y))
+    x = np.arange(-50, 50, 0.1)
+    rr.log("bar_chart", rr.BarChart(np.sin(x) * 0.5))
 
 
 def log_parabola() -> None:
     # Log a parabola as a time series
-    for t in range(0, 1000, 10):
+    for t in range(0, 1000000000, 1):
         rr.set_time_sequence("frame_nr", t)
 
-        f_of_t = (t * 0.01 - 5) ** 3 + 1
+        f_of_t = (t * 0.0001 - 5) ** 3 + 1
         radius = clamp(abs(f_of_t) * 0.1, 0.5, 10.0)
         color = [255, 255, 0]
         if f_of_t < -10.0:
             color = [255, 0, 0]
-        elif f_of_t > 10.0:
+        elif f_of_t > 1000.0:
             color = [0, 255, 0]
 
         rr.log(
             "curves/parabola",
             rr.TimeSeriesScalar(
                 f_of_t,
-                label="f(t) = (0.01t - 3)³ + 1",
-                radius=radius,
+                # label="f(t) = (0.01t - 3)³ + 1",
+                # radius=radius,
                 color=color,
             ),
         )
@@ -123,11 +119,11 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_plot")
 
-    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
-    log_bar_chart()
+    # rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
+    # log_bar_chart()
     log_parabola()
-    log_trig()
-    log_classification()
+    # log_trig()
+    # log_classification()
 
     rr.script_teardown(args)
 

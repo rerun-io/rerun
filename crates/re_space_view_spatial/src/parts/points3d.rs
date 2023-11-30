@@ -4,7 +4,7 @@ use re_query::{ArchetypeView, QueryError};
 use re_renderer::PickingLayerInstanceId;
 use re_types::{
     archetypes::Points3D,
-    components::{Position3D, Text},
+    components::{ClassId, Color, InstanceKey, KeypointId, Position3D, Radius, Text},
     Archetype as _, ComponentNameSet, DeserializationResult,
 };
 use re_viewer_context::{
@@ -15,13 +15,28 @@ use re_viewer_context::{
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext},
     parts::{
-        entity_iterator::process_archetype_views, load_keypoint_connections,
-        process_annotations_and_keypoints, process_colors, process_radii, UiLabel, UiLabelTarget,
+        load_keypoint_connections, process_annotations_and_keypoints,
+        process_cached_annotations_and_keypoints, process_cached_colors, process_cached_radii,
+        process_colors, process_radii, UiLabel, UiLabelTarget,
     },
     view_kind::SpatialSpaceViewKind,
 };
 
-use super::{picking_id_from_instance_key, Keypoints, SpatialViewPartData};
+use super::{
+    entity_iterator::process_cached_archetype_views_r1o5, picking_id_from_instance_key, Keypoints,
+    SpatialViewPartData,
+};
+
+// TODO
+pub struct Points3DComponentData<'a> {
+    pub instance_keys: &'a [InstanceKey],
+    pub positions: &'a [Position3D],
+    pub colors: &'a [Option<Color>],
+    pub radii: &'a [Option<Radius>],
+    pub labels: &'a [Option<Text>],
+    pub keypoint_ids: Option<&'a [Option<KeypointId>]>,
+    pub class_ids: Option<&'a [Option<ClassId>]>,
+}
 
 pub struct Points3DPart {
     /// If the number of points in the batch is > max_labels, don't render point labels.
@@ -40,7 +55,9 @@ impl Default for Points3DPart {
 
 impl Points3DPart {
     fn process_labels<'a>(
-        arch_view: &'a ArchetypeView<Points3D>,
+        &Points3DComponentData {
+            positions, labels, ..
+        }: &'a Points3DComponentData<'_>,
         instance_path_hashes: &'a [InstancePathHash],
         colors: &'a [egui::Color32],
         annotation_infos: &'a ResolvedAnnotationInfos,
@@ -49,8 +66,8 @@ impl Points3DPart {
         re_tracing::profile_function!();
         let labels = itertools::izip!(
             annotation_infos.iter(),
-            arch_view.iter_required_component::<Position3D>()?,
-            arch_view.iter_optional_component::<Text>()?,
+            positions,
+            labels,
             colors,
             instance_path_hashes,
         )
@@ -62,7 +79,7 @@ impl Points3DPart {
                         text: label,
                         color: *color,
                         target: UiLabelTarget::Position3D(
-                            world_from_obj.transform_point3(point.into()),
+                            world_from_obj.transform_point3((*point).into()),
                         ),
                         labeled_instance: *labeled_instance,
                     }),
@@ -73,12 +90,12 @@ impl Points3DPart {
         Ok(labels)
     }
 
-    fn process_arch_view(
+    fn process_cached_data(
         &mut self,
         query: &ViewQuery<'_>,
-        arch_view: &ArchetypeView<Points3D>,
         ent_path: &EntityPath,
         ent_context: &SpatialSceneEntityContext<'_>,
+        data @ &Points3DComponentData { instance_keys, .. }: &Points3DComponentData<'_>,
     ) -> Result<(), QueryError> {
         re_tracing::profile_function!();
 
@@ -89,12 +106,7 @@ impl Points3DPart {
             radii,
             colors,
             picking_instance_ids,
-        } = LoadedPoints::load(
-            arch_view,
-            ent_path,
-            query.latest_at,
-            &ent_context.annotations,
-        )?;
+        } = LoadedPoints::load_cached(data, ent_path, query.latest_at, &ent_context.annotations)?;
 
         {
             re_tracing::profile_scope!("to_gpu");
@@ -114,9 +126,9 @@ impl Points3DPart {
                 re_tracing::profile_scope!("marking additional highlight points");
                 for (highlighted_key, instance_mask_ids) in &ent_context.highlight.instances {
                     // TODO(andreas, jeremy): We can do this much more efficiently
-                    let highlighted_point_index = arch_view
-                        .iter_instance_keys()
-                        .position(|key| *highlighted_key == key);
+                    // TODO
+                    let highlighted_point_index =
+                        instance_keys.iter().position(|key| highlighted_key == key);
                     if let Some(highlighted_point_index) = highlighted_point_index {
                         point_range_builder = point_range_builder
                             .push_additional_outline_mask_ids_for_range(
@@ -135,28 +147,30 @@ impl Points3DPart {
 
         load_keypoint_connections(ent_context, ent_path, &keypoints);
 
-        if arch_view.num_instances() <= self.max_labels {
+        if instance_keys.len() <= self.max_labels {
             re_tracing::profile_scope!("labels");
 
             // Max labels is small enough that we can afford iterating on the colors again.
-            let colors =
-                process_colors(arch_view, ent_path, &annotation_infos)?.collect::<Vec<_>>();
+            let colors = process_cached_colors(data.colors, ent_path, &annotation_infos)?
+                .collect::<Vec<_>>();
 
             let instance_path_hashes_for_picking = {
                 re_tracing::profile_scope!("instance_hashes");
-                arch_view
-                    .iter_instance_keys()
+                instance_keys
+                    .iter()
+                    .copied()
                     .map(|instance_key| InstancePathHash::instance(ent_path, instance_key))
                     .collect::<Vec<_>>()
             };
 
             self.data.ui_labels.extend(Self::process_labels(
-                arch_view,
+                data,
                 &instance_path_hashes_for_picking,
                 &colors,
                 &annotation_infos,
                 ent_context.world_from_entity,
             )?);
+            // TODO: xxx
         }
 
         Ok(())
@@ -187,13 +201,47 @@ impl ViewPartSystem for Points3DPart {
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        process_archetype_views::<Points3DPart, Points3D, { Points3D::NUM_COMPONENTS }, _>(
+        process_cached_archetype_views_r1o5::<
+            Points3DPart,
+            { Points3D::NUM_COMPONENTS },
+            Points3D,
+            Position3D,
+            Color,
+            Radius,
+            Text,
+            re_types::components::KeypointId,
+            re_types::components::ClassId,
+            _,
+        >(
             ctx,
             query,
             view_ctx,
             view_ctx.get::<EntityDepthOffsets>()?.points,
-            |_ctx, ent_path, _ent_props, arch_view, ent_context| {
-                self.process_arch_view(query, &arch_view, ent_path, ent_context)
+            |_ctx,
+             ent_path,
+             _ent_props,
+             ent_context,
+             (_time, _row_id),
+             instance_keys,
+             positions,
+             colors,
+             radii,
+             labels,
+             keypoint_ids,
+             class_ids| {
+                let data = Points3DComponentData {
+                    instance_keys,
+                    positions,
+                    colors,
+                    radii,
+                    labels,
+                    keypoint_ids: keypoint_ids
+                        .iter()
+                        .any(Option::is_some)
+                        .then_some(keypoint_ids),
+                    class_ids: class_ids.iter().any(Option::is_some).then_some(class_ids),
+                };
+                self.process_cached_data(query, ent_path, ent_context, &data)
             },
         )?;
 
@@ -217,6 +265,98 @@ pub struct LoadedPoints {
     pub radii: Vec<re_renderer::Size>,
     pub colors: Vec<re_renderer::Color32>,
     pub picking_instance_ids: Vec<PickingLayerInstanceId>,
+}
+
+impl LoadedPoints {
+    #[inline]
+    pub fn load_cached(
+        data @ &Points3DComponentData {
+            positions,
+            keypoint_ids,
+            class_ids,
+            ..
+        }: &Points3DComponentData<'_>,
+        ent_path: &EntityPath,
+        latest_at: TimeInt,
+        annotations: &Annotations,
+    ) -> Result<Self, QueryError> {
+        re_tracing::profile_function!();
+
+        let (annotation_infos, keypoints) = process_cached_annotations_and_keypoints::<Position3D>(
+            latest_at,
+            positions,
+            keypoint_ids,
+            class_ids,
+            annotations,
+            |p| (*p).into(),
+        )?;
+
+        // TODO: rayon overhead is not worth it at this point
+        let positions = Self::load_cached_positions(data);
+        let radii = Self::load_cached_radii(data, ent_path);
+        let colors = Self::load_cached_colors(data, ent_path, &annotation_infos);
+        let picking_instance_ids = Self::load_cached_picking_ids(data);
+
+        Ok(Self {
+            annotation_infos,
+            keypoints,
+            positions,
+            radii: radii?,
+            colors: colors?,
+            picking_instance_ids,
+        })
+    }
+
+    #[inline]
+    pub fn load_cached_positions(
+        &Points3DComponentData { positions, .. }: &Points3DComponentData<'_>,
+    ) -> Vec<glam::Vec3> {
+        re_tracing::profile_function!();
+        // TODO: why is this not a bytemuck cast tho?
+        positions.iter().copied().map(glam::Vec3::from).collect()
+    }
+
+    #[inline]
+    pub fn load_cached_radii(
+        &Points3DComponentData { radii, .. }: &Points3DComponentData<'_>,
+        ent_path: &EntityPath,
+    ) -> Result<Vec<re_renderer::Size>, QueryError> {
+        re_tracing::profile_function!();
+        // TODO: why is this not a bytemuck cast tho?
+        process_cached_radii(radii, ent_path).map(|radii| {
+            re_tracing::profile_scope!("collect");
+            radii.collect()
+        })
+    }
+
+    #[inline]
+    pub fn load_cached_colors(
+        &Points3DComponentData { colors, .. }: &Points3DComponentData<'_>,
+        ent_path: &EntityPath,
+        annotation_infos: &ResolvedAnnotationInfos,
+    ) -> Result<Vec<re_renderer::Color32>, QueryError> {
+        re_tracing::profile_function!();
+        process_cached_colors(colors, ent_path, annotation_infos).map(|colors| {
+            re_tracing::profile_scope!("collect");
+            colors.collect()
+        })
+    }
+
+    #[inline]
+    pub fn load_cached_picking_ids(
+        &Points3DComponentData { instance_keys, .. }: &Points3DComponentData<'_>,
+    ) -> Vec<PickingLayerInstanceId> {
+        re_tracing::profile_function!();
+
+        // TODO: why is this not a bytemuck cast tho?
+        let iterator = instance_keys
+            .iter()
+            .copied()
+            .map(picking_id_from_instance_key);
+
+        re_tracing::profile_scope!("collect");
+        iterator.collect()
+    }
 }
 
 impl LoadedPoints {

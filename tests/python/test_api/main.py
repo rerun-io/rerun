@@ -447,21 +447,7 @@ def run_image_tensors() -> None:
     img_gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
     rr.log("img_gray", rr.Image(img_gray))
 
-    dtypes = [
-        "uint8",
-        "uint16",
-        "uint32",
-        "uint64",
-        "int8",  # produces wrap-around when casting, producing ugly images, but clipping which is not useful as a test
-        "int16",
-        "int32",
-        "int64",
-        "float16",
-        "float32",
-        "float64",
-    ]
-
-    for dtype in dtypes:
+for dtype in dtypes:
         rr.log(f"img_rgba_{dtype}", rr.Image(img_rgba.astype(dtype)))
         rr.log(f"img_rgb_{dtype}", rr.Image(img_rgb.astype(dtype)))
         rr.log(f"img_gray_{dtype}", rr.Image(img_gray.astype(dtype)))

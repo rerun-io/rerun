@@ -928,6 +928,7 @@ fn gc_impl(store: &mut DataStore) {
 
         let (store_events, stats_diff) = store.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
+            time_budget: std::time::Duration::from_secs(1000000),
             gc_timeless: false,
             protect_latest: 0,
             purge_empty_tables: false,
@@ -1007,6 +1008,7 @@ fn protected_gc_impl(store: &mut DataStore) {
 
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
+        time_budget: std::time::Duration::from_secs(1000000),
         gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,
@@ -1103,6 +1105,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
+        time_budget: std::time::Duration::from_secs(1000000),
         gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,
@@ -1145,6 +1148,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
 
     store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
+        time_budget: std::time::Duration::from_secs(1000000),
         gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,

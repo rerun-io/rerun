@@ -148,6 +148,7 @@ impl IndexedBucket {
         re_tracing::profile_function!();
 
         let Self {
+            id: _,
             timeline: _,
             cluster_key,
             inner,
@@ -160,6 +161,7 @@ impl IndexedBucket {
                 col_time,
                 col_insert_id,
                 col_row_id,
+                newest_row_id,
                 col_num_instances,
                 columns,
                 size_bytes: _,
@@ -168,6 +170,9 @@ impl IndexedBucket {
             // Time ranges are eagerly maintained.
             {
                 let mut times = col_time.clone();
+                let (times, &mut []) = times.as_mut_slices() else {
+                    unreachable!(); // TODO
+                };
                 times.sort();
 
                 let expected_min = times.first().copied().unwrap_or(i64::MAX).into();
@@ -181,6 +186,17 @@ impl IndexedBucket {
                     });
                 }
             }
+
+            // TODO
+            // // Make sure `newest_row_id` isn't out of sync
+            // {
+            //     let expected = col_row_id
+            //         .iter()
+            //         .copied()
+            //         .reduce(RowId::max)
+            //         .unwrap_or(RowId::ZERO);
+            //     assert_eq!(expected, *newest_row_id); // TODO: actual error
+            // }
 
             // All columns should be `Self::num_rows` long.
             {

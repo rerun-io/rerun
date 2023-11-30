@@ -43,6 +43,7 @@ re_log_encoding = { path = "crates/re_log_encoding", version = "=0.12.0-alpha.1"
 re_log_types = { path = "crates/re_log_types", version = "=0.12.0-alpha.1", default-features = false }
 re_memory = { path = "crates/re_memory", version = "=0.12.0-alpha.1", default-features = false }
 re_query = { path = "crates/re_query", version = "=0.12.0-alpha.1", default-features = false }
+re_query_cache = { path = "crates/re_query_cache", version = "=0.12.0-alpha.1", default-features = false }
 re_renderer = { path = "crates/re_renderer", version = "=0.12.0-alpha.1", default-features = false }
 re_sdk = { path = "crates/re_sdk", version = "=0.12.0-alpha.1", default-features = false }
 re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.12.0-alpha.1", default-features = false }
