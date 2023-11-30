@@ -12,6 +12,8 @@ import rerun as rr
 from download_dataset import MINISPLIT_SCENES, download_minisplit
 from nuscenes import nuscenes
 
+# currently need to calculate the color manually
+# see https://github.com/rerun-io/rerun/issues/4409
 cmap = matplotlib.colormaps["turbo_r"]
 norm = matplotlib.colors.Normalize(
     vmin=3.0,
@@ -52,7 +54,6 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
 
     first_sample_token = scene["first_sample_token"]
     first_sample = nusc.get("sample", scene["first_sample_token"])
-    start_timestamp = first_sample["timestamp"]
 
     first_lidar_token = ""
     first_radar_tokens = []
@@ -68,23 +69,25 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
         elif sample_data["sensor_modality"] == "camera":
             first_camera_tokens.append(sample_data_token)
 
-    log_lidar_and_ego_pose(first_lidar_token, start_timestamp, nusc)
-    log_cameras(first_camera_tokens, start_timestamp, nusc)
-    log_radars(first_radar_tokens, start_timestamp, nusc)
-    log_annotations(first_sample_token, start_timestamp, nusc)
+    log_lidar_and_ego_pose(first_lidar_token, nusc)
+    log_cameras(first_camera_tokens, nusc)
+    log_radars(first_radar_tokens, nusc)
+    log_annotations(first_sample_token, nusc)
 
 
-def log_lidar_and_ego_pose(first_lidar_token: str, start_timestamp: numbers.Number, nusc: nuscenes.NuScenes) -> None:
+def log_lidar_and_ego_pose(first_lidar_token: str, nusc: nuscenes.NuScenes) -> None:
     """Log lidar data and vehicle pose."""
     current_lidar_token = first_lidar_token
 
     while current_lidar_token != "":
         sample_data = nusc.get("sample_data", current_lidar_token)
         sensor_name = sample_data["channel"]
-        rr.set_time_seconds("timestamp", (sample_data["timestamp"] - start_timestamp) * 1e-6)
+
+        # timestamps are in microseconds
+        rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
 
         ego_pose = nusc.get("ego_pose", sample_data["ego_pose_token"])
-        rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)
+        rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)  # go from wxyz to xyzw
         rr.log(
             "world/ego_vehicle",
             rr.Transform3D(
@@ -103,27 +106,27 @@ def log_lidar_and_ego_pose(first_lidar_token: str, start_timestamp: numbers.Numb
         rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
 
 
-def log_cameras(first_camera_tokens: list[str], start_timestamp: numbers.Number, nusc: nuscenes.NuScenes) -> None:
+def log_cameras(first_camera_tokens: list[str], nusc: nuscenes.NuScenes) -> None:
     """Log camera data."""
     for first_camera_token in first_camera_tokens:
         current_camera_token = first_camera_token
         while current_camera_token != "":
             sample_data = nusc.get("sample_data", current_camera_token)
             sensor_name = sample_data["channel"]
-            rr.set_time_seconds("timestamp", (sample_data["timestamp"] - start_timestamp) * 1e-6)
+            rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
             data_file_path = nusc.dataroot / sample_data["filename"]
             rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
             current_camera_token = sample_data["next"]
 
 
-def log_radars(first_radar_tokens: list[str], start_timestamp: numbers.Number, nusc: nuscenes.NuScenes) -> None:
+def log_radars(first_radar_tokens: list[str], nusc: nuscenes.NuScenes) -> None:
     """Log radar data."""
     for first_radar_token in first_radar_tokens:
         current_camera_token = first_radar_token
         while current_camera_token != "":
             sample_data = nusc.get("sample_data", current_camera_token)
             sensor_name = sample_data["channel"]
-            rr.set_time_seconds("timestamp", (sample_data["timestamp"] - start_timestamp) * 1e-6)
+            rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
             data_file_path = nusc.dataroot / sample_data["filename"]
             pointcloud = nuscenes.RadarPointCloud.from_file(str(data_file_path))
             points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
@@ -133,13 +136,13 @@ def log_radars(first_radar_tokens: list[str], start_timestamp: numbers.Number, n
             current_camera_token = sample_data["next"]
 
 
-def log_annotations(first_sample_token: str, start_timestamp: numbers.Number, nusc: nuscenes.NuScenes) -> None:
+def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes) -> None:
     """Log 3D bounding boxes."""
     label2id: dict[str, int] = {}
     current_sample_token = first_sample_token
     while current_sample_token != "":
         sample = nusc.get("sample", current_sample_token)
-        rr.set_time_seconds("timestamp", (sample["timestamp"] - start_timestamp) * 1e-6)
+        rr.set_time_seconds("timestamp", sample["timestamp"] * 1e-6)
         ann_tokens = sample["anns"]
         sizes = []
         centers = []
@@ -148,7 +151,7 @@ def log_annotations(first_sample_token: str, start_timestamp: numbers.Number, nu
         for ann_token in ann_tokens:
             ann = nusc.get("sample_annotation", ann_token)
 
-            rotation_xyzw = np.roll(ann["rotation"], shift=-1)
+            rotation_xyzw = np.roll(ann["rotation"], shift=-1)  # go from wxyz to xyzw
             width, length, height = ann["size"]
             sizes.append((length, width, height))  # x, y, z sizes
             centers.append(ann["translation"])
@@ -166,7 +169,7 @@ def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes)
     sensor_name = sample_data["channel"]
     calibrated_sensor_token = sample_data["calibrated_sensor_token"]
     calibrated_sensor = nusc.get("calibrated_sensor", calibrated_sensor_token)
-    rotation_xyzw = np.roll(calibrated_sensor["rotation"], shift=-1)
+    rotation_xyzw = np.roll(calibrated_sensor["rotation"], shift=-1)  # go from wxyz to xyzw
     rr.log(
         f"world/ego_vehicle/{sensor_name}",
         rr.Transform3D(

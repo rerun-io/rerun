@@ -10,6 +10,8 @@ import rerun as rr
 from download_dataset import MINISPLIT_SCENES, download_minisplit
 from nuscenes import nuscenes
 
+# currently need to calculate the color manually
+# see https://github.com/rerun-io/rerun/issues/4409
 cmap = matplotlib.colormaps["turbo_r"]
 norm = matplotlib.colors.Normalize(
     vmin=3.0,
@@ -48,7 +50,6 @@ def log_nuscenes_lidar(root_dir: pathlib.Path, dataset_version: str, scene_name:
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
 
     first_sample = nusc.get("sample", scene["first_sample_token"])
-    start_timestamp = first_sample["timestamp"]  # used to start from 0
     current_lidar_token = first_sample["data"]["LIDAR_TOP"]
     while current_lidar_token != "":
         sample_data = nusc.get("sample_data", current_lidar_token)
@@ -59,7 +60,8 @@ def log_nuscenes_lidar(root_dir: pathlib.Path, dataset_version: str, scene_name:
         point_distances = np.linalg.norm(points, axis=1)
         point_colors = cmap(norm(point_distances))
 
-        rr.set_time_seconds("timestamp", (sample_data["timestamp"] - start_timestamp) * 1e-6)
+        # timestamps are in microseconds
+        rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
         rr.log("world/lidar", rr.Points3D(points, colors=point_colors))
 
         current_lidar_token = sample_data["next"]
