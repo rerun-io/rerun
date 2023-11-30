@@ -9,14 +9,14 @@ use re_viewer_context::SystemCommandSender;
 use super::WelcomeScreenResponse;
 
 #[derive(Debug, serde::Deserialize)]
-pub(crate) struct ExampleThumbnail {
+struct ExampleThumbnail {
     url: String,
     width: u32,
     height: u32,
 }
 
 #[derive(Debug, serde::Deserialize)]
-pub(crate) struct ExampleDesc {
+struct ExampleDesc {
     /// snake_case version of the example name
     name: String,
 
@@ -50,7 +50,7 @@ const THUMBNAIL_RADIUS: f32 = 4.0;
 /// track the rectangle that spans the block of cells used for the corresponding example, so hover/
 /// click can be detected.
 #[derive(Debug)]
-pub(crate) struct ExampleDescLayout {
+struct ExampleDescLayout {
     desc: ExampleDesc,
     rect: egui::Rect,
 }
