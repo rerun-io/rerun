@@ -94,6 +94,7 @@ warn = [
   "clippy::ptr_cast_constness",
   "clippy::pub_without_shorthand",
   "clippy::rc_mutex",
+  "clippy::readonly_write_lock",
   "clippy::redundant_type_annotations",
   "clippy::ref_option_ref",
   "clippy::rest_pat_in_fully_bound_structs",
