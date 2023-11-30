@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import numbers
 import pathlib
 from typing import Any
 
