@@ -17,11 +17,16 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
 
+    /// Name for this space view class.
+    const NAME: &'static str;
+
     /// Name of this space view class.
     ///
     /// Used for both ui display and identification.
     /// Must be unique within a viewer session.
-    fn name(&self) -> SpaceViewClassName;
+    fn name(&self) -> SpaceViewClassName {
+        Self::NAME.into()
+    }
 
     /// Icon used to identify this space view class.
     fn icon(&self) -> &'static re_ui::Icon;

@@ -5,7 +5,7 @@ use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_types::components::TextLogLevel;
 use re_viewer_context::{
-    level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassName,
+    level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
@@ -42,9 +42,7 @@ pub struct TextSpaceView;
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
 
-    fn name(&self) -> SpaceViewClassName {
-        "TextLog".into()
-    }
+    const NAME: &'static str = "Text Log";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TEXTBOX

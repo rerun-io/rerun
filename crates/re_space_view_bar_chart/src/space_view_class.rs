@@ -4,7 +4,7 @@ use re_log_types::EntityPath;
 use re_space_view::controls;
 use re_types::datatypes::TensorBuffer;
 use re_viewer_context::{
-    auto_color, SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId,
+    auto_color, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
     ViewerContext,
 };
@@ -17,9 +17,7 @@ pub struct BarChartSpaceView;
 impl SpaceViewClass for BarChartSpaceView {
     type State = ();
 
-    fn name(&self) -> SpaceViewClassName {
-        "Bar Chart".into()
-    }
+    const NAME: &'static str = "Bar Chart";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_HISTOGRAM

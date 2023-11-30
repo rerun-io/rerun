@@ -13,8 +13,8 @@ use re_types::{
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, SystemCommand,
-    SystemCommandSender as _, UiVerbosity, ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClass, SpaceViewClassName, SpaceViewId,
+    SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
 use re_viewport::{external::re_space_view::QueryExpressions, Viewport, ViewportBlueprint};
 

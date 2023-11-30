@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
-use re_viewer_context::{SpaceViewClassName, TimeControl, ViewerContext};
+use re_viewer_context::{SpaceViewClass, SpaceViewClassName, TimeControl, ViewerContext};
 
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<SpaceViewClassName>> =
