@@ -161,11 +161,6 @@ fn parse_frontmatter<P: AsRef<Path>>(path: P) -> anyhow::Result<Option<Frontmatt
 }
 
 fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
-    if let Ok(base_url) = re_build_tools::get_and_track_env_var("EXAMPLES_MANIFEST_BASE_URL") {
-        // override via env var
-        return Ok(base_url);
-    }
-
     // In the CondaBuild environment we can't trust the git_branch name -- if it exists
     // at all it's going to be the feedstock branch-name, not our Rerun branch. However
     // conda should ONLY be building released versions, so we want to version the manifest.
@@ -200,8 +195,11 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
     Ok(format!("https://demo.rerun.io/commit/{sha}"))
 }
 
-fn build_examples_manifest(build_env: Environment) -> anyhow::Result<String> {
-    let base_url = get_base_url(build_env)?;
+fn build_examples_manifest(build_env: Environment, args: &Args) -> anyhow::Result<String> {
+    let base_url = match &args.base_url {
+        Some(base_url) => base_url.clone(),
+        None => get_base_url(build_env)?,
+    };
 
     let mut manifest = vec![];
     for example in examples()? {
@@ -219,41 +217,68 @@ const USAGE: &str = "\
 Usage: [options] [output_path]
 
 Options:
-    -h, --help   Print help
+    -h, --help       Print help
+        --base-url   Where all examples are uploaded, e.g. `https://demo.rerun.io/version/nightly`.
 ";
 
-fn main() {
-    re_build_tools::set_output_cargo_build_instructions(false);
+struct Args {
+    output_path: PathBuf,
+    base_url: Option<String>,
+}
 
-    let mut output_path = None;
-    for arg in std::env::args().skip(1) {
-        match arg.as_str() {
-            "--help" | "-h" => {
-                println!("{USAGE}");
-                return;
+impl Args {
+    fn from_env() -> Self {
+        let mut output_path = None;
+        let mut base_url = None;
+
+        let mut args = std::env::args().skip(1);
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--help" | "-h" => {
+                    println!("{USAGE}");
+                    std::process::exit(1);
+                }
+                "--base-url" => {
+                    let Some(url) = args.next() else {
+                        eprintln!("Expected value after \"--base-url\"");
+                        println!("\n{USAGE}");
+                        std::process::exit(1);
+                    };
+                    base_url = Some(url);
+                }
+                _ if arg.starts_with('-') => {
+                    eprintln!("Unknown argument: {arg:?}");
+                    println!("\n{USAGE}");
+                    std::process::exit(1);
+                }
+                _ if output_path.is_some() => {
+                    eprintln!("Too many positional arguments");
+                    println!("\n{USAGE}");
+                    std::process::exit(1);
+                }
+                _ => output_path = Some(PathBuf::from(arg)),
             }
-            _ if arg.starts_with('-') => {
-                eprintln!("Unknown argument: {arg:?}");
-                println!("\n{USAGE}");
-                return;
-            }
-            _ if output_path.is_some() => {
-                eprintln!("Too many arguments");
-                println!("\n{USAGE}");
-                return;
-            }
-            _ => output_path = Some(PathBuf::from(arg)),
+        }
+
+        let Some(output_path) = output_path else {
+            eprintln!("Missing argument \"output_path\"");
+            std::process::exit(1);
+        };
+
+        Args {
+            output_path,
+            base_url,
         }
     }
+}
 
-    let Some(output_path) = output_path else {
-        eprintln!("Missing argument \"output_path\"");
-        return;
-    };
+fn main() -> anyhow::Result<()> {
+    re_build_tools::set_output_cargo_build_instructions(false);
 
-    if let Err(err) = build_examples_manifest(Environment::detect())
-        .and_then(|manifest| std::fs::write(output_path, manifest).map_err(anyhow::Error::from))
-    {
-        eprintln!("{err}");
-    }
+    let args = Args::from_env();
+
+    let manifest = build_examples_manifest(Environment::detect(), &args)?;
+    std::fs::write(args.output_path, manifest)?;
+
+    Ok(())
 }
