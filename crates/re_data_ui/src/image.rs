@@ -664,7 +664,8 @@ fn tensor_pixel_value_ui(
         ui.label(format!("{x}, {y}"));
         ui.end_row();
 
-        if tensor.num_dim() == 2 {
+        // Check for annotations on any single-channel image
+        if let Some([_, _, 1]) = tensor.image_height_width_channels() {
             if let Some(raw_value) = tensor.get(&[y, x]) {
                 if let (TensorDataMeaning::ClassId, Some(u16_val)) =
                     (meaning, raw_value.try_as_u16())

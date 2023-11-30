@@ -69,15 +69,18 @@ jobs:
           cache-dependency-path: "rerun_py/requirements-lint.txt"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-lint.txt
 
       - name: Lint Python
+        shell: bash
         run: |
           just py-lint
 
       - name: Check requirements
+        shell: bash
         run: |
           just py-requirements
 
@@ -99,11 +102,13 @@ jobs:
           cache-dependency-path: "rerun_py/requirements-doc.txt"
 
       - name: Install Python dependencies
+        shell: bash
         run: |
           pip install --upgrade pip
           pip install -r rerun_py/requirements-doc.txt
 
       - name: Build via mkdocs
+        shell: bash
         run: |
           mkdocs build --strict -f rerun_py/mkdocs.yml
 
@@ -113,7 +118,7 @@ jobs:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -132,6 +137,7 @@ jobs:
 
       # So we can format the Python code
       - name: Set up Python
+        shell: bash
         run: |
           pip install -r rerun_py/requirements-lint.txt
 
@@ -145,7 +151,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -230,7 +236,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     env:
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -247,6 +253,7 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: clippy check re_viewer wasm32
+        shell: bash
         run: ./scripts/clippy_wasm.sh
 
       - name: Check re_renderer examples wasm32
@@ -277,6 +284,7 @@ jobs:
           tool: taplo-cli
 
       - name: Taplo check
+        shell: bash
         run: |
           taplo fmt --check --diff
 
@@ -296,29 +304,35 @@ jobs:
           python-version: "3.8"
 
       - name: Install dependencies
+        shell: bash
         run: |
           pip install gitignore_parser python-frontmatter
           pip install -r ./scripts/ci/requirements.txt
 
       - name: Rerun lints
+        shell: bash
         run: |
           ./scripts/lint.py
 
       # NOTE: We don't want spurious failures caused by issues being closed, so this does not run on CI,
       # at least for the time being.
       # - name: Check for zombie TODOs
+      #   shell: bash
       #   run: |
       #     ./scripts/zombie_todos.py --token ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for too large files
+        shell: bash
         run: |
           ./scripts/ci/check_large_files.sh
 
       - name: Check Python example requirements
+        shell: bash
         run: |
           ./scripts/ci/check_requirements.py
 
       - name: Check Python example thumbnails
+        shell: bash
         run: |
           ./scripts/ci/thumbnails.py check
 
@@ -342,7 +356,7 @@ jobs:
     name: Cargo Deny
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
         with:
@@ -369,3 +383,18 @@ jobs:
           clang-format-version: "16"
           # Only check c/cpp/h/hpp (default checks also .proto and others)
           include-regex: ^.*\.(c|cpp|h|hpp)$
+
+  misc-formatting:
+    name: Misc formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - uses: prefix-dev/setup-pixi@v0.4.1
+        with:
+          pixi-version: v0.6.0
+
+      - name: prettier --check
+        run: pixi run misc-fmt-check

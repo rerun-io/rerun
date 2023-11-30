@@ -9,6 +9,7 @@ mod caches;
 mod command_sender;
 mod component_ui_registry;
 mod item;
+mod query_context;
 mod selection_history;
 mod selection_state;
 mod space_view;
@@ -34,6 +35,7 @@ pub use command_sender::{
 pub use component_ui_registry::{ComponentUiRegistry, UiVerbosity};
 pub use item::{resolve_mono_instance_path, resolve_mono_instance_path_item, Item, ItemCollection};
 use nohash_hasher::{IntMap, IntSet};
+pub use query_context::{DataQueryResult, DataResultHandle, DataResultNode, DataResultTree};
 use re_log_types::EntityPath;
 pub use selection_history::SelectionHistory;
 pub use selection_state::{
@@ -41,12 +43,12 @@ pub use selection_state::{
 };
 pub use space_view::{
     default_heuristic_filter, AutoSpawnHeuristic, DataResult, DynSpaceViewClass,
-    HeuristicFilterContext, NamedViewSystem, PerSystemDataResults, PerSystemEntities,
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassName, SpaceViewClassRegistry,
+    HeuristicFilterContext, IdentifiedViewSystem, PerSystemDataResults, PerSystemEntities,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewClassLayoutPriority, SpaceViewClassRegistry,
     SpaceViewClassRegistryError, SpaceViewEntityHighlight, SpaceViewHighlights,
     SpaceViewOutlineMasks, SpaceViewState, SpaceViewSystemExecutionError, SpaceViewSystemRegistry,
     ViewContextCollection, ViewContextSystem, ViewPartCollection, ViewPartSystem, ViewQuery,
-    ViewSystemName,
+    ViewSystemIdentifier,
 };
 pub use store_context::StoreContext;
 pub use tensor::{TensorDecodeCache, TensorStats, TensorStatsCache};
@@ -66,9 +68,9 @@ pub mod external {
 
 // ---------------------------------------------------------------------------
 
-pub type EntitiesPerSystem = IntMap<ViewSystemName, IntSet<EntityPath>>;
+pub type EntitiesPerSystem = IntMap<ViewSystemIdentifier, IntSet<EntityPath>>;
 
-pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassName, EntitiesPerSystem>;
+pub type EntitiesPerSystemPerClass = IntMap<SpaceViewClassIdentifier, EntitiesPerSystem>;
 
 slotmap::new_key_type! {
     /// Identifier for a blueprint group.

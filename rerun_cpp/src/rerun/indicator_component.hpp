@@ -1,12 +1,13 @@
 #pragma once
 
-#include <memory>
-#include "data_cell.hpp"
+#include <memory> // std::shared_ptr
 #include "loggable.hpp"
+#include "result.hpp"
 
 namespace arrow {
     class DataType;
-}
+    class Array;
+} // namespace arrow
 
 namespace rerun::components {
     /// Arrow data type shared by all instances of IndicatorComponent.
@@ -24,22 +25,21 @@ namespace rerun::components {
 
 namespace rerun {
     /// \private
-    template <const char Name[]>
-    struct Loggable<components::IndicatorComponent<Name>> {
-        /// Creates a Rerun DataCell from an array of IndicatorComponent components.
-        static Result<rerun::DataCell> to_data_cell(
-            const components::IndicatorComponent<Name>*, size_t
-        ) {
-            // Lazily register the component type (only once).
-            static const Result<ComponentTypeHandle> component_type =
-                ComponentType(Name, components::indicator_arrow_datatype()).register_component();
-            RR_RETURN_NOT_OK(component_type.error);
+    template <const char Name_[]>
+    struct Loggable<components::IndicatorComponent<Name_>> {
+        /// Returns the name of this type.
+        static constexpr const char* Name = Name_;
 
-            rerun::DataCell cell;
-            cell.num_instances = 1;
-            cell.array = components::indicator_arrow_array();
-            cell.component_type = component_type.value;
-            return cell;
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return components::indicator_arrow_datatype();
+        }
+
+        /// Creates an arrow DataCell from an array of IndicatorComponent components.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::IndicatorComponent<Name_>*, size_t
+        ) {
+            return components::indicator_arrow_array();
         }
     };
 } // namespace rerun

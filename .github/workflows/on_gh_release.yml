@@ -11,6 +11,7 @@ concurrency:
 permissions:
   # required for updating the release
   contents: write
+  id-token: write
 
 jobs:
   sync-release-assets:

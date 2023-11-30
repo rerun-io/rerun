@@ -35,7 +35,7 @@ namespace rerun {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Loggable<components::Scalar>::to_data_cell(
+    Result<std::shared_ptr<arrow::Array>> Loggable<components::Scalar>::to_arrow(
         const components::Scalar* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
@@ -52,15 +52,6 @@ namespace rerun {
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-        static const Result<ComponentTypeHandle> component_type =
-            ComponentType(Name, datatype).register_component();
-        RR_RETURN_NOT_OK(component_type.error);
-
-        DataCell cell;
-        cell.num_instances = num_instances;
-        cell.array = std::move(array);
-        cell.component_type = component_type.value;
-        return cell;
+        return array;
     }
 } // namespace rerun

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -12,6 +11,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class ListBuilder;
 } // namespace arrow
@@ -50,8 +50,8 @@ namespace rerun {
             arrow::ListBuilder* builder, const components::Blob* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::Blob` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::components::Blob` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Blob* instances, size_t num_instances
         );
     };

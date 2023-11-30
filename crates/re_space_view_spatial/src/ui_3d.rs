@@ -468,6 +468,7 @@ pub fn view_3d(
         }
         // Without hovering, resets the camera.
         else {
+            state.scene_bbox_accum = state.scene_bbox;
             state
                 .state_3d
                 .reset_camera(&state.scene_bbox_accum, &view_coordinates);

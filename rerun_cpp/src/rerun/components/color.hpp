@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/rgba32.hpp"
 #include "../result.hpp"
 
@@ -15,6 +14,7 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
     class UInt32Type;
     using UInt32Builder = NumericBuilder<UInt32Type>;
@@ -91,8 +91,8 @@ namespace rerun {
             arrow::UInt32Builder* builder, const components::Color* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::Color` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::components::Color` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::Color* instances, size_t num_instances
         );
     };

@@ -1,5 +1,6 @@
 #include <array>
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 #include <arrow/buffer.h>
@@ -22,7 +23,11 @@ struct rerun::Loggable<BadComponent> {
     static constexpr const char* Name = "bad!";
     static rerun::Error error;
 
-    static rerun::Result<rerun::DataCell> to_data_cell(const BadComponent*, size_t) {
+    static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+        return rerun::Loggable<rerun::components::Position2D>::arrow_datatype();
+    }
+
+    static rerun::Result<std::shared_ptr<arrow::Array>> to_arrow(const BadComponent*, size_t) {
         return error;
     }
 };
@@ -69,7 +74,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
         AND_GIVEN("a valid application id") {
             THEN("creating a new stream does not log an error") {
                 rerun::RecordingStream stream = check_logged_error([&] {
-                    return rerun::RecordingStream("rerun_example_test", kind);
+                    return rerun::RecordingStream("rerun_example_test", std::string_view(), kind);
                 });
 
                 AND_THEN("it does not crash on destruction") {}
@@ -95,7 +100,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
         AND_GIVEN("invalid utf8 character sequence for the application id") {
             THEN("creating a new stream logs an invalid string argument error") {
                 check_logged_error(
-                    [&] { rerun::RecordingStream stream("\xc3\x28", kind); },
+                    [&] { rerun::RecordingStream stream("\xc3\x28", std::string_view(), kind); },
                     rerun::ErrorCode::InvalidStringArgument
                 );
             }
@@ -119,7 +124,7 @@ SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
             }
 
             WHEN("creating a new stream") {
-                rerun::RecordingStream stream("test", kind);
+                rerun::RecordingStream stream("test", std::string_view(), kind);
 
                 THEN("it can be set as global") {
                     stream.set_global();
@@ -142,7 +147,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
     for (auto kind : std::array{rerun::StoreKind::Recording, rerun::StoreKind::Blueprint}) {
         GIVEN("a store kind" << kind) {
             WHEN("creating a new stream") {
-                rerun::RecordingStream stream("test", kind);
+                rerun::RecordingStream stream("test", std::string_view(), kind);
 
                 // We can make single components work, but this would make error messages a lot
                 // worse since we'd have to implement the base `AsComponents` template for this.

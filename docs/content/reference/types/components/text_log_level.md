@@ -17,6 +17,7 @@ Recommended to be one of:
 * value: [`Utf8`](../datatypes/utf8.md)
 
 ## Links
+ * 🌊 [C++ API docs for `TextLogLevel`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TextLogLevel.html)
  * 🐍 [Python API docs for `TextLogLevel`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TextLogLevel)
  * 🦀 [Rust API docs for `TextLogLevel`](https://docs.rs/rerun/latest/rerun/components/struct.TextLogLevel.html)
 

@@ -11,9 +11,9 @@ use re_types::components::{DepthMeter, InstanceKey, TensorData};
 use re_types::tensor_data::TensorDataMeaning;
 use re_viewer_context::{
     resolve_mono_instance_path, HoverHighlight, HoveredSpace, Item, SelectionHighlight,
-    SpaceViewHighlights, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    TensorDecodeCache, TensorStatsCache, UiVerbosity, ViewContextCollection, ViewPartCollection,
-    ViewQuery, ViewerContext,
+    SpaceViewHighlights, SpaceViewState, SpaceViewSystemExecutionError, TensorDecodeCache,
+    TensorStatsCache, UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery,
+    ViewerContext,
 };
 
 use super::{eye::Eye, ui_2d::View2DState, ui_3d::View3DState};
@@ -113,10 +113,9 @@ impl SpatialSpaceViewState {
 
     pub fn selection_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
         spatial_kind: SpatialSpaceViewKind,
     ) {
         let re_ui = ctx.re_ui;
@@ -130,15 +129,6 @@ impl SpatialSpaceViewState {
         ctx.re_ui.selection_grid(ui, "spatial_settings_ui")
             .show(ui, |ui| {
             let auto_size_world = auto_size_world_heuristic(&self.scene_bbox_accum, self.scene_num_primitives);
-
-            ctx.re_ui.grid_left_hand_label(ui, "Space origin")
-                .on_hover_text("The origin is at the origin of this Entity. All transforms are relative to it");
-            item_ui::entity_path_button(ctx,
-                ui,
-                Some(space_view_id),
-                space_origin,
-            );
-            ui.end_row();
 
             ctx.re_ui.grid_left_hand_label(ui, "Default size");
             ui.vertical(|ui| {
@@ -177,6 +167,7 @@ impl SpatialSpaceViewState {
                         "Resets camera position & orientation.\nYou can also double-click the 3D view.")
                         .clicked()
                     {
+                        self.scene_bbox_accum = self.scene_bbox;
                         self.state_3d.reset_camera(&self.scene_bbox_accum, &view_coordinates);
                     }
                     let mut spin = self.state_3d.spin();
@@ -666,7 +657,7 @@ pub fn picking(
             }
         }
     };
-    ctx.selection_state_mut().set_hovered_space(hovered_space);
+    ctx.selection_state().set_hovered_space(hovered_space);
 
     Ok(response)
 }

@@ -141,6 +141,20 @@ void check_for_expected_single(const rerun::Collection<Element>& collection) {
     CHECK(collection[0] == expected);
 }
 
+SCENARIO("Default constructing a collection", TEST_TAG) {
+    GIVEN("a default constructed collection") {
+        rerun::Collection<Element> collection;
+
+        THEN("it is empty") {
+            CHECK(collection.size() == 0);
+            CHECK(collection.empty());
+        }
+        THEN("it is borrowed") {
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
+        }
+    }
+}
+
 SCENARIO(
     "Collection creation via basic adapters, using the container's value_type as input", TEST_TAG
 ) {
@@ -448,6 +462,8 @@ SCENARIO("Move construction/assignment of collections", TEST_TAG) {
             CHECK(target.size() == 2);
             CHECK(target.get_ownership() == rerun::CollectionOwnership::Borrowed);
             CHECK(borrowed.size() == 0);
+            CHECK(borrowed.empty());
+
             CHECK(borrowed.get_ownership() == rerun::CollectionOwnership::Borrowed);
         }
 
@@ -506,23 +522,29 @@ SCENARIO("Copy/move construction/assignment of collections", TEST_TAG) {
         THEN("it can be move constructed") {
             rerun::Collection<int> collection2(std::move(collection));
             CHECK(collection2.size() == 0);
+            CHECK(collection2.empty());
+
             CHECK(collection2.data() == old_data_ptr);
         }
         THEN("it can be move assigned") {
             rerun::Collection<int> collection2;
             collection2 = std::move(collection);
             CHECK(collection2.size() == 0);
+            CHECK(collection2.empty());
+
             CHECK(collection2.data() == old_data_ptr);
         }
 
         THEN("it can be copy constructed") {
             rerun::Collection<int> collection2(collection);
             CHECK(collection2.size() == 0);
+            CHECK(collection2.empty());
         }
         THEN("it can be copy assigned") {
             rerun::Collection<int> collection2;
             collection2 = collection;
             CHECK(collection2.size() == 0);
+            CHECK(collection2.empty());
         }
     }
 

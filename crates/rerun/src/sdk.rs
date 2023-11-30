@@ -28,9 +28,9 @@ mod prelude {
         TextLogLevel, Vector3D,
     };
     pub use re_types::datatypes::{
-        Angle, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32, Rotation3D,
-        RotationAxisAngle, Scale3D, TranslationAndMat3x3, TranslationRotationScale3D, Vec2D, Vec3D,
-        Vec4D,
+        Angle, AnnotationInfo, ClassDescription, Float32, KeypointPair, Mat3x3, Quaternion, Rgba32,
+        Rotation3D, RotationAxisAngle, Scale3D, TensorBuffer, TensorData, TensorDimension,
+        TranslationAndMat3x3, TranslationRotationScale3D, Vec2D, Vec3D, Vec4D,
     };
 }
 pub use prelude::*;

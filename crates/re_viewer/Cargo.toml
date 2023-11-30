@@ -51,6 +51,7 @@ re_log.workspace = true
 re_memory.workspace = true
 re_renderer = { workspace = true, default-features = false }
 re_smart_channel.workspace = true
+re_space_view.workspace = true
 re_space_view_bar_chart.workspace = true
 re_space_view_spatial.workspace = true
 re_space_view_tensor.workspace = true
@@ -87,6 +88,7 @@ egui.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
 once_cell = { workspace = true }
+nohash-hasher.workspace = true
 poll-promise = { workspace = true, features = ["web"] }
 rfd.workspace = true
 ron.workspace = true

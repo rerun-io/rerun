@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use cargo_metadata::{CargoOpt, Metadata, MetadataCommand, Package, PackageId};
+use cargo_metadata::{camino::Utf8Path, CargoOpt, Metadata, MetadataCommand, Package, PackageId};
 
 use crate::should_output_cargo_build_instructions;
 
@@ -138,6 +138,16 @@ pub fn write_file_if_necessary(
     std::fs::write(path, content)
 }
 
+/// Track any files that are part of the given crate, identified by the manifest path.
+fn track_crate_files(manifest_path: &Utf8Path, files_to_watch: &mut HashSet<PathBuf>) {
+    let mut dep_path = manifest_path.to_owned();
+    dep_path.pop();
+
+    rerun_if_changed_glob(dep_path.join("Cargo.toml"), files_to_watch); // manifest too!
+    rerun_if_changed_glob(dep_path.join("**/*.rs"), files_to_watch);
+    rerun_if_changed_glob(dep_path.join("**/*.wgsl"), files_to_watch);
+}
+
 // ---
 
 pub struct Packages<'a> {
@@ -168,16 +178,7 @@ impl<'a> Packages<'a> {
         });
 
         // Track the root package itself
-        {
-            let mut path = pkg.manifest_path.clone();
-            path.pop();
-
-            // NOTE: Since we track the cargo manifest, past this point we only need to
-            // account for locally patched dependencies.
-            rerun_if_changed_glob(path.join("Cargo.toml"), files_to_watch);
-            rerun_if_changed_glob(path.join("**/*.rs"), files_to_watch);
-            rerun_if_changed_glob(path.join("**/*.wgsl"), files_to_watch);
-        }
+        track_crate_files(&pkg.manifest_path, files_to_watch);
 
         // Track all direct and indirect dependencies of that root package
         let mut tracked = HashSet::new();
@@ -202,11 +203,7 @@ impl<'a> Packages<'a> {
         {
             let exists_on_local_disk = dep_pkg.source.is_none();
             if exists_on_local_disk {
-                let mut dep_path = dep_pkg.manifest_path.clone();
-                dep_path.pop();
-
-                rerun_if_changed_glob(dep_path.join("Cargo.toml"), files_to_watch); // manifest too!
-                rerun_if_changed_glob(dep_path.join("**/*.rs"), files_to_watch);
+                track_crate_files(&dep_pkg.manifest_path, files_to_watch);
             }
 
             if tracked.insert(dep_pkg.id.clone()) {

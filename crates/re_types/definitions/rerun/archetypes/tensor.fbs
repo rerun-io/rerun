@@ -8,6 +8,10 @@ namespace rerun.archetypes;
 
 /// A generic n-dimensional Tensor.
 ///
+/// \cpp Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+/// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+/// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+///
 /// \example tensor_simple title="Simple Tensor" image="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png"
 table Tensor (
   "attr.rust.derive": "PartialEq"

@@ -36,6 +36,7 @@ re_types_core.workspace = true
 
 ahash.workspace = true
 document-features.workspace = true
+egui_plot.workspace = true
 getrandom.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true

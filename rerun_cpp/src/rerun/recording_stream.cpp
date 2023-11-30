@@ -2,6 +2,8 @@
 #include "c/rerun.h"
 #include "components/instance_key.hpp"
 #include "config.hpp"
+#include "data_cell.hpp"
+#include "sdk_info.hpp"
 #include "string_utils.hpp"
 
 #include <arrow/buffer.h>
@@ -27,10 +29,15 @@ namespace rerun {
         return RR_STORE_KIND_RECORDING;
     }
 
-    RecordingStream::RecordingStream(std::string_view app_id, StoreKind store_kind)
+    RecordingStream::RecordingStream(
+        std::string_view app_id, std::string_view recording_id, StoreKind store_kind
+    )
         : _store_kind(store_kind) {
+        check_binary_and_header_version_match().handle();
+
         rr_store_info store_info;
         store_info.application_id = detail::to_rr_string(app_id);
+        store_info.recording_id = detail::to_rr_string(recording_id);
         store_info.store_kind = store_kind_to_c(store_kind);
 
         rr_error status = {};
@@ -53,6 +60,8 @@ namespace rerun {
 
     RecordingStream::RecordingStream(uint32_t id, StoreKind store_kind)
         : _id(id), _store_kind(store_kind) {
+        check_binary_and_header_version_match().handle();
+
         rr_error status = {};
         this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
         Error(status).handle();
@@ -198,7 +207,8 @@ namespace rerun {
         bool inject_time = !timeless;
 
         if (!splatted.empty()) {
-            splatted.push_back(Loggable<components::InstanceKey>::to_data_cell(&splat_key, 1).value
+            splatted.push_back(
+                std::move(DataCell::from_loggable<components::InstanceKey>(splat_key).value)
             );
             auto result =
                 try_log_data_row(entity_path, 1, splatted.size(), splatted.data(), inject_time);

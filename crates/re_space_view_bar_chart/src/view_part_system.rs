@@ -4,22 +4,23 @@ use re_arrow_store::LatestAtQuery;
 use re_data_store::EntityPath;
 use re_types::{
     archetypes::{BarChart, Tensor},
+    components::Color,
     datatypes::TensorData,
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem,
+    default_heuristic_filter, HeuristicFilterContext, IdentifiedViewSystem,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 /// A bar chart system, with everything needed to render it.
 #[derive(Default)]
 pub struct BarChartViewPartSystem {
-    pub charts: BTreeMap<EntityPath, TensorData>,
+    pub charts: BTreeMap<EntityPath, (TensorData, Option<Color>)>,
 }
 
-impl NamedViewSystem for BarChartViewPartSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for BarChartViewPartSystem {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "BarChartView".into()
     }
 }
@@ -75,17 +76,24 @@ impl ViewPartSystem for BarChartViewPartSystem {
 
         let store = ctx.store_db.store();
 
-        for data_result in query.iter_visible_data_results(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let query = LatestAtQuery::new(query.timeline, query.latest_at);
             let tensor = store.query_latest_component::<re_types::components::TensorData>(
                 &data_result.entity_path,
                 &query,
             );
 
+            let color = store.query_latest_component::<re_types::components::Color>(
+                &data_result.entity_path,
+                &query,
+            );
+
             if let Some(tensor) = tensor {
                 if tensor.is_vector() {
-                    self.charts
-                        .insert(data_result.entity_path.clone(), tensor.value.0.clone());
+                    self.charts.insert(
+                        data_result.entity_path.clone(),
+                        (tensor.value.0.clone(), color.map(|c| c.value)),
+                    );
                     // shallow clones
                 }
             }

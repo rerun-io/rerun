@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../data_cell.hpp"
 #include "../datatypes/mesh_properties.hpp"
 #include "../result.hpp"
 
@@ -14,6 +13,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -73,8 +73,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::components::MeshProperties` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::components::MeshProperties` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::MeshProperties* instances, size_t num_instances
         );
     };

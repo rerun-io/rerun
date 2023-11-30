@@ -11,7 +11,7 @@ on:
         # See https://medium.com/@sohail.ra5/github-actions-passing-boolean-input-variables-to-reusable-workflow-call-42d39bf7342e
         type: string
         required: true
-        default: 'true'
+        default: "true"
 
   workflow_dispatch:
     inputs:
@@ -23,8 +23,8 @@ on:
         description: "If false only linux is tested"
         type: choice
         options:
-          - 'true'
-          - 'false'
+          - "true"
+          - "false"
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks_cpp
@@ -49,6 +49,7 @@ jobs:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - name: Load C++ test matrix
         id: set-matrix
+        shell: bash
         run: |
           echo "Full matrix: ${{ inputs.FULL }}"
           if ${{ inputs.FULL }}; then
@@ -70,10 +71,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.3.0
+      - uses: prefix-dev/setup-pixi@v0.4.1
         with:
           pixi-version: v0.6.0
-          cache: true
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust

@@ -4,14 +4,15 @@ use ahash::HashMap;
 
 use re_data_store::{EntityPath, StoreDb};
 use re_log_types::{DataRow, RowId, TimePoint};
+use re_types::blueprint::SpaceViewComponent;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
+    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender,
     ViewerContext,
 };
 
 use crate::{
-    blueprint::{AutoSpaceViews, SpaceViewComponent, SpaceViewMaximized, ViewportLayout},
+    blueprint::{AutoSpaceViews, SpaceViewMaximized, ViewportLayout},
     space_info::SpaceInfoCollection,
     space_view::SpaceViewBlueprint,
     space_view_heuristics::default_created_space_views,
@@ -75,7 +76,7 @@ impl<'a> ViewportBlueprint<'a> {
             && self
                 .space_views
                 .values()
-                .all(|sv| sv.class_name() == &SpaceViewClassName::invalid())
+                .all(|sv| sv.class_identifier() == &SpaceViewClassIdentifier::invalid())
     }
 
     /// Reset the blueprint to a default state using some heuristics.
@@ -160,16 +161,10 @@ impl<'a> ViewportBlueprint<'a> {
                 .map(|space_view_id| self.space_view(&space_view_id).is_some())
                 .unwrap_or(true),
             Item::SpaceView(space_view_id) => self.space_view(space_view_id).is_some(),
-            Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-                if let Some(space_view) = self.space_view(space_view_id) {
-                    space_view
-                        .contents
-                        .group(*data_blueprint_group_handle)
-                        .is_some()
-                } else {
-                    false
-                }
-            }
+            Item::DataBlueprintGroup(space_view_id, query_id, _entity_path) => self
+                .space_views
+                .get(space_view_id)
+                .map_or(false, |sv| sv.queries.iter().any(|q| q.id == *query_id)),
         }
     }
 
@@ -231,11 +226,21 @@ impl<'a> ViewportBlueprint<'a> {
         space_view_id
     }
 
-    pub fn space_views_containing_entity_path(&self, path: &EntityPath) -> Vec<SpaceViewId> {
+    #[allow(clippy::unused_self)]
+    pub fn space_views_containing_entity_path(
+        &self,
+        ctx: &ViewerContext<'_>,
+        path: &EntityPath,
+    ) -> Vec<SpaceViewId> {
         self.space_views
             .iter()
             .filter_map(|(space_view_id, space_view)| {
-                if space_view.contents.contains_entity(path) {
+                let query_result = ctx.lookup_query_result(space_view.query_id());
+                if query_result
+                    .tree
+                    .lookup_result_by_path_and_group(path, false)
+                    .is_some()
+                {
                     Some(*space_view_id)
                 } else {
                     None
@@ -326,33 +331,6 @@ fn add_delta_from_single_component<'a, C>(
 
 // ----------------------------------------------------------------------------
 
-pub fn load_space_view_blueprint(
-    path: &EntityPath,
-    blueprint_db: &re_data_store::StoreDb,
-) -> Option<SpaceViewBlueprint> {
-    re_tracing::profile_function!();
-
-    let mut space_view = blueprint_db
-        .store()
-        .query_timeless_component_quiet::<SpaceViewComponent>(path)
-        .map(|c| c.value.space_view);
-
-    // Blueprint data migrations can leave us unable to parse the expected id from the source-data
-    // We always want the id to match the one derived from the EntityPath since this id is how
-    // we would end up removing it from the blueprint.
-    let expected_id = SpaceViewId::from_entity_path(path);
-    if let Some(space_view) = &mut space_view {
-        if space_view.id != SpaceViewId::invalid() && space_view.id != expected_id {
-            re_log::warn_once!(
-                "SpaceViewBlueprint id is inconsistent with path: {:?}",
-                space_view.id
-            );
-        }
-        space_view.id = expected_id;
-    }
-    space_view
-}
-
 pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> ViewportBlueprint<'_> {
     re_tracing::profile_function!();
 
@@ -365,7 +343,7 @@ pub fn load_viewport_blueprint(blueprint_db: &re_data_store::StoreDb) -> Viewpor
         space_views
             .children
             .values()
-            .filter_map(|view_tree| load_space_view_blueprint(&view_tree.path, blueprint_db))
+            .filter_map(|view_tree| SpaceViewBlueprint::try_from_db(&view_tree.path, blueprint_db))
             .map(|sv| (sv.id, sv))
             .collect()
     } else {
@@ -442,10 +420,27 @@ pub fn sync_space_view(
         let timepoint = TimePoint::timeless();
 
         let component = SpaceViewComponent {
-            space_view: space_view.clone(),
+            display_name: space_view.display_name.clone().into(),
+            class_identifier: space_view.class_identifier().as_str().into(),
+            space_origin: (&space_view.space_origin).into(),
+            entities_determined_by_user: space_view.entities_determined_by_user,
+            contents: space_view.queries.iter().map(|q| q.id.into()).collect(),
         };
 
         add_delta_from_single_component(deltas, &space_view.entity_path(), &timepoint, component);
+
+        // The only time we need to create a query is if this is a new space-view. All other edits
+        // happen directly via `UpdateBlueprint` commands.
+        if snapshot.is_none() {
+            for query in &space_view.queries {
+                add_delta_from_single_component(
+                    deltas,
+                    &query.id.as_entity_path(),
+                    &timepoint,
+                    query.expressions.clone(),
+                );
+            }
+        }
     }
 }
 

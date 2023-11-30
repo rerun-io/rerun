@@ -42,6 +42,10 @@ impl CStringView {
     pub fn is_null(&self) -> bool {
         self.string.is_null()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
 }
 
 pub type CRecordingStream = u32;
@@ -71,15 +75,15 @@ impl CSpawnOptions {
             spawn_opts.port = self.port;
         }
 
-        if !self.memory_limit.is_null() {
+        if !self.memory_limit.is_empty() {
             spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
         }
 
-        if !self.executable_name.is_null() {
+        if !self.executable_name.is_empty() {
             spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
         }
 
-        if !self.executable_path.is_null() {
+        if !self.executable_path.is_empty() {
             spawn_opts.executable_path =
                 Some(self.executable_path.as_str("executable_path")?.to_owned());
         }
@@ -113,6 +117,11 @@ impl From<CStoreKind> for StoreKind {
 pub struct CStoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: CStringView,
+
+    /// The user-chosen name of the recording being logged to.
+    ///
+    /// Defaults to a random ID if unspecified.
+    pub recording_id: CStringView,
 
     pub store_kind: CStoreKind,
 }
@@ -179,7 +188,7 @@ pub struct CError {
 #[no_mangle]
 pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: Lazy<CString> =
-        Lazy::new(|| CString::new(re_sdk::build_info().to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
+        Lazy::new(|| CString::new(re_sdk::build_info().version.to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
 }
@@ -254,6 +263,7 @@ fn rr_recording_stream_new_impl(
 
     let CStoreInfo {
         application_id,
+        recording_id,
         store_kind,
     } = *store_info;
 
@@ -264,6 +274,12 @@ fn rr_recording_stream_new_impl(
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
         .store_source(re_log_types::StoreSource::CSdk)
         .default_enabled(default_enabled);
+
+    if !(recording_id.is_null() || recording_id.is_empty()) {
+        if let Ok(recording_id) = recording_id.as_str("recording_id") {
+            rec_builder = rec_builder.recording_id(recording_id);
+        }
+    }
 
     if store_kind == CStoreKind::Blueprint {
         rec_builder = rec_builder.blueprint();

@@ -4,15 +4,14 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -22,19 +21,14 @@ namespace rerun::blueprint {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct QueryExpressions {
-        /// A set of strings that can be parsed as `EntityPathExpression`s.
-        rerun::Collection<std::string> expressions;
+        /// A set of strings representing `EntityPathExpression`s to be included.
+        rerun::Collection<std::string> inclusions;
+
+        /// A set of strings representing `EntityPathExpression`s to be excluded.
+        rerun::Collection<std::string> exclusions;
 
       public:
         QueryExpressions() = default;
-
-        QueryExpressions(rerun::Collection<std::string> expressions_)
-            : expressions(std::move(expressions_)) {}
-
-        QueryExpressions& operator=(rerun::Collection<std::string> expressions_) {
-            expressions = std::move(expressions_);
-            return *this;
-        }
     };
 } // namespace rerun::blueprint
 
@@ -56,8 +50,8 @@ namespace rerun {
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of `rerun::blueprint::QueryExpressions` components.
-        static Result<rerun::DataCell> to_data_cell(
+        /// Serializes an array of `rerun::blueprint::QueryExpressions` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const blueprint::QueryExpressions* instances, size_t num_instances
         );
     };

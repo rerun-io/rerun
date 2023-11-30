@@ -23,7 +23,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, TensorDecodeCache, TensorStatsCache, ViewPartSystem, ViewQuery,
     ViewerContext,
 };
-use re_viewer_context::{NamedViewSystem, ViewContextCollection};
+use re_viewer_context::{IdentifiedViewSystem, ViewContextCollection};
 
 use crate::{
     contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext},
@@ -215,12 +215,12 @@ impl ImagesPart {
         re_tracing::profile_function!();
 
         // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
-        {
-            transforms.parent_pinhole(ent_path)
-        } else {
-            None
-        };
+        let parent_pinhole_path =
+            if ent_context.space_view_class_identifier == SpatialSpaceView3D.identifier() {
+                transforms.parent_pinhole(ent_path)
+            } else {
+                None
+            };
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably do this for us.
@@ -282,7 +282,7 @@ impl ImagesPart {
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.extend_bbox(&textured_rect);
@@ -327,12 +327,12 @@ impl ImagesPart {
         let meaning = TensorDataMeaning::Depth;
 
         // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
-        {
-            transforms.parent_pinhole(ent_path)
-        } else {
-            None
-        };
+        let parent_pinhole_path =
+            if ent_context.space_view_class_identifier == SpatialSpaceView3D.identifier() {
+                transforms.parent_pinhole(ent_path)
+            } else {
+                None
+            };
 
         // Instance ids of tensors refer to entries inside the tensor.
         for (tensor, color, draw_order) in itertools::izip!(
@@ -413,7 +413,7 @@ impl ImagesPart {
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.extend_bbox(&textured_rect);
@@ -446,12 +446,12 @@ impl ImagesPart {
         re_tracing::profile_function!();
 
         // Parent pinhole should only be relevant to 3D views
-        let parent_pinhole_path = if ent_context.space_view_class_name == SpatialSpaceView3D.name()
-        {
-            transforms.parent_pinhole(ent_path)
-        } else {
-            None
-        };
+        let parent_pinhole_path =
+            if ent_context.space_view_class_identifier == SpatialSpaceView3D.identifier() {
+                transforms.parent_pinhole(ent_path)
+            } else {
+                None
+            };
 
         // If this isn't an image, return
         // TODO(jleibs): The ArchetypeView should probably to this for us.
@@ -512,7 +512,7 @@ impl ImagesPart {
                 // relationship where the image plane grows the bounds which in
                 // turn influence the size of the image plane.
                 // See: https://github.com/rerun-io/rerun/issues/3728
-                if ent_context.space_view_class_name == SpatialSpaceView2D.name()
+                if ent_context.space_view_class_identifier == SpatialSpaceView2D.identifier()
                     || !ent_props.pinhole_image_plane_distance.is_auto()
                 {
                     self.extend_bbox(&textured_rect);
@@ -637,8 +637,8 @@ impl ImagesPart {
     }
 }
 
-impl NamedViewSystem for ImagesPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for ImagesPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Images".into()
     }
 }

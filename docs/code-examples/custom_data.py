@@ -27,6 +27,8 @@ class ConfidenceBatch(rr.ComponentBatchLike):
 
 
 class CustomPoints3D(rr.AsComponents):
+    """A custom archetype that extends Rerun's builtin `Points3D` archetype with a custom component."""
+
     def __init__(self: Any, points3d: npt.ArrayLike, confidences: npt.ArrayLike) -> None:
         self.points3d = points3d
         self.confidences = confidences

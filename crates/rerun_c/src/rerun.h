@@ -134,6 +134,11 @@ typedef struct rr_store_info {
     /// The user-chosen name of the application doing the logging.
     rr_string application_id;
 
+    /// The user-chosen name of the recording being logged to.
+    ///
+    /// Defaults to a random ID if unspecified.
+    rr_string recording_id;
+
     /// `RR_STORE_KIND_RECORDING` or `RR_STORE_KIND_BLUEPRINT`
     rr_store_kind store_kind;
 } rr_store_info;
@@ -223,7 +228,16 @@ typedef struct rr_error {
 // ----------------------------------------------------------------------------
 // Functions:
 
+/// Returns the version of the Rerun C SDK.
+///
+/// This should match the string returned by `rr_version_string`.
+/// If not, the SDK's binary and the C header are out of sync.
+#define RERUN_SDK_HEADER_VERSION "@RERUN_VERSION@"
+
 /// Returns a human-readable version string of the Rerun C SDK.
+///
+/// This should match the string in `RERUN_SDK_HEADER_VERSION`.
+/// If not, the SDK's binary and the C header are out of sync.
 extern const char* rr_version_string(void);
 
 /// Spawns a new Rerun Viewer process from an executable available in PATH, ready to

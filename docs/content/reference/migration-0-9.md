@@ -1,5 +1,5 @@
 ---
-title: Migration to 0.9
+title: Migrating from 0.8
 order: 12
 ---
 

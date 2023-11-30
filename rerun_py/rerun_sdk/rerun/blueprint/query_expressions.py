@@ -28,21 +28,28 @@ class QueryExpressions:
     Unstable. Used for the ongoing blueprint experimentations.
     """
 
-    def __init__(self: Any, expressions: QueryExpressionsLike):
+    def __init__(self: Any, inclusions: list[str], exclusions: list[str]):
         """
         Create a new instance of the QueryExpressions blueprint.
 
         Parameters
         ----------
-        expressions:
-            A set of strings that can be parsed as `EntityPathExpression`s.
+        inclusions:
+            A set of strings representing `EntityPathExpression`s to be included.
+        exclusions:
+            A set of strings representing `EntityPathExpression`s to be excluded.
         """
 
         # You can define your own __init__ function as a member of QueryExpressionsExt in query_expressions_ext.py
-        self.__attrs_init__(expressions=expressions)
+        self.__attrs_init__(inclusions=inclusions, exclusions=exclusions)
 
-    expressions: list[str] = field()
-    # A set of strings that can be parsed as `EntityPathExpression`s.
+    inclusions: list[str] = field()
+    # A set of strings representing `EntityPathExpression`s to be included.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    exclusions: list[str] = field()
+    # A set of strings representing `EntityPathExpression`s to be excluded.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

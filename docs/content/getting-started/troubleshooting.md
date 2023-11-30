@@ -11,15 +11,44 @@ or [join our Discord](https://discord.gg/Gcm8BbTaAj).
 ## Running on Linux
 Rerun should work out-of-the-box on Mac and Windows, but on Linux you need to first run:
 
-`sudo apt-get install -y libclang-dev libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev`
+```sh
+sudo apt-get -y install \
+    libclang-dev \
+    libatk-bridge2.0 \
+    libfontconfig1-dev \
+    libfreetype6-dev \
+    libglib2.0-dev \
+    libgtk-3-dev \
+    libssl-dev \
+    libxcb-render0-dev \
+    libxcb-shape0-dev \
+    libxcb-xfixes0-dev \
+    libxkbcommon-dev \
+    patchelf
+```
 
 On Fedora Rawhide you need to run:
 
-`dnf install clang clang-devel clang-tools-extra libxkbcommon-devel pkg-config openssl-devel libxcb-devel`
+```sh
+sudo dnf install \
+    clang \
+    clang-devel \
+    clang-tools-extra \
+    libxcb-devel \
+    libxkbcommon-devel \
+    openssl-devel \
+    pkg-config
+```
 
 On WSL2, in addition to the above packages for Linux, you also need to run:
 
-`sudo apt-get install -y libvulkan1 libxcb-randr0 mesa-vulkan-drivers adwaita-icon-theme-full`
+```sh
+sudo apt-get -y install \
+    libvulkan1 \
+    libxcb-randr0 \
+    mesa-vulkan-drivers \
+    adwaita-icon-theme-full
+```
 
 [TODO(#1250)](https://github.com/rerun-io/rerun/issues/1250): Running with the wayland window manager
 sometimes causes Rerun to crash. Try setting `WINIT_UNIX_BACKEND=x11` as a workaround.

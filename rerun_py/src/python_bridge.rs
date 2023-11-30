@@ -11,8 +11,9 @@ use pyo3::{
     types::{PyBytes, PyDict},
 };
 
-use re_viewer_context::SpaceViewId;
-use re_viewport::{blueprint::SpaceViewComponent, SpaceViewBlueprint, VIEWPORT_PATH};
+//use re_viewer_context::SpaceViewId;
+//use re_viewport::{SpaceViewBlueprint, VIEWPORT_PATH};
+use re_viewport::VIEWPORT_PATH;
 
 use re_log_types::{DataRow, StoreKind};
 use rerun::{
@@ -761,12 +762,17 @@ fn set_panel(entity_path: &str, is_expanded: bool, blueprint: Option<&PyRecordin
 
 #[pyfunction]
 fn add_space_view(
-    name: &str,
-    space_view_class: &str,
-    origin: &str,
-    entity_paths: Vec<&str>,
-    blueprint: Option<&PyRecordingStream>,
-) {
+    _name: &str,
+    _space_view_class: &str,
+    _origin: &str,
+    _entity_paths: Vec<&str>,
+    _blueprint: Option<&PyRecordingStream>,
+) -> PyResult<()> {
+    Err(PyRuntimeError::new_err(
+        "add_space_view is broken until blueprint refactoring is complete: https://github.com/rerun-io/rerun/issues/4167",
+    ))
+
+    /*
     let Some(blueprint) = get_blueprint_recording(blueprint) else {
         return;
     };
@@ -798,6 +804,7 @@ fn add_space_view(
     // TODO(jleibs) timeless? Something else?
     let timeless = true;
     blueprint.record_row(row, !timeless);
+    */
 }
 
 #[pyfunction]

@@ -22,11 +22,7 @@ int main(int argc, char** argv) {
     // Those points will not be affected by their parent's out-of-tree transform!
     rec.log(
         "world/asset/points",
-        rerun::Points3D(rerun::demo::grid<rerun::Position3D, float>(
-            {-10.0f, -10.0f, -10.0f},
-            {10.0f, 10.0f, 10.0f},
-            10
-        ))
+        rerun::Points3D(rerun::demo::grid3d<rerun::Position3D, float>(-10.0f, 10.0f, 10))
     );
 
     for (int64_t i = 1; i < 20; ++i) {

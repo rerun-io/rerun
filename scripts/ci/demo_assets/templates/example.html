@@ -1,10 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <!-- The version of index.html that will be served by demo.rerun.io -->
 <html>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
   <!-- Disable zooming: -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  />
 
   <head>
     <link rel="icon" href="favicon.svg" />
@@ -30,7 +33,9 @@
             <div class="dropdown-body">
               {% for entry in examples %}
               <a class="flat-link" href="../{{ entry.name }}">
-                <div class="dropdown-entry" data-link="{{ entry.name }}">{{ entry.title }}</div>
+                <div class="dropdown-entry" data-link="{{ entry.name }}">
+                  {{ entry.title }}
+                </div>
               </a>
               {% endfor %}
             </div>
@@ -38,9 +43,15 @@
         </div>
         <div class="example-description">
           <div class="example-description-icon no-select">?</div>
-          <div class="example-description-body">{{ example.description_html }}</div>
+          <div class="example-description-body">
+            {{ example.description_html }}
+          </div>
         </div>
-        <a class="icon-link no-select" href="{{ example.source_url }}" target="_blank">
+        <a
+          class="icon-link no-select"
+          href="{{ example.source_url }}"
+          target="_blank"
+        >
           <img class="icon" src="github-mark-white.svg" />
         </a>
       </div>
@@ -73,7 +84,10 @@
       // always strip `index.html` from the url, so that relative paths in links to examples work
       const index_html_pos = window.location.pathname.indexOf("index.html");
       if (index_html_pos !== -1) {
-        window.location.href = window.location.pathname.slice(0, index_html_pos);
+        window.location.href = window.location.pathname.slice(
+          0,
+          index_html_pos,
+        );
       }
     </script>
 
@@ -85,4 +99,3 @@
 </html>
 
 <!-- Powered by egui: https://github.com/emilk/egui/ -->
-

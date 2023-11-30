@@ -4,12 +4,15 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
+#include "../components/color.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -36,6 +39,9 @@ namespace rerun::archetypes {
     struct BarChart {
         /// The values. Should always be a rank-1 tensor.
         rerun::components::TensorData values;
+
+        /// The color of the bar chart
+        std::optional<rerun::components::Color> color;
 
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.BarChartIndicator";
@@ -161,6 +167,13 @@ namespace rerun::archetypes {
         BarChart(BarChart&& other) = default;
 
         explicit BarChart(rerun::components::TensorData _values) : values(std::move(_values)) {}
+
+        /// The color of the bar chart
+        BarChart with_color(rerun::components::Color _color) && {
+            color = std::move(_color);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
 
         /// Returns the number of primary instances of this archetype.
         size_t num_instances() const {

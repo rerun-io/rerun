@@ -29,13 +29,14 @@ jobs:
           python-version: 3.11
 
       - name: Install deps
+        shell: bash
         run: |
           python3 -m pip install -r ./scripts/ci/requirements.txt
 
       - name: Update PR description
+        shell: bash
         run: |
           ./scripts/ci/update_pr_body.py \
             --github-token '${{ secrets.GITHUB_TOKEN }}' \
             --github-repository '${{ github.repository }}' \
             --pr-number '${{ github.event.pull_request.number }}'
-
