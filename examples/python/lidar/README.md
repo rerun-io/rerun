@@ -15,7 +15,7 @@ thumbnail_dimensions: [480, 286]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/lidar/bcea9337044919c1524429bd26bc51a3c4db8ccb/1200w.png">
 </picture>
 
-This example visualizes only the lidar data from the [nuScenes dataset](https://www.nuscenes.org/) using Rerun. For a moe extensive example including other sensors and annotations check out the [nuScenes example](examples/real-data/nuscenes).
+This example visualizes only the lidar data from the [nuScenes dataset](https://www.nuscenes.org/) using Rerun. For a moe extensive example including other sensors and annotations check out the [nuScenes example](nuscenes).
 
 ```bash
 pip install -r examples/python/lidar/requirements.txt
