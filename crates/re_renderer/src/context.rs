@@ -116,7 +116,7 @@ impl RenderContext {
         log_adapter_info(&adapter.get_info());
 
         let mut gpu_resources = WgpuResourcePools::default();
-        let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
+        let global_bindings = GlobalBindings::new(&gpu_resources, &device);
 
         // Validate capabilities of the device.
         assert!(

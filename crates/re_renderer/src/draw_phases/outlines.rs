@@ -425,7 +425,7 @@ impl OutlineMaskProcessor {
     }
 
     fn create_bind_group_jumpflooding_init(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         instance_label: &DebugLabel,
         mask_texture: &GpuTexture,
     ) -> (GpuBindGroup, GpuBindGroupLayoutHandle) {
@@ -462,7 +462,7 @@ impl OutlineMaskProcessor {
 
     fn create_bind_groups_for_jumpflooding_steps(
         config: &OutlineConfig,
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         instance_label: &DebugLabel,
         voronoi_textures: &[GpuTexture; 2],
     ) -> (Vec<GpuBindGroup>, GpuBindGroupLayoutHandle) {
