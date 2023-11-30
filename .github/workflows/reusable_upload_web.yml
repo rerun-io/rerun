@@ -82,6 +82,22 @@ jobs:
           destination: "rerun-web-viewer/commit/${{env.SHORT_SHA}}"
           parent: false
 
+      - name: "Upload web-viewer (tagged)"
+        if: inputs.MARK_TAGGED_VERSION
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}"
+          parent: false
+
+      - name: "Upload web-viewer (adhoc)"
+        if: ${{ inputs.ADHOC_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_viewer"
+          destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
+          parent: false
+
       - name: "Upload web-viewer (prerelease)"
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
@@ -102,22 +118,6 @@ jobs:
           parent: false
           headers: |-
             cache-control: no-cache, max-age=0
-
-      - name: "Upload web-viewer (tagged)"
-        if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_viewer"
-          destination: "rerun-web-viewer/version/${{inputs.RELEASE_VERSION}}"
-          parent: false
-
-      - name: "Upload web-viewer (adhoc)"
-        if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_viewer"
-          destination: "rerun-web-viewer/adhoc/${{inputs.ADHOC_NAME}}"
-          parent: false
 
       - name: "Upload web-viewer (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}

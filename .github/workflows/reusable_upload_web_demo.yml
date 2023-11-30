@@ -81,6 +81,22 @@ jobs:
           destination: "rerun-demo/commit/${{env.SHORT_SHA}}"
           parent: false
 
+      - name: "Upload web demo (tagged)"
+        if: inputs.MARK_TAGGED_VERSION
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/version/${{inputs.RELEASE_VERSION}}"
+          parent: false
+
+      - name: "Upload web demo (adhoc)"
+        if: ${{ inputs.ADHOC_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/adhoc/${{inputs.ADHOC_NAME}}"
+          parent: false
+
       - name: "Upload web demo (prerelease)"
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
@@ -101,22 +117,6 @@ jobs:
           parent: false
           headers: |-
             cache-control: no-cache, max-age=0
-
-      - name: "Upload web demo (tagged)"
-        if: inputs.MARK_TAGGED_VERSION
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_demo"
-          destination: "rerun-demo/version/${{inputs.RELEASE_VERSION}}"
-          parent: false
-
-      - name: "Upload web demo (adhoc)"
-        if: ${{ inputs.ADHOC_NAME != '' }}
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_demo"
-          destination: "rerun-demo/adhoc/${{inputs.ADHOC_NAME}}"
-          parent: false
 
       - name: "Upload web demo (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
