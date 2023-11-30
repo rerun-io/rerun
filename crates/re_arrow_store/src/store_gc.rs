@@ -662,7 +662,7 @@ impl IndexedTable {
         let mut dropped_num_bytes = 0u64;
         let mut dropped_num_rows = 0u64;
 
-        let mut dropped_bucket_times = Vec::new();
+        let mut dropped_bucket_times = HashSet::default();
 
         // TODO(cmc): scaling linearly with the number of buckets could be improved, although this
         // is quite fast in practice because of the early check.
@@ -681,7 +681,7 @@ impl IndexedTable {
                 ..
             } = std::mem::take(inner);
 
-            dropped_bucket_times.push(*bucket_time);
+            dropped_bucket_times.insert(*bucket_time);
 
             while let Some(row_id) = col_row_id.pop_front() {
                 let mut diff = StoreDiff::deletion(row_id, ent_path.clone());
@@ -713,10 +713,8 @@ impl IndexedTable {
             dropped_num_rows += col_time.len() as u64;
         }
 
-        for bucket_time in dropped_bucket_times {
-            let previous = self.buckets.remove(&bucket_time);
-            debug_assert!(previous.is_some());
-        }
+        self.buckets
+            .retain(|bucket_time, _| !dropped_bucket_times.contains(bucket_time));
 
         if self.buckets.is_empty() {
             let Self {
