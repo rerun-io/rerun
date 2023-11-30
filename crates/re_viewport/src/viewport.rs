@@ -573,7 +573,7 @@ impl TabWidget {
         }
     }
 
-    fn paint(self, ui: &mut egui::Ui) {
+    fn paint(self, ui: &egui::Ui) {
         ui.painter()
             .rect(self.rect, 0.0, self.bg_color, egui::Stroke::NONE);
 

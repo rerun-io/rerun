@@ -650,7 +650,7 @@ impl App {
     fn ui(
         &mut self,
         egui_ctx: &egui::Context,
-        frame: &mut eframe::Frame,
+        frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
