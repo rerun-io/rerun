@@ -89,6 +89,8 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/prerelease"
           parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
 
       - name: "Upload web-viewer (nightly)"
         # TEMP: Tracking `main` until we can do actual nightly builds.
@@ -98,6 +100,8 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/version/nightly"
           parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
 
       - name: "Upload web-viewer (tagged)"
         if: inputs.MARK_TAGGED_VERSION
@@ -122,3 +126,5 @@ jobs:
           path: "web_viewer"
           destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}"
           parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0

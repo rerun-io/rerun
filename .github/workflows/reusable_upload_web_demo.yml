@@ -88,6 +88,8 @@ jobs:
           path: "web_demo"
           destination: "rerun-demo/prerelease"
           parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
 
       - name: "Upload web demo (nightly)"
         # TEMP: Tracking `main` until we can do actual nightly builds.
@@ -97,6 +99,8 @@ jobs:
           path: "web_demo"
           destination: "rerun-demo/version/nightly"
           parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
 
       - name: "Upload web demo (tagged)"
         if: inputs.MARK_TAGGED_VERSION
@@ -121,3 +125,5 @@ jobs:
           path: "web_demo"
           destination: "rerun-demo/pr/${{ inputs.PR_NUMBER }}"
           parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
