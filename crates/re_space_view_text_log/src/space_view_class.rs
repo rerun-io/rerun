@@ -42,7 +42,8 @@ pub struct TextSpaceView;
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
 
-    const NAME: &'static str = "Text Log";
+    const NAME: &'static str = "TextLog";
+    const DISPLAY_NAME: &'static str = "Text Log";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TEXTBOX

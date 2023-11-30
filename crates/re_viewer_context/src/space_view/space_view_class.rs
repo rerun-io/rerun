@@ -18,14 +18,25 @@ pub trait SpaceViewClass: std::marker::Sized {
     type State: SpaceViewState + Default + 'static;
 
     /// Name for this space view class.
+    ///
+    /// Used as identifier.
     const NAME: &'static str;
+
+    /// User-facing name for this space view class
+    const DISPLAY_NAME: &'static str;
 
     /// Name of this space view class.
     ///
-    /// Used for both ui display and identification.
-    /// Must be unique within a viewer session.
+    /// Used for identification. Must be unique within a viewer session.
     fn name(&self) -> SpaceViewClassName {
         Self::NAME.into()
+    }
+
+    /// User-facing name for this space view class.
+    ///
+    /// Used for UI display.
+    fn display_name(&self) -> &'static str {
+        Self::DISPLAY_NAME
     }
 
     /// Icon used to identify this space view class.
@@ -126,6 +137,11 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn name(&self) -> SpaceViewClassName {
         self.name()
+    }
+
+    #[inline]
+    fn display_name(&self) -> &'static str {
+        self.display_name()
     }
 
     #[inline]

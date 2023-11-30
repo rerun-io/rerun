@@ -18,6 +18,7 @@ impl SpaceViewClass for BarChartSpaceView {
     type State = ();
 
     const NAME: &'static str = "Bar Chart";
+    const DISPLAY_NAME: &'static str = "Bar Chart";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_HISTOGRAM

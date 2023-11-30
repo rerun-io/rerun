@@ -125,6 +125,7 @@ pub fn all_possible_space_views(
                         Some((
                             SpaceViewBlueprint::new(
                                 *class_name,
+                                ctx.space_view_class_registry.display_name(class_name),
                                 candidate_space_path,
                                 candidate_query,
                             ),
@@ -293,6 +294,8 @@ pub fn default_created_space_views(
                         );
                         let mut space_view = SpaceViewBlueprint::new(
                             *candidate.class_name(),
+                            ctx.space_view_class_registry
+                                .display_name(candidate.class_name()),
                             &result.entity_path,
                             query,
                         );
@@ -401,6 +404,8 @@ pub fn default_created_space_views(
 
                             let mut space_view = SpaceViewBlueprint::new(
                                 *candidate.class_name(),
+                                ctx.space_view_class_registry
+                                    .display_name(candidate.class_name()),
                                 &candidate.space_origin,
                                 query,
                             );
