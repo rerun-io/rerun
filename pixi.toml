@@ -114,7 +114,7 @@ ninja = "1.11.1"
 doxygen = "1.9.7.*"
 binaryen = "116.*"   # for `wasm-opt`
 nox = "2021.10.1.*"
-prettier = "3.1.0.*"
+prettier = "2.8.8.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"
