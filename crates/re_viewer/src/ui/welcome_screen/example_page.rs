@@ -127,16 +127,25 @@ pub(super) struct ExamplePage {
     examples: Option<ManifestPromise>,
 }
 
-const DEFAULT_EXAMPLES_MANIFEST_URL: &str = match option_env!("EXAMPLES_MANIFEST_URL") {
-    Some(url) => url,
-    None => "https://app.rerun.io/adhoc/online-manifest/examples_manifest.json",
-};
+fn default_manifest_url() -> String {
+    let build_info = re_build_info::build_info!();
+
+    // Always point to `version/nightly` for rerun devs,
+    // because the current commit's manifest is unlikely to be uploaded to GCS.
+    if build_info.is_in_rerun_workspace {
+        return "https://app.rerun.io/version/nightly/examples_manifest.json".into();
+    }
+
+    // Otherwise point to the current commit
+    let short_sha = build_info.short_git_hash();
+    format!("https://app.rerun.io/commit/{short_sha}/examples_manifest.json")
+}
 
 impl Default for ExamplePage {
     fn default() -> Self {
         Self {
             id: egui::Id::new("example_page"),
-            manifest_url: DEFAULT_EXAMPLES_MANIFEST_URL.into(),
+            manifest_url: default_manifest_url(),
             examples: None,
         }
     }
