@@ -12,7 +12,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
     type State = ();
 
     const NAME: &'static str = "Unknown Space View Class";
-    const UI_NAME: &'static str = "Unknown Space View Class";
+    const DISPLAY_NAME: &'static str = "Unknown Space View Class";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_UNKNOWN

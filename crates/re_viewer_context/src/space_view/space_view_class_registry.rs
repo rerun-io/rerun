@@ -161,10 +161,12 @@ impl SpaceViewClassRegistry {
     /// Returns the user-facing name for the given space view class.
     ///
     /// If the class is unknown, returns a placeholder name.
-    pub fn ui_name(&self, name: &SpaceViewClassName) -> &'static str {
+    pub fn display_name(&self, name: &SpaceViewClassName) -> &'static str {
         self.registry
             .get(name)
-            .map_or("<unknown space view class>", |boxed| boxed.class.ui_name())
+            .map_or("<unknown space view class>", |boxed| {
+                boxed.class.display_name()
+            })
     }
 
     /// Queries a Space View type's system registry by class name, returning `None` if the class is not registered.

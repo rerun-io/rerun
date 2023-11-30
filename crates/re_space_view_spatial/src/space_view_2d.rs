@@ -21,7 +21,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
     type State = SpatialSpaceViewState;
 
     const NAME: &'static str = "2D";
-    const UI_NAME: &'static str = "2D";
+    const DISPLAY_NAME: &'static str = "2D";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_2D

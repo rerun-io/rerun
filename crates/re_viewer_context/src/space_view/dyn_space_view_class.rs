@@ -50,7 +50,7 @@ pub trait DynSpaceViewClass {
     /// User-facing name of this space view class.
     ///
     /// Used for UI display.
-    fn ui_name(&self) -> &'static str;
+    fn display_name(&self) -> &'static str;
 
     /// Icon used to identify this space view class.
     fn icon(&self) -> &'static re_ui::Icon;
