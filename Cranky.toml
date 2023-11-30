@@ -107,6 +107,7 @@ warn = [
   "clippy::string_add_assign",
   "clippy::string_add",
   "clippy::string_lit_as_bytes",
+  "clippy::string_lit_chars_any",
   "clippy::string_to_string",
   "clippy::suspicious_command_arg_space",
   "clippy::suspicious_xor_used_as_pow",
