@@ -145,7 +145,6 @@ warn = [
   "unused_extern_crates",
   "unused_import_braces",
   "unused_lifetimes",
-  #"clippy::ref_patterns", # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
 ]
 
 allow = [
@@ -164,4 +163,7 @@ allow = [
   # Enabling this lint in 2023-04-27 yielded 556 hits.
   # Enabling this lint in 2023-09-23 yielded 352 hits
   "clippy::unwrap_used",
+
+  # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
+  "clippy::ref_patterns",
 ]
