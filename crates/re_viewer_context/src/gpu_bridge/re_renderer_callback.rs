@@ -135,6 +135,12 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             );
             return;
         };
+        let Some(render_pipelines) = ctx.active_frame.moved_render_pipelines.as_ref() else {
+            re_log::error_once!(
+                "Failed to execute egui draw callback. Render pipelines weren't transferred out of the pool first."
+            );
+            return;
+        };
 
         let Some(Some(view_builder)) = ctx
             .active_frame
@@ -152,11 +158,6 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         let screen_position = (info.viewport.min.to_vec2() * info.pixels_per_point).round();
         let screen_position = glam::vec2(screen_position.x, screen_position.y);
 
-        view_builder.composite(
-            ctx,
-            ctx.active_frame.moved_render_pipelines.as_ref().unwrap(), // TODO:
-            render_pass,
-            screen_position,
-        );
+        view_builder.composite(ctx, render_pipelines, render_pass, screen_position);
     }
 }
