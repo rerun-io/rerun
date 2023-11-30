@@ -356,6 +356,11 @@ impl App {
             }
 
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
+            SystemCommand::ResetBlueprint => {
+                // By clearing the blueprint it will be re-populated with the defaults
+                // at the beginning of the next frame.
+                store_hub.clear_blueprint();
+            }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 let blueprint_db = store_hub.store_db_mut(&blueprint_id);
                 for row in updates {
