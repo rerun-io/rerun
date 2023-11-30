@@ -445,6 +445,38 @@ impl IndexedTable {
             buckets_size_bytes,
         }
     }
+
+    /// Makes sure bucketing invariants are upheld, and takes necessary actions if not.
+    ///
+    /// Invariants are:
+    /// 1. There must always be at least one bucket alive.
+    /// 2. The first bucket must always have an _indexing time_ `-∞`.
+    pub(crate) fn uphold_indexing_invariants(&mut self) {
+        if self.buckets.is_empty() {
+            let Self {
+                timeline,
+                ent_path: _,
+                cluster_key,
+                buckets,
+                all_components: _, // keep the history on purpose
+                buckets_num_rows,
+                buckets_size_bytes,
+            } = self;
+
+            let bucket = IndexedBucket::new(*cluster_key, *timeline);
+            let size_bytes = bucket.total_size_bytes();
+
+            *buckets = [(i64::MIN.into(), bucket)].into();
+            *buckets_num_rows = 0;
+            *buckets_size_bytes = size_bytes;
+        }
+
+        // NOTE: Make sure the first bucket is responsible for `-∞`, which might or might not be
+        // the case now if we've been moving buckets around.
+        if let Some((_, bucket)) = self.buckets.pop_first() {
+            self.buckets.insert(TimeInt::MIN, bucket);
+        }
+    }
 }
 
 /// An `IndexedBucket` holds a chunk of rows from an [`IndexedTable`]
