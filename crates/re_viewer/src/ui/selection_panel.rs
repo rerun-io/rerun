@@ -398,8 +398,8 @@ fn blueprint_ui(
         Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
                 if ui
-                    .button("Add/remove Entities")
-                    .on_hover_text("Manually add or remove Entities from the Space View")
+                    .button("Edit Entity query")
+                    .on_hover_text("Adjust the query expressions to add or remove Entities from the Space View")
                     .clicked()
                 {
                     viewport
@@ -443,7 +443,7 @@ fn blueprint_ui(
                         let row = DataRow::from_cells1_sized(
                             RowId::random(),
                             query.id.as_entity_path(),
-                            timepoint.clone(),
+                            timepoint,
                             1,
                             [expressions_component],
                         )

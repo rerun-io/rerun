@@ -236,7 +236,7 @@ fn add_entities_line_ui(
         });
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            // Reset Button
+            // Reset Remove Button
             {
                 let enabled = add_info.can_add_self_or_descendant.is_compatible()
                     && (exclusions.contains(&EntityPathExpr::Recursive(entity_path.clone()))
@@ -253,7 +253,13 @@ fn add_entities_line_ui(
                     }
 
                     if enabled {
-                        response.on_hover_text("Reset inclusion/exclusion of this EntityPath.");
+                        if exclusions.contains(&EntityPathExpr::Recursive(entity_path.clone())) {
+                            response.on_hover_text("Stop excluding this EntityPath.");
+                        } else if inclusions
+                            .contains(&EntityPathExpr::Recursive(entity_path.clone()))
+                        {
+                            response.on_hover_text("Stop including this EntityPath.");
+                        }
                     }
                 });
             }
@@ -276,7 +282,7 @@ fn add_entities_line_ui(
 
                     if enabled {
                         response.on_hover_text(
-                            "Remove this Entity and all its descendants from the Space View",
+                            "Exclude this Entity and all its descendants from the Space View",
                         );
                     }
                 });
@@ -302,7 +308,7 @@ fn add_entities_line_ui(
                     if enabled {
                         if add_info.can_add.is_compatible_and_missing() {
                             response.on_hover_text(
-                                "Add this Entity and all its descendants to the Space View",
+                                "Include this Entity and all its descendants in the Space View",
                             );
                         } else {
                             response
