@@ -933,6 +933,7 @@ fn gc_impl(store: &mut DataStore) {
             purge_empty_tables: false,
             dont_protect: Default::default(),
             enable_batching: false,
+            time_budget: std::time::Duration::MAX,
         });
         for event in store_events {
             assert!(store.get_msg_metadata(&event.row_id).is_none());
@@ -1013,6 +1014,7 @@ fn protected_gc_impl(store: &mut DataStore) {
         purge_empty_tables: true,
         dont_protect: Default::default(),
         enable_batching: false,
+        time_budget: std::time::Duration::MAX,
     });
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
@@ -1110,6 +1112,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         purge_empty_tables: true,
         dont_protect: Default::default(),
         enable_batching: false,
+        time_budget: std::time::Duration::MAX,
     });
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
@@ -1153,6 +1156,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         purge_empty_tables: true,
         dont_protect: Default::default(),
         enable_batching: false,
+        time_budget: std::time::Duration::MAX,
     });
 
     // No rows should remain because the table should have been purged

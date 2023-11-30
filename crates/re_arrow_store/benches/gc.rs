@@ -75,6 +75,7 @@ fn plotting_dashboard(c: &mut Criterion) {
         purge_empty_tables: false,
         dont_protect: Default::default(),
         enable_batching: false,
+        time_budget: std::time::Duration::MAX,
     };
 
     // NOTE: insert in multiple timelines to more closely match real world scenarios.
@@ -163,6 +164,7 @@ fn timeless_logs(c: &mut Criterion) {
         purge_empty_tables: false,
         dont_protect: Default::default(),
         enable_batching: false,
+        time_budget: std::time::Duration::MAX,
     };
 
     let mut timegen = |_| TimePoint::timeless();
