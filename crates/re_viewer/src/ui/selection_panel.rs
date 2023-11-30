@@ -398,7 +398,7 @@ fn blueprint_ui(
         Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
                 if ui
-                    .button("Edit Entity query")
+                    .button("Edit Entity Query")
                     .on_hover_text("Adjust the query expressions to add or remove Entities from the Space View")
                     .clicked()
                 {
