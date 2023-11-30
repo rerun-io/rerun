@@ -92,6 +92,7 @@ warn = [
   "clippy::path_buf_push_overwrite",
   "clippy::ptr_as_ptr",
   "clippy::ptr_cast_constness",
+  "clippy::pub_without_shorthand",
   "clippy::rc_mutex",
   "clippy::redundant_type_annotations",
   "clippy::ref_option_ref",
