@@ -97,6 +97,7 @@ warn = [
   "clippy::readonly_write_lock",
   "clippy::redundant_type_annotations",
   "clippy::ref_option_ref",
+  #"clippy::ref_patterns", # It's nice to avoid ref pattern, but there are some situations that are hard (impossible?) to express without.
   "clippy::rest_pat_in_fully_bound_structs",
   "clippy::same_functions_in_if_condition",
   "clippy::semicolon_if_nothing_returned",
@@ -139,7 +140,7 @@ warn = [
   "rustdoc::missing_crate_level_docs",
   "semicolon_in_expressions_from_macros",
   "trivial_numeric_casts",
-  "unsafe_op_in_unsafe_fn",                     # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
+  "unsafe_op_in_unsafe_fn",                    # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
   "unused_extern_crates",
   "unused_import_braces",
   "unused_lifetimes",
