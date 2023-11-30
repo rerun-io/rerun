@@ -248,6 +248,7 @@ impl DataStore {
             ..
         } = self;
 
+        let now = std::time::Instant::now();
         for (&row_id, (timepoint, entity_path_hash)) in &metadata_registry.registry {
             if protected_rows.contains(&row_id) {
                 batch_is_protected = true;
@@ -290,7 +291,7 @@ impl DataStore {
                 diffs.push(dropped);
             }
 
-            if num_bytes_to_drop <= 0.0 {
+            if now.elapsed() >= options.time_budget || num_bytes_to_drop <= 0.0 {
                 break;
             }
 
