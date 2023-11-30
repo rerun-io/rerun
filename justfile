@@ -130,6 +130,11 @@ py-test:
 py-test-allpy:
     nox -s tests
 
+# Run all Python benchmarks
+py-bench *ARGS:
+    python -m pytest -c rerun_py/pyproject.toml --benchmark-only {{ARGS}}
+
+
 # Serve the python docs locally
 py-docs-serve:
     mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py
