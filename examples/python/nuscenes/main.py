@@ -15,7 +15,7 @@ from nuscenes import nuscenes
 cmap = matplotlib.colormaps["turbo_r"]
 norm = matplotlib.colors.Normalize(
     vmin=3.0,
-    vmax=50.0,
+    vmax=75.0,
 )
 
 

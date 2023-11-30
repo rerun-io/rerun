@@ -1,0 +1,4 @@
+matplotlib
+numpy
+nuscenes-devkit
+rerun-sdk

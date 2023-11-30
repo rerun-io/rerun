@@ -12,9 +12,11 @@
 -r live_camera_edge_detection/requirements.txt
 -r live_depth_sensor/requirements.txt
 -r minimal/requirements.txt
+-r minimal_lidar/requirements.txt
 -r minimal_options/requirements.txt
 -r multiprocessing/requirements.txt
 -r multithreading/requirements.txt
+-r nuscenes/requirements.txt
 -r notebook/requirements.txt
 -r nv12/requirements.txt
 -r objectron/requirements.txt
