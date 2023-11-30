@@ -3,7 +3,9 @@ use itertools::Itertools as _;
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 
-use super::{DataBlueprintGroupHandle, SpaceViewId};
+use crate::DataQueryId;
+
+use super::SpaceViewId;
 
 /// One "thing" in the UI.
 ///
@@ -15,7 +17,7 @@ pub enum Item {
     ComponentPath(ComponentPath),
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
-    DataBlueprintGroup(SpaceViewId, DataBlueprintGroupHandle),
+    DataBlueprintGroup(SpaceViewId, DataQueryId, EntityPath),
     Container(egui_tiles::TileId),
 }
 
@@ -86,7 +88,9 @@ impl std::fmt::Debug for Item {
             Item::ComponentPath(s) => s.fmt(f),
             Item::SpaceView(s) => write!(f, "{s:?}"),
             Item::InstancePath(sid, path) => write!(f, "({sid:?}, {path})"),
-            Item::DataBlueprintGroup(sid, handle) => write!(f, "({sid:?}, {handle:?})"),
+            Item::DataBlueprintGroup(sid, qid, entity_path) => {
+                write!(f, "({sid:?}, {qid:?}, {entity_path:?})")
+            }
             Item::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
         }
     }
@@ -108,7 +112,7 @@ impl Item {
             }
             Item::ComponentPath(_) => "Entity Component",
             Item::SpaceView(_) => "Space View",
-            Item::DataBlueprintGroup(_, _) => "Group",
+            Item::DataBlueprintGroup(_, _, _) => "Group",
             Item::Container(_) => "Container",
         }
     }
@@ -200,7 +204,7 @@ pub fn resolve_mono_instance_path_item(
         ),
         Item::ComponentPath(_)
         | Item::SpaceView(_)
-        | Item::DataBlueprintGroup(_, _)
+        | Item::DataBlueprintGroup(_, _, _)
         | Item::Container(_) => item.clone(),
     }
 }

@@ -2781,6 +2781,7 @@ checksum = "435011366fe56583b16cf956f9df0095b405b82d76425bc8981c0e22e60ec4df"
 dependencies = [
  "autocfg",
  "scopeguard",
+ "serde",
 ]
 
 [[package]]
@@ -4773,6 +4774,7 @@ dependencies = [
  "egui_tiles",
  "image",
  "itertools 0.11.0",
+ "nohash-hasher",
  "once_cell",
  "poll-promise",
  "re_analytics",
@@ -4790,6 +4792,7 @@ dependencies = [
  "re_memory",
  "re_renderer",
  "re_smart_channel",
+ "re_space_view",
  "re_space_view_bar_chart",
  "re_space_view_spatial",
  "re_space_view_tensor",

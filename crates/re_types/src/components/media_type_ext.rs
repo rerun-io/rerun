@@ -4,27 +4,27 @@ use super::MediaType;
 // constants directly in there.
 impl MediaType {
     /// Plain text.
-    pub const TEXT: &str = "text/plain";
+    pub const TEXT: &'static str = "text/plain";
 
     /// Markdown.
     ///
     /// <https://www.iana.org/assignments/media-types/text/markdown>
-    pub const MARKDOWN: &str = "text/markdown";
+    pub const MARKDOWN: &'static str = "text/markdown";
 
     /// [`glTF`](https://en.wikipedia.org/wiki/GlTF).
     ///
     /// <https://www.iana.org/assignments/media-types/model/gltf+json>
-    pub const GLTF: &str = "model/gltf+json";
+    pub const GLTF: &'static str = "model/gltf+json";
 
     /// Binary [`glTF`](https://en.wikipedia.org/wiki/GlTF).
     ///
     /// <https://www.iana.org/assignments/media-types/model/gltf-binary>
-    pub const GLB: &str = "model/gltf-binary";
+    pub const GLB: &'static str = "model/gltf-binary";
 
     /// [Wavefront .obj](https://en.wikipedia.org/wiki/Wavefront_.obj_file).
     ///
     /// <https://www.iana.org/assignments/media-types/model/obj>
-    pub const OBJ: &str = "model/obj";
+    pub const OBJ: &'static str = "model/obj";
 }
 
 impl MediaType {

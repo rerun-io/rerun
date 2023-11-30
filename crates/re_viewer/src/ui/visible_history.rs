@@ -8,7 +8,7 @@ use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
-use re_viewer_context::{SpaceViewClassName, ViewerContext};
+use re_viewer_context::{SpaceViewClass, SpaceViewClassName, TimeControl, ViewerContext};
 
 /// These space views support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<SpaceViewClassName>> =
@@ -43,7 +43,8 @@ static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<Comp
 // TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the ViewPart
 // system is able to report its ability to handle the visible history feature.
 fn has_visible_history(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
+    time_ctrl: &TimeControl,
     space_view_class: &SpaceViewClassName,
     entity_path: Option<&EntityPath>,
 ) -> bool {
@@ -53,7 +54,7 @@ fn has_visible_history(
 
     if let Some(entity_path) = entity_path {
         let store = ctx.store_db.store();
-        let component_names = store.all_components(ctx.rec_cfg.time_ctrl.timeline(), entity_path);
+        let component_names = store.all_components(time_ctrl.timeline(), entity_path);
         if let Some(component_names) = component_names {
             if !component_names
                 .iter()
@@ -78,13 +79,14 @@ pub fn visible_history_ui(
     visible_history_prop: &mut ExtraQueryHistory,
     resolved_visible_history_prop: &ExtraQueryHistory,
 ) {
-    if !has_visible_history(ctx, space_view_class, entity_path) {
+    let time_ctrl = ctx.rec_cfg.time_ctrl.read().clone();
+    if !has_visible_history(ctx, &time_ctrl, space_view_class, entity_path) {
         return;
     }
 
     let re_ui = ctx.re_ui;
 
-    let is_sequence_timeline = matches!(ctx.rec_cfg.time_ctrl.timeline().typ(), TimeType::Sequence);
+    let is_sequence_timeline = matches!(time_ctrl.timeline().typ(), TimeType::Sequence);
 
     let mut interacting_with_controls = false;
 
@@ -109,18 +111,13 @@ pub fn visible_history_ui(
                 });
         });
 
-        let timeline_spec = if let Some(times) = ctx
-            .store_db
-            .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
-        {
+        let timeline_spec = if let Some(times) = ctx.store_db.time_histogram(time_ctrl.timeline()) {
             TimelineSpec::from_time_histogram(times)
         } else {
             TimelineSpec::from_time_range(0..=0)
         };
 
-        let current_time = ctx
-            .rec_cfg
-            .time_ctrl
+        let current_time = time_ctrl
             .time_i64()
             .unwrap_or_default()
             .at_least(*timeline_spec.range.start()); // accounts for timeless time (TimeInt::BEGINNING)
@@ -219,7 +216,7 @@ pub fn visible_history_ui(
             .map_or(false, |r| r.hovered());
 
     if should_display_visible_history {
-        if let Some(current_time) = ctx.rec_cfg.time_ctrl.time_int() {
+        if let Some(current_time) = time_ctrl.time_int() {
             let visible_history = match (visible_history_prop.enabled, is_sequence_timeline) {
                 (true, true) => visible_history_prop.sequences,
                 (true, false) => visible_history_prop.nanos,
@@ -227,7 +224,7 @@ pub fn visible_history_ui(
                 (false, false) => resolved_visible_history_prop.nanos,
             };
 
-            ctx.rec_cfg.visible_history_highlight = Some(TimeRange::new(
+            ctx.rec_cfg.time_ctrl.write().highlighted_range = Some(TimeRange::new(
                 visible_history.from(current_time),
                 visible_history.to(current_time),
             ));

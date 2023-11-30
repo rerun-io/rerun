@@ -5,7 +5,7 @@ use re_data_ui::item_ui;
 use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_types::components::TextLogLevel;
 use re_viewer_context::{
-    level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassName,
+    level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
     ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
@@ -42,9 +42,8 @@ pub struct TextSpaceView;
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
 
-    fn name(&self) -> SpaceViewClassName {
-        "TextLog".into()
-    }
+    const NAME: &'static str = "TextLog";
+    const DISPLAY_NAME: &'static str = "Text Log";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
@@ -168,6 +167,7 @@ impl SpaceViewClass for TextSpaceView {
             let time = ctx
                 .rec_cfg
                 .time_ctrl
+                .read()
                 .time_i64()
                 .unwrap_or(state.latest_time);
 
@@ -278,8 +278,10 @@ fn table_ui(
 
     use egui_extras::Column;
 
-    let global_timeline = *ctx.rec_cfg.time_ctrl.timeline();
-    let global_time = ctx.rec_cfg.time_ctrl.time_int();
+    let (global_timeline, global_time) = {
+        let time_ctrl = ctx.rec_cfg.time_ctrl.read();
+        (*time_ctrl.timeline(), time_ctrl.time_int())
+    };
 
     let mut table_builder = egui_extras::TableBuilder::new(ui)
         .resizable(true)

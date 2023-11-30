@@ -278,7 +278,7 @@ pub struct ImportClause {
 }
 
 impl ImportClause {
-    pub const PREFIX: &str = "#import ";
+    pub const PREFIX: &'static str = "#import ";
 }
 
 impl<P: Into<PathBuf>> From<P> for ImportClause {

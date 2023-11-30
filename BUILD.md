@@ -27,12 +27,12 @@ Finally, run the following script to install the dependencies and CLI tools need
 ./scripts/setup_dev.sh
 ```
 
-Make sure `cargo --version` prints `1.72.1` once you are done.
+Make sure `cargo --version` prints `1.74.0` once you are done.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.72.1
+rustup set default-host aarch64-apple-darwin && rustup install 1.74.0
 ```
 
 ## Building and running the viewer

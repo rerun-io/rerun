@@ -44,11 +44,13 @@ pub enum SpaceViewClassLayoutPriority {
 pub trait DynSpaceViewClass {
     /// Name of this space view class.
     ///
-    /// Used for both ui display and identification.
-    /// Must be unique within a viewer session.
-    ///
-    /// TODO(#2336): Display name and identifier should be separate.
+    /// Used for identification. Must be unique within a viewer session.
     fn name(&self) -> SpaceViewClassName;
+
+    /// User-facing name of this space view class.
+    ///
+    /// Used for UI display.
+    fn display_name(&self) -> &'static str;
 
     /// Icon used to identify this space view class.
     fn icon(&self) -> &'static re_ui::Icon;

@@ -11,7 +11,7 @@ pub(crate) struct PostHogSink {}
 
 impl PostHogSink {
     /// Our public telemetry endpoint.
-    const URL: &str = "https://tel.rerun.io";
+    const URL: &'static str = "https://tel.rerun.io";
 
     #[allow(clippy::unused_self)]
     pub(crate) fn send(

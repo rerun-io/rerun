@@ -657,7 +657,7 @@ pub fn picking(
             }
         }
     };
-    ctx.selection_state_mut().set_hovered_space(hovered_space);
+    ctx.selection_state().set_hovered_space(hovered_space);
 
     Ok(response)
 }

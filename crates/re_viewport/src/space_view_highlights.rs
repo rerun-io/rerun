@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use egui::NumExt;
 use nohash_hasher::IntMap;
 
-use re_log_types::{EntityPath, EntityPathHash};
+use re_log_types::EntityPathHash;
 use re_renderer::OutlineMaskPreference;
 use re_viewer_context::{
     HoverHighlight, Item, SelectionHighlight, SelectionState, SpaceViewEntityHighlight,
@@ -15,7 +15,7 @@ use crate::SpaceViewBlueprint;
 pub fn highlights_for_space_view(
     selection_state: &SelectionState,
     space_view_id: SpaceViewId,
-    space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+    _space_views: &BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> SpaceViewHighlights {
     re_tracing::profile_function!();
 
@@ -40,7 +40,9 @@ pub fn highlights_for_space_view(
         match current_selection {
             Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
-            Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
+            Item::DataBlueprintGroup(_space_view_id, _query_id, _entity_path) => {
+                // TODO(#4377): Fix DataBlueprintGroup
+                /*
                 if *group_space_view_id == space_view_id {
                     if let Some(space_view) = space_views.get(group_space_view_id) {
                         // Everything in the same group should receive the same selection outline.
@@ -63,6 +65,7 @@ pub fn highlights_for_space_view(
                         );
                     }
                 }
+                */
             }
 
             Item::InstancePath(selected_space_view_context, selected_instance) => {
@@ -114,7 +117,9 @@ pub fn highlights_for_space_view(
         match current_hover {
             Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
-            Item::DataBlueprintGroup(group_space_view_id, group_handle) => {
+            Item::DataBlueprintGroup(_space_view_id, _query_id, _entity_path) => {
+                // TODO(#4377): Fix DataBlueprintGroup
+                /*
                 // Unlike for selected objects/data we are more picky for data blueprints with our hover highlights
                 // since they are truly local to a space view.
                 if *group_space_view_id == space_view_id {
@@ -136,6 +141,7 @@ pub fn highlights_for_space_view(
                         );
                     }
                 }
+                */
             }
 
             Item::InstancePath(_, selected_instance) => {

@@ -87,7 +87,6 @@ impl ViewContextSystem for TransformContext {
         re_tracing::profile_function!();
 
         let entity_db = ctx.store_db.entity_db();
-        let time_ctrl = &ctx.rec_cfg.time_ctrl;
 
         // TODO(jleibs): The need to do this hints at a problem with how we think about
         // the interaction between properties and "context-systems".
@@ -114,7 +113,7 @@ impl ViewContextSystem for TransformContext {
             return;
         };
 
-        let time_query = time_ctrl.current_query();
+        let time_query = ctx.rec_cfg.time_ctrl.read().current_query();
 
         // Child transforms of this space
         self.gather_descendants_transforms(

@@ -86,7 +86,7 @@ jobs:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       # Note: We explicitly don't override `ref` here. We need to see if changes would be made
       # in a context where we have merged with main. Otherwise we might miss changes such as one
@@ -109,7 +109,7 @@ jobs:
     name: Rust lints (fmt, check, cranky, tests, doc)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 
@@ -180,7 +180,7 @@ jobs:
     name: Check Rust web build (wasm32 + wasm-bindgen)
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 
@@ -267,7 +267,7 @@ jobs:
     name: Cargo Deny
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 
@@ -293,7 +293,7 @@ jobs:
     name: C++ tests
     runs-on: ubuntu-latest
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 

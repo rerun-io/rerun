@@ -178,17 +178,7 @@ fn item_to_string(blueprint: &ViewportBlueprint<'_>, item: &Item) -> String {
             }
         }
         Item::InstancePath(_, entity_path) => entity_path.to_string(),
-        Item::DataBlueprintGroup(sid, handle) => {
-            if let Some(space_view) = blueprint.space_view(sid) {
-                if let Some(group) = space_view.contents.group(*handle) {
-                    group.display_name.clone()
-                } else {
-                    format!("<removed Group in {}>", space_view.display_name)
-                }
-            } else {
-                "<Group in removed Space View>".to_owned()
-            }
-        }
+        Item::DataBlueprintGroup(_sid, _qid, entity_path) => entity_path.to_string(),
         Item::ComponentPath(path) => {
             format!("{} {}", path.entity_path, path.component_name.short_name(),)
         }

@@ -11,7 +11,7 @@ impl DataUi for Item {
         query: &re_arrow_store::LatestAtQuery,
     ) {
         match self {
-            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) | Item::Container(_) => {
+            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => {
                 // Shouldn't be reachable since SelectionPanel::contents doesn't show data ui for these.
                 // If you add something in here make sure to adjust SelectionPanel::contents accordingly.
             }

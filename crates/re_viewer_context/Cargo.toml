@@ -42,8 +42,8 @@ macaw.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
-parking_lot.workspace = true
-serde = "1"
+parking_lot = { workspace = true, features = ["serde"] }
+serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
