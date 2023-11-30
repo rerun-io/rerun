@@ -67,6 +67,7 @@ impl SpaceViewBlueprint {
 impl SpaceViewBlueprint {
     pub fn new(
         space_view_class: SpaceViewClassName,
+        space_view_ui_name: &'static str,
         space_path: &EntityPath,
         query: DataQueryBlueprint,
     ) -> Self {
@@ -78,7 +79,7 @@ impl SpaceViewBlueprint {
             name.to_string()
         } else {
             // Include class name in the display for root paths because they look a tad bit too short otherwise.
-            format!("/ ({space_view_class})")
+            format!("/ ({space_view_ui_name})")
         };
 
         let id = SpaceViewId::random();
@@ -428,6 +429,7 @@ mod tests {
 
         let space_view = SpaceViewBlueprint::new(
             "3D".into(),
+            "3D",
             &EntityPath::root(),
             DataQueryBlueprint::new(
                 "3D".into(),
