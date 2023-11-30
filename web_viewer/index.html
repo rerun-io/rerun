@@ -351,9 +351,8 @@
 
         check_for_panic();
 
-        let query = new URLSearchParams(window.location.search);
         handle
-          .start("the_canvas_id", query.get("url"), query.get("manifest_url"))
+          .start("the_canvas_id")
           .then(on_app_started)
           .catch(on_wasm_error);
       }
