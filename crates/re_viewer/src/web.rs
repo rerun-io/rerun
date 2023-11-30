@@ -48,7 +48,7 @@ impl WebHandle {
                 canvas_id,
                 web_options,
                 Box::new(move |cc| {
-                    let app = create_app(cc, url, manifest_url);
+                    let app = create_app(cc, &url, &manifest_url);
                     Box::new(app)
                 }),
             )
@@ -82,8 +82,8 @@ impl WebHandle {
 
 fn create_app(
     cc: &eframe::CreationContext<'_>,
-    url: Option<String>,
-    manifest_url: Option<String>,
+    url: &Option<String>,
+    manifest_url: &Option<String>,
 ) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web;
