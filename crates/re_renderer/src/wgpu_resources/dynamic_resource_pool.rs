@@ -281,7 +281,7 @@ mod tests {
         let initial_resource_descs = [0, 0, 1, 2, 2, 3];
 
         // Alloc on a new pool always returns a new resource.
-        allocate_resources(&initial_resource_descs, &mut pool, true);
+        allocate_resources(&initial_resource_descs, &pool, true);
 
         // After frame maintenance we get used resources.
         // Still, no resources were dropped.
@@ -295,9 +295,9 @@ mod tests {
         }
 
         // Allocate the same resources again, this should *not* create any new resources.
-        allocate_resources(&initial_resource_descs, &mut pool, false);
+        allocate_resources(&initial_resource_descs, &pool, false);
         // Doing it again, it will again create resources.
-        allocate_resources(&initial_resource_descs, &mut pool, true);
+        allocate_resources(&initial_resource_descs, &pool, true);
 
         // Doing frame maintenance twice will drop all resources
         {
@@ -360,7 +360,7 @@ mod tests {
 
     fn allocate_resources(
         descs: &[u32],
-        pool: &mut DynamicResourcePool<ConcreteHandle, ConcreteResourceDesc, ConcreteResource>,
+        pool: &DynamicResourcePool<ConcreteHandle, ConcreteResourceDesc, ConcreteResource>,
         expect_allocation: bool,
     ) {
         let drop_counter_before = DROP_COUNTER.with(|c| c.get());

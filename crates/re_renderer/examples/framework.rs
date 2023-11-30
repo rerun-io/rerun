@@ -342,7 +342,7 @@ impl<E: Example + 'static> Application<E> {
 }
 
 #[allow(dead_code)]
-pub fn load_rerun_mesh(re_ctx: &mut RenderContext) -> Vec<re_renderer::renderer::MeshInstance> {
+pub fn load_rerun_mesh(re_ctx: &RenderContext) -> Vec<re_renderer::renderer::MeshInstance> {
     let reader = std::io::Cursor::new(include_bytes!("rerun.obj.zip"));
     let mut zip = zip::ZipArchive::new(reader).unwrap();
     let mut zipped_obj = zip.by_name("rerun.obj").unwrap();

@@ -295,7 +295,7 @@ impl AppState {
         }
 
         // This must run after any ui code, or other code that tells egui to open an url:
-        check_for_clicked_hyperlinks(&re_ui.egui_ctx, &mut rec_cfg.selection_state);
+        check_for_clicked_hyperlinks(&re_ui.egui_ctx, &rec_cfg.selection_state);
     }
 
     pub fn recording_config_mut(&mut self, rec_id: &StoreId) -> Option<&mut RecordingConfig> {
@@ -354,7 +354,7 @@ fn recording_config_entry<'cfgs>(
 /// Detect and handle that here.
 ///
 /// Must run after any ui code, or other code that tells egui to open an url.
-fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, selection_state: &mut SelectionState) {
+fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, selection_state: &SelectionState) {
     let recording_scheme = "recording://";
 
     let mut path = None;
