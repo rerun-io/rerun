@@ -62,7 +62,7 @@ namespace rerun {
         /// \param recording_id The user-chosen name of the recording being logged to.
         /// \param store_kind Whether to log to the recording store or the blueprint store.
         RecordingStream(
-            std::string_view app_id, std::optional<std::string_view> recording_id = std::nullopt,
+            std::string_view app_id, std::string_view recording_id = std::string_view(),
             StoreKind store_kind = StoreKind::Recording
         );
         ~RecordingStream();

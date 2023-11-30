@@ -30,7 +30,7 @@ namespace rerun {
     }
 
     RecordingStream::RecordingStream(
-        std::string_view app_id, std::optional<std::string_view> recording_id, StoreKind store_kind
+        std::string_view app_id, std::string_view recording_id, StoreKind store_kind
     )
         : _store_kind(store_kind) {
         check_binary_and_header_version_match().handle();

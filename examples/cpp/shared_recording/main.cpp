@@ -18,11 +18,7 @@ int main() {
         rerun::RecordingStream("rerun_example_shared_recording", "my_shared_recording");
     rec.spawn().exit_on_failure();
 
-    int pid = getpid();
-    std::ostringstream oss;
-    oss << "Hello from " << pid;
-
-    rec.log("updates", rerun::TextLog(oss.str()));
+    rec.log("updates", rerun::TextLog(std::string("Hello from ") + std::to_string(getpid())));
 
     std::cout << "Run me again to append more data to the recording!" << std::endl;
 }
