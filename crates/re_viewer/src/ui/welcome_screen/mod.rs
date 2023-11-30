@@ -44,6 +44,7 @@ impl WelcomeScreen {
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        re_ui: &re_ui::ReUi,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) {
@@ -89,7 +90,9 @@ impl WelcomeScreen {
                 }
                 .show(ui, |ui| match self.current_page {
                     WelcomeScreenPage::Welcome => welcome_page_ui(ui, rx, command_sender),
-                    WelcomeScreenPage::Examples => self.example_page.ui(ui, rx, command_sender),
+                    WelcomeScreenPage::Examples => {
+                        self.example_page.ui(ui, re_ui, rx, command_sender)
+                    }
                 })
                 .inner
             })

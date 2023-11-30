@@ -162,6 +162,7 @@ impl ExamplePage {
     pub(super) fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        re_ui: &re_ui::ReUi,
         rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) -> WelcomeScreenResponse {
@@ -177,7 +178,7 @@ impl ExamplePage {
         let examples = match examples {
             Ok(examples) => examples,
             Err(err) => {
-                ui.label(format!("Failed to load examples: {err}"));
+                re_ui.error_text(format!("Failed to load examples: {err}"));
                 return WelcomeScreenResponse::default();
             }
         };

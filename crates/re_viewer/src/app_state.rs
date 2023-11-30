@@ -259,7 +259,7 @@ impl AppState {
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
                         if show_welcome {
-                            welcome_screen.ui(ui, rx, command_sender);
+                            welcome_screen.ui(ui, re_ui, rx, command_sender);
                         } else {
                             viewport.viewport_ui(ui, &mut ctx);
                         }
