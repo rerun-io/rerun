@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::{
     allocator::{create_and_fill_uniform_buffer, GpuReadbackIdentifier},
-    context::RenderContext,
+    context::{RenderContext, Renderers},
     draw_phases::{
         DrawPhase, OutlineConfig, OutlineMaskProcessor, PickingLayerError, PickingLayerProcessor,
         ScreenshotProcessor,
@@ -13,7 +13,9 @@ use crate::{
     queuable_draw_data::QueueableDrawData,
     renderer::{CompositorDrawData, DebugOverlayDrawData},
     transform::RectTransform,
-    wgpu_resources::{GpuBindGroup, GpuTexture, PoolError, TextureDesc},
+    wgpu_resources::{
+        GpuBindGroup, GpuRenderPipelinePoolAccessor, GpuTexture, PoolError, TextureDesc,
+    },
     DebugLabel, RectInt, Rgba, Size,
 };
 
@@ -500,7 +502,8 @@ impl ViewBuilder {
 
     fn draw_phase<'a>(
         &'a self,
-        ctx: &'a RenderContext,
+        renderers: &Renderers,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
     ) {
@@ -508,8 +511,14 @@ impl ViewBuilder {
 
         for queued_draw in &self.queued_draws {
             if queued_draw.participated_phases.contains(&phase) {
-                let res = (queued_draw.draw_func)(ctx, phase, pass, queued_draw.draw_data.as_ref())
-                    .with_context(|| format!("draw call during phase {phase:?}"));
+                let res = (queued_draw.draw_func)(
+                    renderers,
+                    render_pipelines,
+                    phase,
+                    pass,
+                    queued_draw.draw_data.as_ref(),
+                )
+                .with_context(|| format!("draw call during phase {phase:?}"));
                 if let Err(err) = res {
                     re_log::error!(renderer=%queued_draw.renderer_name, %err,
                         "renderer failed to draw");
@@ -530,6 +539,27 @@ impl ViewBuilder {
         clear_color: Rgba,
     ) -> Result<wgpu::CommandBuffer, PoolError> {
         re_tracing::profile_function!();
+
+        // Renderers and render pipelines are locked for the entirety of this method:
+        // This means it's *not* possible to add renderers or pipelines while drawing is in progress!
+        //
+        // This is primarily due to the lifetime association render passes have all passed in resources:
+        // For dynamic resources like bind groups/textures/buffers we use handles that *store* an arc
+        // to the wgpu resources to solve this ownership problem.
+        // But for render pipelines, which we want to be able the resource under a handle via reload,
+        // so we always have to do some kind of lookup prior to or during rendering.
+        // Therefore, we just lock the pool for the entirety of the draw which ensures
+        // that the lock outlives the pass.
+        //
+        // Renderers can't be added anyways at this point (RendererData add their Renderer on creation),
+        // so no point in taking the lock repeatedly.
+        //
+        // Note that this is a limitation that will be lifted in future versions of wgpu.
+        // However, having our locking concentrated for the duration of a view draw
+        // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
+        // locking and unlocking.
+        let renderers = ctx.renderers.read();
+        let pipelines = ctx.gpu_resources.render_pipelines.resources();
 
         let setup = &self.setup;
 
@@ -574,7 +604,7 @@ impl ViewBuilder {
             pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
             for phase in [DrawPhase::Opaque, DrawPhase::Background] {
-                self.draw_phase(ctx, phase, &mut pass);
+                self.draw_phase(&renderers, &pipelines, phase, &mut pass);
             }
         }
 
@@ -592,9 +622,9 @@ impl ViewBuilder {
                 // 3: Draw call in renderer.
                 //
                 //pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(ctx, DrawPhase::PickingLayer, &mut pass);
+                self.draw_phase(&renderers, &pipelines, DrawPhase::PickingLayer, &mut pass);
             }
-            match picking_processor.end_render_pass(&mut encoder, &ctx.gpu_resources) {
+            match picking_processor.end_render_pass(&mut encoder, &pipelines) {
                 Err(PickingLayerError::ResourcePoolError(err)) => {
                     return Err(err);
                 }
@@ -611,16 +641,21 @@ impl ViewBuilder {
                 re_tracing::profile_scope!("outline mask pass");
                 let mut pass = outline_mask_processor.start_mask_render_pass(&mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(ctx, DrawPhase::OutlineMask, &mut pass);
+                self.draw_phase(&renderers, &pipelines, DrawPhase::OutlineMask, &mut pass);
             }
-            outline_mask_processor.compute_outlines(&ctx.gpu_resources, &mut encoder)?;
+            outline_mask_processor.compute_outlines(&pipelines, &mut encoder)?;
         }
 
         if let Some(screenshot_processor) = self.screenshot_processor.take() {
             {
                 let mut pass = screenshot_processor.begin_render_pass(&setup.name, &mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
-                self.draw_phase(ctx, DrawPhase::CompositingScreenshot, &mut pass);
+                self.draw_phase(
+                    &renderers,
+                    &pipelines,
+                    DrawPhase::CompositingScreenshot,
+                    &mut pass,
+                );
             }
             match screenshot_processor.end_render_pass(&mut encoder) {
                 Ok(()) => {}
@@ -751,7 +786,8 @@ impl ViewBuilder {
     /// `screen_position` specifies where on the output pass the view is placed.
     pub fn composite<'a>(
         &'a self,
-        ctx: &'a RenderContext,
+        ctx: &RenderContext,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         pass: &mut wgpu::RenderPass<'a>,
         screen_position: glam::Vec2,
     ) {
@@ -767,6 +803,11 @@ impl ViewBuilder {
         );
 
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
-        self.draw_phase(ctx, DrawPhase::Compositing, pass);
+        self.draw_phase(
+            &ctx.renderers.read(),
+            render_pipelines,
+            DrawPhase::Compositing,
+            pass,
+        );
     }
 }

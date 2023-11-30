@@ -276,6 +276,9 @@ impl<E: Example + 'static> Application<E> {
                     );
 
                     {
+                        // Lock render pipelines for the lifetime of the composite pass.
+                        let render_pipelines = self.re_ctx.gpu_resources.render_pipelines.resources();
+
                         let mut composite_pass =
                             composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                 label: None,
@@ -295,6 +298,7 @@ impl<E: Example + 'static> Application<E> {
                         for draw_result in &draw_results {
                             draw_result.view_builder.composite(
                                 &self.re_ctx,
+                                &render_pipelines,
                                 &mut composite_pass,
                                 draw_result.target_location,
                             );

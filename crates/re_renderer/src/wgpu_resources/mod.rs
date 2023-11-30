@@ -27,7 +27,8 @@ pub use pipeline_layout_pool::{
 
 mod render_pipeline_pool;
 pub use render_pipeline_pool::{
-    GpuRenderPipelineHandle, GpuRenderPipelinePool, RenderPipelineDesc, VertexBufferLayout,
+    GpuRenderPipelineHandle, GpuRenderPipelinePool, GpuRenderPipelinePoolAccessor,
+    GpuRenderPipelinePoolMemMoveAccessor, RenderPipelineDesc, VertexBufferLayout,
 };
 
 mod sampler_pool;
@@ -46,6 +47,7 @@ pub use resource::PoolError;
 
 mod dynamic_resource_pool;
 mod static_resource_pool;
+pub use static_resource_pool::StaticResourcePoolAccessor;
 
 /// Collection of all wgpu resource pools.
 ///
@@ -55,13 +57,13 @@ mod static_resource_pool;
 /// for details check their respective allocation/creation functions!
 #[derive(Default)]
 pub struct WgpuResourcePools {
-    pub(crate) bind_group_layouts: GpuBindGroupLayoutPool,
-    pub(crate) pipeline_layouts: GpuPipelineLayoutPool,
-    pub(crate) render_pipelines: GpuRenderPipelinePool,
-    pub(crate) samplers: GpuSamplerPool,
-    pub(crate) shader_modules: GpuShaderModulePool,
+    pub bind_group_layouts: GpuBindGroupLayoutPool,
+    pub pipeline_layouts: GpuPipelineLayoutPool,
+    pub render_pipelines: GpuRenderPipelinePool,
+    pub samplers: GpuSamplerPool,
+    pub shader_modules: GpuShaderModulePool,
 
-    pub(crate) bind_groups: GpuBindGroupPool,
+    pub bind_groups: GpuBindGroupPool,
 
     pub buffers: GpuBufferPool,
     pub textures: GpuTexturePool,

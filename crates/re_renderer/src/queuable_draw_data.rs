@@ -1,7 +1,8 @@
 use crate::{
+    context::Renderers,
     draw_phases::DrawPhase,
     renderer::{DrawData, DrawError, Renderer},
-    RenderContext,
+    wgpu_resources::GpuRenderPipelinePoolAccessor,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -17,7 +18,8 @@ pub enum QueueableDrawDataError {
 }
 
 type DrawFn = dyn for<'a, 'b> Fn(
-        &'b RenderContext,
+        &Renderers,
+        &'b GpuRenderPipelinePoolAccessor<'b>,
         DrawPhase,
         &'a mut wgpu::RenderPass<'b>,
         &'b dyn std::any::Any,
@@ -36,8 +38,7 @@ pub struct QueueableDrawData {
 impl<D: DrawData + Sync + Send + 'static> From<D> for QueueableDrawData {
     fn from(draw_data: D) -> Self {
         QueueableDrawData {
-            draw_func: Box::new(move |ctx, phase, pass, draw_data| {
-                let renderers = ctx.renderers.read();
+            draw_func: Box::new(move |renderers, gpu_resources, phase, pass, draw_data| {
                 let renderer = renderers.get::<D::Renderer>().ok_or(
                     QueueableDrawDataError::FailedToRetrieveRenderer(std::any::type_name::<
                         D::Renderer,
@@ -47,7 +48,7 @@ impl<D: DrawData + Sync + Send + 'static> From<D> for QueueableDrawData {
                     QueueableDrawDataError::UnexpectedDrawDataType(std::any::type_name::<D>()),
                 )?;
                 renderer
-                    .draw(&ctx.gpu_resources, phase, pass, draw_data)
+                    .draw(gpu_resources, phase, pass, draw_data)
                     .map_err(QueueableDrawDataError::from)
             }),
             draw_data: Box::new(draw_data),

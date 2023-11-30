@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use super::{resource::PoolError, static_resource_pool::StaticResourcePool};
+use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
 use crate::debug_label::DebugLabel;
 
 slotmap::new_key_type! { pub struct GpuSamplerHandle; }
@@ -41,7 +41,7 @@ pub struct GpuSamplerPool {
 }
 
 impl GpuSamplerPool {
-    pub fn get_or_create(&mut self, device: &wgpu::Device, desc: &SamplerDesc) -> GpuSamplerHandle {
+    pub fn get_or_create(&self, device: &wgpu::Device, desc: &SamplerDesc) -> GpuSamplerHandle {
         self.pool.get_or_create(desc, |desc| {
             device.create_sampler(&wgpu::SamplerDescriptor {
                 label: desc.label.get(),
@@ -61,9 +61,13 @@ impl GpuSamplerPool {
             })
         })
     }
-
-    pub fn get_resource(&self, handle: GpuSamplerHandle) -> Result<&wgpu::Sampler, PoolError> {
-        self.pool.get_resource(handle)
+    /// Locks the resource pool for resolving handles.
+    ///
+    /// While it is locked, no new resources can be added.
+    pub fn resources(
+        &self,
+    ) -> StaticResourcePoolReadLockAccessor<'_, GpuSamplerHandle, wgpu::Sampler> {
+        self.pool.resources()
     }
 
     pub fn begin_frame(&mut self, frame_index: u64) {

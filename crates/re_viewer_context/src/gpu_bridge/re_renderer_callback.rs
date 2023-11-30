@@ -36,6 +36,9 @@ struct ReRendererCallback {
 }
 
 impl egui_wgpu::CallbackTrait for ReRendererCallback {
+    // TODO(andreas): Prepare callbacks should run in parallel.
+    //                Command buffer recording may be fairly expensive in the future!
+    //                Sticking to egui's current model, each prepare callback could fork of a task and in finish_prepare we wait for them.
     fn prepare(
         &self,
         _device: &wgpu::Device,
@@ -68,7 +71,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             return Vec::new();
         };
 
-        match view_builder.draw(ctx, self.clear_color) {
+        let command_buffer = match view_builder.draw(ctx, self.clear_color) {
             Ok(command_buffer) => {
                 // If drawing worked, put the view_builder back in so we can use it during paint.
                 ctx.active_frame
@@ -87,7 +90,37 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
                 // TODO(andreas): It would be nice to paint an error message instead.
                 Vec::new()
             }
+        };
+
+        command_buffer
+    }
+
+    fn finish_prepare(
+        &self,
+        _device: &wgpu::Device,
+        _queue: &wgpu::Queue,
+        _egui_encoder: &mut wgpu::CommandEncoder,
+        callback_resources: &mut egui_wgpu::CallbackResources,
+    ) -> Vec<wgpu::CommandBuffer> {
+        let Some(ctx) = callback_resources.get_mut::<re_renderer::RenderContext>() else {
+            re_log::error_once!(
+                "Failed to execute egui prepare callback. No render context available."
+            );
+            return Vec::new();
+        };
+
+        // We don't own the render pass that renders the egui ui.
+        // But we *still* need to somehow ensure that all resources used in callbacks drawing to it,
+        // are longer lived than the pass itself.
+        // This is a bit of a conundrum since we can't store a lock guard in the callback resources.
+        // So instead, we work around this by moving the render pipelines out of their lock!
+        // Future wgpu versions will lift this restriction and will allow us to remove this workaround.
+        if ctx.active_frame.moved_render_pipelines.is_none() {
+            let render_pipelines = ctx.gpu_resources.render_pipelines.take_resources();
+            ctx.active_frame.moved_render_pipelines = Some(render_pipelines);
         }
+
+        Vec::new()
     }
 
     fn paint<'a>(
@@ -119,6 +152,11 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         let screen_position = (info.viewport.min.to_vec2() * info.pixels_per_point).round();
         let screen_position = glam::vec2(screen_position.x, screen_position.y);
 
-        view_builder.composite(ctx, render_pass, screen_position);
+        view_builder.composite(
+            ctx,
+            ctx.active_frame.moved_render_pipelines.as_ref().unwrap(), // TODO:
+            render_pass,
+            screen_position,
+        );
     }
 }
