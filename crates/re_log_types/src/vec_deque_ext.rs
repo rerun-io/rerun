@@ -62,8 +62,6 @@ fn is_sorted() {
     v.rotate_left(1);
     assert!(v.is_sorted());
 
-    assert!(v.is_sorted()); // !
-
     v.extend([7, 6, 5]);
     assert!(!v.is_sorted());
 
@@ -79,7 +77,7 @@ pub trait VecDequeRemovalExt<T> {
     /// whichever end element that this is closer to the removal point.
     ///
     /// If `index` points to the front or back of the queue, the removal is guaranteed to preserve
-    /// ordering; otherwise it doesn not.
+    /// ordering; otherwise it doesn't.
     /// In either case, this is *O*(1).
     ///
     /// Returns `None` if `index` is out of bounds.
