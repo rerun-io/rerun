@@ -178,7 +178,7 @@ impl ExamplePage {
         let examples = match examples {
             Ok(examples) => examples,
             Err(err) => {
-                re_ui.error_text(format!("Failed to load examples: {err}"));
+                ui.label(re_ui.error_text(format!("Failed to load examples: {err}")));
                 return WelcomeScreenResponse::default();
             }
         };
