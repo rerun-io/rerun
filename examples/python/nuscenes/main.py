@@ -43,12 +43,10 @@ def ensure_scene_available(root_dir: pathlib.Path, dataset_version: str, scene_n
 
 
 def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) -> None:
+    """Log nuScenes scene."""
     nusc = nuscenes.NuScenes(version=dataset_version, dataroot=root_dir, verbose=True)
 
     scene = next(s for s in nusc.scene if s["name"] == scene_name)
-
-    # each sensor only has to be logged once, maintain set of already logged sensors
-    logged_sensor_tokens: set[str] = set()
 
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
 
@@ -76,7 +74,8 @@ def log_nuscenes(root_dir: pathlib.Path, dataset_version: str, scene_name: str) 
     log_annotations(first_sample_token, start_timestamp, nusc)
 
 
-def log_lidar_and_ego_pose(first_lidar_token: str, start_timestamp: numbers.Number, nusc: nuscenes.NuScenes):
+def log_lidar_and_ego_pose(first_lidar_token: str, start_timestamp: numbers.Number, nusc: nuscenes.NuScenes) -> None:
+    """Log lidar data and vehicle pose."""
     current_lidar_token = first_lidar_token
 
     while current_lidar_token != "":
@@ -104,7 +103,8 @@ def log_lidar_and_ego_pose(first_lidar_token: str, start_timestamp: numbers.Numb
         rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
 
 
-def log_cameras(first_camera_tokens: list[str], start_timestamp: numbers.Number, nusc: nuscenes.NuScenes):
+def log_cameras(first_camera_tokens: list[str], start_timestamp: numbers.Number, nusc: nuscenes.NuScenes) -> None:
+    """Log camera data."""
     for first_camera_token in first_camera_tokens:
         current_camera_token = first_camera_token
         while current_camera_token != "":
@@ -116,7 +116,8 @@ def log_cameras(first_camera_tokens: list[str], start_timestamp: numbers.Number,
             current_camera_token = sample_data["next"]
 
 
-def log_radars(first_radar_tokens: list[str], start_timestamp: numbers.Number, nusc: nuscenes.NuScenes):
+def log_radars(first_radar_tokens: list[str], start_timestamp: numbers.Number, nusc: nuscenes.NuScenes) -> None:
+    """Log radar data."""
     for first_radar_token in first_radar_tokens:
         current_camera_token = first_radar_token
         while current_camera_token != "":
@@ -132,8 +133,9 @@ def log_radars(first_radar_tokens: list[str], start_timestamp: numbers.Number, n
             current_camera_token = sample_data["next"]
 
 
-def log_annotations(first_sample_token: str, start_timestamp: numbers.Number, nusc: nuscenes.NuScenes):
-    label2id = {}
+def log_annotations(first_sample_token: str, start_timestamp: numbers.Number, nusc: nuscenes.NuScenes) -> None:
+    """Log 3D bounding boxes."""
+    label2id: dict[str, int] = {}
     current_sample_token = first_sample_token
     while current_sample_token != "":
         sample = nusc.get("sample", current_sample_token)
@@ -163,6 +165,7 @@ def log_annotations(first_sample_token: str, start_timestamp: numbers.Number, nu
 
 
 def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes) -> None:
+    """Log sensor calibration (pinhole camera, sensor poses, etc.)."""
     sensor_name = sample_data["channel"]
     calibrated_sensor_token = sample_data["calibrated_sensor_token"]
     calibrated_sensor = nusc.get("calibrated_sensor", calibrated_sensor_token)
