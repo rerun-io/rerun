@@ -18,29 +18,92 @@ use std::path::PathBuf;
 
 use re_build_tools::Environment;
 
-fn parse_release_version(branch: &str) -> Option<&str> {
-    // release-\d+.\d+.\d+(-alpha.\d+)?
+const USAGE: &str = "\
+Usage: [options] [output_path]
 
-    let version = branch.strip_prefix("release-")?;
+Options:
+    -h, --help       Print help
+        --base-url   Where all examples are uploaded, e.g. `https://demo.rerun.io/version/nightly`.
+";
 
-    let (major, rest) = version.split_once('.')?;
-    major.parse::<u8>().ok()?;
-    let (minor, rest) = rest.split_once('.')?;
-    minor.parse::<u8>().ok()?;
-    let (patch, meta) = rest
-        .split_once('-')
-        .map_or((rest, None), |(p, m)| (p, Some(m)));
-    patch.parse::<u8>().ok()?;
+fn main() -> anyhow::Result<()> {
+    re_build_tools::set_output_cargo_build_instructions(false);
 
-    if let Some(meta) = meta {
-        let (kind, n) = meta.split_once('.')?;
-        if kind != "alpha" && kind != "rc" {
-            return None;
+    let args = Args::from_env();
+
+    let manifest = build_examples_manifest(Environment::detect(), &args)?;
+    std::fs::write(args.output_path, manifest)?;
+
+    Ok(())
+}
+
+struct Args {
+    output_path: PathBuf,
+    base_url: Option<String>,
+}
+
+impl Args {
+    fn from_env() -> Self {
+        let mut output_path = None;
+        let mut base_url = None;
+
+        let mut args = std::env::args().skip(1);
+        while let Some(arg) = args.next() {
+            match arg.as_str() {
+                "--help" | "-h" => {
+                    println!("{USAGE}");
+                    std::process::exit(1);
+                }
+                "--base-url" => {
+                    let Some(url) = args.next() else {
+                        eprintln!("Expected value after \"--base-url\"");
+                        println!("\n{USAGE}");
+                        std::process::exit(1);
+                    };
+                    base_url = Some(url);
+                }
+                _ if arg.starts_with('-') => {
+                    eprintln!("Unknown argument: {arg:?}");
+                    println!("\n{USAGE}");
+                    std::process::exit(1);
+                }
+                _ if output_path.is_some() => {
+                    eprintln!("Too many positional arguments");
+                    println!("\n{USAGE}");
+                    std::process::exit(1);
+                }
+                _ => output_path = Some(PathBuf::from(arg)),
+            }
         }
-        n.parse::<u8>().ok()?;
+
+        let Some(output_path) = output_path else {
+            eprintln!("Missing argument \"output_path\"");
+            std::process::exit(1);
+        };
+
+        Args {
+            output_path,
+            base_url,
+        }
+    }
+}
+
+fn build_examples_manifest(build_env: Environment, args: &Args) -> anyhow::Result<String> {
+    let base_url = match &args.base_url {
+        Some(base_url) => base_url.clone(),
+        None => get_base_url(build_env)?,
+    };
+
+    let mut manifest = vec![];
+    for example in examples()? {
+        manifest.push(ManifestEntry::new(example, &base_url));
     }
 
-    Some(version)
+    if manifest.is_empty() {
+        anyhow::bail!("No examples found!");
+    }
+
+    Ok(serde_json::to_string_pretty(&manifest)?)
 }
 
 #[derive(serde::Deserialize)]
@@ -195,90 +258,27 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
     Ok(format!("https://demo.rerun.io/commit/{sha}"))
 }
 
-fn build_examples_manifest(build_env: Environment, args: &Args) -> anyhow::Result<String> {
-    let base_url = match &args.base_url {
-        Some(base_url) => base_url.clone(),
-        None => get_base_url(build_env)?,
-    };
+fn parse_release_version(branch: &str) -> Option<&str> {
+    // release-\d+.\d+.\d+(-alpha.\d+)?
 
-    let mut manifest = vec![];
-    for example in examples()? {
-        manifest.push(ManifestEntry::new(example, &base_url));
-    }
+    let version = branch.strip_prefix("release-")?;
 
-    if manifest.is_empty() {
-        anyhow::bail!("No examples found!");
-    }
+    let (major, rest) = version.split_once('.')?;
+    major.parse::<u8>().ok()?;
+    let (minor, rest) = rest.split_once('.')?;
+    minor.parse::<u8>().ok()?;
+    let (patch, meta) = rest
+        .split_once('-')
+        .map_or((rest, None), |(p, m)| (p, Some(m)));
+    patch.parse::<u8>().ok()?;
 
-    Ok(serde_json::to_string_pretty(&manifest)?)
-}
-
-const USAGE: &str = "\
-Usage: [options] [output_path]
-
-Options:
-    -h, --help       Print help
-        --base-url   Where all examples are uploaded, e.g. `https://demo.rerun.io/version/nightly`.
-";
-
-struct Args {
-    output_path: PathBuf,
-    base_url: Option<String>,
-}
-
-impl Args {
-    fn from_env() -> Self {
-        let mut output_path = None;
-        let mut base_url = None;
-
-        let mut args = std::env::args().skip(1);
-        while let Some(arg) = args.next() {
-            match arg.as_str() {
-                "--help" | "-h" => {
-                    println!("{USAGE}");
-                    std::process::exit(1);
-                }
-                "--base-url" => {
-                    let Some(url) = args.next() else {
-                        eprintln!("Expected value after \"--base-url\"");
-                        println!("\n{USAGE}");
-                        std::process::exit(1);
-                    };
-                    base_url = Some(url);
-                }
-                _ if arg.starts_with('-') => {
-                    eprintln!("Unknown argument: {arg:?}");
-                    println!("\n{USAGE}");
-                    std::process::exit(1);
-                }
-                _ if output_path.is_some() => {
-                    eprintln!("Too many positional arguments");
-                    println!("\n{USAGE}");
-                    std::process::exit(1);
-                }
-                _ => output_path = Some(PathBuf::from(arg)),
-            }
+    if let Some(meta) = meta {
+        let (kind, n) = meta.split_once('.')?;
+        if kind != "alpha" && kind != "rc" {
+            return None;
         }
-
-        let Some(output_path) = output_path else {
-            eprintln!("Missing argument \"output_path\"");
-            std::process::exit(1);
-        };
-
-        Args {
-            output_path,
-            base_url,
-        }
+        n.parse::<u8>().ok()?;
     }
-}
 
-fn main() -> anyhow::Result<()> {
-    re_build_tools::set_output_cargo_build_instructions(false);
-
-    let args = Args::from_env();
-
-    let manifest = build_examples_manifest(Environment::detect(), &args)?;
-    std::fs::write(args.output_path, manifest)?;
-
-    Ok(())
+    Some(version)
 }
