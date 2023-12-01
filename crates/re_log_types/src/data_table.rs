@@ -619,7 +619,7 @@ impl DataTable {
             timeline: Timeline,
             times: &TimeOptVec,
         ) -> (Field, Box<dyn Array>) {
-            let data = DataTable::serialize_primitive_deque_opt(times);
+            let data = DataTable::serialize_primitive_deque_opt(times).to(timeline.datatype());
 
             let field = Field::new(timeline.name().as_str(), data.data_type().clone(), false)
                 .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_TIME.to_owned())].into());

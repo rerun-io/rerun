@@ -69,6 +69,7 @@ webbrowser = { workspace = true, optional = true }
 
 [dev-dependencies]
 re_arrow_store.workspace = true
+re_log_types = { workspace = true, features = ["testing"] }
 
 itertools.workspace = true
 ndarray-rand.workspace = true

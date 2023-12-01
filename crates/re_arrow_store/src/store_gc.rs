@@ -620,8 +620,9 @@ impl IndexedBucketInner {
             dropped_num_bytes += removed_row_id.total_size_bytes();
 
             // col_time
-            let row_time = col_time.swap_remove(row_index).unwrap();
-            dropped_num_bytes += row_time.total_size_bytes();
+            if let Some(row_time) = col_time.swap_remove(row_index) {
+                dropped_num_bytes += row_time.total_size_bytes();
+            }
 
             // col_insert_id (if present)
             if !col_insert_id.is_empty() {
