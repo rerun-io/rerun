@@ -62,7 +62,7 @@ re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
 re_types_core.workspace = true
 re_types.workspace = true
-re_ui = { workspace = true, features = ["eframe"] }
+re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
@@ -86,6 +86,7 @@ egui_plot.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
 egui_tiles.workspace = true
+ehttp.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
 once_cell = { workspace = true }
@@ -106,9 +107,3 @@ wasm-bindgen-futures.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true
-
-# External
-anyhow.workspace = true
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-serde_yaml.workspace = true

@@ -143,7 +143,7 @@ impl TimePanel {
                             ui.visuals().widgets.noninteractive.bg_stroke,
                         );
 
-                        ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
+                        ui.spacing_mut().scroll.bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
 
                         // Add extra margin on the left which was intentionally missing on the controls.
                         let mut streams_frame = egui::Frame::default();
@@ -168,7 +168,7 @@ impl TimePanel {
     #[allow(clippy::unused_self)]
     fn collapsed_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_ctrl: &mut TimeControl,
     ) {
@@ -238,7 +238,7 @@ impl TimePanel {
         let time_bg_x_range = Rangef::new(time_x_left, ui.max_rect().right());
         let time_fg_x_range = {
             // Painting to the right of the scroll bar (if any) looks bad:
-            let right = ui.max_rect().right() - ui.spacing_mut().scroll_bar_outer_margin;
+            let right = ui.max_rect().right() - ui.spacing_mut().scroll.bar_outer_margin;
             debug_assert!(time_x_left < right);
             Rangef::new(time_x_left, right)
         };
@@ -691,7 +691,7 @@ impl TimePanel {
 
     fn top_row_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_ctrl: &mut TimeControl,
     ) {
@@ -773,7 +773,7 @@ fn highlight_timeline_row(
 
 fn collapsed_time_marker_and_time(
     ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     time_ctrl: &mut TimeControl,
 ) {
     let space_needed_for_current_time = match time_ctrl.timeline().typ() {

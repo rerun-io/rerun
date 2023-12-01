@@ -4,7 +4,7 @@ impl Default for ViewportLayout {
     fn default() -> Self {
         Self {
             space_view_keys: Default::default(),
-            tree: Default::default(),
+            tree: egui_tiles::Tree::empty("viewport_tree"),
             auto_layout: true,
         }
     }

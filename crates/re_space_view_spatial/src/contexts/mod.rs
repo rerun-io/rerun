@@ -16,7 +16,7 @@ pub use transform_context::TransformContext;
 
 use re_renderer::DepthOffset;
 use re_viewer_context::{
-    Annotations, NamedViewSystem, SpaceViewClassName, SpaceViewClassRegistryError,
+    Annotations, IdentifiedViewSystem, SpaceViewClassIdentifier, SpaceViewClassRegistryError,
     ViewContextSystem,
 };
 
@@ -28,7 +28,7 @@ pub struct SpatialSceneEntityContext<'a> {
     pub shared_render_builders: &'a SharedRenderBuilders,
 
     pub highlight: &'a re_viewer_context::SpaceViewOutlineMasks, // Not part of the context, but convenient to have here.
-    pub space_view_class_name: SpaceViewClassName,
+    pub space_view_class_identifier: SpaceViewClassIdentifier,
 }
 
 #[derive(Default)]
@@ -36,8 +36,8 @@ pub struct PrimitiveCounter {
     pub num_primitives: AtomicUsize,
 }
 
-impl NamedViewSystem for PrimitiveCounter {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for PrimitiveCounter {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "PrimitiveCounter".into()
     }
 }

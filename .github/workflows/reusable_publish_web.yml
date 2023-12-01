@@ -104,6 +104,16 @@ jobs:
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release
 
+      - name: Build examples manifest
+        shell: bash
+        run: |
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          sha="$(echo $full_commit | cut -c1-7)"
+
+          pixi run build-examples-manifest \
+            --base-url "https://demo.rerun.io/commit/$sha" \
+            web_viewer/examples_manifest.json
+
       - name: Build web demo
         env:
           COMMIT_HASH: ${{ needs.get-commit-sha.outputs.short-sha }}
@@ -125,11 +135,18 @@ jobs:
           destination: "rerun-web-viewer/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
           parent: false
 
-      - name: Upload demo.rerun.io
+      - name: Upload demo.rerun.io (versioned)
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_demo"
           destination: "rerun-demo/version/${{ inputs.release-version }}"
+          parent: false
+
+      - name: Upload demo.rerun.io (commit)
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/commit/${{ needs.get-commit-sha.outputs.short-sha }}"
           parent: false
 
       - name: Publish app.rerun.io

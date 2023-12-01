@@ -120,7 +120,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
@@ -151,7 +150,6 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web_demo.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
@@ -163,7 +161,6 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       WHEEL_ARTIFACT_NAME: linux-wheel-fast
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   save-pr-summary:

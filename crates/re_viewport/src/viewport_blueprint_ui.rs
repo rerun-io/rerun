@@ -322,7 +322,6 @@ impl ViewportBlueprint<'_> {
                                 ctx,
                                 EntityPathExpr::Exact(entity_path.clone()),
                             );
-                            space_view.entities_determined_by_user = true;
                         }
 
                         response | vis_response
@@ -385,7 +384,6 @@ impl ViewportBlueprint<'_> {
                 if remove_group {
                     space_view
                         .add_entity_exclusion(ctx, EntityPathExpr::Recursive(entity_path.clone()));
-                    space_view.entities_determined_by_user = true;
                 }
 
                 response
@@ -398,7 +396,7 @@ impl ViewportBlueprint<'_> {
 
     pub fn add_new_spaceview_button_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
     ) {

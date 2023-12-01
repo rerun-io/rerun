@@ -560,6 +560,9 @@ async fn run_impl(
                 app.add_receiver(rx);
             }
             app.set_profiler(profiler);
+            if let Ok(url) = std::env::var("EXAMPLES_MANIFEST_URL") {
+                app.set_examples_manifest_url(url);
+            }
             Box::new(app)
         }))
         .map_err(|err| err.into());

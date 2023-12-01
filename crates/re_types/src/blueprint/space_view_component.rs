@@ -30,7 +30,7 @@ pub struct SpaceViewComponent {
     pub display_name: ::re_types_core::ArrowString,
 
     /// The class of the view.
-    pub class_name: ::re_types_core::ArrowString,
+    pub class_identifier: ::re_types_core::ArrowString,
 
     /// The "anchor point" of this space view.
     ///
@@ -70,7 +70,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                 metadata: [].into(),
             },
             Field {
-                name: "class_name".to_owned(),
+                name: "class_identifier".to_owned(),
                 data_type: DataType::Utf8,
                 is_nullable: false,
                 metadata: [].into(),
@@ -167,28 +167,30 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                         }
                     },
                     {
-                        let (somes, class_name): (Vec<_>, Vec<_>) = data
+                        let (somes, class_identifier): (Vec<_>, Vec<_>) = data
                             .iter()
                             .map(|datum| {
                                 let datum = datum.as_ref().map(|datum| {
-                                    let Self { class_name, .. } = &**datum;
-                                    class_name.clone()
+                                    let Self {
+                                        class_identifier, ..
+                                    } = &**datum;
+                                    class_identifier.clone()
                                 });
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let class_name_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let class_identifier_bitmap: Option<arrow2::bitmap::Bitmap> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let inner_data: arrow2::buffer::Buffer<u8> = class_name
+                            let inner_data: arrow2::buffer::Buffer<u8> = class_identifier
                                 .iter()
                                 .flatten()
                                 .flat_map(|s| s.0.clone())
                                 .collect();
                             let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                                class_name.iter().map(|opt| {
+                                class_identifier.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
                             )
@@ -200,7 +202,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                                     DataType::Utf8,
                                     offsets,
                                     inner_data,
-                                    class_name_bitmap,
+                                    class_identifier_bitmap,
                                 )
                             }
                             .boxed()
@@ -363,7 +365,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                                 metadata: [].into(),
                             },
                             Field {
-                                name: "class_name".to_owned(),
+                                name: "class_identifier".to_owned(),
                                 data_type: DataType::Utf8,
                                 is_nullable: false,
                                 metadata: [].into(),
@@ -460,15 +462,15 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                         .into_iter()
                     }
                 };
-                let class_name = {
-                    if !arrays_by_name.contains_key("class_name") {
+                let class_identifier = {
+                    if !arrays_by_name.contains_key("class_identifier") {
                         return Err(DeserializationError::missing_struct_field(
                             Self::arrow_datatype(),
-                            "class_name",
+                            "class_identifier",
                         ))
                         .with_context("rerun.blueprint.SpaceViewComponent");
                     }
-                    let arrow_data = &**arrays_by_name["class_name"];
+                    let arrow_data = &**arrays_by_name["class_identifier"];
                     {
                         let arrow_data = arrow_data
                             .as_any()
@@ -479,7 +481,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                                     arrow_data.data_type().clone(),
                                 )
                             })
-                            .with_context("rerun.blueprint.SpaceViewComponent#class_name")?;
+                            .with_context("rerun.blueprint.SpaceViewComponent#class_identifier")?;
                         let arrow_data_buf = arrow_data.values();
                         let offsets = arrow_data.offsets();
                         arrow2::bitmap::utils::ZipValidity::new_with_validity(
@@ -510,7 +512,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                             })
                         })
                         .collect::<DeserializationResult<Vec<Option<_>>>>()
-                        .with_context("rerun.blueprint.SpaceViewComponent#class_name")?
+                        .with_context("rerun.blueprint.SpaceViewComponent#class_identifier")?
                         .into_iter()
                     }
                 };
@@ -664,7 +666,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                         ::itertools::izip!(
-                            display_name, class_name, space_origin,
+                            display_name, class_identifier, space_origin,
                             entities_determined_by_user, contents
                         ),
                         arrow_data.validity(),
@@ -674,7 +676,7 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                             .map(|
                                 (
                                     display_name,
-                                    class_name,
+                                    class_identifier,
                                     space_origin,
                                     entities_determined_by_user,
                                     contents,
@@ -685,10 +687,10 @@ impl ::re_types_core::Loggable for SpaceViewComponent {
                                     .with_context(
                                         "rerun.blueprint.SpaceViewComponent#display_name",
                                     )?,
-                                class_name: class_name
+                                class_identifier: class_identifier
                                     .ok_or_else(DeserializationError::missing_data)
                                     .with_context(
-                                        "rerun.blueprint.SpaceViewComponent#class_name",
+                                        "rerun.blueprint.SpaceViewComponent#class_identifier",
                                     )?,
                                 space_origin: space_origin
                                     .ok_or_else(DeserializationError::missing_data)

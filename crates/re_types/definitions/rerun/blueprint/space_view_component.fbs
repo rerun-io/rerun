@@ -21,7 +21,7 @@ table SpaceViewComponent (
     display_name: string (order: 100);
 
     /// The class of the view.
-    class_name: string (order: 200);
+    class_identifier: string (order: 200);
 
     /// The "anchor point" of this space view.
     ///

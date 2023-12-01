@@ -523,7 +523,7 @@ fn make_brighter(color: Color32) -> Color32 {
 
 fn show_row_ids_tooltip(
     ctx: &mut ViewerContext<'_>,
-    time_ctrl: &mut TimeControl,
+    time_ctrl: &TimeControl,
     egui_ctx: &egui::Context,
     item: &Item,
     time_range: TimeRange,

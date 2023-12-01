@@ -7,7 +7,7 @@ use re_log_types::{DataRow, RowId, TimePoint};
 use re_types::blueprint::SpaceViewComponent;
 use re_types_core::{archetypes::Clear, AsComponents as _};
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewClassName, SpaceViewId, SystemCommand, SystemCommandSender,
+    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewId, SystemCommand, SystemCommandSender,
     ViewerContext,
 };
 
@@ -76,7 +76,7 @@ impl<'a> ViewportBlueprint<'a> {
             && self
                 .space_views
                 .values()
-                .all(|sv| sv.class_name() == &SpaceViewClassName::invalid())
+                .all(|sv| sv.class_identifier() == &SpaceViewClassIdentifier::invalid())
     }
 
     /// Reset the blueprint to a default state using some heuristics.
@@ -97,7 +97,7 @@ impl<'a> ViewportBlueprint<'a> {
 
         // Note, it's important that these values match the behavior in `load_viewport_blueprint` below.
         *space_views = Default::default();
-        *tree = Default::default();
+        *tree = egui_tiles::Tree::empty("viewport_tree");
         *maximized = None;
         *auto_layout = true;
         // Only enable auto-space-views if this is the app-default blueprint
@@ -217,7 +217,7 @@ impl<'a> ViewportBlueprint<'a> {
         if self.auto_layout {
             // Re-run the auto-layout next frame:
             re_log::trace!("Added a space view with no user edits yet - will re-run auto-layout");
-            self.tree = Default::default();
+            self.tree = egui_tiles::Tree::empty("viewport_tree");
         } else {
             // Try to insert it in the tree, in the top level:
             if let Some(root_id) = self.tree.root {
@@ -229,7 +229,7 @@ impl<'a> ViewportBlueprint<'a> {
                     container.add_child(tile_id);
                 } else {
                     re_log::trace!("Root was not a container - will re-run auto-layout");
-                    self.tree = Default::default();
+                    self.tree = egui_tiles::Tree::empty("viewport_tree");
                 }
             } else {
                 re_log::trace!("No root found - will re-run auto-layout");
@@ -436,7 +436,7 @@ pub fn sync_space_view(
 
         let component = SpaceViewComponent {
             display_name: space_view.display_name.clone().into(),
-            class_name: space_view.class_name().as_str().into(),
+            class_identifier: space_view.class_identifier().as_str().into(),
             space_origin: (&space_view.space_origin).into(),
             entities_determined_by_user: space_view.entities_determined_by_user,
             contents: space_view.queries.iter().map(|q| q.id.into()).collect(),

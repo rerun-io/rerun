@@ -279,17 +279,12 @@ impl ReUi {
         }
     }
 
-    pub fn top_bar_style(
-        &self,
-        native_pixels_per_point: Option<f32>,
-        fullscreen: bool,
-        style_like_web: bool,
-    ) -> TopBarStyle {
-        let gui_zoom = if let Some(native_pixels_per_point) = native_pixels_per_point {
-            native_pixels_per_point / self.egui_ctx.pixels_per_point()
-        } else {
-            1.0
-        };
+    pub fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
+        let egui_zoom_factor = self.egui_ctx.zoom_factor();
+        let fullscreen = self
+            .egui_ctx
+            .input(|i| i.viewport().fullscreen)
+            .unwrap_or(false);
 
         // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
         // This means we need to make room for them.
@@ -315,14 +310,14 @@ impl ReUi {
             let height = native_buttons_size_in_native_scale.y;
 
             // …but never shrink below the native button height when zoomed out.
-            height.max(gui_zoom * native_buttons_size_in_native_scale.y)
+            height.max(native_buttons_size_in_native_scale.y / egui_zoom_factor)
         } else {
             Self::top_bar_height() - Self::top_bar_margin().sum().y
         };
 
         let indent = if make_room_for_window_buttons {
             // Always use the same width measured in native GUI coordinates:
-            gui_zoom * native_buttons_size_in_native_scale.x
+            native_buttons_size_in_native_scale.x / egui_zoom_factor
         } else {
             0.0
         };
@@ -976,10 +971,9 @@ impl ReUi {
 /// Assumes it is in a right-to-left layout.
 ///
 /// Use when [`CUSTOM_WINDOW_DECORATIONS`] is set.
-#[cfg(feature = "eframe")]
 #[cfg(not(target_arch = "wasm32"))]
-pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
-    use egui::{Button, RichText};
+pub fn native_window_buttons_ui(ui: &mut egui::Ui) {
+    use egui::{Button, RichText, ViewportCommand};
 
     let button_height = 12.0;
 
@@ -987,22 +981,24 @@ pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
         .add(Button::new(RichText::new("❌").size(button_height)))
         .on_hover_text("Close the window");
     if close_response.clicked() {
-        frame.close();
+        ui.ctx().send_viewport_cmd(ViewportCommand::Close);
     }
 
-    if frame.info().window_info.maximized {
+    let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+    if maximized {
         let maximized_response = ui
             .add(Button::new(RichText::new("🗗").size(button_height)))
             .on_hover_text("Restore window");
         if maximized_response.clicked() {
-            frame.set_maximized(false);
+            ui.ctx()
+                .send_viewport_cmd(ViewportCommand::Maximized(false));
         }
     } else {
         let maximized_response = ui
             .add(Button::new(RichText::new("🗗").size(button_height)))
             .on_hover_text("Maximize window");
         if maximized_response.clicked() {
-            frame.set_maximized(true);
+            ui.ctx().send_viewport_cmd(ViewportCommand::Maximized(true));
         }
     }
 
@@ -1010,7 +1006,7 @@ pub fn native_window_buttons_ui(frame: &mut eframe::Frame, ui: &mut egui::Ui) {
         .add(Button::new(RichText::new("🗕").size(button_height)))
         .on_hover_text("Minimize the window");
     if minimized_response.clicked() {
-        frame.set_minimized(true);
+        ui.ctx().send_viewport_cmd(ViewportCommand::Minimized(true));
     }
 }
 

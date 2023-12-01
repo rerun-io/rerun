@@ -371,6 +371,8 @@ impl OrbitEye {
             return; // e.g. we're typing in a TextField
         }
 
+        let os = egui_ctx.os();
+
         let requires_repaint = egui_ctx.input(|input| {
             let dt = input.stable_dt.at_most(0.1);
 
@@ -390,10 +392,7 @@ impl OrbitEye {
                 } else {
                     1.0
                 })
-                * (if input
-                    .modifiers
-                    .contains(RuntimeModifiers::slow_down(&egui_ctx.os()))
-                {
+                * (if input.modifiers.contains(RuntimeModifiers::slow_down(&os)) {
                     0.1
                 } else {
                     1.0

@@ -17,6 +17,9 @@ pub enum SystemCommand {
     /// Reset the `Viewer` to the default state
     ResetViewer,
 
+    /// Reset the `Blueprint` to the default state
+    ResetBlueprint,
+
     /// Change the active recording-id in the `StoreHub`
     SetRecordingId(StoreId),
 

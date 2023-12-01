@@ -7,8 +7,8 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, SpaceViewOutlineMasks, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::SpatialViewPartData;
@@ -37,8 +37,8 @@ impl Default for CamerasPart {
     }
 }
 
-impl NamedViewSystem for CamerasPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for CamerasPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Cameras".into()
     }
 }
@@ -204,7 +204,7 @@ impl ViewPartSystem for CamerasPart {
 
         let store = ctx.store_db.store();
 
-        for data_result in query.iter_visible_data_results(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let time_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(pinhole) = query_pinhole(store, &time_query, &data_result.entity_path) {

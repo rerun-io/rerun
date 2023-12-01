@@ -391,7 +391,7 @@ impl<'a> ListItem<'a> {
             // Draw text next to the icon.
             let mut text_rect = rect;
             text_rect.min.x += collapse_extra + icon_extra;
-            if let Some(ref button_response) = button_response {
+            if let Some(button_response) = &button_response {
                 text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
             }
 

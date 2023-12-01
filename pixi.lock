@@ -8833,7 +8833,7 @@ package:
   timestamp: 1676838681615
 - platform: linux-64
   name: nodejs
-  version: 20.9.0
+  version: 18.18.2
   category: main
   manager: conda
   dependencies:
@@ -8845,88 +8845,88 @@ package:
   - libzlib >=1.2.13,<1.3.0a0
   - openssl >=3.1.4,<4.0a0
   - zlib
-  url: https://conda.anaconda.org/conda-forge/linux-64/nodejs-20.9.0-hb753e55_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/nodejs-18.18.2-hb753e55_1.conda
   hash:
-    md5: ddfcb003b0a6804fabe7dfbf1be16651
-    sha256: 4d35f8151f83bc561e4bcb41b46dcf77ec708c88eb333d1376f37371288f46ad
-  build: hb753e55_0
+    md5: d3aceb714a24e2bd2655cc9948d23bc9
+    sha256: 89a88ef9b8d6d138b64bcd95d7edcee42e4c0012bde0665a8d66f812bf5c13be
+  build: hb753e55_1
   arch: x86_64
   subdir: linux-64
-  build_number: 0
+  build_number: 1
   license: MIT
   license_family: MIT
-  size: 17141416
-  timestamp: 1700390394425
+  size: 15614862
+  timestamp: 1700389549489
 - platform: osx-64
   name: nodejs
-  version: 20.9.0
+  version: 18.18.2
   category: main
   manager: conda
   dependencies:
   - __osx >=10.9
   - icu >=73.2,<74.0a0
-  - libcxx >=16.0.6
+  - libcxx >=15.0.7
   - libuv >=1.46.0,<1.47.0a0
   - libzlib >=1.2.13,<1.3.0a0
   - openssl >=3.1.4,<4.0a0
   - zlib
-  url: https://conda.anaconda.org/conda-forge/osx-64/nodejs-20.9.0-h9adec40_0.conda
+  url: https://conda.anaconda.org/conda-forge/osx-64/nodejs-18.18.2-h2713218_1.conda
   hash:
-    md5: eea3610c4b86886f545c0fe53d1e9438
-    sha256: b492f1478fbca841491fbb9feeca7e859a9f57ea6319eeef09d702e12140a44f
-  build: h9adec40_0
+    md5: 8c68a4522ddc0c08aaae6ef7c6979b92
+    sha256: 4dc7c4c31a2def43db597e2a621e8b2a9ea2b682ffc55f8ee88d518ee02cc492
+  build: h2713218_1
   arch: x86_64
   subdir: osx-64
-  build_number: 0
+  build_number: 1
   constrains:
   - __osx >=10.15
   license: MIT
   license_family: MIT
-  size: 12232858
-  timestamp: 1700393211831
+  size: 11230468
+  timestamp: 1700392695108
 - platform: osx-arm64
   name: nodejs
-  version: 20.9.0
+  version: 18.18.2
   category: main
   manager: conda
   dependencies:
   - __osx >=10.9
   - icu >=73.2,<74.0a0
-  - libcxx >=16.0.6
+  - libcxx >=15.0.7
   - libuv >=1.46.0,<1.47.0a0
   - libzlib >=1.2.13,<1.3.0a0
   - openssl >=3.1.4,<4.0a0
   - zlib
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-20.9.0-h0950e01_0.conda
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/nodejs-18.18.2-h7ed3092_1.conda
   hash:
-    md5: f51aebc416d466c13a719f3604b2426c
-    sha256: 2e2cb08f6525a7ac7b4d9785ac826e9663ee969d21298f9718906fb931cb85e9
-  build: h0950e01_0
+    md5: 2e8ae468a6ecaa076bc6acc7d796761e
+    sha256: cc52406588c489c1fcccd37148b714e14ae71205c554064abdf07db06394ca07
+  build: h7ed3092_1
   arch: aarch64
   subdir: osx-arm64
-  build_number: 0
+  build_number: 1
   license: MIT
   license_family: MIT
-  size: 11636727
-  timestamp: 1700400190792
+  size: 10718633
+  timestamp: 1700399218159
 - platform: win-64
   name: nodejs
-  version: 20.9.0
+  version: 18.18.2
   category: main
   manager: conda
   dependencies: []
-  url: https://conda.anaconda.org/conda-forge/win-64/nodejs-20.9.0-h57928b3_0.conda
+  url: https://conda.anaconda.org/conda-forge/win-64/nodejs-18.18.2-h57928b3_1.conda
   hash:
-    md5: 97d4628e7c293eb10516d35c6fb3c7e5
-    sha256: 7ec505ac95df1847bd0065ae587a4fd176a23e4ddccda246113e0b5426a8469e
-  build: h57928b3_0
+    md5: 83569101477048efb6dd12086ef0ba08
+    sha256: 3121574f788fef2e11269a0e77dff71f4dea586d1d8da5a9c36911afa20c0480
+  build: h57928b3_1
   arch: x86_64
   subdir: win-64
-  build_number: 0
+  build_number: 1
   license: MIT
   license_family: MIT
-  size: 22600407
-  timestamp: 1700384957633
+  size: 22438481
+  timestamp: 1700384983430
 - platform: linux-64
   name: nox
   version: 2021.10.1
@@ -9764,81 +9764,81 @@ package:
   timestamp: 1693086745921
 - platform: linux-64
   name: prettier
-  version: 3.1.0
+  version: 2.8.8
   category: main
   manager: conda
   dependencies:
   - __glibc >=2.17,<3.0.a0
-  - nodejs >=20.8.1,<21.0a0
-  url: https://conda.anaconda.org/conda-forge/linux-64/prettier-3.1.0-h31abb78_0.conda
+  - nodejs >=18.16.1,<19.0a0
+  url: https://conda.anaconda.org/conda-forge/linux-64/prettier-2.8.8-h75cfd52_1.conda
   hash:
-    md5: 825c43da21ded31f538a695cca2961ee
-    sha256: a836d8d87734c76e04b64f66d2a72262ac09ce7e23c92b3f77d47bdc20267a21
-  build: h31abb78_0
+    md5: d50d94592df03b7fbd1739d8804bb2d2
+    sha256: 41d3c3327a4c42faf230a511a25587206853c29e2ef02df60c623cb8ce8a3339
+  build: h75cfd52_1
   arch: x86_64
   subdir: linux-64
-  build_number: 0
+  build_number: 1
   license: MIT
   license_family: MIT
-  size: 1005605
-  timestamp: 1699847633602
+  size: 12599147
+  timestamp: 1691677147431
 - platform: osx-64
   name: prettier
-  version: 3.1.0
+  version: 2.8.8
   category: main
   manager: conda
   dependencies:
-  - nodejs >=20.8.1,<21.0a0
-  url: https://conda.anaconda.org/conda-forge/osx-64/prettier-3.1.0-hbd11d21_0.conda
+  - nodejs >=18.16.1,<19.0a0
+  url: https://conda.anaconda.org/conda-forge/osx-64/prettier-2.8.8-h3db311d_1.conda
   hash:
-    md5: 0f2d6f2c329df13e0ff0bd3748b2f74f
-    sha256: 9dfd2b3d2d4c3cbdeb341263d5107b7018197ad167633387832def6f68154e55
-  build: hbd11d21_0
+    md5: 127e15574684a4468947a4e7ab36cca9
+    sha256: 54789919043574af735297e26414ff75ab6e846bbfcd69a9182223180daa61f0
+  build: h3db311d_1
   arch: x86_64
   subdir: osx-64
-  build_number: 0
+  build_number: 1
   license: MIT
   license_family: MIT
-  size: 1002551
-  timestamp: 1699847747031
+  size: 12678689
+  timestamp: 1691677487574
 - platform: osx-arm64
   name: prettier
-  version: 3.1.0
+  version: 2.8.8
   category: main
   manager: conda
   dependencies:
-  - nodejs >=20.8.1,<21.0a0
-  url: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-3.1.0-hb67532b_0.conda
+  - nodejs >=18.16.1,<19.0a0
+  url: https://conda.anaconda.org/conda-forge/osx-arm64/prettier-2.8.8-ha12bae2_1.conda
   hash:
-    md5: dfa0c94c177b8163579301aa4672f245
-    sha256: c71c69ba2420da67a4bc1a5a85deab03e3c37cb4dea44a3bef01cc91e24bb1da
-  build: hb67532b_0
+    md5: 864da5c7f1895a224e7440cfc8d3a69c
+    sha256: 9eea51372d7b30fbbae579a0e812fe48cb5cd13d34e7a4bdadec38f91e5d6b9e
+  build: ha12bae2_1
   arch: aarch64
   subdir: osx-arm64
-  build_number: 0
+  build_number: 1
   license: MIT
   license_family: MIT
-  size: 1004352
-  timestamp: 1699847777152
+  size: 12979886
+  timestamp: 1691677482320
 - platform: win-64
   name: prettier
-  version: 3.1.0
+  version: 2.8.8
   category: main
   manager: conda
   dependencies:
-  - nodejs >=20.8.1,<21.0a0
-  url: https://conda.anaconda.org/conda-forge/win-64/prettier-3.1.0-h98b3114_0.conda
+  - nodejs >=18.16.1,<19.0a0
+  url: https://conda.anaconda.org/conda-forge/win-64/prettier-2.8.8-hd2f1330_1.conda
   hash:
-    md5: 7ad09d13bc00a0c025344ce159dd4234
-    sha256: 637c81650139f101e16d3358ca29140ce635b189cc272c612be7452bb6c52f04
-  build: h98b3114_0
+    md5: eaf3bf247960303f7f782d2b103549d9
+    sha256: f9f84462a772d3ab986fdd9f901bce8eef7ea6345e14edf265ec17013ea6ff71
+  build: hd2f1330_1
   arch: x86_64
   subdir: win-64
-  build_number: 0
+  build_number: 1
   license: MIT
   license_family: MIT
-  size: 1007428
-  timestamp: 1699847793435
+  size: 1398331
+  timestamp: 1691677409088
 - platform: linux-64
   name: psutil
   version: 5.9.5

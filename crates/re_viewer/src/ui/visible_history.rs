@@ -8,19 +8,20 @@ use re_log_types::{EntityPath, TimeRange, TimeType, TimeZone};
 use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types_core::ComponentName;
-use re_viewer_context::{SpaceViewClass, SpaceViewClassName, TimeControl, ViewerContext};
+use re_viewer_context::{SpaceViewClass, SpaceViewClassIdentifier, TimeControl, ViewerContext};
 
 /// These space views support the Visible History feature.
-static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<HashSet<SpaceViewClassName>> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            SpatialSpaceView3D::NAME,
-            SpatialSpaceView2D::NAME,
-            TimeSeriesSpaceView::NAME,
-        ]
-        .map(Into::into)
-        .into()
-    });
+static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
+    HashSet<SpaceViewClassIdentifier>,
+> = once_cell::sync::Lazy::new(|| {
+    [
+        SpatialSpaceView3D::IDENTIFIER,
+        SpatialSpaceView2D::IDENTIFIER,
+        TimeSeriesSpaceView::IDENTIFIER,
+    ]
+    .map(Into::into)
+    .into()
+});
 
 /// Entities containing one of these components support the Visible History feature.
 static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<ComponentName>> =
@@ -45,7 +46,7 @@ static VISIBLE_HISTORY_SUPPORTED_COMPONENT_NAMES: once_cell::sync::Lazy<Vec<Comp
 fn has_visible_history(
     ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
-    space_view_class: &SpaceViewClassName,
+    space_view_class: &SpaceViewClassIdentifier,
     entity_path: Option<&EntityPath>,
 ) -> bool {
     if !VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(space_view_class) {
@@ -71,9 +72,9 @@ fn has_visible_history(
 }
 
 pub fn visible_history_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view_class: &SpaceViewClassName,
+    space_view_class: &SpaceViewClassIdentifier,
     is_space_view: bool,
     entity_path: Option<&EntityPath>,
     visible_history_prop: &mut ExtraQueryHistory,
@@ -238,7 +239,7 @@ pub fn visible_history_ui(
 }
 
 fn current_range_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     current_time: i64,
     is_sequence_timeline: bool,
@@ -278,7 +279,7 @@ fn current_range_ui(
 
 #[allow(clippy::too_many_arguments)]
 fn resolved_visible_history_boundary_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &VisibleHistoryBoundary,
     is_sequence_timeline: bool,
@@ -388,7 +389,7 @@ fn visible_history_boundary_combo_label(
 
 #[allow(clippy::too_many_arguments)]
 fn visible_history_boundary_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     visible_history_boundary: &mut VisibleHistoryBoundary,
     is_sequence_timeline: bool,
