@@ -551,6 +551,19 @@ impl IndexedBucket {
         } = self;
 
         let mut inner1 = inner.write();
+
+        if inner1.col_time.len() < 2 {
+            return None; // early exit: can't split the unsplittable
+        }
+
+        if inner1.time_range.abs_length() == 0 {
+            // The entire bucket contains only one timepoint, thus it's impossible to find
+            // a split index to begin with.
+            return None;
+        }
+
+        re_tracing::profile_function!();
+
         inner1.sort();
 
         let IndexedBucketInner {
@@ -563,18 +576,6 @@ impl IndexedBucket {
             columns: columns1,
             size_bytes: _, // NOTE: recomputed below
         } = &mut *inner1;
-
-        if col_time1.len() < 2 {
-            return None; // early exit: can't split the unsplittable
-        }
-
-        if col_time1.first() == col_time1.last() {
-            // The entire bucket contains only one timepoint, thus it's impossible to find
-            // a split index to begin with.
-            return None;
-        }
-
-        re_tracing::profile_function!();
 
         let timeline = *timeline;
 
