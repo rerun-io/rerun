@@ -24,7 +24,7 @@ pub(crate) fn tree_from_space_views(
     re_log::trace!("Auto-layout of {} space views", space_views.len());
 
     if space_views.is_empty() {
-        return egui_tiles::Tree::empty();
+        return egui_tiles::Tree::empty("viewport_tree");
     }
 
     let space_make_infos = space_views
@@ -105,7 +105,7 @@ pub(crate) fn tree_from_space_views(
         }
     };
 
-    egui_tiles::Tree::new(root, tiles)
+    egui_tiles::Tree::new("viewport_tree", root, tiles)
 }
 
 fn arrange_three(

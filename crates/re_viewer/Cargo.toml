@@ -62,7 +62,7 @@ re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
 re_types_core.workspace = true
 re_types.workspace = true
-re_ui = { workspace = true, features = ["eframe"] }
+re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }

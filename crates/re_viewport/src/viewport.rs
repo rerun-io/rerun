@@ -127,7 +127,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         let tree = if let Some(space_view_id) = blueprint.maximized {
             let mut tiles = egui_tiles::Tiles::default();
             let root = tiles.insert_pane(space_view_id);
-            maximized_tree = egui_tiles::Tree::new(root, tiles);
+            maximized_tree = egui_tiles::Tree::new("viewport_tree", root, tiles);
             &mut maximized_tree
         } else {
             if blueprint.tree.is_empty() {
@@ -326,9 +326,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             tab_widget.paint(ui);
         }
 
-        self.on_tab_button(tiles, tile_id, &response);
-
-        response
+        self.on_tab_button(tiles, tile_id, response)
     }
 
     fn drag_ui(
@@ -357,8 +355,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         &mut self,
         tiles: &egui_tiles::Tiles<SpaceViewId>,
         tile_id: egui_tiles::TileId,
-        button_response: &egui::Response,
-    ) {
+        button_response: egui::Response,
+    ) -> egui::Response {
         if button_response.clicked() {
             if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
                 self.ctx
@@ -369,18 +367,20 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 self.ctx.rec_cfg.selection_state.clear_current();
             }
         }
+        button_response
     }
 
     fn retain_pane(&mut self, space_view_id: &SpaceViewId) -> bool {
         self.space_views.contains_key(space_view_id)
     }
 
-    fn top_bar_rtl_ui(
+    fn top_bar_right_ui(
         &mut self,
         tiles: &egui_tiles::Tiles<SpaceViewId>,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
+        _scroll_offset: &mut f32,
     ) {
         let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else {
             return;
@@ -573,7 +573,7 @@ impl TabWidget {
         }
     }
 
-    fn paint(self, ui: &mut egui::Ui) {
+    fn paint(self, ui: &egui::Ui) {
         ui.painter()
             .rect(self.rect, 0.0, self.bg_color, egui::Stroke::NONE);
 

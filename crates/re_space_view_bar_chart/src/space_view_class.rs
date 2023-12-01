@@ -141,13 +141,9 @@ impl SpaceViewClass for BarChartSpaceView {
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
         ui.scope(|ui| {
-            let mut plot =
-                Plot::new("bar_chart_plot")
-                    .clamp_grid(true)
-                    .allow_zoom(egui_plot::AxisBools {
-                        x: true,
-                        y: zoom_both_axis,
-                    });
+            let mut plot = Plot::new("bar_chart_plot")
+                .clamp_grid(true)
+                .allow_zoom([true, zoom_both_axis]);
 
             if *root_entity_properties.show_legend {
                 plot = plot.legend(Legend {

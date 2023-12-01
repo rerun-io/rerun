@@ -23,10 +23,7 @@ all-features = true
 
 
 [features]
-default = ["eframe"]
-
-eframe = ["dep:eframe"]
-
+default = []
 
 [dependencies]
 egui_extras.workspace = true
@@ -36,9 +33,6 @@ serde_json.workspace = true
 strum.workspace = true
 strum_macros.workspace = true
 sublime_fuzzy.workspace = true
-
-## Optional dependencies:
-eframe = { workspace = true, optional = true, default-features = false }
 
 [dev-dependencies]
 eframe = { workspace = true, default-features = false, features = ["wgpu"] }

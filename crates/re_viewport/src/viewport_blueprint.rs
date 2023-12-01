@@ -97,7 +97,7 @@ impl<'a> ViewportBlueprint<'a> {
 
         // Note, it's important that these values match the behavior in `load_viewport_blueprint` below.
         *space_views = Default::default();
-        *tree = Default::default();
+        *tree = egui_tiles::Tree::empty("viewport_tree");
         *maximized = None;
         *auto_layout = true;
         // Only enable auto-space-views if this is the app-default blueprint
@@ -202,7 +202,7 @@ impl<'a> ViewportBlueprint<'a> {
         if self.auto_layout {
             // Re-run the auto-layout next frame:
             re_log::trace!("Added a space view with no user edits yet - will re-run auto-layout");
-            self.tree = Default::default();
+            self.tree = egui_tiles::Tree::empty("viewport_tree");
         } else {
             // Try to insert it in the tree, in the top level:
             if let Some(root_id) = self.tree.root {
@@ -214,7 +214,7 @@ impl<'a> ViewportBlueprint<'a> {
                     container.add_child(tile_id);
                 } else {
                     re_log::trace!("Root was not a container - will re-run auto-layout");
-                    self.tree = Default::default();
+                    self.tree = egui_tiles::Tree::empty("viewport_tree");
                 }
             } else {
                 re_log::trace!("No root found - will re-run auto-layout");

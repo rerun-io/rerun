@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     let native_options = eframe::NativeOptions {
-        app_id: Some("rerun_example_app_id".to_owned()),
+        viewport: egui::ViewportBuilder::default().with_app_id("rerun_extend_viewer_ui_example"),
         ..re_viewer::native::eframe_options()
     };
 
