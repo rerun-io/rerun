@@ -1,4 +1,4 @@
-name: Reusable Build Web Demo
+name: Reusable Build Examples
 
 on:
   workflow_call:
@@ -11,7 +11,7 @@ on:
         type: string
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-build-web-demo
+  group: ${{ inputs.CONCURRENCY }}-build-examples
   cancel-in-progress: true
 
 env:
@@ -25,8 +25,8 @@ env:
   RUSTDOCFLAGS: --deny warnings --deny rustdoc::missing_crate_level_docs
 
 jobs:
-  rs-build-web-demo:
-    name: Build Web Demo
+  rs-build-examples:
+    name: Build Examples
     permissions:
       contents: "read"
       id-token: "write"
@@ -41,11 +41,13 @@ jobs:
         with:
           ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
 
-      - name: Download Web Viewer
-        uses: actions/download-artifact@v3
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
         with:
-          name: web_viewer
-          path: web_viewer
+          cache_key: "build-web"
+          save_cache: false
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Download Wheel
         uses: actions/download-artifact@v3
@@ -79,15 +81,13 @@ jobs:
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-      - name: Build web demo
-        env:
-          COMMIT_HASH: ${{ steps.get-sha.outputs.sha }}
+      - name: Build examples
         shell: bash
         run: |
-          pixi run python3 scripts/ci/build_demo_app.py --skip-build
+          pixi run build-examples example_data
 
-      - name: Upload web demo assets
+      - name: Upload assets
         uses: actions/upload-artifact@v3
         with:
-          name: web_demo
-          path: web_demo
+          name: example_data
+          path: example_data

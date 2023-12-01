@@ -75,10 +75,10 @@ jobs:
       CONCURRENCY: push-${{ github.ref_name }}
     secrets: inherit
 
-  build-web-demo:
-    name: "Build Web Demo"
-    needs: [build-wheel-linux, build-web]
-    uses: ./.github/workflows/reusable_build_web_demo.yml
+  build-examples:
+    name: "Build Examples"
+    needs: [build-wheel-linux]
+    uses: ./.github/workflows/reusable_build_examples.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
       WHEEL_ARTIFACT_NAME: linux-wheel
@@ -86,16 +86,16 @@ jobs:
 
   track-sizes:
     name: "Track Sizes"
-    needs: [build-web-demo]
+    needs: [build-examples]
     uses: ./.github/workflows/reusable_track_size.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
     secrets: inherit
 
-  upload-web-demo:
-    name: "Upload Web Demo"
-    needs: [build-web-demo]
-    uses: ./.github/workflows/reusable_upload_web_demo.yml
+  upload-examples:
+    name: "Upload Examples"
+    needs: [build-examples]
+    uses: ./.github/workflows/reusable_upload_examples.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
     secrets: inherit
@@ -350,9 +350,6 @@ jobs:
 
             ## Example Hosted App
             https://app.rerun.io/commit/${{ env.SHORT_SHA }}
-
-            ## Demo App
-            https://demo.rerun.io/commit/${{ env.SHORT_SHA }}
 
             ## Wheels can be installed with:
             ```
