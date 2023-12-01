@@ -93,8 +93,8 @@ jobs:
           entries+=("JS:web_viewer/re_viewer.js:kiB")
 
           for file in example_data/**/*.rrd; do
-            name=$(basename $(dirname "$file"))
-            entries+=("$name.rrd:$file:MiB")
+            name=$(basename "$file")
+            entries+=("$name:$file:MiB")
           done
 
           data=$(python3 scripts/ci/sizes.py measure "${entries[@]}")
