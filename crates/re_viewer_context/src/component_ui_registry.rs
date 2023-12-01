@@ -34,14 +34,15 @@ pub enum UiVerbosity {
 
 type ComponentUiCallback = Box<
     dyn Fn(
-        &ViewerContext<'_>,
-        &mut egui::Ui,
-        UiVerbosity,
-        &LatestAtQuery,
-        &EntityPath,
-        &ComponentWithInstances,
-        &InstanceKey,
-    ),
+            &ViewerContext<'_>,
+            &mut egui::Ui,
+            UiVerbosity,
+            &LatestAtQuery,
+            &EntityPath,
+            &ComponentWithInstances,
+            &InstanceKey,
+        ) + Send
+        + Sync,
 >;
 
 /// How to display components in a Ui.

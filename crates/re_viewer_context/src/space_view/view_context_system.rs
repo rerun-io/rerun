@@ -10,7 +10,7 @@ use crate::{
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
 ///
 /// Is always populated before view part systems.
-pub trait ViewContextSystem {
+pub trait ViewContextSystem: Send + Sync {
     /// Returns all the component sets that the system is compatible with.
     ///
     /// If an entity path satisfies any of these sets, then the system will automatically run for

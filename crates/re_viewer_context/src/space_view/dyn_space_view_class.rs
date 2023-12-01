@@ -41,7 +41,7 @@ pub enum SpaceViewClassLayoutPriority {
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
-pub trait DynSpaceViewClass {
+pub trait DynSpaceViewClass: Send + Sync {
     /// Name of this space view class.
     ///
     /// Used for identification. Must be unique within a viewer session.

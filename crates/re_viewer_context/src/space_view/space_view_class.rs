@@ -13,7 +13,7 @@ use crate::{
 /// Each Space View in the viewer's viewport has a single class assigned immutable at its creation time.
 /// The class defines all aspects of its behavior.
 /// It determines which entities are queried, how they are rendered, and how the user can interact with them.
-pub trait SpaceViewClass: std::marker::Sized {
+pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     /// State of a space view.
     type State: SpaceViewState + Default + 'static;
 
@@ -236,28 +236,39 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     ) {
         re_tracing::profile_function!();
 
-        // TODO(andreas): We should be able to parallelize both of these loops
+        use rayon::prelude::*;
+
         let view_ctx = {
             re_tracing::profile_scope!("ViewContextSystem::execute");
             let mut view_ctx = systems.new_context_collection(self.identifier());
-            for (_name, system) in &mut view_ctx.systems {
+            view_ctx.systems.par_iter_mut().for_each(|(_name, system)| {
                 re_tracing::profile_scope!(_name.as_str());
                 system.execute(ctx, query);
-            }
+            });
             view_ctx
         };
+
         let (parts, draw_data) = {
             re_tracing::profile_scope!("ViewPartSystem::execute");
+
             let mut parts = systems.new_part_collection();
-            let mut draw_data = Vec::new();
-            for (name, part) in &mut parts.systems {
+            let (draw_data_sender, draw_data_receiver) = std::sync::mpsc::channel();
+
+            parts.systems.par_iter_mut().for_each(|(name, part)| {
                 re_tracing::profile_scope!(name.as_str());
                 match part.execute(ctx, query, &view_ctx) {
-                    Ok(part_draw_data) => draw_data.extend(part_draw_data),
+                    Ok(part_draw_data) => {
+                        draw_data_sender.send(part_draw_data).ok();
+                    }
                     Err(err) => {
                         re_log::error_once!("Error executing view part system {name:?}: {err}");
                     }
                 }
+            });
+
+            let mut draw_data = Vec::new();
+            while let Ok(mut part_draw_data) = draw_data_receiver.try_recv() {
+                draw_data.append(&mut part_draw_data);
             }
             (parts, draw_data)
         };

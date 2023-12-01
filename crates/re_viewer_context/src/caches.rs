@@ -41,7 +41,7 @@ impl Caches {
 }
 
 /// A cache for memoizing things in order to speed up immediate mode UI & other immediate mode style things.
-pub trait Cache: std::any::Any {
+pub trait Cache: std::any::Any + Send + Sync {
     /// Called once per frame to potentially flush the cache.
     fn begin_frame(&mut self);
 

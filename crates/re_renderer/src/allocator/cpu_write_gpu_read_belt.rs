@@ -38,7 +38,7 @@ pub enum CpuWriteGpuReadError {
 /// Note that the "vec like behavior" further encourages
 /// * not leaving holes
 /// * keeping writes sequential
-pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + 'static> {
+pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + Send + Sync> {
     /// Write view into the relevant buffer portion.
     ///
     /// UNSAFE: The lifetime is transmuted to be `'static`.
@@ -55,9 +55,23 @@ pub struct CpuWriteGpuReadBuffer<T: bytemuck::Pod + 'static> {
     _type: std::marker::PhantomData<T>,
 }
 
+// BufferViewMut is not Send/Sync right now because `BufferMappedRange` trait does not implement Send/Sync.
+// However, on native it is always Send/Sync, see https://github.com/gfx-rs/wgpu/issues/3795#issuecomment-1561189339
+// and on web we're single threaded.
+//
+// https://github.com/gfx-rs/wgpu/issues/3795 is resolved, we force Send+Sync here.
+
+#[allow(unsafe_code)]
+// SAFETY: TODO(https://github.com/gfx-rs/wgpu/pull/4818): Upstream wgpu allows `wgpu::BufferViewMut` to be Send.
+unsafe impl<T> Send for CpuWriteGpuReadBuffer<T> where T: bytemuck::Pod + Send + Sync {}
+
+#[allow(unsafe_code)]
+// SAFETY: TODO(https://github.com/gfx-rs/wgpu/pull/4818): Upstream wgpu allows `wgpu::BufferViewMut` to be Sync.
+unsafe impl<T> Sync for CpuWriteGpuReadBuffer<T> where T: bytemuck::Pod + Send + Sync {}
+
 impl<T> CpuWriteGpuReadBuffer<T>
 where
-    T: bytemuck::Pod + 'static,
+    T: bytemuck::Pod + Send + Sync,
 {
     /// Memory as slice.
     ///
@@ -283,7 +297,7 @@ impl Chunk {
     }
 
     /// Caller needs to make sure that there is enough space.
-    fn allocate<T: bytemuck::Pod>(
+    fn allocate<T: bytemuck::Pod + Send + Sync>(
         &mut self,
         num_elements: usize,
         size_in_bytes: u64,
@@ -419,7 +433,7 @@ impl CpuWriteGpuReadBelt {
     }
 
     /// Allocates a cpu writable buffer for `num_elements` instances of type `T`.
-    pub fn allocate<T: bytemuck::Pod>(
+    pub fn allocate<T: bytemuck::Pod + Send + Sync>(
         &mut self,
         device: &wgpu::Device,
         buffer_pool: &GpuBufferPool,
