@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <!-- The version of index.html that will be served by app.rerun.io -->
 <html>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -351,11 +351,7 @@
 
         check_for_panic();
 
-        let url = new URLSearchParams(window.location.search).get("url");
-        handle
-          .start("the_canvas_id", url)
-          .then(on_app_started)
-          .catch(on_wasm_error);
+        handle.start("the_canvas_id").then(on_app_started).catch(on_wasm_error);
       }
 
       function on_app_started(handle) {

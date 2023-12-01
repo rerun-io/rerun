@@ -4355,6 +4355,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_build_examples_manifest"
+version = "0.12.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "re_build_tools",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "re_build_info"
 version = "0.12.0-alpha.1+dev"
 
@@ -5042,6 +5053,7 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui_plot",
+ "ehttp",
  "image",
  "itertools 0.11.0",
  "nohash-hasher",
@@ -5081,7 +5093,6 @@ dependencies = [
  "ron",
  "serde",
  "serde_json",
- "serde_yaml",
  "thiserror",
  "time",
  "wasm-bindgen-futures",

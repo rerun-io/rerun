@@ -85,6 +85,7 @@ eframe = { workspace = true, default-features = false, features = [
 egui_plot.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
+ehttp.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
 once_cell = { workspace = true }
@@ -105,9 +106,3 @@ wasm-bindgen-futures.workspace = true
 
 [build-dependencies]
 re_build_tools.workspace = true
-
-# External
-anyhow.workspace = true
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-serde_yaml.workspace = true

@@ -27,6 +27,8 @@ version = "0.1.0"                                                              #
 # Run the codegen. Optionally pass `--profile` argument if you want.
 codegen = "cargo run --package re_types_builder -- "
 
+build-examples-manifest = "cargo run -q --locked -p re_build_examples_manifest --"
+
 # Assorted linting tasks
 fast-lint = "python scripts/fast_lint.py"
 lint-codegen = "cargo run --package re_types_builder -- --check"
@@ -112,7 +114,7 @@ ninja = "1.11.1"
 doxygen = "1.9.7.*"
 binaryen = "116.*"   # for `wasm-opt`
 nox = "2021.10.1.*"
-prettier = "3.1.0.*"
+prettier = "2.8.8.*"
 
 [target.linux-64.dependencies]
 patchelf = ">=0.17"

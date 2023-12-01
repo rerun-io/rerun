@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <!-- The version of index.html bundled with the Rerun SDK. -->
 <html>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -346,8 +346,9 @@
         check_for_panic();
 
         let url = null; // you can use this to point to an .rrd file over http, or a WebSocket Rerun server.
+        let manifest_url = null; // override URL to the `examples_manifest.json`
         handle
-          .start("the_canvas_id", url)
+          .start("the_canvas_id", url, manifest_url)
           .then(on_app_started)
           .catch(on_wasm_error);
       }

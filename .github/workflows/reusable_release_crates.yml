@@ -33,20 +33,6 @@ jobs:
         run: |
           pixi run cargo run --locked -p re_build_web_viewer -- --release
 
-      # Run the build script for `re_viewer`, then commit it this
-      # will ensure that any other dirty files will emit the usual
-      # "dirty git tree" error for all files except the manifest
-      - name: Build examples manifest
-        shell: bash
-        run: |
-          pixi run cargo build --locked -p re_viewer
-
-      - name: Commit examples manifest
-        shell: bash
-        run: |
-          git add ./crates/re_viewer/data/examples_manifest.json
-          git commit -m 'temp'
-
       - name: Publish
         shell: bash
         run: |

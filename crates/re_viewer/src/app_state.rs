@@ -43,6 +43,10 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub fn set_examples_manifest_url(&mut self, url: String) {
+        self.welcome_screen.set_examples_manifest_url(url);
+    }
+
     pub fn app_options(&self) -> &AppOptions {
         &self.app_options
     }
@@ -255,7 +259,7 @@ impl AppState {
                     .frame(viewport_frame)
                     .show_inside(ui, |ui| {
                         if show_welcome {
-                            welcome_screen.ui(ui, rx, command_sender);
+                            welcome_screen.ui(ui, re_ui, rx, command_sender);
                         } else {
                             viewport.viewport_ui(ui, &mut ctx);
                         }
