@@ -4,7 +4,7 @@ use re_query::ComponentWithInstances;
 use re_types::ComponentName;
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
-use super::DataUi;
+use super::{table_for_verbosity, DataUi};
 use crate::item_ui;
 
 // We do NOT implement `DataUi` for just `ComponentWithInstances`
@@ -41,14 +41,16 @@ impl DataUi for EntityComponentWithInstances {
 
         let one_line = match verbosity {
             UiVerbosity::Small => true,
-            UiVerbosity::Reduced | UiVerbosity::All => false,
+            UiVerbosity::Reduced
+            | UiVerbosity::MultiSelectionPanel
+            | UiVerbosity::SelectionPanel => false,
         };
 
         // in some cases, we don't want to display all instances
         let max_row = match verbosity {
             UiVerbosity::Small => 0,
             UiVerbosity::Reduced => num_instances.at_most(4), // includes "…x more" if any
-            UiVerbosity::All => num_instances,
+            UiVerbosity::MultiSelectionPanel | UiVerbosity::SelectionPanel => num_instances,
         };
 
         // Here we enforce that exactly `max_row` rows are displayed, which means that:
@@ -97,28 +99,10 @@ impl DataUi for EntityComponentWithInstances {
                 re_format::format_number(num_instances)
             ));
         } else {
-            let mut table = egui_extras::TableBuilder::new(ui)
+            table_for_verbosity(verbosity, ui)
                 .resizable(false)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .columns(egui_extras::Column::auto(), 2);
-
-            if verbosity == UiVerbosity::All {
-                // Use full width in the selection panel.
-                table = table.auto_shrink([false, true]);
-            } else {
-                // Be as small as possible in the hover tooltips.
-                table = table.auto_shrink([true, true]);
-            }
-
-            if verbosity == UiVerbosity::All && ctx.selection().len() <= 1 {
-                // We're alone in the selection panel. Let the outer ScrollArea do the work.
-                table = table.vscroll(false);
-            } else {
-                // Don't take too much vertical space to leave room for other selected items.
-                table = table.vscroll(true).max_scroll_height(100.0);
-            }
-
-            table
+                .columns(egui_extras::Column::auto(), 2)
                 .header(re_ui::ReUi::table_header_height(), |mut header| {
                     re_ui::ReUi::setup_table_header(&mut header);
                     header.col(|ui| {

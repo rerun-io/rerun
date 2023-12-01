@@ -7,9 +7,7 @@ use re_types::datatypes::{
 };
 use re_viewer_context::{auto_color, UiVerbosity, ViewerContext};
 
-use super::DataUi;
-
-const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
+use super::{table_for_verbosity, DataUi};
 
 impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
@@ -41,12 +39,14 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                         || !class.keypoint_annotations.is_empty()
                     {
                         response.response.on_hover_ui(|ui| {
-                            class_description_ui(ui, class, id);
+                            class_description_ui(ui, verbosity, class, id);
                         });
                     }
                 }
-                UiVerbosity::Reduced | UiVerbosity::All => {
-                    class_description_ui(ui, class, id);
+                UiVerbosity::Reduced
+                | UiVerbosity::SelectionPanel
+                | UiVerbosity::MultiSelectionPanel => {
+                    class_description_ui(ui, verbosity, class, id);
                 }
             }
         } else {
@@ -111,10 +111,11 @@ impl DataUi for AnnotationContext {
                     ui.label(format!("AnnotationContext with {} classes", self.0.len()));
                 }
             }
-            UiVerbosity::All => {
+            UiVerbosity::MultiSelectionPanel | UiVerbosity::SelectionPanel => {
                 ui.vertical(|ui| {
                     annotation_info_table_ui(
                         ui,
+                        verbosity,
                         self.0
                             .iter()
                             .map(|class| &class.class_description.info)
@@ -126,7 +127,7 @@ impl DataUi for AnnotationContext {
                         class_description,
                     } in &self.0
                     {
-                        class_description_ui(ui, class_description, *class_id);
+                        class_description_ui(ui, verbosity, class_description, *class_id);
                     }
                 });
             }
@@ -136,6 +137,7 @@ impl DataUi for AnnotationContext {
 
 fn class_description_ui(
     ui: &mut egui::Ui,
+    verbosity: UiVerbosity,
     class: &ClassDescription,
     id: re_types::datatypes::ClassId,
 ) {
@@ -152,6 +154,7 @@ fn class_description_ui(
         ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
             annotation_info_table_ui(
                 ui,
+                verbosity,
                 class
                     .keypoint_annotations
                     .iter()
@@ -164,11 +167,9 @@ fn class_description_ui(
         ui.add_space(8.0);
         ui.strong("Keypoint Connections");
         ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
-            use egui_extras::{Column, TableBuilder};
+            use egui_extras::Column;
 
-            let table = TableBuilder::new(ui)
-                .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
-                .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
+            let table = table_for_verbosity(verbosity, ui)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                 .column(Column::auto().clip(true).at_least(40.0))
                 .column(Column::auto().clip(true).at_least(40.0));
@@ -223,17 +224,16 @@ fn class_description_ui(
 
 fn annotation_info_table_ui<'a>(
     ui: &mut egui::Ui,
+    verbosity: UiVerbosity,
     annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
 ) {
     let row_height = re_ui::ReUi::table_line_height();
 
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
-    use egui_extras::{Column, TableBuilder};
+    use egui_extras::Column;
 
-    let table = TableBuilder::new(ui)
-        .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
-        .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
+    let table = table_for_verbosity(verbosity, ui)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .column(Column::auto()) // id
         .column(Column::auto().clip(true).at_least(40.0)) // label

@@ -126,9 +126,12 @@ fn text_ui(string: &str, ui: &mut egui::Ui, verbosity: UiVerbosity) {
         UiVerbosity::Reduced => {
             layout_job.wrap.max_rows = 3;
         }
-        UiVerbosity::All => {
+        UiVerbosity::MultiSelectionPanel => {
             let num_newlines = string.chars().filter(|&c| c == '\n').count();
             needs_scroll_area = 10 < num_newlines || 300 < string.len();
+        }
+        UiVerbosity::SelectionPanel => {
+            needs_scroll_area = false;
         }
     }
 

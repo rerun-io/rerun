@@ -157,7 +157,9 @@ impl DataUi for [DataCell] {
                 ui.label(sorted.iter().map(format_cell).join(", "));
             }
 
-            UiVerbosity::All | UiVerbosity::Reduced => {
+            UiVerbosity::SelectionPanel
+            | UiVerbosity::MultiSelectionPanel
+            | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     for component_bundle in &sorted {
                         ui.label(format_cell(component_bundle));
@@ -188,4 +190,32 @@ pub fn annotations(
     let mut annotation_map = re_viewer_context::AnnotationMap::default();
     annotation_map.load(ctx, query, std::iter::once(entity_path));
     annotation_map.find(entity_path)
+}
+
+// ---------------------------------------------------------------------------
+
+/// Build an egui table and configure it for the given verbosity.
+pub fn table_for_verbosity(
+    verbosity: UiVerbosity,
+    ui: &mut egui::Ui,
+) -> egui_extras::TableBuilder<'_> {
+    let table = egui_extras::TableBuilder::new(ui);
+    match verbosity {
+        UiVerbosity::Small | UiVerbosity::Reduced => {
+            // Be as small as possible in the hover tooltips. No scrolling related configuration, as
+            // the content itself must be limited (scrolling is not possible in tooltips).
+            table.auto_shrink([true, true])
+        }
+        UiVerbosity::MultiSelectionPanel => {
+            // Don't take too much vertical space to leave room for other selected items.
+            table
+                .auto_shrink([false, true])
+                .vscroll(true)
+                .max_scroll_height(100.0)
+        }
+        UiVerbosity::SelectionPanel => {
+            // We're alone in the selection panel. Let the outer ScrollArea do the work.
+            table.auto_shrink([false, true]).vscroll(false)
+        }
+    }
 }

@@ -6,7 +6,7 @@ use re_types::components::{
 };
 use re_viewer_context::{UiVerbosity, ViewerContext};
 
-use super::DataUi;
+use super::{table_for_verbosity, DataUi};
 
 /// Default number of ui points to show a number.
 const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
@@ -63,7 +63,9 @@ impl DataUi for ViewCoordinates {
             UiVerbosity::Small => {
                 ui.label(format!("ViewCoordinates: {}", self.describe()));
             }
-            UiVerbosity::All | UiVerbosity::Reduced => {
+            UiVerbosity::SelectionPanel
+            | UiVerbosity::MultiSelectionPanel
+            | UiVerbosity::Reduced => {
                 ui.label(self.describe());
             }
         }
@@ -133,13 +135,10 @@ impl DataUi for LineStrip2D {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 ui.label(format!("{} positions", self.0.len()));
             }
-            UiVerbosity::All => {
-                use egui_extras::{Column, TableBuilder};
-                TableBuilder::new(ui)
+            UiVerbosity::MultiSelectionPanel | UiVerbosity::SelectionPanel => {
+                use egui_extras::Column;
+                table_for_verbosity(verbosity, ui)
                     .resizable(true)
-                    .vscroll(true)
-                    .auto_shrink([false, true])
-                    .max_scroll_height(100.0)
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
                     .header(re_ui::ReUi::table_header_height(), |mut header| {
@@ -182,13 +181,10 @@ impl DataUi for LineStrip3D {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 ui.label(format!("{} positions", self.0.len()));
             }
-            UiVerbosity::All => {
-                use egui_extras::{Column, TableBuilder};
-                TableBuilder::new(ui)
+            UiVerbosity::SelectionPanel | UiVerbosity::MultiSelectionPanel => {
+                use egui_extras::Column;
+                table_for_verbosity(verbosity, ui)
                     .resizable(true)
-                    .vscroll(true)
-                    .auto_shrink([false, true])
-                    .max_scroll_height(100.0)
                     .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
                     .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
                     .header(re_ui::ReUi::table_header_height(), |mut header| {
@@ -245,7 +241,7 @@ impl DataUi for Material {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 show_optional_albedo_factor(ui);
             }
-            UiVerbosity::All => {
+            UiVerbosity::SelectionPanel | UiVerbosity::MultiSelectionPanel => {
                 egui::Grid::new("material").num_columns(2).show(ui, |ui| {
                     ui.label("albedo_factor");
                     show_optional_albedo_factor(ui);
@@ -279,7 +275,7 @@ impl DataUi for MeshProperties {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 show_optional_indices(ui);
             }
-            UiVerbosity::All => {
+            UiVerbosity::SelectionPanel | UiVerbosity::MultiSelectionPanel => {
                 egui::Grid::new("material").num_columns(2).show(ui, |ui| {
                     ui.label("triangles");
                     show_optional_indices(ui);
