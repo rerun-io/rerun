@@ -52,7 +52,7 @@ impl framework::Example for Picking {
         self.picking_position = position_in_pixel;
     }
 
-    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+    fn new(re_ctx: &re_renderer::RenderContext) -> Self {
         let mut rnd = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(42);
         let random_point_range = -5.0_f32..5.0_f32;
         let point_count = 1000;
@@ -93,7 +93,7 @@ impl framework::Example for Picking {
 
     fn draw(
         &mut self,
-        re_ctx: &mut re_renderer::RenderContext,
+        re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         _time: &framework::Time,
         pixels_from_point: f32,

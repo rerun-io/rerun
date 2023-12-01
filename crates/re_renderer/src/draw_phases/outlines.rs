@@ -197,7 +197,7 @@ impl OutlineMaskProcessor {
     }
 
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         config: &OutlineConfig,
         view_name: &DebugLabel,
         resolution_in_pixel: [u32; 2],
@@ -265,7 +265,7 @@ impl OutlineMaskProcessor {
         // ------------- Render Pipelines -------------
 
         let screen_triangle_vertex_shader =
-            screen_triangle_vertex_shader(&mut ctx.gpu_resources, &ctx.device, &mut ctx.resolver);
+            screen_triangle_vertex_shader(&ctx.gpu_resources, &ctx.device, &ctx.resolver);
         let jumpflooding_init_shader_module = if mask_sample_count == 1 {
             include_shader_module!("../../shader/outlines/jumpflooding_init.wgsl")
         } else {

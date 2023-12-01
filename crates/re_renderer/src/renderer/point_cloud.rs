@@ -181,7 +181,7 @@ impl PointCloudDrawData {
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         mut builder: PointCloudBuilder,
     ) -> Result<Self, PointCloudDrawDataError> {
         re_tracing::profile_function!();

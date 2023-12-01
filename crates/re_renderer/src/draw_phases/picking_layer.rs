@@ -174,7 +174,7 @@ impl PickingLayerProcessor {
     /// It allows to sample the picking layer texture in a shader.
     #[allow(clippy::too_many_arguments)]
     pub fn new<T: 'static + Send + Sync>(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,
         picking_rect: RectInt,
@@ -485,7 +485,7 @@ impl DepthReadbackWorkaround {
     const READBACK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 
     fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         extent: glam::UVec2,
         depth_target_handle: GpuTextureHandle,
     ) -> DepthReadbackWorkaround {
@@ -551,13 +551,13 @@ impl DepthReadbackWorkaround {
                 vertex_entrypoint: "main".into(),
                 vertex_handle: ctx.gpu_resources.shader_modules.get_or_create(
                     &ctx.device,
-                    &mut ctx.resolver,
+                    &ctx.resolver,
                     &include_shader_module!("../../shader/screen_triangle.wgsl"),
                 ),
                 fragment_entrypoint: "main".into(),
                 fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
                     &ctx.device,
-                    &mut ctx.resolver,
+                    &ctx.resolver,
                     &include_shader_module!("../../shader/copy_texture.wgsl"),
                 ),
                 vertex_buffers: smallvec![],

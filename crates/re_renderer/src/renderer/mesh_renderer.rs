@@ -154,7 +154,7 @@ impl MeshDrawData {
     /// Try bundling all mesh instances into a single draw data instance whenever possible.
     /// If you pass zero mesh instances, subsequent drawing will do nothing.
     /// Mesh data itself is gpu uploaded if not already present.
-    pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
+    pub fn new(ctx: &RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
         let _mesh_renderer = ctx.get_renderer::<MeshRenderer>();

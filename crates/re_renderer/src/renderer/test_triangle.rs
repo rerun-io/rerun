@@ -21,8 +21,8 @@ impl DrawData for TestTriangleDrawData {
 }
 
 impl TestTriangleDrawData {
-    pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.get_renderer::<TestTriangle>();
+    pub fn new(ctx: &RenderContext) -> Self {
+        let _ = ctx.get_renderer::<TestTriangle>(); // TODO(andreas): This should happen automatically.
         TestTriangleDrawData {}
     }
 }

@@ -170,16 +170,16 @@ impl RenderContext {
             global_bindings,
         };
 
-        let mut resolver = crate::new_recommended_file_resolver();
+        let resolver = crate::new_recommended_file_resolver();
         let mut renderers = RwLock::new(Renderers {
             renderers: TypeMap::new(),
         });
 
         let mesh_manager = RwLock::new(MeshManager::new(renderers.get_mut().get_or_create(
             &shared_renderer_data,
-            &mut gpu_resources,
+            &gpu_resources,
             &device,
-            &mut resolver,
+            &resolver,
         )));
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &gpu_resources.textures);
@@ -325,7 +325,7 @@ impl RenderContext {
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.
-        let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut self.resolver));
+        let modified_paths = FileServer::get_mut(|fs| fs.collect(&self.resolver));
         if !modified_paths.is_empty() {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
@@ -348,12 +348,7 @@ impl RenderContext {
 
             // Shader module maintenance must come before render pipelines because render pipeline
             // recompilation picks up all shaders that have been recompiled this frame.
-            shader_modules.begin_frame(
-                &self.device,
-                &mut self.resolver,
-                frame_index,
-                &modified_paths,
-            );
+            shader_modules.begin_frame(&self.device, &self.resolver, frame_index, &modified_paths);
             render_pipelines.begin_frame(
                 &self.device,
                 frame_index,

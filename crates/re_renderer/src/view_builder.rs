@@ -270,7 +270,7 @@ impl ViewBuilder {
             },
         });
 
-    pub fn new(ctx: &mut RenderContext, config: TargetConfiguration) -> Self {
+    pub fn new(ctx: &RenderContext, config: TargetConfiguration) -> Self {
         re_tracing::profile_function!();
 
         // Can't handle 0 size resolution since this would imply creating zero sized textures.
@@ -727,7 +727,7 @@ impl ViewBuilder {
     /// ```no_run
     /// use re_renderer::{view_builder::ViewBuilder, RectInt, PickingLayerProcessor, RenderContext};
     /// fn schedule_picking_readback(
-    ///     ctx: &mut RenderContext,
+    ///     ctx: &RenderContext,
     ///     view_builder: &mut ViewBuilder,
     ///     picking_rect: RectInt,
     /// ) {
@@ -745,7 +745,7 @@ impl ViewBuilder {
     /// Received data that isn't retrieved for more than a frame will be automatically discarded.
     pub fn schedule_picking_rect<T: 'static + Send + Sync>(
         &mut self,
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         picking_rect: RectInt,
         readback_identifier: GpuReadbackIdentifier,
         readback_user_data: T,

@@ -49,7 +49,7 @@ impl DrawData for CompositorDrawData {
 
 impl CompositorDrawData {
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         color_texture: &GpuTexture,
         outline_final_voronoi: Option<&GpuTexture>,
         outline_config: &Option<OutlineConfig>,

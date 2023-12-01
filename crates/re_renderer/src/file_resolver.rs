@@ -864,7 +864,7 @@ mod tests_file_resolver {
             .unwrap();
         }
 
-        let mut resolver = FileResolver::new(fs);
+        let resolver = FileResolver::new(fs);
 
         resolver
             .populate("/shaders3/shader1.wgsl")

@@ -72,7 +72,7 @@ impl DrawData for DebugOverlayDrawData {
 
 impl DebugOverlayDrawData {
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         debug_texture: &GpuTexture,
         screen_resolution: glam::UVec2,
         overlay_rect: RectInt,

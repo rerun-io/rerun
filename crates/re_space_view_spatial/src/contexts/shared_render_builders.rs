@@ -32,7 +32,7 @@ impl SharedRenderBuilders {
 
     pub fn queuable_draw_data(
         &self,
-        render_ctx: &mut RenderContext,
+        render_ctx: &RenderContext,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let mut result = Vec::new();
         result.extend(

@@ -397,10 +397,7 @@ impl DrawData for RectangleDrawData {
 }
 
 impl RectangleDrawData {
-    pub fn new(
-        ctx: &mut RenderContext,
-        rectangles: &[TexturedRect],
-    ) -> Result<Self, RectangleError> {
+    pub fn new(ctx: &RenderContext, rectangles: &[TexturedRect]) -> Result<Self, RectangleError> {
         re_tracing::profile_function!();
 
         let rectangle_renderer = ctx.get_renderer::<RectangleRenderer>();

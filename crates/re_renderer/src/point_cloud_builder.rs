@@ -106,7 +106,7 @@ impl PointCloudBuilder {
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
     pub fn into_draw_data(
         self,
-        ctx: &mut crate::context::RenderContext,
+        ctx: &crate::context::RenderContext,
     ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
         PointCloudDrawData::new(ctx, self)
     }

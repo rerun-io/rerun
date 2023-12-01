@@ -233,7 +233,7 @@ pub enum DepthCloudDrawDataError {
 
 impl DepthCloudDrawData {
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         depth_clouds: &DepthClouds,
     ) -> Result<Self, DepthCloudDrawDataError> {
         re_tracing::profile_function!();

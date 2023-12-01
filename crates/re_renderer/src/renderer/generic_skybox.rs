@@ -30,8 +30,8 @@ impl DrawData for GenericSkyboxDrawData {
 }
 
 impl GenericSkyboxDrawData {
-    pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.get_renderer::<GenericSkybox>();
+    pub fn new(ctx: &RenderContext) -> Self {
+        let _ = ctx.get_renderer::<GenericSkybox>(); // TODO(andreas): This should happen automatically.
         GenericSkyboxDrawData {}
     }
 }
