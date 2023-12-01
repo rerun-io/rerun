@@ -11,7 +11,7 @@ pub struct SpaceViewClassPlaceholder;
 impl SpaceViewClass for SpaceViewClassPlaceholder {
     type State = ();
 
-    const NAME: &'static str = "Unknown Space View Class";
+    const IDENTIFIER: &'static str = "Unknown Space View Class";
     const DISPLAY_NAME: &'static str = "Unknown Space View Class";
 
     fn icon(&self) -> &'static re_ui::Icon {

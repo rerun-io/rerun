@@ -1,1 +1,8 @@
 rerun_cpp/docs/**/*
+
+rerun_js/web-viewer/re_viewer_bg.js
+rerun_js/web-viewer/re_viewer.js
+web_viewer/re_viewer.js
+crates/re_web_viewer_server/web_viewer/re_viewer.js
+
+.pixi

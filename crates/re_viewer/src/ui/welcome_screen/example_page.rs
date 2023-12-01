@@ -1,5 +1,7 @@
 use egui::{NumExt as _, Ui};
 
+use ehttp::{fetch, Request};
+use poll_promise::Promise;
 use re_log_types::LogMsg;
 use re_smart_channel::ReceiveSet;
 use re_viewer_context::SystemCommandSender;
@@ -29,17 +31,6 @@ struct ExampleDesc {
 
     rrd_url: String,
     thumbnail: ExampleThumbnail,
-}
-
-// TODO(#3190): we should attempt to update the manifest based on the online version
-fn load_example_manifest() -> Vec<ExampleDesc> {
-    let examples: Vec<ExampleDesc> =
-        serde_json::from_str(include_str!("../../../data/examples_manifest.json"))
-            .expect("Failed to parse data/examples_manifest.json");
-    if examples.is_empty() {
-        re_log::warn_once!("No examples found in examples_manifest.json");
-    }
-    examples
 }
 
 // TODO(ab): use design tokens
@@ -86,33 +77,113 @@ impl ExampleDescLayout {
     }
 }
 
-#[derive(Debug)]
+impl From<ExampleDesc> for ExampleDescLayout {
+    fn from(desc: ExampleDesc) -> Self {
+        ExampleDescLayout {
+            desc,
+            rect: egui::Rect::NOTHING,
+        }
+    }
+}
+
+type ManifestJson = Vec<ExampleDesc>;
+type Manifest = Vec<ExampleDescLayout>;
+type ManifestPromise = Promise<Result<Manifest, LoadError>>;
+
+enum LoadError {
+    Deserialize(serde_json::Error),
+    Fetch(String),
+}
+
+impl std::fmt::Display for LoadError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LoadError::Deserialize(err) => {
+                write!(f, "manifest is invalid, it may be outdated: {err}")
+            }
+            LoadError::Fetch(err) => f.write_str(err),
+        }
+    }
+}
+
+fn load_manifest(url: String) -> ManifestPromise {
+    let (sender, promise) = Promise::new();
+
+    fetch(Request::get(url), move |response| match response {
+        Ok(response) => sender.send(
+            serde_json::from_slice::<ManifestJson>(&response.bytes)
+                .map(|examples| examples.into_iter().map(ExampleDescLayout::from).collect())
+                .map_err(LoadError::Deserialize),
+        ),
+        Err(err) => sender.send(Err(LoadError::Fetch(err))),
+    });
+
+    promise
+}
+
 pub(super) struct ExamplePage {
     id: egui::Id,
-    examples: Vec<ExampleDescLayout>,
+    manifest_url: String,
+    examples: Option<ManifestPromise>,
+}
+
+fn default_manifest_url() -> String {
+    let build_info = re_build_info::build_info!();
+
+    // Always point to `version/nightly` for rerun devs,
+    // because the current commit's manifest is unlikely to be uploaded to GCS.
+    if build_info.is_in_rerun_workspace {
+        return "https://app.rerun.io/version/nightly/examples_manifest.json".into();
+    }
+
+    // Otherwise point to the current commit
+    let short_sha = build_info.short_git_hash();
+    format!("https://app.rerun.io/commit/{short_sha}/examples_manifest.json")
+}
+
+impl Default for ExamplePage {
+    fn default() -> Self {
+        Self {
+            id: egui::Id::new("example_page"),
+            manifest_url: default_manifest_url(),
+            examples: None,
+        }
+    }
 }
 
 impl ExamplePage {
-    pub(crate) fn new() -> Self {
-        Self {
-            examples: load_example_manifest()
-                .into_iter()
-                .map(|e| ExampleDescLayout {
-                    desc: e,
-                    rect: egui::Rect::NOTHING,
-                })
-                .collect(),
-            id: egui::Id::new("example_page"),
+    pub fn set_manifest_url(&mut self, url: String) {
+        if self.manifest_url != url {
+            self.manifest_url = url.clone();
+            self.examples = Some(load_manifest(url));
         }
     }
 
     pub(super) fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        re_ui: &re_ui::ReUi,
         rx: &re_smart_channel::ReceiveSet<re_log_types::LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) -> WelcomeScreenResponse {
-        if self.examples.is_empty() {
+        let examples = self
+            .examples
+            .get_or_insert_with(|| load_manifest(self.manifest_url.clone()));
+
+        let Some(examples) = examples.ready_mut() else {
+            ui.spinner();
+            return WelcomeScreenResponse::default();
+        };
+
+        let examples = match examples {
+            Ok(examples) => examples,
+            Err(err) => {
+                ui.label(re_ui.error_text(format!("Failed to load examples: {err}")));
+                return WelcomeScreenResponse::default();
+            }
+        };
+
+        if examples.is_empty() {
             ui.label("No examples found.");
             return WelcomeScreenResponse::default();
         }
@@ -161,7 +232,7 @@ impl ExamplePage {
                     .min_col_width(column_width)
                     .max_col_width(column_width)
                     .show(ui, |ui| {
-                        self.examples
+                        examples
                             .chunks_mut(column_count)
                             .for_each(|example_layouts| {
                                 for example in &mut *example_layouts {
@@ -221,7 +292,7 @@ impl ExamplePage {
                             });
                     });
 
-                self.examples.iter().for_each(|example| {
+                for example in examples {
                     if example.clicked(ui, self.id) {
                         let data_source =
                             re_data_source::DataSource::RrdHttpUrl(example.desc.rrd_url.clone());
@@ -229,7 +300,7 @@ impl ExamplePage {
                             re_viewer_context::SystemCommand::LoadDataSource(data_source),
                         );
                     }
-                });
+                }
             });
         });
 

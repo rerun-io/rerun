@@ -10,12 +10,6 @@ on:
         required: false
         type: string
         default: ""
-      # We need this because PRs use a merged commit but we really want
-      # to track uploads based on the source commit.
-      UPLOAD_COMMIT_OVERRIDE:
-        required: false
-        type: string
-        default: ""
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-run-notebook
@@ -77,19 +71,16 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Add SHORT_SHA env property with commit short sha
+      - name: Get sha
+        id: get-sha
         shell: bash
         run: |
-          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
-            USED_SHA=${{ github.sha }}
-          else
-            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
-          fi
-          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Upload Notebook"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "/tmp/cube.html"
-          destination: "rerun-builds/commit/${{env.SHORT_SHA}}/notebooks"
+          destination: "rerun-builds/commit/${{ steps.get-sha.outputs.sha }}/notebooks"
           parent: false

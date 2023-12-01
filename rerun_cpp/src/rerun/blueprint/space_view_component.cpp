@@ -16,7 +16,7 @@ namespace rerun {
     ) {
         static const auto datatype = arrow::struct_({
             arrow::field("display_name", arrow::utf8(), false),
-            arrow::field("class_name", arrow::utf8(), false),
+            arrow::field("class_identifier", arrow::utf8(), false),
             arrow::field(
                 "space_origin",
                 Loggable<rerun::datatypes::EntityPath>::arrow_datatype(),
@@ -59,7 +59,7 @@ namespace rerun {
             auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(1));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].class_name));
+                ARROW_RETURN_NOT_OK(field_builder->Append(elements[elem_idx].class_identifier));
             }
         }
         {

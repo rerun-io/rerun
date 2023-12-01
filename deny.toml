@@ -48,12 +48,16 @@ deny = [
 skip = [
   { name = "ahash" },                # Popular crate + fast release schedule = lots of crates still using old versions
   { name = "base64" },               # Too popular
-  { name = "foreign-types" },        # used for cocoa bindings. wgpu uses newer than winit.
-  { name = "foreign-types-shared" }, # as above.
+  { name = "foreign-types" },        # used for cocoa bindings. wgpu uses newer than eframe.
+  { name = "foreign-types-shared" }, # used for cocoa bindings. wgpu uses newer than eframe.
+  { name = "hashbrown" },            # Old version used by polar-rs
+  { name = "libloading" },           # Old version used by ash (vulkan binding), newer version used by khronos-egl
   { name = "memoffset" },            # Small crate
   { name = "nix" },                  # difficult to avoid :(
   { name = "prettyplease" },         # Old version being used by prost
+  { name = "spin" },                 # Old version used by rusttls
   { name = "time" },                 # Too popular
+  { name = "windows" },              # Old version used by accesskit_windows, newer version used by wgpu
 ]
 skip-tree = [
   { name = "cargo-run-wasm" }, # Dev-tool

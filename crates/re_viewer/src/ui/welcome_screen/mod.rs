@@ -15,10 +15,8 @@ enum WelcomeScreenPage {
     Examples,
 }
 
-#[derive(Debug)]
 pub struct WelcomeScreen {
     current_page: WelcomeScreenPage,
-
     example_page: example_page::ExamplePage,
 }
 
@@ -32,16 +30,21 @@ impl Default for WelcomeScreen {
     fn default() -> Self {
         Self {
             current_page: WelcomeScreenPage::Welcome,
-            example_page: example_page::ExamplePage::new(),
+            example_page: example_page::ExamplePage::default(),
         }
     }
 }
 
 impl WelcomeScreen {
+    pub fn set_examples_manifest_url(&mut self, url: String) {
+        self.example_page.set_manifest_url(url);
+    }
+
     /// Welcome screen shown in place of the viewport when no data is loaded.
     pub fn ui(
         &mut self,
         ui: &mut egui::Ui,
+        re_ui: &re_ui::ReUi,
         rx: &ReceiveSet<LogMsg>,
         command_sender: &re_viewer_context::CommandSender,
     ) {
@@ -87,7 +90,9 @@ impl WelcomeScreen {
                 }
                 .show(ui, |ui| match self.current_page {
                     WelcomeScreenPage::Welcome => welcome_page_ui(ui, rx, command_sender),
-                    WelcomeScreenPage::Examples => self.example_page.ui(ui, rx, command_sender),
+                    WelcomeScreenPage::Examples => {
+                        self.example_page.ui(ui, re_ui, rx, command_sender)
+                    }
                 })
                 .inner
             })

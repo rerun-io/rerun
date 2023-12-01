@@ -7,23 +7,23 @@ re_string_interner::declare_new_type!(
     ///
     /// Note that this is *not* unique across the entire application.
     #[derive(serde::Deserialize, serde::Serialize)]
-    pub struct ViewSystemName;
+    pub struct ViewSystemIdentifier;
 );
 
-impl Default for ViewSystemName {
+impl Default for ViewSystemIdentifier {
     fn default() -> Self {
         "unknown".into()
     }
 }
 
-pub type PerSystemEntities = BTreeMap<ViewSystemName, BTreeSet<EntityPath>>;
+pub type PerSystemEntities = BTreeMap<ViewSystemIdentifier, BTreeSet<EntityPath>>;
 
 /// Trait for naming/identifying [`crate::ViewPartSystem`]s & [`crate::ViewContextSystem`]s.
 ///
 /// Required to be implemented for registration.
-pub trait NamedViewSystem {
+pub trait IdentifiedViewSystem {
     /// Unique name for a system within a given [`crate::SpaceViewClass`].
     ///
     /// Note that this is *not* unique across the entire application.
-    fn name() -> ViewSystemName;
+    fn identifier() -> ViewSystemIdentifier;
 }

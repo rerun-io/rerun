@@ -157,6 +157,23 @@ impl RecordingStreamBuilder {
         self
     }
 
+    /// Set the `RecordingId` for this context.
+    ///
+    /// If you're logging from multiple processes and want all the messages to end up in the same
+    /// recording, you must make sure that they all set the same `RecordingId` using this function.
+    ///
+    /// Note that many stores can share the same [`ApplicationId`], but they all have
+    /// unique `RecordingId`s.
+    ///
+    /// The default is to use a random `RecordingId`.
+    pub fn recording_id(mut self, recording_id: impl Into<String>) -> Self {
+        self.store_id = Some(StoreId::from_string(
+            StoreKind::Recording,
+            recording_id.into(),
+        ));
+        self
+    }
+
     /// Set the [`StoreId`] for this context.
     ///
     /// If you're logging from multiple processes and want all the messages to end up as the same

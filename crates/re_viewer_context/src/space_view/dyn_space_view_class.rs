@@ -10,10 +10,10 @@ use crate::{
 re_string_interner::declare_new_type!(
     /// The unique name of a space view type.
     #[derive(serde::Deserialize, serde::Serialize)]
-    pub struct SpaceViewClassName;
+    pub struct SpaceViewClassIdentifier;
 );
 
-impl SpaceViewClassName {
+impl SpaceViewClassIdentifier {
     pub fn invalid() -> Self {
         Self::from("invalid")
     }
@@ -45,7 +45,7 @@ pub trait DynSpaceViewClass {
     /// Name of this space view class.
     ///
     /// Used for identification. Must be unique within a viewer session.
-    fn name(&self) -> SpaceViewClassName;
+    fn identifier(&self) -> SpaceViewClassIdentifier;
 
     /// User-facing name of this space view class.
     ///
