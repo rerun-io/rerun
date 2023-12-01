@@ -66,6 +66,11 @@ impl TimePanel {
         ui: &mut egui::Ui,
         time_panel_expanded: bool,
     ) {
+        // Naturally, many parts of the time panel need the time control.
+        // Copy it once, read/edit, and then write back at the end if there was a change.
+        let time_ctrl_before = ctx.rec_cfg.time_ctrl.read().clone();
+        let mut time_ctrl_after = time_ctrl_before.clone();
+
         // this is the size of everything above the central panel (window title bar, top bar on web,
         // etc.)
         let screen_header_height = ui.cursor().top();
@@ -111,7 +116,7 @@ impl TimePanel {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
                         ui.visuals_mut().button_frame = true;
-                        self.collapsed_ui(ctx, ui);
+                        self.collapsed_ui(ctx, ui, &mut time_ctrl_after);
                     });
                 } else {
                     // Expanded:
@@ -125,7 +130,7 @@ impl TimePanel {
                                 ui.horizontal(|ui| {
                                     ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
                                     ui.visuals_mut().button_frame = true;
-                                    self.top_row_ui(ctx, ui);
+                                    self.top_row_ui(ctx, ui, &mut time_ctrl_after);
                                 });
                             })
                             .response
@@ -138,22 +143,35 @@ impl TimePanel {
                             ui.visuals().widgets.noninteractive.bg_stroke,
                         );
 
-                        ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
+                        ui.spacing_mut().scroll.bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
 
                         // Add extra margin on the left which was intentionally missing on the controls.
                         let mut streams_frame = egui::Frame::default();
                         streams_frame.inner_margin.left = margin.x;
                         streams_frame.show(ui, |ui| {
-                            self.expanded_ui(ctx, ui);
+                            self.expanded_ui(ctx, ui, &mut time_ctrl_after);
                         });
                     });
                 }
             },
         );
+
+        // Apply time control if there were any changes.
+        // This means that if anyone else meanwhile changed the time control, these changes are lost now.
+        // At least though we don't overwrite them if we didn't change anything at all.
+        // Since changes on the time control via the time panel are rare, this should be fine.
+        if time_ctrl_before != time_ctrl_after {
+            *ctx.rec_cfg.time_ctrl.write() = time_ctrl_after;
+        }
     }
 
     #[allow(clippy::unused_self)]
-    fn collapsed_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    fn collapsed_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        time_ctrl: &mut TimeControl,
+    ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
         if ui.max_rect().width() < 600.0 {
@@ -161,7 +179,6 @@ impl TimePanel {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     let re_ui = &ctx.re_ui;
-                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     let times_per_timeline = ctx.store_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
@@ -169,19 +186,17 @@ impl TimePanel {
                     self.time_control_ui.fps_ui(time_ctrl, ui);
                 });
                 ui.horizontal(|ui| {
-                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
                         ctx.store_db.times_per_timeline(),
                         ui,
                     );
-                    collapsed_time_marker_and_time(ui, ctx);
+                    collapsed_time_marker_and_time(ui, ctx, time_ctrl);
                 });
             });
         } else {
             // One row:
             let re_ui = &ctx.re_ui;
-            let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
             let times_per_timeline = ctx.store_db.times_per_timeline();
             self.time_control_ui
                 .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
@@ -190,11 +205,16 @@ impl TimePanel {
             self.time_control_ui.playback_speed_ui(time_ctrl, ui);
             self.time_control_ui.fps_ui(time_ctrl, ui);
 
-            collapsed_time_marker_and_time(ui, ctx);
+            collapsed_time_marker_and_time(ui, ctx, time_ctrl);
         }
     }
 
-    fn expanded_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    fn expanded_ui(
+        &mut self,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        time_ctrl: &mut TimeControl,
+    ) {
         re_tracing::profile_function!();
 
         self.data_density_graph_painter.begin_frame(ui.ctx());
@@ -218,7 +238,7 @@ impl TimePanel {
         let time_bg_x_range = Rangef::new(time_x_left, ui.max_rect().right());
         let time_fg_x_range = {
             // Painting to the right of the scroll bar (if any) looks bad:
-            let right = ui.max_rect().right() - ui.spacing_mut().scroll_bar_outer_margin;
+            let right = ui.max_rect().right() - ui.spacing_mut().scroll.bar_outer_margin;
             debug_assert!(time_x_left < right);
             Rangef::new(time_x_left, right)
         };
@@ -226,11 +246,12 @@ impl TimePanel {
         let side_margin = 26.0; // chosen so that the scroll bar looks approximately centered in the default gap
         self.time_ranges_ui = initialize_time_ranges_ui(
             ctx,
+            time_ctrl,
             Rangef::new(
                 time_fg_x_range.min + side_margin,
                 time_fg_x_range.max - side_margin,
             ),
-            ctx.rec_cfg.time_ctrl.time_view(),
+            time_ctrl.time_view(),
         );
         let full_y_range = Rangef::new(ui.min_rect().bottom(), ui.max_rect().bottom());
 
@@ -266,7 +287,14 @@ impl TimePanel {
         let time_bg_area_painter = ui.painter().with_clip_rect(time_bg_area_rect);
         let time_area_painter = ui.painter().with_clip_rect(time_fg_area_rect);
 
-        paint_visible_history_range(&self.time_ranges_ui, ctx, ui.painter(), time_fg_area_rect);
+        if let Some(highlighted_range) = time_ctrl.highlighted_range {
+            paint_range_highlight(
+                highlighted_range,
+                &self.time_ranges_ui,
+                ui.painter(),
+                time_fg_area_rect,
+            );
+        }
 
         ui.painter().hline(
             0.0..=ui.max_rect().right(),
@@ -279,7 +307,7 @@ impl TimePanel {
             ui,
             &time_area_painter,
             timeline_rect.top()..=timeline_rect.bottom(),
-            ctx.rec_cfg.time_ctrl.time_type(),
+            time_ctrl.time_type(),
             ctx.app_options.time_zone_for_timestamps,
         );
         paint_time_ranges_gaps(
@@ -291,7 +319,7 @@ impl TimePanel {
         );
         time_selection_ui::loop_selection_ui(
             ctx.store_db,
-            &mut ctx.rec_cfg.time_ctrl,
+            time_ctrl,
             &self.time_ranges_ui,
             ui,
             &time_bg_area_painter,
@@ -299,7 +327,7 @@ impl TimePanel {
         );
         let time_area_response = interact_with_streams_rect(
             &self.time_ranges_ui,
-            &mut ctx.rec_cfg.time_ctrl,
+            time_ctrl,
             ui,
             &time_bg_area_rect,
             &streams_rect,
@@ -314,6 +342,7 @@ impl TimePanel {
         // All the entity rows and their data density graphs:
         self.tree_ui(
             ctx,
+            time_ctrl,
             &time_area_response,
             &lower_time_area_painter,
             time_x_left,
@@ -345,7 +374,7 @@ impl TimePanel {
         // Put time-marker on top and last, so that you can always drag it
         time_marker_ui(
             &self.time_ranges_ui,
-            &mut ctx.rec_cfg.time_ctrl,
+            time_ctrl,
             ctx.re_ui,
             ui,
             &time_area_painter,
@@ -362,6 +391,7 @@ impl TimePanel {
     fn tree_ui(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree_max_y: f32,
@@ -388,6 +418,7 @@ impl TimePanel {
                 if show_root {
                     self.show_tree(
                         ctx,
+                        time_ctrl,
                         time_area_response,
                         time_area_painter,
                         tree_max_y,
@@ -399,6 +430,7 @@ impl TimePanel {
                 } else {
                     self.show_children(
                         ctx,
+                        time_ctrl,
                         time_area_response,
                         time_area_painter,
                         tree_max_y,
@@ -409,6 +441,7 @@ impl TimePanel {
                 if ctx.app_options.show_blueprint_in_timeline {
                     self.show_tree(
                         ctx,
+                        time_ctrl,
                         time_area_response,
                         time_area_painter,
                         tree_max_y,
@@ -425,6 +458,7 @@ impl TimePanel {
     fn show_tree(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree_max_y: f32,
@@ -469,6 +503,7 @@ impl TimePanel {
             .show_collapsing(ui, collapsing_header_id, default_open, |_, ui| {
                 self.show_children(
                     ctx,
+                    time_ctrl,
                     time_area_response,
                     time_area_painter,
                     tree_max_y,
@@ -510,12 +545,13 @@ impl TimePanel {
                 let empty = re_data_store::TimeHistogram::default();
                 let num_messages_at_time = tree
                     .recursive_time_histogram
-                    .get(ctx.rec_cfg.time_ctrl.timeline())
+                    .get(time_ctrl.timeline())
                     .unwrap_or(&empty);
 
                 data_density_graph::data_density_graph_ui(
                     &mut self.data_density_graph_painter,
                     ctx,
+                    time_ctrl,
                     time_area_response,
                     time_area_painter,
                     ui,
@@ -529,9 +565,11 @@ impl TimePanel {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn show_children(
         &mut self,
         ctx: &mut ViewerContext<'_>,
+        time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
         tree_max_y: f32,
@@ -541,6 +579,7 @@ impl TimePanel {
         for (last_component, child) in &tree.children {
             self.show_tree(
                 ctx,
+                time_ctrl,
                 time_area_response,
                 time_area_painter,
                 tree_max_y,
@@ -596,10 +635,10 @@ impl TimePanel {
 
                 let response_rect = response.rect;
 
+                let timeline = time_ctrl.timeline();
+
                 let empty_messages_over_time = TimeHistogram::default();
-                let messages_over_time = data
-                    .get(ctx.rec_cfg.time_ctrl.timeline())
-                    .unwrap_or(&empty_messages_over_time);
+                let messages_over_time = data.get(timeline).unwrap_or(&empty_messages_over_time);
 
                 // `data.times` does not contain timeless. Need to add those manually:
                 let total_num_messages =
@@ -608,7 +647,7 @@ impl TimePanel {
                     if total_num_messages == 0 {
                         ui.label(ctx.re_ui.warning_text(format!(
                             "No event logged on timeline {:?}",
-                            ctx.rec_cfg.time_ctrl.timeline().name()
+                            timeline.name()
                         )));
                     } else {
                         ui.label(format!("Number of events: {total_num_messages}"));
@@ -635,6 +674,7 @@ impl TimePanel {
                     data_density_graph::data_density_graph_ui(
                         &mut self.data_density_graph_painter,
                         ctx,
+                        time_ctrl,
                         time_area_response,
                         time_area_painter,
                         ui,
@@ -649,7 +689,12 @@ impl TimePanel {
         }
     }
 
-    fn top_row_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    fn top_row_ui(
+        &mut self,
+        ctx: &ViewerContext<'_>,
+        ui: &mut egui::Ui,
+        time_ctrl: &mut TimeControl,
+    ) {
         ui.spacing_mut().item_spacing.x = 18.0; // from figma
 
         if ui.max_rect().width() < 600.0 {
@@ -657,7 +702,6 @@ impl TimePanel {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     let re_ui = &ctx.re_ui;
-                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     let times_per_timeline = ctx.store_db.times_per_timeline();
                     self.time_control_ui
                         .play_pause_ui(time_ctrl, re_ui, times_per_timeline, ui);
@@ -665,14 +709,13 @@ impl TimePanel {
                     self.time_control_ui.fps_ui(time_ctrl, ui);
                 });
                 ui.horizontal(|ui| {
-                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
                     self.time_control_ui.timeline_selector_ui(
                         time_ctrl,
                         ctx.store_db.times_per_timeline(),
                         ui,
                     );
 
-                    current_time_ui(ctx, ui);
+                    current_time_ui(ctx, ui, time_ctrl);
 
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         help_button(ui);
@@ -682,7 +725,6 @@ impl TimePanel {
         } else {
             // One row:
             let re_ui = &ctx.re_ui;
-            let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
             let times_per_timeline = ctx.store_db.times_per_timeline();
 
             self.time_control_ui
@@ -691,7 +733,7 @@ impl TimePanel {
                 .timeline_selector_ui(time_ctrl, times_per_timeline, ui);
             self.time_control_ui.playback_speed_ui(time_ctrl, ui);
             self.time_control_ui.fps_ui(time_ctrl, ui);
-            current_time_ui(ctx, ui);
+            current_time_ui(ctx, ui, time_ctrl);
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 help_button(ui);
@@ -729,8 +771,12 @@ fn highlight_timeline_row(
     }
 }
 
-fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>) {
-    let space_needed_for_current_time = match ctx.rec_cfg.time_ctrl.timeline().typ() {
+fn collapsed_time_marker_and_time(
+    ui: &mut egui::Ui,
+    ctx: &ViewerContext<'_>,
+    time_ctrl: &mut TimeControl,
+) {
+    let space_needed_for_current_time = match time_ctrl.timeline().typ() {
         re_arrow_store::TimeType::Time => 220.0,
         re_arrow_store::TimeType::Sequence => 100.0,
     };
@@ -740,12 +786,20 @@ fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>
         time_range_rect.max.x -= space_needed_for_current_time;
 
         if time_range_rect.width() > 50.0 {
-            let time_ranges_ui = initialize_time_ranges_ui(ctx, time_range_rect.x_range(), None);
+            let time_ranges_ui =
+                initialize_time_ranges_ui(ctx, time_ctrl, time_range_rect.x_range(), None);
             time_ranges_ui.snap_time_control(ctx);
 
             let painter = ui.painter_at(time_range_rect.expand(4.0));
 
-            paint_visible_history_range(&time_ranges_ui, ctx, &painter, time_range_rect);
+            if let Some(highlighted_range) = time_ctrl.highlighted_range {
+                paint_range_highlight(
+                    highlighted_range,
+                    &time_ranges_ui,
+                    &painter,
+                    time_range_rect,
+                );
+            }
 
             painter.hline(
                 time_range_rect.x_range(),
@@ -754,7 +808,7 @@ fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>
             );
             time_marker_ui(
                 &time_ranges_ui,
-                &mut ctx.rec_cfg.time_ctrl,
+                time_ctrl,
                 ctx.re_ui,
                 ui,
                 &painter,
@@ -765,30 +819,28 @@ fn collapsed_time_marker_and_time(ui: &mut egui::Ui, ctx: &mut ViewerContext<'_>
         }
     }
 
-    current_time_ui(ctx, ui);
+    current_time_ui(ctx, ui, time_ctrl);
 }
 
-fn paint_visible_history_range(
+fn paint_range_highlight(
+    highlighted_range: TimeRange,
     time_ranges_ui: &TimeRangesUi,
-    ctx: &mut ViewerContext<'_>,
     painter: &egui::Painter,
     rect: Rect,
 ) {
-    if let Some(time_range) = ctx.rec_cfg.visible_history_highlight {
-        let x_from = time_ranges_ui.x_from_time_f32(time_range.min.into());
-        let x_to = time_ranges_ui.x_from_time_f32(time_range.max.into());
+    let x_from = time_ranges_ui.x_from_time_f32(highlighted_range.min.into());
+    let x_to = time_ranges_ui.x_from_time_f32(highlighted_range.max.into());
 
-        if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
-            let visible_history_area_rect =
-                Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
+    if let (Some(x_from), Some(x_to)) = (x_from, x_to) {
+        let visible_history_area_rect =
+            Rect::from_x_y_ranges(x_from..=x_to, rect.y_range()).intersect(rect);
 
-            painter.rect(
-                visible_history_area_rect,
-                0.0,
-                egui::Color32::WHITE.gamma_multiply(0.1),
-                egui::Stroke::NONE,
-            );
-        }
+        painter.rect(
+            visible_history_area_rect,
+            0.0,
+            egui::Color32::WHITE.gamma_multiply(0.1),
+            egui::Stroke::NONE,
+        );
     }
 }
 
@@ -841,11 +893,11 @@ fn is_time_safe_to_show(
     TimeInt::BEGINNING < time
 }
 
-fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
-    if let Some(time_int) = ctx.rec_cfg.time_ctrl.time_int() {
-        let timeline = ctx.rec_cfg.time_ctrl.timeline();
+fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &TimeControl) {
+    if let Some(time_int) = time_ctrl.time_int() {
+        let timeline = time_ctrl.timeline();
         if is_time_safe_to_show(ctx.store_db, timeline, time_int.into()) {
-            let time_type = ctx.rec_cfg.time_ctrl.time_type();
+            let time_type = time_ctrl.time_type();
             ui.monospace(time_type.format(time_int, ctx.app_options.time_zone_for_timestamps));
         }
     }
@@ -855,6 +907,7 @@ fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
 
 fn initialize_time_ranges_ui(
     ctx: &ViewerContext<'_>,
+    time_ctrl: &TimeControl,
     time_x_range: Rangef,
     mut time_view: Option<TimeView>,
 ) -> TimeRangesUi {
@@ -870,13 +923,10 @@ fn initialize_time_ranges_ui(
         Vec::new()
     };
 
-    if let Some(times) = ctx
-        .store_db
-        .time_histogram(ctx.rec_cfg.time_ctrl.timeline())
-    {
+    if let Some(times) = ctx.store_db.time_histogram(time_ctrl.timeline()) {
         // NOTE: `times` can be empty if a GC wiped everything.
         if !times.is_empty() {
-            let timeline_axis = TimelineAxis::new(ctx.rec_cfg.time_ctrl.time_type(), times);
+            let timeline_axis = TimelineAxis::new(time_ctrl.time_type(), times);
             time_view = time_view.or_else(|| Some(view_everything(&time_x_range, &timeline_axis)));
             time_range.extend(timeline_axis.ranges);
         }

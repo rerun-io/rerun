@@ -319,6 +319,8 @@ impl StoreHub {
         &mut self,
         app_id: &ApplicationId,
     ) -> anyhow::Result<()> {
+        use crate::blueprint_validation::is_valid_blueprint;
+
         re_tracing::profile_function!();
         let blueprint_path = default_blueprint_path(app_id)?;
         if blueprint_path.exists() {
@@ -329,6 +331,10 @@ impl StoreHub {
                 for store in bundle.drain_store_dbs() {
                     if store.store_kind() == StoreKind::Blueprint && store.app_id() == Some(app_id)
                     {
+                        if !is_valid_blueprint(&store) {
+                            re_log::warn!("Blueprint for {app_id} appears invalid - restoring to default. This is expected if you have just upgraded Rerun versions.");
+                            continue;
+                        }
                         // We found the blueprint we were looking for; make it active.
                         // borrow-checker won't let us just call `self.set_blueprint_for_app_id`
                         re_log::debug!(

@@ -5,12 +5,12 @@
 
 #include <cstdint>
 #include <memory>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <string>
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StringBuilder;
 } // namespace arrow
@@ -18,9 +18,6 @@ namespace arrow {
 namespace rerun::components {
     struct AffixFuzzer9 {
         std::string single_string_required;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer9() = default;
@@ -32,18 +29,30 @@ namespace rerun::components {
             single_string_required = std::move(single_string_required_);
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer9> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer9";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const AffixFuzzer9* elements, size_t num_elements
+            arrow::StringBuilder* builder, const components::AffixFuzzer9* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer9 components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer9* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AffixFuzzer9` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AffixFuzzer9* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

@@ -22,6 +22,21 @@ use self::method::{Method, MethodDeclaration};
 
 use super::common::ExampleInfo;
 
+trait CppObjectExtensions {
+    fn namespace_ident(&self) -> Ident;
+    fn ident(&self) -> Ident;
+}
+
+impl CppObjectExtensions for Object {
+    fn namespace_ident(&self) -> Ident {
+        format_ident!("{}", self.kind.plural_snake_case())
+    }
+
+    fn ident(&self) -> Ident {
+        format_ident!("{}", self.name) // The PascalCase name of the object type.
+    }
+}
+
 // Special strings we insert as tokens, then search-and-replace later.
 // This is so that we can insert comments and whitespace into the generated code.
 // `TokenStream` ignores whitespace (including comments), but we can insert "quoted strings",
@@ -324,7 +339,7 @@ impl QuotedObject {
                     Self::from_struct(objects, obj, hpp_includes, hpp_type_extensions)
                 }
                 ObjectKind::Archetype => {
-                    Self::from_archetype(objects, obj, hpp_includes, hpp_type_extensions)
+                    Self::from_archetype(obj, hpp_includes, hpp_type_extensions)
                 }
             },
             crate::ObjectSpecifics::Union { .. } => {
@@ -334,12 +349,11 @@ impl QuotedObject {
     }
 
     fn from_archetype(
-        objects: &Objects,
         obj: &Object,
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> QuotedObject {
-        let type_ident = format_ident!("{}", &obj.name); // The PascalCase name of the object type.
+        let type_ident = obj.ident();
         let quoted_docs = quote_obj_docs(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone());
@@ -369,8 +383,6 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        let (constants_hpp, constants_cpp) =
-            quote_constants_header_and_cpp(obj, objects, &type_ident);
         let mut methods = Vec::new();
 
         let required_component_fields = obj
@@ -430,7 +442,7 @@ impl QuotedObject {
                     #field_ident = std::move(#parameter_ident);
                     #NEWLINE_TOKEN
                     #gcc_ignore_comment
-                    RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+                    RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
                 },
                 inline: true,
             });
@@ -468,22 +480,14 @@ impl QuotedObject {
         let serialize_cpp =
             serialize_method.to_cpp_tokens(&quote!(AsComponents<archetypes::#type_ident>));
 
-        let hpp_method_section = if methods.is_empty() {
-            quote! {}
-        } else {
-            let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
-            // TODO(andreas): We should consider optimizing the move ctor - there's a lot of component batches to move.
-            quote! {
-                public:
-                    #type_ident() = default;
-                    #type_ident(#type_ident&& other) = default;
-                    #NEWLINE_TOKEN
-                    #NEWLINE_TOKEN
-                    #(#methods_hpp)*
-            }
-        };
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
+        let methods_cpp = methods
+            .iter()
+            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
 
         let indicator_comment = quote_doc_comment("Indicator component, used to identify the archetype when converting to a list of components.");
+        let indicator_fqname =
+            format!("{}Indicator", obj.fqname).replace("archetypes", "components");
         let doc_hide_comment = quote_hide_from_docs();
 
         let hpp = quote! {
@@ -494,15 +498,21 @@ impl QuotedObject {
                 struct #type_ident {
                     #(#field_declarations;)*
 
-                    #(#constants_hpp;)*
-
+                public:
+                    static constexpr const char IndicatorComponentName[] = #indicator_fqname;
+                    #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #indicator_comment
-                    using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+                    using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
                     #hpp_type_extensions
 
-                    #hpp_method_section
+                public:
+                    #type_ident() = default;
+                    #type_ident(#type_ident&& other) = default;
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #(#methods_hpp)*
                 };
                 #NEWLINE_TOKEN
                 #NEWLINE_TOKEN
@@ -522,15 +532,10 @@ impl QuotedObject {
             }
         };
 
-        let methods_cpp = methods
-            .iter()
-            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
         let cpp = quote! {
             #cpp_includes
 
             namespace rerun::archetypes {
-                #(#constants_cpp;)*
-
                 #(#methods_cpp)*
             }
 
@@ -550,8 +555,8 @@ impl QuotedObject {
         mut hpp_includes: Includes,
         hpp_type_extensions: &TokenStream,
     ) -> QuotedObject {
-        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes` or `components`
-        let type_ident = format_ident!("{}", &obj.name); // The PascalCase name of the object type.
+        let namespace_ident = obj.namespace_ident();
+        let type_ident = obj.ident();
         let quoted_docs = quote_obj_docs(obj);
 
         let mut cpp_includes = Includes::new(obj.fqname.clone());
@@ -573,15 +578,12 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        let (constants_hpp, constants_cpp) =
-            quote_constants_header_and_cpp(obj, objects, &type_ident);
         let mut methods = Vec::new();
 
         if obj.fields.len() == 1 && !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
             methods.extend(single_field_constructor_methods(
                 obj,
                 &mut hpp_includes,
-                &type_ident,
                 objects,
             ));
         };
@@ -611,44 +613,19 @@ impl QuotedObject {
             }
         }
 
-        // Arrow serialization methods.
-        // TODO(andreas): These are just utilities for to_data_cell. How do we hide them best from the public header?
-        methods.push(arrow_data_type_method(
+        let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
+        let methods_cpp = methods
+            .iter()
+            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
+
+        let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
             obj,
             objects,
             &mut hpp_includes,
             &mut cpp_includes,
             &mut hpp_declarations,
-        ));
-        methods.push(fill_arrow_array_builder_method(
-            obj,
-            &type_ident,
-            &mut cpp_includes,
-            &mut hpp_declarations,
-            objects,
-        ));
+        );
 
-        if obj.kind == ObjectKind::Component {
-            methods.push(component_to_data_cell_method(
-                &type_ident,
-                obj,
-                objects,
-                &mut hpp_includes,
-            ));
-        }
-
-        let hpp_method_section = if methods.is_empty() {
-            quote! {}
-        } else {
-            let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
-            quote! {
-                public:
-                    #type_ident() = default;
-                    #NEWLINE_TOKEN
-                    #NEWLINE_TOKEN
-                    #(#methods_hpp)*
-            }
-        };
         let hpp = quote! {
             #hpp_includes
 
@@ -659,26 +636,26 @@ impl QuotedObject {
                 struct #type_ident {
                     #(#field_declarations;)*
 
-                    #(#constants_hpp;)*
-
                     #hpp_type_extensions
 
-                    #hpp_method_section
+                public:
+                    #type_ident() = default;
+                    #NEWLINE_TOKEN
+                    #NEWLINE_TOKEN
+                    #(#methods_hpp)*
                 };
             }
-        };
 
-        let methods_cpp = methods
-            .iter()
-            .map(|m| m.to_cpp_tokens(&quote!(#type_ident)));
+            #hpp_loggable
+        };
         let cpp = quote! {
             #cpp_includes
 
             namespace rerun::#namespace_ident {
-                #(#constants_cpp;)*
-
                 #(#methods_cpp)*
             }
+
+            #cpp_loggable
         };
 
         Self { hpp, cpp }
@@ -714,9 +691,9 @@ impl QuotedObject {
             "Union archetypes are not supported {}",
             obj.fqname
         );
-        let namespace_ident = format_ident!("{}", obj.kind.plural_snake_case()); // `datatypes` or `components`
+        let namespace_ident = obj.namespace_ident();
         let pascal_case_name = &obj.name;
-        let pascal_case_ident = format_ident!("{pascal_case_name}"); // The PascalCase name of the object type.
+        let pascal_case_ident = obj.ident();
         let quoted_docs = quote_obj_docs(obj);
 
         let tag_typename = format_ident!("{pascal_case_name}Tag");
@@ -764,8 +741,6 @@ impl QuotedObject {
             })
             .collect_vec();
 
-        let (constants_hpp, constants_cpp) =
-            quote_constants_header_and_cpp(obj, objects, &pascal_case_ident);
         let mut methods = Vec::new();
 
         if !obj.is_attr_set(ATTR_CPP_NO_FIELD_CTORS) {
@@ -828,21 +803,6 @@ impl QuotedObject {
                 inline: true,
             });
         }
-
-        methods.push(arrow_data_type_method(
-            obj,
-            objects,
-            &mut hpp_includes,
-            &mut cpp_includes,
-            &mut hpp_declarations,
-        ));
-        methods.push(fill_arrow_array_builder_method(
-            obj,
-            &pascal_case_ident,
-            &mut cpp_includes,
-            &mut hpp_declarations,
-            objects,
-        ));
 
         let destructor = if obj.has_default_destructor(objects) {
             // No destructor needed
@@ -976,6 +936,14 @@ impl QuotedObject {
         let swap_comment = quote_comment("This bitwise swap would fail for self-referential types, but we don't have any of those.");
         let hide_from_docs_comment = quote_hide_from_docs();
 
+        let (hpp_loggable, cpp_loggable) = quote_loggable_hpp_and_cpp(
+            obj,
+            objects,
+            &mut hpp_includes,
+            &mut cpp_includes,
+            &mut hpp_declarations,
+        );
+
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
         let hpp = quote! {
             #hpp_includes
@@ -1016,8 +984,6 @@ impl QuotedObject {
 
                 #quoted_docs
                 struct #pascal_case_ident {
-                    #(#constants_hpp;)*
-
                     #pascal_case_ident() : _tag(detail::#tag_typename::None) {}
 
                     #copy_constructor
@@ -1055,11 +1021,19 @@ impl QuotedObject {
 
                     #(#methods_hpp)*
 
+                    #hide_from_docs_comment
+                    const detail::#data_typename& get_union_data() const { return _data; }
+
+                    #hide_from_docs_comment
+                    detail::#tag_typename get_union_tag() const { return _tag; }
+
                 private:
                     detail::#tag_typename _tag;
                     detail::#data_typename _data;
                 };
             }
+
+            #hpp_loggable
         };
 
         let cpp_methods = methods
@@ -1068,11 +1042,11 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            #(#constants_cpp;)*
-
             namespace rerun::#namespace_ident {
                 #(#cpp_methods)*
             }
+
+            #cpp_loggable
         };
 
         Self { hpp, cpp }
@@ -1082,13 +1056,13 @@ impl QuotedObject {
 fn single_field_constructor_methods(
     obj: &Object,
     hpp_includes: &mut Includes,
-    type_ident: &Ident,
     objects: &Objects,
 ) -> Vec<Method> {
     let field = &obj.fields[0];
+    let type_ident = obj.ident();
 
     let mut methods =
-        add_copy_assignment_and_constructor(hpp_includes, field, field, type_ident, objects);
+        add_copy_assignment_and_constructor(hpp_includes, field, field, &type_ident, objects);
 
     // If the field is a custom type as well which in turn has only a single field,
     // provide a constructor for that single field as well.
@@ -1102,7 +1076,7 @@ fn single_field_constructor_methods(
                 hpp_includes,
                 &field_type_obj.fields[0],
                 field,
-                type_ident,
+                &type_ident,
                 objects,
             ));
         }
@@ -1204,7 +1178,6 @@ fn arrow_data_type_method(
 
 fn fill_arrow_array_builder_method(
     obj: &Object,
-    type_ident: &Ident,
     cpp_includes: &mut Includes,
     hpp_declarations: &mut ForwardDecls,
     objects: &Objects,
@@ -1214,8 +1187,10 @@ fn fill_arrow_array_builder_method(
     let builder = format_ident!("builder");
     let arrow_builder_type = arrow_array_builder_type_object(obj, objects, hpp_declarations);
 
-    let fill_builder =
-        quote_fill_arrow_array_builder(type_ident, obj, objects, &builder, cpp_includes);
+    let fill_builder = quote_fill_arrow_array_builder(obj, objects, &builder, cpp_includes);
+
+    let type_ident = obj.ident();
+    let namespace_ident = obj.namespace_ident();
 
     Method {
         docs: "Fills an arrow array builder with an array of this type.".into(),
@@ -1224,7 +1199,7 @@ fn fill_arrow_array_builder_method(
             return_type: quote! { rerun::Error },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
-                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #type_ident* elements, size_t num_elements)
+                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #namespace_ident::#type_ident* elements, size_t num_elements)
             },
         },
         definition_body: quote! {
@@ -1237,15 +1212,15 @@ fn fill_arrow_array_builder_method(
     }
 }
 
-fn component_to_data_cell_method(
-    type_ident: &Ident,
+fn to_arrow_method(
     obj: &Object,
     objects: &Objects,
     hpp_includes: &mut Includes,
+    declarations: &mut ForwardDecls,
 ) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
-    hpp_includes.insert_rerun("data_cell.hpp");
     hpp_includes.insert_rerun("result.hpp");
+    declarations.insert("arrow", ForwardDecl::Class(format_ident!("Array")));
 
     let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
 
@@ -1253,25 +1228,31 @@ fn component_to_data_cell_method(
     let arrow_builder_type =
         arrow_array_builder_type_object(obj, objects, &mut ForwardDecls::default());
 
+    let type_ident = obj.ident();
+    let namespace_ident = obj.namespace_ident();
+
     Method {
-        docs: format!("Creates a Rerun DataCell from an array of {type_ident} components.").into(),
+        docs: format!(
+            "Serializes an array of `rerun::{namespace_ident}::{type_ident}` into an arrow array."
+        )
+        .into(),
         declaration: MethodDeclaration {
             is_static: true,
-            return_type: quote! { Result<rerun::DataCell> },
+            return_type: quote! { Result<std::shared_ptr<arrow::Array>> },
             name_and_parameters: quote! {
-                to_data_cell(const #type_ident* instances, size_t num_instances)
+                to_arrow(const #namespace_ident::#type_ident* instances, size_t num_instances)
             },
         },
         definition_body: quote! {
             #NEWLINE_TOKEN
             #todo_pool
             arrow::MemoryPool* pool = arrow::default_memory_pool();
+            auto datatype = arrow_datatype();
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
-
-            ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
+            ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
             if (instances && num_instances > 0) {
-                RR_RETURN_NOT_OK(#type_ident::fill_arrow_array_builder(
+                RR_RETURN_NOT_OK(Loggable<#namespace_ident::#type_ident>::fill_arrow_array_builder(
                     static_cast<arrow::#arrow_builder_type*>(builder.get()),
                     instances,
                     num_instances
@@ -1279,13 +1260,7 @@ fn component_to_data_cell_method(
             }
             std::shared_ptr<arrow::Array> array;
             ARROW_RETURN_NOT_OK(builder->Finish(&array));
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            DataCell cell;
-            cell.num_instances = num_instances;
-            cell.component_name = #type_ident::NAME;
-            cell.array = std::move(array);
-            return cell;
+            return array;
         },
         inline: false,
     }
@@ -1301,49 +1276,25 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
     let push_batches = obj.fields.iter().map(|field| {
         let field_name = format_ident!("{}", field.name);
         let field_accessor = quote!(archetype.#field_name);
-        let field_type = quote_fqname_as_type_path(
-            hpp_includes,
-            field
-                .typ
-                .fqname()
-                .expect("Archetypes only have components and vectors of components."),
-        );
 
-        let emplace_back = quote! {
+        let push_back = quote! {
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         };
 
-
         // TODO(andreas): Introducing MonoCollection will remove the need for distinguishing these two cases.
-        if field.typ.is_plural() {
-            if field.is_nullable {
-                quote! {
-                    if (#field_accessor.has_value()) {
-                        auto result = #field_type::to_data_cell(#field_accessor.value().data(), #field_accessor.value().size());
-                        #emplace_back
-                    }
-                }
-            } else {
-                quote! {
-                    {
-                        auto result = #field_type::to_data_cell(#field_accessor.data(), #field_accessor.size());
-                        #emplace_back
-                    }
-                }
-            }
-        } else if field.is_nullable {
+        if field.is_nullable {
             quote! {
                 if (#field_accessor.has_value()) {
-                    auto result = #field_type::to_data_cell(&#field_accessor.value(), 1);
-                    #emplace_back
+                    auto result = DataCell::from_loggable(#field_accessor.value());
+                    #push_back
                 }
             }
         } else {
             quote! {
                 {
-                    auto result = #field_type::to_data_cell(&#field_accessor, 1);
-                    #emplace_back
+                    auto result = DataCell::from_loggable(#field_accessor);
+                    #push_back
                 }
             }
         }
@@ -1367,7 +1318,7 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             #(#push_batches)*
             {
                 auto indicator = #type_ident::IndicatorComponent();
-                auto result = #type_ident::IndicatorComponent::to_data_cell(&indicator, 1);
+                auto result = DataCell::from_loggable(indicator);
                 RR_RETURN_NOT_OK(result.error);
                 cells.emplace_back(std::move(result.value));
             }
@@ -1380,12 +1331,14 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
 }
 
 fn quote_fill_arrow_array_builder(
-    type_ident: &Ident,
     obj: &Object,
     objects: &Objects,
     builder: &Ident,
     includes: &mut Includes,
 ) -> TokenStream {
+    let type_ident = obj.ident();
+    let namespace_ident = obj.namespace_ident();
+
     let parameter_check = quote! {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -1413,8 +1366,8 @@ fn quote_fill_arrow_array_builder(
                 // Trivial forwarding to inner type.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
                 quote! {
-                    static_assert(sizeof(#quoted_fqname) == sizeof(#type_ident));
-                    RR_RETURN_NOT_OK(#quoted_fqname::fill_arrow_array_builder(
+                    static_assert(sizeof(#quoted_fqname) == sizeof(#namespace_ident::#type_ident));
+                    RR_RETURN_NOT_OK(Loggable<#quoted_fqname>::fill_arrow_array_builder(
                         builder, reinterpret_cast<const #quoted_fqname*>(elements), num_elements
                     ));
                 }
@@ -1454,7 +1407,6 @@ fn quote_fill_arrow_array_builder(
             }
             ObjectSpecifics::Union { .. } => {
                 let variant_builder = format_ident!("variant_builder");
-                let tag_name = format_ident!("{}Tag", type_ident);
 
                 let tag_cases = obj.fields
                 .iter()
@@ -1478,10 +1430,10 @@ fn quote_fill_arrow_array_builder(
                                     ARROW_RETURN_NOT_OK(variant_builder->Append());
                                     auto value_builder =
                                         static_cast<arrow::HalfFloatBuilder *>(variant_builder->value_builder());
-                                    const rerun::half* values = union_instance._data.#field_name.data();
+                                    const rerun::half* values = union_instance.get_union_data().#field_name.data();
                                     ARROW_RETURN_NOT_OK(value_builder->AppendValues(
                                         reinterpret_cast<const uint16_t*>(values),
-                                        static_cast<int64_t>(union_instance._data.#field_name.size())
+                                        static_cast<int64_t>(union_instance.get_union_data().#field_name.size())
                                     ));
                                 }
                             } else {
@@ -1511,8 +1463,8 @@ fn quote_fill_arrow_array_builder(
                                         auto value_builder =
                                             static_cast<arrow::#typ_builder_ident *>(variant_builder->value_builder());
                                         ARROW_RETURN_NOT_OK(value_builder->AppendValues(
-                                            union_instance._data.#field_name.data(),
-                                            static_cast<int64_t>(union_instance._data.#field_name.size())
+                                            union_instance.get_union_data().#field_name.data(),
+                                            static_cast<int64_t>(union_instance.get_union_data().#field_name.size())
                                         ));
                                     }
                                 } else {
@@ -1531,32 +1483,37 @@ fn quote_fill_arrow_array_builder(
                             }
                         }
                     } else {
-                        let variant_accessor = quote!(union_instance._data);
+                        let variant_accessor = quote!(union_instance.get_union_data());
                         quote_append_single_field_to_builder(variant, &variant_builder, &variant_accessor, includes)
                     };
 
                     quote! {
-                        case detail::#tag_name::#variant_name: {
+                        case TagType::#variant_name: {
                             auto #variant_builder = static_cast<arrow::#arrow_builder_type*>(variant_builder_untyped);
                             #variant_append
                         } break;
                     }
                 });
 
+                let tag_name = format_ident!("{}Tag", type_ident);
+
                 quote! {
                     #parameter_check
                     ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
                     for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
                         const auto& union_instance = elements[elem_idx];
-                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<int8_t>(union_instance._tag)));
+                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<int8_t>(union_instance.get_union_tag())));
                         #NEWLINE_TOKEN
                         #NEWLINE_TOKEN
-                        auto variant_index = static_cast<int>(union_instance._tag);
+                        auto variant_index = static_cast<int>(union_instance.get_union_tag());
                         auto variant_builder_untyped = builder->child_builder(variant_index).get();
                         #NEWLINE_TOKEN
                         #NEWLINE_TOKEN
-                        switch (union_instance._tag) {
-                            case detail::#tag_name::None: {
+
+                        using TagType = #namespace_ident::detail::#tag_name;
+
+                        switch (union_instance.get_union_tag()) {
+                            case TagType::None: {
                                 ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                             } break;
                             #(#tag_cases)*
@@ -1784,7 +1741,7 @@ fn quote_append_single_value_to_builder(
                     let field_ptr_accessor = quote_field_ptr_access(typ, value_access);
                     quote! {
                         if (#field_ptr_accessor) {
-                            RR_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
+                            RR_RETURN_NOT_OK(Loggable<#fqname>::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
                         }
                     }
                 }
@@ -1792,7 +1749,7 @@ fn quote_append_single_value_to_builder(
         }
         Type::Object(fqname) => {
             let fqname = quote_fqname_as_type_path(includes, fqname);
-            quote!(RR_RETURN_NOT_OK(#fqname::fill_arrow_array_builder(#value_builder, &#value_access, 1));)
+            quote!(RR_RETURN_NOT_OK(Loggable<#fqname>::fill_arrow_array_builder(#value_builder, &#value_access, 1));)
         }
     }
 }
@@ -1862,45 +1819,6 @@ fn static_constructor_for_enum_type(
         },
         inline: true,
     }
-}
-
-fn quote_constants_header_and_cpp(
-    obj: &Object,
-    _objects: &Objects,
-    obj_type_ident: &Ident,
-) -> (Vec<TokenStream>, Vec<TokenStream>) {
-    let mut hpp = Vec::new();
-    let mut cpp = Vec::new();
-    match &obj.kind {
-        ObjectKind::Component => {
-            let fqname = &obj.fqname;
-            let comment = quote_doc_comment("Name of the component, used for serialization.");
-            hpp.push(quote! {
-                #NEWLINE_TOKEN
-                #NEWLINE_TOKEN
-                #comment
-                static const char NAME[]
-            });
-            cpp.push(quote!(const char #obj_type_ident::NAME[] = #fqname));
-        }
-        ObjectKind::Archetype => {
-            let indicator_fqname =
-                format!("{}Indicator", obj.fqname).replace("archetypes", "components");
-            let comment = quote_doc_comment("Name of the indicator component, used to identify the archetype when converting to a list of components.");
-            hpp.push(quote! {
-                #NEWLINE_TOKEN
-                #NEWLINE_TOKEN
-                #comment
-                static const char INDICATOR_COMPONENT_NAME[]
-            });
-            cpp.push(
-                quote!(const char #obj_type_ident::INDICATOR_COMPONENT_NAME[] = #indicator_fqname),
-            );
-        }
-        ObjectKind::Datatype | ObjectKind::Blueprint => {}
-    }
-
-    (hpp, cpp)
 }
 
 fn are_types_disjoint(fields: &[ObjectField]) -> bool {
@@ -2077,7 +1995,8 @@ fn lines_from_docs(docs: &Docs) -> Vec<String> {
             if let Some(title) = title {
                 lines.push(format!("### {title}"));
             } else {
-                lines.push(format!("### `{name}`:"));
+                // Other languages put the name in backticks but doxygen doesn't support this on headings.
+                lines.push(format!("### {name}:"));
             }
 
             if let Some(image) = image {
@@ -2156,7 +2075,7 @@ fn quote_arrow_data_type(
             if !is_top_level_type {
                 // If we're not at the top level, we should have already a `arrow_datatype` method that we can relay to.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
-                quote!(#quoted_fqname::arrow_datatype())
+                quote!(Loggable<#quoted_fqname>::arrow_datatype())
             } else if obj.is_arrow_transparent() {
                 quote_arrow_data_type(&obj.fields[0].typ, objects, includes, false)
             } else {
@@ -2207,4 +2126,55 @@ fn quote_arrow_elem_type(
     quote! {
         arrow::field("item", #datatype, false)
     }
+}
+
+fn quote_loggable_hpp_and_cpp(
+    obj: &Object,
+    objects: &Objects,
+    hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
+    hpp_declarations: &mut ForwardDecls,
+) -> (TokenStream, TokenStream) {
+    assert!(obj.kind != ObjectKind::Archetype);
+
+    let namespace_ident = obj.namespace_ident();
+    let type_ident = obj.ident();
+    let fqname = &obj.fqname;
+
+    let methods = vec![
+        arrow_data_type_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
+        fill_arrow_array_builder_method(obj, cpp_includes, hpp_declarations, objects),
+        to_arrow_method(obj, objects, hpp_includes, hpp_declarations),
+    ];
+
+    let loggable_type_name = quote! { Loggable<#namespace_ident::#type_ident> };
+
+    let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
+    let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
+    let hide_from_docs_comment = quote_hide_from_docs();
+
+    let hpp = quote! {
+        namespace rerun {
+            // Instead of including loggable.hpp, simply re-declare the template since it's trivial
+            template<typename T>
+            struct Loggable;
+
+            #hide_from_docs_comment
+            template<>
+            struct #loggable_type_name {
+                static constexpr const char Name[] = #fqname;
+                #NEWLINE_TOKEN
+                #NEWLINE_TOKEN
+                #(#methods_hpp)*
+            };
+        }
+    };
+
+    let cpp = quote! {
+        namespace rerun {
+            #(#methods_cpp)*
+        }
+    };
+
+    (hpp, cpp)
 }

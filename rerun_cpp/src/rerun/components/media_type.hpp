@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/utf8.hpp"
 #include "../result.hpp"
 
@@ -13,6 +12,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StringBuilder;
 } // namespace arrow
@@ -24,9 +24,6 @@ namespace rerun::components {
     /// consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
     struct MediaType {
         rerun::datatypes::Utf8 value;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'media_type_ext.cpp'
@@ -91,18 +88,30 @@ namespace rerun::components {
         operator rerun::datatypes::Utf8() const {
             return value;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::MediaType> {
+        static constexpr const char Name[] = "rerun.components.MediaType";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const MediaType* elements, size_t num_elements
+            arrow::StringBuilder* builder, const components::MediaType* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of MediaType components.
-        static Result<rerun::DataCell> to_data_cell(
-            const MediaType* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::MediaType` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::MediaType* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

@@ -36,7 +36,7 @@ jobs:
     name: Build Wheels
     runs-on: ubuntu-latest-16-cores
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
     steps:
       - uses: actions/checkout@v4
 
@@ -44,6 +44,7 @@ jobs:
       # should be fast, and this way things don't break if we add new packages without rebuilding
       # docker
       - run: pip install -r scripts/ci/requirements.txt
+        shell: bash
 
       - name: Build Wheel
         uses: PyO3/maturin-action@v1
@@ -130,4 +131,3 @@ jobs:
           mkdir rrd
           pip install -r examples/python/structure_from_motion/requirements.txt
           python3 examples/python/structure_from_motion/main.py --dataset colmap_fiat --resize 800x600 --save rrd/colmap_fiat.rrd
-

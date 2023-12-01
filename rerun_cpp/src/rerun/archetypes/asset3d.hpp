@@ -67,10 +67,11 @@ namespace rerun::archetypes {
         /// Applies a transformation to the asset itself without impacting its children.
         std::optional<rerun::components::OutOfTreeTransform3D> transform;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] = "rerun.components.Asset3DIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'asset3d_ext.cpp'
@@ -117,7 +118,7 @@ namespace rerun::archetypes {
         Asset3D with_media_type(rerun::components::MediaType _media_type) && {
             media_type = std::move(_media_type);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An out-of-tree transform.
@@ -126,7 +127,7 @@ namespace rerun::archetypes {
         Asset3D with_transform(rerun::components::OutOfTreeTransform3D _transform) && {
             transform = std::move(_transform);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

@@ -24,6 +24,7 @@ tensor_dimension.rs linguist-generated=true
 transform3d.rs linguist-generated=true
 translation_and_mat3x3.rs linguist-generated=true
 translation_rotation_scale3d.rs linguist-generated=true
+uuid.rs linguist-generated=true
 uvec2d.rs linguist-generated=true
 uvec3d.rs linguist-generated=true
 uvec4d.rs linguist-generated=true

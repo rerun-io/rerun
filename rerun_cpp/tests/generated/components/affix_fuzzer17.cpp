@@ -8,18 +8,18 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char AffixFuzzer17::NAME[] = "rerun.testing.components.AffixFuzzer17";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& AffixFuzzer17::arrow_datatype() {
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::AffixFuzzer17>::arrow_datatype() {
         static const auto datatype = arrow::list(
-            arrow::field("item", rerun::datatypes::AffixFuzzer3::arrow_datatype(), false)
+            arrow::field("item", Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype(), false)
         );
         return datatype;
     }
 
-    rerun::Error AffixFuzzer17::fill_arrow_array_builder(
-        arrow::ListBuilder* builder, const AffixFuzzer17* elements, size_t num_elements
+    rerun::Error Loggable<components::AffixFuzzer17>::fill_arrow_array_builder(
+        arrow::ListBuilder* builder, const components::AffixFuzzer17* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -40,11 +40,13 @@ namespace rerun::components {
             if (element.many_optional_unions.has_value()) {
                 ARROW_RETURN_NOT_OK(builder->Append());
                 if (element.many_optional_unions.value().data()) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::AffixFuzzer3::fill_arrow_array_builder(
-                        value_builder,
-                        element.many_optional_unions.value().data(),
-                        element.many_optional_unions.value().size()
-                    ));
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::AffixFuzzer3>::fill_arrow_array_builder(
+                            value_builder,
+                            element.many_optional_unions.value().data(),
+                            element.many_optional_unions.value().size()
+                        )
+                    );
                 }
             } else {
                 ARROW_RETURN_NOT_OK(builder->AppendNull());
@@ -54,15 +56,16 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> AffixFuzzer17::to_data_cell(
-        const AffixFuzzer17* instances, size_t num_instances
+    Result<std::shared_ptr<arrow::Array>> Loggable<components::AffixFuzzer17>::to_arrow(
+        const components::AffixFuzzer17* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
 
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(AffixFuzzer17::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<components::AffixFuzzer17>::fill_arrow_array_builder(
                 static_cast<arrow::ListBuilder*>(builder.get()),
                 instances,
                 num_instances
@@ -70,11 +73,6 @@ namespace rerun::components {
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-        DataCell cell;
-        cell.num_instances = num_instances;
-        cell.component_name = AffixFuzzer17::NAME;
-        cell.array = std::move(array);
-        return cell;
+        return array;
     }
-} // namespace rerun::components
+} // namespace rerun

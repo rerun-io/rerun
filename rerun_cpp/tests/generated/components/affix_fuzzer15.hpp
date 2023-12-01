@@ -8,11 +8,11 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
 } // namespace arrow
@@ -20,9 +20,6 @@ namespace arrow {
 namespace rerun::components {
     struct AffixFuzzer15 {
         std::optional<rerun::datatypes::AffixFuzzer3> single_optional_union;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer15() = default;
@@ -41,18 +38,30 @@ namespace rerun::components {
         operator std::optional<rerun::datatypes::AffixFuzzer3>() const {
             return single_optional_union;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer15> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer15";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const AffixFuzzer15* elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const components::AffixFuzzer15* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer15 components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer15* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AffixFuzzer15` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AffixFuzzer15* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

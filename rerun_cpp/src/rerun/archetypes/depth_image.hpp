@@ -23,6 +23,10 @@ namespace rerun::archetypes {
     /// The shape of the `TensorData` must be mappable to an `HxW` tensor.
     /// Each pixel corresponds to a depth value in units specified by `meter`.
     ///
+    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+    /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+    ///
     /// ## Example
     ///
     /// ### Depth to 3D example
@@ -58,10 +62,7 @@ namespace rerun::archetypes {
     ///         )
     ///     );
     ///
-    ///     rec.log(
-    ///         "world/camera/depth",
-    ///         rerun::DepthImage({HEIGHT, WIDTH}, std::move(data)).with_meter(10000.0)
-    ///     );
+    ///     rec.log("world/camera/depth", rerun::DepthImage({HEIGHT, WIDTH}, data).with_meter(10000.0));
     /// }
     /// ```
     struct DepthImage {
@@ -79,26 +80,46 @@ namespace rerun::archetypes {
         /// Objects with higher values are drawn on top of those with lower values.
         std::optional<rerun::components::DrawOrder> draw_order;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] =
+            "rerun.components.DepthImageIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'depth_image_ext.cpp'
 
         /// New depth image from height/width and tensor buffer.
         ///
+        /// \param shape
+        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
         /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// Calls `Error::handle()` if the shape is not rank 2.
+        /// \param buffer
+        /// The tensor buffer containing the depth image data.
         DepthImage(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
             : DepthImage(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
 
         /// New depth image from tensor data.
         ///
+        /// \param data_
+        /// The tensor buffer containing the depth image data.
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
         explicit DepthImage(components::TensorData data_);
+
+        /// New depth image from dimensions and pointer to depth image data.
+        ///
+        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+        /// \param shape
+        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
+        /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
+        /// Determines the number of elements expected to be in `data`.
+        /// \param data_
+        /// Target of the pointer must outlive the archetype.
+        template <typename TElement>
+        explicit DepthImage(Collection<datatypes::TensorDimension> shape, const TElement* data_)
+            : DepthImage(datatypes::TensorData(std::move(shape), data_)) {}
 
       public:
         DepthImage() = default;
@@ -111,7 +132,7 @@ namespace rerun::archetypes {
         DepthImage with_meter(rerun::components::DepthMeter _meter) && {
             meter = std::move(_meter);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// An optional floating point value that specifies the 2D drawing order.
@@ -120,7 +141,7 @@ namespace rerun::archetypes {
         DepthImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
             draw_order = std::move(_draw_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

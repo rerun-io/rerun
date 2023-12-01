@@ -5,9 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -19,24 +17,23 @@ namespace rerun {
         cells.reserve(4);
 
         {
-            auto result = rerun::components::Text::to_data_cell(&archetype.text, 1);
+            auto result = DataCell::from_loggable(archetype.text);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.level.has_value()) {
-            auto result =
-                rerun::components::TextLogLevel::to_data_cell(&archetype.level.value(), 1);
+            auto result = DataCell::from_loggable(archetype.level.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            auto result = rerun::components::Color::to_data_cell(&archetype.color.value(), 1);
+            auto result = DataCell::from_loggable(archetype.color.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = TextLog::IndicatorComponent();
-            auto result = TextLog::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

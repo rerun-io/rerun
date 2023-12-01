@@ -12,6 +12,8 @@ Embed the Rerun web viewer within your React app.
   </picture>
 </p>
 
+If you'd like to use a framework-agnostic package instead, see <https://www.npmjs.com/package/@rerun-io/web-viewer>.
+
 ## Install
 
 ```
@@ -28,17 +30,19 @@ This means that `@rerun-io/web-viewer-react@0.10.0` can only connect to a data s
 import WebViewer from "@rerun-io/web-viewer-react";
 
 export default function App() {
-  return (
-    <div>
-      <WebViewer rrd="...">
-    </div>
-  )
+  return <WebViewer rrd="...">
 }
 ```
 
+The `rrd` in the snippet above should be a URL pointing to either:
+- A hosted `.rrd` file, such as <https://demo.rerun.io/version/0.11.0/examples/dna/data.rrd>
+- A WebSocket connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk-operating-modes#serve) API
+
+If `rrd` is not set, the viewer will display the same welcome screen as <https://app.rerun.io>.
+
 ℹ️ Note:
 This package only targets recent versions of browsers.
-If your target browser does not support Wasm imports, you may need to install additional plugins for your bundler.
+If your target browser does not support Wasm imports or top-level await, you may need to install additional plugins for your bundler.
 
 ## Development
 

@@ -23,7 +23,7 @@ impl Eq for ArrowString {}
 impl PartialOrd for ArrowString {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.as_str().partial_cmp(other.as_str())
+        Some(self.as_str().cmp(other.as_str()))
     }
 }
 

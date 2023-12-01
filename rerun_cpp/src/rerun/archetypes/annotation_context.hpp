@@ -64,10 +64,12 @@ namespace rerun::archetypes {
         /// List of class descriptions, mapping class indices to class names, colors etc.
         rerun::components::AnnotationContext context;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] =
+            "rerun.components.AnnotationContextIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         AnnotationContext() = default;

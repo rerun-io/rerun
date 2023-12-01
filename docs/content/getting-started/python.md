@@ -1,6 +1,6 @@
 ---
 title: Python Quick Start
-order: 1
+order: 2
 ---
 
 ## Installing Rerun
@@ -16,22 +16,33 @@ You are now ready to start logging and visualizing data.
 
 ## Trying out the viewer
 
-The Rerun SDK comes packaged with a simple demo to quickly get a feel for the viewer. You can launch it with:
+Rerun comes packaged with integrated examples to make it easy to explore the viewer. Launch it with:
 ```bash
-$ python3 -m rerun_demo
+$ rerun
 ```
 
-If everything is installed and working correctly, you should end up with a window like below.
-Try looping the recording to see the fun animation.
+This command is automatically installed by the `rerun-sdk` Python package. When running it, you should end up with a window like below:
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/quickstart0_cube/770ffcd66ebc020bb0ff00ec123e19f1fcb0a3a4/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/quickstart0_cube/770ffcd66ebc020bb0ff00ec123e19f1fcb0a3a4/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/quickstart0_cube/770ffcd66ebc020bb0ff00ec123e19f1fcb0a3a4/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/quickstart0_cube/770ffcd66ebc020bb0ff00ec123e19f1fcb0a3a4/1200w.png">
-  <img src="https://static.rerun.io/quickstart0_cube/770ffcd66ebc020bb0ff00ec123e19f1fcb0a3a4/full.png" alt="colored cube">
+  <img src="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/1200w.png">
 </picture>
 
+Click on the "View Examples" button, and then on the "Helix" example. This should bring you to this screen:
+
+<picture>
+  <img src="https://static.rerun.io/helix/7afe34b3150dd09b017724331459bd694e7069ac/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/helix/7afe34b3150dd09b017724331459bd694e7069ac/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/helix/7afe34b3150dd09b017724331459bd694e7069ac/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/helix/7afe34b3150dd09b017724331459bd694e7069ac/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/helix/7afe34b3150dd09b017724331459bd694e7069ac/1200w.png">
+</picture>
+
+
+Try looping the recording to see the fun animation.
 
 *Note: If this is your first time launching Rerun you will see a notification in the terminal about the Rerun anonymous
 data usage policy. Rerun collects anonymous usage data to help improve the project, though you may choose to opt out if you
@@ -56,7 +67,7 @@ This is just a taste of some of what you can do with the viewer. We will cover o
 more detail later in the [Viewer Walkthrough](viewer-walkthrough.md)
 
 ## Logging your own data
-Now instead of using a prepackaged demo, let's create some data ourselves. We will start with an
+After exploring a built-in example, let's create some data ourselves. We will start with an
 extremely simplified version of this dataset that just logs 1 dimension of points instead of 3.
 
 Create a new python script with the following code:
@@ -97,8 +108,7 @@ call that can accept a variety of correctly-formatted data—including your own.
 one of the built-in *archetype* class, such as [`rr.Points3D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points3D). Archetypes take care of gathering the various
 components representing, in this case, a batch of 3D points such that it is recognized and correctly displayed by the Rerun viewer. The `rr.Points3D` archetype accepts any collection of positions that can be converted to a Nx3 Numpy array, along with other components such as colors, radii, etc.
 
-Feel free to modify the code to log a different set of points. If you want to generate the colored cube from the
-built-in demo, you can use the following numpy incantation.
+Feel free to modify the code to log a different set of points. For example, this code generates a more elaborate 3D colored cube:
 ```python
 import rerun as rr
 import numpy as np

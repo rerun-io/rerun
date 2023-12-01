@@ -25,6 +25,10 @@ namespace rerun::archetypes {
     /// Leading and trailing unit-dimensions are ignored, so that
     /// `1x640x480x1` is treated as a `640x480` image.
     ///
+    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+    /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
+    ///
     /// ## Example
     ///
     /// ### Simple segmentation image
@@ -60,7 +64,7 @@ namespace rerun::archetypes {
     ///         })
     ///     );
     ///
-    ///     rec.log("image", rerun::SegmentationImage({HEIGHT, WIDTH}, std::move(data)));
+    ///     rec.log("image", rerun::SegmentationImage({HEIGHT, WIDTH}, data));
     /// }
     /// ```
     struct SegmentationImage {
@@ -72,18 +76,23 @@ namespace rerun::archetypes {
         /// Objects with higher values are drawn on top of those with lower values.
         std::optional<rerun::components::DrawOrder> draw_order;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] =
+            "rerun.components.SegmentationImageIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'segmentation_image_ext.cpp'
 
         /// New segmentation image from height/width and tensor buffer.
         ///
+        /// \param shape
+        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
         /// Sets the dimension names to "height" and "width" if they are not specified.
-        /// Calls `Error::handle()` if the shape is not rank 2.
+        /// \param buffer
+        /// The tensor buffer containing the segmentation image data.
         SegmentationImage(
             Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer
         )
@@ -91,9 +100,26 @@ namespace rerun::archetypes {
 
         /// New segmentation image from tensor data.
         ///
+        /// \param data_
+        /// The tensor buffer containing the segmentation image data.
         /// Sets the dimension names to "height" and "width" if they are not specified.
         /// Calls `Error::handle()` if the shape is not rank 2.
         explicit SegmentationImage(components::TensorData data_);
+
+        /// New segmentation image from dimensions and pointer to segmentation image data.
+        ///
+        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+        /// \param shape
+        /// Shape of the image. Calls `Error::handle()` if the shape is not rank 2.
+        /// Sets the dimension names to "height", "width" and "channel" if they are not specified.
+        /// Determines the number of elements expected to be in `data`.
+        /// \param data_
+        /// Target of the pointer must outlive the archetype.
+        template <typename TElement>
+        explicit SegmentationImage(
+            Collection<datatypes::TensorDimension> shape, const TElement* data_
+        )
+            : SegmentationImage(datatypes::TensorData(std::move(shape), data_)) {}
 
       public:
         SegmentationImage() = default;
@@ -105,7 +131,7 @@ namespace rerun::archetypes {
         SegmentationImage with_draw_order(rerun::components::DrawOrder _draw_order) && {
             draw_order = std::move(_draw_order);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

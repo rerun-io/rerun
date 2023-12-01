@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/transform3d.hpp"
 #include "../result.hpp"
 
@@ -11,6 +10,7 @@
 #include <memory>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
 } // namespace arrow
@@ -22,9 +22,6 @@ namespace rerun::components {
     struct OutOfTreeTransform3D {
         /// Representation of the transform.
         rerun::datatypes::Transform3D repr;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         OutOfTreeTransform3D() = default;
@@ -40,19 +37,30 @@ namespace rerun::components {
         operator rerun::datatypes::Transform3D() const {
             return repr;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::OutOfTreeTransform3D> {
+        static constexpr const char Name[] = "rerun.components.OutOfTreeTransform3D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const OutOfTreeTransform3D* elements,
+            arrow::DenseUnionBuilder* builder, const components::OutOfTreeTransform3D* elements,
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of OutOfTreeTransform3D components.
-        static Result<rerun::DataCell> to_data_cell(
-            const OutOfTreeTransform3D* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::OutOfTreeTransform3D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::OutOfTreeTransform3D* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

@@ -91,10 +91,11 @@ namespace rerun::archetypes {
         /// Unique identifiers for each individual point in the batch.
         std::optional<Collection<rerun::components::InstanceKey>> instance_keys;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] = "rerun.components.Arrows3DIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'arrows3d_ext.cpp'
@@ -117,7 +118,7 @@ namespace rerun::archetypes {
         Arrows3D with_origins(Collection<rerun::components::Position3D> _origins) && {
             origins = std::move(_origins);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional radii for the arrows.
@@ -127,21 +128,21 @@ namespace rerun::archetypes {
         Arrows3D with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional colors for the points.
         Arrows3D with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional text labels for the arrows.
         Arrows3D with_labels(Collection<rerun::components::Text> _labels) && {
             labels = std::move(_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Optional class Ids for the points.
@@ -150,14 +151,14 @@ namespace rerun::archetypes {
         Arrows3D with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
             class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Unique identifiers for each individual point in the batch.
         Arrows3D with_instance_keys(Collection<rerun::components::InstanceKey> _instance_keys) && {
             instance_keys = std::move(_instance_keys);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.

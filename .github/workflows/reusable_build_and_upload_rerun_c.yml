@@ -67,12 +67,13 @@ jobs:
     steps:
       - name: Set runner and target based on platform
         id: set-config
+        shell: bash
         run: |
           case "${{ inputs.PLATFORM }}" in
             linux)
               runner="ubuntu-latest-16-cores"
               target="x86_64-unknown-linux-gnu"
-              container="{'image': 'rerunio/ci_docker:0.10.0'}"
+              container="{'image': 'rerunio/ci_docker:0.11.0'}"
               lib_name="librerun_c.a"
               ;;
             windows)
@@ -107,6 +108,7 @@ jobs:
     container: ${{ fromJson(needs.set-config.outputs.CONTAINER) }}
     steps:
       - name: Show context
+        shell: bash
         run: |
           echo "GITHUB_CONTEXT": $GITHUB_CONTEXT
           echo "JOB_CONTEXT": $JOB_CONTEXT
@@ -147,7 +149,8 @@ jobs:
         id: get-sha
         shell: bash
         run: |
-          echo "sha=$(echo ${{ inputs.RELEASE_COMMIT || github.sha }} | cut -c1-7)" >> "$GITHUB_OUTPUT"
+          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha) }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Upload rerun_c (commit)"
         uses: google-github-actions/upload-cloud-storage@v1

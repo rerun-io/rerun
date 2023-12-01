@@ -5,19 +5,22 @@
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
 
+mod component_type_registry;
 mod error;
 mod ptr;
+mod recording_streams;
 
 use std::ffi::{c_char, CString};
 
+use component_type_registry::COMPONENT_TYPES;
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
 
 use re_sdk::{
     external::re_log_types::{self},
     log::{DataCell, DataRow},
     ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
 };
+use recording_streams::{recording_stream, RECORDING_STREAMS};
 
 // ----------------------------------------------------------------------------
 // Types:
@@ -39,9 +42,19 @@ impl CStringView {
     pub fn is_null(&self) -> bool {
         self.string.is_null()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
 }
 
-type CRecordingStream = u32;
+pub type CRecordingStream = u32;
+
+pub type CComponentTypeHandle = u32;
+
+pub const RR_REC_STREAM_CURRENT_RECORDING: CRecordingStream = 0xFFFFFFFF;
+pub const RR_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
+pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 
 /// C version of [`re_sdk::SpawnOptions`].
 #[derive(Debug, Clone)]
@@ -62,15 +75,15 @@ impl CSpawnOptions {
             spawn_opts.port = self.port;
         }
 
-        if !self.memory_limit.is_null() {
+        if !self.memory_limit.is_empty() {
             spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
         }
 
-        if !self.executable_name.is_null() {
+        if !self.executable_name.is_empty() {
             spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
         }
 
-        if !self.executable_path.is_null() {
+        if !self.executable_path.is_empty() {
             spawn_opts.executable_path =
                 Some(self.executable_path.as_str("executable_path")?.to_owned());
         }
@@ -105,17 +118,24 @@ pub struct CStoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: CStringView,
 
+    /// The user-chosen name of the recording being logged to.
+    ///
+    /// Defaults to a random ID if unspecified.
+    pub recording_id: CStringView,
+
     pub store_kind: CStoreKind,
 }
 
 #[repr(C)]
-pub struct CDataCell {
-    pub component_name: CStringView,
-
-    pub array: arrow2::ffi::ArrowArray,
-
-    /// TODO(andreas): Use a schema registry.
+pub struct CComponentType {
+    pub name: CStringView,
     pub schema: arrow2::ffi::ArrowSchema,
+}
+
+#[repr(C)]
+pub struct CDataCell {
+    pub component_type: CComponentTypeHandle,
+    pub array: arrow2::ffi::ArrowArray,
 }
 
 #[repr(C)]
@@ -136,6 +156,7 @@ pub enum CErrorCode {
     InvalidStringArgument,
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
+    InvalidComponentTypeHandle,
 
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
@@ -159,56 +180,6 @@ pub struct CError {
 }
 
 // ----------------------------------------------------------------------------
-// Global data:
-
-const RERUN_REC_STREAM_CURRENT_RECORDING: CRecordingStream = 0xFFFFFFFF;
-const RERUN_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
-
-#[derive(Default)]
-pub struct RecStreams {
-    next_id: CRecordingStream,
-    streams: ahash::HashMap<CRecordingStream, RecordingStream>,
-}
-
-impl RecStreams {
-    fn insert(&mut self, stream: RecordingStream) -> CRecordingStream {
-        let id = self.next_id;
-        self.next_id += 1;
-        self.streams.insert(id, stream);
-        id
-    }
-
-    fn get(&self, id: CRecordingStream) -> Option<RecordingStream> {
-        match id {
-            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None)
-                .or(Some(RecordingStream::disabled())),
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None)
-                .or(Some(RecordingStream::disabled())),
-            _ => self.streams.get(&id).cloned(),
-        }
-    }
-
-    fn remove(&mut self, id: CRecordingStream) -> Option<RecordingStream> {
-        match id {
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT | RERUN_REC_STREAM_CURRENT_RECORDING => None,
-            _ => self.streams.remove(&id),
-        }
-    }
-}
-
-/// All recording streams created from C.
-static RECORDING_STREAMS: Lazy<Mutex<RecStreams>> = Lazy::new(Mutex::default);
-
-/// Access a C created recording stream.
-#[allow(clippy::result_large_err)]
-fn recording_stream(stream: CRecordingStream) -> Result<RecordingStream, CError> {
-    RECORDING_STREAMS
-        .lock()
-        .get(stream)
-        .ok_or(CError::invalid_recording_stream_handle())
-}
-
-// ----------------------------------------------------------------------------
 // Public functions:
 
 // SAFETY: the unsafety comes from #[no_mangle], because we can declare multiple
@@ -217,7 +188,7 @@ fn recording_stream(stream: CRecordingStream) -> Result<RecordingStream, CError>
 #[no_mangle]
 pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: Lazy<CString> =
-        Lazy::new(|| CString::new(re_sdk::build_info().to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
+        Lazy::new(|| CString::new(re_sdk::build_info().version.to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
 }
@@ -246,6 +217,42 @@ pub extern "C" fn rr_spawn(spawn_opts: *const CSpawnOptions, error: *mut CError)
 }
 
 #[allow(clippy::result_large_err)]
+#[allow(unsafe_code)]
+fn rr_register_component_type_impl(
+    component_type: &CComponentType,
+) -> Result<CComponentTypeHandle, CError> {
+    let component_name = component_type.name.as_str("component_type.name")?;
+    let component_name = ComponentName::from(component_name);
+    let schema =
+        unsafe { arrow2::ffi::import_field_from_c(&component_type.schema) }.map_err(|err| {
+            CError::new(
+                CErrorCode::ArrowFfiSchemaImportError,
+                &format!("Failed to import ffi schema: {err}"),
+            )
+        })?;
+
+    Ok(COMPONENT_TYPES
+        .write()
+        .register(component_name, schema.data_type))
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_register_component_type(
+    // Note that since this is passed by value, Arrow2 will release the schema on drop!
+    component_type: CComponentType,
+    error: *mut CError,
+) -> u32 {
+    match rr_register_component_type_impl(&component_type) {
+        Ok(id) => id,
+        Err(err) => {
+            err.write_error(error);
+            RR_COMPONENT_TYPE_HANDLE_INVALID
+        }
+    }
+}
+
+#[allow(clippy::result_large_err)]
 fn rr_recording_stream_new_impl(
     store_info: *const CStoreInfo,
     default_enabled: bool,
@@ -256,6 +263,7 @@ fn rr_recording_stream_new_impl(
 
     let CStoreInfo {
         application_id,
+        recording_id,
         store_kind,
     } = *store_info;
 
@@ -266,6 +274,12 @@ fn rr_recording_stream_new_impl(
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
         .store_source(re_log_types::StoreSource::CSdk)
         .default_enabled(default_enabled);
+
+    if !(recording_id.is_null() || recording_id.is_empty()) {
+        if let Ok(recording_id) = recording_id.as_str("recording_id") {
+            rec_builder = rec_builder.recording_id(recording_id);
+        }
+    }
 
     if store_kind == CStoreKind::Blueprint {
         rec_builder = rec_builder.blueprint();
@@ -587,50 +601,51 @@ fn rr_log_impl(
 
     let data_cells = unsafe { std::slice::from_raw_parts_mut(data_cells, num_data_cells) };
 
-    for data_cell in data_cells {
-        // Arrow2 implements drop for ArrowArray and ArrowSchema.
-        //
-        // Therefore, for things to work correctly we have to take ownership of the data cell!
-        // The C interface is documented to take ownership of the data cell - the user should NOT call `release`.
-        // This makes sense because from here on out we want to manage the lifetime of the underlying schema and array data:
-        // the schema won't survive a loop iteration since it's reference passed for import, whereas the ArrowArray lives
-        // on a longer within the resulting arrow::Array.
-        let CDataCell {
-            component_name,
-            array,
-            schema,
-        } = unsafe { std::ptr::read(data_cell) };
+    {
+        let component_type_registry = COMPONENT_TYPES.read();
 
-        // It would be nice to now mark the data_cell as "consumed" by setting the original release method to nullptr.
-        // This would signifies to the calling code that the data_cell is no longer owned.
-        // However, Arrow2 doesn't allow us to access the fields of the ArrowArray and ArrowSchema structs.
+        for data_cell in data_cells {
+            // Arrow2 implements drop for ArrowArray and ArrowSchema.
+            //
+            // Therefore, for things to work correctly we have to take ownership of the data cell!
+            // The C interface is documented to take ownership of the data cell - the user should NOT call `release`.
+            // This makes sense because from here on out we want to manage the lifetime of the underlying schema and array data:
+            // the schema won't survive a loop iteration since it's reference passed for import, whereas the ArrowArray lives
+            // on a longer within the resulting arrow::Array.
+            let CDataCell {
+                component_type,
+                array,
+            } = unsafe { std::ptr::read(data_cell) };
 
-        let component_name = component_name.as_str("data_cells[i].component_name")?;
-        let component_name = ComponentName::from(component_name);
+            // It would be nice to now mark the data_cell as "consumed" by setting the original release method to nullptr.
+            // This would signifies to the calling code that the data_cell is no longer owned.
+            // However, Arrow2 doesn't allow us to access the fields of the ArrowArray and ArrowSchema structs.
 
-        let field = unsafe { arrow2::ffi::import_field_from_c(&schema) }.map_err(|err| {
-            CError::new(
-                CErrorCode::ArrowFfiSchemaImportError,
-                &format!("Failed to import ffi schema: {err}"),
-            )
-        })?;
-
-        let values =
-            unsafe { arrow2::ffi::import_array_from_c(array, field.data_type) }.map_err(|err| {
+            let component_type = component_type_registry.get(component_type).ok_or_else(|| {
                 CError::new(
-                    CErrorCode::ArrowFfiArrayImportError,
-                    &format!("Failed to import ffi array: {err}"),
+                    CErrorCode::InvalidComponentTypeHandle,
+                    &format!("Invalid component type handle: {component_type}"),
                 )
             })?;
 
-        cells.push(
-            DataCell::try_from_arrow(component_name, values).map_err(|err| {
-                CError::new(
-                    CErrorCode::ArrowDataCellError,
-                    &format!("Failed to create arrow datacell: {err}"),
-                )
-            })?,
-        );
+            let values =
+                unsafe { arrow2::ffi::import_array_from_c(array, component_type.datatype.clone()) }
+                    .map_err(|err| {
+                        CError::new(
+                            CErrorCode::ArrowFfiArrayImportError,
+                            &format!("Failed to import ffi array: {err}"),
+                        )
+                    })?;
+
+            cells.push(
+                DataCell::try_from_arrow(component_type.name, values).map_err(|err| {
+                    CError::new(
+                        CErrorCode::ArrowDataCellError,
+                        &format!("Failed to create arrow datacell: {err}"),
+                    )
+                })?,
+            );
+        }
     }
 
     let data_row = DataRow::from_cells(

@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest-16-cores
 
     container:
-      image: rerunio/ci_docker:0.10.0
+      image: rerunio/ci_docker:0.11.0
 
     steps:
       - uses: actions/checkout@v4
@@ -55,14 +55,24 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
       - name: Build web-viewer (release)
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
+        shell: bash
+        run: |
+          cargo run --locked -p re_build_web_viewer -- --release ${{ inputs.EXTRA_FLAGS }}
+
+      # We build a single manifest pointing to the `commit`
+      # All the `pr`, `nightly`, release tag, etc. variants will always just point to the resolved commit
+      - name: Build examples manifest
+        shell: bash
+        run: |
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          sha="$(echo $full_commit | cut -c1-7)"
+
+          cargo run --locked -p re_build_examples_manifest -- \
+            --base-url "https://demo.rerun.io/commit/$sha" \
+            web_viewer/examples_manifest.json
 
       - name: Upload web assets
         uses: actions/upload-artifact@v3
         with:
           name: web_viewer
           path: web_viewer
-

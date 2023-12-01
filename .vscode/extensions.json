@@ -21,5 +21,6 @@
     "webfreak.debug",
     "xaver.clang-format", // C++ formatter
     "zxh404.vscode-proto3",
+    "esbenp.prettier-vscode"
   ]
 }

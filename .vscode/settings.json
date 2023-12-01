@@ -74,7 +74,7 @@
     ],
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools", // Use cmake-tools to grab configs.
     "C_Cpp.autoAddFileAssociations": false,
-    "cmake.buildDirectory": "${workspaceRoot}/build/",
+    "cmake.buildDirectory": "${workspaceRoot}/build/debug",
     "cmake.generator": "Ninja", // Use Ninja, just like we do in our just/pixi command.
     "rust-analyzer.showUnlinkedFileNotification": false,
     "ruff.format.args": [
@@ -83,7 +83,22 @@
     "ruff.lint.args": [
         "--config=rerun_py/pyproject.toml"
     ],
+
+    "prettier.configPath": ".prettierrc.toml",
     "[python]": {
         "editor.defaultFormatter": "charliermarsh.ruff",
     },
+
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[html]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[yaml]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
 }

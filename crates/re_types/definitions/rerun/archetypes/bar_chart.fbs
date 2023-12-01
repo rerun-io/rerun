@@ -18,4 +18,9 @@ table BarChart (
 
   /// The values. Should always be a rank-1 tensor.
   values: rerun.components.TensorData ("attr.rerun.component_required", required, order: 1000);
+
+  // --- Optional ---
+
+  /// The color of the bar chart
+  color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);
 }

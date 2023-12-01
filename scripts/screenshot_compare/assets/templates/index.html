@@ -3,7 +3,10 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 
   <!-- Disable zooming: -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, user-scalable=no"
+  />
 
   <head>
     <title>Screenshot compare</title>
@@ -11,13 +14,12 @@
   </head>
 
   <body>
-
     <ul>
-        {% for entry in examples %}
-            <li>
-            <a href="examples/{{ entry.name }}">{{ entry.name }}</a>
-            </li>
-        {% endfor %}
+      {% for entry in examples %}
+      <li>
+        <a href="examples/{{ entry.name }}">{{ entry.name }}</a>
+      </li>
+      {% endfor %}
     </ul>
   </body>
 </html>

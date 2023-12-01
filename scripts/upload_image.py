@@ -41,7 +41,6 @@ import hashlib
 import logging
 import mimetypes
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -115,10 +114,9 @@ def image_from_clipboard() -> Image:
 
 
 class Uploader:
-    def __init__(self, pngcrush: bool, auto_accept: bool):
+    def __init__(self, auto_accept: bool):
         gcs = storage.Client("rerun-open")
         self.bucket = gcs.bucket("rerun-static-img")
-        self.run_pngcrush = pngcrush
         self.auto_accept = auto_accept
 
     def _check_aspect_ratio(self, image: Path | Image) -> None:
@@ -309,9 +307,6 @@ class Uploader:
             The content encoding of the object.
         """
 
-        if self.run_pngcrush and content_type == "image/png":
-            data = run_pngcrush(data)
-
         logging.info(f"Uploading {path} (size: {len(data)}, type: {content_type}, encoding: {content_encoding})")
         destination = self.bucket.blob(path)
         destination.content_type = content_type
@@ -323,42 +318,6 @@ class Uploader:
 
         stream = BytesIO(data)
         destination.upload_from_file(stream)
-
-
-def run_pngcrush(data: bytes) -> bytes:
-    """
-    Run pngcrush on some data.
-
-    Parameters
-    ----------
-    data : bytes
-        The PNG data to crush.
-
-    Returns
-    -------
-    bytes
-        The crushed PNG data.
-    """
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_file = Path(tmpdir) / "input.png"
-        input_file.write_bytes(data)
-
-        output_file = Path(tmpdir) / "output.png"
-        os.system(f"pngcrush -q -warn -rem allb -reduce {input_file} {output_file}")
-        output_data = output_file.read_bytes()
-
-    input_len = len(data)
-    output_len = len(output_data)
-    if output_len > input_len:
-        logging.info("pngcrush failed to reduce file size")
-        return data
-    else:
-        logging.info(
-            f"pngcrush reduced size from {input_len} to {output_len} bytes "
-            f"({(input_len - output_len) *100/ input_len:.2f}%)"
-        )
-        return output_data
 
 
 def data_hash(data: bytes) -> str:
@@ -384,10 +343,7 @@ def download_file(url: str, path: Path) -> None:
 def run(args: argparse.Namespace) -> None:
     """Run the script based on the provided args."""
     try:
-        if shutil.which("pngcrush") is None and not args.skip_pngcrush:
-            raise RuntimeError("pngcrush is not installed, consider using --skip-pngcrush")
-
-        uploader = Uploader(not args.skip_pngcrush, args.auto_accept)
+        uploader = Uploader(args.auto_accept)
 
         if args.single:
             if args.path is None:
@@ -440,7 +396,6 @@ def main() -> None:
         "--single", action="store_true", help="Upload a single image instead of creating a multi-resolution stack."
     )
     parser.add_argument("--name", type=str, help="Image name (required when uploading from clipboard).")
-    parser.add_argument("--skip-pngcrush", action="store_true", help="Skip PNGCrush.")
     parser.add_argument("--auto-accept", action="store_true", help="Auto-accept the aspect ratio confirmation prompt")
     parser.add_argument("--debug", action="store_true", help="Enable debug logging.")
     args = parser.parse_args()

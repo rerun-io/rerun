@@ -80,8 +80,8 @@ impl TensorData {
                     2 => Some([shape_short[0].size, shape_short[1].size, 1]),
                     3 => {
                         let channels = shape_short[2].size;
-                        if matches!(channels, 3 | 4) {
-                            // rgb, rgba
+                        if matches!(channels, 1 | 3 | 4) {
+                            // mono, rgb, rgba
                             Some([shape_short[0].size, shape_short[1].size, channels])
                         } else {
                             None

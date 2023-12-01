@@ -7,14 +7,10 @@ from __future__ import annotations
 
 from typing import Any, Sequence, Union
 
-import numpy as np
-import numpy.typing as npt
 from attrs import define, field
 
+from .. import datatypes
 from .._baseclasses import BaseBatch, BaseExtensionType
-from .._converters import (
-    to_np_uint8,
-)
 
 __all__ = [
     "SpaceViewComponent",
@@ -25,6 +21,15 @@ __all__ = [
 ]
 
 
+def _space_view_component__space_origin__special_field_converter_override(
+    x: datatypes.EntityPathLike
+) -> datatypes.EntityPath:
+    if isinstance(x, datatypes.EntityPath):
+        return x
+    else:
+        return datatypes.EntityPath(x)
+
+
 @define(init=False)
 class SpaceViewComponent:
     """
@@ -33,17 +38,78 @@ class SpaceViewComponent:
     Unstable. Used for the ongoing blueprint experimentations.
     """
 
-    def __init__(self: Any, space_view: SpaceViewComponentLike):
-        """Create a new instance of the SpaceViewComponent blueprint."""
+    def __init__(
+        self: Any,
+        display_name: str,
+        class_identifier: str,
+        space_origin: datatypes.EntityPathLike,
+        entities_determined_by_user: bool,
+        contents: datatypes.UuidArrayLike,
+    ):
+        """
+        Create a new instance of the SpaceViewComponent blueprint.
+
+        Parameters
+        ----------
+        display_name:
+            The name of the view.
+        class_identifier:
+            The class of the view.
+        space_origin:
+            The "anchor point" of this space view.
+
+            The transform at this path forms the reference point for all scene->world transforms in this space view.
+            I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
+            Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+        entities_determined_by_user:
+            True if the user is expected to add entities themselves. False otherwise.
+        contents:
+            `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+
+            It determines which entities are part of the spaceview.
+        """
 
         # You can define your own __init__ function as a member of SpaceViewComponentExt in space_view_component_ext.py
-        self.__attrs_init__(space_view=space_view)
+        self.__attrs_init__(
+            display_name=display_name,
+            class_identifier=class_identifier,
+            space_origin=space_origin,
+            entities_determined_by_user=entities_determined_by_user,
+            contents=contents,
+        )
 
-    space_view: npt.NDArray[np.uint8] = field(converter=to_np_uint8)
+    display_name: str = field(converter=str)
+    # The name of the view.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can define your own __array__ function as a member of SpaceViewComponentExt in space_view_component_ext.py
-        return np.asarray(self.space_view, dtype=dtype)
+    class_identifier: str = field(converter=str)
+    # The class of the view.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    space_origin: datatypes.EntityPath = field(
+        converter=_space_view_component__space_origin__special_field_converter_override
+    )
+    # The "anchor point" of this space view.
+    #
+    # The transform at this path forms the reference point for all scene->world transforms in this space view.
+    # I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
+    # Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    entities_determined_by_user: bool = field(converter=bool)
+    # True if the user is expected to add entities themselves. False otherwise.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    contents: list[datatypes.Uuid] = field()
+    # `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+    #
+    # It determines which entities are part of the spaceview.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
 
 
 SpaceViewComponentLike = SpaceViewComponent

@@ -8,11 +8,11 @@
 #include <cstdint>
 #include <memory>
 #include <rerun/collection.hpp>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class ListBuilder;
 } // namespace arrow
@@ -20,9 +20,6 @@ namespace arrow {
 namespace rerun::components {
     struct AffixFuzzer16 {
         rerun::Collection<rerun::datatypes::AffixFuzzer3> many_required_unions;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer16() = default;
@@ -36,18 +33,30 @@ namespace rerun::components {
             many_required_unions = std::move(many_required_unions_);
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer16> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer16";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::ListBuilder* builder, const AffixFuzzer16* elements, size_t num_elements
+            arrow::ListBuilder* builder, const components::AffixFuzzer16* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer16 components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer16* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AffixFuzzer16` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AffixFuzzer16* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

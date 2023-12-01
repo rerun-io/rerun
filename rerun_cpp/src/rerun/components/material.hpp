@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/material.hpp"
 #include "../datatypes/rgba32.hpp"
 #include "../result.hpp"
@@ -13,6 +12,7 @@
 #include <optional>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -21,9 +21,6 @@ namespace rerun::components {
     /// **Component**: Material properties of a mesh.
     struct Material {
         rerun::datatypes::Material material;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'material_ext.cpp'
@@ -54,18 +51,29 @@ namespace rerun::components {
         operator rerun::datatypes::Material() const {
             return material;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::Material> {
+        static constexpr const char Name[] = "rerun.components.Material";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const Material* elements, size_t num_elements
+            arrow::StructBuilder* builder, const components::Material* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of Material components.
-        static Result<rerun::DataCell> to_data_cell(
-            const Material* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::Material` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::Material* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

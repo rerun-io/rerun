@@ -1,4 +1,5 @@
 #include "../error_check.hpp"
+#include "archetype_test.hpp"
 
 #include <rerun/archetypes/image.hpp>
 using namespace rerun::archetypes;
@@ -104,9 +105,9 @@ SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
 
     GIVEN("tensor data with too low rank") {
         rerun::datatypes::TensorData data(
-            {{
+            {
                 rerun::datatypes::TensorDimension(1, "dr robotnik"),
-            }},
+            },
             std::vector<uint8_t>(1, 0)
         );
         THEN("a warning occurs on image construction") {
@@ -121,6 +122,18 @@ SCENARIO("Image archetype can be created from tensor data." TEST_TAG) {
 
             AND_THEN("serialization succeeds") {
                 CHECK(rerun::AsComponents<decltype(image)>().serialize(image).is_ok());
+            }
+        }
+    }
+
+    GIVEN("a vector of data") {
+        std::vector<uint8_t> data(10 * 10, 0);
+        THEN("no error occurs on image construction with either the vector or a data pointer") {
+            auto image_from_vector = check_logged_error([&] { return Image({10, 10}, data); });
+            auto image_from_ptr = check_logged_error([&] { return Image({10, 10}, data.data()); });
+
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_ptr, image_from_vector);
             }
         }
     }

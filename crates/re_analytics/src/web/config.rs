@@ -45,7 +45,7 @@ fn get_local_storage() -> Result<Storage, ConfigError> {
 }
 
 impl Config {
-    const STORAGE_KEY: &str = "rerun_config";
+    const STORAGE_KEY: &'static str = "rerun_config";
 
     #[allow(clippy::unnecessary_wraps)]
     pub fn new() -> Result<Self, ConfigError> {

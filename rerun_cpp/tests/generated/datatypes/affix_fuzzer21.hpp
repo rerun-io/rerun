@@ -10,6 +10,7 @@
 #include <rerun/result.hpp>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -22,13 +23,30 @@ namespace rerun::datatypes {
 
       public:
         AffixFuzzer21() = default;
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::AffixFuzzer21> {
+        static constexpr const char Name[] = "rerun.testing.datatypes.AffixFuzzer21";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const AffixFuzzer21* elements, size_t num_elements
+            arrow::StructBuilder* builder, const datatypes::AffixFuzzer21* elements,
+            size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::datatypes::AffixFuzzer21` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::AffixFuzzer21* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

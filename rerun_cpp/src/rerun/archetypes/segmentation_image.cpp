@@ -5,10 +5,7 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char SegmentationImage::INDICATOR_COMPONENT_NAME[] =
-        "rerun.components.SegmentationImageIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
@@ -20,19 +17,18 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = rerun::components::TensorData::to_data_cell(&archetype.data, 1);
+            auto result = DataCell::from_loggable(archetype.data);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            auto result =
-                rerun::components::DrawOrder::to_data_cell(&archetype.draw_order.value(), 1);
+            auto result = DataCell::from_loggable(archetype.draw_order.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value));
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = SegmentationImage::IndicatorComponent();
-            auto result = SegmentationImage::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
             cells.emplace_back(std::move(result.value));
         }

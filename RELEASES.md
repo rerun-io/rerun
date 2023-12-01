@@ -11,14 +11,15 @@ This document describes the current release and versioning strategy. This strate
 
 
 ## Release Cadence
-New Rerun versions are released every two weeks. Sometimes we do out-of-schedule patch releases.
+New Rerun versions are released every four weeks. Sometimes we do out-of-schedule patch releases.
 
 
 ## Library versioning and release cadence
 Each release include new versions of:
+* All rust crates
 * The Python SDK
 * The Rust SDK
-* All rust crates
+* The C++ SDK
 
 We use semantic versioning. All versions are increased in lockstep, with a minor version bump each time (`0.1.0`, `0.2.0`, `0.3.0`, …).
 
@@ -46,7 +47,7 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 2. ### Create a release branch.
 
    The name should be:
-   - `release-0.x.y` for final releases.
+   - `release-0.x.y` for final releases and their release candidates.
    - `release-0.x.y-alpha.N` where `N` is incremented from the previous alpha,
      or defaulted to `1` if no previous alpha exists.
 
@@ -60,7 +61,7 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
       - A one-line summary of the release
       - A multi-line summary of the release
       - A gif showing a major new feature
-      - Run `git tag -d latest && git fetch --tags ; pip install GitPython && scripts/generate_changelog.py`
+      - Run `pip install GitPython && scripts/generate_changelog.py`
       - Edit PR descriptions/labels to improve the generated changelog
       - Copy-paste the results into `CHANGELOG.md`.
       - Editorialize the changelog if necessary
@@ -78,6 +79,8 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 
      - `rc` if the branch name is `release-x.y.z`.
        This will create a pull request for the release, and publish a release candidate.
+1
+     - `final` for the final public release
 
    ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 

@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/vec2d.hpp"
 #include "../result.hpp"
 
@@ -12,6 +11,7 @@
 #include <memory>
 
 namespace arrow {
+    class Array;
     class DataType;
     class FixedSizeListBuilder;
 } // namespace arrow
@@ -23,9 +23,6 @@ namespace rerun::components {
     /// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
     struct HalfSizes2D {
         rerun::datatypes::Vec2D xy;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'half_sizes2d_ext.cpp'
@@ -62,18 +59,30 @@ namespace rerun::components {
         operator rerun::datatypes::Vec2D() const {
             return xy;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::HalfSizes2D> {
+        static constexpr const char Name[] = "rerun.components.HalfSizes2D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const HalfSizes2D* elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const components::HalfSizes2D* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of HalfSizes2D components.
-        static Result<rerun::DataCell> to_data_cell(
-            const HalfSizes2D* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::HalfSizes2D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::HalfSizes2D* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

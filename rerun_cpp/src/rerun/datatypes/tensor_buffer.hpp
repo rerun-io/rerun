@@ -15,6 +15,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
 } // namespace arrow
@@ -492,16 +493,43 @@ namespace rerun::datatypes {
             }
         }
 
-        /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// \private
+        const detail::TensorBufferData& get_union_data() const {
+            return _data;
+        }
 
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const TensorBuffer* elements, size_t num_elements
-        );
+        /// \private
+        detail::TensorBufferTag get_union_tag() const {
+            return _tag;
+        }
 
       private:
         detail::TensorBufferTag _tag;
         detail::TensorBufferData _data;
     };
 } // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::TensorBuffer> {
+        static constexpr const char Name[] = "rerun.datatypes.TensorBuffer";
+
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const datatypes::TensorBuffer* elements,
+            size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::datatypes::TensorBuffer` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::TensorBuffer* instances, size_t num_instances
+        );
+    };
+} // namespace rerun

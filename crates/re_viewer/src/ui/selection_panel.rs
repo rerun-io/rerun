@@ -4,16 +4,19 @@ use re_data_store::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
 };
 use re_data_ui::{image_meaning_for_entity, item_ui, DataUi};
+use re_log_types::{DataRow, RowId, TimePoint};
 use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     components::{PinholeProjection, Transform3D},
     tensor_data::TensorDataMeaning,
 };
+use re_ui::list_item::ListItem;
+use re_ui::ReUi;
 use re_viewer_context::{
-    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClassName, SpaceViewId, UiVerbosity,
-    ViewerContext,
+    gpu_bridge::colormap_dropdown_button_ui, Item, SpaceViewClass, SpaceViewClassIdentifier,
+    SpaceViewId, SystemCommand, SystemCommandSender as _, UiVerbosity, ViewerContext,
 };
-use re_viewport::{external::re_space_view::DataQuery as _, Viewport, ViewportBlueprint};
+use re_viewport::{external::re_space_view::QueryExpressions, Viewport, ViewportBlueprint};
 
 use crate::ui::visible_history::visible_history_ui;
 
@@ -49,7 +52,7 @@ impl SelectionPanel {
             });
 
         // Always reset the VH highlight, and let the UI re-set it if needed.
-        ctx.rec_cfg.visible_history_highlight = None;
+        ctx.rec_cfg.time_ctrl.write().highlighted_range = None;
 
         panel.show_animated_inside(ui, expanded, |ui: &mut egui::Ui| {
             // Set the clip rectangle to the panel for the benefit of nested, "full span" widgets
@@ -57,31 +60,36 @@ impl SelectionPanel {
             // enclosing frame doesn't have inner margins.
             ui.set_clip_rect(ui.max_rect());
 
-            egui::Frame {
-                inner_margin: re_ui::ReUi::panel_margin(),
-                ..Default::default()
-            }
-            .show(ui, |ui| {
-                let hover = "The Selection View contains information and options about the currently selected object(s)";
+            ctx.re_ui.panel_content(ui, |_, ui| {
+                let hover = "The Selection View contains information and options about the \
+                    currently selected object(s)";
                 ctx.re_ui
                     .panel_title_bar_with_buttons(ui, "Selection", Some(hover), |ui| {
+                        let mut history = ctx.selection_state().history.lock();
                         if let Some(selection) = self.selection_state_ui.selection_ui(
                             ctx.re_ui,
                             ui,
                             &viewport.blueprint,
-                            &mut ctx.selection_state_mut().history,
+                            &mut history,
                         ) {
-                            ctx.selection_state_mut()
+                            ctx.selection_state()
                                 .set_selection(selection.iter().cloned());
                         }
                     });
+            });
 
-                egui::ScrollArea::both()
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| {
+            // move the vertical spacing between the title and the content to _inside_ the scroll
+            // area
+            ui.add_space(-ui.spacing().item_spacing.y);
+
+            egui::ScrollArea::both()
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    ui.add_space(ui.spacing().item_spacing.y);
+                    ctx.re_ui.panel_content(ui, |_, ui| {
                         self.contents(ctx, ui, viewport);
                     });
-            });
+                });
         });
     }
 
@@ -100,11 +108,22 @@ impl SelectionPanel {
             return;
         }
 
-        let num_selections = ctx.selection().len();
+        // no gap before the first item title
+        ui.add_space(-ui.spacing().item_spacing.y);
+
         let selection = ctx.selection().to_vec();
         for (i, item) in selection.iter().enumerate() {
             ui.push_id(i, |ui| {
                 what_is_selected_ui(ui, ctx, &mut viewport.blueprint, item);
+
+                if let Item::SpaceView(space_view_id) = item {
+                    space_view_top_level_properties(
+                        ui,
+                        ctx,
+                        &mut viewport.blueprint,
+                        space_view_id,
+                    );
+                }
 
                 if has_data_section(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
@@ -112,14 +131,16 @@ impl SelectionPanel {
                     });
                 }
 
-                ctx.re_ui
-                    .large_collapsing_header(ui, "Blueprint", true, |ui| {
-                        blueprint_ui(ui, ctx, viewport, item);
-                    });
+                if has_blueprint_section(item) {
+                    ctx.re_ui
+                        .large_collapsing_header(ui, "Blueprint", true, |ui| {
+                            blueprint_ui(ui, ctx, viewport, item);
+                        });
+                }
 
-                if i + 1 < num_selections {
+                if i < selection.len() - 1 {
                     // Add space some space between selections
-                    ui.add(egui::Separator::default().spacing(24.0).grow(20.0));
+                    ui.add_space(8.);
                 }
             });
         }
@@ -130,12 +151,12 @@ fn has_data_section(item: &Item) -> bool {
     match item {
         Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => false,
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => false,
     }
 }
 
 fn space_view_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view: &re_viewport::SpaceViewBlueprint,
 ) -> egui::Response {
@@ -154,7 +175,9 @@ fn space_view_button(
     item_ui::cursor_interact_with_selectable(ctx, response, item)
 }
 
-/// What is selected? Not the contents, just the short id of it.
+/// What is selected and where is it located?
+///
+/// This includes a title bar and contextual information about there this item is located.
 fn what_is_selected_ui(
     ui: &mut egui::Ui,
     ctx: &mut ViewerContext<'_>,
@@ -166,69 +189,201 @@ fn what_is_selected_ui(
             entity_path,
             component_name,
         }) => {
-            egui::Grid::new("component_path")
-                .num_columns(2)
-                .show(ui, |ui| {
-                    ui.label("Entity");
-                    item_ui::entity_path_button(ctx, ui, None, entity_path);
-                    ui.end_row();
+            item_title_ui(
+                ctx.re_ui,
+                ui,
+                component_name.short_name(),
+                None,
+                &format!(
+                    "Component {} of entity '{}'",
+                    component_name.full_name(),
+                    entity_path
+                ),
+            );
 
-                    ui.label("Component");
-                    ui.label(component_name.short_name())
-                        .on_hover_text(component_name.full_name());
-                    ui.end_row();
-                });
+            ui.horizontal(|ui| {
+                ui.label("component of");
+                item_ui::entity_path_button(ctx, ui, None, entity_path);
+            });
+
+            list_existing_data_blueprints(ui, ctx, entity_path, viewport);
         }
         Item::SpaceView(space_view_id) => {
             if let Some(space_view) = viewport.space_view_mut(space_view_id) {
-                ui.horizontal(|ui| {
-                    ui.label("Space View");
-                    ui.text_edit_singleline(&mut space_view.display_name);
-                });
+                let space_view_class = space_view.class(ctx.space_view_class_registry);
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    &space_view.display_name,
+                    Some(space_view_class.icon()),
+                    &format!(
+                        "Space View {:?} of type {}",
+                        space_view.display_name,
+                        space_view_class.display_name(),
+                    ),
+                );
             }
         }
         Item::InstancePath(space_view_id, instance_path) => {
-            egui::Grid::new("space_view_id_entity_path").show(ui, |ui| {
-                if instance_path.instance_key.is_splat() {
-                    ui.label("Entity");
-                } else {
-                    ui.label("Entity instance");
-                }
-                item_ui::instance_path_button(ctx, ui, *space_view_id, instance_path);
-                ui.end_row();
+            let typ = if instance_path.instance_key.is_splat() {
+                "Entity"
+            } else {
+                "Entity instance"
+            };
 
-                if let Some(space_view_id) = space_view_id {
-                    if let Some(space_view) = viewport.space_view_mut(space_view_id) {
-                        ui.label("In Space View");
+            if let Some(space_view_id) = space_view_id {
+                if let Some(space_view) = viewport.space_view_mut(space_view_id) {
+                    item_title_ui(
+                        ctx.re_ui,
+                        ui,
+                        instance_path.to_string().as_str(),
+                        None,
+                        &format!(
+                            "{typ} '{instance_path}' as shown in Space View {:?}",
+                            space_view.display_name
+                        ),
+                    );
+
+                    ui.horizontal(|ui| {
+                        ui.label("in");
                         space_view_button(ctx, ui, space_view);
-                        ui.end_row();
-                    }
+                    });
                 }
-            });
-        }
-        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
-            if let Some(space_view) = viewport.space_view(space_view_id) {
-                if let Some(group) = space_view.contents.group(*data_blueprint_group_handle) {
-                    egui::Grid::new("data_blueprint_group")
-                        .num_columns(2)
-                        .show(ui, |ui| {
-                            ui.label("Data Group");
-                            item_ui::data_blueprint_group_button_to(
-                                ctx,
-                                ui,
-                                group.display_name.clone(),
-                                space_view.id,
-                                *data_blueprint_group_handle,
-                            );
-                            ui.end_row();
+            } else {
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    instance_path.to_string().as_str(),
+                    None,
+                    &format!("{typ} '{instance_path}'"),
+                );
 
-                            ui.label("In Space View");
-                            space_view_button(ctx, ui, space_view);
-                            ui.end_row();
-                        });
-                }
+                list_existing_data_blueprints(ui, ctx, &instance_path.entity_path, viewport);
             }
         }
+        Item::DataBlueprintGroup(space_view_id, _query_id, entity_path) => {
+            if let Some(space_view) = viewport.space_view(space_view_id) {
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    &entity_path.to_string(),
+                    Some(&re_ui::icons::CONTAINER),
+                    &format!(
+                        "Group {:?} as shown in Space View {:?}",
+                        entity_path, space_view.display_name
+                    ),
+                );
+
+                ui.horizontal(|ui| {
+                    ui.label("in");
+                    space_view_button(ctx, ui, space_view);
+                });
+            }
+        }
+    }
+}
+
+/// A title bar for an item.
+fn item_title_ui(
+    re_ui: &re_ui::ReUi,
+    ui: &mut egui::Ui,
+    name: &str,
+    icon: Option<&re_ui::Icon>,
+    hover: &str,
+) -> egui::Response {
+    let mut list_item = ListItem::new(re_ui, name)
+        .with_height(ReUi::title_bar_height())
+        .selected(true);
+
+    if let Some(icon) = icon {
+        list_item = list_item.with_icon(icon);
+    }
+
+    list_item.show(ui).on_hover_text(hover)
+}
+
+/// Display a list of all the space views an entity appears in.
+fn list_existing_data_blueprints(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    entity_path: &EntityPath,
+    blueprint: &ViewportBlueprint<'_>,
+) {
+    let space_views_with_path = blueprint.space_views_containing_entity_path(ctx, entity_path);
+
+    if space_views_with_path.is_empty() {
+        ui.weak("(Not shown in any Space View)");
+    } else {
+        for space_view_id in &space_views_with_path {
+            if let Some(space_view) = blueprint.space_view(space_view_id) {
+                ui.horizontal(|ui| {
+                    item_ui::entity_path_button_to(
+                        ctx,
+                        ui,
+                        Some(*space_view_id),
+                        entity_path,
+                        "Shown",
+                    );
+                    ui.label("in");
+                    space_view_button(ctx, ui, space_view);
+                });
+            }
+        }
+    }
+}
+
+/// Display the top-level properties of a space view.
+///
+/// This includes the name, space origin entity, and space view type. These properties are singled
+/// out as needing to be edited in most case when creating a new Space View, which is why they are
+/// shown at the very top.
+fn space_view_top_level_properties(
+    ui: &mut egui::Ui,
+    ctx: &mut ViewerContext<'_>,
+    viewport: &mut ViewportBlueprint<'_>,
+    space_view_id: &SpaceViewId,
+) {
+    if let Some(space_view) = viewport.space_view_mut(space_view_id) {
+        egui::Grid::new("space_view_top_level_properties")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Name").on_hover_text(
+                    "The name of the Space View used for display purposes. This can be any text \
+                    string.",
+                );
+                ui.text_edit_singleline(&mut space_view.display_name);
+                ui.end_row();
+
+                ui.label("Space origin").on_hover_text(
+                    "The origin Entity for this Space View. For spatial Space Views, the Space \
+                    View's origin is the same as this Entity's origin and all transforms are \
+                    relative to it.",
+                );
+                item_ui::entity_path_button(
+                    ctx,
+                    ui,
+                    Some(*space_view_id),
+                    &space_view.space_origin,
+                );
+                ui.end_row();
+
+                ui.label("Type")
+                    .on_hover_text("The type of this Space View");
+                ui.label(
+                    space_view
+                        .class(ctx.space_view_class_registry)
+                        .display_name(),
+                );
+                ui.end_row();
+            });
+    }
+}
+
+fn has_blueprint_section(item: &Item) -> bool {
+    match item {
+        Item::ComponentPath(_) => false,
+        Item::InstancePath(space_view_id, _) => space_view_id.is_some(),
+        _ => true,
     }
 }
 
@@ -240,20 +395,11 @@ fn blueprint_ui(
     item: &Item,
 ) {
     match item {
-        Item::ComponentPath(component_path) => {
-            list_existing_data_blueprints(
-                ui,
-                ctx,
-                component_path.entity_path(),
-                &viewport.blueprint,
-            );
-        }
-
         Item::SpaceView(space_view_id) => {
             ui.horizontal(|ui| {
                 if ui
-                    .button("Add/remove Entities")
-                    .on_hover_text("Manually add or remove Entities from the Space View")
+                    .button("Edit Entity Query")
+                    .on_hover_text("Adjust the query expressions to add or remove Entities from the Space View")
                     .clicked()
                 {
                     viewport
@@ -274,21 +420,61 @@ fn blueprint_ui(
                 }
             });
 
+            if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
+                if let Some(query) = space_view.queries.first() {
+                    let inclusions = query.expressions.inclusions.join("\n");
+                    let mut edited_inclusions = inclusions.clone();
+                    let exclusions = query.expressions.exclusions.join("\n");
+                    let mut edited_exclusions = exclusions.clone();
+
+                    ui.label("Inclusion expressions");
+                    ui.text_edit_multiline(&mut edited_inclusions);
+                    ui.label("Exclusion expressions");
+                    ui.text_edit_multiline(&mut edited_exclusions);
+
+                    if edited_inclusions != inclusions || edited_exclusions != exclusions {
+                        let timepoint = TimePoint::timeless();
+
+                        let expressions_component = QueryExpressions {
+                            inclusions: edited_inclusions.split('\n').map(|s| s.into()).collect(),
+                            exclusions: edited_exclusions.split('\n').map(|s| s.into()).collect(),
+                        };
+
+                        let row = DataRow::from_cells1_sized(
+                            RowId::random(),
+                            query.id.as_entity_path(),
+                            timepoint,
+                            1,
+                            [expressions_component],
+                        )
+                        .unwrap();
+
+                        ctx.command_sender
+                            .send_system(SystemCommand::UpdateBlueprint(
+                                ctx.store_context.blueprint.store_id().clone(),
+                                vec![row],
+                            ));
+
+                        space_view.entities_determined_by_user = true;
+                    }
+                }
+            }
+
             ui.add_space(ui.spacing().item_spacing.y);
 
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                let space_view_class = *space_view.class_name();
+                let space_view_class = *space_view.class_identifier();
                 let space_view_state = viewport.state.space_view_state_mut(
                     ctx.space_view_class_registry,
                     space_view.id,
-                    space_view.class_name(),
+                    space_view.class_identifier(),
                 );
 
                 // Space View don't inherit properties.
                 let mut resolved_entity_props = EntityProperties::default();
 
                 // TODO(#4194): it should be the responsibility of the space view to provide defaults for entity props
-                if space_view_class == TimeSeriesSpaceView::NAME {
+                if space_view_class == TimeSeriesSpaceView::IDENTIFIER {
                     resolved_entity_props.visible_history.sequences = VisibleHistory::ALL;
                     resolved_entity_props.visible_history.nanos = VisibleHistory::ALL;
                 }
@@ -299,6 +485,8 @@ fn blueprint_ui(
                     .clone()
                     .unwrap_or(resolved_entity_props.clone());
 
+                let cursor = ui.cursor();
+
                 space_view
                     .class(ctx.space_view_class_registry)
                     .selection_ui(
@@ -307,7 +495,14 @@ fn blueprint_ui(
                         space_view_state,
                         &space_view.space_origin,
                         space_view.id,
+                        &mut props,
                     );
+
+                if cursor != ui.cursor() {
+                    // add some space if something was rendered by selection_ui
+                    //TODO(ab): use design token
+                    ui.add_space(16.0);
+                }
 
                 visible_history_ui(
                     ctx,
@@ -339,58 +534,46 @@ fn blueprint_ui(
                         // TODO(emilk): show the values of this specific instance (e.g. point in the point cloud)!
                     } else {
                         // splat - the whole entity
-                        let space_view_class = *space_view.class_name();
+                        let space_view_class = *space_view.class_identifier();
                         let entity_path = &instance_path.entity_path;
                         let as_group = false;
 
-                        let data_result = space_view.contents.resolve(
-                            space_view,
-                            ctx.store_context,
-                            ctx.entities_per_system_per_class,
-                            &instance_path.entity_path,
-                            as_group,
-                        );
-
-                        let mut props = data_result
-                            .individual_properties
-                            .clone()
-                            .unwrap_or_default();
-                        entity_props_ui(
-                            ctx,
-                            ui,
-                            &space_view_class,
-                            Some(entity_path),
-                            &mut props,
-                            &data_result.resolved_properties,
-                        );
-                        data_result.save_override(Some(props), ctx);
+                        let query_result = ctx.lookup_query_result(space_view.query_id());
+                        if let Some(data_result) = query_result
+                            .tree
+                            .lookup_result_by_path_and_group(entity_path, as_group)
+                            .cloned()
+                        {
+                            let mut props = data_result
+                                .individual_properties
+                                .clone()
+                                .unwrap_or_default();
+                            entity_props_ui(
+                                ctx,
+                                ui,
+                                &space_view_class,
+                                Some(entity_path),
+                                &mut props,
+                                &data_result.resolved_properties,
+                            );
+                            data_result.save_override(Some(props), ctx);
+                        }
                     }
                 }
-            } else {
-                list_existing_data_blueprints(
-                    ui,
-                    ctx,
-                    &instance_path.entity_path,
-                    &viewport.blueprint,
-                );
             }
         }
 
-        Item::DataBlueprintGroup(space_view_id, data_blueprint_group_handle) => {
+        Item::DataBlueprintGroup(space_view_id, query_id, group_path) => {
             if let Some(space_view) = viewport.blueprint.space_view_mut(space_view_id) {
-                if let Some(group) = space_view.contents.group_mut(*data_blueprint_group_handle) {
-                    let group_path = group.group_path.clone();
-                    let as_group = false;
+                let as_group = true;
 
-                    let data_result = space_view.contents.resolve(
-                        space_view,
-                        ctx.store_context,
-                        ctx.entities_per_system_per_class,
-                        &group_path,
-                        as_group,
-                    );
-
-                    let space_view_class = *space_view.class_name();
+                let query_result = ctx.lookup_query_result(*query_id);
+                if let Some(data_result) = query_result
+                    .tree
+                    .lookup_result_by_path_and_group(group_path, as_group)
+                    .cloned()
+                {
+                    let space_view_class = *space_view.class_identifier();
                     let mut props = data_result
                         .individual_properties
                         .clone()
@@ -405,48 +588,20 @@ fn blueprint_ui(
                         &data_result.resolved_properties,
                     );
                     data_result.save_override(Some(props), ctx);
-                } else {
-                    ctx.selection_state_mut().clear_current();
                 }
+            } else {
+                ctx.selection_state().clear_current();
             }
         }
-    }
-}
 
-fn list_existing_data_blueprints(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    entity_path: &EntityPath,
-    blueprint: &ViewportBlueprint<'_>,
-) {
-    let space_views_with_path = blueprint.space_views_containing_entity_path(entity_path);
-
-    if space_views_with_path.is_empty() {
-        ui.weak("(Not shown in any Space View)");
-        // TODO(andreas): Offer options for adding?
-    } else {
-        ui.label("Is shown in");
-
-        ui.indent("list of data blueprints indent", |ui| {
-            for space_view_id in &space_views_with_path {
-                if let Some(space_view) = blueprint.space_view(space_view_id) {
-                    item_ui::entity_path_button_to(
-                        ctx,
-                        ui,
-                        Some(*space_view_id),
-                        entity_path,
-                        &space_view.display_name,
-                    );
-                }
-            }
-        });
+        Item::ComponentPath(_) => {}
     }
 }
 
 fn entity_props_ui(
     ctx: &mut ViewerContext<'_>,
     ui: &mut egui::Ui,
-    space_view_class: &SpaceViewClassName,
+    space_view_class: &SpaceViewClassIdentifier,
     entity_path: Option<&EntityPath>,
     entity_props: &mut EntityProperties,
     resolved_entity_props: &EntityProperties,

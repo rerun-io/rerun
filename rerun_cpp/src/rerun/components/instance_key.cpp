@@ -6,16 +6,16 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char InstanceKey::NAME[] = "rerun.components.InstanceKey";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& InstanceKey::arrow_datatype() {
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::InstanceKey>::arrow_datatype() {
         static const auto datatype = arrow::uint64();
         return datatype;
     }
 
-    rerun::Error InstanceKey::fill_arrow_array_builder(
-        arrow::UInt64Builder* builder, const InstanceKey* elements, size_t num_elements
+    rerun::Error Loggable<components::InstanceKey>::fill_arrow_array_builder(
+        arrow::UInt64Builder* builder, const components::InstanceKey* elements, size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -35,15 +35,16 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> InstanceKey::to_data_cell(
-        const InstanceKey* instances, size_t num_instances
+    Result<std::shared_ptr<arrow::Array>> Loggable<components::InstanceKey>::to_arrow(
+        const components::InstanceKey* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
 
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(InstanceKey::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<components::InstanceKey>::fill_arrow_array_builder(
                 static_cast<arrow::UInt64Builder*>(builder.get()),
                 instances,
                 num_instances
@@ -51,11 +52,6 @@ namespace rerun::components {
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-        DataCell cell;
-        cell.num_instances = num_instances;
-        cell.component_name = InstanceKey::NAME;
-        cell.array = std::move(array);
-        return cell;
+        return array;
     }
-} // namespace rerun::components
+} // namespace rerun

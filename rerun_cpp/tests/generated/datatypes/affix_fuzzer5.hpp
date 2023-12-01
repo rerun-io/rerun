@@ -12,6 +12,7 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -31,13 +32,30 @@ namespace rerun::datatypes {
             single_optional_union = std::move(single_optional_union_);
             return *this;
         }
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::AffixFuzzer5> {
+        static constexpr const char Name[] = "rerun.testing.datatypes.AffixFuzzer5";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const AffixFuzzer5* elements, size_t num_elements
+            arrow::StructBuilder* builder, const datatypes::AffixFuzzer5* elements,
+            size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::datatypes::AffixFuzzer5` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::AffixFuzzer5* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

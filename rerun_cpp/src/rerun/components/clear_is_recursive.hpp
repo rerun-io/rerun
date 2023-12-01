@@ -3,13 +3,13 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 
 namespace arrow {
+    class Array;
     class BooleanBuilder;
     class DataType;
 } // namespace arrow
@@ -20,9 +20,6 @@ namespace rerun::components {
         /// If true, also clears all recursive children entities.
         bool recursive;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         ClearIsRecursive() = default;
 
@@ -32,18 +29,30 @@ namespace rerun::components {
             recursive = recursive_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::ClearIsRecursive> {
+        static constexpr const char Name[] = "rerun.components.ClearIsRecursive";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::BooleanBuilder* builder, const ClearIsRecursive* elements, size_t num_elements
+            arrow::BooleanBuilder* builder, const components::ClearIsRecursive* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of ClearIsRecursive components.
-        static Result<rerun::DataCell> to_data_cell(
-            const ClearIsRecursive* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::ClearIsRecursive` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::ClearIsRecursive* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

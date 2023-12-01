@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -14,6 +13,7 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
     class FloatType;
     using FloatBuilder = NumericBuilder<FloatType>;
@@ -24,9 +24,6 @@ namespace rerun::components {
     struct DepthMeter {
         float value;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         DepthMeter() = default;
 
@@ -36,18 +33,30 @@ namespace rerun::components {
             value = value_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::DepthMeter> {
+        static constexpr const char Name[] = "rerun.components.DepthMeter";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const DepthMeter* elements, size_t num_elements
+            arrow::FloatBuilder* builder, const components::DepthMeter* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of DepthMeter components.
-        static Result<rerun::DataCell> to_data_cell(
-            const DepthMeter* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::DepthMeter` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::DepthMeter* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

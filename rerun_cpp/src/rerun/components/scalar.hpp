@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -14,6 +13,7 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
     class DoubleType;
     using DoubleBuilder = NumericBuilder<DoubleType>;
@@ -26,9 +26,6 @@ namespace rerun::components {
     struct Scalar {
         double value;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         Scalar() = default;
 
@@ -38,16 +35,29 @@ namespace rerun::components {
             value = value_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::Scalar> {
+        static constexpr const char Name[] = "rerun.components.Scalar";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::DoubleBuilder* builder, const Scalar* elements, size_t num_elements
+            arrow::DoubleBuilder* builder, const components::Scalar* elements, size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of Scalar components.
-        static Result<rerun::DataCell> to_data_cell(const Scalar* instances, size_t num_instances);
+        /// Serializes an array of `rerun::components::Scalar` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::Scalar* instances, size_t num_instances
+        );
     };
-} // namespace rerun::components
+} // namespace rerun

@@ -48,11 +48,12 @@ jobs:
           version: ">= 363.0.0"
 
       - name: Install deps
+        shell: bash
         run: pip install google-cloud-storage Jinja2
 
       - name: Render pip index and upload to gcloud
+        shell: bash
         run: |
           python scripts/ci/generate_prerelease_pip_index.py \
           --commit ${{ github.sha }} \
           --upload
-

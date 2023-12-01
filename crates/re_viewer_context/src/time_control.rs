@@ -6,7 +6,7 @@ use re_log_types::{Duration, TimeInt, TimeRange, TimeRangeF, TimeReal, TimeType,
 use crate::NeedsRepaint;
 
 /// The time range we are currently zoomed in on.
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 pub struct TimeView {
     /// Where start of the range.
     pub min: TimeReal,
@@ -20,7 +20,7 @@ pub struct TimeView {
 }
 
 /// State per timeline.
-#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, serde::Deserialize, serde::Serialize, PartialEq)]
 struct TimeState {
     /// The current time (play marker).
     time: TimeReal,
@@ -79,7 +79,7 @@ pub enum PlayState {
 }
 
 /// Controls the global view and progress of the time.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize, Clone, PartialEq)]
 #[serde(default)]
 pub struct TimeControl {
     /// Name of the timeline (e.g. "log_time").
@@ -97,6 +97,12 @@ pub struct TimeControl {
     speed: f32,
 
     looping: Looping,
+
+    /// Range with special highlight.
+    ///
+    /// This is used during UI interactions. E.g. to show visual history range that's highlighted.
+    #[serde(skip)]
+    pub highlighted_range: Option<TimeRange>,
 }
 
 impl Default for TimeControl {
@@ -108,6 +114,7 @@ impl Default for TimeControl {
             following: true,
             speed: 1.0,
             looping: Looping::Off,
+            highlighted_range: None,
         }
     }
 }

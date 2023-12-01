@@ -13,6 +13,7 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
     class FloatType;
     using FloatBuilder = NumericBuilder<FloatType>;
@@ -32,13 +33,30 @@ namespace rerun::datatypes {
             single_float_optional = single_float_optional_;
             return *this;
         }
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::AffixFuzzer2> {
+        static constexpr const char Name[] = "rerun.testing.datatypes.AffixFuzzer2";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const AffixFuzzer2* elements, size_t num_elements
+            arrow::FloatBuilder* builder, const datatypes::AffixFuzzer2* elements,
+            size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::datatypes::AffixFuzzer2` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::AffixFuzzer2* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

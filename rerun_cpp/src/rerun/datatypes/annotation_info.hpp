@@ -12,6 +12,7 @@
 #include <optional>
 
 namespace arrow {
+    class Array;
     class DataType;
     class StructBuilder;
 } // namespace arrow
@@ -45,13 +46,30 @@ namespace rerun::datatypes {
 
       public:
         AnnotationInfo() = default;
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::AnnotationInfo> {
+        static constexpr const char Name[] = "rerun.datatypes.AnnotationInfo";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const AnnotationInfo* elements, size_t num_elements
+            arrow::StructBuilder* builder, const datatypes::AnnotationInfo* elements,
+            size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::datatypes::AnnotationInfo` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::AnnotationInfo* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

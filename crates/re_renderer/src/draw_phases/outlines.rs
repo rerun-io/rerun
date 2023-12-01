@@ -354,17 +354,19 @@ impl OutlineMaskProcessor {
                 resolve_target: None, // We're going to do a manual resolve.
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: true,
+                    store: wgpu::StoreOp::Store,
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &self.mask_depth.default_view,
                 depth_ops: Some(wgpu::Operations {
                     load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
-                    store: false,
+                    store: wgpu::StoreOp::Discard,
                 }),
                 stencil_ops: None,
             }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
         })
     }
 
@@ -377,7 +379,7 @@ impl OutlineMaskProcessor {
 
         let ops = wgpu::Operations {
             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), // Clear is the closest to "don't care"
-            store: true,
+            store: wgpu::StoreOp::Store,
         };
 
         // Initialize the jump flooding into voronoi texture 0 by looking at the mask texture.
@@ -390,6 +392,8 @@ impl OutlineMaskProcessor {
                     ops,
                 })],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             let render_pipeline_init =
@@ -412,6 +416,8 @@ impl OutlineMaskProcessor {
                     ops,
                 })],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             jumpflooding_step.set_pipeline(render_pipeline_step);

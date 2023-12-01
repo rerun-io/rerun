@@ -8,19 +8,19 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char Color::NAME[] = "rerun.components.Color";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& Color::arrow_datatype() {
-        static const auto datatype = rerun::datatypes::Rgba32::arrow_datatype();
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::Color>::arrow_datatype() {
+        static const auto datatype = Loggable<rerun::datatypes::Rgba32>::arrow_datatype();
         return datatype;
     }
 
-    rerun::Error Color::fill_arrow_array_builder(
-        arrow::UInt32Builder* builder, const Color* elements, size_t num_elements
+    rerun::Error Loggable<components::Color>::fill_arrow_array_builder(
+        arrow::UInt32Builder* builder, const components::Color* elements, size_t num_elements
     ) {
-        static_assert(sizeof(rerun::datatypes::Rgba32) == sizeof(Color));
-        RR_RETURN_NOT_OK(rerun::datatypes::Rgba32::fill_arrow_array_builder(
+        static_assert(sizeof(rerun::datatypes::Rgba32) == sizeof(components::Color));
+        RR_RETURN_NOT_OK(Loggable<rerun::datatypes::Rgba32>::fill_arrow_array_builder(
             builder,
             reinterpret_cast<const rerun::datatypes::Rgba32*>(elements),
             num_elements
@@ -29,13 +29,16 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> Color::to_data_cell(const Color* instances, size_t num_instances) {
+    Result<std::shared_ptr<arrow::Array>> Loggable<components::Color>::to_arrow(
+        const components::Color* instances, size_t num_instances
+    ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
 
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Color::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<components::Color>::fill_arrow_array_builder(
                 static_cast<arrow::UInt32Builder*>(builder.get()),
                 instances,
                 num_instances
@@ -43,11 +46,6 @@ namespace rerun::components {
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-        DataCell cell;
-        cell.num_instances = num_instances;
-        cell.component_name = Color::NAME;
-        cell.array = std::move(array);
-        return cell;
+        return array;
     }
-} // namespace rerun::components
+} // namespace rerun

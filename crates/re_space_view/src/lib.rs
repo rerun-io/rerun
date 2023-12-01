@@ -11,9 +11,7 @@ mod space_view_contents;
 mod unreachable_transform_reason;
 
 pub use blueprint::QueryExpressions;
-pub use data_query::{
-    DataQuery, DataResultHandle, DataResultNode, DataResultTree, EntityOverrides, PropertyResolver,
-};
+pub use data_query::{DataQuery, EntityOverrides, PropertyResolver, NOOP_RESOLVER};
 pub use data_query_blueprint::DataQueryBlueprint;
 pub use screenshot::ScreenshotMode;
 pub use space_view_contents::{DataBlueprintGroup, SpaceViewContents};

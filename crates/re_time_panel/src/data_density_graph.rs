@@ -11,7 +11,7 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 use re_data_store::TimeHistogram;
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::{TimeInt, TimeRange, TimeReal};
-use re_viewer_context::{Item, UiVerbosity, ViewerContext};
+use re_viewer_context::{Item, TimeControl, UiVerbosity, ViewerContext};
 
 use super::time_ranges_ui::TimeRangesUi;
 
@@ -368,6 +368,7 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 pub fn data_density_graph_ui(
     data_dentity_graph_painter: &mut DataDensityGraphPainter,
     ctx: &mut ViewerContext<'_>,
+    time_ctrl: &mut TimeControl,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
     ui: &egui::Ui,
@@ -486,11 +487,12 @@ pub fn data_density_graph_ui(
 
         if time_area_response.clicked_by(egui::PointerButton::Primary) {
             ctx.set_single_selection(item);
-            ctx.rec_cfg.time_ctrl.set_time(hovered_time_range.min);
-            ctx.rec_cfg.time_ctrl.pause();
+            time_ctrl.set_time(hovered_time_range.min);
+            time_ctrl.pause();
         } else if !ui.ctx().memory(|mem| mem.is_anything_being_dragged()) {
             show_row_ids_tooltip(
                 ctx,
+                time_ctrl,
                 ui.ctx(),
                 item,
                 hovered_time_range,
@@ -521,6 +523,7 @@ fn make_brighter(color: Color32) -> Color32 {
 
 fn show_row_ids_tooltip(
     ctx: &mut ViewerContext<'_>,
+    time_ctrl: &TimeControl,
     egui_ctx: &egui::Context,
     item: &Item,
     time_range: TimeRange,
@@ -544,7 +547,7 @@ fn show_row_ids_tooltip(
             Item::InstancePath(_, path) => {
                 item_ui::instance_path_button(ctx, ui, None, path);
             }
-            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _) => {
+            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => {
                 // No extra info. This should never happen, but not worth printing a warning over.
                 // Even if it does go here, the ui after will still look ok.
             }
@@ -552,8 +555,7 @@ fn show_row_ids_tooltip(
 
         ui.add_space(8.0);
 
-        let timeline = *ctx.rec_cfg.time_ctrl.timeline();
-        let query = re_arrow_store::LatestAtQuery::new(timeline, time_range.max);
+        let query = re_arrow_store::LatestAtQuery::new(*time_ctrl.timeline(), time_range.max);
         item.data_ui(ctx, ui, UiVerbosity::Reduced, &query);
     });
 }

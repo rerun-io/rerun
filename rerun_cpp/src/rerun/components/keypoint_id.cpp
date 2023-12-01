@@ -8,19 +8,19 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::components {
-    const char KeypointId::NAME[] = "rerun.components.KeypointId";
+namespace rerun::components {}
 
-    const std::shared_ptr<arrow::DataType>& KeypointId::arrow_datatype() {
-        static const auto datatype = rerun::datatypes::KeypointId::arrow_datatype();
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<components::KeypointId>::arrow_datatype() {
+        static const auto datatype = Loggable<rerun::datatypes::KeypointId>::arrow_datatype();
         return datatype;
     }
 
-    rerun::Error KeypointId::fill_arrow_array_builder(
-        arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
+    rerun::Error Loggable<components::KeypointId>::fill_arrow_array_builder(
+        arrow::UInt16Builder* builder, const components::KeypointId* elements, size_t num_elements
     ) {
-        static_assert(sizeof(rerun::datatypes::KeypointId) == sizeof(KeypointId));
-        RR_RETURN_NOT_OK(rerun::datatypes::KeypointId::fill_arrow_array_builder(
+        static_assert(sizeof(rerun::datatypes::KeypointId) == sizeof(components::KeypointId));
+        RR_RETURN_NOT_OK(Loggable<rerun::datatypes::KeypointId>::fill_arrow_array_builder(
             builder,
             reinterpret_cast<const rerun::datatypes::KeypointId*>(elements),
             num_elements
@@ -29,15 +29,16 @@ namespace rerun::components {
         return Error::ok();
     }
 
-    Result<rerun::DataCell> KeypointId::to_data_cell(
-        const KeypointId* instances, size_t num_instances
+    Result<std::shared_ptr<arrow::Array>> Loggable<components::KeypointId>::to_arrow(
+        const components::KeypointId* instances, size_t num_instances
     ) {
         // TODO(andreas): Allow configuring the memory pool.
         arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
 
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(arrow_datatype(), pool))
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
         if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(KeypointId::fill_arrow_array_builder(
+            RR_RETURN_NOT_OK(Loggable<components::KeypointId>::fill_arrow_array_builder(
                 static_cast<arrow::UInt16Builder*>(builder.get()),
                 instances,
                 num_instances
@@ -45,11 +46,6 @@ namespace rerun::components {
         }
         std::shared_ptr<arrow::Array> array;
         ARROW_RETURN_NOT_OK(builder->Finish(&array));
-
-        DataCell cell;
-        cell.num_instances = num_instances;
-        cell.component_name = KeypointId::NAME;
-        cell.array = std::move(array);
-        return cell;
+        return array;
     }
-} // namespace rerun::components
+} // namespace rerun

@@ -59,7 +59,7 @@ Setup:
 * Install the Rust toolchain: <https://rustup.rs/>
 * `git clone git@github.com:rerun-io/rerun.git && cd rerun`
 * Run `./scripts/setup_dev.sh`.
-* Make sure `cargo --version` prints `1.72.1` once you are done
+* Make sure `cargo --version` prints `1.74.0` once you are done
 
 ## Building
 To build from source and install Rerun into your *current* Python environment run:

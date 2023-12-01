@@ -51,7 +51,9 @@ namespace rerun {
     using datatypes::Rotation3D;
     using datatypes::RotationAxisAngle;
     using datatypes::Scale3D;
+    using datatypes::TensorBuffer;
     using datatypes::TensorData;
+    using datatypes::TensorDimension;
     using datatypes::TranslationAndMat3x3;
     using datatypes::TranslationRotationScale3D;
     using datatypes::Vec2D;

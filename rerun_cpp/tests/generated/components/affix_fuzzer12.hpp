@@ -6,12 +6,12 @@
 #include <cstdint>
 #include <memory>
 #include <rerun/collection.hpp>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <string>
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class ListBuilder;
 } // namespace arrow
@@ -19,9 +19,6 @@ namespace arrow {
 namespace rerun::components {
     struct AffixFuzzer12 {
         rerun::Collection<std::string> many_strings_required;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer12() = default;
@@ -33,18 +30,30 @@ namespace rerun::components {
             many_strings_required = std::move(many_strings_required_);
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer12> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer12";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::ListBuilder* builder, const AffixFuzzer12* elements, size_t num_elements
+            arrow::ListBuilder* builder, const components::AffixFuzzer12* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer12 components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer12* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AffixFuzzer12` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AffixFuzzer12* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

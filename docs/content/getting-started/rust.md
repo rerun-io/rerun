@@ -20,7 +20,7 @@ Add the following code to your `main.rs`
 use rerun::{demo_util::grid, external::glam};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal").spawn(None)?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_minimal").spawn()?;
 
     let points = grid(glam::Vec3::splat(-10.0), glam::Vec3::splat(10.0), 10);
     let colors = grid(glam::Vec3::ZERO, glam::Vec3::splat(255.0), 10)

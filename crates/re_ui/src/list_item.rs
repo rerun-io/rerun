@@ -116,6 +116,7 @@ pub struct ListItem<'a> {
     subdued: bool,
     force_hovered: bool,
     collapse_openness: Option<f32>,
+    height: f32,
     width_allocation_mode: WidthAllocationMode,
     icon_fn:
         Option<Box<dyn FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a>>,
@@ -133,6 +134,7 @@ impl<'a> ListItem<'a> {
             subdued: false,
             force_hovered: false,
             collapse_openness: None,
+            height: ReUi::list_item_height(),
             width_allocation_mode: Default::default(),
             icon_fn: None,
             buttons_fn: None,
@@ -168,6 +170,15 @@ impl<'a> ListItem<'a> {
     /// reflect the actual hover state.
     pub fn force_hovered(mut self, force_hovered: bool) -> Self {
         self.force_hovered = force_hovered;
+        self
+    }
+
+    /// Set the item height.
+    ///
+    /// The default is provided by [`ReUi::list_item_height`] and is suitable for hierarchical
+    /// lists.
+    pub fn with_height(mut self, height: f32) -> Self {
+        self.height = height;
         self
     }
 
@@ -292,7 +303,7 @@ impl<'a> ListItem<'a> {
             }
         };
 
-        let desired_size = egui::vec2(desired_width, ReUi::list_item_height());
+        let desired_size = egui::vec2(desired_width, self.height);
         let (rect, mut response) = ui.allocate_at_least(desired_size, egui::Sense::click());
 
         // compute the full-span background rect
@@ -380,7 +391,7 @@ impl<'a> ListItem<'a> {
             // Draw text next to the icon.
             let mut text_rect = rect;
             text_rect.min.x += collapse_extra + icon_extra;
-            if let Some(ref button_response) = button_response {
+            if let Some(button_response) = &button_response {
                 text_rect.max.x -= button_response.rect.width() + ReUi::text_to_icon_padding();
             }
 

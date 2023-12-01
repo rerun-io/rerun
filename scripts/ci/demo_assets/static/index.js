@@ -28,7 +28,11 @@ function hide_canvas(html) {
 }
 
 // On mobile platforms show a warning, but provide a link to try anyways
-if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+if (
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent,
+  )
+) {
   show_center_html(`
   <p>
       Rerun is not yet supported on mobile browsers.
@@ -36,10 +40,12 @@ if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(naviga
   <p>
       <a href="#" id="try_anyways">Try anyways</a>
   </p>`);
-  document.querySelector("#try_anyways").addEventListener("click", function (event) {
-    event.preventDefault();
-    load_wasm();
-  });
+  document
+    .querySelector("#try_anyways")
+    .addEventListener("click", function (event) {
+      event.preventDefault();
+      load_wasm();
+    });
 } else {
   load_wasm();
 }
@@ -59,7 +65,8 @@ function load_wasm() {
   const status_element = document.getElementById("status");
   function progress({ loaded, total_bytes }) {
     if (total_bytes != null) {
-      status_element.innerHTML = Math.round(Math.min((loaded / total_bytes) * 100, 100)) + "%";
+      status_element.innerHTML =
+        Math.round(Math.min((loaded / total_bytes) * 100, 100)) + "%";
     } else {
       status_element.innerHTML = (loaded / (1024 * 1024)).toFixed(1) + "MiB";
     }
@@ -108,7 +115,7 @@ function load_wasm() {
       {
         status: response.status,
         statusText: response.statusText,
-      }
+      },
     );
 
     for (const [key, value] of response.headers.entries()) {
@@ -128,7 +135,9 @@ function on_wasm_loaded() {
 
   // WebGPU version is currently only supported on browsers with WebGPU support, there is no dynamic fallback to WebGL.
   if (wasm_bindgen.is_webgpu_build() && typeof navigator.gpu === "undefined") {
-    console.debug("`navigator.gpu` is undefined. This indicates lack of WebGPU support.");
+    console.debug(
+      "`navigator.gpu` is undefined. This indicates lack of WebGPU support.",
+    );
     show_center_html(`
                   <p class="strong">
                       Missing WebGPU support.
@@ -170,10 +179,7 @@ function on_wasm_loaded() {
   check_for_panic();
 
   let url = determine_url();
-  handle
-    .start("the_canvas_id", url)
-    .then(on_app_started)
-    .catch(on_wasm_error);
+  handle.start("the_canvas_id", url).then(on_app_started).catch(on_wasm_error);
 }
 
 function on_app_started(handle) {
@@ -243,4 +249,3 @@ document.body.addEventListener("click", (event) => {
     body.classList.remove("visible");
   }
 });
-
