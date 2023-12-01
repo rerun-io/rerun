@@ -243,16 +243,8 @@ impl DepthCloudDrawData {
             radius_boost_in_ui_points_for_outlines,
         } = depth_clouds;
 
-        let bg_layout = ctx
-            .renderers
-            .write()
-            .get_or_create::<_, DepthCloudRenderer>(
-                &ctx.shared_renderer_data,
-                &mut ctx.gpu_resources,
-                &ctx.device,
-                &mut ctx.resolver,
-            )
-            .bind_group_layout;
+        let renderer = ctx.get_renderer::<DepthCloudRenderer>();
+        let bg_layout = renderer.bind_group_layout;
 
         if depth_clouds.is_empty() {
             return Ok(DepthCloudDrawData {
@@ -358,9 +350,9 @@ impl Renderer for DepthCloudRenderer {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         re_tracing::profile_function!();
 

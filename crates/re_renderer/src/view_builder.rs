@@ -558,7 +558,7 @@ impl ViewBuilder {
         // However, having our locking concentrated for the duration of a view draw
         // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
         // locking and unlocking.
-        let renderers = ctx.renderers.read();
+        let renderers = ctx.read_lock_renderers();
         let pipelines = ctx.gpu_resources.render_pipelines.resources();
 
         let setup = &self.setup;
@@ -804,7 +804,7 @@ impl ViewBuilder {
 
         pass.set_bind_group(0, &self.setup.bind_group_0, &[]);
         self.draw_phase(
-            &ctx.renderers.read(),
+            &ctx.read_lock_renderers(),
             render_pipelines,
             DrawPhase::Compositing,
             pass,

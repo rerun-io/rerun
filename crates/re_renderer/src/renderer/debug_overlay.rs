@@ -77,13 +77,7 @@ impl DebugOverlayDrawData {
         screen_resolution: glam::UVec2,
         overlay_rect: RectInt,
     ) -> Result<Self, DebugOverlayError> {
-        let mut renderers = ctx.renderers.write();
-        let debug_overlay = renderers.get_or_create::<_, DebugOverlayRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
+        let debug_overlay = ctx.get_renderer::<DebugOverlayRenderer>();
 
         let mode = match debug_texture
             .texture
@@ -150,9 +144,9 @@ impl Renderer for DebugOverlayRenderer {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,

@@ -31,13 +31,7 @@ impl DrawData for GenericSkyboxDrawData {
 
 impl GenericSkyboxDrawData {
     pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.renderers.write().get_or_create::<_, GenericSkybox>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
-
+        ctx.get_renderer::<GenericSkybox>();
         GenericSkyboxDrawData {}
     }
 }
@@ -47,9 +41,9 @@ impl Renderer for GenericSkybox {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         re_tracing::profile_function!();
 

@@ -186,13 +186,7 @@ impl PointCloudDrawData {
     ) -> Result<Self, PointCloudDrawDataError> {
         re_tracing::profile_function!();
 
-        let mut renderers = ctx.renderers.write();
-        let point_renderer = renderers.get_or_create::<_, PointCloudRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
+        let point_renderer = ctx.get_renderer::<PointCloudRenderer>();
 
         let vertices = builder.vertices.as_slice();
         let batches = builder.batches.as_slice();
@@ -541,9 +535,9 @@ impl Renderer for PointCloudRenderer {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         re_tracing::profile_function!();
 

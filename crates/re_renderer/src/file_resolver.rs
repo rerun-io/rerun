@@ -504,11 +504,11 @@ impl<Fs: FileSystem> FileResolver<Fs> {
 }
 
 impl<Fs: FileSystem> FileResolver<Fs> {
-    pub fn populate(&mut self, path: impl AsRef<Path>) -> anyhow::Result<InterpolatedFile> {
+    pub fn populate(&self, path: impl AsRef<Path>) -> anyhow::Result<InterpolatedFile> {
         re_tracing::profile_function!();
 
         fn populate_rec<Fs: FileSystem>(
-            this: &mut FileResolver<Fs>,
+            this: &FileResolver<Fs>,
             path: impl AsRef<Path>,
             interp_files: &mut HashMap<PathBuf, Rc<InterpolatedFile>>,
             path_stack: &mut Vec<PathBuf>,
@@ -705,7 +705,7 @@ mod tests_file_resolver {
             .unwrap();
         }
 
-        let mut resolver = FileResolver::with_search_path(fs, {
+        let resolver = FileResolver::with_search_path(fs, {
             let mut search_path = SearchPath::default();
             search_path.push("/shaders1");
             search_path.push("/shaders1/common");
@@ -811,7 +811,7 @@ mod tests_file_resolver {
             .unwrap();
         }
 
-        let mut resolver = FileResolver::new(fs);
+        let resolver = FileResolver::new(fs);
 
         resolver
             .populate("/shaders2/shader1.wgsl")

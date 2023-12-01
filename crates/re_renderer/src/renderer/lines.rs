@@ -373,16 +373,10 @@ impl LineDrawData {
     ///
     /// If no batches are passed, all lines are assumed to be in a single batch with identity transform.
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         line_builder: LineStripSeriesBuilder,
     ) -> Result<Self, LineDrawDataError> {
-        let mut renderers = ctx.renderers.write();
-        let line_renderer = renderers.get_or_create::<_, LineRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
+        let line_renderer = ctx.get_renderer::<LineRenderer>();
 
         if line_builder.strips.is_empty() {
             return Ok(LineDrawData {
@@ -794,9 +788,9 @@ impl Renderer for LineRenderer {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         let bind_group_layout_all_lines = pools.bind_group_layouts.get_or_create(
             device,

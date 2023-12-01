@@ -24,7 +24,7 @@ pub struct GpuPipelineLayoutPool {
 
 impl GpuPipelineLayoutPool {
     pub fn get_or_create(
-        &mut self,
+        &self,
         device: &wgpu::Device,
         desc: &PipelineLayoutDesc,
         bind_group_layout_pool: &GpuBindGroupLayoutPool,

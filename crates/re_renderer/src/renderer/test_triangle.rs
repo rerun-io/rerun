@@ -22,13 +22,7 @@ impl DrawData for TestTriangleDrawData {
 
 impl TestTriangleDrawData {
     pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.renderers.write().get_or_create::<_, TestTriangle>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
-
+        ctx.get_renderer::<TestTriangle>();
         TestTriangleDrawData {}
     }
 }
@@ -38,9 +32,9 @@ impl Renderer for TestTriangle {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         let render_pipeline = pools.render_pipelines.get_or_create(
             device,

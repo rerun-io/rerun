@@ -286,7 +286,7 @@ impl OutlineMaskProcessor {
             fragment_entrypoint: "main".into(),
             fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
                 &ctx.device,
-                &mut ctx.resolver,
+                &ctx.resolver,
                 &jumpflooding_init_shader_module,
             ),
             vertex_buffers: smallvec![],
@@ -315,7 +315,7 @@ impl OutlineMaskProcessor {
                 ),
                 fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
                     &ctx.device,
-                    &mut ctx.resolver,
+                    &ctx.resolver,
                     &include_shader_module!("../../shader/outlines/jumpflooding_step.wgsl"),
                 ),
                 ..jumpflooding_init_desc

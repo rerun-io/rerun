@@ -157,12 +157,7 @@ impl MeshDrawData {
     pub fn new(ctx: &mut RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let _mesh_renderer = ctx.renderers.write().get_or_create::<_, MeshRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
+        let _mesh_renderer = ctx.get_renderer::<MeshRenderer>();
 
         if instances.is_empty() {
             return Ok(MeshDrawData {
@@ -297,9 +292,9 @@ impl Renderer for MeshRenderer {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         re_tracing::profile_function!();
 
