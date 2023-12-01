@@ -169,7 +169,7 @@ impl AppState {
             viewport.blueprint.reset(&ctx, &spaces_info);
         }
 
-        viewport.on_frame_start(&mut ctx, &spaces_info);
+        viewport.on_frame_start(&ctx, &spaces_info);
 
         // TODO(jleibs): Running the queries a second time is annoying, but we need
         // to do this or else the auto_properties aren't right since they get populated
@@ -198,9 +198,9 @@ impl AppState {
         };
         ctx.query_results = &updated_query_results;
 
-        time_panel.show_panel(&mut ctx, ui, app_blueprint.time_panel_expanded);
+        time_panel.show_panel(&ctx, ui, app_blueprint.time_panel_expanded);
         selection_panel.show_panel(
-            &mut ctx,
+            &ctx,
             ui,
             &mut viewport,
             app_blueprint.selection_panel_expanded,
@@ -237,13 +237,13 @@ impl AppState {
                         // before drawing the blueprint panel.
                         ui.spacing_mut().item_spacing.y = 0.0;
 
-                        let recording_shown = recordings_panel_ui(&mut ctx, rx, ui);
+                        let recording_shown = recordings_panel_ui(&ctx, rx, ui);
 
                         if recording_shown {
                             ui.add_space(4.0);
                         }
 
-                        blueprint_panel_ui(&mut viewport.blueprint, &mut ctx, ui, &spaces_info);
+                        blueprint_panel_ui(&mut viewport.blueprint, &ctx, ui, &spaces_info);
                     },
                 );
 

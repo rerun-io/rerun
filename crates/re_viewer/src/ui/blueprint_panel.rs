@@ -4,7 +4,7 @@ use re_viewport::{SpaceInfoCollection, ViewportBlueprint};
 /// Show the Blueprint section of the left panel based on the current [`ViewportBlueprint`]
 pub fn blueprint_panel_ui(
     blueprint: &mut ViewportBlueprint<'_>,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     spaces_info: &SpaceInfoCollection,
 ) {

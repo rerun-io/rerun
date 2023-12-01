@@ -309,7 +309,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 
 /// TODO(andreas): Split into smaller parts, more re-use with `ui_2d`
 pub fn view_3d(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
     view_ctx: &ViewContextCollection,

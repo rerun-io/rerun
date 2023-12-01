@@ -35,7 +35,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
 
     fn selection_ui(
         &self,
-        _ctx: &mut crate::ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         _ui: &mut egui::Ui,
         _state: &mut (),
         _space_origin: &re_log_types::EntityPath,
@@ -46,7 +46,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
 
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         _root_entity_properties: &EntityProperties,

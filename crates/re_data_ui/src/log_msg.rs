@@ -7,7 +7,7 @@ use crate::item_ui;
 impl DataUi for LogMsg {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -22,7 +22,7 @@ impl DataUi for LogMsg {
 impl DataUi for SetStoreInfo {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -69,7 +69,7 @@ impl DataUi for SetStoreInfo {
 impl DataUi for ArrowMsg {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,

@@ -90,7 +90,7 @@ pub trait ViewPartSystem {
     /// to the `ViewPartSystemImpl` does the query and then passes an `ArchetypeQueryResult` into populate.
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>;

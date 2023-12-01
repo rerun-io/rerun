@@ -66,7 +66,7 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         _space_origin: &EntityPath,
@@ -125,7 +125,7 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         root_entity_properties: &EntityProperties,

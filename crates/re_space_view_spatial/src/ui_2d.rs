@@ -225,7 +225,7 @@ pub fn help_text(re_ui: &re_ui::ReUi) -> egui::WidgetText {
 
 /// Create the outer 2D view, which consists of a scrollable region
 pub fn view_2d(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
     view_ctx: &ViewContextCollection,

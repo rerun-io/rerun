@@ -81,7 +81,7 @@ impl ViewContextSystem for TransformContext {
     /// entities are transformed relative to it.
     fn execute(
         &mut self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();

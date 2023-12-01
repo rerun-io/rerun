@@ -80,7 +80,7 @@ pub trait DataUi {
     /// If you need to lookup something in the data store, use the given query to do so.
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -94,7 +94,7 @@ pub trait EntityDataUi {
     /// If you need to lookup something in the data store, use the given query to do so.
     fn entity_data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         entity_path: &EntityPath,
@@ -108,7 +108,7 @@ where
 {
     fn entity_data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _entity: &EntityPath,
@@ -123,7 +123,7 @@ where
 impl DataUi for TimePoint {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -144,7 +144,7 @@ impl DataUi for TimePoint {
 impl DataUi for [DataCell] {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,

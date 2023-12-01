@@ -84,7 +84,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn on_frame_start(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         state: &Self::State,
         ent_paths: &PerSystemEntities,
         entity_properties: &mut re_data_store::EntityPropertyMap,
@@ -100,7 +100,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn selection_ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         space_origin: &EntityPath,
@@ -112,7 +112,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,

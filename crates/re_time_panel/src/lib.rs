@@ -62,7 +62,7 @@ impl Default for TimePanel {
 impl TimePanel {
     pub fn show_panel(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_panel_expanded: bool,
     ) {
@@ -211,7 +211,7 @@ impl TimePanel {
 
     fn expanded_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_ctrl: &mut TimeControl,
     ) {
@@ -390,7 +390,7 @@ impl TimePanel {
     // All the entity rows and their data density graphs:
     fn tree_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
@@ -457,7 +457,7 @@ impl TimePanel {
     #[allow(clippy::too_many_arguments)]
     fn show_tree(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
@@ -568,7 +568,7 @@ impl TimePanel {
     #[allow(clippy::too_many_arguments)]
     fn show_children(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,

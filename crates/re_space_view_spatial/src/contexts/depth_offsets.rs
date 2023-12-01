@@ -32,7 +32,7 @@ impl ViewContextSystem for EntityDepthOffsets {
 
     fn execute(
         &mut self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         #[derive(PartialEq, PartialOrd, Eq, Ord)]

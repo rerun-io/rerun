@@ -102,7 +102,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     /// In this sample we show a combo box to select the color coordinates mode.
     fn selection_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _space_origin: &EntityPath,
@@ -129,7 +129,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     /// This is called with freshly created & executed context & part systems.
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
@@ -170,7 +170,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
 // Inspired by https://github.com/emilk/egui/blob/0.22.0/crates/egui/src/widgets/color_picker.rs
 fn color_space_ui(
     ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     colors: &InstanceColorSystem,
     query: &ViewQuery<'_>,
     color_at: impl Fn(f32, f32) -> egui::Color32,

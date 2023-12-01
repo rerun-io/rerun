@@ -14,7 +14,7 @@ const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
 impl DataUi for [u8; 4] {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -34,7 +34,7 @@ impl DataUi for [u8; 4] {
 impl DataUi for Color {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -54,7 +54,7 @@ impl DataUi for Color {
 impl DataUi for ViewCoordinates {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -73,7 +73,7 @@ impl DataUi for ViewCoordinates {
 impl DataUi for re_types::datatypes::Mat3x3 {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -100,7 +100,7 @@ impl DataUi for re_types::datatypes::Mat3x3 {
 impl DataUi for re_types::datatypes::Vec2D {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -112,7 +112,7 @@ impl DataUi for re_types::datatypes::Vec2D {
 impl DataUi for re_types::datatypes::Vec3D {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -124,7 +124,7 @@ impl DataUi for re_types::datatypes::Vec3D {
 impl DataUi for LineStrip2D {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -173,7 +173,7 @@ impl DataUi for LineStrip2D {
 impl DataUi for LineStrip3D {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -228,12 +228,12 @@ impl DataUi for LineStrip3D {
 impl DataUi for Material {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        let mut show_optional_albedo_factor = |ui: &mut egui::Ui| {
+        let show_optional_albedo_factor = |ui: &mut egui::Ui| {
             if let Some(albedo_factor) = self.albedo_factor {
                 Color(albedo_factor).data_ui(ctx, ui, verbosity, query);
             } else {
@@ -259,7 +259,7 @@ impl DataUi for Material {
 impl DataUi for MeshProperties {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
