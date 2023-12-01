@@ -128,7 +128,6 @@ struct ManifestEntry {
     title: String,
     description: String,
     tags: Vec<String>,
-    demo_url: String,
     rrd_url: String,
     thumbnail: Thumbnail,
 }
@@ -140,8 +139,7 @@ impl ManifestEntry {
             title: readme.title,
             description: readme.description,
             tags: readme.tags,
-            demo_url: format!("{base_url}/examples/{name}/"),
-            rrd_url: format!("{base_url}/examples/{name}/data.rrd"),
+            rrd_url: format!("{base_url}/examples/{name}.rrd"),
             thumbnail: Thumbnail {
                 url: readme.thumbnail,
                 width: readme.thumbnail_dimensions[0],
@@ -231,9 +229,9 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
         let branch = re_build_tools::git_branch()?;
         if branch == "main" || !re_build_tools::is_on_ci() {
             // on `main` and local builds, use `version/nightly`
-            // this will point to data uploaded by `.github/workflows/reusable_upload_web_demo.yml`
+            // this will point to data uploaded by `.github/workflows/reusable_upload_examples.yml`
             // on every commit to the `main` branch
-            return Ok("https://demo.rerun.io/version/nightly".into());
+            return Ok("https://app.rerun.io/version/nightly".into());
         }
         parse_release_version(&branch).is_some()
     };
@@ -247,15 +245,15 @@ fn get_base_url(build_env: Environment) -> anyhow::Result<String> {
         // on `release-x.y.z` builds, use `version/{crate_version}`
         // this will point to data uploaded by `.github/workflows/reusable_build_and_publish_web.yml`
         return Ok(format!(
-            "https://demo.rerun.io/version/{}",
+            "https://app.rerun.io/version/{}",
             workspace_root.version
         ));
     }
 
     // any other branch that is not `main`, use `commit/{sha}`
-    // this will point to data uploaded by `.github/workflows/reusable_upload_web_demo.yml`
+    // this will point to data uploaded by `.github/workflows/reusable_upload_examples.yml`
     let sha = re_build_tools::git_commit_short_hash()?;
-    Ok(format!("https://demo.rerun.io/commit/{sha}"))
+    Ok(format!("https://app.rerun.io/commit/{sha}"))
 }
 
 fn parse_release_version(branch: &str) -> Option<&str> {
