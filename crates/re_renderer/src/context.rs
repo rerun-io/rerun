@@ -113,6 +113,8 @@ impl RenderContext {
     ) -> Self {
         re_tracing::profile_function!();
 
+        log_adapter_info(&adapter.get_info());
+
         let mut gpu_resources = WgpuResourcePools::default();
         let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
 
@@ -431,4 +433,67 @@ pub struct ActiveFrameContext {
 
     /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,
+}
+
+fn log_adapter_info(info: &wgpu::AdapterInfo) {
+    re_tracing::profile_function!();
+
+    let is_software_rasterizer_with_known_crashes = {
+        // See https://github.com/rerun-io/rerun/issues/3089
+        const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
+            "lavapipe", // Vulkan software rasterizer
+            "llvmpipe", // OpenGL software rasterizer
+        ];
+
+        // I'm not sure where the incriminating string will appear, so check all fields at once:
+        let info_string = format!("{info:?}").to_lowercase();
+
+        KNOWN_SOFTWARE_RASTERIZERS
+            .iter()
+            .any(|&software_rasterizer| info_string.contains(software_rasterizer))
+    };
+
+    let human_readable_summary = adapter_info_summary(info);
+
+    if is_software_rasterizer_with_known_crashes {
+        re_log::warn!("Software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("wgpu adapter {human_readable_summary}");
+    } else if info.device_type == wgpu::DeviceType::Cpu {
+        re_log::warn!("Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("wgpu adapter {human_readable_summary}");
+    } else {
+        re_log::debug!("wgpu adapter {human_readable_summary}");
+    }
+}
+
+/// A human-readable summary about an adapter
+fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
+    let wgpu::AdapterInfo {
+        name,
+        vendor: _, // skip integer id
+        device: _, // skip integer id
+        device_type,
+        driver,
+        driver_info,
+        backend,
+    } = &info;
+
+    // Example values:
+    // > name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
+    // > name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+    // > name: "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)", device_type: IntegratedGpu, backend: Gl, driver: "", driver_info: ""
+
+    let mut summary = format!("backend: {backend:?}, device_type: {device_type:?}");
+
+    if !name.is_empty() {
+        summary += &format!(", name: {name:?}");
+    }
+    if !driver.is_empty() {
+        summary += &format!(", driver: {driver:?}");
+    }
+    if !driver_info.is_empty() {
+        summary += &format!(", driver_info: {driver_info:?}");
+    }
+
+    summary
 }
