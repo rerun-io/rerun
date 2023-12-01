@@ -4,6 +4,6 @@ opencv-python<4.6 # Avoid opencv-4.6 since it rotates images incorrectly (https:
 pillow
 requests>=2.31,<3
 rerun-sdk
-timm==0.6.11
+timm==0.9.11
 torch>=1.13.0
 transformers

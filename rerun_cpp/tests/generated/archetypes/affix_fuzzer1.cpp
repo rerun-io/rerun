@@ -5,151 +5,127 @@
 
 #include <rerun/collection_adapter_builtins.hpp>
 
-namespace rerun::archetypes {
-    const char AffixFuzzer1::INDICATOR_COMPONENT_NAME[] =
-        "rerun.testing.components.AffixFuzzer1Indicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::AffixFuzzer1>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::AffixFuzzer1>::serialize(
         const archetypes::AffixFuzzer1& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(21);
+        std::vector<DataCell> cells;
+        cells.reserve(22);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer1::to_data_cell(&archetype.fuzz1001, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1001);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer2::to_data_cell(&archetype.fuzz1002, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1002);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer3::to_data_cell(&archetype.fuzz1003, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1003);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer4::to_data_cell(&archetype.fuzz1004, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1004);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer5::to_data_cell(&archetype.fuzz1005, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1005);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer6::to_data_cell(&archetype.fuzz1006, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1006);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer7::to_data_cell(&archetype.fuzz1007, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1007);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer8::to_data_cell(&archetype.fuzz1008, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1008);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer9::to_data_cell(&archetype.fuzz1009, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1009);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer10::to_data_cell(&archetype.fuzz1010, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1010);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer11::to_data_cell(&archetype.fuzz1011, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1011);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer12::to_data_cell(&archetype.fuzz1012, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1012);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer13::to_data_cell(&archetype.fuzz1013, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1013);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer14::to_data_cell(&archetype.fuzz1014, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1014);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer15::to_data_cell(&archetype.fuzz1015, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1015);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer16::to_data_cell(&archetype.fuzz1016, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1016);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer17::to_data_cell(&archetype.fuzz1017, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1017);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer18::to_data_cell(&archetype.fuzz1018, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1018);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer19::to_data_cell(&archetype.fuzz1019, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1019);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer20::to_data_cell(&archetype.fuzz1020, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1020);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
-            const size_t size = 1;
-            auto result = rerun::components::AffixFuzzer21::to_data_cell(&archetype.fuzz1021, size);
+            auto result = DataCell::from_loggable(archetype.fuzz1021);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = AffixFuzzer1::IndicatorComponent();
-            auto result = AffixFuzzer1::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

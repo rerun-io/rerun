@@ -7,22 +7,18 @@
 
 #include <cstdint>
 #include <memory>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
     struct AffixFuzzer14 {
         rerun::datatypes::AffixFuzzer3 single_required_union;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer14() = default;
@@ -39,23 +35,30 @@ namespace rerun::components {
         operator rerun::datatypes::AffixFuzzer3() const {
             return single_required_union;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer14> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer14";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const AffixFuzzer14* elements, size_t num_elements
+            arrow::DenseUnionBuilder* builder, const components::AffixFuzzer14* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer14 components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer14* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AffixFuzzer14` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AffixFuzzer14* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

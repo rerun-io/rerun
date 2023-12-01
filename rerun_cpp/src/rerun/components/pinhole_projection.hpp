@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/mat3x3.hpp"
 #include "../result.hpp"
 
@@ -12,9 +11,9 @@
 #include <memory>
 
 namespace arrow {
+    class Array;
     class DataType;
     class FixedSizeListBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
@@ -31,9 +30,6 @@ namespace rerun::components {
     /// ```
     struct PinholeProjection {
         rerun::datatypes::Mat3x3 image_from_camera;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'pinhole_projection_ext.cpp'
@@ -65,24 +61,30 @@ namespace rerun::components {
         operator rerun::datatypes::Mat3x3() const {
             return image_from_camera;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::PinholeProjection> {
+        static constexpr const char Name[] = "rerun.components.PinholeProjection";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const PinholeProjection* elements,
+            arrow::FixedSizeListBuilder* builder, const components::PinholeProjection* elements,
             size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of PinholeProjection components.
-        static Result<rerun::DataCell> to_data_cell(
-            const PinholeProjection* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::PinholeProjection` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::PinholeProjection* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

@@ -28,8 +28,9 @@ namespace rerun {
     /// Category codes are used to group errors together, but are never returned directly.
     enum class ErrorCode : uint32_t {
         Ok = 0x0000'0000,
-        OutOfMemory = 0x0000'0001,
-        NotImplemented = 0x0000'0002,
+        OutOfMemory,
+        NotImplemented,
+        SdkVersionMismatch,
 
         // Invalid argument errors.
         _CategoryArgument = 0x0000'0010,
@@ -37,6 +38,7 @@ namespace rerun {
         InvalidStringArgument,
         InvalidRecordingStreamHandle,
         InvalidSocketAddress,
+        InvalidComponentTypeHandle,
         InvalidTensorDimension,
 
         // Recording stream errors
@@ -47,7 +49,8 @@ namespace rerun {
 
         // Arrow data processing errors.
         _CategoryArrow = 0x0000'1000,
-        ArrowIpcMessageParsingFailure,
+        ArrowFfiSchemaImportError,
+        ArrowFfiArrayImportError,
         ArrowDataCellError,
 
         // Errors relating to file IO.

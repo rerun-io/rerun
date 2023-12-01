@@ -9,9 +9,9 @@
 #include <memory>
 
 namespace arrow {
+    class Array;
     class BooleanBuilder;
     class DataType;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::blueprint {
@@ -30,18 +30,30 @@ namespace rerun::blueprint {
             enabled = enabled_;
             return *this;
         }
+    };
+} // namespace rerun::blueprint
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<blueprint::AutoSpaceViews> {
+        static constexpr const char Name[] = "rerun.blueprint.AutoSpaceViews";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::BooleanBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::BooleanBuilder* builder, const AutoSpaceViews* elements, size_t num_elements
+            arrow::BooleanBuilder* builder, const blueprint::AutoSpaceViews* elements,
+            size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::blueprint::AutoSpaceViews` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const blueprint::AutoSpaceViews* instances, size_t num_instances
         );
     };
-} // namespace rerun::blueprint
+} // namespace rerun

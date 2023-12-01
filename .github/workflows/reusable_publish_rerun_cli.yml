@@ -51,4 +51,3 @@ jobs:
       PLATFORM: windows
       RELEASE_COMMIT: ${{ inputs.release-commit }}
     secrets: inherit
-

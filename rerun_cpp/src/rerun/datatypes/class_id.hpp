@@ -13,8 +13,8 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
-    class MemoryPool;
     class UInt16Type;
     using UInt16Builder = NumericBuilder<UInt16Type>;
 } // namespace arrow
@@ -33,18 +33,29 @@ namespace rerun::datatypes {
             id = id_;
             return *this;
         }
+    };
+} // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::ClassId> {
+        static constexpr const char Name[] = "rerun.datatypes.ClassId";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::UInt16Builder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt16Builder* builder, const ClassId* elements, size_t num_elements
+            arrow::UInt16Builder* builder, const datatypes::ClassId* elements, size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::datatypes::ClassId` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::ClassId* instances, size_t num_instances
         );
     };
-} // namespace rerun::datatypes
+} // namespace rerun

@@ -278,7 +278,7 @@ pub struct ImportClause {
 }
 
 impl ImportClause {
-    pub const PREFIX: &str = "#import ";
+    pub const PREFIX: &'static str = "#import ";
 }
 
 impl<P: Into<PathBuf>> From<P> for ImportClause {
@@ -779,7 +779,8 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[should_panic] // TODO(cmc): check error contents
+    #[allow(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
+    #[should_panic]
     fn cyclic_direct() {
         let fs = MemFileSystem::get();
         {
@@ -819,7 +820,8 @@ mod tests_file_resolver {
     }
 
     #[test]
-    #[should_panic] // TODO(cmc): check error contents
+    #[allow(clippy::should_panic_without_expect)] // TODO(cmc): check error contents
+    #[should_panic]
     fn cyclic_indirect() {
         let fs = MemFileSystem::get();
         {

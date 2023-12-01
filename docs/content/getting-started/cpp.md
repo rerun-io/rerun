@@ -1,6 +1,6 @@
 ---
 title: C++ Quick Start
-order: 2
+order: 1
 ---
 
 ## Setup
@@ -31,7 +31,7 @@ FetchContent_MakeAvailable(rerun_sdk)
 This will download a bundle with pre-built Rerun C static libraries for most desktop platforms,
 all Rerun C++ sources and headers, as well as CMake build instructions for them.
 By default this will in turn download & build [Apache Arrow](https://arrow.apache.org/)'s C++ library which is required to build the Rerun C++.
-See [Install arrow-cpp](../howto/arrow-cpp-install.md) to learn more about this step and how to use an existing install.
+See [Install arrow-cpp](https://ref.rerun.io/docs/cpp/stable/md__2home_2runner_2work_2rerun_2rerun_2rerun__cpp_2arrow__cpp__install.html) to learn more about this step and how to use an existing install.
 
 Currently, Rerun SDK works with C++17 or newer, so you need to add this property to your target:
 
@@ -83,8 +83,8 @@ int main() {
     rec.spawn().exit_on_failure();
 
     // Create some data using the `grid` utility function.
-    auto points = grid<rerun::Position3D, float>({-10.f, -10.f, -10.f}, {10.f, 10.f, 10.f}, 10);
-    auto colors = grid<rerun::Color, uint8_t>({0, 0, 0}, {255, 255, 255}, 10);
+    std::vector<rerun::Position3D> points = grid3d<rerun::Position3D, float>(-10.f, 10.f, 10);
+    std::vector<rerun::Color> colors = grid3d<rerun::Color, uint8_t>(0, 255, 10);
 
     // Log the "my_points" entity with our data, using the `Points3D` archetype.
     rec.log("my_points", rerun::Points3D(points).with_colors(colors).with_radii({0.5f}));
@@ -129,6 +129,7 @@ Rerun tick and log our first non-trivial dataset.
 If you'd rather learn from examples, check out the [example gallery](/examples) for some more realistic examples, or browse the [Types](../reference/types.md) section for more simple examples of how to use the main datatypes.
 There's also a stand-alone example that shows [interop with Eigen and OpenCV](https://github.com/rerun-io/cpp-example-opencv-eigen).
 
-TODO(#3977): Note that this is still an area of active development and there's going to be major improvements for library interop in upcoming versions.
+To learn more about how to work with your own types, check the [Custom Collection Adapter](https://github.com/rerun-io/rerun/tree/latest/examples/cpp/custom_collection_adapter) example on how to zero-copy adapt to Rerun types
+and the [Use custom data](../howto/extend/custom-data.md) page for completely custom types.
 
-To learn more about how to configure the C++ SDK's CMake file, check [C++ SDK CMake](../reference/cpp-sdk-cmake.md).
+To learn more about how to configure the C++ SDK's CMake file, check [CMake Setup in Detail](https://ref.rerun.io/docs/cpp/stable/md__2home_2runner_2work_2rerun_2rerun_2rerun__cpp_2cmake__setup__in__detail.html).

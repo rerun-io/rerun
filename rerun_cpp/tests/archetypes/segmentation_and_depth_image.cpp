@@ -1,4 +1,5 @@
 #include "../error_check.hpp"
+#include "archetype_test.hpp"
 
 #include <rerun/archetypes/depth_image.hpp>
 #include <rerun/archetypes/segmentation_image.hpp>
@@ -93,6 +94,20 @@ void run_image_tests() {
 
             AND_THEN("serialization succeeds") {
                 CHECK(rerun::AsComponents<decltype(image)>().serialize(image).is_ok());
+            }
+        }
+    }
+
+    GIVEN("a vector of data") {
+        std::vector<uint8_t> data(10 * 10, 0);
+        THEN("no error occurs on image construction with either the vector or a data pointer") {
+            auto image_from_vector = check_logged_error([&] { return ImageType({10, 10}, data); });
+            auto image_from_ptr = check_logged_error([&] {
+                return ImageType({10, 10}, data.data());
+            });
+
+            AND_THEN("serialization succeeds") {
+                test_compare_archetype_serialization(image_from_ptr, image_from_vector);
             }
         }
     }

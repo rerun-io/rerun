@@ -4,8 +4,11 @@ use re_arrow_store::TimeType;
 use re_format::next_grid_tick_magnitude_ns;
 use re_log_types::{EntityPath, TimeZone};
 use re_space_view::controls;
+use re_viewer_context::external::re_data_store::{
+    EditableAutoValue, EntityProperties, LegendCorner,
+};
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
     SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
     ViewerContext,
 };
@@ -37,16 +40,11 @@ impl SpaceViewState for TimeSeriesSpaceViewState {
 #[derive(Default)]
 pub struct TimeSeriesSpaceView;
 
-impl TimeSeriesSpaceView {
-    pub const NAME: &'static str = "Time Series";
-}
-
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = TimeSeriesSpaceViewState;
 
-    fn name(&self) -> SpaceViewClassName {
-        Self::NAME.into()
-    }
+    const IDENTIFIER: &'static str = "Time Series";
+    const DISPLAY_NAME: &'static str = "Time Series";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_CHART
@@ -98,12 +96,61 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
     fn selection_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
-        _ui: &mut egui::Ui,
+        ctx: &mut ViewerContext<'_>,
+        ui: &mut egui::Ui,
         _state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        root_entity_properties: &mut EntityProperties,
     ) {
+        ctx.re_ui
+            .selection_grid(ui, "time_series_selection_ui")
+            .show(ui, |ui| {
+                ctx.re_ui.grid_left_hand_label(ui, "Legend");
+
+                ui.vertical(|ui| {
+                    let mut selected = *root_entity_properties.show_legend.get();
+                    if ctx.re_ui.checkbox(ui, &mut selected, "Visible").changed() {
+                        root_entity_properties.show_legend =
+                            EditableAutoValue::UserEdited(selected);
+                    }
+
+                    let mut corner = root_entity_properties
+                        .legend_location
+                        .unwrap_or(LegendCorner::RightBottom);
+
+                    egui::ComboBox::from_id_source("legend_corner")
+                        .selected_text(corner.to_string())
+                        .show_ui(ui, |ui| {
+                            ui.style_mut().wrap = Some(false);
+                            ui.set_min_width(64.0);
+
+                            ui.selectable_value(
+                                &mut corner,
+                                LegendCorner::LeftTop,
+                                LegendCorner::LeftTop.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut corner,
+                                LegendCorner::RightTop,
+                                LegendCorner::RightTop.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut corner,
+                                LegendCorner::LeftBottom,
+                                LegendCorner::LeftBottom.to_string(),
+                            );
+                            ui.selectable_value(
+                                &mut corner,
+                                LegendCorner::RightBottom,
+                                LegendCorner::RightBottom.to_string(),
+                            );
+                        });
+
+                    root_entity_properties.legend_location = Some(corner);
+                });
+                ui.end_row();
+            });
     }
 
     fn ui(
@@ -111,6 +158,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
@@ -118,10 +166,14 @@ impl SpaceViewClass for TimeSeriesSpaceView {
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let time_ctrl = &ctx.rec_cfg.time_ctrl;
-        let current_time = time_ctrl.time_i64();
-        let time_type = time_ctrl.time_type();
-        let timeline = time_ctrl.timeline();
+        let (current_time, time_type, timeline) = {
+            // Avoid holding the lock for long
+            let time_ctrl = ctx.rec_cfg.time_ctrl.read();
+            let current_time = time_ctrl.time_i64();
+            let time_type = time_ctrl.time_type();
+            let timeline = *time_ctrl.timeline();
+            (current_time, time_type, timeline)
+        };
 
         let timeline_name = timeline.name().to_string();
 
@@ -147,14 +199,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
-            .allow_zoom(egui_plot::AxisBools {
-                x: true,
-                y: zoom_both_axis,
-            })
-            .legend(Legend {
-                position: egui_plot::Corner::RightBottom,
-                ..Default::default()
-            })
+            .allow_zoom([true, zoom_both_axis])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
@@ -177,6 +222,16 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                 )
             });
 
+        if *root_entity_properties.show_legend {
+            plot = plot.legend(Legend {
+                position: root_entity_properties
+                    .legend_location
+                    .unwrap_or(LegendCorner::RightBottom)
+                    .into(),
+                ..Default::default()
+            });
+        }
+
         if timeline.typ() == TimeType::Time {
             let canvas_size = ui.available_size();
             plot = plot.x_grid_spacer(move |spacer| ns_grid_spacer(canvas_size, &spacer));
@@ -188,12 +243,13 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             transform,
         } = plot.show(ui, |plot_ui| {
             if plot_ui.response().secondary_clicked() {
-                let timeline = ctx.rec_cfg.time_ctrl.timeline();
-                ctx.rec_cfg.time_ctrl.set_timeline_and_time(
-                    *timeline,
+                let mut time_ctrl_write = ctx.rec_cfg.time_ctrl.write();
+                let timeline = *time_ctrl_write.timeline();
+                time_ctrl_write.set_timeline_and_time(
+                    timeline,
                     plot_ui.pointer_coordinate().unwrap().x as i64 + time_offset,
                 );
-                ctx.rec_cfg.time_ctrl.pause();
+                time_ctrl_write.pause();
             }
 
             for line in &time_series.lines {
@@ -260,7 +316,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
                     let time =
                         time_offset + transform.value_from_position(pointer_pos).x.round() as i64;
 
-                    let time_ctrl = &mut ctx.rec_cfg.time_ctrl;
+                    let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
                     time_ctrl.set_time(time);
                     time_ctrl.pause();
 

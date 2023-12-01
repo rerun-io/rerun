@@ -6,7 +6,7 @@ use egui::Ui;
 use re_data_store::InstancePath;
 use re_log_types::{ComponentPath, EntityPath, TimeInt, Timeline};
 use re_viewer_context::{
-    DataBlueprintGroupHandle, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
+    DataQueryId, HoverHighlight, Item, SpaceViewId, UiVerbosity, ViewerContext,
 };
 
 use super::DataUi;
@@ -168,7 +168,7 @@ fn entity_stats_ui(ui: &mut egui::Ui, timeline: &Timeline, stats: &re_arrow_stor
 
 /// Show a component path and make it selectable.
 pub fn component_path_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     component_path: &ComponentPath,
 ) -> egui::Response {
@@ -182,7 +182,7 @@ pub fn component_path_button(
 
 /// Show a component path and make it selectable.
 pub fn component_path_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     component_path: &ComponentPath,
@@ -193,13 +193,14 @@ pub fn component_path_button_to(
 }
 
 pub fn data_blueprint_group_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     space_view_id: SpaceViewId,
-    group_handle: DataBlueprintGroupHandle,
+    query_id: DataQueryId,
+    entity_path: EntityPath,
 ) -> egui::Response {
-    let item = Item::DataBlueprintGroup(space_view_id, group_handle);
+    let item = Item::DataBlueprintGroup(space_view_id, query_id, entity_path);
     let response = ctx
         .re_ui
         .selectable_label_with_icon(
@@ -232,12 +233,16 @@ pub fn data_blueprint_button_to(
 }
 
 pub fn time_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     timeline: &Timeline,
     value: TimeInt,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.is_time_selected(timeline, value);
+    let is_selected = ctx
+        .rec_cfg
+        .time_ctrl
+        .read()
+        .is_time_selected(timeline, value);
 
     let response = ui.selectable_label(
         is_selected,
@@ -248,14 +253,15 @@ pub fn time_button(
     if response.clicked() {
         ctx.rec_cfg
             .time_ctrl
+            .write()
             .set_timeline_and_time(*timeline, value);
-        ctx.rec_cfg.time_ctrl.pause();
+        ctx.rec_cfg.time_ctrl.write().pause();
     }
     response
 }
 
 pub fn timeline_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     timeline: &Timeline,
 ) -> egui::Response {
@@ -263,26 +269,27 @@ pub fn timeline_button(
 }
 
 pub fn timeline_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     timeline: &Timeline,
 ) -> egui::Response {
-    let is_selected = ctx.rec_cfg.time_ctrl.timeline() == timeline;
+    let is_selected = ctx.rec_cfg.time_ctrl.read().timeline() == timeline;
 
     let response = ui
         .selectable_label(is_selected, text)
         .on_hover_text("Click to switch to this timeline");
     if response.clicked() {
-        ctx.rec_cfg.time_ctrl.set_timeline(*timeline);
-        ctx.rec_cfg.time_ctrl.pause();
+        let mut time_ctrl = ctx.rec_cfg.time_ctrl.write();
+        time_ctrl.set_timeline(*timeline);
+        time_ctrl.pause();
     }
     response
 }
 
 // TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
 pub fn cursor_interact_with_selectable(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     response: egui::Response,
     item: Item,
 ) -> egui::Response {
@@ -300,23 +307,18 @@ pub fn cursor_interact_with_selectable(
 }
 
 // TODO(andreas): Move elsewhere, this is not directly part of the item_ui.
-pub fn select_hovered_on_click(
-    ctx: &mut ViewerContext<'_>,
-    response: &egui::Response,
-    items: &[Item],
-) {
+pub fn select_hovered_on_click(ctx: &ViewerContext<'_>, response: &egui::Response, items: &[Item]) {
     re_tracing::profile_function!();
 
     if response.hovered() {
-        ctx.selection_state_mut().set_hovered(items.iter().cloned());
+        ctx.set_hovered(items.iter());
     }
 
     if response.clicked() {
         if response.ctx.input(|i| i.modifiers.command) {
-            ctx.selection_state_mut().toggle_selection(items.to_vec());
+            ctx.selection_state().toggle_selection(items.to_vec());
         } else {
-            ctx.selection_state_mut()
-                .set_selection(items.iter().cloned());
+            ctx.selection_state().set_selection(items.iter().cloned());
         }
     }
 }

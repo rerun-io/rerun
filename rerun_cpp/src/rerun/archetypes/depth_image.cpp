@@ -5,44 +5,37 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char DepthImage::INDICATOR_COMPONENT_NAME[] = "rerun.components.DepthImageIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::DepthImage>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::DepthImage>::serialize(
         const archetypes::DepthImage& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(3);
+        std::vector<DataCell> cells;
+        cells.reserve(4);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::TensorData::to_data_cell(&archetype.data, size);
+            auto result = DataCell::from_loggable(archetype.data);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.meter.has_value()) {
-            const size_t size = 1;
-            auto result =
-                rerun::components::DepthMeter::to_data_cell(&archetype.meter.value(), size);
+            auto result = DataCell::from_loggable(archetype.meter.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            const size_t size = 1;
-            auto result =
-                rerun::components::DrawOrder::to_data_cell(&archetype.draw_order.value(), size);
+            auto result = DataCell::from_loggable(archetype.draw_order.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = DepthImage::IndicatorComponent();
-            auto result = DepthImage::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

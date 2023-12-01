@@ -18,16 +18,6 @@ on:
         required: false
         type: string
         default: "prerelease"
-      # We need this because PRs use a merged commit but we really want
-      # to track uploads based on the source commit.
-      UPLOAD_COMMIT_OVERRIDE:
-        required: false
-        type: string
-        default: ""
-      UPLOAD_COMMIT:
-        required: false
-        type: boolean
-        default: true
       PR_NUMBER:
         type: string
         default: ""
@@ -63,38 +53,18 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Add SHORT_SHA env property with commit short sha
+      - name: Get sha
+        id: get-sha
+        shell: bash
         run: |
-          if [ -z "${{ inputs.UPLOAD_COMMIT_OVERRIDE }}" ]; then
-            USED_SHA=${{ github.sha }}
-          else
-            USED_SHA=${{ inputs.UPLOAD_COMMIT_OVERRIDE }}
-          fi
-          echo "SHORT_SHA=$(echo $USED_SHA | cut -c1-7)" >> $GITHUB_ENV
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
       - name: "Upload web demo (commit)"
-        if: ${{ inputs.UPLOAD_COMMIT }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
           path: "web_demo"
-          destination: "rerun-demo/commit/${{env.SHORT_SHA}}"
-          parent: false
-
-      - name: "Upload web demo (prerelease)"
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_demo"
-          destination: "rerun-demo/prerelease"
-          parent: false
-
-      - name: "Upload web demo (nightly)"
-        # TEMP: Tracking `main` until we can do actual nightly builds.
-        if: github.ref == 'refs/heads/main'
-        uses: google-github-actions/upload-cloud-storage@v1
-        with:
-          path: "web_demo"
-          destination: "rerun-demo/version/nightly"
+          destination: "rerun-demo/commit/${{ steps.get-sha.outputs.sha }}"
           parent: false
 
       - name: "Upload web demo (tagged)"
@@ -113,6 +83,27 @@ jobs:
           destination: "rerun-demo/adhoc/${{inputs.ADHOC_NAME}}"
           parent: false
 
+      - name: "Upload web demo (prerelease)"
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/prerelease"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+
+      - name: "Upload web demo (nightly)"
+        # TEMP: Tracking `main` until we can do actual nightly builds.
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "web_demo"
+          destination: "rerun-demo/version/nightly"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+
       - name: "Upload web demo (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
@@ -120,4 +111,5 @@ jobs:
           path: "web_demo"
           destination: "rerun-demo/pr/${{ inputs.PR_NUMBER }}"
           parent: false
-
+          headers: |-
+            cache-control: no-cache, max-age=0

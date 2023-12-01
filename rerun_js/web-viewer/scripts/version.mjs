@@ -25,7 +25,10 @@ if (!isSemver(version)) {
 
 for (const pkg of packages) {
   const package_json_path = path.join(root_dir, pkg.path, "package.json");
-  const package_json = JSON.parse(fs.readFileSync(package_json_path));
+  const readme_path = path.join(root_dir, pkg.path, "README.md");
+
+  let package_json = JSON.parse(fs.readFileSync(package_json_path, "utf-8"));
+  let readme = fs.readFileSync(readme_path, "utf-8");
 
   // update package version
   package_json.version = version;
@@ -39,6 +42,13 @@ for (const pkg of packages) {
     }
   }
 
+  // update link to example rrd file in README
+  readme = readme.replace(
+    /<https:\/\/demo\.rerun\.io\/.*\/examples\/dna\/data\.rrd>/,
+    `<https://demo.rerun.io/version/${version}/examples/dna/data.rrd>`
+  );
+
   fs.writeFileSync(package_json_path, JSON.stringify(package_json, null, 2));
+  fs.writeFileSync(readme_path, readme);
 }
 

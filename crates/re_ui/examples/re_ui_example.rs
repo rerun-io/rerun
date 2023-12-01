@@ -38,7 +38,10 @@ fn main() -> eframe::Result<()> {
             .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
             .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
             .with_inner_size([1200.0, 800.0])
-            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners we need transparency
+            .with_title_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
+            .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
@@ -86,7 +89,7 @@ impl ExampleApp {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).unwrap();
 
-        let tree = egui_tiles::Tree::new_tabs(vec![1, 2, 3]);
+        let tree = egui_tiles::Tree::new_tabs("my_tree", vec![1, 2, 3]);
 
         let (command_sender, command_receiver) = command_channel();
 
@@ -146,8 +149,6 @@ impl eframe::App for ExampleApp {
     fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_text_logs_as_notifications();
         self.toasts.show(egui_ctx);
-
-        egui::gui_zoom::zoom_with_keyboard_shortcuts(egui_ctx);
 
         self.top_bar(egui_ctx);
 
@@ -355,6 +356,19 @@ impl eframe::App for ExampleApp {
             #[allow(clippy::single_match)]
             match cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
+                UICommand::ZoomIn => {
+                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    zoom_factor += 0.1;
+                    egui_ctx.set_zoom_factor(zoom_factor);
+                }
+                UICommand::ZoomOut => {
+                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    zoom_factor -= 0.1;
+                    egui_ctx.set_zoom_factor(zoom_factor);
+                }
+                UICommand::ZoomReset => {
+                    egui_ctx.set_zoom_factor(1.0);
+                }
                 _ => {}
             }
         }
@@ -363,11 +377,7 @@ impl eframe::App for ExampleApp {
 
 impl ExampleApp {
     fn top_bar(&mut self, egui_ctx: &egui::Context) {
-        let native_pixels_per_point = egui_ctx.input(|i| i.raw.native_pixels_per_point);
-        let fullscreen = egui_ctx.input(|i| i.viewport().fullscreen).unwrap_or(false);
-        let top_bar_style = self
-            .re_ui
-            .top_bar_style(native_pixels_per_point, fullscreen, false);
+        let top_bar_style = self.re_ui.top_bar_style(false);
 
         egui::TopBottomPanel::top("top_bar")
             .frame(self.re_ui.top_panel_frame())

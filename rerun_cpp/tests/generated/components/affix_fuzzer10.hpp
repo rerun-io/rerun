@@ -6,23 +6,19 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <string>
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
-    class MemoryPool;
     class StringBuilder;
 } // namespace arrow
 
 namespace rerun::components {
     struct AffixFuzzer10 {
         std::optional<std::string> single_string_optional;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer10() = default;
@@ -34,23 +30,30 @@ namespace rerun::components {
             single_string_optional = std::move(single_string_optional_);
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer10> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer10";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const AffixFuzzer10* elements, size_t num_elements
+            arrow::StringBuilder* builder, const components::AffixFuzzer10* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer10 components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer10* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AffixFuzzer10` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AffixFuzzer10* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

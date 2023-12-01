@@ -8,7 +8,6 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -74,10 +73,11 @@ namespace rerun::archetypes {
     struct Clear {
         rerun::components::ClearIsRecursive is_recursive;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] = "rerun.components.ClearIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'clear_ext.cpp'
@@ -112,8 +112,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Clear> {
         /// Serialize all set component batches.
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const archetypes::Clear& archetype
-        );
+        static Result<std::vector<DataCell>> serialize(const archetypes::Clear& archetype);
     };
 } // namespace rerun

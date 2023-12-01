@@ -103,9 +103,9 @@ fn mono_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_mono_points2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let mut store = insert_rows(msgs.iter());
+        let store = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_points(&mut store, &paths));
+            b.iter(|| query_and_visit_points(&store, &paths));
         });
     }
 }
@@ -131,9 +131,9 @@ fn mono_strings(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_mono_strings2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let mut store = insert_rows(msgs.iter());
+        let store = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_strings(&mut store, &paths));
+            b.iter(|| query_and_visit_strings(&store, &paths));
         });
     }
 }
@@ -156,9 +156,9 @@ fn batch_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_batch_points2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let mut store = insert_rows(msgs.iter());
+        let store = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_points(&mut store, &paths));
+            b.iter(|| query_and_visit_points(&store, &paths));
         });
     }
 }
@@ -181,9 +181,9 @@ fn batch_strings(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_batch_strings2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let mut store = insert_rows(msgs.iter());
+        let store = insert_rows(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_strings(&mut store, &paths));
+            b.iter(|| query_and_visit_strings(&store, &paths));
         });
     }
 }
@@ -264,7 +264,7 @@ struct SavePoint {
     _color: Option<Color>,
 }
 
-fn query_and_visit_points(store: &mut DataStore, paths: &[EntityPath]) -> Vec<SavePoint> {
+fn query_and_visit_points(store: &DataStore, paths: &[EntityPath]) -> Vec<SavePoint> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_POINTS as i64 / 2).into());
 
@@ -292,7 +292,7 @@ struct SaveString {
     _label: Option<Text>,
 }
 
-fn query_and_visit_strings(store: &mut DataStore, paths: &[EntityPath]) -> Vec<SaveString> {
+fn query_and_visit_strings(store: &DataStore, paths: &[EntityPath]) -> Vec<SaveString> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, (NUM_FRAMES_STRINGS as i64 / 2).into());
 

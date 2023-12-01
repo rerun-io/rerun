@@ -73,7 +73,7 @@ fn all_components() {
             }
 
             // Stress test GC
-            store2.gc(GarbageCollectionOptions::gc_everything());
+            store2.gc(&GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
             }
@@ -344,7 +344,7 @@ fn latest_at_impl(store: &mut DataStore) {
         insert_table(&mut store2, &table);
     }
     // Stress test GC
-    store2.gc(GarbageCollectionOptions::gc_everything());
+    store2.gc(&GarbageCollectionOptions::gc_everything());
     for table in store.to_data_tables(None) {
         insert_table(&mut store2, &table);
     }
@@ -493,7 +493,7 @@ fn range_impl(store: &mut DataStore) {
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
             }
-            store2.gc(GarbageCollectionOptions::gc_everything());
+            store2.gc(&GarbageCollectionOptions::gc_everything());
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
             }
@@ -926,11 +926,12 @@ fn gc_impl(store: &mut DataStore) {
 
         let stats = DataStoreStats::from_store(store);
 
-        let (store_events, stats_diff) = store.gc(GarbageCollectionOptions {
+        let (store_events, stats_diff) = store.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
             gc_timeless: false,
             protect_latest: 0,
             purge_empty_tables: false,
+            dont_protect: Default::default(),
         });
         for event in store_events {
             assert!(store.get_msg_metadata(&event.row_id).is_none());
@@ -1004,11 +1005,12 @@ fn protected_gc_impl(store: &mut DataStore) {
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 
-    store.gc(GarbageCollectionOptions {
+    store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
         gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,
+        dont_protect: Default::default(),
     });
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
@@ -1099,11 +1101,12 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 
-    store.gc(GarbageCollectionOptions {
+    store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
         gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,
+        dont_protect: Default::default(),
     });
 
     let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
@@ -1140,11 +1143,12 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 
-    store.gc(GarbageCollectionOptions {
+    store.gc(&GarbageCollectionOptions {
         target: GarbageCollectionTarget::Everything,
         gc_timeless: true,
         protect_latest: 1,
         purge_empty_tables: true,
+        dont_protect: Default::default(),
     });
 
     // No rows should remain because the table should have been purged

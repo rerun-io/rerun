@@ -53,6 +53,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct BarChart {
     /// The values. Should always be a rank-1 tensor.
     pub values: crate::components::TensorData,
+
+    /// The color of the bar chart
+    pub color: Option<crate::components::Color>,
 }
 
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
@@ -61,20 +64,26 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.BarChartIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstanceKey".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.Color".into(),
+            "rerun.components.InstanceKey".into(),
+        ]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.TensorData".into(),
             "rerun.components.BarChartIndicator".into(),
+            "rerun.components.Color".into(),
             "rerun.components.InstanceKey".into(),
         ]
     });
 
 impl BarChart {
-    pub const NUM_COMPONENTS: usize = 3usize;
+    pub const NUM_COMPONENTS: usize = 4usize;
 }
 
 /// Indicator component for the [`BarChart`] [`::re_types_core::Archetype`]
@@ -137,7 +146,20 @@ impl ::re_types_core::Archetype for BarChart {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.BarChart#values")?
         };
-        Ok(Self { values })
+        let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
+            Some({
+                <crate::components::Color>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.BarChart#color")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+                    .ok_or_else(DeserializationError::missing_data)
+                    .with_context("rerun.archetypes.BarChart#color")?
+            })
+        } else {
+            None
+        };
+        Ok(Self { values, color })
     }
 }
 
@@ -148,6 +170,9 @@ impl ::re_types_core::AsComponents for BarChart {
         [
             Some(Self::indicator()),
             Some((&self.values as &dyn ComponentBatch).into()),
+            self.color
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -164,6 +189,12 @@ impl BarChart {
     pub fn new(values: impl Into<crate::components::TensorData>) -> Self {
         Self {
             values: values.into(),
+            color: None,
         }
+    }
+
+    pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
+        self.color = Some(color.into());
+        self
     }
 }

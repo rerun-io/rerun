@@ -33,9 +33,17 @@ impl RerunServer {
     pub async fn new(bind_ip: String, port: RerunServerPort) -> Result<Self, RerunServerError> {
         let bind_addr = format!("{bind_ip}:{port}");
 
-        let listener = TcpListener::bind(&bind_addr)
-            .await
-            .map_err(|err| RerunServerError::BindFailed(port, err))?;
+        let listener = match TcpListener::bind(&bind_addr).await {
+            Ok(listener) => listener,
+            Err(err) if err.kind() == std::io::ErrorKind::AddrInUse => {
+                let bind_addr = format!("{bind_ip}:0");
+
+                TcpListener::bind(&bind_addr)
+                    .await
+                    .map_err(|err| RerunServerError::BindFailed(RerunServerPort(0), err))?
+            }
+            Err(err) => return Err(RerunServerError::BindFailed(port, err)),
+        };
 
         let slf = Self {
             local_addr: listener.local_addr()?,

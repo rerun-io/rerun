@@ -4,15 +4,17 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../datatypes/entity_path.hpp"
+#include "../datatypes/uuid.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-#include <utility>
+#include <string>
 
 namespace arrow {
+    class Array;
     class DataType;
-    class MemoryPool;
     class StructBuilder;
 } // namespace arrow
 
@@ -21,30 +23,53 @@ namespace rerun::blueprint {
     ///
     /// Unstable. Used for the ongoing blueprint experimentations.
     struct SpaceViewComponent {
-        rerun::Collection<uint8_t> space_view;
+        /// The name of the view.
+        std::string display_name;
+
+        /// The class of the view.
+        std::string class_identifier;
+
+        /// The "anchor point" of this space view.
+        ///
+        /// The transform at this path forms the reference point for all scene->world transforms in this space view.
+        /// I.e. the position of this entity path in space forms the origin of the coordinate system in this space view.
+        /// Furthermore, this is the primary indicator for heuristics on what entities we show in this space view.
+        rerun::datatypes::EntityPath space_origin;
+
+        /// True if the user is expected to add entities themselves. False otherwise.
+        bool entities_determined_by_user;
+
+        /// `BlueprintId`s of the `DataQuery`s that make up this `SpaceView`.
+        ///
+        /// It determines which entities are part of the spaceview.
+        rerun::Collection<rerun::datatypes::Uuid> contents;
 
       public:
         SpaceViewComponent() = default;
+    };
+} // namespace rerun::blueprint
 
-        SpaceViewComponent(rerun::Collection<uint8_t> space_view_)
-            : space_view(std::move(space_view_)) {}
+namespace rerun {
+    template <typename T>
+    struct Loggable;
 
-        SpaceViewComponent& operator=(rerun::Collection<uint8_t> space_view_) {
-            space_view = std::move(space_view_);
-            return *this;
-        }
+    /// \private
+    template <>
+    struct Loggable<blueprint::SpaceViewComponent> {
+        static constexpr const char Name[] = "rerun.blueprint.SpaceViewComponent";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const SpaceViewComponent* elements, size_t num_elements
+            arrow::StructBuilder* builder, const blueprint::SpaceViewComponent* elements,
+            size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::blueprint::SpaceViewComponent` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const blueprint::SpaceViewComponent* instances, size_t num_instances
         );
     };
-} // namespace rerun::blueprint
+} // namespace rerun

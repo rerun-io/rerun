@@ -4,13 +4,15 @@
 #pragma once
 
 #include "../collection.hpp"
+#include "../compiler_utils.hpp"
+#include "../components/color.hpp"
 #include "../components/tensor_data.hpp"
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -38,10 +40,14 @@ namespace rerun::archetypes {
         /// The values. Should always be a rank-1 tensor.
         rerun::components::TensorData values;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+        /// The color of the bar chart
+        std::optional<rerun::components::Color> color;
+
+      public:
+        static constexpr const char IndicatorComponentName[] = "rerun.components.BarChartIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'bar_chart_ext.cpp'
@@ -162,6 +168,13 @@ namespace rerun::archetypes {
 
         explicit BarChart(rerun::components::TensorData _values) : values(std::move(_values)) {}
 
+        /// The color of the bar chart
+        BarChart with_color(rerun::components::Color _color) && {
+            color = std::move(_color);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// Returns the number of primary instances of this archetype.
         size_t num_instances() const {
             return 1;
@@ -179,8 +192,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::BarChart> {
         /// Serialize all set component batches.
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const archetypes::BarChart& archetype
-        );
+        static Result<std::vector<DataCell>> serialize(const archetypes::BarChart& archetype);
     };
 } // namespace rerun

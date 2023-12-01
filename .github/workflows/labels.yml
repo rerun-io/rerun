@@ -37,4 +37,3 @@ jobs:
           mode: minimum
           count: 1
           labels: "📊 analytics, , 🟦 blueprint, 🪳 bug, C/C++ SDK, codegen/idl, 🧑‍💻 dev experience, dependencies, 📖 documentation, 💬 discussion, examples, exclude from changelog, 📉 performance, 🐍 python API, ⛃ re_datastore, 📺 re_viewer, 🔺 re_renderer, 🚜 refactor, ⛴ release, 🦀 rust SDK, 🔨 testing, ui, 🕸️ web"
-

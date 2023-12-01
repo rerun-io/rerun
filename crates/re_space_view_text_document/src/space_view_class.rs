@@ -1,9 +1,10 @@
 use egui::Label;
 
+use re_viewer_context::external::re_data_store::EntityProperties;
 use re_viewer_context::{
-    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassName,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection,
+    ViewQuery, ViewerContext,
 };
 
 use crate::view_part_system::TextDocumentEntry;
@@ -48,9 +49,8 @@ pub struct TextDocumentSpaceView;
 impl SpaceViewClass for TextDocumentSpaceView {
     type State = TextDocumentSpaceViewState;
 
-    fn name(&self) -> SpaceViewClassName {
-        "Text Document".into()
-    }
+    const IDENTIFIER: &'static str = "Text Document";
+    const DISPLAY_NAME: &'static str = "Text Document";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_TEXTBOX
@@ -78,6 +78,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
         ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
             ctx.re_ui.grid_left_hand_label(ui, "Text style");
@@ -97,6 +98,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
         _ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,

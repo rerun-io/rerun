@@ -15,11 +15,7 @@ const NUM_LOG_CALLS: usize = 4;
 fn prepare() -> Vec<u8> {
     re_tracing::profile_function!();
 
-    let mut image = Vec::new();
-    image.resize(
-        (IMAGE_DIMENSION * IMAGE_DIMENSION * IMAGE_CHANNELS) as usize,
-        0,
-    );
+    vec![0u8; (IMAGE_DIMENSION * IMAGE_DIMENSION * IMAGE_CHANNELS) as usize]
 
     // Skip filling with non-zero values, this adds a bit too much extra overhead.
     // image.resize_with(
@@ -29,8 +25,7 @@ fn prepare() -> Vec<u8> {
     //         i as u8
     //     },
     // );
-
-    image
+    // image
 }
 
 fn execute(mut raw_image_data: Vec<u8>) -> anyhow::Result<()> {

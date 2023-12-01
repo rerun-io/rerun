@@ -9,37 +9,29 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::datatypes {
-    const std::shared_ptr<arrow::DataType>& Rotation3D::arrow_datatype() {
+namespace rerun::datatypes {}
+
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<datatypes::Rotation3D>::arrow_datatype() {
         static const auto datatype = arrow::dense_union({
             arrow::field("_null_markers", arrow::null(), true, nullptr),
-            arrow::field("Quaternion", rerun::datatypes::Quaternion::arrow_datatype(), false),
-            arrow::field("AxisAngle", rerun::datatypes::RotationAxisAngle::arrow_datatype(), false),
+            arrow::field(
+                "Quaternion",
+                Loggable<rerun::datatypes::Quaternion>::arrow_datatype(),
+                false
+            ),
+            arrow::field(
+                "AxisAngle",
+                Loggable<rerun::datatypes::RotationAxisAngle>::arrow_datatype(),
+                false
+            ),
         });
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::DenseUnionBuilder>> Rotation3D::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::DenseUnionBuilder>(
-            memory_pool,
-            // Children:
-            std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                std::make_shared<arrow::NullBuilder>(memory_pool),
-                rerun::datatypes::Quaternion::new_arrow_array_builder(memory_pool).value,
-                rerun::datatypes::RotationAxisAngle::new_arrow_array_builder(memory_pool).value,
-            }),
-            arrow_datatype()
-        ));
-    }
-
-    rerun::Error Rotation3D::fill_arrow_array_builder(
-        arrow::DenseUnionBuilder* builder, const Rotation3D* elements, size_t num_elements
+    rerun::Error Loggable<datatypes::Rotation3D>::fill_arrow_array_builder(
+        arrow::DenseUnionBuilder* builder, const datatypes::Rotation3D* elements,
+        size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -54,36 +46,62 @@ namespace rerun::datatypes {
         ARROW_RETURN_NOT_OK(builder->Reserve(static_cast<int64_t>(num_elements)));
         for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
             const auto& union_instance = elements[elem_idx];
-            ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance._tag)));
+            ARROW_RETURN_NOT_OK(builder->Append(static_cast<int8_t>(union_instance.get_union_tag()))
+            );
 
-            auto variant_index = static_cast<int>(union_instance._tag);
+            auto variant_index = static_cast<int>(union_instance.get_union_tag());
             auto variant_builder_untyped = builder->child_builder(variant_index).get();
 
-            switch (union_instance._tag) {
-                case detail::Rotation3DTag::None: {
+            using TagType = datatypes::detail::Rotation3DTag;
+            switch (union_instance.get_union_tag()) {
+                case TagType::None: {
                     ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                 } break;
-                case detail::Rotation3DTag::Quaternion: {
+                case TagType::Quaternion: {
                     auto variant_builder =
                         static_cast<arrow::FixedSizeListBuilder*>(variant_builder_untyped);
-                    RR_RETURN_NOT_OK(rerun::datatypes::Quaternion::fill_arrow_array_builder(
-                        variant_builder,
-                        &union_instance._data.quaternion,
-                        1
-                    ));
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::Quaternion>::fill_arrow_array_builder(
+                            variant_builder,
+                            &union_instance.get_union_data().quaternion,
+                            1
+                        )
+                    );
                 } break;
-                case detail::Rotation3DTag::AxisAngle: {
+                case TagType::AxisAngle: {
                     auto variant_builder =
                         static_cast<arrow::StructBuilder*>(variant_builder_untyped);
-                    RR_RETURN_NOT_OK(rerun::datatypes::RotationAxisAngle::fill_arrow_array_builder(
-                        variant_builder,
-                        &union_instance._data.axis_angle,
-                        1
-                    ));
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::RotationAxisAngle>::fill_arrow_array_builder(
+                            variant_builder,
+                            &union_instance.get_union_data().axis_angle,
+                            1
+                        )
+                    );
                 } break;
             }
         }
 
         return Error::ok();
     }
-} // namespace rerun::datatypes
+
+    Result<std::shared_ptr<arrow::Array>> Loggable<datatypes::Rotation3D>::to_arrow(
+        const datatypes::Rotation3D* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<datatypes::Rotation3D>::fill_arrow_array_builder(
+                static_cast<arrow::DenseUnionBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+        return array;
+    }
+} // namespace rerun

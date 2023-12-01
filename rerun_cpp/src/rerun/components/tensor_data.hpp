@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/tensor_data.hpp"
 #include "../result.hpp"
 
@@ -12,8 +11,8 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
-    class MemoryPool;
     class StructBuilder;
 } // namespace arrow
 
@@ -22,18 +21,27 @@ namespace rerun::components {
     struct TensorData {
         rerun::datatypes::TensorData data;
 
-        /// Name of the component, used for serialization.
-        static const char NAME[];
-
       public:
         // Extensions to generated type defined in 'tensor_data_ext.cpp'
 
-        /// New Tensor from dimensions and tensor buffer.
+        /// New tensor data from shape and tensor buffer.
+        ///
+        /// \param shape Shape of the tensor.
+        /// \param buffer The tensor buffer containing the tensor's data.
         TensorData(
             rerun::Collection<rerun::datatypes::TensorDimension> shape,
             rerun::datatypes::TensorBuffer buffer
         )
             : data(rerun::datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
+        /// New tensor data from dimensions and pointer to tensor data.
+        ///
+        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+        /// \param shape  Shape of the tensor. Determines the number of elements expected to be in `data_`.
+        /// \param data_ Target of the pointer must outlive the archetype.
+        template <typename TElement>
+        explicit TensorData(Collection<datatypes::TensorDimension> shape, const TElement* data_)
+            : data(rerun::datatypes::TensorData(std::move(shape), data_)) {}
 
       public:
         TensorData() = default;
@@ -49,23 +57,30 @@ namespace rerun::components {
         operator rerun::datatypes::TensorData() const {
             return data;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::TensorData> {
+        static constexpr const char Name[] = "rerun.components.TensorData";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const TensorData* elements, size_t num_elements
+            arrow::StructBuilder* builder, const components::TensorData* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of TensorData components.
-        static Result<rerun::DataCell> to_data_cell(
-            const TensorData* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::TensorData` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::TensorData* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

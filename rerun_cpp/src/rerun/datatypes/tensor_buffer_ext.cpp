@@ -114,9 +114,11 @@ namespace rerun::datatypes {
             }
             case detail::TensorBufferTag::NV12: {
                 assert(false && "Can't ask for the number of elements in an NV12 encoded image");
+                break;
             }
             case detail::TensorBufferTag::JPEG: {
                 assert(false && "Can't ask for the number of elements in a JPEG");
+                break;
             }
         }
         assert(false && "Unknown TensorBuffer tag");

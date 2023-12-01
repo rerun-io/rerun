@@ -1,3 +1,4 @@
+use re_data_store::EntityProperties;
 use re_log_types::EntityPath;
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
@@ -16,16 +17,11 @@ use crate::{
 #[derive(Default)]
 pub struct SpatialSpaceView2D;
 
-impl SpatialSpaceView2D {
-    pub const NAME: &'static str = "2D";
-}
-
 impl SpaceViewClass for SpatialSpaceView2D {
     type State = SpatialSpaceViewState;
 
-    fn name(&self) -> re_viewer_context::SpaceViewClassName {
-        Self::NAME.into()
-    }
+    const IDENTIFIER: &'static str = "2D";
+    const DISPLAY_NAME: &'static str = "2D";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_2D
@@ -77,7 +73,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         let mut score = auto_spawn_heuristic(
-            &self.name(),
+            &self.identifier(),
             ctx,
             per_system_entities,
             SpatialSpaceViewKind::TwoD,
@@ -97,11 +93,11 @@ impl SpaceViewClass for SpatialSpaceView2D {
         if space_origin.is_root() {
             let parts = ctx
                 .space_view_class_registry
-                .get_system_registry_or_log_error(&self.name())
+                .get_system_registry_or_log_error(&self.identifier())
                 .new_part_collection();
 
             for part in per_system_entities.keys() {
-                if let Ok(part) = parts.get_by_name(*part) {
+                if let Ok(part) = parts.get_by_identifier(*part) {
                     if let Some(part_data) = part
                         .data()
                         .and_then(|d| d.downcast_ref::<SpatialViewPartData>())
@@ -133,15 +129,10 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         space_origin: &EntityPath,
-        space_view_id: SpaceViewId,
+        _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
-        state.selection_ui(
-            ctx,
-            ui,
-            space_origin,
-            space_view_id,
-            SpatialSpaceViewKind::TwoD,
-        );
+        state.selection_ui(ctx, ui, space_origin, SpatialSpaceViewKind::TwoD);
     }
 
     fn ui(
@@ -149,6 +140,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         query: &ViewQuery<'_>,

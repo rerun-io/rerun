@@ -130,6 +130,6 @@ fn load_panel_state(path: &EntityPath, blueprint_db: &re_data_store::StoreDb) ->
     re_tracing::profile_function!();
     blueprint_db
         .store()
-        .query_timeless_component::<PanelView>(path)
+        .query_timeless_component_quiet::<PanelView>(path)
         .map(|p| p.is_expanded)
 }

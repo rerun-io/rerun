@@ -5,43 +5,37 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char TextLog::INDICATOR_COMPONENT_NAME[] = "rerun.components.TextLogIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::TextLog>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::TextLog>::serialize(
         const archetypes::TextLog& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(3);
+        std::vector<DataCell> cells;
+        cells.reserve(4);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::Text::to_data_cell(&archetype.text, size);
+            auto result = DataCell::from_loggable(archetype.text);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.level.has_value()) {
-            const size_t size = 1;
-            auto result =
-                rerun::components::TextLogLevel::to_data_cell(&archetype.level.value(), size);
+            auto result = DataCell::from_loggable(archetype.level.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            const size_t size = 1;
-            auto result = rerun::components::Color::to_data_cell(&archetype.color.value(), size);
+            auto result = DataCell::from_loggable(archetype.color.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = TextLog::IndicatorComponent();
-            auto result = TextLog::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

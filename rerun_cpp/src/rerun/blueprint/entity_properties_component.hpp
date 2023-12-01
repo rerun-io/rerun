@@ -11,8 +11,8 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
-    class MemoryPool;
     class StructBuilder;
 } // namespace arrow
 
@@ -32,19 +32,30 @@ namespace rerun::blueprint {
             props = std::move(props_);
             return *this;
         }
+    };
+} // namespace rerun::blueprint
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<blueprint::EntityPropertiesComponent> {
+        static constexpr const char Name[] = "rerun.blueprint.EntityPropertiesComponent";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const EntityPropertiesComponent* elements,
+            arrow::StructBuilder* builder, const blueprint::EntityPropertiesComponent* elements,
             size_t num_elements
         );
+
+        /// Serializes an array of `rerun::blueprint::EntityPropertiesComponent` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const blueprint::EntityPropertiesComponent* instances, size_t num_instances
+        );
     };
-} // namespace rerun::blueprint
+} // namespace rerun

@@ -7,22 +7,18 @@
 
 #include <cstdint>
 #include <memory>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
-    class MemoryPool;
     class StructBuilder;
 } // namespace arrow
 
 namespace rerun::components {
     struct AffixFuzzer2 {
         rerun::datatypes::AffixFuzzer1 single_required;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer2() = default;
@@ -39,23 +35,30 @@ namespace rerun::components {
         operator rerun::datatypes::AffixFuzzer1() const {
             return single_required;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer2> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer2";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StructBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StructBuilder* builder, const AffixFuzzer2* elements, size_t num_elements
+            arrow::StructBuilder* builder, const components::AffixFuzzer2* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer2 components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer2* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AffixFuzzer2` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AffixFuzzer2* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

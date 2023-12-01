@@ -85,7 +85,7 @@ impl Default for StartupOptions {
 #[cfg(not(target_arch = "wasm32"))]
 const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
-const MAX_ZOOM_FACTOR: f32 = 4.0;
+const MAX_ZOOM_FACTOR: f32 = 5.0;
 
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
@@ -199,7 +199,7 @@ impl App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(screenshot_path) = startup_options.screenshot_to_path_then_quit.clone() {
-            screenshotter.screenshot_to_path_then_quit(screenshot_path);
+            screenshotter.screenshot_to_path_then_quit(&re_ui.egui_ctx, screenshot_path);
         }
 
         let (command_sender, command_receiver) = command_channel();
@@ -247,6 +247,10 @@ impl App {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn set_profiler(&mut self, profiler: re_tracing::Profiler) {
         self.profiler = profiler;
+    }
+
+    pub fn set_examples_manifest_url(&mut self, url: String) {
+        self.state.set_examples_manifest_url(url);
     }
 
     pub fn build_info(&self) -> &re_build_info::BuildInfo {
@@ -355,6 +359,11 @@ impl App {
             }
 
             SystemCommand::ResetViewer => self.reset(store_hub, egui_ctx),
+            SystemCommand::ResetBlueprint => {
+                // By clearing the blueprint it will be re-populated with the defaults
+                // at the beginning of the next frame.
+                store_hub.clear_blueprint();
+            }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 let blueprint_db = store_hub.store_db_mut(&blueprint_id);
                 for row in updates {
@@ -453,15 +462,23 @@ impl App {
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
-                self.app_options_mut().zoom_factor += 0.1;
+                let mut zoom_factor = _egui_ctx.zoom_factor();
+                zoom_factor += 0.1;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                _egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomOut => {
-                self.app_options_mut().zoom_factor -= 0.1;
+                let mut zoom_factor = _egui_ctx.zoom_factor();
+                zoom_factor -= 0.1;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                _egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => {
-                self.app_options_mut().zoom_factor = 1.0;
+                _egui_ctx.set_zoom_factor(1.0);
             }
 
             UICommand::SelectionPrevious => {
@@ -506,7 +523,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ScreenshotWholeApp => {
-                self.screenshotter.request_screenshot();
+                self.screenshotter.request_screenshot(_egui_ctx);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintDatastore => {
@@ -543,7 +560,7 @@ impl App {
         let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else {
             return;
         };
-        let time_ctrl = &mut rec_cfg.time_ctrl;
+        let time_ctrl = rec_cfg.time_ctrl.get_mut();
 
         let times_per_timeline = store_db.times_per_timeline();
 
@@ -642,7 +659,7 @@ impl App {
     fn ui(
         &mut self,
         egui_ctx: &egui::Context,
-        frame: &mut eframe::Frame,
+        frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
@@ -1038,27 +1055,6 @@ impl eframe::App for App {
                 }
                 self.open_files_promise = None;
             }
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.screenshotter.is_screenshotting() {
-            // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
-            egui_ctx.set_pixels_per_point(2.0);
-        } else {
-            // Ensure zoom factor is sane and in 10% steps at all times before applying it.
-            {
-                let mut zoom_factor = self.app_options().zoom_factor;
-                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
-                zoom_factor = (zoom_factor * 10.).round() / 10.;
-                self.state.app_options_mut().zoom_factor = zoom_factor;
-            }
-
-            // Apply zoom factor on top of natively reported pixel per point.
-            let native_pixels_per_point = egui_ctx
-                .input(|i| i.raw.native_pixels_per_point)
-                .unwrap_or(1.0);
-            let pixels_per_point = native_pixels_per_point * self.app_options().zoom_factor;
-            egui_ctx.set_pixels_per_point(pixels_per_point);
         }
 
         // TODO(andreas): store the re_renderer somewhere else.

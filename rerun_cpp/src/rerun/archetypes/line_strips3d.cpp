@@ -5,70 +5,52 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char LineStrips3D::INDICATOR_COMPONENT_NAME[] = "rerun.components.LineStrips3DIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::LineStrips3D>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::LineStrips3D>::serialize(
         const archetypes::LineStrips3D& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(6);
+        std::vector<DataCell> cells;
+        cells.reserve(7);
 
         {
-            const size_t size = archetype.strips.size();
-            auto result = rerun::components::LineStrip3D::to_data_cell(
-                archetype.strips.data(),
-                archetype.strips.size()
-            );
+            auto result = DataCell::from_loggable(archetype.strips);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            const size_t size = archetype.radii.value().size();
-            auto result =
-                rerun::components::Radius::to_data_cell(archetype.radii.value().data(), size);
+            auto result = DataCell::from_loggable(archetype.radii.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            const size_t size = archetype.colors.value().size();
-            auto result =
-                rerun::components::Color::to_data_cell(archetype.colors.value().data(), size);
+            auto result = DataCell::from_loggable(archetype.colors.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.labels.has_value()) {
-            const size_t size = archetype.labels.value().size();
-            auto result =
-                rerun::components::Text::to_data_cell(archetype.labels.value().data(), size);
+            auto result = DataCell::from_loggable(archetype.labels.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            const size_t size = archetype.class_ids.value().size();
-            auto result =
-                rerun::components::ClassId::to_data_cell(archetype.class_ids.value().data(), size);
+            auto result = DataCell::from_loggable(archetype.class_ids.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.instance_keys.has_value()) {
-            const size_t size = archetype.instance_keys.value().size();
-            auto result = rerun::components::InstanceKey::to_data_cell(
-                archetype.instance_keys.value().data(),
-                size
-            );
+            auto result = DataCell::from_loggable(archetype.instance_keys.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = LineStrips3D::IndicatorComponent();
-            auto result = LineStrips3D::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

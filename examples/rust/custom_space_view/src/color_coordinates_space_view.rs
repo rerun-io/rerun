@@ -1,3 +1,4 @@
+use re_viewer::external::re_data_store::EntityProperties;
 use re_viewer::external::{
     egui,
     re_data_store::InstancePath,
@@ -6,9 +7,9 @@ use re_viewer::external::{
     re_renderer, re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
-        SpaceViewClassName, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-        SpaceViewSystemExecutionError, SpaceViewSystemRegistry, UiVerbosity, ViewContextCollection,
-        ViewPartCollection, ViewQuery, ViewerContext,
+        SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
+        SpaceViewSystemRegistry, UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery,
+        ViewerContext,
     },
 };
 
@@ -68,10 +69,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
     // State type as described above.
     type State = ColorCoordinatesSpaceViewState;
 
-    fn name(&self) -> SpaceViewClassName {
-        // Name and identifier of this Space View.
-        "Color Coordinates".into()
-    }
+    const IDENTIFIER: &'static str = "Color Coordinates";
+    const DISPLAY_NAME: &'static str = "Color Coordinates";
 
     fn icon(&self) -> &'static re_ui::Icon {
         &re_ui::icons::SPACE_VIEW_SCATTERPLOT
@@ -108,6 +107,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         state: &mut Self::State,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
+        _root_entity_properties: &mut EntityProperties,
     ) {
         ui.horizontal(|ui| {
             ui.label("Coordinates mode");
@@ -132,6 +132,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
+        _root_entity_properties: &EntityProperties,
         _view_ctx: &ViewContextCollection,
         parts: &ViewPartCollection,
         query: &ViewQuery<'_>,

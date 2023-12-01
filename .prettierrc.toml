@@ -1,0 +1,15 @@
+semi = true
+tabWidth = 4
+trailingComma = "all"
+
+[[overrides]]
+files = ["*.yml", "*.yaml"]
+options = { tabWidth = 2 }
+
+[[overrides]]
+files = "*.js"
+options = { semi = true, tabWidth = 2 }
+
+[[overrides]]
+files = [".prettierrc", "*.json", "*.css", "*.html"]
+options = { tabWidth = 2 }

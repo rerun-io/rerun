@@ -10,7 +10,6 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -88,10 +87,12 @@ namespace rerun::archetypes {
         /// If omitted, `text/plain` is assumed.
         std::optional<rerun::components::MediaType> media_type;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] =
+            "rerun.components.TextDocumentIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         TextDocument() = default;
@@ -109,7 +110,7 @@ namespace rerun::archetypes {
         TextDocument with_media_type(rerun::components::MediaType _media_type) && {
             media_type = std::move(_media_type);
             // See: https://github.com/rerun-io/rerun/issues/4027
-            RERUN_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
         /// Returns the number of primary instances of this archetype.
@@ -129,8 +130,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::TextDocument> {
         /// Serialize all set component batches.
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const archetypes::TextDocument& archetype
-        );
+        static Result<std::vector<DataCell>> serialize(const archetypes::TextDocument& archetype);
     };
 } // namespace rerun

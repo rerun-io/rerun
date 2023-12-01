@@ -44,8 +44,8 @@ impl App {
                 ui.add_space(spacing);
 
                 // On the web the browser controls the zoom
-                let zoom_factor = self.app_options().zoom_factor;
-                ui.weak(format!("Zoom {:.0}%", zoom_factor * 100.0))
+                let zoom_factor = ui.ctx().zoom_factor();
+                ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
                     .on_hover_text(
                         "The UI zoom level on top of the operating system's default value",
                     );

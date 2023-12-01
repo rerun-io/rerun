@@ -1,5 +1,6 @@
 #include <array>
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 #include <arrow/buffer.h>
@@ -7,23 +8,32 @@
 #include <catch2/generators/catch_generators.hpp>
 #include <rerun.hpp>
 
+#include <rerun/c/rerun.h>
+
 #include "error_check.hpp"
 
 namespace fs = std::filesystem;
 
 #define TEST_TAG "[recording_stream]"
 
-struct BadComponent {
-    static const char* NAME;
+struct BadComponent {};
+
+template <>
+struct rerun::Loggable<BadComponent> {
+    static constexpr const char* Name = "bad!";
     static rerun::Error error;
 
-    static rerun::Result<rerun::DataCell> to_data_cell(const BadComponent*, size_t) {
+    static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+        return rerun::Loggable<rerun::components::Position2D>::arrow_datatype();
+    }
+
+    static rerun::Result<std::shared_ptr<arrow::Array>> to_arrow(const BadComponent*, size_t) {
         return error;
     }
 };
 
-const char* BadComponent::NAME = "bad!";
-rerun::Error BadComponent::error = rerun::Error(rerun::ErrorCode::Unknown, "BadComponent");
+rerun::Error rerun::Loggable<BadComponent>::error =
+    rerun::Error(rerun::ErrorCode::Unknown, "BadComponent");
 
 struct BadArchetype {
     size_t num_instances() const {
@@ -34,9 +44,8 @@ struct BadArchetype {
 namespace rerun {
     template <>
     struct AsComponents<BadArchetype> {
-        static rerun::Result<std::vector<rerun::SerializedComponentBatch>>
-            serialize(const BadArchetype&) {
-            return BadComponent::error;
+        static rerun::Result<std::vector<rerun::DataCell>> serialize(const BadArchetype&) {
+            return Loggable<BadComponent>::error;
         }
     };
 } // namespace rerun
@@ -65,7 +74,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
         AND_GIVEN("a valid application id") {
             THEN("creating a new stream does not log an error") {
                 rerun::RecordingStream stream = check_logged_error([&] {
-                    return rerun::RecordingStream("rerun_example_test", kind);
+                    return rerun::RecordingStream("rerun_example_test", std::string_view(), kind);
                 });
 
                 AND_THEN("it does not crash on destruction") {}
@@ -91,7 +100,7 @@ SCENARIO("RecordingStream can be created, destroyed and lists correct properties
         AND_GIVEN("invalid utf8 character sequence for the application id") {
             THEN("creating a new stream logs an invalid string argument error") {
                 check_logged_error(
-                    [&] { rerun::RecordingStream stream("\xc3\x28", kind); },
+                    [&] { rerun::RecordingStream stream("\xc3\x28", std::string_view(), kind); },
                     rerun::ErrorCode::InvalidStringArgument
                 );
             }
@@ -115,7 +124,7 @@ SCENARIO("RecordingStream can be set as global and thread local", TEST_TAG) {
             }
 
             WHEN("creating a new stream") {
-                rerun::RecordingStream stream("test", kind);
+                rerun::RecordingStream stream("test", std::string_view(), kind);
 
                 THEN("it can be set as global") {
                     stream.set_global();
@@ -138,7 +147,7 @@ SCENARIO("RecordingStream can be used for logging archetypes and components", TE
     for (auto kind : std::array{rerun::StoreKind::Recording, rerun::StoreKind::Blueprint}) {
         GIVEN("a store kind" << kind) {
             WHEN("creating a new stream") {
-                rerun::RecordingStream stream("test", kind);
+                rerun::RecordingStream stream("test", std::string_view(), kind);
 
                 // We can make single components work, but this would make error messages a lot
                 // worse since we'd have to implement the base `AsComponents` template for this.
@@ -441,52 +450,13 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
     GIVEN("a new RecordingStream") {
         rerun::RecordingStream stream("test");
 
-        // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
-        // at least on some C++ implementations.
-        // If we'd want to support this in earnest we'd have to create out own string_view type.
-        //
-        // AND_GIVEN("an invalid path") {
-        //     auto variant = GENERATE(table<const char*, rerun::ErrorCode>({
-        //         std::tuple<const char*, rerun::ErrorCode>(
-        //             nullptr,
-        //             rerun::ErrorCode::UnexpectedNullArgument
-        //         ),
-        //     }));
-        //     const auto [path, error] = variant;
-        //     auto v = rerun::Position2D{1.0, 2.0};
-
-        //     THEN("try_log_data_row returns the correct error") {
-        //         CHECK(stream.try_log_data_row(path, 0, 0, nullptr, true).code == error);
-        //     }
-        //     THEN("try_log returns the correct error") {
-        //         CHECK(stream.try_log(path, rerun::Points2D(v)).code == error);
-        //     }
-        //     THEN("log logs the correct error") {
-        //         check_logged_error(
-        //             [&] { stream.log(std::get<0>(variant), rerun::Points2D(v)); },
-        //             error
-        //         );
-        //     }
-        //     THEN("try_log_timeless returns the correct error") {
-        //         CHECK(stream.try_log_timeless(path, rerun::Points2D(v)).code == error);
-        //     }
-        //     THEN("log_timeless logs the correct error") {
-        //         check_logged_error(
-        //             [&] {
-        //                 stream.log_timeless(std::get<0>(variant), rerun::Points2D(v));
-        //             },
-        //             error
-        //         );
-        //     }
-        // }
-
         AND_GIVEN("a valid path") {
             const char* path = "valid";
 
             AND_GIVEN("a cell with a null buffer") {
-                rerun::DataCell cell;
-                cell.buffer = nullptr;
-                cell.component_name = "valid";
+                rerun::DataCell cell = {};
+                cell.num_instances = 1;
+                cell.component_type = 0;
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
                     CHECK(
@@ -495,40 +465,19 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                     );
                 }
             }
+            AND_GIVEN("a cell with an invalid component type") {
+                rerun::DataCell cell = {};
+                cell.num_instances = 1;
+                cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
+                cell.array = rerun::components::indicator_arrow_array();
 
-            // We changed to taking std::string_view instead of const char* and constructing such from nullptr crashes
-            // at least on some C++ implementations.
-            // If we'd want to support this in earnest we'd have to create out own string_view type.
-            //
-            // AND_GIVEN("a cell with a null component name") {
-            //     rerun::DataCell cell;
-            //     cell.buffer = std::make_shared<arrow::Buffer>(nullptr, 0);
-            //     cell.component_name = nullptr;
-
-            //     THEN("try_log_data_row fails with UnexpectedNullArgument") {
-            //         CHECK(
-            //             stream.try_log_data_row(path, 1, 1, &cell, true).code ==
-            //             rerun::ErrorCode::UnexpectedNullArgument
-            //         );
-            //     }
-            // }
-
-            AND_GIVEN("a cell with a valid component name but invalid data") {
-                uint8_t invalid_data[1] = {0};
-                rerun::DataCell cell;
-                cell.component_name = "very-valid";
-                cell.buffer = std::make_shared<arrow::Buffer>(invalid_data, sizeof(invalid_data));
-
-                THEN("try_log_data_row fails with ArrowIpcMessageParsingFailure") {
+                THEN("try_log_data_row fails with InvalidComponentTypeHandle") {
                     CHECK(
                         stream.try_log_data_row(path, 1, 1, &cell, true).code ==
-                        rerun::ErrorCode::ArrowIpcMessageParsingFailure
+                        rerun::ErrorCode::InvalidComponentTypeHandle
                     );
                 }
             }
-
-            // TODO(andreas): Missing test that provokes `ArrowDataCellError`. It's fairly hard to
-            // get there which I reckon is a good thing!
         }
     }
 }
@@ -537,9 +486,12 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
     GIVEN("a new RecordingStream and a valid entity path") {
         rerun::RecordingStream stream("test");
         const char* path = "valid";
+        auto& expected_error = rerun::Loggable<BadComponent>::error;
+
         AND_GIVEN("an component that fails serialization") {
             const auto component = BadComponent();
-            BadComponent::error.code =
+
+            expected_error.code =
                 GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
             THEN("calling log with an array logs the serialization error") {
@@ -547,7 +499,7 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
                     [&] {
                         stream.log(path, std::array{component, component});
                     },
-                    component.error.code
+                    expected_error.code
                 );
             }
             THEN("calling log with a vector logs the serialization error") {
@@ -555,34 +507,34 @@ SCENARIO("Recording stream handles serialization failure during logging graceful
                     [&] {
                         stream.log(path, std::vector{component, component});
                     },
-                    component.error.code
+                    expected_error.code
                 );
             }
             THEN("calling log with a c array logs the serialization error") {
                 const BadComponent components[] = {component, component};
-                check_logged_error([&] { stream.log(path, components); }, component.error.code);
+                check_logged_error([&] { stream.log(path, components); }, expected_error.code);
             }
             THEN("calling try_log with an array forwards the serialization error") {
-                CHECK(stream.try_log(path, std::array{component, component}) == component.error);
+                CHECK(stream.try_log(path, std::array{component, component}) == expected_error);
             }
             THEN("calling try_log with a vector forwards the serialization error") {
-                CHECK(stream.try_log(path, std::vector{component, component}) == component.error);
+                CHECK(stream.try_log(path, std::vector{component, component}) == expected_error);
             }
             THEN("calling try_log with a c array forwards the serialization error") {
                 const BadComponent components[] = {component, component};
-                CHECK(stream.try_log(path, components) == component.error);
+                CHECK(stream.try_log(path, components) == expected_error);
             }
         }
         AND_GIVEN("an archetype that fails serialization") {
             auto archetype = BadArchetype();
-            BadComponent::error.code =
+            expected_error.code =
                 GENERATE(rerun::ErrorCode::Unknown, rerun::ErrorCode::ArrowStatusCode_TypeError);
 
             THEN("calling log_archetype logs the serialization error") {
-                check_logged_error([&] { stream.log(path, archetype); }, BadComponent::error.code);
+                check_logged_error([&] { stream.log(path, archetype); }, expected_error.code);
             }
             THEN("calling log_archetype forwards the serialization error") {
-                CHECK(stream.try_log(path, archetype) == BadComponent::error);
+                CHECK(stream.try_log(path, archetype) == expected_error);
             }
         }
     }

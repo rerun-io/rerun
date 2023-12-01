@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/vec3d.hpp"
 #include "../result.hpp"
 
@@ -12,18 +11,15 @@
 #include <memory>
 
 namespace arrow {
+    class Array;
     class DataType;
     class FixedSizeListBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
     /// **Component**: A position in 3D space.
     struct Position3D {
         rerun::datatypes::Vec3D xyz;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'position3d_ext.cpp'
@@ -64,23 +60,30 @@ namespace rerun::components {
         operator rerun::datatypes::Vec3D() const {
             return xyz;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::Position3D> {
+        static constexpr const char Name[] = "rerun.components.Position3D";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FixedSizeListBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FixedSizeListBuilder* builder, const Position3D* elements, size_t num_elements
+            arrow::FixedSizeListBuilder* builder, const components::Position3D* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of Position3D components.
-        static Result<rerun::DataCell> to_data_cell(
-            const Position3D* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::Position3D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::Position3D* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

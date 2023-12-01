@@ -9,54 +9,42 @@
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
 
-namespace rerun::datatypes {
-    const std::shared_ptr<arrow::DataType>& ClassDescription::arrow_datatype() {
+namespace rerun::datatypes {}
+
+namespace rerun {
+    const std::shared_ptr<arrow::DataType>& Loggable<datatypes::ClassDescription>::arrow_datatype(
+    ) {
         static const auto datatype = arrow::struct_({
-            arrow::field("info", rerun::datatypes::AnnotationInfo::arrow_datatype(), false),
+            arrow::field(
+                "info",
+                Loggable<rerun::datatypes::AnnotationInfo>::arrow_datatype(),
+                false
+            ),
             arrow::field(
                 "keypoint_annotations",
-                arrow::list(
-                    arrow::field("item", rerun::datatypes::AnnotationInfo::arrow_datatype(), false)
-                ),
+                arrow::list(arrow::field(
+                    "item",
+                    Loggable<rerun::datatypes::AnnotationInfo>::arrow_datatype(),
+                    false
+                )),
                 false
             ),
             arrow::field(
                 "keypoint_connections",
-                arrow::list(
-                    arrow::field("item", rerun::datatypes::KeypointPair::arrow_datatype(), false)
-                ),
+                arrow::list(arrow::field(
+                    "item",
+                    Loggable<rerun::datatypes::KeypointPair>::arrow_datatype(),
+                    false
+                )),
                 false
             ),
         });
         return datatype;
     }
 
-    Result<std::shared_ptr<arrow::StructBuilder>> ClassDescription::new_arrow_array_builder(
-        arrow::MemoryPool* memory_pool
-    ) {
-        if (memory_pool == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Memory pool is null.");
-        }
-
-        return Result(std::make_shared<arrow::StructBuilder>(
-            arrow_datatype(),
-            memory_pool,
-            std::vector<std::shared_ptr<arrow::ArrayBuilder>>({
-                rerun::datatypes::AnnotationInfo::new_arrow_array_builder(memory_pool).value,
-                std::make_shared<arrow::ListBuilder>(
-                    memory_pool,
-                    rerun::datatypes::AnnotationInfo::new_arrow_array_builder(memory_pool).value
-                ),
-                std::make_shared<arrow::ListBuilder>(
-                    memory_pool,
-                    rerun::datatypes::KeypointPair::new_arrow_array_builder(memory_pool).value
-                ),
-            })
-        ));
-    }
-
-    rerun::Error ClassDescription::fill_arrow_array_builder(
-        arrow::StructBuilder* builder, const ClassDescription* elements, size_t num_elements
+    rerun::Error Loggable<datatypes::ClassDescription>::fill_arrow_array_builder(
+        arrow::StructBuilder* builder, const datatypes::ClassDescription* elements,
+        size_t num_elements
     ) {
         if (builder == nullptr) {
             return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
@@ -72,11 +60,13 @@ namespace rerun::datatypes {
             auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(0));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(rerun::datatypes::AnnotationInfo::fill_arrow_array_builder(
-                    field_builder,
-                    &elements[elem_idx].info,
-                    1
-                ));
+                RR_RETURN_NOT_OK(
+                    Loggable<rerun::datatypes::AnnotationInfo>::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].info,
+                        1
+                    )
+                );
             }
         }
         {
@@ -89,11 +79,13 @@ namespace rerun::datatypes {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
                 if (element.keypoint_annotations.data()) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::AnnotationInfo::fill_arrow_array_builder(
-                        value_builder,
-                        element.keypoint_annotations.data(),
-                        element.keypoint_annotations.size()
-                    ));
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::AnnotationInfo>::fill_arrow_array_builder(
+                            value_builder,
+                            element.keypoint_annotations.data(),
+                            element.keypoint_annotations.size()
+                        )
+                    );
                 }
             }
         }
@@ -107,11 +99,13 @@ namespace rerun::datatypes {
                 const auto& element = elements[elem_idx];
                 ARROW_RETURN_NOT_OK(field_builder->Append());
                 if (element.keypoint_connections.data()) {
-                    RR_RETURN_NOT_OK(rerun::datatypes::KeypointPair::fill_arrow_array_builder(
-                        value_builder,
-                        element.keypoint_connections.data(),
-                        element.keypoint_connections.size()
-                    ));
+                    RR_RETURN_NOT_OK(
+                        Loggable<rerun::datatypes::KeypointPair>::fill_arrow_array_builder(
+                            value_builder,
+                            element.keypoint_connections.data(),
+                            element.keypoint_connections.size()
+                        )
+                    );
                 }
             }
         }
@@ -119,4 +113,24 @@ namespace rerun::datatypes {
 
         return Error::ok();
     }
-} // namespace rerun::datatypes
+
+    Result<std::shared_ptr<arrow::Array>> Loggable<datatypes::ClassDescription>::to_arrow(
+        const datatypes::ClassDescription* instances, size_t num_instances
+    ) {
+        // TODO(andreas): Allow configuring the memory pool.
+        arrow::MemoryPool* pool = arrow::default_memory_pool();
+        auto datatype = arrow_datatype();
+
+        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
+        if (instances && num_instances > 0) {
+            RR_RETURN_NOT_OK(Loggable<datatypes::ClassDescription>::fill_arrow_array_builder(
+                static_cast<arrow::StructBuilder*>(builder.get()),
+                instances,
+                num_instances
+            ));
+        }
+        std::shared_ptr<arrow::Array> array;
+        ARROW_RETURN_NOT_OK(builder->Finish(&array));
+        return array;
+    }
+} // namespace rerun

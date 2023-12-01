@@ -566,7 +566,7 @@ fn time_histograms() -> anyhow::Result<()> {
 
     // Full GC
     {
-        db.gc(GarbageCollectionOptions::gc_everything());
+        db.gc(&GarbageCollectionOptions::gc_everything());
 
         assert_times_per_timeline(
             &db,

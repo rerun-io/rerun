@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <rerun/data_cell.hpp>
 #include <rerun/result.hpp>
 
 namespace arrow {
@@ -14,18 +13,15 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
     class FloatType;
-    class MemoryPool;
     using FloatBuilder = NumericBuilder<FloatType>;
 } // namespace arrow
 
 namespace rerun::components {
     struct AffixFuzzer8 {
         std::optional<float> single_float_optional;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         AffixFuzzer8() = default;
@@ -37,23 +33,30 @@ namespace rerun::components {
             single_float_optional = single_float_optional_;
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AffixFuzzer8> {
+        static constexpr const char Name[] = "rerun.testing.components.AffixFuzzer8";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::FloatBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const AffixFuzzer8* elements, size_t num_elements
+            arrow::FloatBuilder* builder, const components::AffixFuzzer8* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AffixFuzzer8 components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AffixFuzzer8* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AffixFuzzer8` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AffixFuzzer8* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

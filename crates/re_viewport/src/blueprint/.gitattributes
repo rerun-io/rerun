@@ -3,6 +3,5 @@
 .gitattributes linguist-generated=true
 auto_space_views.rs linguist-generated=true
 mod.rs linguist-generated=true
-space_view_component.rs linguist-generated=true
 space_view_maximized.rs linguist-generated=true
 viewport_layout.rs linguist-generated=true

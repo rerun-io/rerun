@@ -5,19 +5,22 @@
 #![crate_type = "staticlib"]
 #![allow(clippy::missing_safety_doc, clippy::undocumented_unsafe_blocks)] // Too much unsafe
 
+mod component_type_registry;
 mod error;
 mod ptr;
+mod recording_streams;
 
 use std::ffi::{c_char, CString};
 
+use component_type_registry::COMPONENT_TYPES;
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
 
 use re_sdk::{
     external::re_log_types::{self},
     log::{DataCell, DataRow},
     ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
 };
+use recording_streams::{recording_stream, RECORDING_STREAMS};
 
 // ----------------------------------------------------------------------------
 // Types:
@@ -39,9 +42,19 @@ impl CStringView {
     pub fn is_null(&self) -> bool {
         self.string.is_null()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
 }
 
-type CRecordingStream = u32;
+pub type CRecordingStream = u32;
+
+pub type CComponentTypeHandle = u32;
+
+pub const RR_REC_STREAM_CURRENT_RECORDING: CRecordingStream = 0xFFFFFFFF;
+pub const RR_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
+pub const RR_COMPONENT_TYPE_HANDLE_INVALID: CComponentTypeHandle = 0xFFFFFFFF;
 
 /// C version of [`re_sdk::SpawnOptions`].
 #[derive(Debug, Clone)]
@@ -62,15 +75,15 @@ impl CSpawnOptions {
             spawn_opts.port = self.port;
         }
 
-        if !self.memory_limit.is_null() {
+        if !self.memory_limit.is_empty() {
             spawn_opts.memory_limit = self.memory_limit.as_str("memory_limit")?.to_owned();
         }
 
-        if !self.executable_name.is_null() {
+        if !self.executable_name.is_empty() {
             spawn_opts.executable_name = self.executable_name.as_str("executable_name")?.to_owned();
         }
 
-        if !self.executable_path.is_null() {
+        if !self.executable_path.is_empty() {
             spawn_opts.executable_path =
                 Some(self.executable_path.as_str("executable_path")?.to_owned());
         }
@@ -105,18 +118,24 @@ pub struct CStoreInfo {
     /// The user-chosen name of the application doing the logging.
     pub application_id: CStringView,
 
+    /// The user-chosen name of the recording being logged to.
+    ///
+    /// Defaults to a random ID if unspecified.
+    pub recording_id: CStringView,
+
     pub store_kind: CStoreKind,
 }
 
 #[repr(C)]
+pub struct CComponentType {
+    pub name: CStringView,
+    pub schema: arrow2::ffi::ArrowSchema,
+}
+
+#[repr(C)]
 pub struct CDataCell {
-    pub component_name: CStringView,
-
-    /// Length of [`Self::bytes`].
-    pub num_bytes: u64,
-
-    /// Data in the Arrow IPC encapsulated message format.
-    pub bytes: *const u8,
+    pub component_type: CComponentTypeHandle,
+    pub array: arrow2::ffi::ArrowArray,
 }
 
 #[repr(C)]
@@ -124,7 +143,7 @@ pub struct CDataRow {
     pub entity_path: CStringView,
     pub num_instances: u32,
     pub num_data_cells: u32,
-    pub data_cells: *const CDataCell,
+    pub data_cells: *mut CDataCell,
 }
 
 #[repr(u32)]
@@ -137,6 +156,7 @@ pub enum CErrorCode {
     InvalidStringArgument,
     InvalidRecordingStreamHandle,
     InvalidSocketAddress,
+    InvalidComponentTypeHandle,
 
     _CategoryRecordingStream = 0x0000_00100,
     RecordingStreamCreationFailure,
@@ -145,7 +165,8 @@ pub enum CErrorCode {
     RecordingStreamSpawnFailure,
 
     _CategoryArrow = 0x0000_1000,
-    ArrowIpcMessageParsingFailure,
+    ArrowFfiSchemaImportError,
+    ArrowFfiArrayImportError,
     ArrowDataCellError,
 
     Unknown = 0xFFFF_FFFF,
@@ -159,56 +180,6 @@ pub struct CError {
 }
 
 // ----------------------------------------------------------------------------
-// Global data:
-
-const RERUN_REC_STREAM_CURRENT_RECORDING: CRecordingStream = 0xFFFFFFFF;
-const RERUN_REC_STREAM_CURRENT_BLUEPRINT: CRecordingStream = 0xFFFFFFFE;
-
-#[derive(Default)]
-pub struct RecStreams {
-    next_id: CRecordingStream,
-    streams: ahash::HashMap<CRecordingStream, RecordingStream>,
-}
-
-impl RecStreams {
-    fn insert(&mut self, stream: RecordingStream) -> CRecordingStream {
-        let id = self.next_id;
-        self.next_id += 1;
-        self.streams.insert(id, stream);
-        id
-    }
-
-    fn get(&self, id: CRecordingStream) -> Option<RecordingStream> {
-        match id {
-            RERUN_REC_STREAM_CURRENT_RECORDING => RecordingStream::get(StoreKind::Recording, None)
-                .or(Some(RecordingStream::disabled())),
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT => RecordingStream::get(StoreKind::Blueprint, None)
-                .or(Some(RecordingStream::disabled())),
-            _ => self.streams.get(&id).cloned(),
-        }
-    }
-
-    fn remove(&mut self, id: CRecordingStream) -> Option<RecordingStream> {
-        match id {
-            RERUN_REC_STREAM_CURRENT_BLUEPRINT | RERUN_REC_STREAM_CURRENT_RECORDING => None,
-            _ => self.streams.remove(&id),
-        }
-    }
-}
-
-/// All recording streams created from C.
-static RECORDING_STREAMS: Lazy<Mutex<RecStreams>> = Lazy::new(Mutex::default);
-
-/// Access a C created recording stream.
-#[allow(clippy::result_large_err)]
-fn recording_stream(stream: CRecordingStream) -> Result<RecordingStream, CError> {
-    RECORDING_STREAMS
-        .lock()
-        .get(stream)
-        .ok_or(CError::invalid_recording_stream_handle())
-}
-
-// ----------------------------------------------------------------------------
 // Public functions:
 
 // SAFETY: the unsafety comes from #[no_mangle], because we can declare multiple
@@ -217,7 +188,7 @@ fn recording_stream(stream: CRecordingStream) -> Result<RecordingStream, CError>
 #[no_mangle]
 pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: Lazy<CString> =
-        Lazy::new(|| CString::new(re_sdk::build_info().to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
+        Lazy::new(|| CString::new(re_sdk::build_info().version.to_string()).unwrap()); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
 }
@@ -246,6 +217,42 @@ pub extern "C" fn rr_spawn(spawn_opts: *const CSpawnOptions, error: *mut CError)
 }
 
 #[allow(clippy::result_large_err)]
+#[allow(unsafe_code)]
+fn rr_register_component_type_impl(
+    component_type: &CComponentType,
+) -> Result<CComponentTypeHandle, CError> {
+    let component_name = component_type.name.as_str("component_type.name")?;
+    let component_name = ComponentName::from(component_name);
+    let schema =
+        unsafe { arrow2::ffi::import_field_from_c(&component_type.schema) }.map_err(|err| {
+            CError::new(
+                CErrorCode::ArrowFfiSchemaImportError,
+                &format!("Failed to import ffi schema: {err}"),
+            )
+        })?;
+
+    Ok(COMPONENT_TYPES
+        .write()
+        .register(component_name, schema.data_type))
+}
+
+#[allow(unsafe_code)]
+#[no_mangle]
+pub extern "C" fn rr_register_component_type(
+    // Note that since this is passed by value, Arrow2 will release the schema on drop!
+    component_type: CComponentType,
+    error: *mut CError,
+) -> u32 {
+    match rr_register_component_type_impl(&component_type) {
+        Ok(id) => id,
+        Err(err) => {
+            err.write_error(error);
+            RR_COMPONENT_TYPE_HANDLE_INVALID
+        }
+    }
+}
+
+#[allow(clippy::result_large_err)]
 fn rr_recording_stream_new_impl(
     store_info: *const CStoreInfo,
     default_enabled: bool,
@@ -256,6 +263,7 @@ fn rr_recording_stream_new_impl(
 
     let CStoreInfo {
         application_id,
+        recording_id,
         store_kind,
     } = *store_info;
 
@@ -266,6 +274,12 @@ fn rr_recording_stream_new_impl(
         //.store_id(recording_id.clone()) // TODO(andreas): Expose store id.
         .store_source(re_log_types::StoreSource::CSdk)
         .default_enabled(default_enabled);
+
+    if !(recording_id.is_null() || recording_id.is_empty()) {
+        if let Ok(recording_id) = recording_id.as_str("recording_id") {
+            rec_builder = rec_builder.recording_id(recording_id);
+        }
+    }
 
     if store_kind == CStoreKind::Blueprint {
         rec_builder = rec_builder.blueprint();
@@ -559,58 +573,79 @@ pub extern "C" fn rr_recording_stream_reset_time(stream: CRecordingStream) {
 
 #[allow(unsafe_code)]
 #[allow(clippy::result_large_err)]
+#[allow(clippy::needless_pass_by_value)] // Conceptually we're consuming the data_row, as we take ownership of data it points to.
 fn rr_log_impl(
     stream: CRecordingStream,
-    data_row: *const CDataRow,
+    data_row: CDataRow,
     inject_time: bool,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
-
-    let data_row = ptr::try_ptr_as_ref(data_row, "data_row")?;
 
     let CDataRow {
         entity_path,
         num_instances,
         num_data_cells,
         data_cells,
-    } = *data_row;
+    } = data_row;
 
     let entity_path = entity_path.as_str("entity_path")?;
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
+    let num_data_cells = num_data_cells as usize;
     re_log::debug!(
         "rerun_log {entity_path:?}, num_instances: {num_instances}, num_data_cells: {num_data_cells}",
     );
 
     let mut cells = re_log_types::DataCellVec::default();
-    cells.reserve(num_data_cells as usize);
-    for i in 0..num_data_cells {
-        let data_cell: &CDataCell = unsafe { &*data_cells.wrapping_add(i as _) };
-        let CDataCell {
-            component_name,
-            num_bytes,
-            bytes,
-        } = *data_cell;
+    cells.reserve(num_data_cells);
 
-        let component_name = component_name.as_str("data_cells[i].component_name")?;
-        let component_name = ComponentName::from(component_name);
+    let data_cells = unsafe { std::slice::from_raw_parts_mut(data_cells, num_data_cells) };
 
-        let bytes = unsafe { std::slice::from_raw_parts(bytes, num_bytes as usize) };
-        let array = parse_arrow_ipc_encapsulated_message(bytes).map_err(|err| {
-            CError::new(
-                CErrorCode::ArrowIpcMessageParsingFailure,
-                &format!("Failed to parse Arrow IPC encapsulated message: {err}"),
-            )
-        })?;
+    {
+        let component_type_registry = COMPONENT_TYPES.read();
 
-        cells.push(
-            DataCell::try_from_arrow(component_name, array).map_err(|err| {
+        for data_cell in data_cells {
+            // Arrow2 implements drop for ArrowArray and ArrowSchema.
+            //
+            // Therefore, for things to work correctly we have to take ownership of the data cell!
+            // The C interface is documented to take ownership of the data cell - the user should NOT call `release`.
+            // This makes sense because from here on out we want to manage the lifetime of the underlying schema and array data:
+            // the schema won't survive a loop iteration since it's reference passed for import, whereas the ArrowArray lives
+            // on a longer within the resulting arrow::Array.
+            let CDataCell {
+                component_type,
+                array,
+            } = unsafe { std::ptr::read(data_cell) };
+
+            // It would be nice to now mark the data_cell as "consumed" by setting the original release method to nullptr.
+            // This would signifies to the calling code that the data_cell is no longer owned.
+            // However, Arrow2 doesn't allow us to access the fields of the ArrowArray and ArrowSchema structs.
+
+            let component_type = component_type_registry.get(component_type).ok_or_else(|| {
                 CError::new(
-                    CErrorCode::ArrowDataCellError,
-                    &format!("Failed to create arrow datacell from message: {err}"),
+                    CErrorCode::InvalidComponentTypeHandle,
+                    &format!("Invalid component type handle: {component_type}"),
                 )
-            })?,
-        );
+            })?;
+
+            let values =
+                unsafe { arrow2::ffi::import_array_from_c(array, component_type.datatype.clone()) }
+                    .map_err(|err| {
+                        CError::new(
+                            CErrorCode::ArrowFfiArrayImportError,
+                            &format!("Failed to import ffi array: {err}"),
+                        )
+                    })?;
+
+            cells.push(
+                DataCell::try_from_arrow(component_type.name, values).map_err(|err| {
+                    CError::new(
+                        CErrorCode::ArrowDataCellError,
+                        &format!("Failed to create arrow datacell: {err}"),
+                    )
+                })?,
+            );
+        }
     }
 
     let data_row = DataRow::from_cells(
@@ -636,7 +671,7 @@ fn rr_log_impl(
 #[no_mangle]
 pub unsafe extern "C" fn rr_recording_stream_log(
     stream: CRecordingStream,
-    data_row: *const CDataRow,
+    data_row: CDataRow,
     inject_time: bool,
     error: *mut CError,
 ) {
@@ -654,78 +689,4 @@ fn initialize_logging() {
     START.call_once(|| {
         re_log::setup_native_logging();
     });
-}
-
-fn parse_arrow_ipc_encapsulated_message(
-    bytes: &[u8],
-) -> Result<Box<dyn arrow2::array::Array>, String> {
-    re_log::debug!(
-        "parse_arrow_ipc_encapsulated_message: {} bytes",
-        bytes.len()
-    );
-
-    use arrow2::io::ipc::read::{read_stream_metadata, StreamReader, StreamState};
-
-    let mut cursor = std::io::Cursor::new(bytes);
-    let metadata = match read_stream_metadata(&mut cursor) {
-        Ok(metadata) => metadata,
-        Err(err) => return Err(format!("Failed to read stream metadata: {err}")),
-    };
-
-    // This IPC message represents the contents of a single DataCell, thus we should have a single
-    // field.
-    if metadata.schema.fields.len() != 1 {
-        return Err(format!(
-            "Found {} fields in stream metadata - expected exactly one.",
-            metadata.schema.fields.len(),
-        ));
-    }
-    // Might need that later if it turns out we don't have any data to log.
-    let datatype = metadata.schema.fields[0].data_type().clone();
-
-    let stream = StreamReader::new(cursor, metadata, None);
-    let chunks: Result<Vec<_>, _> = stream
-        .map(|state| match state {
-            Ok(StreamState::Some(chunk)) => Ok(chunk),
-            Ok(StreamState::Waiting) => {
-                unreachable!("cannot be waiting on a fixed buffer")
-            }
-            Err(err) => Err(err),
-        })
-        .collect();
-
-    let chunks = chunks.map_err(|err| format!("Arrow error: {err}"))?;
-
-    // We're not sending a `DataCellColumn`'s (i.e. `List<DataCell>`) worth of data like we normally do
-    // here, rather we're sending a single, independent `DataCell`'s worth of data.
-    //
-    // This distinction is crucial:
-    // - The data for a `DataCellColumn` containing a single empty `DataCell` is a unit-length list-array whose
-    //   first and only entry is an empty array (`ListArray[[]]`). There's actually data there (as
-    //   in bytes).
-    // - The data for a standalone empty `DataCell`, on the other hand, is literally nothing. It's
-    //   zero bytes.
-    //
-    // Where there's no data whatsoever, the chunk gets optimized out, which is why logging an
-    // empty array in C++ ends up hitting this path.
-    if chunks.is_empty() {
-        // The fix is simple: craft an empty array with the correct datatype.
-        return Ok(arrow2::array::new_empty_array(datatype));
-    }
-
-    if chunks.len() > 1 {
-        return Err(format!(
-            "Found {} chunks in stream - expected just one.",
-            chunks.len()
-        ));
-    }
-    let chunk = chunks.into_iter().next().unwrap();
-
-    let arrays = chunk.into_arrays();
-
-    if arrays.len() != 1 {
-        return Err(format!("Expected one array, got {}", arrays.len()));
-    }
-
-    Ok(arrays.into_iter().next().unwrap())
 }

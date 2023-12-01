@@ -8,6 +8,7 @@ pub struct Screenshotter {
     countdown: Option<usize>,
     target_path: Option<std::path::PathBuf>,
     quit: bool,
+    pre_screenshot_zoom_factor: Option<f32>,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -22,15 +23,23 @@ impl Screenshotter {
     /// Used for generating screenshots in dev builds.
     ///
     /// Should only be called at startup.
-    pub fn screenshot_to_path_then_quit(&mut self, path: std::path::PathBuf) {
+    pub fn screenshot_to_path_then_quit(
+        &mut self,
+        egui_ctx: &egui::Context,
+        path: std::path::PathBuf,
+    ) {
         assert!(self.countdown.is_none(), "screenshotter misused");
-        self.request_screenshot();
+        self.request_screenshot(egui_ctx);
         self.target_path = Some(path);
     }
 
-    pub fn request_screenshot(&mut self) {
+    pub fn request_screenshot(&mut self, egui_ctx: &egui::Context) {
         // Give app time to change the style, and then wait for animations to finish:
         self.countdown = Some(10);
+
+        self.pre_screenshot_zoom_factor = Some(egui_ctx.zoom_factor());
+        // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
+        egui_ctx.set_pixels_per_point(2.0);
     }
 
     /// Call once per frame
@@ -43,6 +52,9 @@ impl Screenshotter {
             }
 
             egui_ctx.request_repaint(); // Make sure we keep counting down
+        } else if let Some(pre_screenshot_zoom_factor) = self.pre_screenshot_zoom_factor.take() {
+            // Restore zoom_factor
+            egui_ctx.set_zoom_factor(pre_screenshot_zoom_factor);
         }
 
         ScreenshotterOutput { quit: self.quit }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Summarizes PRs since `latest` tag, grouping them based on their GitHub labels.
+Summarizes PRs since `latest` branch, grouping them based on their GitHub labels.
 
 If the result is not satisfactory, you can edit the original PR titles and labels.
 You can add the `exclude from changelog` label to minor PRs that are not of interest to our users.
@@ -35,6 +35,10 @@ OFFICIAL_RERUN_DEVS = [
 ]
 
 
+def eprint(*args, **kwargs) -> None:  # type: ignore
+    print(*args, file=sys.stderr, **kwargs)  # type: ignore
+
+
 @dataclass
 class PrInfo:
     gh_user_name: str
@@ -66,7 +70,7 @@ def get_github_token() -> str:
     except Exception:
         pass
 
-    print("ERROR: expected a GitHub token in the environment variable GH_ACCESS_TOKEN or in ~/.githubtoken")
+    eprint("ERROR: expected a GitHub token in the environment variable GH_ACCESS_TOKEN or in ~/.githubtoken")
     sys.exit(1)
 
 
@@ -92,7 +96,7 @@ def fetch_pr_info(pr_number: int) -> PrInfo | None:
         gh_user_name = json["user"]["login"]
         return PrInfo(gh_user_name=gh_user_name, pr_title=json["title"], labels=labels)
     else:
-        print(f"ERROR {url}: {response.status_code} - {json['message']}")
+        eprint(f"ERROR {url}: {response.status_code} - {json['message']}")
         return None
 
 
@@ -186,7 +190,7 @@ def main() -> None:
             summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
 
             if f"[#{pr_number}]" in previous_changelog:
-                print(f"Ignoring dup: {summary}")
+                eprint(f"Ignoring dup: {summary}")
                 continue
 
             chronological.append(f"{summary} {hexsha}")

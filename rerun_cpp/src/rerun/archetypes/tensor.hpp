@@ -8,7 +8,6 @@
 #include "../data_cell.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
-#include "../serialized_component_batch.hpp"
 
 #include <cstdint>
 #include <utility>
@@ -16,6 +15,10 @@
 
 namespace rerun::archetypes {
     /// **Archetype**: A generic n-dimensional Tensor.
+    ///
+    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
+    /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
     ///
     /// ## Example
     ///
@@ -50,10 +53,11 @@ namespace rerun::archetypes {
         /// The tensor data
         rerun::components::TensorData data;
 
-        /// Name of the indicator component, used to identify the archetype when converting to a list of components.
-        static const char INDICATOR_COMPONENT_NAME[];
+      public:
+        static constexpr const char IndicatorComponentName[] = "rerun.components.TensorIndicator";
+
         /// Indicator component, used to identify the archetype when converting to a list of components.
-        using IndicatorComponent = components::IndicatorComponent<INDICATOR_COMPONENT_NAME>;
+        using IndicatorComponent = components::IndicatorComponent<IndicatorComponentName>;
 
       public:
         // Extensions to generated type defined in 'tensor_ext.cpp'
@@ -61,6 +65,17 @@ namespace rerun::archetypes {
         /// New Tensor from dimensions and tensor buffer.
         Tensor(Collection<datatypes::TensorDimension> shape, datatypes::TensorBuffer buffer)
             : Tensor(datatypes::TensorData(std::move(shape), std::move(buffer))) {}
+
+        /// New tensor from dimensions and pointer to tensor data.
+        ///
+        /// Type must be one of the types supported by `rerun::datatypes::TensorData`.
+        /// \param shape
+        /// Shape of the image. Determines the number of elements expected to be in `data`.
+        /// \param data_
+        /// Target of the pointer must outlive the archetype.
+        template <typename TElement>
+        explicit Tensor(Collection<datatypes::TensorDimension> shape, const TElement* data_)
+            : Tensor(datatypes::TensorData(std::move(shape), data_)) {}
 
         /// Update the `names` of the contained `TensorData` dimensions.
         ///
@@ -93,8 +108,6 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Tensor> {
         /// Serialize all set component batches.
-        static Result<std::vector<SerializedComponentBatch>> serialize(
-            const archetypes::Tensor& archetype
-        );
+        static Result<std::vector<DataCell>> serialize(const archetypes::Tensor& archetype);
     };
 } // namespace rerun

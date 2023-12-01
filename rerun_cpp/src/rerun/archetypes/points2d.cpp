@@ -5,86 +5,62 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char Points2D::INDICATOR_COMPONENT_NAME[] = "rerun.components.Points2DIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::Points2D>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::Points2D>::serialize(
         const archetypes::Points2D& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(8);
+        std::vector<DataCell> cells;
+        cells.reserve(9);
 
         {
-            const size_t size = archetype.positions.size();
-            auto result = rerun::components::Position2D::to_data_cell(
-                archetype.positions.data(),
-                archetype.positions.size()
-            );
+            auto result = DataCell::from_loggable(archetype.positions);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.radii.has_value()) {
-            const size_t size = archetype.radii.value().size();
-            auto result =
-                rerun::components::Radius::to_data_cell(archetype.radii.value().data(), size);
+            auto result = DataCell::from_loggable(archetype.radii.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.colors.has_value()) {
-            const size_t size = archetype.colors.value().size();
-            auto result =
-                rerun::components::Color::to_data_cell(archetype.colors.value().data(), size);
+            auto result = DataCell::from_loggable(archetype.colors.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.labels.has_value()) {
-            const size_t size = archetype.labels.value().size();
-            auto result =
-                rerun::components::Text::to_data_cell(archetype.labels.value().data(), size);
+            auto result = DataCell::from_loggable(archetype.labels.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.draw_order.has_value()) {
-            const size_t size = 1;
-            auto result =
-                rerun::components::DrawOrder::to_data_cell(&archetype.draw_order.value(), size);
+            auto result = DataCell::from_loggable(archetype.draw_order.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            const size_t size = archetype.class_ids.value().size();
-            auto result =
-                rerun::components::ClassId::to_data_cell(archetype.class_ids.value().data(), size);
+            auto result = DataCell::from_loggable(archetype.class_ids.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.keypoint_ids.has_value()) {
-            const size_t size = archetype.keypoint_ids.value().size();
-            auto result = rerun::components::KeypointId::to_data_cell(
-                archetype.keypoint_ids.value().data(),
-                size
-            );
+            auto result = DataCell::from_loggable(archetype.keypoint_ids.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         if (archetype.instance_keys.has_value()) {
-            const size_t size = archetype.instance_keys.value().size();
-            auto result = rerun::components::InstanceKey::to_data_cell(
-                archetype.instance_keys.value().data(),
-                size
-            );
+            auto result = DataCell::from_loggable(archetype.instance_keys.value());
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = Points2D::IndicatorComponent();
-            auto result = Points2D::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

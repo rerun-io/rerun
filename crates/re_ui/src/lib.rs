@@ -279,17 +279,12 @@ impl ReUi {
         }
     }
 
-    pub fn top_bar_style(
-        &self,
-        native_pixels_per_point: Option<f32>,
-        fullscreen: bool,
-        style_like_web: bool,
-    ) -> TopBarStyle {
-        let gui_zoom = if let Some(native_pixels_per_point) = native_pixels_per_point {
-            native_pixels_per_point / self.egui_ctx.pixels_per_point()
-        } else {
-            1.0
-        };
+    pub fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
+        let egui_zoom_factor = self.egui_ctx.zoom_factor();
+        let fullscreen = self
+            .egui_ctx
+            .input(|i| i.viewport().fullscreen)
+            .unwrap_or(false);
 
         // On Mac, we share the same space as the native red/yellow/green close/minimize/maximize buttons.
         // This means we need to make room for them.
@@ -315,14 +310,14 @@ impl ReUi {
             let height = native_buttons_size_in_native_scale.y;
 
             // …but never shrink below the native button height when zoomed out.
-            height.max(gui_zoom * native_buttons_size_in_native_scale.y)
+            height.max(native_buttons_size_in_native_scale.y / egui_zoom_factor)
         } else {
             Self::top_bar_height() - Self::top_bar_margin().sum().y
         };
 
         let indent = if make_room_for_window_buttons {
             // Always use the same width measured in native GUI coordinates:
-            gui_zoom * native_buttons_size_in_native_scale.x
+            native_buttons_size_in_native_scale.x / egui_zoom_factor
         } else {
             0.0
         };

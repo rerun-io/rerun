@@ -5,30 +5,32 @@
 
 #include "../collection_adapter_builtins.hpp"
 
-namespace rerun::archetypes {
-    const char BarChart::INDICATOR_COMPONENT_NAME[] = "rerun.components.BarChartIndicator";
-}
+namespace rerun::archetypes {}
 
 namespace rerun {
 
-    Result<std::vector<SerializedComponentBatch>> AsComponents<archetypes::BarChart>::serialize(
+    Result<std::vector<DataCell>> AsComponents<archetypes::BarChart>::serialize(
         const archetypes::BarChart& archetype
     ) {
         using namespace archetypes;
-        std::vector<SerializedComponentBatch> cells;
-        cells.reserve(1);
+        std::vector<DataCell> cells;
+        cells.reserve(3);
 
         {
-            const size_t size = 1;
-            auto result = rerun::components::TensorData::to_data_cell(&archetype.values, size);
+            auto result = DataCell::from_loggable(archetype.values);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), size);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.color.has_value()) {
+            auto result = DataCell::from_loggable(archetype.color.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
         }
         {
             auto indicator = BarChart::IndicatorComponent();
-            auto result = BarChart::IndicatorComponent::to_data_cell(&indicator, 1);
+            auto result = DataCell::from_loggable(indicator);
             RR_RETURN_NOT_OK(result.error);
-            cells.emplace_back(std::move(result.value), 1);
+            cells.emplace_back(std::move(result.value));
         }
 
         return cells;

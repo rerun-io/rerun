@@ -2,6 +2,8 @@
 #include "c/rerun.h"
 #include "components/instance_key.hpp"
 #include "config.hpp"
+#include "data_cell.hpp"
+#include "sdk_info.hpp"
 #include "string_utils.hpp"
 
 #include <arrow/buffer.h>
@@ -15,22 +17,27 @@ namespace rerun {
     static rr_store_kind store_kind_to_c(StoreKind store_kind) {
         switch (store_kind) {
             case StoreKind::Recording:
-                return RERUN_STORE_KIND_RECORDING;
+                return RR_STORE_KIND_RECORDING;
 
             case StoreKind::Blueprint:
-                return RERUN_STORE_KIND_BLUEPRINT;
+                return RR_STORE_KIND_BLUEPRINT;
         }
 
         // This should never happen since if we missed a switch case we'll get a warning on
         // compilers which compiles as an error on CI. But let's play it safe regardless and default
         // to recording.
-        return RERUN_STORE_KIND_RECORDING;
+        return RR_STORE_KIND_RECORDING;
     }
 
-    RecordingStream::RecordingStream(std::string_view app_id, StoreKind store_kind)
+    RecordingStream::RecordingStream(
+        std::string_view app_id, std::string_view recording_id, StoreKind store_kind
+    )
         : _store_kind(store_kind) {
+        check_binary_and_header_version_match().handle();
+
         rr_store_info store_info;
         store_info.application_id = detail::to_rr_string(app_id);
+        store_info.recording_id = detail::to_rr_string(recording_id);
         store_info.store_kind = store_kind_to_c(store_kind);
 
         rr_error status = {};
@@ -47,12 +54,14 @@ namespace rerun {
 
     RecordingStream::RecordingStream(RecordingStream&& other)
         : _id(other._id), _store_kind(other._store_kind), _enabled(other._enabled) {
-        // Set to `RERUN_REC_STREAM_CURRENT_RECORDING` since it's a no-op on destruction.
-        other._id = RERUN_REC_STREAM_CURRENT_RECORDING;
+        // Set to `RR_REC_STREAM_CURRENT_RECORDING` since it's a no-op on destruction.
+        other._id = RR_REC_STREAM_CURRENT_RECORDING;
     }
 
     RecordingStream::RecordingStream(uint32_t id, StoreKind store_kind)
         : _id(id), _store_kind(store_kind) {
+        check_binary_and_header_version_match().handle();
+
         rr_error status = {};
         this->_enabled = rr_recording_stream_is_enabled(this->_id, &status);
         Error(status).handle();
@@ -61,8 +70,7 @@ namespace rerun {
     RecordingStream::~RecordingStream() {
         // C-Api already specifies that the current constants are not destroyed, but we repeat this
         // here, since we rely on this invariant in the move constructor.
-        if (_id != RERUN_REC_STREAM_CURRENT_RECORDING &&
-            _id != RERUN_REC_STREAM_CURRENT_BLUEPRINT) {
+        if (_id != RR_REC_STREAM_CURRENT_RECORDING && _id != RR_REC_STREAM_CURRENT_BLUEPRINT) {
             rr_recording_stream_free(this->_id);
         }
     }
@@ -79,7 +87,7 @@ namespace rerun {
         switch (store_kind) {
             case StoreKind::Blueprint: {
                 static RecordingStream current_blueprint(
-                    RERUN_REC_STREAM_CURRENT_BLUEPRINT,
+                    RR_REC_STREAM_CURRENT_BLUEPRINT,
                     StoreKind::Blueprint
                 );
                 return current_blueprint;
@@ -87,7 +95,7 @@ namespace rerun {
             case StoreKind::Recording:
             default: {
                 static RecordingStream current_recording(
-                    RERUN_REC_STREAM_CURRENT_RECORDING,
+                    RR_REC_STREAM_CURRENT_RECORDING,
                     StoreKind::Recording
                 );
                 return current_recording;
@@ -175,8 +183,7 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_serialized_batches(
-        std::string_view entity_path, bool timeless,
-        const std::vector<SerializedComponentBatch>& batches
+        std::string_view entity_path, bool timeless, std::vector<DataCell> batches
     ) const {
         if (!is_enabled()) {
             return Error::ok();
@@ -191,16 +198,18 @@ namespace rerun {
 
         for (const auto& batch : batches) {
             if (num_instances_max > 1 && batch.num_instances == 1) {
-                splatted.push_back(batch.data_cell);
+                splatted.push_back(std::move(batch));
             } else {
-                instanced.push_back(batch.data_cell);
+                instanced.push_back(std::move(batch));
             }
         }
 
         bool inject_time = !timeless;
 
         if (!splatted.empty()) {
-            splatted.push_back(components::InstanceKey::to_data_cell(&splat_key, 1).value);
+            splatted.push_back(
+                std::move(DataCell::from_loggable<components::InstanceKey>(splat_key).value)
+            );
             auto result =
                 try_log_data_row(entity_path, 1, splatted.size(), splatted.data(), inject_time);
             if (result.is_err()) {
@@ -227,16 +236,7 @@ namespace rerun {
         // Map to C API:
         std::vector<rr_data_cell> c_data_cells(num_data_cells);
         for (size_t i = 0; i < num_data_cells; i++) {
-            if (data_cells[i].buffer == nullptr) {
-                return Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "DataCell buffer is null for cell " + std::to_string(i)
-                );
-            }
-
-            c_data_cells[i].component_name = detail::to_rr_string(data_cells[i].component_name);
-            c_data_cells[i].num_bytes = static_cast<uint64_t>(data_cells[i].buffer->size());
-            c_data_cells[i].bytes = data_cells[i].buffer->data();
+            RR_RETURN_NOT_OK(data_cells[i].to_c_ffi_struct(c_data_cells[i]));
         }
 
         rr_data_row c_data_row;
@@ -246,7 +246,8 @@ namespace rerun {
         c_data_row.data_cells = c_data_cells.data();
 
         rr_error status = {};
-        rr_recording_stream_log(_id, &c_data_row, inject_time, &status);
+        rr_recording_stream_log(_id, c_data_row, inject_time, &status);
+
         return status;
     }
 } // namespace rerun

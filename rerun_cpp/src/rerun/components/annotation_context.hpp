@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../collection.hpp"
-#include "../data_cell.hpp"
 #include "../datatypes/class_description_map_elem.hpp"
 #include "../result.hpp"
 
@@ -14,9 +13,9 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class ListBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::components {
@@ -30,9 +29,6 @@ namespace rerun::components {
     struct AnnotationContext {
         /// List of class descriptions, mapping class indices to class names, colors etc.
         rerun::Collection<rerun::datatypes::ClassDescriptionMapElem> class_map;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'annotation_context_ext.cpp'
@@ -73,23 +69,30 @@ namespace rerun::components {
             class_map = std::move(class_map_);
             return *this;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::AnnotationContext> {
+        static constexpr const char Name[] = "rerun.components.AnnotationContext";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::ListBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::ListBuilder* builder, const AnnotationContext* elements, size_t num_elements
+            arrow::ListBuilder* builder, const components::AnnotationContext* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of AnnotationContext components.
-        static Result<rerun::DataCell> to_data_cell(
-            const AnnotationContext* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::AnnotationContext` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::AnnotationContext* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

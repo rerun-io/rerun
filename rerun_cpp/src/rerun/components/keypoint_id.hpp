@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/keypoint_id.hpp"
 #include "../result.hpp"
 
@@ -15,8 +14,8 @@ namespace arrow {
     template <typename T>
     class NumericBuilder;
 
+    class Array;
     class DataType;
-    class MemoryPool;
     class UInt16Type;
     using UInt16Builder = NumericBuilder<UInt16Type>;
 } // namespace arrow
@@ -25,9 +24,6 @@ namespace rerun::components {
     /// **Component**: A 16-bit ID representing a type of semantic keypoint within a class.
     struct KeypointId {
         rerun::datatypes::KeypointId id;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         KeypointId() = default;
@@ -50,23 +46,30 @@ namespace rerun::components {
         operator rerun::datatypes::KeypointId() const {
             return id;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::KeypointId> {
+        static constexpr const char Name[] = "rerun.components.KeypointId";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::UInt16Builder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::UInt16Builder* builder, const KeypointId* elements, size_t num_elements
+            arrow::UInt16Builder* builder, const components::KeypointId* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of KeypointId components.
-        static Result<rerun::DataCell> to_data_cell(
-            const KeypointId* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::KeypointId` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::KeypointId* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

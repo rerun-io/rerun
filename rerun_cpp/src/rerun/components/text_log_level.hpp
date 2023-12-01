@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "../data_cell.hpp"
 #include "../datatypes/utf8.hpp"
 #include "../result.hpp"
 
@@ -13,8 +12,8 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
-    class MemoryPool;
     class StringBuilder;
 } // namespace arrow
 
@@ -30,9 +29,6 @@ namespace rerun::components {
     /// * `"TRACE"`
     struct TextLogLevel {
         rerun::datatypes::Utf8 value;
-
-        /// Name of the component, used for serialization.
-        static const char NAME[];
 
       public:
         // Extensions to generated type defined in 'text_log_level_ext.cpp'
@@ -83,23 +79,30 @@ namespace rerun::components {
         operator rerun::datatypes::Utf8() const {
             return value;
         }
+    };
+} // namespace rerun::components
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<components::TextLogLevel> {
+        static constexpr const char Name[] = "rerun.components.TextLogLevel";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::StringBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
         /// Fills an arrow array builder with an array of this type.
         static rerun::Error fill_arrow_array_builder(
-            arrow::StringBuilder* builder, const TextLogLevel* elements, size_t num_elements
+            arrow::StringBuilder* builder, const components::TextLogLevel* elements,
+            size_t num_elements
         );
 
-        /// Creates a Rerun DataCell from an array of TextLogLevel components.
-        static Result<rerun::DataCell> to_data_cell(
-            const TextLogLevel* instances, size_t num_instances
+        /// Serializes an array of `rerun::components::TextLogLevel` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const components::TextLogLevel* instances, size_t num_instances
         );
     };
-} // namespace rerun::components
+} // namespace rerun

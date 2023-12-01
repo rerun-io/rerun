@@ -14,9 +14,9 @@
 #include <utility>
 
 namespace arrow {
+    class Array;
     class DataType;
     class DenseUnionBuilder;
-    class MemoryPool;
 } // namespace arrow
 
 namespace rerun::datatypes {
@@ -131,21 +131,43 @@ namespace rerun::datatypes {
             }
         }
 
-        /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        /// \private
+        const detail::Transform3DData& get_union_data() const {
+            return _data;
+        }
 
-        /// Creates a new array builder with an array of this type.
-        static Result<std::shared_ptr<arrow::DenseUnionBuilder>> new_arrow_array_builder(
-            arrow::MemoryPool* memory_pool
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::DenseUnionBuilder* builder, const Transform3D* elements, size_t num_elements
-        );
+        /// \private
+        detail::Transform3DTag get_union_tag() const {
+            return _tag;
+        }
 
       private:
         detail::Transform3DTag _tag;
         detail::Transform3DData _data;
     };
 } // namespace rerun::datatypes
+
+namespace rerun {
+    template <typename T>
+    struct Loggable;
+
+    /// \private
+    template <>
+    struct Loggable<datatypes::Transform3D> {
+        static constexpr const char Name[] = "rerun.datatypes.Transform3D";
+
+        /// Returns the arrow data type this type corresponds to.
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::DenseUnionBuilder* builder, const datatypes::Transform3D* elements,
+            size_t num_elements
+        );
+
+        /// Serializes an array of `rerun::datatypes::Transform3D` into an arrow array.
+        static Result<std::shared_ptr<arrow::Array>> to_arrow(
+            const datatypes::Transform3D* instances, size_t num_instances
+        );
+    };
+} // namespace rerun

@@ -97,13 +97,28 @@ impl DataUi for EntityComponentWithInstances {
                 re_format::format_number(num_instances)
             ));
         } else {
-            egui_extras::TableBuilder::new(ui)
+            let mut table = egui_extras::TableBuilder::new(ui)
                 .resizable(false)
-                .vscroll(true)
-                .auto_shrink([true, true])
-                .max_scroll_height(100.0)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .columns(egui_extras::Column::auto(), 2)
+                .columns(egui_extras::Column::auto(), 2);
+
+            if verbosity == UiVerbosity::All {
+                // Use full width in the selection panel.
+                table = table.auto_shrink([false, true]);
+            } else {
+                // Be as small as possible in the hover tooltips.
+                table = table.auto_shrink([true, true]);
+            }
+
+            if verbosity == UiVerbosity::All && ctx.selection().len() <= 1 {
+                // We're alone in the selection panel. Let the outer ScrollArea do the work.
+                table = table.vscroll(false);
+            } else {
+                // Don't take too much vertical space to leave room for other selected items.
+                table = table.vscroll(true).max_scroll_height(100.0);
+            }
+
+            table
                 .header(re_ui::ReUi::table_header_height(), |mut header| {
                     re_ui::ReUi::setup_table_header(&mut header);
                     header.col(|ui| {

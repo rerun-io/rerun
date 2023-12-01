@@ -434,6 +434,9 @@ impl EntityTree {
             for component_name in event.cells.keys() {
                 if let Some(histo) = self.time_histograms_per_component.get_mut(component_name) {
                     histo.remove(&event.timepoint, 1);
+                    if histo.is_empty() {
+                        self.time_histograms_per_component.remove(component_name);
+                    }
                 }
             }
         }
@@ -442,9 +445,10 @@ impl EntityTree {
             recursive_time_histogram.remove(&event.timepoint, event.num_components() as _);
         }
 
-        for child in children.values_mut() {
+        children.retain(|_, child| {
             child.on_store_deletions(&filtered_events, compacted);
-        }
+            child.num_children_and_fields() > 0
+        });
     }
 
     /// Traverse on the tree and creates the missing nodes (if any) in order to reach `full_path`.
