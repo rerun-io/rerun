@@ -36,7 +36,7 @@ jobs:
       - name: Install deps
         shell: bash
         run: |
-          python3 -m pip install -r PyGithub==1.59.0
+          python3 -m pip install PyGithub==1.59.0
 
       - name: Check PR checkboxes
         shell: bash
