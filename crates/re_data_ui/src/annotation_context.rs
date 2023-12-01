@@ -46,6 +46,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                 UiVerbosity::Reduced
                 | UiVerbosity::SelectionPanel
                 | UiVerbosity::MultiSelectionPanel => {
+                    ui.separator();
                     class_description_ui(ui, verbosity, class, id);
                 }
             }
@@ -127,6 +128,7 @@ impl DataUi for AnnotationContext {
                         class_description,
                     } in &self.0
                     {
+                        ui.separator();
                         class_description_ui(ui, verbosity, class_description, *class_id);
                     }
                 });
@@ -146,7 +148,6 @@ fn class_description_ui(
     }
 
     let row_height = re_ui::ReUi::table_line_height();
-    ui.separator();
     ui.strong(format!("Keypoints for Class {}", id.0));
     if !class.keypoint_annotations.is_empty() {
         ui.add_space(8.0);
