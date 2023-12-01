@@ -449,17 +449,24 @@ fn log_adapter_info(info: &wgpu::AdapterInfo) {
             backend,
         } = &info;
 
-        // Example outputs:
-        // > wgpu adapter name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
-        // > wgpu adapter name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+        // Example values:
+        // > name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
+        // > name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+        // > name: "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)", device_type: IntegratedGpu, backend: Gl, driver: "", driver_info: ""
 
-        format!(
-            "wgpu adapter name: {name:?}, \
-             device_type: {device_type:?}, \
-             backend: {backend:?}, \
-             driver: {driver:?}, \
-             driver_info: {driver_info:?}"
-        )
+        let mut summary = format!("wgpu backend: {backend:?}, device_type: {device_type:?}");
+
+        if !name.is_empty() {
+            summary += &format!(", name: {name:?}");
+        }
+        if !driver.is_empty() {
+            summary += &format!(", driver: {driver:?}");
+        }
+        if !driver_info.is_empty() {
+            summary += &format!(", driver_info: {driver_info:?}");
+        }
+
+        summary
     };
 
     let is_software_rasterizer_with_known_crashes = {
