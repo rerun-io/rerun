@@ -610,7 +610,6 @@ pub fn view_3d(
         ctx.render_ctx,
     ));
     ui.painter().add(gpu_bridge::new_renderer_callback(
-        ctx.render_ctx,
         view_builder,
         rect,
         re_renderer::Rgba::TRANSPARENT,

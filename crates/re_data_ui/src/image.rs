@@ -63,7 +63,7 @@ impl EntityDataUi for re_types::components::TensorData {
 
 #[allow(clippy::too_many_arguments)]
 fn tensor_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     entity_path: &re_data_store::EntityPath,
@@ -253,7 +253,7 @@ fn texture_size(colormapped_texture: &ColormappedTexture) -> Vec2 {
 /// Extremely small images will be stretched on their thin axis to make them visible.
 /// This does not preserve aspect ratio, but we only stretch it to a very thin size, so it is fine.
 fn show_image_preview(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     re_ui: &ReUi,
     ui: &mut egui::Ui,
     colormapped_texture: ColormappedTexture,
@@ -433,7 +433,7 @@ pub fn tensor_summary_ui(
 
 #[allow(clippy::too_many_arguments)]
 fn show_zoomed_image_region_tooltip(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     parent_ui: &egui::Ui,
     response: egui::Response,
     tensor_data_row_id: RowId,
@@ -523,7 +523,7 @@ pub fn show_zoomed_image_region_area_outline(
 /// `meter`: iff this is a depth map, how long is one meter?
 #[allow(clippy::too_many_arguments)]
 pub fn show_zoomed_image_region(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     tensor_data_row_id: RowId,
     tensor: &DecodedTensor,
@@ -553,7 +553,7 @@ pub fn show_zoomed_image_region(
 /// `meter`: iff this is a depth map, how long is one meter?
 #[allow(clippy::too_many_arguments)]
 fn try_show_zoomed_image_region(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     tensor_data_row_id: RowId,
     tensor: &DecodedTensor,

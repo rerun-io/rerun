@@ -25,6 +25,7 @@ use crate::{
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
 };
 
+use parking_lot::Mutex;
 use smallvec::smallvec;
 
 /// GPU retrieved & processed picking data result.
@@ -141,7 +142,7 @@ pub enum PickingLayerError {
 pub struct PickingLayerProcessor {
     pub picking_target: GpuTexture,
     picking_depth_target: GpuTexture,
-    readback_buffer: GpuReadbackBuffer,
+    readback_buffer: Mutex<GpuReadbackBuffer>,
     bind_group_0: GpuBindGroup,
 
     depth_readback_workaround: Option<DepthReadbackWorkaround>,
@@ -285,7 +286,7 @@ impl PickingLayerProcessor {
         );
         let buffer_size = row_info_id.buffer_size_padded + row_info_depth.buffer_size_padded;
 
-        let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
+        let readback_buffer = Mutex::new(ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
             buffer_size,
@@ -296,7 +297,7 @@ impl PickingLayerProcessor {
                 world_from_cropped_projection: cropped_projection_from_world.inverse(),
                 depth_readback_workaround_in_use: depth_readback_workaround.is_some(),
             }),
-        );
+        ));
 
         PickingLayerProcessor {
             bind_group_0,
@@ -342,7 +343,7 @@ impl PickingLayerProcessor {
     }
 
     pub fn end_render_pass(
-        self,
+        &self,
         encoder: &mut wgpu::CommandEncoder,
         render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
     ) -> Result<(), PickingLayerError> {
@@ -362,7 +363,7 @@ impl PickingLayerProcessor {
                 &self.picking_depth_target
             };
 
-        self.readback_buffer.read_multiple_texture2d(
+        self.readback_buffer.lock().read_multiple_texture2d(
             encoder,
             &[
                 (

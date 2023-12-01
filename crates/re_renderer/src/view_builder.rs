@@ -534,7 +534,7 @@ impl ViewBuilder {
 
     /// Draws the frame as instructed to a temporary HDR target.
     pub fn draw(
-        &mut self,
+        &self,
         ctx: &RenderContext,
         clear_color: Rgba,
     ) -> Result<wgpu::CommandBuffer, PoolError> {
@@ -608,7 +608,7 @@ impl ViewBuilder {
             }
         }
 
-        if let Some(picking_processor) = self.picking_processor.take() {
+        if let Some(picking_processor) = &self.picking_processor {
             {
                 let mut pass = picking_processor.begin_render_pass(&setup.name, &mut encoder);
                 // PickingProcessor has as custom frame uniform buffer.
@@ -635,7 +635,7 @@ impl ViewBuilder {
             }
         }
 
-        if let Some(outline_mask_processor) = self.outline_mask_processor.take() {
+        if let Some(outline_mask_processor) = &self.outline_mask_processor {
             re_tracing::profile_scope!("outlines");
             {
                 re_tracing::profile_scope!("outline mask pass");
@@ -646,7 +646,7 @@ impl ViewBuilder {
             outline_mask_processor.compute_outlines(&pipelines, &mut encoder)?;
         }
 
-        if let Some(screenshot_processor) = self.screenshot_processor.take() {
+        if let Some(screenshot_processor) = &self.screenshot_processor {
             {
                 let mut pass = screenshot_processor.begin_render_pass(&setup.name, &mut encoder);
                 pass.set_bind_group(0, &setup.bind_group_0, &[]);
