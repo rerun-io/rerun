@@ -47,6 +47,9 @@ screenshot*.png
 # Web demo app build
 web_demo
 
+# Saved example `.rrd` files
+example_data
+
 # Screenshot comparison build
 /compare_screenshot
 
