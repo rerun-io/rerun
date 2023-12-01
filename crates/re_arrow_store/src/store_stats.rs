@@ -1,5 +1,5 @@
 use nohash_hasher::IntMap;
-use re_log_types::{TimePoint, TimeRange};
+use re_log_types::{EntityPathHash, TimePoint, TimeRange};
 use re_types_core::{ComponentName, SizeBytes};
 
 use crate::{
@@ -183,7 +183,7 @@ impl SizeBytes for DataTypeRegistry {
     }
 }
 
-impl SizeBytes for MetadataRegistry<TimePoint> {
+impl SizeBytes for MetadataRegistry<(TimePoint, EntityPathHash)> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.heap_size_bytes
