@@ -33,19 +33,18 @@ fn main() -> eframe::Result<()> {
     re_log::setup_native_logging();
 
     let native_options = eframe::NativeOptions {
-        app_id: Some("rerun_example_re_ui_example".to_owned()),
+        viewport: egui::ViewportBuilder::default()
+            .with_app_id("re_ui_example")
+            .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
+            .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
+            .with_inner_size([1200.0, 800.0])
+            .with_title_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
+            .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
-        initial_window_size: Some([1200.0, 800.0].into()),
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
-
-        #[cfg(target_os = "macos")]
-        fullsize_content: re_ui::FULLSIZE_CONTENT,
-
-        // Maybe hide the OS-specific "chrome" around the window:
-        decorated: !re_ui::CUSTOM_WINDOW_DECORATIONS,
-        // To have rounded corners we need transparency:
-        transparent: re_ui::CUSTOM_WINDOW_DECORATIONS,
 
         ..Default::default()
     };
@@ -90,7 +89,7 @@ impl ExampleApp {
         let (logger, text_log_rx) = re_log::ChannelLogger::new(re_log::LevelFilter::Info);
         re_log::add_boxed_logger(Box::new(logger)).unwrap();
 
-        let tree = egui_tiles::Tree::new_tabs(vec![1, 2, 3]);
+        let tree = egui_tiles::Tree::new_tabs("my_tree", vec![1, 2, 3]);
 
         let (command_sender, command_receiver) = command_channel();
 
@@ -147,16 +146,11 @@ impl eframe::App for ExampleApp {
         [0.0; 4] // transparent so we can get rounded corners when doing [`re_ui::CUSTOM_WINDOW_DECORATIONS`]
     }
 
-    fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+    fn update(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.show_text_logs_as_notifications();
         self.toasts.show(egui_ctx);
 
-        egui::gui_zoom::zoom_with_keyboard_shortcuts(
-            egui_ctx,
-            frame.info().native_pixels_per_point,
-        );
-
-        self.top_bar(egui_ctx, frame);
+        self.top_bar(egui_ctx);
 
         egui::TopBottomPanel::bottom("bottom_panel")
             .frame(self.re_ui.bottom_panel_frame())
@@ -362,6 +356,19 @@ impl eframe::App for ExampleApp {
             #[allow(clippy::single_match)]
             match cmd {
                 UICommand::ToggleCommandPalette => self.cmd_palette.toggle(),
+                UICommand::ZoomIn => {
+                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    zoom_factor += 0.1;
+                    egui_ctx.set_zoom_factor(zoom_factor);
+                }
+                UICommand::ZoomOut => {
+                    let mut zoom_factor = egui_ctx.zoom_factor();
+                    zoom_factor -= 0.1;
+                    egui_ctx.set_zoom_factor(zoom_factor);
+                }
+                UICommand::ZoomReset => {
+                    egui_ctx.set_zoom_factor(1.0);
+                }
                 _ => {}
             }
         }
@@ -369,21 +376,8 @@ impl eframe::App for ExampleApp {
 }
 
 impl ExampleApp {
-    fn top_bar(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let native_pixels_per_point = frame.info().native_pixels_per_point;
-        let fullscreen = {
-            #[cfg(target_arch = "wasm32")]
-            {
-                false
-            }
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                frame.info().window_info.fullscreen
-            }
-        };
-        let top_bar_style = self
-            .re_ui
-            .top_bar_style(native_pixels_per_point, fullscreen, false);
+    fn top_bar(&mut self, egui_ctx: &egui::Context) {
+        let top_bar_style = self.re_ui.top_bar_style(false);
 
         egui::TopBottomPanel::top("top_bar")
             .frame(self.re_ui.top_panel_frame())
@@ -395,7 +389,7 @@ impl ExampleApp {
 
                     ui.menu_button("File", |ui| file_menu(ui, &self.command_sender));
 
-                    self.top_bar_ui(ui, frame);
+                    self.top_bar_ui(ui);
                 })
                 .response;
 
@@ -403,21 +397,23 @@ impl ExampleApp {
                 if !re_ui::NATIVE_WINDOW_BAR {
                     let title_bar_response = _response.interact(egui::Sense::click());
                     if title_bar_response.double_clicked() {
-                        frame.set_maximized(!frame.info().window_info.maximized);
+                        let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
+                        ui.ctx()
+                            .send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
                     } else if title_bar_response.is_pointer_button_down_on() {
-                        frame.drag_window();
+                        ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
                     }
                 }
             });
     }
 
-    fn top_bar_ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+    fn top_bar_ui(&mut self, ui: &mut egui::Ui) {
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             // From right-to-left:
 
             if re_ui::CUSTOM_WINDOW_DECORATIONS {
                 ui.add_space(8.0);
-                re_ui::native_window_buttons_ui(frame, ui);
+                re_ui::native_window_buttons_ui(ui);
                 ui.separator();
             } else {
                 ui.add_space(16.0);

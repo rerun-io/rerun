@@ -162,6 +162,7 @@ pub(crate) fn wgpu_options() -> egui_wgpu::WgpuConfiguration {
 #[must_use]
 pub fn customize_eframe(cc: &eframe::CreationContext<'_>) -> re_ui::ReUi {
     re_tracing::profile_function!();
+
     if let Some(render_state) = &cc.wgpu_render_state {
         use re_renderer::{config::RenderContextConfig, RenderContext};
 

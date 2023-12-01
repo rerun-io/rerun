@@ -85,7 +85,7 @@ impl Default for StartupOptions {
 #[cfg(not(target_arch = "wasm32"))]
 const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
-const MAX_ZOOM_FACTOR: f32 = 4.0;
+const MAX_ZOOM_FACTOR: f32 = 5.0;
 
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
@@ -199,7 +199,7 @@ impl App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(screenshot_path) = startup_options.screenshot_to_path_then_quit.clone() {
-            screenshotter.screenshot_to_path_then_quit(screenshot_path);
+            screenshotter.screenshot_to_path_then_quit(&re_ui.egui_ctx, screenshot_path);
         }
 
         let (command_sender, command_receiver) = command_channel();
@@ -302,13 +302,12 @@ impl App {
 
     fn run_pending_ui_commands(
         &mut self,
-        frame: &mut eframe::Frame,
         egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
     ) {
         while let Some(cmd) = self.command_receiver.recv_ui() {
-            self.run_ui_command(frame, egui_ctx, app_blueprint, store_context, cmd);
+            self.run_ui_command(egui_ctx, app_blueprint, store_context, cmd);
         }
     }
 
@@ -377,7 +376,6 @@ impl App {
 
     fn run_ui_command(
         &mut self,
-        _frame: &mut eframe::Frame,
         _egui_ctx: &egui::Context,
         app_blueprint: &AppBlueprint<'_>,
         store_context: Option<&StoreContext<'_>>,
@@ -424,9 +422,10 @@ impl App {
                         .send_system(SystemCommand::CloseRecordingId(cur_rec.clone()));
                 }
             }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::Quit => {
-                _frame.close();
+                _egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             }
 
             UICommand::ResetViewer => self.command_sender.send_system(SystemCommand::ResetViewer),
@@ -454,19 +453,28 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ToggleFullscreen => {
-                _frame.set_fullscreen(!_frame.info().window_info.fullscreen);
+                let fullscreen = _egui_ctx.input(|i| i.viewport().fullscreen.unwrap_or(false));
+                _egui_ctx.send_viewport_cmd(egui::ViewportCommand::Fullscreen(!fullscreen));
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
-                self.app_options_mut().zoom_factor += 0.1;
+                let mut zoom_factor = _egui_ctx.zoom_factor();
+                zoom_factor += 0.1;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                _egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomOut => {
-                self.app_options_mut().zoom_factor -= 0.1;
+                let mut zoom_factor = _egui_ctx.zoom_factor();
+                zoom_factor -= 0.1;
+                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
+                zoom_factor = (zoom_factor * 10.).round() / 10.;
+                _egui_ctx.set_zoom_factor(zoom_factor);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomReset => {
-                self.app_options_mut().zoom_factor = 1.0;
+                _egui_ctx.set_zoom_factor(1.0);
             }
 
             UICommand::SelectionPrevious => {
@@ -511,7 +519,7 @@ impl App {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ScreenshotWholeApp => {
-                self.screenshotter.request_screenshot();
+                self.screenshotter.request_screenshot(_egui_ctx);
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintDatastore => {
@@ -647,7 +655,7 @@ impl App {
     fn ui(
         &mut self,
         egui_ctx: &egui::Context,
-        frame: &mut eframe::Frame,
+        frame: &eframe::Frame,
         app_blueprint: &AppBlueprint<'_>,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_context: Option<&StoreContext<'_>>,
@@ -666,14 +674,7 @@ impl App {
 
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
-                crate::ui::top_panel(
-                    app_blueprint,
-                    store_context,
-                    ui,
-                    frame,
-                    self,
-                    gpu_resource_stats,
-                );
+                crate::ui::top_panel(app_blueprint, store_context, ui, self, gpu_resource_stats);
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
@@ -1022,12 +1023,14 @@ impl eframe::App for App {
 
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(resolution_in_points) = self.startup_options.resolution_in_points.take() {
-            frame.set_window_size(resolution_in_points.into());
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(
+                resolution_in_points.into(),
+            ));
         }
 
         #[cfg(not(target_arch = "wasm32"))]
-        if self.screenshotter.update(egui_ctx, frame).quit {
-            frame.close();
+        if self.screenshotter.update(egui_ctx).quit {
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::Close);
             return;
         }
 
@@ -1048,25 +1051,6 @@ impl eframe::App for App {
                 }
                 self.open_files_promise = None;
             }
-        }
-
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.screenshotter.is_screenshotting() {
-            // Make screenshots high-quality by pretending we have a high-dpi display, whether we do or not:
-            egui_ctx.set_pixels_per_point(2.0);
-        } else {
-            // Ensure zoom factor is sane and in 10% steps at all times before applying it.
-            {
-                let mut zoom_factor = self.app_options().zoom_factor;
-                zoom_factor = zoom_factor.clamp(MIN_ZOOM_FACTOR, MAX_ZOOM_FACTOR);
-                zoom_factor = (zoom_factor * 10.).round() / 10.;
-                self.state.app_options_mut().zoom_factor = zoom_factor;
-            }
-
-            // Apply zoom factor on top of natively reported pixel per point.
-            let pixels_per_point = frame.info().native_pixels_per_point.unwrap_or(1.0)
-                * self.app_options().zoom_factor;
-            egui_ctx.set_pixels_per_point(pixels_per_point);
         }
 
         // TODO(andreas): store the re_renderer somewhere else.
@@ -1138,24 +1122,27 @@ impl eframe::App for App {
         self.handle_dropping_files(egui_ctx);
 
         // Run pending commands last (so we don't have to wait for a repaint before they are run):
-        self.run_pending_ui_commands(frame, egui_ctx, &app_blueprint, store_context.as_ref());
+        self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
         self.store_hub = Some(store_hub);
+
+        // Check for returned screenshot:
+        #[cfg(not(target_arch = "wasm32"))]
+        egui_ctx.input(|i| {
+            for event in &i.raw.events {
+                if let egui::Event::Screenshot { image, .. } = event {
+                    self.screenshotter.save(image);
+                }
+            }
+        });
 
         // Frame time measurer - must be last
         self.frame_time_history.add(
             egui_ctx.input(|i| i.time),
             frame_start.elapsed().as_secs_f32(),
         );
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    fn post_rendering(&mut self, _window_size: [u32; 2], frame: &eframe::Frame) {
-        if let Some(screenshot) = frame.screenshot() {
-            self.screenshotter.save(&screenshot);
-        }
     }
 }
 
