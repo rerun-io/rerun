@@ -18,6 +18,7 @@ pub enum Item {
     SpaceView(SpaceViewId),
     InstancePath(Option<SpaceViewId>, InstancePath),
     DataBlueprintGroup(SpaceViewId, DataQueryId, EntityPath),
+    Container(egui_tiles::TileId),
 }
 
 impl From<SpaceViewId> for Item {
@@ -90,6 +91,7 @@ impl std::fmt::Debug for Item {
             Item::DataBlueprintGroup(sid, qid, entity_path) => {
                 write!(f, "({sid:?}, {qid:?}, {entity_path:?})")
             }
+            Item::Container(tile_id) => write!(f, "(tile: {tile_id:?})"),
         }
     }
 }
@@ -111,6 +113,7 @@ impl Item {
             Item::ComponentPath(_) => "Entity Component",
             Item::SpaceView(_) => "Space View",
             Item::DataBlueprintGroup(_, _, _) => "Group",
+            Item::Container(_) => "Container",
         }
     }
 }
@@ -199,9 +202,10 @@ pub fn resolve_mono_instance_path_item(
             *space_view,
             resolve_mono_instance_path(query, store, instance),
         ),
-        Item::ComponentPath(_) | Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => {
-            item.clone()
-        }
+        Item::ComponentPath(_)
+        | Item::SpaceView(_)
+        | Item::DataBlueprintGroup(_, _, _)
+        | Item::Container(_) => item.clone(),
     }
 }
 

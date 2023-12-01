@@ -33,6 +33,7 @@ anyhow.workspace = true
 bytemuck.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
+egui_tiles.workspace = true
 glam.workspace = true
 half.workspace = true
 itertools.workspace = true

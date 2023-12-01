@@ -215,9 +215,10 @@ impl SelectionState {
             .hovered_previous_frame
             .iter()
             .any(|current| match current {
-                Item::ComponentPath(_) | Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => {
-                    current == test
-                }
+                Item::ComponentPath(_)
+                | Item::SpaceView(_)
+                | Item::DataBlueprintGroup(_, _, _)
+                | Item::Container(_) => current == test,
 
                 Item::InstancePath(current_space_view_id, current_instance_path) => {
                     if let Item::InstancePath(test_space_view_id, test_instance_path) = test {

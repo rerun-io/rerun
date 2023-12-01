@@ -38,7 +38,7 @@ pub fn highlights_for_space_view(
 
     for current_selection in selection_state.current().iter() {
         match current_selection {
-            Item::ComponentPath(_) | Item::SpaceView(_) => {}
+            Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
             Item::DataBlueprintGroup(_space_view_id, _query_id, _entity_path) => {
                 // TODO(#4377): Fix DataBlueprintGroup
@@ -115,7 +115,7 @@ pub fn highlights_for_space_view(
 
     for current_hover in selection_state.hovered().iter() {
         match current_hover {
-            Item::ComponentPath(_) | Item::SpaceView(_) => {}
+            Item::ComponentPath(_) | Item::SpaceView(_) | Item::Container(_) => {}
 
             Item::DataBlueprintGroup(_space_view_id, _query_id, _entity_path) => {
                 // TODO(#4377): Fix DataBlueprintGroup

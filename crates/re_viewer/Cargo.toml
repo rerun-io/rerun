@@ -85,6 +85,7 @@ eframe = { workspace = true, default-features = false, features = [
 egui_plot.workspace = true
 egui-wgpu.workspace = true
 egui.workspace = true
+egui_tiles.workspace = true
 ehttp.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools = { workspace = true }
