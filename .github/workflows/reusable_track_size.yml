@@ -92,7 +92,7 @@ jobs:
           entries+=("Wasm:web_viewer/re_viewer_bg.wasm:MiB")
           entries+=("JS:web_viewer/re_viewer.js:kiB")
 
-          for file in example_data/**/*.rrd; do
+          for file in example_data/*.rrd; do
             name=$(basename "$file")
             entries+=("$name:$file:MiB")
           done
