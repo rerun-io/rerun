@@ -437,7 +437,8 @@ mod tests {
             view,
         );
 
-        view.on_events(&store.gc(&GarbageCollectionOptions::gc_everything()).0);
+        let events = store.gc(&GarbageCollectionOptions::gc_everything()).0;
+        view.on_events(&events);
 
         similar_asserts::assert_eq!(
             GlobalCounts::new(

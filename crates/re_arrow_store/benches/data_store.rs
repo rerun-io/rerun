@@ -291,6 +291,7 @@ fn gc(c: &mut Criterion) {
                 protect_latest: 0,
                 purge_empty_tables: false,
                 dont_protect: Default::default(),
+                enable_batching: false,
             });
             stats_diff
         });
@@ -315,6 +316,7 @@ fn gc(c: &mut Criterion) {
                     protect_latest: 0,
                     purge_empty_tables: false,
                     dont_protect: Default::default(),
+                    enable_batching: false,
                 });
                 stats_diff
             });

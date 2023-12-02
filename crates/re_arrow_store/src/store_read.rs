@@ -117,7 +117,7 @@ impl DataStore {
 
         let temporal = self
             .tables
-            .get(&(*timeline, ent_path_hash))
+            .get(&(ent_path_hash, *timeline))
             .map(|table| &table.all_components);
 
         let components = match (timeless, temporal) {
@@ -170,7 +170,7 @@ impl DataStore {
 
         // Otherwise see if it exists in the specified timeline
         self.tables
-            .get(&(*timeline, ent_path_hash))
+            .get(&(ent_path_hash, *timeline))
             .map_or(false, |table| table.all_components.contains(component))
     }
 
@@ -185,7 +185,7 @@ impl DataStore {
 
         let min_time = self
             .tables
-            .get(&(*timeline, ent_path_hash))?
+            .get(&(ent_path_hash, *timeline))?
             .buckets
             .first_key_value()?
             .1
@@ -284,7 +284,7 @@ impl DataStore {
 
         let cells = self
             .tables
-            .get(&(query.timeline, ent_path_hash))
+            .get(&(ent_path_hash, query.timeline))
             .and_then(|table| {
                 let cells = table.latest_at(query.at, primary, components);
                 trace!(
@@ -474,7 +474,7 @@ impl DataStore {
 
         let temporal = self
             .tables
-            .get(&(query.timeline, ent_path_hash))
+            .get(&(ent_path_hash, query.timeline))
             .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
@@ -733,6 +733,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id: _,
             col_row_id,
+            max_row_id: _,
             col_num_instances: _,
             columns,
             size_bytes: _,
@@ -846,6 +847,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id: _,
             col_row_id,
+            max_row_id: _,
             col_num_instances: _,
             columns,
             size_bytes: _,
@@ -958,6 +960,7 @@ impl IndexedBucketInner {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id: _,
             col_num_instances,
             columns,
             size_bytes: _,
