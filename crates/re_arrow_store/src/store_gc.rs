@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, time::Duration};
 
 use ahash::{HashMap, HashSet};
+use web_time::Instant;
 
 use nohash_hasher::IntMap;
 use re_log_types::{
@@ -248,7 +249,7 @@ impl DataStore {
             ..
         } = self;
 
-        let now = std::time::Instant::now();
+        let now = Instant::now();
         for (&row_id, (timepoint, entity_path_hash)) in &metadata_registry.registry {
             if protected_rows.contains(&row_id) {
                 batch_is_protected = true;

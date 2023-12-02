@@ -50,6 +50,7 @@ once_cell.workspace = true
 parking_lot.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
+web-time.workspace = true
 
 # Optional dependencies:
 polars-core = { workspace = true, optional = true, features = [
