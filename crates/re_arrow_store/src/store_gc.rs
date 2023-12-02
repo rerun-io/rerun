@@ -1,6 +1,7 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, time::Duration};
 
 use ahash::{HashMap, HashSet};
+use web_time::Instant;
 
 use nohash_hasher::IntMap;
 use re_log_types::{
@@ -34,6 +35,17 @@ pub struct GarbageCollectionOptions {
     /// What target threshold should the GC try to meet.
     pub target: GarbageCollectionTarget,
 
+    /// How long the garbage collection in allowed to run for.
+    ///
+    /// Trades off latency for throughput:
+    /// - A smaller `time_budget` will clear less data in a shorter amount of time, allowing for a
+    ///   more responsive UI at the cost of more GC overhead and more frequent runs.
+    /// - A larger `time_budget` will clear more data in a longer amount of time, increasing the
+    ///   chance of UI freeze frames but decreasing GC overhead and running less often.
+    ///
+    /// The default is an unbounded time budget (i.e. throughput only).
+    pub time_budget: Duration,
+
     /// Whether to also GC timeless data.
     pub gc_timeless: bool,
 
@@ -56,6 +68,7 @@ impl GarbageCollectionOptions {
     pub fn gc_everything() -> Self {
         GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
+            time_budget: std::time::Duration::MAX,
             gc_timeless: true,
             protect_latest: 0,
             purge_empty_tables: true,
@@ -137,12 +150,7 @@ impl DataStore {
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_num_bytes(
-                    options.enable_batching,
-                    num_bytes_to_drop,
-                    options.gc_timeless,
-                    &protected_rows,
-                )
+                self.gc_drop_at_least_num_bytes(options, num_bytes_to_drop, &protected_rows)
             }
             GarbageCollectionTarget::Everything => {
                 re_log::trace!(
@@ -154,12 +162,7 @@ impl DataStore {
                     "starting GC"
                 );
 
-                self.gc_drop_at_least_num_bytes(
-                    options.enable_batching,
-                    f64::INFINITY,
-                    options.gc_timeless,
-                    &protected_rows,
-                )
+                self.gc_drop_at_least_num_bytes(options, f64::INFINITY, &protected_rows)
             }
         };
 
@@ -216,9 +219,8 @@ impl DataStore {
     /// Tries to drop _at least_ `num_bytes_to_drop` bytes of data from the store.
     fn gc_drop_at_least_num_bytes(
         &mut self,
-        enable_batching: bool,
+        options: &GarbageCollectionOptions,
         mut num_bytes_to_drop: f64,
-        include_timeless: bool,
         protected_rows: &HashSet<RowId>,
     ) -> Vec<StoreDiff> {
         re_tracing::profile_function!();
@@ -247,6 +249,7 @@ impl DataStore {
             ..
         } = self;
 
+        let now = Instant::now();
         for (&row_id, (timepoint, entity_path_hash)) in &metadata_registry.registry {
             if protected_rows.contains(&row_id) {
                 batch_is_protected = true;
@@ -259,12 +262,11 @@ impl DataStore {
             }
 
             let dropped = Self::drop_batch(
-                enable_batching,
+                options,
                 tables,
                 timeless_tables,
                 cluster_cell_cache,
                 *cluster_key,
-                include_timeless,
                 &mut num_bytes_to_drop,
                 &batch,
                 batch_is_protected,
@@ -290,7 +292,7 @@ impl DataStore {
                 diffs.push(dropped);
             }
 
-            if num_bytes_to_drop <= 0.0 {
+            if now.elapsed() >= options.time_budget || num_bytes_to_drop <= 0.0 {
                 break;
             }
 
@@ -301,12 +303,11 @@ impl DataStore {
         // Handle leftovers.
         {
             let dropped = Self::drop_batch(
-                enable_batching,
+                options,
                 tables,
                 timeless_tables,
                 cluster_cell_cache,
                 *cluster_key,
-                include_timeless,
                 &mut num_bytes_to_drop,
                 &batch,
                 batch_is_protected,
@@ -344,16 +345,21 @@ impl DataStore {
 
     #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
     fn drop_batch(
-        enable_batching: bool,
+        options: &GarbageCollectionOptions,
         tables: &mut BTreeMap<(EntityPathHash, Timeline), IndexedTable>,
         timeless_tables: &mut IntMap<EntityPathHash, PersistentIndexedTable>,
         cluster_cell_cache: &ClusterCellCache,
         cluster_key: ComponentName,
-        include_timeless: bool,
         num_bytes_to_drop: &mut f64,
         batch: &[(TimePoint, (EntityPathHash, RowId))],
         batch_is_protected: bool,
     ) -> Vec<StoreDiff> {
+        let &GarbageCollectionOptions {
+            gc_timeless,
+            enable_batching,
+            ..
+        } = options;
+
         let mut diffs = Vec::new();
 
         // The algorithm is straightforward:
@@ -425,7 +431,7 @@ impl DataStore {
 
             // TODO(jleibs): This is a worst-case removal-order. Would be nice to collect all the rows
             // first and then remove them in one pass.
-            if timepoint.is_timeless() && include_timeless {
+            if timepoint.is_timeless() && gc_timeless {
                 for table in timeless_tables.values_mut() {
                     // let deleted_comps = deleted.timeless.entry(ent_path.clone()_hash).or_default();
                     let (removed, num_bytes_removed) =

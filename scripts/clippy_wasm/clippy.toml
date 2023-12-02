@@ -27,9 +27,9 @@ too-many-lines-threshold = 600 # TODO(emilk): decrease this
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 disallowed-methods = [
-  "std::time::Instant::now",      # use `instant` crate instead for wasm/web compatibility
-  "std::time::Duration::elapsed", # use `instant` crate instead for wasm/web compatibility
-  "std::time::SystemTime::now",   # use `instant` or `time` crates instead for wasm/web compatibility
+  "std::time::Instant::now",      # use `web-time` crate instead for wasm/web compatibility
+  "std::time::Duration::elapsed", # use `web-time` crate instead for wasm/web compatibility
+  "std::time::SystemTime::now",   # use `web-time` or `time` crates instead for wasm/web compatibility
 
   # Cannot spawn threads on wasm:
   "std::thread::spawn",

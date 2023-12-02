@@ -590,6 +590,7 @@ fn gc_metadata_size() -> anyhow::Result<()> {
                 purge_empty_tables: false,
                 dont_protect: Default::default(),
                 enable_batching,
+                time_budget: std::time::Duration::MAX,
             });
             _ = store.gc(&GarbageCollectionOptions {
                 target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
@@ -598,6 +599,7 @@ fn gc_metadata_size() -> anyhow::Result<()> {
                 purge_empty_tables: false,
                 dont_protect: Default::default(),
                 enable_batching,
+                time_budget: std::time::Duration::MAX,
             });
         }
     }

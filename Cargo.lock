@@ -4352,6 +4352,7 @@ dependencies = [
  "smallvec",
  "thiserror",
  "tinyvec",
+ "web-time",
 ]
 
 [[package]]
