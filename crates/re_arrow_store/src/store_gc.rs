@@ -240,7 +240,7 @@ impl DataStore {
                         table.try_drop_row(&self.cluster_cell_cache, row_id, time.as_i64());
                     if let Some(inner) = diff.as_mut() {
                         if let Some(removed) = removed {
-                            diff = inner.union(&removed);
+                            inner.times.extend(removed.times);
                         }
                     } else {
                         diff = removed;
@@ -258,7 +258,7 @@ impl DataStore {
                         table.try_drop_row(&self.cluster_cell_cache, row_id);
                     if let Some(inner) = diff.as_mut() {
                         if let Some(removed) = removed {
-                            diff = inner.union(&removed);
+                            inner.times.extend(removed.times);
                         }
                     } else {
                         diff = removed;
@@ -476,7 +476,7 @@ impl DataStore {
                         .entry(row_id)
                         .or_insert_with(|| StoreDiff::deletion(row_id, entity_path.clone()));
 
-                    diff.timepoint.insert(bucket.timeline, time.into());
+                    diff.times.push((bucket.timeline, time.into()));
 
                     for column in &mut inner.columns.values_mut() {
                         let cell = column[i].take();
@@ -657,10 +657,9 @@ impl IndexedBucketInner {
                     if let Some(inner) = diff.as_mut() {
                         inner.cells.insert(cell.component_name(), cell);
                     } else {
-                        diff = StoreDiff::deletion(removed_row_id, ent_path.clone())
-                            .at_timestamp(timeline, time)
-                            .with_cells([cell])
-                            .into();
+                        let mut d = StoreDiff::deletion(removed_row_id, ent_path.clone());
+                        d.at_timestamp(timeline, time).with_cells([cell]);
+                        diff = Some(d);
                     }
                 }
             }
@@ -752,9 +751,9 @@ impl PersistentIndexedTable {
                     if let Some(inner) = diff.as_mut() {
                         inner.cells.insert(cell.component_name(), cell);
                     } else {
-                        diff = StoreDiff::deletion(removed_row_id, ent_path.clone())
-                            .with_cells([cell])
-                            .into();
+                        let mut d = StoreDiff::deletion(removed_row_id, ent_path.clone());
+                        d.cells.insert(cell.component_name(), cell);
+                        diff = Some(d);
                     }
                 }
             }
