@@ -60,7 +60,7 @@ const MAX_INSERT_ROW_ATTEMPTS: usize = 1_000;
 const DEFAULT_INSERT_ROW_STEP_SIZE: u64 = 100;
 
 /// See [`GarbageCollectionOptions::time_budget`].
-const GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
+const DEFAULT_GC_TIME_BUDGET: std::time::Duration = std::time::Duration::from_micros(3500); // empirical
 
 /// Inserts a [`DataRow`] into the [`DataStore`], retrying in case of duplicated `RowId`s.
 ///
@@ -437,7 +437,7 @@ impl StoreDb {
             .into_iter()
             .collect(),
             enable_batching: false,
-            time_budget: GC_TIME_BUDGET,
+            time_budget: DEFAULT_GC_TIME_BUDGET,
         });
     }
 
@@ -455,7 +455,7 @@ impl StoreDb {
             purge_empty_tables: false,
             dont_protect: Default::default(),
             enable_batching: false,
-            time_budget: GC_TIME_BUDGET,
+            time_budget: DEFAULT_GC_TIME_BUDGET,
         });
     }
 
