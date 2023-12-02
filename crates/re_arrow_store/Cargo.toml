@@ -19,9 +19,6 @@ all-features = true
 [features]
 default = []
 
-## Enables access to re_types' test components/datatypes.
-testing = ["re_log_types/testing", "re_types/testing"]
-
 ## Enables `parking_lot`'s deadlock detection background thread.
 deadlock_detection = ["parking_lot/deadlock_detection"]
 
@@ -73,7 +70,7 @@ polars-ops = { workspace = true, optional = true, features = [
 
 [dev-dependencies]
 re_log_types = { workspace = true, features = ["testing"] }
-re_types = { workspace = true, features = ["datagen"] }
+re_types = { workspace = true, features = ["datagen", "testing"] }
 
 anyhow.workspace = true
 criterion.workspace = true
@@ -98,7 +95,7 @@ bench = false
 [[example]]
 name = "dump_dataframe"
 path = "examples/dump_dataframe.rs"
-required-features = ["polars", "testing"]
+required-features = ["polars"]
 
 [[example]]
 name = "latest_component"
@@ -117,14 +114,16 @@ required-features = ["polars"]
 
 
 [[bench]]
-name = "data_store"
-harness = false
-required-features = ["testing"]
-
-[[bench]]
 name = "arrow2"
 harness = false
-required-features = ["testing"]
+
+[[bench]]
+name = "data_store"
+harness = false
+
+[[bench]]
+name = "gc"
+harness = false
 
 [[bench]]
 name = "vectors"
