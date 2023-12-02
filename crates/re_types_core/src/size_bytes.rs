@@ -115,6 +115,45 @@ macro_rules! impl_size_bytes_pod {
 
 impl_size_bytes_pod!(u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, bool, f32, f64);
 
+impl<T, U> SizeBytes for (T, U)
+where
+    T: SizeBytes,
+    U: SizeBytes,
+{
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let (a, b) = self;
+        a.heap_size_bytes() + b.heap_size_bytes()
+    }
+}
+
+impl<T, U, V> SizeBytes for (T, U, V)
+where
+    T: SizeBytes,
+    U: SizeBytes,
+    V: SizeBytes,
+{
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let (a, b, c) = self;
+        a.heap_size_bytes() + b.heap_size_bytes() + c.heap_size_bytes()
+    }
+}
+
+impl<T, U, V, W> SizeBytes for (T, U, V, W)
+where
+    T: SizeBytes,
+    U: SizeBytes,
+    V: SizeBytes,
+    W: SizeBytes,
+{
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        let (a, b, c, d) = self;
+        a.heap_size_bytes() + b.heap_size_bytes() + c.heap_size_bytes() + d.heap_size_bytes()
+    }
+}
+
 // --- Arrow ---
 
 impl SizeBytes for DataType {

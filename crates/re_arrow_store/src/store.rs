@@ -104,7 +104,7 @@ pub struct MetadataRegistry<T: Clone> {
     pub heap_size_bytes: u64,
 }
 
-impl Default for MetadataRegistry<TimePoint> {
+impl Default for MetadataRegistry<(TimePoint, EntityPathHash)> {
     fn default() -> Self {
         let mut this = Self {
             registry: Default::default(),
@@ -201,9 +201,7 @@ pub struct DataStore {
     pub(crate) type_registry: DataTypeRegistry,
 
     /// Keeps track of arbitrary per-row metadata.
-    ///
-    /// Only used to map `RowId`s to their original [`TimePoint`]s at the moment.
-    pub(crate) metadata_registry: MetadataRegistry<TimePoint>,
+    pub(crate) metadata_registry: MetadataRegistry<(TimePoint, EntityPathHash)>,
 
     /// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, …)
     /// so that they can be properly deduplicated on insertion.
