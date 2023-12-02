@@ -1,4 +1,4 @@
-use re_log_types::{DataCellColumn, NumInstances, RowId, TimeRange};
+use re_log_types::{DataCellColumn, NumInstances, RowId, TimeRange, VecDequeSortingExt as _};
 use re_types_core::{ComponentName, Loggable, SizeBytes as _};
 
 use crate::{
@@ -173,8 +173,8 @@ impl IndexedBucket {
                 let mut times = col_time.clone();
                 times.sort();
 
-                let expected_min = times.first().copied().unwrap_or(i64::MAX).into();
-                let expected_max = times.last().copied().unwrap_or(i64::MIN).into();
+                let expected_min = times.front().copied().unwrap_or(i64::MAX).into();
+                let expected_max = times.back().copied().unwrap_or(i64::MIN).into();
                 let expected_time_range = TimeRange::new(expected_min, expected_max);
 
                 if expected_time_range != *time_range {
