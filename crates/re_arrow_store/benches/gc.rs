@@ -113,10 +113,10 @@ fn plotting_dashboard(c: &mut Criterion) {
     for &num_rows_per_bucket in num_rows_per_bucket() {
         for &gc_batching in gc_batching() {
             group.bench_function(
-                if !gc_batching {
-                    format!("bucketsz={num_rows_per_bucket}")
-                } else {
+                if gc_batching {
                     format!("bucketsz={num_rows_per_bucket}/gc_batching=true")
+                } else {
+                    format!("bucketsz={num_rows_per_bucket}")
                 },
                 |b| {
                     let store = build_store(
@@ -193,10 +193,10 @@ fn timeless_logs(c: &mut Criterion) {
     for &num_rows_per_bucket in num_rows_per_bucket() {
         for &gc_batching in gc_batching() {
             group.bench_function(
-                if !gc_batching {
-                    format!("bucketsz={num_rows_per_bucket}")
-                } else {
+                if gc_batching {
                     format!("bucketsz={num_rows_per_bucket}/gc_batching=true")
+                } else {
+                    format!("bucketsz={num_rows_per_bucket}")
                 },
                 |b| {
                     let store = build_store(

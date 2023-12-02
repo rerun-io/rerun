@@ -215,8 +215,6 @@ impl DataStore {
     }
 
     /// Tries to drop _at least_ `num_bytes_to_drop` bytes of data from the store.
-    ///
-    /// Returns the list of `RowId`s that were purged from the store.
     fn gc_drop_at_least_num_bytes(
         &mut self,
         enable_batching: bool,
@@ -229,13 +227,15 @@ impl DataStore {
         let mut diffs = Vec::new();
 
         // The algorithm is straightforward:
-        // 1. Find the oldest `RowId` that is not protected
-        // 2. Find all tables that potentially hold data associated with that `RowId`
-        // 3. Drop the associated row and account for the space we got back
+        // 1. Accumulate a bunch of `RowId`s in ascending order, starting from the beginning of time.
+        // 2. Check if any `RowId` in the batch is protected, in which case the entire batch is
+        //    considered protected and cannot be dropped all at once.
+        // 3. Send the batch to `drop_batch` to handle the actual deletion.
+        // 4. Removed the dropped rows from the metadata registry.
 
         let batch_size = (self.config.indexed_bucket_num_rows as usize).saturating_mul(2);
         let batch_size = batch_size.clamp(64, 4096);
-        // let batch_size = 1;
+
         let mut batch: Vec<(TimePoint, (EntityPathHash, RowId))> = Vec::with_capacity(batch_size);
         let mut batch_is_protected = false;
 
@@ -356,6 +356,13 @@ impl DataStore {
         batch_is_protected: bool,
     ) -> Vec<StoreDiff> {
         let mut diffs = Vec::new();
+
+        // The algorithm is straightforward:
+        // 1. If the batch isn't protected, find and drop all buckets that are guaranteed to
+        //    contain only rows older than the ones in the batch.
+        // 2. Check how many bytes were dropped; continue if we haven't met our objective.
+        // 3. Fallback to deletion of individual rows.
+        // 4. Check how many bytes were dropped; continue if we haven't met our objective.
 
         // NOTE: The batch is already sorted by definition since it's extracted from the registry's btreemap.
         let max_row_id = batch.last().map(|(_, (_, row_id))| *row_id);

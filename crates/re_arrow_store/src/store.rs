@@ -438,7 +438,7 @@ impl IndexedTable {
         Self {
             timeline,
             ent_path,
-            buckets: [(i64::MIN.into(), bucket)].into(),
+            buckets: [(TimeInt::MIN, bucket)].into(),
             cluster_key,
             all_components: Default::default(),
             buckets_num_rows: 0,
@@ -466,14 +466,13 @@ impl IndexedTable {
             let bucket = IndexedBucket::new(*cluster_key, *timeline);
             let size_bytes = bucket.total_size_bytes();
 
-            *buckets = [(i64::MIN.into(), bucket)].into();
+            *buckets = [(TimeInt::MIN, bucket)].into();
             *buckets_num_rows = 0;
             *buckets_size_bytes = size_bytes;
         }
-
         // NOTE: Make sure the first bucket is responsible for `-∞`, which might or might not be
         // the case now if we've been moving buckets around.
-        if let Some((_, bucket)) = self.buckets.pop_first() {
+        else if let Some((_, bucket)) = self.buckets.pop_first() {
             self.buckets.insert(TimeInt::MIN, bucket);
         }
     }
