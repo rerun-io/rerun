@@ -1,4 +1,3 @@
-use lazy_static::lazy_static;
 use nohash_hasher::IntMap;
 
 use re_log_types::EntityPathHash;
@@ -39,11 +38,6 @@ pub struct SpaceViewOutlineMasks {
     pub instances: ahash::HashMap<InstanceKey, OutlineMaskPreference>,
 }
 
-lazy_static! {
-    static ref SPACEVIEW_OUTLINE_MASK_NONE: SpaceViewOutlineMasks =
-        SpaceViewOutlineMasks::default();
-}
-
 impl SpaceViewOutlineMasks {
     pub fn index_outline_mask(&self, instance_key: InstanceKey) -> OutlineMaskPreference {
         self.instances
@@ -72,9 +66,12 @@ impl SpaceViewHighlights {
     }
 
     pub fn entity_outline_mask(&self, entity_path_hash: EntityPathHash) -> &SpaceViewOutlineMasks {
+        use std::sync::OnceLock;
+        static CELL: OnceLock<SpaceViewOutlineMasks> = OnceLock::new();
+
         self.outlines_masks
             .get(&entity_path_hash)
-            .unwrap_or(&SPACEVIEW_OUTLINE_MASK_NONE)
+            .unwrap_or_else(|| CELL.get_or_init(SpaceViewOutlineMasks::default))
     }
 
     pub fn any_outlines(&self) -> bool {
