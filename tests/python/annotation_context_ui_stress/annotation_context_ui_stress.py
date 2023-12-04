@@ -10,7 +10,7 @@ from rerun.datatypes import ClassDescription
 parser = argparse.ArgumentParser()
 rr.script_add_args(parser)
 args = parser.parse_args()
-rr.script_setup(args, "rerun_example_detect_and_track_objects")
+rr.script_setup(args, "rerun_example_annotation_context_ui_stress")
 
 
 annotation_context = rr.AnnotationContext(
