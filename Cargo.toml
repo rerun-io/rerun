@@ -19,57 +19,57 @@ include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
 rust-version = "1.72"
-version = "0.12.0-alpha.1+dev"
+version = "0.12.0-alpha.2"
 
 [workspace.dependencies]
 # When using alpha-release, always use exact version, e.g. `version = "=0.x.y-alpha.z"
 # This is because we treat alpha-releases as incompatible, but semver doesn't.
 # In particular: if we compile rerun 0.3.0-alpha.0 we only want it to use
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
-re_analytics = { path = "crates/re_analytics", version = "=0.12.0-alpha.1", default-features = false }
-re_arrow_store = { path = "crates/re_arrow_store", version = "=0.12.0-alpha.1", default-features = false }
-re_build_examples_manifest = { path = "crates/re_build_examples_manifest", version = "=0.12.0-alpha.1", default-features = false }
-re_build_info = { path = "crates/re_build_info", version = "=0.12.0-alpha.1", default-features = false }
-re_build_tools = { path = "crates/re_build_tools", version = "=0.12.0-alpha.1", default-features = false }
-re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "=0.12.0-alpha.1", default-features = false }
-re_crash_handler = { path = "crates/re_crash_handler", version = "=0.12.0-alpha.1", default-features = false }
-re_data_source = { path = "crates/re_data_source", version = "=0.12.0-alpha.1", default-features = false }
-re_data_store = { path = "crates/re_data_store", version = "=0.12.0-alpha.1", default-features = false }
-re_data_ui = { path = "crates/re_data_ui", version = "=0.12.0-alpha.1", default-features = false }
-re_error = { path = "crates/re_error", version = "=0.12.0-alpha.1", default-features = false }
-re_format = { path = "crates/re_format", version = "=0.12.0-alpha.1", default-features = false }
-re_int_histogram = { path = "crates/re_int_histogram", version = "=0.12.0-alpha.1", default-features = false }
-re_log = { path = "crates/re_log", version = "=0.12.0-alpha.1", default-features = false }
-re_log_encoding = { path = "crates/re_log_encoding", version = "=0.12.0-alpha.1", default-features = false }
-re_log_types = { path = "crates/re_log_types", version = "=0.12.0-alpha.1", default-features = false }
-re_memory = { path = "crates/re_memory", version = "=0.12.0-alpha.1", default-features = false }
-re_query = { path = "crates/re_query", version = "=0.12.0-alpha.1", default-features = false }
-re_renderer = { path = "crates/re_renderer", version = "=0.12.0-alpha.1", default-features = false }
-re_sdk = { path = "crates/re_sdk", version = "=0.12.0-alpha.1", default-features = false }
-re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.12.0-alpha.1", default-features = false }
-re_smart_channel = { path = "crates/re_smart_channel", version = "=0.12.0-alpha.1", default-features = false }
-re_space_view = { path = "crates/re_space_view", version = "=0.12.0-alpha.1", default-features = false }
-re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.12.0-alpha.1", default-features = false }
-re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.12.0-alpha.1", default-features = false }
-re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "=0.12.0-alpha.1", default-features = false }
-re_space_view_text_log = { path = "crates/re_space_view_text_log", version = "=0.12.0-alpha.1", default-features = false }
-re_space_view_text_document = { path = "crates/re_space_view_text_document", version = "=0.12.0-alpha.1", default-features = false }
-re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "=0.12.0-alpha.1", default-features = false }
-re_string_interner = { path = "crates/re_string_interner", version = "=0.12.0-alpha.1", default-features = false }
-re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.12.0-alpha.1", default-features = false }
-re_time_panel = { path = "crates/re_time_panel", version = "=0.12.0-alpha.1", default-features = false }
-re_tracing = { path = "crates/re_tracing", version = "=0.12.0-alpha.1", default-features = false }
-re_tuid = { path = "crates/re_tuid", version = "=0.12.0-alpha.1", default-features = false }
-re_types_core = { path = "crates/re_types_core", version = "=0.12.0-alpha.1", default-features = false }
-re_types = { path = "crates/re_types", version = "=0.12.0-alpha.1", default-features = false }
-re_types_builder = { path = "crates/re_types_builder", version = "=0.12.0-alpha.1", default-features = false }
-re_ui = { path = "crates/re_ui", version = "=0.12.0-alpha.1", default-features = false }
-re_viewer = { path = "crates/re_viewer", version = "=0.12.0-alpha.1", default-features = false }
-re_viewer_context = { path = "crates/re_viewer_context", version = "=0.12.0-alpha.1", default-features = false }
-re_viewport = { path = "crates/re_viewport", version = "=0.12.0-alpha.1", default-features = false }
-re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.12.0-alpha.1", default-features = false }
-re_ws_comms = { path = "crates/re_ws_comms", version = "=0.12.0-alpha.1", default-features = false }
-rerun = { path = "crates/rerun", version = "=0.12.0-alpha.1", default-features = false }
+re_analytics = { path = "crates/re_analytics", version = "=0.12.0-alpha.2", default-features = false }
+re_arrow_store = { path = "crates/re_arrow_store", version = "=0.12.0-alpha.2", default-features = false }
+re_build_examples_manifest = { path = "crates/re_build_examples_manifest", version = "=0.12.0-alpha.2", default-features = false }
+re_build_info = { path = "crates/re_build_info", version = "=0.12.0-alpha.2", default-features = false }
+re_build_tools = { path = "crates/re_build_tools", version = "=0.12.0-alpha.2", default-features = false }
+re_build_web_viewer = { path = "crates/re_build_web_viewer", version = "=0.12.0-alpha.2", default-features = false }
+re_crash_handler = { path = "crates/re_crash_handler", version = "=0.12.0-alpha.2", default-features = false }
+re_data_source = { path = "crates/re_data_source", version = "=0.12.0-alpha.2", default-features = false }
+re_data_store = { path = "crates/re_data_store", version = "=0.12.0-alpha.2", default-features = false }
+re_data_ui = { path = "crates/re_data_ui", version = "=0.12.0-alpha.2", default-features = false }
+re_error = { path = "crates/re_error", version = "=0.12.0-alpha.2", default-features = false }
+re_format = { path = "crates/re_format", version = "=0.12.0-alpha.2", default-features = false }
+re_int_histogram = { path = "crates/re_int_histogram", version = "=0.12.0-alpha.2", default-features = false }
+re_log = { path = "crates/re_log", version = "=0.12.0-alpha.2", default-features = false }
+re_log_encoding = { path = "crates/re_log_encoding", version = "=0.12.0-alpha.2", default-features = false }
+re_log_types = { path = "crates/re_log_types", version = "=0.12.0-alpha.2", default-features = false }
+re_memory = { path = "crates/re_memory", version = "=0.12.0-alpha.2", default-features = false }
+re_query = { path = "crates/re_query", version = "=0.12.0-alpha.2", default-features = false }
+re_renderer = { path = "crates/re_renderer", version = "=0.12.0-alpha.2", default-features = false }
+re_sdk = { path = "crates/re_sdk", version = "=0.12.0-alpha.2", default-features = false }
+re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.12.0-alpha.2", default-features = false }
+re_smart_channel = { path = "crates/re_smart_channel", version = "=0.12.0-alpha.2", default-features = false }
+re_space_view = { path = "crates/re_space_view", version = "=0.12.0-alpha.2", default-features = false }
+re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.12.0-alpha.2", default-features = false }
+re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.12.0-alpha.2", default-features = false }
+re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "=0.12.0-alpha.2", default-features = false }
+re_space_view_text_log = { path = "crates/re_space_view_text_log", version = "=0.12.0-alpha.2", default-features = false }
+re_space_view_text_document = { path = "crates/re_space_view_text_document", version = "=0.12.0-alpha.2", default-features = false }
+re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "=0.12.0-alpha.2", default-features = false }
+re_string_interner = { path = "crates/re_string_interner", version = "=0.12.0-alpha.2", default-features = false }
+re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.12.0-alpha.2", default-features = false }
+re_time_panel = { path = "crates/re_time_panel", version = "=0.12.0-alpha.2", default-features = false }
+re_tracing = { path = "crates/re_tracing", version = "=0.12.0-alpha.2", default-features = false }
+re_tuid = { path = "crates/re_tuid", version = "=0.12.0-alpha.2", default-features = false }
+re_types_core = { path = "crates/re_types_core", version = "=0.12.0-alpha.2", default-features = false }
+re_types = { path = "crates/re_types", version = "=0.12.0-alpha.2", default-features = false }
+re_types_builder = { path = "crates/re_types_builder", version = "=0.12.0-alpha.2", default-features = false }
+re_ui = { path = "crates/re_ui", version = "=0.12.0-alpha.2", default-features = false }
+re_viewer = { path = "crates/re_viewer", version = "=0.12.0-alpha.2", default-features = false }
+re_viewer_context = { path = "crates/re_viewer_context", version = "=0.12.0-alpha.2", default-features = false }
+re_viewport = { path = "crates/re_viewport", version = "=0.12.0-alpha.2", default-features = false }
+re_web_viewer_server = { path = "crates/re_web_viewer_server", version = "=0.12.0-alpha.2", default-features = false }
+re_ws_comms = { path = "crates/re_ws_comms", version = "=0.12.0-alpha.2", default-features = false }
+rerun = { path = "crates/rerun", version = "=0.12.0-alpha.2", default-features = false }
 
 # egui-crates:
 ecolor = "0.24.1"
