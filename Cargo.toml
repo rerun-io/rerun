@@ -132,6 +132,7 @@ half = "2.3.1"
 hyper = "0.14"
 image = { version = "0.24", default-features = false }
 indent = "0.1"
+indicatif = "0.17.7"
 infer = "0.15" # infer MIME type by checking the magic number signature
 itertools = "0.11"
 js-sys = "0.3"

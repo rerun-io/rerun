@@ -1,7 +1,7 @@
 [package]
 name = "re_build_examples"
 authors.workspace = true
-description = "Build the rerun web-viewer Wasm from source"
+description = "Build rerun example RRD files"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
@@ -18,11 +18,11 @@ all-features = true
 
 [dependencies]
 re_build_tools.workspace = true
-rayon.workspace = true
 
 # External
 anyhow.workspace = true
-indicatif = "0.17.7"
+indicatif.workspace = true
+rayon.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde_yaml.workspace = true
