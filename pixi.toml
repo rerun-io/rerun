@@ -27,6 +27,7 @@ version = "0.1.0"                                                              #
 # Run the codegen. Optionally pass `--profile` argument if you want.
 codegen = "cargo run --package re_types_builder -- "
 
+build-examples = "cargo run -q --locked -p re_build_examples --"
 build-examples-manifest = "cargo run -q --locked -p re_build_examples_manifest --"
 
 # Assorted linting tasks

@@ -1,4 +1,4 @@
-name: Reusable Upload Web Demo
+name: Reusable Upload Examples
 
 on:
   workflow_call:
@@ -23,12 +23,12 @@ on:
         default: ""
 
 concurrency:
-  group: ${{ inputs.CONCURRENCY }}-upload-web-demo
+  group: ${{ inputs.CONCURRENCY }}-upload-examples
   cancel-in-progress: true
 
 jobs:
   upload-web:
-    name: Upload Web Demo to Google Cloud
+    name: Upload Examples to Google Cloud
     permissions:
       contents: "read"
       id-token: "write"
@@ -40,11 +40,11 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - name: Download web demo assets
+      - name: Download assets
         uses: actions/download-artifact@v3
         with:
-          name: web_demo
-          path: web_demo
+          name: example_data
+          path: example_data
 
       # Upload the wasm, html etc to a Google cloud bucket:
       - id: "auth"
@@ -60,56 +60,56 @@ jobs:
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-      - name: "Upload web demo (commit)"
+      - name: "Upload examples (commit)"
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "web_demo"
-          destination: "rerun-demo/commit/${{ steps.get-sha.outputs.sha }}"
+          path: "example_data"
+          destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}/examples"
           parent: false
 
-      - name: "Upload web demo (tagged)"
+      - name: "Upload examples (tagged)"
         if: inputs.MARK_TAGGED_VERSION
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "web_demo"
-          destination: "rerun-demo/version/${{inputs.RELEASE_VERSION}}"
+          path: "example_data"
+          destination: "rerun-web-viewer/version/${{ inputs.RELEASE_VERSION }}/examples"
           parent: false
 
-      - name: "Upload web demo (adhoc)"
+      - name: "Upload examples (adhoc)"
         if: ${{ inputs.ADHOC_NAME != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "web_demo"
-          destination: "rerun-demo/adhoc/${{inputs.ADHOC_NAME}}"
+          path: "example_data"
+          destination: "rerun-web-viewer/adhoc/${{ inputs.ADHOC_NAME }}/examples"
           parent: false
 
-      - name: "Upload web demo (prerelease)"
+      - name: "Upload examples (prerelease)"
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "web_demo"
-          destination: "rerun-demo/prerelease"
+          path: "example_data"
+          destination: "rerun-web-viewer/prerelease/examples"
           parent: false
           headers: |-
             cache-control: no-cache, max-age=0
 
-      - name: "Upload web demo (nightly)"
+      - name: "Upload examples (nightly)"
         # TEMP: Tracking `main` until we can do actual nightly builds.
         if: github.ref == 'refs/heads/main'
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "web_demo"
-          destination: "rerun-demo/version/nightly"
+          path: "example_data"
+          destination: "rerun-web-viewer/version/nightly/examples"
           parent: false
           headers: |-
             cache-control: no-cache, max-age=0
 
-      - name: "Upload web demo (pr)"
+      - name: "Upload examples (pr)"
         if: ${{ inputs.PR_NUMBER != '' }}
         uses: google-github-actions/upload-cloud-storage@v1
         with:
-          path: "web_demo"
-          destination: "rerun-demo/pr/${{ inputs.PR_NUMBER }}"
+          path: "example_data"
+          destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}/examples"
           parent: false
           headers: |-
             cache-control: no-cache, max-age=0
