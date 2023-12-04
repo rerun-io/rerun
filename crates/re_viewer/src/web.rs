@@ -174,7 +174,7 @@ fn create_app(
 /// in the same way as `rerun analytics email YOURNAME@rerun.io`.
 ///
 /// This one just panics when it fails, as it's only ever really run
-/// by rerun employees manually in `app.rerun.io` and `demo.rerun.io`.
+/// by rerun employees manually in `app.rerun.io`.
 #[cfg(feature = "analytics")]
 #[wasm_bindgen]
 pub fn set_email(email: String) {
