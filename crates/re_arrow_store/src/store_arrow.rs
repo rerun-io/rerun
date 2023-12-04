@@ -1,11 +1,13 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use arrow2::{array::Array, chunk::Chunk, datatypes::Schema};
 use nohash_hasher::IntMap;
 use re_log_types::{DataCellColumn, DataTable, DataTableResult, NumInstances, RowId, Timeline};
 use re_types_core::ComponentName;
 
-use crate::store::{IndexedBucket, IndexedBucketInner, PersistentIndexedTable};
+use crate::store::{
+    IndexedBucket, IndexedBucketInner, PersistentIndexedTable, PersistentIndexedTableInner,
+};
 
 // ---
 
@@ -34,6 +36,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id: _,
             col_num_instances,
             columns,
             size_bytes: _,
@@ -66,11 +69,16 @@ impl PersistentIndexedTable {
         let Self {
             ent_path: _,
             cluster_key,
+            inner,
+        } = self;
+
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
-        } = self;
+            is_sorted: _,
+        } = &*inner.read();
 
         serialize(
             cluster_key,
@@ -87,10 +95,10 @@ impl PersistentIndexedTable {
 
 fn serialize(
     cluster_key: &ComponentName,
-    col_time: Option<(Timeline, &[i64])>,
-    col_insert_id: &[u64],
-    col_row_id: &[RowId],
-    col_num_instances: &[NumInstances],
+    col_time: Option<(Timeline, &VecDeque<i64>)>,
+    col_insert_id: &VecDeque<u64>,
+    col_row_id: &VecDeque<RowId>,
+    col_num_instances: &VecDeque<NumInstances>,
     table: &IntMap<ComponentName, DataCellColumn>,
 ) -> DataTableResult<(Schema, Chunk<Box<dyn Array>>)> {
     re_tracing::profile_function!();
@@ -122,10 +130,10 @@ fn serialize(
 }
 
 fn serialize_control_columns(
-    col_time: Option<(Timeline, &[i64])>,
-    col_insert_id: &[u64],
-    col_row_id: &[RowId],
-    col_num_instances: &[NumInstances],
+    col_time: Option<(Timeline, &VecDeque<i64>)>,
+    col_insert_id: &VecDeque<u64>,
+    col_row_id: &VecDeque<RowId>,
+    col_num_instances: &VecDeque<NumInstances>,
 ) -> DataTableResult<(Schema, Vec<Box<dyn Array>>)> {
     re_tracing::profile_function!();
 

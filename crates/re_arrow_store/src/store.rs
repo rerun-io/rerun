@@ -1,12 +1,9 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::AtomicU64;
 
-use ahash::HashMap;
 use arrow2::datatypes::DataType;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
-use smallvec::SmallVec;
-
 use re_log_types::{
     DataCell, DataCellColumn, EntityPath, EntityPathHash, ErasedTimeVec, NumInstancesVec, RowId,
     RowIdVec, StoreId, TimeInt, TimePoint, TimeRange, Timeline,
@@ -72,7 +69,7 @@ impl DataStoreConfig {
 
 // ---
 
-pub type InsertIdVec = SmallVec<[u64; 4]>;
+pub type InsertIdVec = VecDeque<u64>;
 
 /// Keeps track of datatype information for all component types that have been written to the store
 /// so far.
@@ -106,7 +103,7 @@ pub struct MetadataRegistry<T: Clone> {
     pub heap_size_bytes: u64,
 }
 
-impl Default for MetadataRegistry<TimePoint> {
+impl Default for MetadataRegistry<(TimePoint, EntityPathHash)> {
     fn default() -> Self {
         let mut this = Self {
             registry: Default::default(),
@@ -203,9 +200,7 @@ pub struct DataStore {
     pub(crate) type_registry: DataTypeRegistry,
 
     /// Keeps track of arbitrary per-row metadata.
-    ///
-    /// Only used to map `RowId`s to their original [`TimePoint`]s at the moment.
-    pub(crate) metadata_registry: MetadataRegistry<TimePoint>,
+    pub(crate) metadata_registry: MetadataRegistry<(TimePoint, EntityPathHash)>,
 
     /// Used to cache auto-generated cluster cells (`[0]`, `[0, 1]`, `[0, 1, 2]`, …)
     /// so that they can be properly deduplicated on insertion.
@@ -214,7 +209,7 @@ pub struct DataStore {
     /// All temporal [`IndexedTable`]s for all entities on all timelines.
     ///
     /// See also [`Self::timeless_tables`].
-    pub(crate) tables: HashMap<(Timeline, EntityPathHash), IndexedTable>,
+    pub(crate) tables: BTreeMap<(EntityPathHash, Timeline), IndexedTable>,
 
     /// All timeless indexed tables for all entities. Never garbage collected.
     ///
@@ -325,7 +320,7 @@ impl DataStore {
                 let entry = oldest_time_per_timeline
                     .entry(bucket.timeline)
                     .or_insert(TimeInt::MAX);
-                if let Some(time) = bucket.inner.read().col_time.first() {
+                if let Some(time) = bucket.inner.read().col_time.front() {
                     *entry = TimeInt::min(*entry, (*time).into());
                 }
             }
@@ -339,9 +334,9 @@ impl DataStore {
     /// Do _not_ use this to try and assert the internal state of the datastore.
     pub fn iter_indices(
         &self,
-    ) -> impl ExactSizeIterator<Item = ((Timeline, EntityPath), &IndexedTable)> {
-        self.tables.iter().map(|((timeline, _), table)| {
-            ((*timeline, table.ent_path.clone() /* shallow */), table)
+    ) -> impl ExactSizeIterator<Item = ((EntityPath, Timeline), &IndexedTable)> {
+        self.tables.iter().map(|((_, timeline), table)| {
+            ((table.ent_path.clone() /* shallow */, *timeline), table)
         })
     }
 }
@@ -443,11 +438,42 @@ impl IndexedTable {
         Self {
             timeline,
             ent_path,
-            buckets: [(i64::MIN.into(), bucket)].into(),
+            buckets: [(TimeInt::MIN, bucket)].into(),
             cluster_key,
             all_components: Default::default(),
             buckets_num_rows: 0,
             buckets_size_bytes,
+        }
+    }
+
+    /// Makes sure bucketing invariants are upheld, and takes necessary actions if not.
+    ///
+    /// Invariants are:
+    /// 1. There must always be at least one bucket alive.
+    /// 2. The first bucket must always have an _indexing time_ `-∞`.
+    pub(crate) fn uphold_indexing_invariants(&mut self) {
+        if self.buckets.is_empty() {
+            let Self {
+                timeline,
+                ent_path: _,
+                cluster_key,
+                buckets,
+                all_components: _, // keep the history on purpose
+                buckets_num_rows,
+                buckets_size_bytes,
+            } = self;
+
+            let bucket = IndexedBucket::new(*cluster_key, *timeline);
+            let size_bytes = bucket.total_size_bytes();
+
+            *buckets = [(TimeInt::MIN, bucket)].into();
+            *buckets_num_rows = 0;
+            *buckets_size_bytes = size_bytes;
+        }
+        // NOTE: Make sure the first bucket is responsible for `-∞`, which might or might not be
+        // the case now if we've been moving buckets around.
+        else if let Some((_, bucket)) = self.buckets.pop_first() {
+            self.buckets.insert(TimeInt::MIN, bucket);
         }
     }
 }
@@ -478,7 +504,7 @@ impl Clone for IndexedBucket {
 }
 
 impl IndexedBucket {
-    fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
+    pub(crate) fn new(cluster_key: ComponentName, timeline: Timeline) -> Self {
         Self {
             timeline,
             inner: RwLock::new(IndexedBucketInner::default()),
@@ -514,6 +540,13 @@ pub struct IndexedBucketInner {
     /// Keeps track of the unique identifier for each row that was generated by the clients.
     pub col_row_id: RowIdVec,
 
+    /// Keeps track of the latest/newest [`RowId`] present in this bucket.
+    ///
+    /// Useful to batch GC buckets.
+    ///
+    /// `RowId::ZERO` for empty buckets.
+    pub max_row_id: RowId,
+
     /// The entire column of `num_instances`.
     ///
     /// Keeps track of the expected number of instances in each row.
@@ -543,6 +576,7 @@ impl Default for IndexedBucketInner {
             col_time: Default::default(),
             col_insert_id: Default::default(),
             col_row_id: Default::default(),
+            max_row_id: RowId::ZERO,
             col_num_instances: Default::default(),
             columns: Default::default(),
             size_bytes: 0, // NOTE: computed below
@@ -561,9 +595,7 @@ impl Default for IndexedBucketInner {
 /// ```text
 /// cargo test -p re_arrow_store -- --nocapture datastore_internal_repr
 /// ```
-//
-// TODO(#1807): timeless should be row-id ordered too then
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct PersistentIndexedTable {
     /// The entity this table is related to, for debugging purposes.
     pub ent_path: EntityPath,
@@ -572,6 +604,32 @@ pub struct PersistentIndexedTable {
     /// place.
     pub cluster_key: ComponentName,
 
+    // To simplify interior mutability.
+    pub inner: RwLock<PersistentIndexedTableInner>,
+}
+
+impl Clone for PersistentIndexedTable {
+    fn clone(&self) -> Self {
+        Self {
+            ent_path: self.ent_path.clone(),
+            cluster_key: self.cluster_key,
+            inner: RwLock::new(self.inner.read().clone()),
+        }
+    }
+}
+
+impl PersistentIndexedTable {
+    pub fn new(cluster_key: ComponentName, ent_path: EntityPath) -> Self {
+        Self {
+            cluster_key,
+            ent_path,
+            inner: RwLock::new(PersistentIndexedTableInner::default()),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PersistentIndexedTableInner {
     /// The entire column of insertion IDs, if enabled in [`DataStoreConfig`].
     ///
     /// Keeps track of insertion order from the point-of-view of the [`DataStore`].
@@ -592,21 +650,34 @@ pub struct PersistentIndexedTable {
     /// The cells are optional since not all rows will have data for every single component
     /// (i.e. the table is sparse).
     pub columns: IntMap<ComponentName, DataCellColumn>,
+
+    /// Are the rows in this table sorted?
+    ///
+    /// Querying a [`PersistentIndexedTable`] will always trigger a sort if the rows within
+    /// aren't already sorted.
+    pub is_sorted: bool,
 }
 
-impl PersistentIndexedTable {
-    pub fn new(cluster_key: ComponentName, ent_path: EntityPath) -> Self {
+impl Default for PersistentIndexedTableInner {
+    fn default() -> Self {
         Self {
-            cluster_key,
-            ent_path,
             col_insert_id: Default::default(),
             col_row_id: Default::default(),
             col_num_instances: Default::default(),
             columns: Default::default(),
+            is_sorted: true,
         }
     }
+}
 
+impl PersistentIndexedTableInner {
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        self.col_num_instances.is_empty()
+        self.num_rows() == 0
+    }
+
+    #[inline]
+    pub fn num_rows(&self) -> u64 {
+        self.col_row_id.len() as u64
     }
 }

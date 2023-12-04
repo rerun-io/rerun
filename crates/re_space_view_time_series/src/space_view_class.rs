@@ -17,8 +17,14 @@ use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
 
 #[derive(Clone, Default)]
 pub struct TimeSeriesSpaceViewState {
-    /// track across frames when the user moves the time cursor
+    /// Is the user dragging the cursor this frame?
     is_dragging_time_cursor: bool,
+
+    /// Was the user dragging the cursor last frame?
+    was_dragging_time_cursor: bool,
+
+    /// State of egui_plot's auto bounds before the user started dragging the time cursor.
+    saved_auto_bounds: egui::Vec2b,
 }
 
 impl SpaceViewState for TimeSeriesSpaceViewState {
@@ -272,10 +278,17 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             }
 
             if state.is_dragging_time_cursor {
+                if !state.was_dragging_time_cursor {
+                    state.saved_auto_bounds = plot_ui.auto_bounds();
+                }
                 // Freeze any change to the plot boundaries to avoid weird interaction with the time
                 // cursor.
                 plot_ui.set_plot_bounds(plot_ui.plot_bounds());
+            } else if state.was_dragging_time_cursor {
+                plot_ui.set_auto_bounds(state.saved_auto_bounds);
             }
+
+            state.was_dragging_time_cursor = state.is_dragging_time_cursor;
 
             // decide if the time cursor should be displayed, and if where
             current_time

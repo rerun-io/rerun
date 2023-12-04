@@ -1,6 +1,6 @@
 #![allow(clippy::all, unused_variables, dead_code)]
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, VecDeque};
 
 use arrow2::{
     array::{new_empty_array, Array, BooleanArray, ListArray, Utf8Array},
@@ -14,7 +14,7 @@ use re_types_core::ComponentName;
 
 use crate::{
     store::InsertIdVec, ArrayExt, DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner,
-    PersistentIndexedTable,
+    PersistentIndexedTable, PersistentIndexedTableInner,
 };
 
 // TODO(#1692): all of this stuff should be defined by Data{Cell,Row,Table}, not the store.
@@ -114,7 +114,7 @@ impl DataStore {
         let timelines: BTreeSet<&str> = self
             .tables
             .keys()
-            .map(|(timeline, _)| timeline.name().as_str())
+            .map(|(_, timeline)| timeline.name().as_str())
             .collect();
         let df = sort_df_columns(&df, self.config.store_insert_ids, &timelines);
 
@@ -173,13 +173,19 @@ impl PersistentIndexedTable {
         let Self {
             ent_path: _,
             cluster_key: _,
+            inner,
+        } = self;
+
+        let inner = &*inner.read();
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
-        } = self;
+            is_sorted,
+        } = inner;
 
-        let num_rows = self.num_rows() as usize;
+        let num_rows = inner.num_rows() as usize;
 
         let insert_ids = config
             .store_insert_ids
@@ -215,6 +221,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id: _,
             col_num_instances,
             columns,
             size_bytes: _,
@@ -262,7 +269,7 @@ impl IndexedBucket {
 fn insert_ids_as_series(col_insert_id: &InsertIdVec) -> Series {
     re_tracing::profile_function!();
 
-    let insert_ids = arrow2::array::UInt64Array::from_slice(col_insert_id.as_slice());
+    let insert_ids = DataTable::serialize_primitive_deque(col_insert_id);
     new_infallible_series(
         DataStore::insert_id_component_name().as_ref(),
         &insert_ids,
@@ -275,7 +282,7 @@ fn column_as_series(
     num_rows: usize,
     datatype: arrow2::datatypes::DataType,
     component: ComponentName,
-    cells: &[Option<DataCell>],
+    cells: &VecDeque<Option<DataCell>>,
 ) -> Series {
     re_tracing::profile_function!();
 

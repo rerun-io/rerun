@@ -80,4 +80,11 @@ crossbeam.workspace = true
 
 
 [dev-dependencies]
+criterion.workspace = true
+mimalloc.workspace = true
 similar-asserts.workspace = true
+
+
+[[bench]]
+name = "vec_deque_ext"
+harness = false

@@ -147,6 +147,46 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         }
     }
 
+    // Timeless is RowId-ordered too!
+    //
+    // * Insert timeless `point1` with a random `RowId`.
+    // * Insert timeless `point2` using `point1`'s `RowId`, decremented by one.
+    // * Query timelessly and make sure we get `point1` because of timeless tie-breaks.
+    {
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
+
+        let row_id1 = RowId::random();
+        let row_id2 = row_id1.next();
+
+        let row = DataRow::from_component_batches(
+            row_id2,
+            TimePoint::timeless(),
+            entity_path.clone(),
+            [&[point1] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        let row = DataRow::from_component_batches(
+            row_id1,
+            TimePoint::timeless(),
+            entity_path.clone(),
+            [&[point2] as _],
+        )?;
+        store.insert_row(&row)?;
+
+        {
+            let got_point = store
+                .query_timeless_component::<MyPoint>(&entity_path)
+                .unwrap()
+                .value;
+            similar_asserts::assert_eq!(point1, got_point);
+        }
+    }
+
     Ok(())
 }
 
@@ -523,39 +563,45 @@ fn check_still_readable(_store: &DataStore) {
 // getting the confirmation that the row was really removed.
 #[test]
 fn gc_metadata_size() -> anyhow::Result<()> {
-    let mut store = DataStore::new(
-        re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
-        InstanceKey::name(),
-        Default::default(),
-    );
+    for enable_batching in [false, true] {
+        let mut store = DataStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
+            InstanceKey::name(),
+            Default::default(),
+        );
 
-    let point = MyPoint::new(1.0, 1.0);
+        let point = MyPoint::new(1.0, 1.0);
 
-    for _ in 0..3 {
-        let row = DataRow::from_component_batches(
-            RowId::random(),
-            TimePoint::timeless(),
-            "xxx".into(),
-            [&[point] as _],
-        )?;
-        store.insert_row(&row).unwrap();
-    }
+        for _ in 0..3 {
+            let row = DataRow::from_component_batches(
+                RowId::random(),
+                TimePoint::timeless(),
+                "xxx".into(),
+                [&[point] as _],
+            )?;
+            store.insert_row(&row).unwrap();
+        }
 
-    for _ in 0..2 {
-        _ = store.gc(&GarbageCollectionOptions {
-            target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
-            gc_timeless: false,
-            protect_latest: 1,
-            purge_empty_tables: false,
-            dont_protect: Default::default(),
-        });
-        _ = store.gc(&GarbageCollectionOptions {
-            target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
-            gc_timeless: false,
-            protect_latest: 1,
-            purge_empty_tables: false,
-            dont_protect: Default::default(),
-        });
+        for _ in 0..2 {
+            _ = store.gc(&GarbageCollectionOptions {
+                target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
+                gc_timeless: false,
+                protect_latest: 1,
+                purge_empty_tables: false,
+                dont_protect: Default::default(),
+                enable_batching,
+                time_budget: std::time::Duration::MAX,
+            });
+            _ = store.gc(&GarbageCollectionOptions {
+                target: re_arrow_store::GarbageCollectionTarget::DropAtLeastFraction(1.0),
+                gc_timeless: false,
+                protect_latest: 1,
+                purge_empty_tables: false,
+                dont_protect: Default::default(),
+                enable_batching,
+                time_budget: std::time::Duration::MAX,
+            });
+        }
     }
 
     Ok(())

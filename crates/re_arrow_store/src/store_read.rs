@@ -1,12 +1,16 @@
-use std::{ops::RangeBounds, sync::atomic::Ordering};
+use std::{collections::VecDeque, ops::RangeBounds, sync::atomic::Ordering};
 
 use itertools::Itertools;
 use re_log::trace;
-use re_log_types::{DataCell, EntityPath, RowId, TimeInt, TimePoint, TimeRange, Timeline};
+use re_log_types::{
+    DataCell, EntityPath, EntityPathHash, RowId, TimeInt, TimePoint, TimeRange, Timeline,
+};
 use re_types_core::{ComponentName, ComponentNameSet};
-use smallvec::SmallVec;
 
-use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
+use crate::{
+    store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
+    PersistentIndexedTable,
+};
 
 // --- Queries ---
 
@@ -109,11 +113,11 @@ impl DataStore {
         let timeless: Option<ComponentNameSet> = self
             .timeless_tables
             .get(&ent_path_hash)
-            .map(|table| table.columns.keys().cloned().collect());
+            .map(|table| table.inner.read().columns.keys().cloned().collect());
 
         let temporal = self
             .tables
-            .get(&(*timeline, ent_path_hash))
+            .get(&(ent_path_hash, *timeline))
             .map(|table| &table.all_components);
 
         let components = match (timeless, temporal) {
@@ -157,14 +161,16 @@ impl DataStore {
         if self
             .timeless_tables
             .get(&ent_path_hash)
-            .map_or(false, |table| table.columns.contains_key(component))
+            .map_or(false, |table| {
+                table.inner.read().columns.contains_key(component)
+            })
         {
             return true;
         }
 
         // Otherwise see if it exists in the specified timeline
         self.tables
-            .get(&(*timeline, ent_path_hash))
+            .get(&(ent_path_hash, *timeline))
             .map_or(false, |table| table.all_components.contains(component))
     }
 
@@ -179,7 +185,7 @@ impl DataStore {
 
         let min_time = self
             .tables
-            .get(&(*timeline, ent_path_hash))?
+            .get(&(ent_path_hash, *timeline))?
             .buckets
             .first_key_value()?
             .1
@@ -278,7 +284,7 @@ impl DataStore {
 
         let cells = self
             .tables
-            .get(&(query.timeline, ent_path_hash))
+            .get(&(ent_path_hash, query.timeline))
             .and_then(|table| {
                 let cells = table.latest_at(query.at, primary, components);
                 trace!(
@@ -468,7 +474,7 @@ impl DataStore {
 
         let temporal = self
             .tables
-            .get(&(query.timeline, ent_path_hash))
+            .get(&(ent_path_hash, query.timeline))
             .map(|index| index.range(query.range, components))
             .into_iter()
             .flatten()
@@ -491,15 +497,17 @@ impl DataStore {
         }
     }
 
-    pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&TimePoint> {
-        re_tracing::profile_function!();
-
+    #[inline]
+    pub fn get_msg_metadata(&self, row_id: &RowId) -> Option<&(TimePoint, EntityPathHash)> {
         self.metadata_registry.get(row_id)
     }
 
     /// Sort all unsorted indices in the store.
     pub fn sort_indices_if_needed(&mut self) {
         for index in self.tables.values_mut() {
+            index.sort_indices_if_needed();
+        }
+        for index in self.timeless_tables.values_mut() {
             index.sort_indices_if_needed();
         }
     }
@@ -696,7 +704,7 @@ impl IndexedTable {
 }
 
 impl IndexedBucket {
-    /// Sort all component indices by time, provided that's not already the case.
+    /// Sort all component indices by time and [`RowId`], provided that's not already the case.
     pub fn sort_indices_if_needed(&self) {
         if self.inner.read().is_sorted {
             return; // early read-only exit
@@ -725,6 +733,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id: _,
             col_row_id,
+            max_row_id: _,
             col_num_instances: _,
             columns,
             size_bytes: _,
@@ -838,6 +847,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id: _,
             col_row_id,
+            max_row_id: _,
             col_num_instances: _,
             columns,
             size_bytes: _,
@@ -950,6 +960,7 @@ impl IndexedBucketInner {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id: _,
             col_num_instances,
             columns,
             size_bytes: _,
@@ -982,8 +993,8 @@ impl IndexedBucketInner {
         {
             re_tracing::profile_scope!("control");
 
-            fn reshuffle_control_column<T: Copy, const N: usize>(
-                column: &mut SmallVec<[T; N]>,
+            fn reshuffle_control_column<T: Copy>(
+                column: &mut VecDeque<T>,
                 swaps: &[(usize, usize)],
             ) {
                 let source = {
@@ -1026,6 +1037,16 @@ impl IndexedBucketInner {
 // --- Timeless ---
 
 impl PersistentIndexedTable {
+    /// Sort all component indices by [`RowId`], provided that's not already the case.
+    pub fn sort_indices_if_needed(&self) {
+        if self.inner.read().is_sorted {
+            return; // early read-only exit
+        }
+
+        re_tracing::profile_scope!("sort");
+        self.inner.write().sort();
+    }
+
     /// Queries the table for the cells of the specified `components`, as seen from the point
     /// of view of the so-called `primary` component.
     ///
@@ -1036,12 +1057,16 @@ impl PersistentIndexedTable {
         primary: ComponentName,
         components: &[ComponentName; N],
     ) -> Option<(RowId, [Option<DataCell>; N])> {
-        if self.is_empty() {
+        self.sort_indices_if_needed();
+
+        let inner = self.inner.read();
+
+        if inner.is_empty() {
             return None;
         }
 
         // Early-exit if this bucket is unaware of this component.
-        let column = self.columns.get(&primary)?;
+        let column = inner.columns.get(&primary)?;
 
         re_tracing::profile_function!();
 
@@ -1054,7 +1079,7 @@ impl PersistentIndexedTable {
         );
 
         // find the primary row number's row.
-        let primary_row_nr = self.num_rows() - 1;
+        let primary_row_nr = inner.num_rows() - 1;
 
         trace!(
             kind = "latest_at",
@@ -1094,7 +1119,7 @@ impl PersistentIndexedTable {
 
         let mut cells = [(); N].map(|_| None);
         for (i, component) in components.iter().enumerate() {
-            if let Some(column) = self.columns.get(component) {
+            if let Some(column) = inner.columns.get(component) {
                 if let Some(cell) = &column[secondary_row_nr as usize] {
                     trace!(
                         kind = "latest_at",
@@ -1109,7 +1134,7 @@ impl PersistentIndexedTable {
             }
         }
 
-        Some((self.col_row_id[secondary_row_nr as usize], cells))
+        Some((inner.col_row_id[secondary_row_nr as usize], cells))
     }
 
     /// Iterates the table in order to return the cells of the specified `components`,
@@ -1126,10 +1151,14 @@ impl PersistentIndexedTable {
         &self,
         components: [ComponentName; N],
     ) -> impl Iterator<Item = (RowId, [Option<DataCell>; N])> + '_ {
+        self.sort_indices_if_needed();
+
+        let inner = self.inner.read();
+
         // Early-exit if the table is unaware of any of our components of interest.
         if components
             .iter()
-            .all(|component| self.columns.get(component).is_none())
+            .all(|component| inner.columns.get(component).is_none())
         {
             return itertools::Either::Right(std::iter::empty());
         }
@@ -1138,10 +1167,10 @@ impl PersistentIndexedTable {
         // for building the returned iterator.
         re_tracing::profile_function!();
 
-        let cells = (0..self.num_rows()).filter_map(move |row_nr| {
+        let cells = (0..inner.num_rows()).filter_map(move |row_nr| {
             let mut cells = [(); N].map(|_| None);
             for (i, component) in components.iter().enumerate() {
-                if let Some(column) = self.columns.get(component) {
+                if let Some(column) = inner.columns.get(component) {
                     cells[i] = column[row_nr as usize].clone();
                 }
             }
@@ -1152,7 +1181,7 @@ impl PersistentIndexedTable {
                 return None;
             }
 
-            let row_id = self.col_row_id[row_nr as usize];
+            let row_id = inner.col_row_id[row_nr as usize];
 
             trace!(
                 kind = "range",
@@ -1167,5 +1196,81 @@ impl PersistentIndexedTable {
         });
 
         itertools::Either::Left(cells)
+    }
+}
+
+impl PersistentIndexedTableInner {
+    pub fn sort(&mut self) {
+        let PersistentIndexedTableInner {
+            col_insert_id,
+            col_row_id,
+            col_num_instances,
+            columns,
+            is_sorted,
+        } = self;
+
+        if *is_sorted {
+            return;
+        }
+
+        re_tracing::profile_function!();
+
+        let swaps = {
+            re_tracing::profile_scope!("swaps");
+            let mut swaps = (0..col_row_id.len()).collect::<Vec<_>>();
+            // NOTE: Within a single timestamp, we must use the Row ID as tie-breaker!
+            // The Row ID is how we define ordering within a client's thread, and our public APIs
+            // guarantee that logging order is respected within a single thread!
+            swaps.sort_by_key(|&i| &col_row_id[i]);
+            swaps
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(to, from)| (from, to))
+                .collect::<Vec<_>>()
+        };
+
+        // TODO(#442): re_datastore: implement efficient shuffling on the read path.
+
+        {
+            re_tracing::profile_scope!("control");
+
+            fn reshuffle_control_column<T: Copy>(
+                column: &mut VecDeque<T>,
+                swaps: &[(usize, usize)],
+            ) {
+                let source = {
+                    re_tracing::profile_scope!("clone");
+                    column.clone()
+                };
+                {
+                    re_tracing::profile_scope!("rotate");
+                    for (from, to) in swaps.iter().copied() {
+                        column[to] = source[from];
+                    }
+                }
+            }
+
+            if !col_insert_id.is_empty() {
+                reshuffle_control_column(col_insert_id, &swaps);
+            }
+            reshuffle_control_column(col_row_id, &swaps);
+            reshuffle_control_column(col_num_instances, &swaps);
+        }
+
+        {
+            re_tracing::profile_scope!("data");
+            // shuffle component columns back into a sorted state
+            for column in columns.values_mut() {
+                let mut source = column.clone();
+                {
+                    for (from, to) in swaps.iter().copied() {
+                        column[to] = source[from].take();
+                    }
+                }
+            }
+        }
+
+        *is_sorted = true;
     }
 }

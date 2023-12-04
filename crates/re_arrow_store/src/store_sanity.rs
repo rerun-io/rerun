@@ -1,7 +1,10 @@
-use re_log_types::{DataCellColumn, NumInstances, RowId, TimeRange};
+use re_log_types::{DataCellColumn, NumInstances, RowId, TimeRange, VecDequeSortingExt as _};
 use re_types_core::{ComponentName, Loggable, SizeBytes as _};
 
-use crate::{DataStore, IndexedBucket, IndexedBucketInner, IndexedTable, PersistentIndexedTable};
+use crate::{
+    store::PersistentIndexedTableInner, DataStore, IndexedBucket, IndexedBucketInner, IndexedTable,
+    PersistentIndexedTable,
+};
 
 // ---
 
@@ -14,6 +17,11 @@ pub enum SanityError {
         "Reported time range for indexed bucket is out of sync: got {got:?}, expected {expected:?}"
     )]
     TimeRangeOutOfSync { expected: TimeRange, got: TimeRange },
+
+    #[error(
+        "Reported max RowId for indexed bucket is out of sync: got {got}, expected {expected}"
+    )]
+    MaxRowIdOutOfSync { expected: RowId, got: RowId },
 
     #[error("Reported size for {origin} is out of sync: got {got}, expected {expected}")]
     SizeOutOfSync {
@@ -160,6 +168,7 @@ impl IndexedBucket {
                 col_time,
                 col_insert_id,
                 col_row_id,
+                max_row_id,
                 col_num_instances,
                 columns,
                 size_bytes: _,
@@ -170,14 +179,25 @@ impl IndexedBucket {
                 let mut times = col_time.clone();
                 times.sort();
 
-                let expected_min = times.first().copied().unwrap_or(i64::MAX).into();
-                let expected_max = times.last().copied().unwrap_or(i64::MIN).into();
+                let expected_min = times.front().copied().unwrap_or(i64::MAX).into();
+                let expected_max = times.back().copied().unwrap_or(i64::MIN).into();
                 let expected_time_range = TimeRange::new(expected_min, expected_max);
 
                 if expected_time_range != *time_range {
                     return Err(SanityError::TimeRangeOutOfSync {
                         expected: expected_time_range,
                         got: *time_range,
+                    });
+                }
+            }
+
+            // Make sure `max_row_id` isn't out of sync
+            {
+                let expected = col_row_id.iter().max().copied().unwrap_or(RowId::ZERO);
+                if expected != *max_row_id {
+                    return Err(SanityError::MaxRowIdOutOfSync {
+                        expected,
+                        got: *max_row_id,
                     });
                 }
             }
@@ -260,15 +280,21 @@ impl PersistentIndexedTable {
         let Self {
             ent_path: _,
             cluster_key,
+            inner,
+        } = self;
+
+        let inner = &*inner.read();
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
-        } = self;
+            is_sorted: _,
+        } = inner;
 
         // All columns should be `Self::num_rows` long.
         {
-            let num_rows = self.num_rows();
+            let num_rows = inner.num_rows();
 
             let column_lengths = [
                 (!col_insert_id.is_empty())
@@ -297,7 +323,7 @@ impl PersistentIndexedTable {
         }
 
         // The cluster column must be fully dense.
-        if self.num_rows() > 0 {
+        if inner.num_rows() > 0 {
             let cluster_column =
                 columns
                     .get(cluster_key)

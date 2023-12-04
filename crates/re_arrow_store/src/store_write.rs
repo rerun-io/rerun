@@ -2,19 +2,20 @@ use arrow2::datatypes::DataType;
 use itertools::Itertools as _;
 use nohash_hasher::{IntMap, IntSet};
 use parking_lot::RwLock;
-use smallvec::SmallVec;
 
 use re_log::{debug, trace};
 use re_log_types::{
-    DataCell, DataCellColumn, DataCellError, DataRow, RowId, TimeInt, TimePoint, TimeRange,
+    DataCell, DataCellColumn, DataCellError, DataRow, EntityPathHash, RowId, TimeInt, TimePoint,
+    TimeRange, VecDequeRemovalExt as _,
 };
 use re_types_core::{
     components::InstanceKey, ComponentName, ComponentNameSet, Loggable, SizeBytes as _,
 };
 
 use crate::{
-    DataStore, DataStoreConfig, IndexedBucket, IndexedBucketInner, IndexedTable, MetadataRegistry,
-    PersistentIndexedTable, StoreDiff, StoreDiffKind, StoreEvent,
+    store::PersistentIndexedTableInner, DataStore, DataStoreConfig, IndexedBucket,
+    IndexedBucketInner, IndexedTable, MetadataRegistry, PersistentIndexedTable, StoreDiff,
+    StoreDiffKind, StoreEvent,
 };
 
 // --- Data store ---
@@ -71,12 +72,13 @@ impl DataStore {
         let DataRow {
             row_id,
             timepoint,
-            entity_path: ent_path,
+            entity_path,
             num_instances,
             cells,
         } = row;
 
-        self.metadata_registry.upsert(*row_id, timepoint.clone())?;
+        self.metadata_registry
+            .upsert(*row_id, (timepoint.clone(), entity_path.hash()))?;
 
         re_tracing::profile_function!();
 
@@ -112,7 +114,7 @@ impl DataStore {
             }
         }
 
-        let ent_path_hash = ent_path.hash();
+        let ent_path_hash = entity_path.hash();
         let num_instances = *num_instances;
 
         trace!(
@@ -122,7 +124,7 @@ impl DataStore {
             timelines = ?timepoint.iter()
                 .map(|(timeline, time)| (timeline.name(), timeline.typ().format_utc(*time)))
                 .collect::<Vec<_>>(),
-            entity = %ent_path,
+            entity = %entity_path,
             components = ?cells.iter().map(|cell| cell.component_name()).collect_vec(),
             "insertion started…"
         );
@@ -164,15 +166,17 @@ impl DataStore {
             let index = self
                 .timeless_tables
                 .entry(ent_path_hash)
-                .or_insert_with(|| PersistentIndexedTable::new(self.cluster_key, ent_path.clone()));
+                .or_insert_with(|| {
+                    PersistentIndexedTable::new(self.cluster_key, entity_path.clone())
+                });
 
             index.insert_row(insert_id, generated_cluster_cell.clone(), row);
         } else {
             for (timeline, time) in timepoint.iter() {
-                let ent_path = ent_path.clone(); // shallow
+                let ent_path = entity_path.clone(); // shallow
                 let index = self
                     .tables
-                    .entry((*timeline, ent_path_hash))
+                    .entry((ent_path_hash, *timeline))
                     .or_insert_with(|| IndexedTable::new(self.cluster_key, *timeline, ent_path));
 
                 index.insert_row(
@@ -185,8 +189,8 @@ impl DataStore {
             }
         }
 
-        let diff = StoreDiff::addition(*row_id, ent_path.clone())
-            .at_timepoint(timepoint.clone())
+        let mut diff = StoreDiff::addition(*row_id, entity_path.clone());
+        diff.at_timepoint(timepoint.clone())
             .with_cells(cells.iter().cloned());
 
         // TODO(#4220): should we fire for auto-generated data?
@@ -248,16 +252,16 @@ impl DataStore {
     }
 }
 
-impl MetadataRegistry<TimePoint> {
-    fn upsert(&mut self, row_id: RowId, timepoint: TimePoint) -> WriteResult<()> {
+impl MetadataRegistry<(TimePoint, EntityPathHash)> {
+    fn upsert(&mut self, row_id: RowId, data: (TimePoint, EntityPathHash)) -> WriteResult<()> {
         match self.entry(row_id) {
             std::collections::btree_map::Entry::Occupied(_) => Err(WriteError::ReusedRowId(row_id)),
             std::collections::btree_map::Entry::Vacant(entry) => {
                 // NOTE: In a map, thus on the heap!
-                let added_size_bytes = row_id.total_size_bytes() + timepoint.total_size_bytes();
+                let added_size_bytes = row_id.total_size_bytes() + data.total_size_bytes();
 
                 // This is valuable information even for a timeless timepoint!
-                entry.insert(timepoint);
+                entry.insert(data);
 
                 self.heap_size_bytes += added_size_bytes;
 
@@ -338,7 +342,7 @@ impl IndexedTable {
 
             let (bucket_upper_bound, bucket_len) = {
                 let guard = bucket.inner.read();
-                (guard.col_time.last().copied(), guard.col_time.len())
+                (guard.col_time.back().copied(), guard.col_time.len())
             };
 
             if let Some(upper_bound) = bucket_upper_bound {
@@ -439,6 +443,7 @@ impl IndexedBucket {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id,
             col_num_instances,
             columns,
             size_bytes,
@@ -446,23 +451,24 @@ impl IndexedBucket {
 
         // append time to primary column and update time range appropriately
 
-        if let (Some(last_time), Some(last_row_id)) = (col_time.last(), col_row_id.last()) {
+        if let (Some(last_time), Some(last_row_id)) = (col_time.back(), col_row_id.back()) {
             // NOTE: Within a single timestamp, we use the Row ID as tie-breaker
             *is_sorted &= (*last_time, *last_row_id) <= (time.as_i64(), row.row_id());
         }
 
-        col_time.push(time.as_i64());
+        col_time.push_back(time.as_i64());
         *time_range = TimeRange::new(time_range.min.min(time), time_range.max.max(time));
         size_bytes_added += time.as_i64().total_size_bytes();
 
         // update all control columns
         if let Some(insert_id) = insert_id {
-            col_insert_id.push(insert_id);
+            col_insert_id.push_back(insert_id);
             size_bytes_added += insert_id.total_size_bytes();
         }
-        col_row_id.push(row.row_id());
+        col_row_id.push_back(row.row_id());
+        *max_row_id = RowId::max(*max_row_id, row.row_id());
         size_bytes_added += row.row_id().total_size_bytes();
-        col_num_instances.push(row.num_instances());
+        col_num_instances.push_back(row.num_instances());
         size_bytes_added += row.num_instances().total_size_bytes();
 
         // insert auto-generated cluster cell if present
@@ -475,7 +481,7 @@ impl IndexedBucket {
                 column
             });
             size_bytes_added += cluster_cell.total_size_bytes();
-            column.0.push(Some(cluster_cell.clone()));
+            column.0.push_back(Some(cluster_cell.clone()));
         }
 
         // append components to their respective columns (2-way merge)
@@ -490,7 +496,7 @@ impl IndexedBucket {
                 column
             });
             size_bytes_added += cell.total_size_bytes();
-            column.0.push(Some(cell.clone() /* shallow */));
+            column.0.push_back(Some(cell.clone() /* shallow */));
         }
 
         // 2-way merge, step 2: right-to-left
@@ -505,7 +511,7 @@ impl IndexedBucket {
             if !components.contains(component_name) {
                 let none_cell: Option<DataCell> = None;
                 size_bytes_added += none_cell.total_size_bytes();
-                column.0.push(none_cell);
+                column.0.push_back(none_cell);
             }
         }
 
@@ -572,6 +578,7 @@ impl IndexedBucket {
             col_time: col_time1,
             col_insert_id: col_insert_id1,
             col_row_id: col_row_id1,
+            max_row_id: max_row_id1,
             col_num_instances: col_num_instances1,
             columns: columns1,
             size_bytes: _, // NOTE: recomputed below
@@ -582,37 +589,27 @@ impl IndexedBucket {
         // Used in debug builds to assert that we've left everything in a sane state.
         let _num_rows = col_time1.len();
 
-        fn split_off_column<T: Copy, const N: usize>(
-            column: &mut SmallVec<[T; N]>,
-            split_idx: usize,
-        ) -> SmallVec<[T; N]> {
-            if split_idx >= column.len() {
-                return SmallVec::default();
-            }
-
-            let second_half = SmallVec::from_slice(&column[split_idx..]);
-            column.truncate(split_idx);
-            second_half
-        }
-
         let (min2, bucket2) = {
-            let split_idx = find_split_index(col_time1).expect("must be splittable at this point");
+            col_time1.make_contiguous();
+            let (times1, &[]) = col_time1.as_slices() else {
+                unreachable!();
+            };
+            let split_idx = find_split_index(times1).expect("must be splittable at this point");
 
             let (time_range2, col_time2, col_insert_id2, col_row_id2, col_num_instances2) = {
                 re_tracing::profile_scope!("control");
+                // update everything _in place_!
                 (
-                    // this updates `time_range1` in-place!
-                    split_time_range_off(split_idx, col_time1, time_range1),
-                    // this updates `col_time1` in-place!
-                    split_off_column(col_time1, split_idx),
-                    // this updates `col_insert_id1` in-place!
-                    split_off_column(col_insert_id1, split_idx),
-                    // this updates `col_row_id1` in-place!
-                    split_off_column(col_row_id1, split_idx),
-                    // this updates `col_num_instances1` in-place!
-                    split_off_column(col_num_instances1, split_idx),
+                    split_time_range_off(split_idx, times1, time_range1),
+                    col_time1.split_off_or_default(split_idx),
+                    col_insert_id1.split_off_or_default(split_idx),
+                    col_row_id1.split_off_or_default(split_idx),
+                    col_num_instances1.split_off_or_default(split_idx),
                 )
             };
+            // NOTE: We _have_ to fullscan here: the bucket is sorted by `(Time, RowId)`, there
+            // could very well be a greater lurking in a lesser entry.
+            *max_row_id1 = col_row_id1.iter().max().copied().unwrap_or(RowId::ZERO);
 
             // this updates `columns1` in-place!
             let columns2: IntMap<_, _> = {
@@ -621,27 +618,27 @@ impl IndexedBucket {
                     .iter_mut()
                     .map(|(name, column1)| {
                         if split_idx >= column1.len() {
-                            return (*name, DataCellColumn(SmallVec::default()));
+                            return (*name, DataCellColumn(Default::default()));
                         }
 
                         // this updates `column1` in-place!
-                        let column2 = DataCellColumn({
-                            let second_half = SmallVec::from(&column1.0[split_idx..]);
-                            column1.0.truncate(split_idx);
-                            second_half
-                        });
+                        let column2 = DataCellColumn(column1.split_off(split_idx));
                         (*name, column2)
                     })
                     .collect()
             };
 
             let inner2 = {
+                // NOTE: We _have_ to fullscan here: the bucket is sorted by `(Time, RowId)`, there
+                // could very well be a greater lurking in a lesser entry.
+                let max_row_id2 = col_row_id2.iter().max().copied().unwrap_or(RowId::ZERO);
                 let mut inner2 = IndexedBucketInner {
                     is_sorted: true,
                     time_range: time_range2,
                     col_time: col_time2,
                     col_insert_id: col_insert_id2,
                     col_row_id: col_row_id2,
+                    max_row_id: max_row_id2,
                     col_num_instances: col_num_instances2,
                     columns: columns2,
                     size_bytes: 0, // NOTE: computed below
@@ -809,26 +806,48 @@ impl PersistentIndexedTable {
     ) {
         re_tracing::profile_function!();
 
+        self.inner
+            .write()
+            .insert_row(self.cluster_key, insert_id, generated_cluster_cell, row);
+
+        #[cfg(debug_assertions)]
+        self.sanity_check().unwrap();
+    }
+}
+
+impl PersistentIndexedTableInner {
+    fn insert_row(
+        &mut self,
+        cluster_key: ComponentName,
+        insert_id: Option<u64>,
+        generated_cluster_cell: Option<DataCell>,
+        row: &DataRow,
+    ) {
+        re_tracing::profile_function!();
+
         let num_rows = self.num_rows() as usize;
 
-        let Self {
-            ent_path: _,
-            cluster_key: _,
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
+            is_sorted,
         } = self;
+
+        if let Some(last_row_id) = col_row_id.back() {
+            *is_sorted &= *last_row_id <= row.row_id();
+        }
 
         let components: IntSet<_> = row.component_names().collect();
 
         // --- update all control columns ---
 
         if let Some(insert_id) = insert_id {
-            col_insert_id.push(insert_id);
+            col_insert_id.push_back(insert_id);
         }
-        col_row_id.push(row.row_id());
-        col_num_instances.push(row.num_instances());
+        col_row_id.push_back(row.row_id());
+        col_num_instances.push_back(row.num_instances());
 
         // --- append components to their respective columns (2-way merge) ---
 
@@ -837,7 +856,7 @@ impl PersistentIndexedTable {
             let column = columns
                 .entry(cluster_cell.component_name())
                 .or_insert_with(|| DataCellColumn::empty(num_rows));
-            column.0.push(Some(cluster_cell.clone()));
+            column.0.push_back(Some(cluster_cell.clone()));
         }
 
         // 2-way merge, step 1: left-to-right
@@ -845,7 +864,7 @@ impl PersistentIndexedTable {
             let column = columns
                 .entry(cell.component_name())
                 .or_insert_with(|| DataCellColumn::empty(num_rows));
-            column.0.push(Some(cell.clone() /* shallow */));
+            column.0.push_back(Some(cell.clone() /* shallow */));
         }
 
         // 2-way merge, step 2: right-to-left
@@ -853,16 +872,13 @@ impl PersistentIndexedTable {
         // fill unimpacted secondary indices with null values
         for (component, column) in &mut *columns {
             // The cluster key always gets added one way or another, don't try to force fill it!
-            if *component == self.cluster_key {
+            if *component == cluster_key {
                 continue;
             }
 
             if !components.contains(component) {
-                column.0.push(None);
+                column.0.push_back(None);
             }
         }
-
-        #[cfg(debug_assertions)]
-        self.sanity_check().unwrap();
     }
 }

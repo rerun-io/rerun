@@ -4378,6 +4378,7 @@ dependencies = [
  "smallvec",
  "thiserror",
  "tinyvec",
+ "web-time",
 ]
 
 [[package]]
@@ -4594,11 +4595,13 @@ dependencies = [
  "arrow2",
  "backtrace",
  "bytemuck",
+ "criterion",
  "crossbeam",
  "document-features",
  "fixed",
  "half 2.3.1",
  "itertools 0.11.0",
+ "mimalloc",
  "nohash-hasher",
  "num-derive",
  "num-traits",
@@ -5092,6 +5095,7 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui_plot",
+ "egui_tiles",
  "ehttp",
  "image",
  "itertools 0.11.0",
@@ -5149,6 +5153,7 @@ dependencies = [
  "bytemuck",
  "egui",
  "egui-wgpu",
+ "egui_tiles",
  "glam",
  "half 2.3.1",
  "itertools 0.11.0",

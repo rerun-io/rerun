@@ -6,7 +6,7 @@ use re_log_types::{
 };
 
 use crate::{
-    store::{IndexedBucketInner, PersistentIndexedTable},
+    store::{IndexedBucketInner, PersistentIndexedTable, PersistentIndexedTableInner},
     DataStore, IndexedBucket,
 };
 
@@ -71,18 +71,25 @@ impl DataStore {
             let PersistentIndexedTable {
                 ent_path,
                 cluster_key: _,
+                inner,
+            } = table;
+
+            let inner = &*inner.read();
+            let PersistentIndexedTableInner {
                 col_insert_id: _,
                 col_row_id,
                 col_num_instances,
                 columns,
-            } = table;
+                is_sorted,
+            } = inner;
+            debug_assert!(is_sorted);
 
             DataTable {
                 table_id: TableId::random(),
                 col_row_id: col_row_id.clone(),
                 col_timelines: Default::default(),
                 col_entity_path: std::iter::repeat_with(|| ent_path.clone())
-                    .take(table.num_rows() as _)
+                    .take(inner.num_rows() as _)
                     .collect(),
                 col_num_instances: col_num_instances.clone(),
                 columns: columns.clone().into_iter().collect(), // shallow
@@ -111,6 +118,7 @@ impl DataStore {
                     col_time,
                     col_insert_id: _,
                     col_row_id,
+                    max_row_id: _,
                     col_num_instances,
                     columns,
                     size_bytes: _,
@@ -162,6 +170,7 @@ impl DataStore {
                         col_time,
                         col_insert_id: _,
                         col_row_id,
+                        max_row_id: _,
                         col_num_instances,
                         columns,
                         size_bytes: _,
