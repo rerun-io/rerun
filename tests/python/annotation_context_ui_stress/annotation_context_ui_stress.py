@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import argparse
+
 import rerun as rr
 from rerun.datatypes import ClassDescription
 
-rr.init("rerun_example_annotation_context_ui_stress", spawn=True)
+parser = argparse.ArgumentParser()
+rr.script_add_args(parser)
+args = parser.parse_args()
+rr.script_setup(args, "rerun_example_detect_and_track_objects")
 
 
 annotation_context = rr.AnnotationContext(
@@ -24,5 +29,5 @@ annotation_context = rr.AnnotationContext(
 )
 
 # log two of those to test multi-selection
-rr.log("annotation1", annotation_context, timeless=True)
-rr.log("annotation2", annotation_context, timeless=True)
+rr.log("annotation1", annotation_context)
+rr.log("annotation2", annotation_context)
