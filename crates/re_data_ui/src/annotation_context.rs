@@ -39,7 +39,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                         || !class.keypoint_annotations.is_empty()
                     {
                         response.response.on_hover_ui(|ui| {
-                            class_description_ui(ui, verbosity, class, id);
+                            class_description_ui(ctx, ui, verbosity, class, id);
                         });
                     }
                 }
@@ -47,7 +47,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                 | UiVerbosity::SelectionPanel
                 | UiVerbosity::MultiSelectionPanel => {
                     ui.separator();
-                    class_description_ui(ui, verbosity, class, id);
+                    class_description_ui(ctx, ui, verbosity, class, id);
                 }
             }
         } else {
@@ -98,7 +98,7 @@ fn annotation_info(
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -114,22 +114,24 @@ impl DataUi for AnnotationContext {
             }
             UiVerbosity::MultiSelectionPanel | UiVerbosity::SelectionPanel => {
                 ui.vertical(|ui| {
-                    annotation_info_table_ui(
-                        ui,
-                        verbosity,
-                        self.0
-                            .iter()
-                            .map(|class| &class.class_description.info)
-                            .sorted_by_key(|info| info.id),
-                    );
+                    ctx.re_ui
+                        .maybe_collapsing_header(ui, true, "Classes", true, |ui| {
+                            annotation_info_table_ui(
+                                ui,
+                                verbosity,
+                                self.0
+                                    .iter()
+                                    .map(|class| &class.class_description.info)
+                                    .sorted_by_key(|info| info.id),
+                            );
+                        });
 
                     for ClassDescriptionMapElem {
                         class_id,
                         class_description,
                     } in &self.0
                     {
-                        ui.separator();
-                        class_description_ui(ui, verbosity, class_description, *class_id);
+                        class_description_ui(ctx, ui, verbosity, class_description, *class_id);
                     }
                 });
             }
@@ -138,8 +140,9 @@ impl DataUi for AnnotationContext {
 }
 
 fn class_description_ui(
+    ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
-    verbosity: UiVerbosity,
+    mut verbosity: UiVerbosity,
     class: &ClassDescription,
     id: re_types::datatypes::ClassId,
 ) {
@@ -147,79 +150,98 @@ fn class_description_ui(
         return;
     }
 
-    let row_height = re_ui::ReUi::table_line_height();
-    ui.strong(format!("Keypoints for Class {}", id.0));
-    if !class.keypoint_annotations.is_empty() {
-        ui.add_space(8.0);
-        ui.strong("Keypoints Annotations");
-        ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
-            annotation_info_table_ui(
-                ui,
-                verbosity,
-                class
-                    .keypoint_annotations
-                    .iter()
-                    .sorted_by_key(|annotation| annotation.id),
-            );
-        });
+    let use_collapsible =
+        verbosity == UiVerbosity::MultiSelectionPanel || verbosity == UiVerbosity::SelectionPanel;
+
+    // we use collapsible header, so we don't need the tables can always be full expended
+    if verbosity == UiVerbosity::MultiSelectionPanel {
+        verbosity = UiVerbosity::SelectionPanel;
     }
 
-    if !class.keypoint_connections.is_empty() {
-        ui.add_space(8.0);
-        ui.strong("Keypoint Connections");
-        ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
-            use egui_extras::Column;
-
-            let table = table_for_verbosity(verbosity, ui)
-                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Column::auto().clip(true).at_least(40.0))
-                .column(Column::auto().clip(true).at_least(40.0));
-            table
-                .header(re_ui::ReUi::table_header_height(), |mut header| {
-                    re_ui::ReUi::setup_table_header(&mut header);
-                    header.col(|ui| {
-                        ui.strong("From");
-                    });
-                    header.col(|ui| {
-                        ui.strong("To");
-                    });
-                })
-                .body(|mut body| {
-                    re_ui::ReUi::setup_table_body(&mut body);
-
-                    // TODO(jleibs): Helper to do this with caching somewhere
-                    let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
-                        re_tracing::profile_scope!("build_annotation_map");
+    let row_height = re_ui::ReUi::table_line_height();
+    if !class.keypoint_annotations.is_empty() {
+        ctx.re_ui.maybe_collapsing_header(
+            ui,
+            use_collapsible,
+            &format!("Keypoints Annotation for Class {}", id.0),
+            true,
+            |ui| {
+                ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
+                    annotation_info_table_ui(
+                        ui,
+                        verbosity,
                         class
                             .keypoint_annotations
                             .iter()
-                            .map(|kp| (kp.id.into(), kp.clone()))
-                            .collect()
-                    };
+                            .sorted_by_key(|annotation| annotation.id),
+                    );
+                });
+            },
+        );
+    }
 
-                    for KeypointPair {
-                        keypoint0: from,
-                        keypoint1: to,
-                    } in &class.keypoint_connections
-                    {
-                        body.row(row_height, |mut row| {
-                            for id in [from, to] {
-                                row.col(|ui| {
-                                    ui.label(
-                                        keypoint_map
-                                            .get(id)
-                                            .and_then(|info| info.label.as_ref())
-                                            .map_or_else(
-                                                || format!("id {}", id.0),
-                                                |label| label.to_string(),
-                                            ),
-                                    );
+    if !class.keypoint_connections.is_empty() {
+        ctx.re_ui.maybe_collapsing_header(
+            ui,
+            use_collapsible,
+            &format!("Keypoint Connections for Class {}", id.0),
+            true,
+            |ui| {
+                ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
+                    use egui_extras::Column;
+
+                    let table = table_for_verbosity(verbosity, ui)
+                        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                        .column(Column::auto().clip(true).at_least(40.0))
+                        .column(Column::auto().clip(true).at_least(40.0));
+                    table
+                        .header(re_ui::ReUi::table_header_height(), |mut header| {
+                            re_ui::ReUi::setup_table_header(&mut header);
+                            header.col(|ui| {
+                                ui.strong("From");
+                            });
+                            header.col(|ui| {
+                                ui.strong("To");
+                            });
+                        })
+                        .body(|mut body| {
+                            re_ui::ReUi::setup_table_body(&mut body);
+
+                            // TODO(jleibs): Helper to do this with caching somewhere
+                            let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
+                                re_tracing::profile_scope!("build_annotation_map");
+                                class
+                                    .keypoint_annotations
+                                    .iter()
+                                    .map(|kp| (kp.id.into(), kp.clone()))
+                                    .collect()
+                            };
+
+                            for KeypointPair {
+                                keypoint0: from,
+                                keypoint1: to,
+                            } in &class.keypoint_connections
+                            {
+                                body.row(row_height, |mut row| {
+                                    for id in [from, to] {
+                                        row.col(|ui| {
+                                            ui.label(
+                                                keypoint_map
+                                                    .get(id)
+                                                    .and_then(|info| info.label.as_ref())
+                                                    .map_or_else(
+                                                        || format!("id {}", id.0),
+                                                        |label| label.to_string(),
+                                                    ),
+                                            );
+                                        });
+                                    }
                                 });
                             }
                         });
-                    }
                 });
-        });
+            },
+        );
     }
 }
 

@@ -633,6 +633,33 @@ impl ReUi {
         }
     }
 
+    /// Conditionally collapsing header.
+    ///
+    /// Display content under a header that is conditionally collapsible. If `collapsing` is `true`,
+    /// this is equivalent to [`ReUi::collapsing_header`]. If `collapsing` is `false`, the content
+    /// is displayed under a static, non-collapsible header.
+    #[allow(clippy::unused_self)]
+    pub fn maybe_collapsing_header<R>(
+        &self,
+        ui: &mut egui::Ui,
+        collapsing: bool,
+        label: &str,
+        default_open: bool,
+        add_body: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::CollapsingResponse<R> {
+        if collapsing {
+            self.collapsing_header(ui, label, default_open, add_body)
+        } else {
+            let response = ui.strong(label);
+            CollapsingResponse {
+                header_response: response,
+                body_response: None,
+                body_returned: None,
+                openness: 1.0,
+            }
+        }
+    }
+
     /// Show a prominent collapsing header to be used as section delimitation in side panels.
     ///
     /// Note that a clip rect must be set (typically by the panel) to avoid any overdraw.

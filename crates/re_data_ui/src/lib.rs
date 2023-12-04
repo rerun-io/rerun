@@ -111,10 +111,14 @@ where
         ctx: &mut ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
-        _entity: &EntityPath,
+        entity: &EntityPath,
         query: &re_arrow_store::LatestAtQuery,
     ) {
-        self.data_ui(ctx, ui, verbosity, query);
+        // This ensures that UI state is maintained per entity. For example, the collapsed state for
+        // `AnnotationContext` component is not saved by all instances of the component.
+        ui.push_id(entity.hash(), |ui| {
+            self.data_ui(ctx, ui, verbosity, query);
+        });
     }
 }
 
