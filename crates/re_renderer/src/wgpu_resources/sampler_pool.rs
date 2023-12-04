@@ -61,6 +61,7 @@ impl GpuSamplerPool {
             })
         })
     }
+
     /// Locks the resource pool for resolving handles.
     ///
     /// While it is locked, no new resources can be added.
