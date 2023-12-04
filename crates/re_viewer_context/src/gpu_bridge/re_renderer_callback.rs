@@ -115,9 +115,9 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         // This is a bit of a conundrum since we can't store a lock guard in the callback resources.
         // So instead, we work around this by moving the render pipelines out of their lock!
         // Future wgpu versions will lift this restriction and will allow us to remove this workaround.
-        if ctx.active_frame.moved_render_pipelines.is_none() {
+        if ctx.active_frame.pinned_render_pipelines.is_none() {
             let render_pipelines = ctx.gpu_resources.render_pipelines.take_resources();
-            ctx.active_frame.moved_render_pipelines = Some(render_pipelines);
+            ctx.active_frame.pinned_render_pipelines = Some(render_pipelines);
         }
 
         Vec::new()
@@ -135,7 +135,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             );
             return;
         };
-        let Some(render_pipelines) = ctx.active_frame.moved_render_pipelines.as_ref() else {
+        let Some(render_pipelines) = ctx.active_frame.pinned_render_pipelines.as_ref() else {
             re_log::error_once!(
                 "Failed to execute egui draw callback. Render pipelines weren't transferred out of the pool first."
             );

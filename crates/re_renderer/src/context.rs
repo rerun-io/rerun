@@ -9,7 +9,7 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
-    wgpu_resources::{GpuRenderPipelinePoolMemMoveAccessor, WgpuResourcePools},
+    wgpu_resources::{GpuRenderPipelinePoolMoveAccessor, WgpuResourcePools},
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
 
@@ -187,7 +187,7 @@ impl RenderContext {
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
             per_frame_data_helper: TypeMap::new(),
-            moved_render_pipelines: None,
+            pinned_render_pipelines: None,
             frame_index: 0,
         };
 
@@ -301,7 +301,7 @@ impl RenderContext {
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
         // Give back moved render pipelines to the pool if any were moved out.
-        if let Some(moved_render_pipelines) = self.active_frame.moved_render_pipelines.take() {
+        if let Some(moved_render_pipelines) = self.active_frame.pinned_render_pipelines.take() {
             self.gpu_resources
                 .render_pipelines
                 .return_resources(moved_render_pipelines);
@@ -311,7 +311,7 @@ impl RenderContext {
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
-            moved_render_pipelines: None,
+            pinned_render_pipelines: None,
             per_frame_data_helper: TypeMap::new(),
         };
         let frame_index = self.active_frame.frame_index;
@@ -446,7 +446,7 @@ pub struct ActiveFrameContext {
     /// Will be moved back to the resource pool at the start of the frame.
     /// This is needed for accessing the render pipelines without keeping a reference
     /// to the resource pool lock during the lifetime of a render pass.
-    pub moved_render_pipelines: Option<GpuRenderPipelinePoolMemMoveAccessor>,
+    pub pinned_render_pipelines: Option<GpuRenderPipelinePoolMoveAccessor>,
 
     /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,

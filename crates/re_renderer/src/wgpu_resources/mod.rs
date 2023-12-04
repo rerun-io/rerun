@@ -28,7 +28,7 @@ pub use pipeline_layout_pool::{
 mod render_pipeline_pool;
 pub use render_pipeline_pool::{
     GpuRenderPipelineHandle, GpuRenderPipelinePool, GpuRenderPipelinePoolAccessor,
-    GpuRenderPipelinePoolMemMoveAccessor, RenderPipelineDesc, VertexBufferLayout,
+    GpuRenderPipelinePoolMoveAccessor, RenderPipelineDesc, VertexBufferLayout,
 };
 
 mod sampler_pool;

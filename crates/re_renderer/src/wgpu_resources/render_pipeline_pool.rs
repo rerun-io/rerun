@@ -170,7 +170,7 @@ impl RenderPipelineDesc {
 pub type GpuRenderPipelinePoolAccessor<'a> =
     dyn StaticResourcePoolAccessor<GpuRenderPipelineHandle, wgpu::RenderPipeline> + 'a;
 
-pub type GpuRenderPipelinePoolMemMoveAccessor =
+pub type GpuRenderPipelinePoolMoveAccessor =
     StaticResourcePoolMemMoveAccessor<GpuRenderPipelineHandle, wgpu::RenderPipeline>;
 
 #[derive(Default)]
@@ -256,14 +256,14 @@ impl GpuRenderPipelinePool {
     /// This is useful when the existing resources need to be accessed without
     /// taking a lock on the pool.
     /// Resource can be put with `return_resources`.
-    pub fn take_resources(&mut self) -> GpuRenderPipelinePoolMemMoveAccessor {
+    pub fn take_resources(&mut self) -> GpuRenderPipelinePoolMoveAccessor {
         self.pool.take_resources()
     }
 
     /// Counterpart to `take_resources`.
     ///
     /// Logs an error if resources were added to the pool since `take_resources` was called.
-    pub fn return_resources(&mut self, resources: GpuRenderPipelinePoolMemMoveAccessor) {
+    pub fn return_resources(&mut self, resources: GpuRenderPipelinePoolMoveAccessor) {
         self.pool.return_resources(resources);
     }
 
