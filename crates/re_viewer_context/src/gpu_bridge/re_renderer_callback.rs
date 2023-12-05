@@ -71,7 +71,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             return Vec::new();
         };
 
-        let command_buffer = match view_builder.draw(ctx, self.clear_color) {
+        match view_builder.draw(ctx, self.clear_color) {
             Ok(command_buffer) => {
                 // If drawing worked, put the view_builder back in so we can use it during paint.
                 ctx.active_frame
@@ -90,9 +90,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
                 // TODO(andreas): It would be nice to paint an error message instead.
                 Vec::new()
             }
-        };
-
-        command_buffer
+        }
     }
 
     fn finish_prepare(
@@ -114,7 +112,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         // are longer lived than the pass itself.
         // This is a bit of a conundrum since we can't store a lock guard in the callback resources.
         // So instead, we work around this by moving the render pipelines out of their lock!
-        // Future wgpu versions will lift this restriction and will allow us to remove this workaround.
+        // TODO(gfx-rs/wgpu#1453): Future wgpu versions will lift this restriction and will allow us to remove this workaround.
         if ctx.active_frame.pinned_render_pipelines.is_none() {
             let render_pipelines = ctx.gpu_resources.render_pipelines.take_resources();
             ctx.active_frame.pinned_render_pipelines = Some(render_pipelines);
@@ -130,12 +128,14 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
         paint_callback_resources: &'a egui_wgpu::CallbackResources,
     ) {
         let Some(ctx) = paint_callback_resources.get::<re_renderer::RenderContext>() else {
+            // TODO(#4433): Shouldn't show up like this.
             re_log::error_once!(
                 "Failed to execute egui draw callback. No render context available."
             );
             return;
         };
         let Some(render_pipelines) = ctx.active_frame.pinned_render_pipelines.as_ref() else {
+            // TODO(#4433): Shouldn't show up like this.
             re_log::error_once!(
                 "Failed to execute egui draw callback. Render pipelines weren't transferred out of the pool first."
             );
@@ -148,6 +148,7 @@ impl egui_wgpu::CallbackTrait for ReRendererCallback {
             .get::<ViewBuilderMap>()
             .and_then(|view_builder_map| view_builder_map.get(self.view_builder))
         else {
+            // TODO(#4433): Shouldn't show up like this.
             re_log::error_once!(
                 "Failed to execute egui draw callback. View builder with handle {:?} not found.",
                 self.view_builder

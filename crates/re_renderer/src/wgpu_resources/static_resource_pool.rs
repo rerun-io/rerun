@@ -49,30 +49,24 @@ where
     Desc: std::fmt::Debug + Clone + Eq + Hash,
 {
     pub fn get_or_create<F: FnOnce(&Desc) -> Res>(&self, desc: &Desc, creation_func: F) -> Handle {
-        {
-            // Ensure the lock isn't held in the creation case.
-            if let Some(handle) = self.lookup.read().get(desc) {
-                return *handle;
-            }
+        // Ensure the lock isn't held in the creation case.
+        if let Some(handle) = self.lookup.read().get(desc) {
+            return *handle;
         }
-        {
-            re_tracing::profile_scope!(
-                "Creating new static resource",
-                std::any::type_name::<Res>()
-            );
 
-            let resource = creation_func(desc);
-            let handle = self.resources.write().insert(StoredResource {
-                resource,
-                statistics: ResourceStatistics {
-                    frame_created: self.current_frame_index,
-                    last_frame_used: self.current_frame_index.into(),
-                },
-            });
-            self.lookup.write().insert(desc.clone(), handle);
+        re_tracing::profile_scope!("Creating new static resource", std::any::type_name::<Res>());
 
-            handle
-        }
+        let resource = creation_func(desc);
+        let handle = self.resources.write().insert(StoredResource {
+            resource,
+            statistics: ResourceStatistics {
+                frame_created: self.current_frame_index,
+                last_frame_used: self.current_frame_index.into(),
+            },
+        });
+        self.lookup.write().insert(desc.clone(), handle);
+
+        handle
     }
 
     pub fn recreate_resources<F: FnMut(&Desc) -> Option<Res>>(&mut self, mut recreation_func: F) {
@@ -137,6 +131,7 @@ fn to_pool_error<T>(get_result: Option<T>, handle: impl Key) -> Result<T, PoolEr
     })
 }
 
+/// Accessor to the resource pool, either by taking a read lock or by moving out the resources.
 pub trait StaticResourcePoolAccessor<Handle: Key, Res> {
     fn get(&self, handle: Handle) -> Result<&Res, PoolError>;
 }

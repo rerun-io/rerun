@@ -554,7 +554,7 @@ impl ViewBuilder {
         // Renderers can't be added anyways at this point (RendererData add their Renderer on creation),
         // so no point in taking the lock repeatedly.
         //
-        // Note that this is a limitation that will be lifted in future versions of wgpu.
+        // TODO(gfx-rs/wgpu#1453): Note that this is a limitation that will be lifted in future versions of wgpu.
         // However, having our locking concentrated for the duration of a view draw
         // is also beneficial since it enforces the model of prepare->draw which avoids a lot of repeated
         // locking and unlocking.
