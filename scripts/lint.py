@@ -158,9 +158,14 @@ def lint_line(
             return "Builder methods impls should be marked #[inline]"
 
     # Deref impls should be marked #[inline] or #[inline(always)].
-    if "fn deref(&self)" in line:
+    if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
         if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
-            return "Deref impls should be marked #[inline]"
+            return "Deref/DerefMut impls should be marked #[inline]"
+
+    # Deref impls should be marked #[inline] or #[inline(always)].
+    if "fn as_ref(&self)" in line or "fn borrow(&self)" in line:
+        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+            return "as_ref/borrow implementations should be marked #[inline]"
 
     return None
 
@@ -221,6 +226,30 @@ def test_lint_line() -> None:
         #[inline(always)]
         fn deref(&self) -> Self::Target {
 """,
+        """
+        #[inline]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+""",
+        """
+        #[inline(always)]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+""",
+        """
+        #[inline]
+        fn borrow(&self) -> &Self {
+""",
+        """
+        #[inline(always)]
+        fn borrow(&self) -> &Self {
+""",
+        """
+        #[inline]
+        fn as_ref(&self) -> &Self {
+""",
+        """
+        #[inline(always)]
+        fn as_ref(&self) -> &Self {
+""",
     ]
 
     should_error = [
@@ -262,6 +291,9 @@ def test_lint_line() -> None:
         "I accidentally wrote the same same word twice",
         "fn foo(mut self) -> Self {",
         "fn deref(&self) -> Self::Target {",
+        "fn deref_mut(&mut self) -> &mut Self::Target",
+        "fn borrow(&self) -> &Self",
+        "fn as_ref(&self) -> &Self",
     ]
 
     for test in should_pass:
