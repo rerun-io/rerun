@@ -116,14 +116,13 @@ impl DataUi for AnnotationContext {
                 ui.vertical(|ui| {
                     ctx.re_ui
                         .maybe_collapsing_header(ui, true, "Classes", true, |ui| {
-                            annotation_info_table_ui(
-                                ui,
-                                verbosity,
-                                self.0
-                                    .iter()
-                                    .map(|class| &class.class_description.info)
-                                    .sorted_by_key(|info| info.id),
-                            );
+                            let annotation_infos = self
+                                .0
+                                .iter()
+                                .map(|class| &class.class_description.info)
+                                .sorted_by_key(|info| info.id)
+                                .collect_vec();
+                            annotation_info_table_ui(ui, verbosity, &annotation_infos);
                         });
 
                     for ClassDescriptionMapElem {
@@ -150,6 +149,8 @@ fn class_description_ui(
         return;
     }
 
+    re_tracing::profile_function!();
+
     let use_collapsible =
         verbosity == UiVerbosity::MultiSelectionPanel || verbosity == UiVerbosity::SelectionPanel;
 
@@ -166,15 +167,13 @@ fn class_description_ui(
             &format!("Keypoints Annotation for Class {}", id.0),
             true,
             |ui| {
+                let annotation_infos = class
+                    .keypoint_annotations
+                    .iter()
+                    .sorted_by_key(|annotation| annotation.id)
+                    .collect_vec();
                 ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
-                    annotation_info_table_ui(
-                        ui,
-                        verbosity,
-                        class
-                            .keypoint_annotations
-                            .iter()
-                            .sorted_by_key(|annotation| annotation.id),
-                    );
+                    annotation_info_table_ui(ui, verbosity, &annotation_infos);
                 });
             },
         );
@@ -245,11 +244,13 @@ fn class_description_ui(
     }
 }
 
-fn annotation_info_table_ui<'a>(
+fn annotation_info_table_ui(
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
-    annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
+    annotation_infos: &[&AnnotationInfo],
 ) {
+    re_tracing::profile_function!();
+
     let row_height = re_ui::ReUi::table_line_height();
 
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
@@ -278,24 +279,23 @@ fn annotation_info_table_ui<'a>(
         .body(|mut body| {
             re_ui::ReUi::setup_table_body(&mut body);
 
-            for info in annotation_infos {
-                body.row(row_height, |mut row| {
-                    row.col(|ui| {
-                        ui.label(info.id.to_string());
-                    });
-                    row.col(|ui| {
-                        let label = if let Some(label) = &info.label {
-                            label.as_str()
-                        } else {
-                            ""
-                        };
-                        ui.label(label);
-                    });
-                    row.col(|ui| {
-                        color_ui(ui, info, Vec2::new(64.0, row_height));
-                    });
+            body.rows(row_height, annotation_infos.len(), |row_idx, mut row| {
+                let info = &annotation_infos[row_idx];
+                row.col(|ui| {
+                    ui.label(info.id.to_string());
                 });
-            }
+                row.col(|ui| {
+                    let label = if let Some(label) = &info.label {
+                        label.as_str()
+                    } else {
+                        ""
+                    };
+                    ui.label(label);
+                });
+                row.col(|ui| {
+                    color_ui(ui, info, Vec2::new(64.0, row_height));
+                });
+            });
         });
 }
 
