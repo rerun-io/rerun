@@ -376,7 +376,7 @@ impl LineDrawData {
         ctx: &RenderContext,
         line_builder: LineStripSeriesBuilder,
     ) -> Result<Self, LineDrawDataError> {
-        let line_renderer = ctx.get_renderer::<LineRenderer>();
+        let line_renderer = ctx.renderer::<LineRenderer>();
 
         if line_builder.strips.is_empty() {
             return Ok(LineDrawData {

@@ -77,7 +77,7 @@ impl DebugOverlayDrawData {
         screen_resolution: glam::UVec2,
         overlay_rect: RectInt,
     ) -> Result<Self, DebugOverlayError> {
-        let debug_overlay = ctx.get_renderer::<DebugOverlayRenderer>();
+        let debug_overlay = ctx.renderer::<DebugOverlayRenderer>();
 
         let mode = match debug_texture
             .texture

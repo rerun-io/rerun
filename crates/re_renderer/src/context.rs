@@ -396,31 +396,26 @@ impl RenderContext {
     }
 
     /// Gets a renderer with the specified type, initializing it if necessary.
-    pub fn get_renderer<R: 'static + Renderer + Send + Sync>(
-        &self,
-    ) -> MappedRwLockReadGuard<'_, R> {
+    pub fn renderer<R: 'static + Renderer + Send + Sync>(&self) -> MappedRwLockReadGuard<'_, R> {
+        // Most likely we already have the renderer. Take a read lock and return it.
+        if let Ok(renderer) =
+            parking_lot::RwLockReadGuard::try_map(self.renderers.read(), |r| r.get::<R>())
         {
-            // Most likely we already have the renderer. Take a read lock and return it.
-            if let Ok(renderer) =
-                parking_lot::RwLockReadGuard::try_map(self.renderers.read(), |r| r.get::<R>())
-            {
-                return renderer;
-            }
+            return renderer;
         }
 
         // If it wasn't there we have to add it.
         // This path is rare since it happens only once per renderer type in the lifetime of the ctx.
         // (we don't discard renderers ever)
-        {
-            self.renderers.write().get_or_create::<_, R>(
-                &self.shared_renderer_data,
-                &self.gpu_resources,
-                &self.device,
-                &self.resolver,
-            );
-        }
+        self.renderers.write().get_or_create::<_, R>(
+            &self.shared_renderer_data,
+            &self.gpu_resources,
+            &self.device,
+            &self.resolver,
+        );
+
         // Release write lock again and only take a read lock.
-        // safe to unwrap since we just created it.
+        // safe to unwrap since we just created it and nobody removes elements from the renderer.
         parking_lot::RwLockReadGuard::map(self.renderers.read(), |r| r.get::<R>().unwrap())
     }
 

@@ -243,7 +243,7 @@ impl DepthCloudDrawData {
             radius_boost_in_ui_points_for_outlines,
         } = depth_clouds;
 
-        let renderer = ctx.get_renderer::<DepthCloudRenderer>();
+        let renderer = ctx.renderer::<DepthCloudRenderer>();
         let bg_layout = renderer.bind_group_layout;
 
         if depth_clouds.is_empty() {

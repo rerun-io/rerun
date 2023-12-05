@@ -54,7 +54,7 @@ impl CompositorDrawData {
         outline_final_voronoi: Option<&GpuTexture>,
         outline_config: &Option<OutlineConfig>,
     ) -> Self {
-        let compositor = ctx.get_renderer::<Compositor>();
+        let compositor = ctx.renderer::<Compositor>();
 
         let outline_config = outline_config.clone().unwrap_or(OutlineConfig {
             outline_radius_pixel: 0.0,

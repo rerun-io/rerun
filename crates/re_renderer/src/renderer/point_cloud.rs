@@ -186,7 +186,7 @@ impl PointCloudDrawData {
     ) -> Result<Self, PointCloudDrawDataError> {
         re_tracing::profile_function!();
 
-        let point_renderer = ctx.get_renderer::<PointCloudRenderer>();
+        let point_renderer = ctx.renderer::<PointCloudRenderer>();
 
         let vertices = builder.vertices.as_slice();
         let batches = builder.batches.as_slice();

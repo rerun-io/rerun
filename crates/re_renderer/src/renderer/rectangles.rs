@@ -400,7 +400,7 @@ impl RectangleDrawData {
     pub fn new(ctx: &RenderContext, rectangles: &[TexturedRect]) -> Result<Self, RectangleError> {
         re_tracing::profile_function!();
 
-        let rectangle_renderer = ctx.get_renderer::<RectangleRenderer>();
+        let rectangle_renderer = ctx.renderer::<RectangleRenderer>();
 
         if rectangles.is_empty() {
             return Ok(RectangleDrawData {

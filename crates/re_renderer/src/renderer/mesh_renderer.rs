@@ -157,7 +157,7 @@ impl MeshDrawData {
     pub fn new(ctx: &RenderContext, instances: &[MeshInstance]) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let _mesh_renderer = ctx.get_renderer::<MeshRenderer>();
+        let _mesh_renderer = ctx.renderer::<MeshRenderer>();
 
         if instances.is_empty() {
             return Ok(MeshDrawData {

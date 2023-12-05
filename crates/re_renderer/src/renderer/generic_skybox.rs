@@ -31,7 +31,7 @@ impl DrawData for GenericSkyboxDrawData {
 
 impl GenericSkyboxDrawData {
     pub fn new(ctx: &RenderContext) -> Self {
-        let _ = ctx.get_renderer::<GenericSkybox>(); // TODO(andreas): This should happen automatically.
+        let _ = ctx.renderer::<GenericSkybox>(); // TODO(andreas): This line ensures that the renderer exists. Currently this needs to be done ahead of time, but should be fully automatic!
         GenericSkyboxDrawData {}
     }
 }
