@@ -503,11 +503,11 @@ impl DataStore {
     }
 
     /// Sort all unsorted indices in the store.
-    pub fn sort_indices_if_needed(&mut self) {
-        for index in self.tables.values_mut() {
+    pub fn sort_indices_if_needed(&self) {
+        for index in self.tables.values() {
             index.sort_indices_if_needed();
         }
-        for index in self.timeless_tables.values_mut() {
+        for index in self.timeless_tables.values() {
             index.sort_indices_if_needed();
         }
     }

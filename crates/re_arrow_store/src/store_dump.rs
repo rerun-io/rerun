@@ -80,9 +80,8 @@ impl DataStore {
                 col_row_id,
                 col_num_instances,
                 columns,
-                is_sorted,
+                is_sorted: _,
             } = inner;
-            debug_assert!(is_sorted);
 
             DataTable {
                 table_id: TableId::random(),
@@ -113,7 +112,7 @@ impl DataStore {
                 } = bucket;
 
                 let IndexedBucketInner {
-                    is_sorted,
+                    is_sorted: _,
                     time_range: _,
                     col_time,
                     col_insert_id: _,
@@ -123,7 +122,6 @@ impl DataStore {
                     columns,
                     size_bytes: _,
                 } = &*inner.read();
-                debug_assert!(is_sorted);
 
                 DataTable {
                     table_id: TableId::random(),
@@ -165,7 +163,7 @@ impl DataStore {
                     } = bucket;
 
                     let IndexedBucketInner {
-                        is_sorted,
+                        is_sorted: _,
                         time_range,
                         col_time,
                         col_insert_id: _,
@@ -175,7 +173,6 @@ impl DataStore {
                         columns,
                         size_bytes: _,
                     } = &*inner.read();
-                    debug_assert!(is_sorted);
 
                     if !time_range.intersects(time_filter) {
                         return None;
