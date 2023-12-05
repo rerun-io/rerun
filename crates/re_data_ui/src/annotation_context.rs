@@ -213,13 +213,17 @@ fn class_description_ui(
                                     .collect()
                             };
 
-                            for KeypointPair {
-                                keypoint0: from,
-                                keypoint1: to,
-                            } in &class.keypoint_connections
-                            {
-                                body.row(row_height, |mut row| {
-                                    for id in [from, to] {
+                            body.rows(
+                                row_height,
+                                class.keypoint_connections.len(),
+                                |row_idx, mut row| {
+                                    let pair = &class.keypoint_connections[row_idx];
+                                    let KeypointPair {
+                                        keypoint0,
+                                        keypoint1,
+                                    } = pair;
+
+                                    for id in [keypoint0, keypoint1] {
                                         row.col(|ui| {
                                             ui.label(
                                                 keypoint_map
@@ -232,8 +236,8 @@ fn class_description_ui(
                                             );
                                         });
                                     }
-                                });
-                            }
+                                },
+                            );
                         });
                 });
             },
