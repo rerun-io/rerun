@@ -57,7 +57,7 @@ impl RenderDepthClouds {
     /// Manually backproject the depth texture into a point cloud and render it.
     fn draw_backprojected_point_cloud<FD, ID>(
         &mut self,
-        re_ctx: &mut re_renderer::RenderContext,
+        re_ctx: &re_renderer::RenderContext,
         pixels_from_point: f32,
         resolution_in_pixel: [u32; 2],
         target_location: glam::Vec2,
@@ -143,7 +143,7 @@ impl RenderDepthClouds {
     /// Pass the depth texture to our native depth cloud renderer.
     fn draw_depth_cloud<FD, ID>(
         &mut self,
-        re_ctx: &mut re_renderer::RenderContext,
+        re_ctx: &re_renderer::RenderContext,
         pixels_from_point: f32,
         resolution_in_pixel: [u32; 2],
         target_location: glam::Vec2,
@@ -226,7 +226,7 @@ impl framework::Example for RenderDepthClouds {
         "Depth clouds"
     }
 
-    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+    fn new(re_ctx: &re_renderer::RenderContext) -> Self {
         re_log::info!("Stop camera movement by pressing 'Space'");
 
         let depth = DepthTexture::spiral(re_ctx, glam::uvec2(640, 480));
@@ -260,7 +260,7 @@ impl framework::Example for RenderDepthClouds {
 
     fn draw(
         &mut self,
-        re_ctx: &mut re_renderer::RenderContext,
+        re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
         pixels_from_point: f32,

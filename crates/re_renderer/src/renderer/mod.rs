@@ -66,9 +66,9 @@ pub trait Renderer {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self;
 
     // TODO(andreas): Some Renderers need to create their own passes, need something like this for that.
@@ -88,9 +88,9 @@ pub trait Renderer {
 
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.
 pub fn screen_triangle_vertex_shader<Fs: FileSystem>(
-    pools: &mut WgpuResourcePools,
+    pools: &WgpuResourcePools,
     device: &wgpu::Device,
-    resolver: &mut FileResolver<Fs>,
+    resolver: &FileResolver<Fs>,
 ) -> crate::wgpu_resources::GpuShaderModuleHandle {
     pools.shader_modules.get_or_create(
         device,

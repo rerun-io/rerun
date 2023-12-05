@@ -25,7 +25,7 @@ impl framework::Example for Outlines {
         "Outlines"
     }
 
-    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+    fn new(re_ctx: &re_renderer::RenderContext) -> Self {
         Outlines {
             is_paused: false,
             seconds_since_startup: 0.0,
@@ -35,7 +35,7 @@ impl framework::Example for Outlines {
 
     fn draw(
         &mut self,
-        re_ctx: &mut re_renderer::RenderContext,
+        re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
         pixels_from_point: f32,

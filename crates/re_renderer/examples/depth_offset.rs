@@ -25,7 +25,7 @@ impl framework::Example for Render2D {
         "Depth Offset"
     }
 
-    fn new(_re_ctx: &mut re_renderer::RenderContext) -> Self {
+    fn new(_re_ctx: &re_renderer::RenderContext) -> Self {
         Render2D {
             distance_scale: 100.0,
             near_plane: 0.1,
@@ -34,7 +34,7 @@ impl framework::Example for Render2D {
 
     fn draw(
         &mut self,
-        re_ctx: &mut re_renderer::RenderContext,
+        re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         _time: &framework::Time,
         pixels_from_point: f32,
