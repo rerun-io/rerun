@@ -37,7 +37,6 @@ egui_tiles.workspace = true
 glam.workspace = true
 half.workspace = true
 itertools.workspace = true
-lazy_static.workspace = true
 macaw.workspace = true
 ndarray.workspace = true
 nohash-hasher.workspace = true

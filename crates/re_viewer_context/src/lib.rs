@@ -24,7 +24,6 @@ pub mod gpu_bridge;
 
 pub use annotations::{
     AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
-    MISSING_ANNOTATIONS,
 };
 pub use app_options::AppOptions;
 pub use blueprint_id::{DataQueryId, SpaceViewId};
