@@ -13,6 +13,7 @@ pub struct StoredResource<Res> {
 impl<Res> Deref for StoredResource<Res> {
     type Target = Res;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.resource
     }
