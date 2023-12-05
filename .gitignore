@@ -44,9 +44,6 @@ perf.data*
 # Screenshots from samples etc.
 screenshot*.png
 
-# Web demo app build
-web_demo
-
 # Saved example `.rrd` files
 example_data
 

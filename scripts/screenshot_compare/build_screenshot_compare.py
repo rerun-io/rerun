@@ -159,14 +159,14 @@ def build_demo_examples() -> None:
 
 
 def collect_demo_examples() -> Iterable[Example]:
-    web_demo_example_dir = RERUN_DIR / "example_data"
-    assert web_demo_example_dir.exists(), "Web demos have not been built yet."
+    example_dir = RERUN_DIR / "example_data"
+    assert example_dir.exists(), "Examples have not been built yet."
 
-    manifest = json.loads((web_demo_example_dir / "examples_manifest.json").read_text())
+    manifest = json.loads((example_dir / "examples_manifest.json").read_text())
 
     for example in manifest:
         name = example["name"]
-        rrd = web_demo_example_dir / f"{name}.rrd"
+        rrd = example_dir / f"{name}.rrd"
         assert rrd.exists(), f"Missing {rrd} for {name}"
 
         yield Example(
