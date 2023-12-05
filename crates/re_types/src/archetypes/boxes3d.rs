@@ -344,6 +344,7 @@ impl Boxes3D {
         }
     }
 
+    #[inline]
     pub fn with_centers(
         mut self,
         centers: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
@@ -352,6 +353,7 @@ impl Boxes3D {
         self
     }
 
+    #[inline]
     pub fn with_rotations(
         mut self,
         rotations: impl IntoIterator<Item = impl Into<crate::components::Rotation3D>>,
@@ -360,6 +362,7 @@ impl Boxes3D {
         self
     }
 
+    #[inline]
     pub fn with_colors(
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
@@ -368,6 +371,7 @@ impl Boxes3D {
         self
     }
 
+    #[inline]
     pub fn with_radii(
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
@@ -376,6 +380,7 @@ impl Boxes3D {
         self
     }
 
+    #[inline]
     pub fn with_labels(
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
@@ -384,6 +389,7 @@ impl Boxes3D {
         self
     }
 
+    #[inline]
     pub fn with_class_ids(
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
@@ -392,6 +398,7 @@ impl Boxes3D {
         self
     }
 
+    #[inline]
     pub fn with_instance_keys(
         mut self,
         instance_keys: impl IntoIterator<Item = impl Into<crate::components::InstanceKey>>,

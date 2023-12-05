@@ -261,11 +261,13 @@ impl Pinhole {
         }
     }
 
+    #[inline]
     pub fn with_resolution(mut self, resolution: impl Into<crate::components::Resolution>) -> Self {
         self.resolution = Some(resolution.into());
         self
     }
 
+    #[inline]
     pub fn with_camera_xyz(
         mut self,
         camera_xyz: impl Into<crate::components::ViewCoordinates>,

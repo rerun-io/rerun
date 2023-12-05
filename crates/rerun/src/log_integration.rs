@@ -44,6 +44,7 @@ impl Logger {
     }
 
     /// Configures the [`Logger`] to prefix the specified `path_prefix` to all events.
+    #[inline]
     pub fn with_path_prefix(mut self, path_prefix: impl Into<String>) -> Self {
         self.path_prefix = Some(path_prefix.into());
         self
@@ -57,6 +58,7 @@ impl Logger {
     /// instead when you [`Logger::init`] it.
     ///
     /// [env_logger syntax]: https://docs.rs/env_logger/latest/env_logger/index.html#enabling-logging
+    #[inline]
     pub fn with_filter(mut self, filter: impl AsRef<str>) -> Self {
         use env_logger::filter::Builder;
         self.filter = Some(Builder::new().parse(filter.as_ref()).build());

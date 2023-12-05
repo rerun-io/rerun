@@ -48,9 +48,16 @@ def is_valid_todo_part(part: str) -> bool:
     return False
 
 
-def lint_line(line: str, file_extension: str = "rs", is_in_docstring: bool = False) -> str | None:
+def lint_line(
+    line: str, prev_line: str | None, file_extension: str = "rs", is_in_docstring: bool = False
+) -> str | None:
     if line == "":
         return None
+
+    if prev_line is None:
+        prev_line_stripped = ""
+    else:
+        prev_line_stripped = prev_line.strip()
 
     if line[-1].isspace():
         return "Trailing whitespace"
@@ -145,11 +152,26 @@ def lint_line(line: str, file_extension: str = "rs", is_in_docstring: bool = Fal
             if not app_id.startswith("rerun_example_"):
                 return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
 
+    # Methods that return Self should usually be marked #[inline] or #[inline(always)] since they indicate a builder.
+    if re.search(r"\(mut self.*-> Self", line):
+        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+            return "Builder methods impls should be marked #[inline]"
+
+    # Deref impls should be marked #[inline] or #[inline(always)].
+    if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
+        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+            return "Deref/DerefMut impls should be marked #[inline]"
+
+    # Deref impls should be marked #[inline] or #[inline(always)].
+    if "fn as_ref(&self)" in line or "fn borrow(&self)" in line:
+        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
+            return "as_ref/borrow implementations should be marked #[inline]"
+
     return None
 
 
 def test_lint_line() -> None:
-    assert lint_line("hello world") is None
+    assert lint_line("hello world", None) is None
 
     should_pass = [
         "hello world",
@@ -188,6 +210,46 @@ def test_lint_line() -> None:
         "template <typename... Args>",
         'protoc_prebuilt::init("22.0")',
         'rr.init("rerun_example_app")',
+        """
+        #[inline]
+        fn foo(mut self) -> Self {
+""",
+        """
+        #[inline(always)]
+        fn foo_always(mut self) -> Self {
+""",
+        """
+        #[inline]
+        fn deref(&self) -> Self::Target {
+""",
+        """
+        #[inline(always)]
+        fn deref(&self) -> Self::Target {
+""",
+        """
+        #[inline]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+""",
+        """
+        #[inline(always)]
+        fn deref_mut(&mut self) -> &mut Self::Target {
+""",
+        """
+        #[inline]
+        fn borrow(&self) -> &Self {
+""",
+        """
+        #[inline(always)]
+        fn borrow(&self) -> &Self {
+""",
+        """
+        #[inline]
+        fn as_ref(&self) -> &Self {
+""",
+        """
+        #[inline(always)]
+        fn as_ref(&self) -> &Self {
+""",
     ]
 
     should_error = [
@@ -227,14 +289,25 @@ def test_lint_line() -> None:
         'rr.init("missing_prefix")',
         'rr.script_setup(args, "missing_prefix")',
         "I accidentally wrote the same same word twice",
+        "fn foo(mut self) -> Self {",
+        "fn deref(&self) -> Self::Target {",
+        "fn deref_mut(&mut self) -> &mut Self::Target",
+        "fn borrow(&self) -> &Self",
+        "fn as_ref(&self) -> &Self",
     ]
 
-    for line in should_pass:
-        err = lint_line(line)
-        assert err is None, f'expected "{line}" to pass, but got error: "{err}"'
+    for test in should_pass:
+        prev_line = None
+        for line in test.split("\n"):
+            err = lint_line(line, prev_line)
+            assert err is None, f'expected "{line}" to pass, but got error: "{err}"'
+            prev_line = line
 
-    for line in should_error:
-        assert lint_line(line) is not None, f'expected "{line}" to fail'
+    for test in should_error:
+        prev_line = None
+        for line in test.split("\n"):
+            assert lint_line(line, prev_line) is not None, f'expected "{line}" to fail'
+            prev_line = line
 
 
 # -----------------------------------------------------------------------------
@@ -620,6 +693,7 @@ def lint_file(filepath: str, args: Any) -> int:
 
     is_in_docstring = False
 
+    prev_line = None
     for line_nr, line in enumerate(source.lines):
         if line == "" or line[-1] != "\n":
             error = "Missing newline at end of file"
@@ -627,7 +701,8 @@ def lint_file(filepath: str, args: Any) -> int:
             line = line[:-1]
             if line.strip() == '"""':
                 is_in_docstring = not is_in_docstring
-            error = lint_line(line, source.ext, is_in_docstring)
+            error = lint_line(line, prev_line, source.ext, is_in_docstring)
+            prev_line = line
         if error is not None:
             num_errors += 1
             print(source.error(error, line_nr=line_nr))

@@ -298,6 +298,7 @@ struct PyRecordingStream(RecordingStream);
 impl std::ops::Deref for PyRecordingStream {
     type Target = RecordingStream;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }

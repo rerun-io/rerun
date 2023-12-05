@@ -504,6 +504,7 @@ impl AffixFuzzer4 {
         }
     }
 
+    #[inline]
     pub fn with_fuzz2101(
         mut self,
         fuzz2101: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer1>>,
@@ -512,6 +513,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2102(
         mut self,
         fuzz2102: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer2>>,
@@ -520,6 +522,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2103(
         mut self,
         fuzz2103: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer3>>,
@@ -528,6 +531,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2104(
         mut self,
         fuzz2104: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer4>>,
@@ -536,6 +540,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2105(
         mut self,
         fuzz2105: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer5>>,
@@ -544,6 +549,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2106(
         mut self,
         fuzz2106: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer6>>,
@@ -552,6 +558,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2107(
         mut self,
         fuzz2107: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer7>>,
@@ -560,6 +567,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2108(
         mut self,
         fuzz2108: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer8>>,
@@ -568,6 +576,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2109(
         mut self,
         fuzz2109: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer9>>,
@@ -576,6 +585,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2110(
         mut self,
         fuzz2110: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer10>>,
@@ -584,6 +594,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2111(
         mut self,
         fuzz2111: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer11>>,
@@ -592,6 +603,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2112(
         mut self,
         fuzz2112: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer12>>,
@@ -600,6 +612,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2113(
         mut self,
         fuzz2113: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer13>>,
@@ -608,6 +621,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2114(
         mut self,
         fuzz2114: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer14>>,
@@ -616,6 +630,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2115(
         mut self,
         fuzz2115: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer15>>,
@@ -624,6 +639,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2116(
         mut self,
         fuzz2116: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer16>>,
@@ -632,6 +648,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2117(
         mut self,
         fuzz2117: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer17>>,
@@ -640,6 +657,7 @@ impl AffixFuzzer4 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2118(
         mut self,
         fuzz2118: impl IntoIterator<Item = impl Into<crate::testing::components::AffixFuzzer18>>,

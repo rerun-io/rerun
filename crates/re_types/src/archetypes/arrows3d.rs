@@ -331,6 +331,7 @@ impl Arrows3D {
         }
     }
 
+    #[inline]
     pub fn with_origins(
         mut self,
         origins: impl IntoIterator<Item = impl Into<crate::components::Position3D>>,
@@ -339,6 +340,7 @@ impl Arrows3D {
         self
     }
 
+    #[inline]
     pub fn with_radii(
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
@@ -347,6 +349,7 @@ impl Arrows3D {
         self
     }
 
+    #[inline]
     pub fn with_colors(
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
@@ -355,6 +358,7 @@ impl Arrows3D {
         self
     }
 
+    #[inline]
     pub fn with_labels(
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
@@ -363,6 +367,7 @@ impl Arrows3D {
         self
     }
 
+    #[inline]
     pub fn with_class_ids(
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
@@ -371,6 +376,7 @@ impl Arrows3D {
         self
     }
 
+    #[inline]
     pub fn with_instance_keys(
         mut self,
         instance_keys: impl IntoIterator<Item = impl Into<crate::components::InstanceKey>>,

@@ -239,11 +239,13 @@ impl DepthImage {
         }
     }
 
+    #[inline]
     pub fn with_meter(mut self, meter: impl Into<crate::components::DepthMeter>) -> Self {
         self.meter = Some(meter.into());
         self
     }
 
+    #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self

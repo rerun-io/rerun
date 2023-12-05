@@ -84,9 +84,9 @@ impl TranslationRotationScale3D {
     }
 
     /// Indicate that this transform is from parent to child.
-    /// This is the oppositve of the default, which is from child to parent.
-    #[inline]
+    /// This is the opposite of the default, which is from child to parent.
     #[allow(clippy::wrong_self_convention)]
+    #[inline]
     pub fn from_parent(mut self) -> Self {
         self.from_parent = true;
         self
