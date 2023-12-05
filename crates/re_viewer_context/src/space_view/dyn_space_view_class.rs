@@ -100,7 +100,7 @@ pub trait DynSpaceViewClass {
     /// Passed entity properties are individual properties without propagated values.
     fn on_frame_start(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
         entity_properties: &mut EntityPropertyMap,
@@ -111,7 +111,7 @@ pub trait DynSpaceViewClass {
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
@@ -124,7 +124,7 @@ pub trait DynSpaceViewClass {
     /// The state passed in was previously created by [`Self::new_state`] and is kept frame-to-frame.
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         root_entity_properties: &EntityProperties,

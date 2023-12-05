@@ -14,7 +14,7 @@ const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to t
 impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
@@ -58,7 +58,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
 impl crate::EntityDataUi for re_types::components::KeypointId {
     fn entity_data_ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
@@ -97,7 +97,7 @@ fn annotation_info(
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,

@@ -22,7 +22,7 @@ impl ViewContextSystem for NonInteractiveEntities {
 
     fn execute(
         &mut self,
-        _ctx: &mut re_viewer_context::ViewerContext<'_>,
+        _ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         self.0 = query

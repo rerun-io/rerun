@@ -152,11 +152,7 @@ impl SpaceViewBlueprint {
         space_view_class_registry.get_system_registry_or_log_error(&self.class_identifier)
     }
 
-    pub fn on_frame_start(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        view_state: &mut dyn SpaceViewState,
-    ) {
+    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, view_state: &mut dyn SpaceViewState) {
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
             self.id.gpu_readback_id(),
@@ -236,7 +232,7 @@ impl SpaceViewBlueprint {
     pub(crate) fn scene_ui(
         &mut self,
         view_state: &mut dyn SpaceViewState,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         latest_at: TimeInt,
         highlights: &SpaceViewHighlights,

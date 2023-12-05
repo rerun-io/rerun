@@ -88,7 +88,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Passed entity properties are individual properties without propagated values.
     fn on_frame_start(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         _state: &Self::State,
         _ent_paths: &PerSystemEntities,
         _entity_properties: &mut re_data_store::EntityPropertyMap,
@@ -100,7 +100,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         space_origin: &EntityPath,
@@ -122,7 +122,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     #[allow(clippy::too_many_arguments)]
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         root_entity_properties: &EntityProperties,
@@ -192,7 +192,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
 
     fn on_frame_start(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
         entity_properties: &mut EntityPropertyMap,
@@ -205,7 +205,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
@@ -227,7 +227,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[allow(clippy::for_kv_map)]
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         root_entity_properties: &EntityProperties,

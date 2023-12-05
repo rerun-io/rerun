@@ -23,7 +23,7 @@ pub fn format_tensor_shape_single_line(shape: &[TensorDimension]) -> String {
 impl EntityDataUi for re_types::components::TensorData {
     fn entity_data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         entity_path: &re_log_types::EntityPath,

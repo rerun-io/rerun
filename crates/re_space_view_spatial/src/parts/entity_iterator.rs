@@ -22,7 +22,7 @@ use crate::{
 /// various useful information about an entity in the context of the current scene.
 #[allow(dead_code)]
 pub fn process_archetype_views<'a, System: IdentifiedViewSystem, A, const N: usize, F>(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
     default_depth_offset: DepthOffset,
@@ -31,7 +31,7 @@ pub fn process_archetype_views<'a, System: IdentifiedViewSystem, A, const N: usi
 where
     A: Archetype + 'a,
     F: FnMut(
-        &mut ViewerContext<'_>,
+        &ViewerContext<'_>,
         &EntityPath,
         &EntityProperties,
         ArchetypeView<A>,

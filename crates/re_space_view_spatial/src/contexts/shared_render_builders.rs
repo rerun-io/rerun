@@ -70,7 +70,7 @@ impl ViewContextSystem for SharedRenderBuilders {
 
     fn execute(
         &mut self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         _query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();
