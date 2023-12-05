@@ -161,9 +161,7 @@ impl DataUi for [DataCell] {
                 ui.label(sorted.iter().map(format_cell).join(", "));
             }
 
-            UiVerbosity::SelectionPanel
-            | UiVerbosity::MultiSelectionPanel
-            | UiVerbosity::Reduced => {
+            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
                 ui.vertical(|ui| {
                     for component_bundle in &sorted {
                         ui.label(format_cell(component_bundle));
@@ -210,14 +208,14 @@ pub fn table_for_verbosity(
             // the content itself must be limited (scrolling is not possible in tooltips).
             table.auto_shrink([true, true])
         }
-        UiVerbosity::MultiSelectionPanel => {
+        UiVerbosity::LimitHeight => {
             // Don't take too much vertical space to leave room for other selected items.
             table
                 .auto_shrink([false, true])
                 .vscroll(true)
                 .max_scroll_height(100.0)
         }
-        UiVerbosity::SelectionPanel => {
+        UiVerbosity::Full => {
             // We're alone in the selection panel. Let the outer ScrollArea do the work.
             table.auto_shrink([false, true]).vscroll(false)
         }

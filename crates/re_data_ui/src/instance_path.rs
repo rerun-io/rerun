@@ -52,8 +52,8 @@ impl DataUi for InstancePath {
             .num_columns(2)
             .show(ui, |ui| {
                 for &component_name in crate::ui_visible_components(&components) {
-                    if verbosity != UiVerbosity::MultiSelectionPanel
-                        && verbosity != UiVerbosity::SelectionPanel
+                    if verbosity != UiVerbosity::LimitHeight
+                        && verbosity != UiVerbosity::Full
                         && component_name.is_indicator_component()
                         && !all_are_indicators
                     {

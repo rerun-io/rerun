@@ -43,9 +43,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                         });
                     }
                 }
-                UiVerbosity::Reduced
-                | UiVerbosity::SelectionPanel
-                | UiVerbosity::MultiSelectionPanel => {
+                UiVerbosity::Reduced | UiVerbosity::Full | UiVerbosity::LimitHeight => {
                     ui.separator();
                     class_description_ui(ctx, ui, verbosity, class, id);
                 }
@@ -112,7 +110,7 @@ impl DataUi for AnnotationContext {
                     ui.label(format!("AnnotationContext with {} classes", self.0.len()));
                 }
             }
-            UiVerbosity::MultiSelectionPanel | UiVerbosity::SelectionPanel => {
+            UiVerbosity::LimitHeight | UiVerbosity::Full => {
                 ui.vertical(|ui| {
                     ctx.re_ui
                         .maybe_collapsing_header(ui, true, "Classes", true, |ui| {
@@ -151,12 +149,11 @@ fn class_description_ui(
 
     re_tracing::profile_function!();
 
-    let use_collapsible =
-        verbosity == UiVerbosity::MultiSelectionPanel || verbosity == UiVerbosity::SelectionPanel;
+    let use_collapsible = verbosity == UiVerbosity::LimitHeight || verbosity == UiVerbosity::Full;
 
     // we use collapsible header, so we don't need the tables can always be full expended
-    if verbosity == UiVerbosity::MultiSelectionPanel {
-        verbosity = UiVerbosity::SelectionPanel;
+    if verbosity == UiVerbosity::LimitHeight {
+        verbosity = UiVerbosity::Full;
     }
 
     let row_height = re_ui::ReUi::table_line_height();

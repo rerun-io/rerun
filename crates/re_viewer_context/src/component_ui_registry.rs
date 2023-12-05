@@ -20,16 +20,16 @@ pub enum UiVerbosity {
 
     /// Display everything as wide as available but limit height.
     ///
-    /// This is used for the selection panel when multiple items are selected. When using a Table,
-    /// use the `re_data_ui::table_for_verbosity` function.
-    MultiSelectionPanel,
+    /// This is used for example in the selection panel when multiple items are selected. When using
+    /// a Table, use the `re_data_ui::table_for_verbosity` function.
+    LimitHeight,
 
     /// Display everything as wide as available, without height restrictions.
     ///
-    /// This is used for the selection panel when only one item is selected. In this case, any
-    /// scrolling is handled by the selection panel itself. When using a Table, use the
+    /// This is used for example in the selection panel when only one item is selected. In this
+    /// case, any scrolling is handled by the selection panel itself. When using a Table, use the
     /// `re_data_ui::table_for_verbosity` function.
-    SelectionPanel,
+    Full,
 }
 
 type ComponentUiCallback = Box<

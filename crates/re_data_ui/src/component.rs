@@ -41,16 +41,14 @@ impl DataUi for EntityComponentWithInstances {
 
         let one_line = match verbosity {
             UiVerbosity::Small => true,
-            UiVerbosity::Reduced
-            | UiVerbosity::MultiSelectionPanel
-            | UiVerbosity::SelectionPanel => false,
+            UiVerbosity::Reduced | UiVerbosity::LimitHeight | UiVerbosity::Full => false,
         };
 
         // in some cases, we don't want to display all instances
         let max_row = match verbosity {
             UiVerbosity::Small => 0,
             UiVerbosity::Reduced => num_instances.at_most(4), // includes "…x more" if any
-            UiVerbosity::MultiSelectionPanel | UiVerbosity::SelectionPanel => num_instances,
+            UiVerbosity::LimitHeight | UiVerbosity::Full => num_instances,
         };
 
         // Here we enforce that exactly `max_row` rows are displayed, which means that:

@@ -132,9 +132,9 @@ impl SelectionPanel {
                             ctx,
                             ui,
                             if multi_selection {
-                                UiVerbosity::MultiSelectionPanel
+                                UiVerbosity::LimitHeight
                             } else {
-                                UiVerbosity::SelectionPanel
+                                UiVerbosity::Full
                             },
                             &query,
                         );

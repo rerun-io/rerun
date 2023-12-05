@@ -63,9 +63,7 @@ impl DataUi for ViewCoordinates {
             UiVerbosity::Small => {
                 ui.label(format!("ViewCoordinates: {}", self.describe()));
             }
-            UiVerbosity::SelectionPanel
-            | UiVerbosity::MultiSelectionPanel
-            | UiVerbosity::Reduced => {
+            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
                 ui.label(self.describe());
             }
         }
@@ -135,7 +133,7 @@ impl DataUi for LineStrip2D {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 ui.label(format!("{} positions", self.0.len()));
             }
-            UiVerbosity::MultiSelectionPanel | UiVerbosity::SelectionPanel => {
+            UiVerbosity::LimitHeight | UiVerbosity::Full => {
                 use egui_extras::Column;
                 table_for_verbosity(verbosity, ui)
                     .resizable(true)
@@ -181,7 +179,7 @@ impl DataUi for LineStrip3D {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 ui.label(format!("{} positions", self.0.len()));
             }
-            UiVerbosity::SelectionPanel | UiVerbosity::MultiSelectionPanel => {
+            UiVerbosity::Full | UiVerbosity::LimitHeight => {
                 use egui_extras::Column;
                 table_for_verbosity(verbosity, ui)
                     .resizable(true)
@@ -241,7 +239,7 @@ impl DataUi for Material {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 show_optional_albedo_factor(ui);
             }
-            UiVerbosity::SelectionPanel | UiVerbosity::MultiSelectionPanel => {
+            UiVerbosity::Full | UiVerbosity::LimitHeight => {
                 egui::Grid::new("material").num_columns(2).show(ui, |ui| {
                     ui.label("albedo_factor");
                     show_optional_albedo_factor(ui);
@@ -275,7 +273,7 @@ impl DataUi for MeshProperties {
             UiVerbosity::Small | UiVerbosity::Reduced => {
                 show_optional_indices(ui);
             }
-            UiVerbosity::SelectionPanel | UiVerbosity::MultiSelectionPanel => {
+            UiVerbosity::Full | UiVerbosity::LimitHeight => {
                 egui::Grid::new("material").num_columns(2).show(ui, |ui| {
                     ui.label("triangles");
                     show_optional_indices(ui);
