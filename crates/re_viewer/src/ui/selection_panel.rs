@@ -112,7 +112,11 @@ impl SelectionPanel {
         ui.add_space(-ui.spacing().item_spacing.y);
 
         let selection = ctx.selection().to_vec();
-        let multi_selection = selection.len() > 1;
+        let multi_selection_verbosity = if selection.len() > 1 {
+            UiVerbosity::LimitHeight
+        } else {
+            UiVerbosity::Full
+        };
         for (i, item) in selection.iter().enumerate() {
             ui.push_id(i, |ui| {
                 what_is_selected_ui(ui, ctx, &mut viewport.blueprint, item);
@@ -128,16 +132,7 @@ impl SelectionPanel {
 
                 if has_data_section(item) {
                     ctx.re_ui.large_collapsing_header(ui, "Data", true, |ui| {
-                        item.data_ui(
-                            ctx,
-                            ui,
-                            if multi_selection {
-                                UiVerbosity::LimitHeight
-                            } else {
-                                UiVerbosity::Full
-                            },
-                            &query,
-                        );
+                        item.data_ui(ctx, ui, multi_selection_verbosity, &query);
                     });
                 }
 

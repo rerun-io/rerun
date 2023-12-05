@@ -52,13 +52,15 @@ impl DataUi for InstancePath {
             .num_columns(2)
             .show(ui, |ui| {
                 for &component_name in crate::ui_visible_components(&components) {
-                    if verbosity != UiVerbosity::LimitHeight
-                        && verbosity != UiVerbosity::Full
-                        && component_name.is_indicator_component()
-                        && !all_are_indicators
-                    {
-                        // Skip indicator components in hover ui (unless there are no other types of components).
-                        continue;
+                    match verbosity {
+                        UiVerbosity::Small | UiVerbosity::Reduced => {
+                            // Skip indicator components in hover ui (unless there are no other
+                            // types of components).
+                            if component_name.is_indicator_component() && !all_are_indicators {
+                                continue;
+                            }
+                        }
+                        UiVerbosity::LimitHeight | UiVerbosity::Full => {}
                     }
 
                     let Some((_, component_data)) =

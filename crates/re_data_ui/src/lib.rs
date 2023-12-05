@@ -197,6 +197,9 @@ pub fn annotations(
 // ---------------------------------------------------------------------------
 
 /// Build an egui table and configure it for the given verbosity.
+///
+/// Note that the caller is responsible for strictly limiting the number of displayed rows for
+/// [`UiVerbosity::Small`] and [`UiVerbosity::Reduced`], as the table will not scroll.
 pub fn table_for_verbosity(
     verbosity: UiVerbosity,
     ui: &mut egui::Ui,
