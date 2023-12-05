@@ -83,7 +83,7 @@ impl AppState {
         &mut self,
         app_blueprint: &AppBlueprint<'_>,
         ui: &mut egui::Ui,
-        render_ctx: &mut re_renderer::RenderContext,
+        render_ctx: &re_renderer::RenderContext,
         store_db: &StoreDb,
         store_context: &StoreContext<'_>,
         re_ui: &re_ui::ReUi,

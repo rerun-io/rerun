@@ -371,7 +371,7 @@ impl OutlineMaskProcessor {
     }
 
     pub fn compute_outlines(
-        self,
+        &self,
         pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), PoolError> {
@@ -402,7 +402,7 @@ impl OutlineMaskProcessor {
 
         // Perform jump flooding.
         let render_pipeline_step = pipelines.get(self.render_pipeline_jumpflooding_step)?;
-        for (i, bind_group) in self.bind_group_jumpflooding_steps.into_iter().enumerate() {
+        for (i, bind_group) in self.bind_group_jumpflooding_steps.iter().enumerate() {
             let mut jumpflooding_step = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{} - jumpflooding_step {i}", self.label)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -417,7 +417,7 @@ impl OutlineMaskProcessor {
             });
 
             jumpflooding_step.set_pipeline(render_pipeline_step);
-            jumpflooding_step.set_bind_group(0, &bind_group, &[]);
+            jumpflooding_step.set_bind_group(0, bind_group, &[]);
             jumpflooding_step.draw(0..3, 0..1);
         }
 

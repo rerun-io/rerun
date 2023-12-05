@@ -360,7 +360,6 @@ pub fn view_2d(
         // Draw a re_renderer driven view.
         // Camera & projection are configured to ingest space coordinates directly.
         painter.add(gpu_bridge::new_renderer_callback(
-            ctx.render_ctx,
             view_builder,
             painter.clip_rect(),
             ui.visuals().extreme_bg_color.into(),

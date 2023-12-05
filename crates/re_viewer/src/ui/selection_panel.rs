@@ -401,7 +401,7 @@ fn space_view_top_level_properties(
 
 fn container_top_level_properties(
     ui: &mut egui::Ui,
-    _ctx: &mut ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     viewport: &mut ViewportBlueprint<'_>,
     tile_id: &egui_tiles::TileId,
 ) {
@@ -739,7 +739,7 @@ fn entity_props_ui(
 }
 
 fn colormap_props_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_props: &mut EntityProperties,
 ) {

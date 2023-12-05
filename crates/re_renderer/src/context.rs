@@ -186,7 +186,6 @@ impl RenderContext {
 
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
-            per_frame_data_helper: TypeMap::new(),
             pinned_render_pipelines: None,
             frame_index: 0,
         };
@@ -312,7 +311,6 @@ impl RenderContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
             pinned_render_pipelines: None,
-            per_frame_data_helper: TypeMap::new(),
         };
         let frame_index = self.active_frame.frame_index;
 
@@ -461,9 +459,6 @@ pub struct ActiveFrameContext {
     /// This should be used for any gpu copy operation outside of a renderer or view builder.
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
     pub before_view_builder_encoder: Mutex<FrameGlobalCommandEncoder>,
-
-    /// Utility type map that will be cleared every frame.
-    pub per_frame_data_helper: TypeMap,
 
     /// Render pipelines that were moved out of the resource pool.
     ///
