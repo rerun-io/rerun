@@ -151,7 +151,8 @@ fn class_description_ui(
 
     let use_collapsible = verbosity == UiVerbosity::LimitHeight || verbosity == UiVerbosity::Full;
 
-    // we use collapsible header, so we don't need the tables can always be full expended
+    // We use collapsible header as a means for the user to limit the height, so the annotation info
+    // tables can be fully unrolled.
     if verbosity == UiVerbosity::LimitHeight {
         verbosity = UiVerbosity::Full;
     }
