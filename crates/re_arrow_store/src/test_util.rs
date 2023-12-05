@@ -54,7 +54,7 @@ pub fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
     })
 }
 
-pub fn sanity_unwrap(store: &mut DataStore) {
+pub fn sanity_unwrap(store: &DataStore) {
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();
         eprintln!("{store}");
