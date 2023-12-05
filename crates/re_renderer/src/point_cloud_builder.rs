@@ -266,12 +266,14 @@ impl<'a> PointCloudBatchBuilder<'a> {
     }
 
     /// Adds (!) flags for this batch.
+    #[inline]
     pub fn flags(mut self, flags: PointCloudBatchFlags) -> Self {
         self.batch_mut().flags |= flags;
         self
     }
 
     /// Sets the picking object id for the current batch.
+    #[inline]
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
         self.batch_mut().picking_object_id = picking_object_id;
         self

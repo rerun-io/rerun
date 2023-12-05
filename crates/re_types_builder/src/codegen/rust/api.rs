@@ -1253,6 +1253,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
         if unwrapped {
             // This was originally a vec/array!
             quote! {
+                #[inline]
                 pub fn #method_name(mut self, #field_name: impl IntoIterator<Item = impl Into<#typ>>) -> Self {
                     self.#field_name = Some(#field_name.into_iter().map(Into::into).collect());
                     self
@@ -1260,6 +1261,7 @@ fn quote_builder_from_obj(obj: &Object) -> TokenStream {
             }
         } else {
             quote! {
+                #[inline]
                 pub fn #method_name(mut self, #field_name: impl Into<#typ>) -> Self {
                     self.#field_name = Some(#field_name.into());
                     self

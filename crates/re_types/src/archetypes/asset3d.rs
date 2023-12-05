@@ -238,11 +238,13 @@ impl Asset3D {
         }
     }
 
+    #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = Some(media_type.into());
         self
     }
 
+    #[inline]
     pub fn with_transform(
         mut self,
         transform: impl Into<crate::components::OutOfTreeTransform3D>,

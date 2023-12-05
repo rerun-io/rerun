@@ -322,6 +322,7 @@ impl Mesh3D {
         }
     }
 
+    #[inline]
     pub fn with_mesh_properties(
         mut self,
         mesh_properties: impl Into<crate::components::MeshProperties>,
@@ -330,6 +331,7 @@ impl Mesh3D {
         self
     }
 
+    #[inline]
     pub fn with_vertex_normals(
         mut self,
         vertex_normals: impl IntoIterator<Item = impl Into<crate::components::Vector3D>>,
@@ -338,6 +340,7 @@ impl Mesh3D {
         self
     }
 
+    #[inline]
     pub fn with_vertex_colors(
         mut self,
         vertex_colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
@@ -346,6 +349,7 @@ impl Mesh3D {
         self
     }
 
+    #[inline]
     pub fn with_mesh_material(
         mut self,
         mesh_material: impl Into<crate::components::Material>,
@@ -354,6 +358,7 @@ impl Mesh3D {
         self
     }
 
+    #[inline]
     pub fn with_class_ids(
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
@@ -362,6 +367,7 @@ impl Mesh3D {
         self
     }
 
+    #[inline]
     pub fn with_instance_keys(
         mut self,
         instance_keys: impl IntoIterator<Item = impl Into<crate::components::InstanceKey>>,

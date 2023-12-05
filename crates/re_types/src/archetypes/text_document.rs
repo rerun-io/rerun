@@ -241,6 +241,7 @@ impl TextDocument {
         }
     }
 
+    #[inline]
     pub fn with_media_type(mut self, media_type: impl Into<crate::components::MediaType>) -> Self {
         self.media_type = Some(media_type.into());
         self

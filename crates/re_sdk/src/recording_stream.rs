@@ -142,6 +142,7 @@ impl RecordingStreamBuilder {
     /// If the `RERUN` environment variable is set, it will override this.
     ///
     /// Set also: [`Self::enabled`].
+    #[inline]
     pub fn default_enabled(mut self, default_enabled: bool) -> Self {
         self.default_enabled = default_enabled;
         self
@@ -152,6 +153,7 @@ impl RecordingStreamBuilder {
     /// Setting this will ignore the `RERUN` environment variable.
     ///
     /// Set also: [`Self::default_enabled`].
+    #[inline]
     pub fn enabled(mut self, enabled: bool) -> Self {
         self.enabled = Some(enabled);
         self
@@ -166,6 +168,7 @@ impl RecordingStreamBuilder {
     /// unique `RecordingId`s.
     ///
     /// The default is to use a random `RecordingId`.
+    #[inline]
     pub fn recording_id(mut self, recording_id: impl Into<String>) -> Self {
         self.store_id = Some(StoreId::from_string(
             StoreKind::Recording,
@@ -183,6 +186,7 @@ impl RecordingStreamBuilder {
     /// unique [`StoreId`]s.
     ///
     /// The default is to use a random [`StoreId`].
+    #[inline]
     pub fn store_id(mut self, store_id: StoreId) -> Self {
         self.store_id = Some(store_id);
         self
@@ -191,12 +195,14 @@ impl RecordingStreamBuilder {
     /// Specifies the configuration of the internal data batching mechanism.
     ///
     /// See [`DataTableBatcher`] & [`DataTableBatcherConfig`] for more information.
+    #[inline]
     pub fn batcher_config(mut self, config: DataTableBatcherConfig) -> Self {
         self.batcher_config = Some(config);
         self
     }
 
     #[doc(hidden)]
+    #[inline]
     pub fn store_source(mut self, store_source: StoreSource) -> Self {
         self.store_source = Some(store_source);
         self
@@ -204,12 +210,14 @@ impl RecordingStreamBuilder {
 
     #[allow(clippy::wrong_self_convention)]
     #[doc(hidden)]
+    #[inline]
     pub fn is_official_example(mut self, is_official_example: bool) -> Self {
         self.is_official_example = is_official_example;
         self
     }
 
     #[doc(hidden)]
+    #[inline]
     pub fn blueprint(mut self) -> Self {
         self.store_kind = StoreKind::Blueprint;
         self

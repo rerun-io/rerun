@@ -48,6 +48,7 @@ pub struct StoreEvent {
 impl std::ops::Deref for StoreEvent {
     type Target = StoreDiff;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.diff
     }

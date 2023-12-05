@@ -142,12 +142,14 @@ impl<'a> ListItem<'a> {
     }
 
     /// Set the active state the item.
+    #[inline]
     pub fn active(mut self, active: bool) -> Self {
         self.active = active;
         self
     }
 
     /// Set the selected state of the item.
+    #[inline]
     pub fn selected(mut self, selected: bool) -> Self {
         self.selected = selected;
         self
@@ -158,6 +160,7 @@ impl<'a> ListItem<'a> {
     // widget are displayed in a subdued state (container, hidden space views/entities). One
     // slightly more correct way would be to override the color using a (color, index) pair
     // related to the design system table.
+    #[inline]
     pub fn subdued(mut self, subdued: bool) -> Self {
         self.subdued = subdued;
         self
@@ -168,6 +171,7 @@ impl<'a> ListItem<'a> {
     /// Used to highlight items representing things that are hovered elsewhere in the UI. Note that
     /// the [`egui::Response`] returned by [`Self::show`] and ]`Self::show_collapsing`] will still
     /// reflect the actual hover state.
+    #[inline]
     pub fn force_hovered(mut self, force_hovered: bool) -> Self {
         self.force_hovered = force_hovered;
         self
@@ -177,18 +181,21 @@ impl<'a> ListItem<'a> {
     ///
     /// The default is provided by [`ReUi::list_item_height`] and is suitable for hierarchical
     /// lists.
+    #[inline]
     pub fn with_height(mut self, height: f32) -> Self {
         self.height = height;
         self
     }
 
     /// Set the width allocation mode.
+    #[inline]
     pub fn width_allocation_mode(mut self, mode: WidthAllocationMode) -> Self {
         self.width_allocation_mode = mode;
         self
     }
 
     /// Provide an [`Icon`] to be displayed on the left of the item.
+    #[inline]
     pub fn with_icon(self, icon: &'a Icon) -> Self {
         self.with_icon_fn(|_, ui, rect, visuals| {
             let tint = visuals.fg_stroke.color;
@@ -197,6 +204,7 @@ impl<'a> ListItem<'a> {
     }
 
     /// Provide a custom closure to draw an icon on the left of the item.
+    #[inline]
     pub fn with_icon_fn(
         mut self,
         icon_fn: impl FnOnce(&ReUi, &mut egui::Ui, egui::Rect, egui::style::WidgetVisuals) + 'a,
@@ -212,6 +220,7 @@ impl<'a> ListItem<'a> {
     ///   enclosing UI adapts to the childrens width, it will unnecessarily grow. If buttons aren't
     ///   used, the item will only allocate the width needed for the text and icons if any.
     /// - A right to left layout is used, so the right-most button must be added first.
+    #[inline]
     pub fn with_buttons(
         mut self,
         buttons: impl FnOnce(&ReUi, &mut egui::Ui) -> egui::Response + 'a,
