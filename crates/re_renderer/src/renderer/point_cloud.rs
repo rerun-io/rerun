@@ -18,7 +18,9 @@ use std::{num::NonZeroU64, ops::Range};
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
-    include_shader_module, DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
+    include_shader_module,
+    wgpu_resources::GpuRenderPipelinePoolAccessor,
+    DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
 use bytemuck::Zeroable as _;
@@ -711,7 +713,7 @@ impl Renderer for PointCloudRenderer {
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
@@ -731,7 +733,7 @@ impl Renderer for PointCloudRenderer {
         let Some(bind_group_all_points) = bind_group_all_points else {
             return Ok(()); // No points submitted.
         };
-        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+        let pipeline = render_pipelines.get(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
         pass.set_bind_group(1, bind_group_all_points, &[]);

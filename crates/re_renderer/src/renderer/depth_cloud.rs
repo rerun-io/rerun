@@ -22,7 +22,8 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
+        RenderPipelineDesc,
     },
     Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
 };
@@ -500,7 +501,7 @@ impl Renderer for DepthCloudRenderer {
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
@@ -516,7 +517,7 @@ impl Renderer for DepthCloudRenderer {
             DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
-        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+        let pipeline = render_pipelines.get(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
 

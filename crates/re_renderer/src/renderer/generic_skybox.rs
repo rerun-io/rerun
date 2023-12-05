@@ -7,7 +7,8 @@ use crate::{
     renderer::screen_triangle_vertex_shader,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, WgpuResourcePools,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
+        RenderPipelineDesc, WgpuResourcePools,
     },
 };
 
@@ -96,14 +97,14 @@ impl Renderer for GenericSkybox {
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &GenericSkyboxDrawData,
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline = render_pipelines.get(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
         pass.draw(0..3, 0..1);

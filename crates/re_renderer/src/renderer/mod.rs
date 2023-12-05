@@ -39,7 +39,7 @@ use crate::{
     context::{RenderContext, SharedRendererData},
     draw_phases::DrawPhase,
     include_shader_module,
-    wgpu_resources::{PoolError, WgpuResourcePools},
+    wgpu_resources::{GpuRenderPipelinePoolAccessor, PoolError, WgpuResourcePools},
     FileResolver, FileSystem,
 };
 
@@ -76,7 +76,7 @@ pub trait Renderer {
     /// Called once per phase given by [`Renderer::participated_phases`].
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
