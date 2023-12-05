@@ -28,6 +28,7 @@ version = "0.12.0-alpha.1+dev"
 # re_log_types 0.3.0-alpha.0, NOT 0.3.0-alpha.4 even though it is newer and semver-compatible.
 re_analytics = { path = "crates/re_analytics", version = "=0.12.0-alpha.1", default-features = false }
 re_arrow_store = { path = "crates/re_arrow_store", version = "=0.12.0-alpha.1", default-features = false }
+re_build_examples = { path = "crates/re_build_examples", version = "=0.12.0-alpha.1", default-features = false }
 re_build_examples_manifest = { path = "crates/re_build_examples_manifest", version = "=0.12.0-alpha.1", default-features = false }
 re_build_info = { path = "crates/re_build_info", version = "=0.12.0-alpha.1", default-features = false }
 re_build_tools = { path = "crates/re_build_tools", version = "=0.12.0-alpha.1", default-features = false }
@@ -131,10 +132,11 @@ half = "2.3.1"
 hyper = "0.14"
 image = { version = "0.24", default-features = false }
 indent = "0.1"
-infer = "0.15" # infer MIME type by checking the magic number signature
+indicatif = "0.17.7"                                               # Progress bar
+infer = "0.15"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 itertools = "0.11"
 js-sys = "0.3"
-lazy_static = "1.4"
+# No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 lz4_flex = "0.11"
 log = "0.4"
 log-once = "0.4"

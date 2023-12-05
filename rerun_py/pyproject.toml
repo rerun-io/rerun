@@ -130,3 +130,4 @@ python-packages = ["rerun_sdk/rerun"]
 filterwarnings = """
 error
 """
+norecursedirs = ".* venv* target* build"

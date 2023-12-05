@@ -26,9 +26,6 @@ struct ExampleDesc {
     description: String,
     tags: Vec<String>,
 
-    #[allow(unused)]
-    demo_url: String,
-
     rrd_url: String,
     thumbnail: ExampleThumbnail,
 }

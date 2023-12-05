@@ -1,10 +1,11 @@
 use nohash_hasher::IntMap;
-use re_log_types::{TimePoint, TimeRange};
+use re_log_types::{EntityPathHash, TimePoint, TimeRange};
 use re_types_core::{ComponentName, SizeBytes};
 
 use crate::{
-    store::IndexedBucketInner, ClusterCellCache, DataStore, DataTypeRegistry, IndexedBucket,
-    IndexedTable, MetadataRegistry, PersistentIndexedTable,
+    store::{IndexedBucketInner, PersistentIndexedTableInner},
+    ClusterCellCache, DataStore, DataTypeRegistry, IndexedBucket, IndexedTable, MetadataRegistry,
+    PersistentIndexedTable,
 };
 
 // ---
@@ -182,7 +183,7 @@ impl SizeBytes for DataTypeRegistry {
     }
 }
 
-impl SizeBytes for MetadataRegistry<TimePoint> {
+impl SizeBytes for MetadataRegistry<(TimePoint, EntityPathHash)> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.heap_size_bytes
@@ -204,7 +205,7 @@ impl DataStore {
         re_tracing::profile_function!();
         self.timeless_tables
             .values()
-            .map(|table| table.num_rows())
+            .map(|table| table.inner.read().num_rows())
             .sum()
     }
 
@@ -251,7 +252,7 @@ impl DataStore {
         timeline: re_log_types::Timeline,
         entity_path_hash: re_log_types::EntityPathHash,
     ) -> EntityStats {
-        let mut entity_stats = self.tables.get(&(timeline, entity_path_hash)).map_or(
+        let mut entity_stats = self.tables.get(&(entity_path_hash, timeline)).map_or(
             EntityStats::default(),
             |table| EntityStats {
                 num_rows: table.buckets_num_rows,
@@ -263,7 +264,7 @@ impl DataStore {
         );
 
         if let Some(timeless) = self.timeless_tables.get(&entity_path_hash) {
-            entity_stats.timelines_rows = timeless.num_rows();
+            entity_stats.timelines_rows = timeless.inner.read().num_rows();
             entity_stats.timelines_size_bytes = timeless.total_size_bytes();
         }
 
@@ -393,6 +394,7 @@ impl IndexedBucketInner {
             col_time,
             col_insert_id,
             col_row_id,
+            max_row_id,
             col_num_instances,
             columns,
             size_bytes,
@@ -403,6 +405,7 @@ impl IndexedBucketInner {
             + col_time.total_size_bytes()
             + col_insert_id.total_size_bytes()
             + col_row_id.total_size_bytes()
+            + max_row_id.total_size_bytes()
             + col_num_instances.total_size_bytes()
             + columns.total_size_bytes()
             + size_bytes.total_size_bytes();
@@ -413,14 +416,6 @@ impl IndexedBucketInner {
 
 // --- Timeless ---
 
-impl PersistentIndexedTable {
-    /// Returns the number of rows stored across this table.
-    #[inline]
-    pub fn num_rows(&self) -> u64 {
-        self.col_num_instances.len() as _
-    }
-}
-
 impl SizeBytes for PersistentIndexedTable {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -429,11 +424,15 @@ impl SizeBytes for PersistentIndexedTable {
         let Self {
             ent_path,
             cluster_key,
+            inner,
+        } = self;
+        let PersistentIndexedTableInner {
             col_insert_id,
             col_row_id,
             col_num_instances,
             columns,
-        } = self;
+            is_sorted,
+        } = &*inner.read();
 
         ent_path.total_size_bytes()
             + cluster_key.total_size_bytes()
@@ -441,5 +440,6 @@ impl SizeBytes for PersistentIndexedTable {
             + col_row_id.total_size_bytes()
             + col_num_instances.total_size_bytes()
             + columns.total_size_bytes()
+            + is_sorted.total_size_bytes()
     }
 }

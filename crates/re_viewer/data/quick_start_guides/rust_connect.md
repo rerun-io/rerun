@@ -1,7 +1,5 @@
 # Rust Quick Start
 
-${SAFARI_WARNING}
-
 ## Installing Rerun
 
 To use the Rerun SDK in your project, you need the [rerun crate](https://crates.io/crates/rerun) which you can add with `cargo add rerun`.

@@ -1119,6 +1119,7 @@ dependencies = [
  "encode_unicode",
  "lazy_static",
  "libc",
+ "unicode-width",
  "windows-sys 0.45.0",
 ]
 
@@ -2660,6 +2661,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "indicatif"
+version = "0.17.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb28741c9db9a713d93deb3bb9515c20788cef5815265bee4980e87bde7e0f25"
+dependencies = [
+ "console",
+ "instant",
+ "number_prefix",
+ "portable-atomic",
+ "unicode-width",
+]
+
+[[package]]
 name = "indoc"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3549,6 +3563,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "number_prefix"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
+
+[[package]]
 name = "objc"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3984,6 +4004,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22686f4785f02a4fcc856d3b3bb19bf6c8160d103f7a99cc258bddd0251dc7f2"
 
 [[package]]
+name = "portable-atomic"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bccab0e7fd7cc19f820a1c8c91720af652d0c88dc9664dd72aef2614f04af3b"
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4352,6 +4378,20 @@ dependencies = [
  "smallvec",
  "thiserror",
  "tinyvec",
+ "web-time",
+]
+
+[[package]]
+name = "re_build_examples"
+version = "0.12.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "indicatif",
+ "rayon",
+ "re_build_tools",
+ "serde",
+ "serde_json",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -4555,11 +4595,13 @@ dependencies = [
  "arrow2",
  "backtrace",
  "bytemuck",
+ "criterion",
  "crossbeam",
  "document-features",
  "fixed",
  "half 2.3.1",
  "itertools 0.11.0",
+ "mimalloc",
  "nohash-hasher",
  "num-derive",
  "num-traits",
@@ -5053,6 +5095,7 @@ dependencies = [
  "egui",
  "egui-wgpu",
  "egui_plot",
+ "egui_tiles",
  "ehttp",
  "image",
  "itertools 0.11.0",
@@ -5110,10 +5153,10 @@ dependencies = [
  "bytemuck",
  "egui",
  "egui-wgpu",
+ "egui_tiles",
  "glam",
  "half 2.3.1",
  "itertools 0.11.0",
- "lazy_static",
  "macaw",
  "ndarray",
  "nohash-hasher",

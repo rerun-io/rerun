@@ -9,7 +9,7 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
-    wgpu_resources::WgpuResourcePools,
+    wgpu_resources::{GpuRenderPipelinePoolMoveAccessor, WgpuResourcePools},
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
 
@@ -113,8 +113,10 @@ impl RenderContext {
     ) -> Self {
         re_tracing::profile_function!();
 
+        log_adapter_info(&adapter.get_info());
+
         let mut gpu_resources = WgpuResourcePools::default();
-        let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
+        let global_bindings = GlobalBindings::new(&gpu_resources, &device);
 
         // Validate capabilities of the device.
         assert!(
@@ -185,6 +187,7 @@ impl RenderContext {
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
             per_frame_data_helper: TypeMap::new(),
+            pinned_render_pipelines: None,
             frame_index: 0,
         };
 
@@ -297,9 +300,18 @@ impl RenderContext {
         // Map all read staging buffers.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
+        // Give back moved render pipelines to the pool if any were moved out.
+        if let Some(moved_render_pipelines) = self.active_frame.pinned_render_pipelines.take() {
+            self.gpu_resources
+                .render_pipelines
+                .return_resources(moved_render_pipelines);
+        }
+
+        // New active frame!
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
+            pinned_render_pipelines: None,
             per_frame_data_helper: TypeMap::new(),
         };
         let frame_index = self.active_frame.frame_index;
@@ -429,6 +441,76 @@ pub struct ActiveFrameContext {
     /// Utility type map that will be cleared every frame.
     pub per_frame_data_helper: TypeMap,
 
+    /// Render pipelines that were moved out of the resource pool.
+    ///
+    /// Will be moved back to the resource pool at the start of the frame.
+    /// This is needed for accessing the render pipelines without keeping a reference
+    /// to the resource pool lock during the lifetime of a render pass.
+    pub pinned_render_pipelines: Option<GpuRenderPipelinePoolMoveAccessor>,
+
     /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,
+}
+
+fn log_adapter_info(info: &wgpu::AdapterInfo) {
+    re_tracing::profile_function!();
+
+    let is_software_rasterizer_with_known_crashes = {
+        // See https://github.com/rerun-io/rerun/issues/3089
+        const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
+            "lavapipe", // Vulkan software rasterizer
+            "llvmpipe", // OpenGL software rasterizer
+        ];
+
+        // I'm not sure where the incriminating string will appear, so check all fields at once:
+        let info_string = format!("{info:?}").to_lowercase();
+
+        KNOWN_SOFTWARE_RASTERIZERS
+            .iter()
+            .any(|&software_rasterizer| info_string.contains(software_rasterizer))
+    };
+
+    let human_readable_summary = adapter_info_summary(info);
+
+    if is_software_rasterizer_with_known_crashes {
+        re_log::warn!("Software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("wgpu adapter {human_readable_summary}");
+    } else if info.device_type == wgpu::DeviceType::Cpu {
+        re_log::warn!("Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("wgpu adapter {human_readable_summary}");
+    } else {
+        re_log::debug!("wgpu adapter {human_readable_summary}");
+    }
+}
+
+/// A human-readable summary about an adapter
+fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
+    let wgpu::AdapterInfo {
+        name,
+        vendor: _, // skip integer id
+        device: _, // skip integer id
+        device_type,
+        driver,
+        driver_info,
+        backend,
+    } = &info;
+
+    // Example values:
+    // > name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
+    // > name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+    // > name: "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)", device_type: IntegratedGpu, backend: Gl, driver: "", driver_info: ""
+
+    let mut summary = format!("backend: {backend:?}, device_type: {device_type:?}");
+
+    if !name.is_empty() {
+        summary += &format!(", name: {name:?}");
+    }
+    if !driver.is_empty() {
+        summary += &format!(", driver: {driver:?}");
+    }
+    if !driver_info.is_empty() {
+        summary += &format!(", driver_info: {driver_info:?}");
+    }
+
+    summary
 }

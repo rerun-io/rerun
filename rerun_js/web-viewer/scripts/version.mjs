@@ -44,8 +44,8 @@ for (const pkg of packages) {
 
   // update link to example rrd file in README
   readme = readme.replace(
-    /<https:\/\/demo\.rerun\.io\/.*\/examples\/dna\/data\.rrd>/,
-    `<https://demo.rerun.io/version/${version}/examples/dna/data.rrd>`
+    /<https:\/\/app\.rerun\.io\/.*\/examples\/dna\.rrd>/,
+    `<https://app.rerun.io/version/${version}/examples/dna.rrd>`
   );
 
   fs.writeFileSync(package_json_path, JSON.stringify(package_json, null, 2));

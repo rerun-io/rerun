@@ -5,8 +5,8 @@ use crate::{
     include_shader_module,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
-        WgpuResourcePools,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+        RenderPipelineDesc, WgpuResourcePools,
     },
     RectInt,
 };
@@ -239,12 +239,12 @@ impl Renderer for DebugOverlayRenderer {
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a DebugOverlayDrawData,
     ) -> Result<(), DrawError> {
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline = render_pipelines.get(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
         pass.set_bind_group(1, &draw_data.bind_group, &[]);

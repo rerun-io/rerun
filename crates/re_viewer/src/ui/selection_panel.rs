@@ -1,4 +1,5 @@
 use egui::NumExt as _;
+use egui_tiles::{GridLayout, Tile};
 
 use re_data_store::{
     ColorMapper, Colormap, EditableAutoValue, EntityPath, EntityProperties, VisibleHistory,
@@ -121,13 +122,21 @@ impl SelectionPanel {
             ui.push_id(i, |ui| {
                 what_is_selected_ui(ui, ctx, &mut viewport.blueprint, item);
 
-                if let Item::SpaceView(space_view_id) = item {
-                    space_view_top_level_properties(
-                        ui,
-                        ctx,
-                        &mut viewport.blueprint,
-                        space_view_id,
-                    );
+                match item {
+                    Item::Container(tile_id) => {
+                        container_top_level_properties(ui, ctx, &mut viewport.blueprint, tile_id);
+                    }
+
+                    Item::SpaceView(space_view_id) => {
+                        space_view_top_level_properties(
+                            ui,
+                            ctx,
+                            &mut viewport.blueprint,
+                            space_view_id,
+                        );
+                    }
+
+                    _ => {}
                 }
 
                 if has_data_section(item) {
@@ -156,7 +165,7 @@ fn has_data_section(item: &Item) -> bool {
     match item {
         Item::ComponentPath(_) | Item::InstancePath(_, _) => true,
         // Skip data ui since we don't know yet what to show for these.
-        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => false,
+        Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => false,
     }
 }
 
@@ -190,6 +199,17 @@ fn what_is_selected_ui(
     item: &Item,
 ) {
     match item {
+        Item::Container(tile_id) => {
+            if let Some(Tile::Container(container)) = viewport.tree.tiles.get(*tile_id) {
+                item_title_ui(
+                    ctx.re_ui,
+                    ui,
+                    &format!("{:?}", container.kind()),
+                    None,
+                    &format!("{:?} container", container.kind()),
+                );
+            }
+        }
         Item::ComponentPath(re_log_types::ComponentPath {
             entity_path,
             component_name,
@@ -384,9 +404,92 @@ fn space_view_top_level_properties(
     }
 }
 
+fn container_top_level_properties(
+    ui: &mut egui::Ui,
+    _ctx: &mut ViewerContext<'_>,
+    viewport: &mut ViewportBlueprint<'_>,
+    tile_id: &egui_tiles::TileId,
+) {
+    if let Some(Tile::Container(container)) = viewport.tree.tiles.get_mut(*tile_id) {
+        egui::Grid::new("container_top_level_properties")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Kind");
+
+                let mut container_kind = container.kind();
+                egui::ComboBox::from_id_source("container_kind")
+                    .selected_text(format!("{container_kind:?}"))
+                    .show_ui(ui, |ui| {
+                        ui.style_mut().wrap = Some(false);
+                        ui.set_min_width(64.0);
+
+                        ui.selectable_value(
+                            &mut container_kind,
+                            egui_tiles::ContainerKind::Tabs,
+                            format!("{:?}", egui_tiles::ContainerKind::Tabs),
+                        );
+                        ui.selectable_value(
+                            &mut container_kind,
+                            egui_tiles::ContainerKind::Horizontal,
+                            format!("{:?}", egui_tiles::ContainerKind::Horizontal),
+                        );
+                        ui.selectable_value(
+                            &mut container_kind,
+                            egui_tiles::ContainerKind::Vertical,
+                            format!("{:?}", egui_tiles::ContainerKind::Vertical),
+                        );
+                        ui.selectable_value(
+                            &mut container_kind,
+                            egui_tiles::ContainerKind::Grid,
+                            format!("{:?}", egui_tiles::ContainerKind::Grid),
+                        );
+                    });
+
+                container.set_kind(container_kind);
+
+                ui.end_row();
+
+                if let egui_tiles::Container::Grid(grid) = container {
+                    ui.label("Columns");
+
+                    fn grid_layout_to_string(layout: &egui_tiles::GridLayout) -> String {
+                        match layout {
+                            GridLayout::Auto => "Auto".to_owned(),
+                            GridLayout::Columns(cols) => cols.to_string(),
+                        }
+                    }
+
+                    egui::ComboBox::from_id_source("container_grid_columns")
+                        .selected_text(grid_layout_to_string(&grid.layout))
+                        .show_ui(ui, |ui| {
+                            ui.style_mut().wrap = Some(false);
+                            ui.set_min_width(64.0);
+
+                            ui.selectable_value(
+                                &mut grid.layout,
+                                GridLayout::Auto,
+                                grid_layout_to_string(&GridLayout::Auto),
+                            );
+                            ui.separator();
+
+                            for columns in 1..=grid.num_children() {
+                                ui.selectable_value(
+                                    &mut grid.layout,
+                                    GridLayout::Columns(columns),
+                                    grid_layout_to_string(&GridLayout::Columns(columns)),
+                                );
+                            }
+                        });
+
+                    ui.end_row();
+                }
+            });
+    }
+}
+
 fn has_blueprint_section(item: &Item) -> bool {
     match item {
-        Item::ComponentPath(_) => false,
+        Item::ComponentPath(_) | Item::Container(_) => false,
         Item::InstancePath(space_view_id, _) => space_view_id.is_some(),
         _ => true,
     }
@@ -599,7 +702,7 @@ fn blueprint_ui(
             }
         }
 
-        Item::ComponentPath(_) => {}
+        Item::ComponentPath(_) | Item::Container(_) => {}
     }
 }
 

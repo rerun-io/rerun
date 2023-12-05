@@ -56,7 +56,7 @@ pub(crate) struct GlobalBindings {
 }
 
 impl GlobalBindings {
-    pub fn new(pools: &mut WgpuResourcePools, device: &wgpu::Device) -> Self {
+    pub fn new(pools: &WgpuResourcePools, device: &wgpu::Device) -> Self {
         Self {
             layout: pools.bind_group_layouts.get_or_create(
                 device,

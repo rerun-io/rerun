@@ -101,14 +101,17 @@ impl ViewportBlueprint<'_> {
             return self.tile_ui(ctx, ui, child_id);
         }
 
+        let item = Item::Container(tile_id);
+
         let mut visibility_changed = false;
         let mut visible = self.tree.is_visible(tile_id);
         let mut remove = false;
 
         let default_open = true;
 
-        ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
+        let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
             .subdued(true)
+            .selected(ctx.selection().contains(&item))
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
                 visibility_changed = vis_response.changed();
@@ -122,7 +125,10 @@ impl ViewportBlueprint<'_> {
                 for &child in container.children() {
                     self.tile_ui(ctx, ui, child);
                 }
-            });
+            })
+            .item_response;
+
+        item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
         if remove {
             self.mark_user_interaction();

@@ -68,7 +68,7 @@ jobs:
           sha="$(echo $full_commit | cut -c1-7)"
 
           cargo run --locked -p re_build_examples_manifest -- \
-            --base-url "https://demo.rerun.io/commit/$sha" \
+            --base-url "https://app.rerun.io/commit/$sha" \
             web_viewer/examples_manifest.json
 
       - name: Upload web assets

@@ -161,7 +161,7 @@ impl StoreSubscriber for TimeRangesPerEntity {
 
     fn on_events(&mut self, events: &[StoreEvent]) {
         for event in events {
-            for (&timeline, &time) in &event.timepoint {
+            for &(timeline, time) in &event.times {
                 // update counters
                 let per_timeline = self.times.entry(event.entity_path.clone()).or_default();
                 let per_time = per_timeline.entry(timeline).or_default();
