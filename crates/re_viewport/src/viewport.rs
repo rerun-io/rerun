@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use egui_tiles::Behavior as _;
+use re_data_ui::item_ui;
 
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
@@ -326,7 +327,15 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             tab_widget.paint(ui);
         }
 
-        self.on_tab_button(tiles, tile_id, response)
+        if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
+            item_ui::select_hovered_on_click(
+                self.ctx,
+                &response,
+                &[Item::SpaceView(*space_view_id)],
+            );
+        }
+
+        response
     }
 
     fn drag_ui(
@@ -349,25 +358,6 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         frame.show(ui, |ui| {
             tab_widget.paint(ui);
         });
-    }
-
-    fn on_tab_button(
-        &mut self,
-        tiles: &egui_tiles::Tiles<SpaceViewId>,
-        tile_id: egui_tiles::TileId,
-        button_response: egui::Response,
-    ) -> egui::Response {
-        if button_response.clicked() {
-            if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
-                self.ctx
-                    .set_single_selection(&Item::SpaceView(*space_view_id));
-            } else {
-                // Clicked a group tab - we don't support selecting that yet,
-                // so deselect whatever was selected to make it less confusing:
-                self.ctx.rec_cfg.selection_state.clear_current();
-            }
-        }
-        button_response
     }
 
     fn retain_pane(&mut self, space_view_id: &SpaceViewId) -> bool {
@@ -523,6 +513,13 @@ impl TabWidget {
                 .contains(&Item::SpaceView(space_view.id))
         });
 
+        let hovered = space_view.map_or(false, |space_view| {
+            tab_viewer
+                .ctx
+                .hovered()
+                .contains(&Item::SpaceView(space_view.id))
+        });
+
         // tab icon
         let icon_size = ReUi::small_icon_size();
         let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
@@ -553,6 +550,8 @@ impl TabWidget {
 
         let bg_color = if selected {
             ui.visuals().selection.bg_fill
+        } else if hovered {
+            ui.visuals().widgets.hovered.bg_fill
         } else {
             tab_viewer.tab_bar_color(ui.visuals())
         };
