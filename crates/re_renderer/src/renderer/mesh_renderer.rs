@@ -16,7 +16,8 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
+        RenderPipelineDesc,
     },
     Color32, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
 };
@@ -416,7 +417,7 @@ impl Renderer for MeshRenderer {
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
@@ -433,7 +434,7 @@ impl Renderer for MeshRenderer {
             DrawPhase::PickingLayer => self.render_pipeline_picking_layer,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
-        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+        let pipeline = render_pipelines.get(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
 

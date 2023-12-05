@@ -9,7 +9,7 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
-    wgpu_resources::WgpuResourcePools,
+    wgpu_resources::{GpuRenderPipelinePoolMoveAccessor, WgpuResourcePools},
     FileResolver, FileServer, FileSystem, RecommendedFileResolver,
 };
 
@@ -116,7 +116,7 @@ impl RenderContext {
         log_adapter_info(&adapter.get_info());
 
         let mut gpu_resources = WgpuResourcePools::default();
-        let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
+        let global_bindings = GlobalBindings::new(&gpu_resources, &device);
 
         // Validate capabilities of the device.
         assert!(
@@ -187,6 +187,7 @@ impl RenderContext {
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
             per_frame_data_helper: TypeMap::new(),
+            pinned_render_pipelines: None,
             frame_index: 0,
         };
 
@@ -299,9 +300,18 @@ impl RenderContext {
         // Map all read staging buffers.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
+        // Give back moved render pipelines to the pool if any were moved out.
+        if let Some(moved_render_pipelines) = self.active_frame.pinned_render_pipelines.take() {
+            self.gpu_resources
+                .render_pipelines
+                .return_resources(moved_render_pipelines);
+        }
+
+        // New active frame!
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
+            pinned_render_pipelines: None,
             per_frame_data_helper: TypeMap::new(),
         };
         let frame_index = self.active_frame.frame_index;
@@ -430,6 +440,13 @@ pub struct ActiveFrameContext {
 
     /// Utility type map that will be cleared every frame.
     pub per_frame_data_helper: TypeMap,
+
+    /// Render pipelines that were moved out of the resource pool.
+    ///
+    /// Will be moved back to the resource pool at the start of the frame.
+    /// This is needed for accessing the render pipelines without keeping a reference
+    /// to the resource pool lock during the lifetime of a render pass.
+    pub pinned_render_pipelines: Option<GpuRenderPipelinePoolMoveAccessor>,
 
     /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,

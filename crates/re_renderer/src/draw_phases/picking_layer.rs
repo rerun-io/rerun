@@ -19,8 +19,8 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
-        GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
-        TextureDesc, WgpuResourcePools,
+        GpuRenderPipelinePoolAccessor, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
+        RenderPipelineDesc, TextureDesc,
     },
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
 };
@@ -344,20 +344,23 @@ impl PickingLayerProcessor {
     pub fn end_render_pass(
         self,
         encoder: &mut wgpu::CommandEncoder,
-        pools: &WgpuResourcePools,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
     ) -> Result<(), PickingLayerError> {
         let extent = glam::uvec2(
             self.picking_target.texture.width(),
             self.picking_target.texture.height(),
         );
 
-        let readable_depth_texture = if let Some(depth_copy_workaround) =
-            self.depth_readback_workaround.as_ref()
-        {
-            depth_copy_workaround.copy_to_readable_texture(encoder, pools, &self.bind_group_0)?
-        } else {
-            &self.picking_depth_target
-        };
+        let readable_depth_texture =
+            if let Some(depth_copy_workaround) = self.depth_readback_workaround.as_ref() {
+                depth_copy_workaround.copy_to_readable_texture(
+                    encoder,
+                    render_pipelines,
+                    &self.bind_group_0,
+                )?
+            } else {
+                &self.picking_depth_target
+            };
 
         self.readback_buffer.read_multiple_texture2d(
             encoder,
@@ -581,7 +584,7 @@ impl DepthReadbackWorkaround {
     fn copy_to_readable_texture(
         &self,
         encoder: &mut wgpu::CommandEncoder,
-        pools: &WgpuResourcePools,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         global_binding_bind_group: &GpuBindGroup,
     ) -> Result<&GpuTexture, PoolError> {
         // Copy depth texture to a readable (color) texture with a screen filling triangle.
@@ -600,7 +603,7 @@ impl DepthReadbackWorkaround {
             occlusion_query_set: None,
         });
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline = render_pipelines.get(self.render_pipeline)?;
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, global_binding_bind_group, &[]);
         pass.set_bind_group(1, &self.bind_group, &[]);

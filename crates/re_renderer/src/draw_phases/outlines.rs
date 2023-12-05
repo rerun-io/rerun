@@ -51,8 +51,8 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
-        SamplerDesc, WgpuResourcePools,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+        PoolError, RenderPipelineDesc, SamplerDesc,
     },
     DebugLabel, RenderContext,
 };
@@ -372,11 +372,9 @@ impl OutlineMaskProcessor {
 
     pub fn compute_outlines(
         self,
-        pools: &WgpuResourcePools,
+        pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), PoolError> {
-        let pipelines = &pools.render_pipelines;
-
         let ops = wgpu::Operations {
             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), // Clear is the closest to "don't care"
             store: wgpu::StoreOp::Store,
@@ -396,16 +394,14 @@ impl OutlineMaskProcessor {
                 occlusion_query_set: None,
             });
 
-            let render_pipeline_init =
-                pipelines.get_resource(self.render_pipeline_jumpflooding_init)?;
+            let render_pipeline_init = pipelines.get(self.render_pipeline_jumpflooding_init)?;
             jumpflooding_init.set_bind_group(0, &self.bind_group_jumpflooding_init, &[]);
             jumpflooding_init.set_pipeline(render_pipeline_init);
             jumpflooding_init.draw(0..3, 0..1);
         }
 
         // Perform jump flooding.
-        let render_pipeline_step =
-            pipelines.get_resource(self.render_pipeline_jumpflooding_step)?;
+        let render_pipeline_step = pipelines.get(self.render_pipeline_jumpflooding_step)?;
         for (i, bind_group) in self.bind_group_jumpflooding_steps.into_iter().enumerate() {
             let mut jumpflooding_step = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{} - jumpflooding_step {i}", self.label)).get(),
@@ -429,7 +425,7 @@ impl OutlineMaskProcessor {
     }
 
     fn create_bind_group_jumpflooding_init(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         instance_label: &DebugLabel,
         mask_texture: &GpuTexture,
     ) -> (GpuBindGroup, GpuBindGroupLayoutHandle) {
@@ -466,7 +462,7 @@ impl OutlineMaskProcessor {
 
     fn create_bind_groups_for_jumpflooding_steps(
         config: &OutlineConfig,
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         instance_label: &DebugLabel,
         voronoi_textures: &[GpuTexture; 2],
     ) -> (Vec<GpuBindGroup>, GpuBindGroupLayoutHandle) {
