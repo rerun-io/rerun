@@ -1,15 +1,13 @@
-use re_viewer::external::re_data_store::EntityProperties;
 use re_viewer::external::{
     egui,
-    re_data_store::InstancePath,
+    re_data_store::{EntityProperties, InstancePath},
     re_data_ui::{item_ui, DataUi},
     re_log_types::EntityPath,
-    re_renderer, re_ui,
+    re_ui,
     re_viewer_context::{
         HoverHighlight, Item, SelectionHighlight, SpaceViewClass, SpaceViewClassLayoutPriority,
         SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-        SpaceViewSystemRegistry, UiVerbosity, ViewContextCollection, ViewPartCollection, ViewQuery,
-        ViewerContext,
+        SpaceViewSystemRegistry, SystemExecutionOutput, UiVerbosity, ViewQuery, ViewerContext,
     },
 };
 
@@ -133,12 +131,10 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        _draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let colors = parts.get::<InstanceColorSystem>()?;
+        let colors = system_output.view_systems.get::<InstanceColorSystem>()?;
 
         egui::Frame::default().show(ui, |ui| {
             let color_at = match state.mode {

@@ -127,7 +127,7 @@ pub fn default_heuristic_filter(
 }
 
 pub struct ViewPartCollection {
-    pub(crate) systems: HashMap<ViewSystemIdentifier, Box<dyn ViewPartSystem>>,
+    pub systems: HashMap<ViewSystemIdentifier, Box<dyn ViewPartSystem>>,
 }
 
 impl ViewPartCollection {

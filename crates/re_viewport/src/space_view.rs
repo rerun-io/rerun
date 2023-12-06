@@ -15,6 +15,8 @@ use re_viewer_context::{
     SpaceViewSystemRegistry, StoreContext, ViewerContext,
 };
 
+use crate::system_execution::create_and_run_space_view_systems;
+
 // ----------------------------------------------------------------------------
 
 /// A view of a space.
@@ -282,8 +284,11 @@ impl SpaceViewBlueprint {
             .clone()
             .unwrap_or_default();
 
+        let system_output =
+            create_and_run_space_view_systems(ctx, class.identifier(), system_registry, &query);
+
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, &props, system_registry, &query);
+            class.ui(ctx, ui, view_state, &props, &query, system_output);
         });
     }
 

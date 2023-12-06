@@ -5,8 +5,7 @@ use re_space_view::controls;
 use re_types::datatypes::TensorBuffer;
 use re_viewer_context::{
     auto_color, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection, ViewQuery,
-    ViewerContext,
+    SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use super::view_part_system::BarChartViewPartSystem;
@@ -129,14 +128,15 @@ impl SpaceViewClass for BarChartSpaceView {
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         root_entity_properties: &EntityProperties,
-        _view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
-        _draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         use egui_plot::{Bar, BarChart, Legend, Plot};
 
-        let charts = &parts.get::<BarChartViewPartSystem>()?.charts;
+        let charts = &system_output
+            .view_systems
+            .get::<BarChartViewPartSystem>()?
+            .charts;
 
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 

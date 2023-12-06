@@ -2,8 +2,7 @@ use re_data_store::EntityProperties;
 use re_log_types::EntityPath;
 use re_viewer_context::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartCollection,
-    ViewQuery, ViewerContext,
+    SpaceViewId, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -141,17 +140,26 @@ impl SpaceViewClass for SpatialSpaceView2D {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        state.scene_bbox = calculate_bounding_box(parts, &mut state.scene_bbox_accum);
-        state.scene_num_primitives = view_ctx
+        state.scene_bbox =
+            calculate_bounding_box(&system_output.view_systems, &mut state.scene_bbox_accum);
+        state.scene_num_primitives = system_output
+            .context_systems
             .get::<PrimitiveCounter>()?
             .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        crate::ui_2d::view_2d(ctx, ui, state, view_ctx, parts, query, draw_data)
+        // TODO(andreas): Pass on system_output.
+        crate::ui_2d::view_2d(
+            ctx,
+            ui,
+            state,
+            &system_output.context_systems,
+            &system_output.view_systems,
+            query,
+            system_output.draw_data,
+        )
     }
 }

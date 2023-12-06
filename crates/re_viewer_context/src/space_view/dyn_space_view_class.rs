@@ -4,7 +4,7 @@ use re_types::ComponentName;
 
 use crate::{
     AutoSpawnHeuristic, PerSystemEntities, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSystemRegistry, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistry, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 re_string_interner::declare_new_type!(
@@ -128,8 +128,8 @@ pub trait DynSpaceViewClass: Send + Sync {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         root_entity_properties: &EntityProperties,
-        systems: &SpaceViewSystemRegistry,
         query: &ViewQuery<'_>,
+        system_output: SystemExecutionOutput,
     );
 }
 

@@ -7,7 +7,7 @@ use re_types::components::TextLogLevel;
 use re_viewer_context::{
     level_to_rich_text, AutoSpawnHeuristic, PerSystemEntities, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    ViewQuery, ViewerContext,
 };
 
 use super::view_part_system::{Entry, TextLogSystem};
@@ -136,13 +136,11 @@ impl SpaceViewClass for TextSpaceView {
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
-        _draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
-        let text = parts.get::<TextLogSystem>()?;
+        let text = system_output.view_systems.get::<TextLogSystem>()?;
 
         // TODO(andreas): Should filter text entries in the part-system instead.
         // this likely requires a way to pass state into a context.

@@ -5,7 +5,7 @@ use re_types::ComponentName;
 use crate::{
     AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistry, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 
 /// Defines a class of space view.
@@ -112,24 +112,17 @@ pub trait SpaceViewClass: std::marker::Sized + Send + Sync {
     ///
     /// The passed state is kept frame-to-frame.
     ///
-    /// The passed systems (`view_ctx` and `parts`) are only valid for the duration of this frame and
-    /// were already executed upon entering this method.
-    ///
-    /// `draw_data` is all draw data gathered by executing the view part systems.
     /// TODO(wumpf): Right now the ui methods control when and how to create [`re_renderer::ViewBuilder`]s.
     ///              In the future, we likely want to move view builder handling to `re_viewport` with
     ///              minimal configuration options exposed via [`crate::SpaceViewClass`].
-    #[allow(clippy::too_many_arguments)]
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         root_entity_properties: &EntityProperties,
-        view_ctx: &ViewContextCollection,
-        parts: &ViewPartCollection,
         query: &ViewQuery<'_>,
-        draw_data: Vec<re_renderer::QueueableDrawData>,
+        system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError>;
 }
 
@@ -231,59 +224,14 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         root_entity_properties: &EntityProperties,
-        systems: &SpaceViewSystemRegistry,
         query: &ViewQuery<'_>,
+        system_output: SystemExecutionOutput,
     ) {
         re_tracing::profile_function!();
 
-        use rayon::prelude::*;
-
-        let view_ctx = {
-            re_tracing::profile_scope!("ViewContextSystem::execute");
-            let mut view_ctx = systems.new_context_collection(self.identifier());
-            view_ctx.systems.par_iter_mut().for_each(|(_name, system)| {
-                re_tracing::profile_scope!(_name.as_str());
-                system.execute(ctx, query);
-            });
-            view_ctx
-        };
-
-        let (parts, draw_data) = {
-            re_tracing::profile_scope!("ViewPartSystem::execute");
-
-            let mut parts = systems.new_part_collection();
-            let (draw_data_sender, draw_data_receiver) = std::sync::mpsc::channel();
-
-            parts.systems.par_iter_mut().for_each(|(name, part)| {
-                re_tracing::profile_scope!(name.as_str());
-                match part.execute(ctx, query, &view_ctx) {
-                    Ok(part_draw_data) => {
-                        draw_data_sender.send(part_draw_data).ok();
-                    }
-                    Err(err) => {
-                        re_log::error_once!("Error executing view part system {name:?}: {err}");
-                    }
-                }
-            });
-
-            let mut draw_data = Vec::new();
-            while let Ok(mut part_draw_data) = draw_data_receiver.try_recv() {
-                draw_data.append(&mut part_draw_data);
-            }
-            (parts, draw_data)
-        };
-
         typed_state_wrapper_mut(state, |state| {
-            if let Err(err) = self.ui(
-                ctx,
-                ui,
-                state,
-                root_entity_properties,
-                &view_ctx,
-                &parts,
-                query,
-                draw_data,
-            ) {
+            if let Err(err) = self.ui(ctx, ui, state, root_entity_properties, query, system_output)
+            {
                 // TODO(andreas): Draw an error message on top of the space view ui instead of logging.
                 re_log::error_once!("Error drawing ui for space view: {err}");
             }

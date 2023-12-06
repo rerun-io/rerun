@@ -1,6 +1,6 @@
 use crate::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSystemExecutionError,
-    SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
+    SpaceViewSystemRegistry, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_data_store::EntityProperties;
 
@@ -50,10 +50,8 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
-        _view_ctx: &ViewContextCollection,
-        _parts: &ViewPartCollection,
         _query: &ViewQuery<'_>,
-        _draw_data: Vec<re_renderer::QueueableDrawData>,
+        _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         ui.centered_and_justified(|ui| ui.label(self.help_text(ctx.re_ui)));
         Ok(())

@@ -11,6 +11,7 @@ mod named_system;
 mod space_view_class;
 mod space_view_class_placeholder;
 mod space_view_class_registry;
+mod system_execution_output;
 mod view_context_system;
 mod view_part_system;
 mod view_query;
@@ -25,6 +26,7 @@ pub use space_view_class::SpaceViewClass;
 pub use space_view_class_registry::{
     SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewSystemRegistry,
 };
+pub use system_execution_output::SystemExecutionOutput;
 pub use view_context_system::{ViewContextCollection, ViewContextSystem};
 pub use view_part_system::{
     default_heuristic_filter, HeuristicFilterContext, ViewPartCollection, ViewPartSystem,

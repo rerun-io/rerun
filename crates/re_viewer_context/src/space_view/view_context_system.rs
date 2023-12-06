@@ -31,8 +31,8 @@ pub trait ViewContextSystem: Send + Sync {
 
 // TODO(jleibs): This probably needs a better name now that it includes class name
 pub struct ViewContextCollection {
-    pub(crate) systems: HashMap<ViewSystemIdentifier, Box<dyn ViewContextSystem>>,
-    pub(crate) space_view_class_identifier: SpaceViewClassIdentifier,
+    pub systems: HashMap<ViewSystemIdentifier, Box<dyn ViewContextSystem>>,
+    pub space_view_class_identifier: SpaceViewClassIdentifier,
 }
 
 impl ViewContextCollection {
