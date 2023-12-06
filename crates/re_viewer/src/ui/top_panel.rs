@@ -1,17 +1,19 @@
 use egui::NumExt as _;
+use itertools::Itertools;
 use re_format::format_number;
 use re_renderer::WgpuResourcePoolStatistics;
+use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::UICommand;
 use re_viewer_context::StoreContext;
 
 use crate::{app_blueprint::AppBlueprint, App};
 
 pub fn top_panel(
+    app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
-    ui: &mut egui::Ui,
-    app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
+    ui: &mut egui::Ui,
 ) {
     re_tracing::profile_function!();
 
@@ -26,10 +28,11 @@ pub fn top_panel(
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
-                top_bar_ui(app_blueprint, store_context, ui, app, gpu_resource_stats);
+                top_bar_ui(app, app_blueprint, store_context, ui, gpu_resource_stats);
             })
             .response;
 
+            // React to dragging and double-clicking the top bar:
             #[cfg(not(target_arch = "wasm32"))]
             if !re_ui::NATIVE_WINDOW_BAR {
                 let title_bar_response = _response.interact(egui::Sense::click());
@@ -45,10 +48,10 @@ pub fn top_panel(
 }
 
 fn top_bar_ui(
+    app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
-    app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     app.rerun_menu_button_ui(store_context, ui);
@@ -76,58 +79,11 @@ fn top_bar_ui(
             ui.add_space(extra_margin);
         }
 
-        let mut selection_panel_expanded = app_blueprint.selection_panel_expanded;
-        if app
-            .re_ui()
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                &mut selection_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Selection View{}",
-                UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app_blueprint.toggle_selection_panel(&app.command_sender);
-        }
+        panel_buttons_r2l(app, app_blueprint, ui);
 
-        let mut time_panel_expanded = app_blueprint.time_panel_expanded;
-        if app
-            .re_ui()
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                &mut time_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Timeline View{}",
-                UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app_blueprint.toggle_time_panel(&app.command_sender);
-        }
+        connection_status_ui(ui, app.msg_receive_set());
 
-        let mut blueprint_panel_expanded = app_blueprint.blueprint_panel_expanded;
-        if app
-            .re_ui()
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::LEFT_PANEL_TOGGLE,
-                &mut blueprint_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Blueprint View{}",
-                UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app_blueprint.toggle_blueprint_panel(&app.command_sender);
-        }
-
-        if cfg!(debug_assertions) && app.app_options().show_metrics {
+        if cfg!(debug_assertions) {
             ui.vertical_centered(|ui| {
                 ui.style_mut().wrap = Some(false);
                 ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
@@ -135,6 +91,143 @@ fn top_bar_ui(
             });
         }
     });
+}
+
+fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>) {
+    let sources = rx
+        .sources()
+        .into_iter()
+        .filter(|source| {
+            match source.as_ref() {
+                SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
+                    false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
+                }
+
+                re_smart_channel::SmartChannelSource::RrdWebEventListener
+                | re_smart_channel::SmartChannelSource::Sdk
+                | re_smart_channel::SmartChannelSource::WsClient { .. }
+                | re_smart_channel::SmartChannelSource::TcpServer { .. } => true,
+            }
+        })
+        .collect_vec();
+
+    match sources.len() {
+        0 => return,
+        1 => {
+            source_label(ui, sources[0].as_ref());
+        }
+        n => {
+            // In practice we never get here
+            ui.label(format!("{n} sources connected"))
+                .on_hover_ui(|ui| {
+                    ui.vertical(|ui| {
+                        for source in &sources {
+                            source_label(ui, source.as_ref());
+                        }
+                    });
+                });
+        }
+    }
+
+    fn source_label(ui: &mut egui::Ui, source: &SmartChannelSource) -> egui::Response {
+        let response = ui.label(status_string(source));
+
+        let tooltip = match source {
+            SmartChannelSource::File(_)
+            | SmartChannelSource::RrdHttpStream { .. }
+            | SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::Sdk
+            | SmartChannelSource::WsClient { .. } => None,
+
+            SmartChannelSource::TcpServer { .. } => {
+                Some("Waiting for an SDK to connect".to_owned())
+            }
+        };
+
+        if let Some(tooltip) = tooltip {
+            response.on_hover_text(tooltip)
+        } else {
+            response
+        }
+    }
+
+    fn status_string(source: &SmartChannelSource) -> String {
+        match source {
+            re_smart_channel::SmartChannelSource::File(path) => {
+                format!("Loading {}…", path.display())
+            }
+            re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
+                format!("Loading {url}…")
+            }
+            re_smart_channel::SmartChannelSource::RrdWebEventListener => {
+                "Waiting for logging data…".to_owned()
+            }
+            re_smart_channel::SmartChannelSource::Sdk => {
+                "Waiting for logging data from SDK".to_owned()
+            }
+            re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
+                // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
+                format!("Waiting for data from {ws_server_url}")
+            }
+            re_smart_channel::SmartChannelSource::TcpServer { port } => {
+                format!("Listening on TCP port {port}")
+            }
+        }
+    }
+}
+
+/// Lay out the panel button right-to-left
+fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
+    let mut selection_panel_expanded = app_blueprint.selection_panel_expanded;
+    if app
+        .re_ui()
+        .medium_icon_toggle_button(
+            ui,
+            &re_ui::icons::RIGHT_PANEL_TOGGLE,
+            &mut selection_panel_expanded,
+        )
+        .on_hover_text(format!(
+            "Toggle Selection View{}",
+            UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
+        ))
+        .clicked()
+    {
+        app_blueprint.toggle_selection_panel(&app.command_sender);
+    }
+
+    let mut time_panel_expanded = app_blueprint.time_panel_expanded;
+    if app
+        .re_ui()
+        .medium_icon_toggle_button(
+            ui,
+            &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+            &mut time_panel_expanded,
+        )
+        .on_hover_text(format!(
+            "Toggle Timeline View{}",
+            UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
+        ))
+        .clicked()
+    {
+        app_blueprint.toggle_time_panel(&app.command_sender);
+    }
+
+    let mut blueprint_panel_expanded = app_blueprint.blueprint_panel_expanded;
+    if app
+        .re_ui()
+        .medium_icon_toggle_button(
+            ui,
+            &re_ui::icons::LEFT_PANEL_TOGGLE,
+            &mut blueprint_panel_expanded,
+        )
+        .on_hover_text(format!(
+            "Toggle Blueprint View{}",
+            UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
+        ))
+        .clicked()
+    {
+        app_blueprint.toggle_blueprint_panel(&app.command_sender);
+    }
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)

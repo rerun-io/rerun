@@ -449,7 +449,7 @@ impl ViewBuilder {
             auto_size_points: auto_size_points.0,
             auto_size_lines: auto_size_lines.0,
 
-            device_tier: (ctx.shared_renderer_data.config.device_caps.tier as u32).into(),
+            device_tier: (ctx.config.device_caps.tier as u32).into(),
         };
         let frame_uniform_buffer = create_and_fill_uniform_buffer(
             ctx,
@@ -457,7 +457,7 @@ impl ViewBuilder {
             frame_uniform_buffer_content,
         );
 
-        let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
+        let bind_group_0 = ctx.global_bindings.create_bind_group(
             &ctx.gpu_resources,
             &ctx.device,
             frame_uniform_buffer,

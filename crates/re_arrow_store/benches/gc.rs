@@ -277,7 +277,7 @@ where
         TableId::ZERO,
         (0..NUM_ROWS_PER_ENTITY_PATH).map(move |i| {
             DataRow::from_component_batches(
-                RowId::random(),
+                RowId::new(),
                 timegen(i),
                 entity_path.clone(),
                 datagen(i)

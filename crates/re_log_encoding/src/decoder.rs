@@ -228,7 +228,7 @@ fn test_encode_decode() {
     };
 
     let messages = vec![LogMsg::SetStoreInfo(SetStoreInfo {
-        row_id: RowId::random(),
+        row_id: RowId::new(),
         info: StoreInfo {
             application_id: ApplicationId("test".to_owned()),
             store_id: StoreId::random(StoreKind::Recording),

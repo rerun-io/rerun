@@ -40,17 +40,15 @@ disallowed-macros = [
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 disallowed-methods = [
-  "std::env::temp_dir", # Use the tempdir crate instead
+  { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
+  { path = "sha1::Digest::new", reason = "SHA1 is cryptographically broken" },
+  { path = "std::env::temp_dir", reason = "Use the tempdir crate instead" },
+  { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },
+  { path = "std::thread::spawn", reason = "Use `std::thread::Builder` and name the thread" },
 
   # There are many things that aren't allowed on wasm,
   # but we cannot disable them all here (because of e.g. https://github.com/rust-lang/rust-clippy/issues/10406)
   # so we do that in `clipppy_wasm.toml` instead.
-
-  "std::thread::spawn", # Use `std::thread::Builder` and name the thread
-
-  "sha1::Digest::new", # SHA1 is cryptographically broken
-
-  "std::panic::catch_unwind", # We compile with `panic = "abort"`
 ]
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_names

@@ -333,7 +333,7 @@ fn build_table(n: usize, packed: bool) -> DataTable {
         TableId::ZERO,
         (0..NUM_ROWS).map(move |frame_idx| {
             DataRow::from_cells2(
-                RowId::random(),
+                RowId::new(),
                 "large_structs",
                 [build_frame_nr(frame_idx.into())],
                 n as _,

@@ -309,7 +309,7 @@ impl StoreDb {
         let mut store_db = StoreDb::new(store_info.store_id.clone());
 
         store_db.set_store_info(SetStoreInfo {
-            row_id: RowId::random(),
+            row_id: RowId::new(),
             info: store_info,
         });
         for row in rows {

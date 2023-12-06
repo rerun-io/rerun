@@ -1,7 +1,6 @@
 use crate::{
     mesh::{GpuMesh, Mesh},
     renderer::MeshRenderer,
-    wgpu_resources::GpuBindGroupLayoutHandle,
     RenderContext,
 };
 
@@ -15,14 +14,12 @@ pub type GpuMeshHandle = ResourceHandle<MeshHandleInner>;
 
 pub struct MeshManager {
     manager: ResourceManager<MeshHandleInner, GpuMesh>,
-    mesh_bind_group_layout: GpuBindGroupLayoutHandle,
 }
 
 impl MeshManager {
-    pub(crate) fn new(mesh_renderer: &MeshRenderer) -> Self {
+    pub(crate) fn new() -> Self {
         MeshManager {
             manager: Default::default(),
-            mesh_bind_group_layout: mesh_renderer.bind_group_layout,
         }
     }
 
@@ -35,7 +32,7 @@ impl MeshManager {
     ) -> Result<GpuMeshHandle, ResourceManagerError> {
         re_tracing::profile_function!();
         Ok(self.manager.store_resource(
-            GpuMesh::new(ctx, self.mesh_bind_group_layout, mesh)?,
+            GpuMesh::new(ctx, ctx.renderer::<MeshRenderer>().bind_group_layout, mesh)?,
             lifetime,
         ))
     }
