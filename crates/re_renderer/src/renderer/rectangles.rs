@@ -570,10 +570,7 @@ impl Renderer for RectangleRenderer {
             ctx,
             &(PipelineLayoutDesc {
                 label: "RectangleRenderer::pipeline_layout".into(),
-                entries: vec![
-                    ctx.shared_renderer_data.global_bindings.layout,
-                    bind_group_layout,
-                ],
+                entries: vec![ctx.global_bindings.layout, bind_group_layout],
             }),
         );
 
@@ -628,9 +625,7 @@ impl Renderer for RectangleRenderer {
                 fragment_entrypoint: "fs_main_outline_mask".into(),
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
-                multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    &ctx.shared_renderer_data.config.device_caps,
-                ),
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(&ctx.config.device_caps),
                 ..render_pipeline_desc_color
             }),
         );

@@ -150,10 +150,7 @@ impl Renderer for Compositor {
                 ctx,
                 &PipelineLayoutDesc {
                     label: "compositor".into(),
-                    entries: vec![
-                        ctx.shared_renderer_data.global_bindings.layout,
-                        bind_group_layout,
-                    ],
+                    entries: vec![ctx.global_bindings.layout, bind_group_layout],
                 },
             ),
             vertex_entrypoint: "main".into(),
@@ -164,9 +161,7 @@ impl Renderer for Compositor {
                 .shader_modules
                 .get_or_create(ctx, &include_shader_module!("../../shader/composite.wgsl")),
             vertex_buffers: smallvec![],
-            render_targets: smallvec![Some(
-                ctx.shared_renderer_data.config.output_format_color.into()
-            )],
+            render_targets: smallvec![Some(ctx.config.output_format_color.into())],
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),

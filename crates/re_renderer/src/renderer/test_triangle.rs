@@ -39,7 +39,7 @@ impl Renderer for TestTriangle {
                     ctx,
                     &PipelineLayoutDesc {
                         label: "global only".into(),
-                        entries: vec![ctx.shared_renderer_data.global_bindings.layout],
+                        entries: vec![ctx.global_bindings.layout],
                     },
                 ),
                 vertex_entrypoint: "vs_main".into(),

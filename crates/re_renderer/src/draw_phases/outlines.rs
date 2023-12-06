@@ -208,8 +208,7 @@ impl OutlineMaskProcessor {
         // ------------- Textures -------------
         let texture_pool = &ctx.gpu_resources.textures;
 
-        let mask_sample_count =
-            Self::mask_sample_count(&ctx.shared_renderer_data.config.device_caps);
+        let mask_sample_count = Self::mask_sample_count(&ctx.config.device_caps);
         let mask_texture_desc = crate::wgpu_resources::TextureDesc {
             label: format!("{instance_label}::mask_texture").into(),
             size: wgpu::Extent3d {

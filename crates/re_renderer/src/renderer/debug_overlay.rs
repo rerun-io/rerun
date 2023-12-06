@@ -199,10 +199,7 @@ impl Renderer for DebugOverlayRenderer {
                     ctx,
                     &PipelineLayoutDesc {
                         label: "DebugOverlay".into(),
-                        entries: vec![
-                            ctx.shared_renderer_data.global_bindings.layout,
-                            bind_group_layout,
-                        ],
+                        entries: vec![ctx.global_bindings.layout, bind_group_layout],
                     },
                 ),
                 vertex_entrypoint: "main_vs".into(),
@@ -210,9 +207,7 @@ impl Renderer for DebugOverlayRenderer {
                 fragment_entrypoint: "main_fs".into(),
                 fragment_handle: shader_module,
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(
-                    ctx.shared_renderer_data.config.output_format_color.into()
-                )],
+                render_targets: smallvec![Some(ctx.config.output_format_color.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleStrip,
                     cull_mode: None,

@@ -864,7 +864,7 @@ impl Renderer for LineRenderer {
             &PipelineLayoutDesc {
                 label: "LineRenderer::pipeline_layout".into(),
                 entries: vec![
-                    ctx.shared_renderer_data.global_bindings.layout,
+                    ctx.global_bindings.layout,
                     bind_group_layout_all_lines,
                     bind_group_layout_batch,
                 ],
@@ -926,9 +926,7 @@ impl Renderer for LineRenderer {
                 },
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 // Alpha to coverage doesn't work with the mask integer target.
-                multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    &ctx.shared_renderer_data.config.device_caps,
-                ),
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(&ctx.config.device_caps),
             },
         );
 

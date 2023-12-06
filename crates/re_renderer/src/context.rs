@@ -19,7 +19,12 @@ pub struct RenderContext {
     pub device: Arc<wgpu::Device>,
     pub queue: Arc<wgpu::Queue>,
 
-    pub(crate) shared_renderer_data: SharedRendererData,
+    pub(crate) config: RenderContextConfig,
+
+    /// Global bindings, always bound to 0 bind group slot zero.
+    /// [`Renderer`] are not allowed to use bind group 0 themselves!
+    pub(crate) global_bindings: GlobalBindings,
+
     renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
@@ -39,15 +44,6 @@ pub struct RenderContext {
     pub active_frame: ActiveFrameContext,
 
     pub gpu_resources: WgpuResourcePools, // Last due to drop order.
-}
-
-/// Immutable data that is shared between all [`Renderer`]
-pub struct SharedRendererData {
-    pub(crate) config: RenderContextConfig,
-
-    /// Global bindings, always bound to 0 bind group slot zero.
-    /// [`Renderer`] are not allowed to use bind group 0 themselves!
-    pub(crate) global_bindings: GlobalBindings,
 }
 
 /// Struct owning *all* [`Renderer`].
@@ -162,11 +158,6 @@ impl RenderContext {
             err_tracker
         };
 
-        let shared_renderer_data = SharedRendererData {
-            config,
-            global_bindings,
-        };
-
         let resolver = crate::new_recommended_file_resolver();
         let mesh_manager = RwLock::new(MeshManager::new());
         let texture_manager_2d =
@@ -197,7 +188,8 @@ impl RenderContext {
             device,
             queue,
 
-            shared_renderer_data,
+            config,
+            global_bindings,
 
             renderers: RwLock::new(Renderers {
                 renderers: TypeMap::new(),
@@ -240,9 +232,7 @@ impl RenderContext {
         //          knowing that we're not _actually_ blocking.
         //
         //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
-        if cfg!(target_arch = "wasm32")
-            && self.shared_renderer_data.config.device_caps.tier == DeviceTier::Gles
-        {
+        if cfg!(target_arch = "wasm32") && self.config.device_caps.tier == DeviceTier::Gles {
             self.device.poll(wgpu::Maintain::Wait);
             return;
         }

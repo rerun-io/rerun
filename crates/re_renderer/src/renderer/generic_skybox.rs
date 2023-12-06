@@ -50,7 +50,7 @@ impl Renderer for GenericSkybox {
                     ctx,
                     &PipelineLayoutDesc {
                         label: "GenericSkybox::render_pipeline".into(),
-                        entries: vec![ctx.shared_renderer_data.global_bindings.layout],
+                        entries: vec![ctx.global_bindings.layout],
                     },
                 ),
 

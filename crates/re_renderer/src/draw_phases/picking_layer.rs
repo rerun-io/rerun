@@ -204,11 +204,7 @@ impl PickingLayerProcessor {
             },
         );
 
-        let direct_depth_readback = ctx
-            .shared_renderer_data
-            .config
-            .device_caps
-            .support_depth_readback();
+        let direct_depth_readback = ctx.config.device_caps.support_depth_readback();
 
         let picking_depth_target = ctx.gpu_resources.textures.alloc(
             &ctx.device,
@@ -259,7 +255,7 @@ impl PickingLayerProcessor {
             frame_uniform_buffer_content,
         );
 
-        let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
+        let bind_group_0 = ctx.global_bindings.create_bind_group(
             &ctx.gpu_resources,
             &ctx.device,
             frame_uniform_buffer,
@@ -542,10 +538,7 @@ impl DepthReadbackWorkaround {
                     ctx,
                     &PipelineLayoutDesc {
                         label: "DepthCopyWorkaround::render_pipeline".into(),
-                        entries: vec![
-                            ctx.shared_renderer_data.global_bindings.layout,
-                            bind_group_layout,
-                        ],
+                        entries: vec![ctx.global_bindings.layout, bind_group_layout],
                     },
                 ),
                 vertex_entrypoint: "main".into(),
