@@ -946,7 +946,7 @@ impl App {
     /// should show up.
     ///
     /// Why not always show it when no data is loaded?
-    /// Because sometimes we expet data to arrive at any moment,
+    /// Because sometimes we expect data to arrive at any moment,
     /// and showing the wlecome screen for a few frames will just be an annoying flash
     /// in the users face.
     fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
