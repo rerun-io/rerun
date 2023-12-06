@@ -1,4 +1,4 @@
-use super::{large_text_button, status_strings, url_large_text_button, WelcomeScreenResponse};
+use super::{large_text_button, url_large_text_button, WelcomeScreenResponse};
 use egui::{NumExt, Ui};
 use re_data_store::StoreDb;
 use re_log_types::{
@@ -46,23 +46,7 @@ pub(super) fn welcome_page_ui(
 ) -> WelcomeScreenResponse {
     ui.vertical(|ui| {
         let accepts_connections = rx.accepts_tcp_connections();
-
-        let show_example = onboarding_content_ui(ui, command_sender, accepts_connections);
-
-        for status_strings in status_strings(rx) {
-            if status_strings.long_term {
-                ui.add_space(55.0);
-                ui.vertical_centered(|ui| {
-                    ui.label(status_strings.status);
-                    ui.label(
-                        egui::RichText::new(status_strings.source)
-                            .color(ui.visuals().weak_text_color()),
-                    );
-                });
-            }
-        }
-
-        show_example
+        onboarding_content_ui(ui, command_sender, accepts_connections)
     })
     .inner
 }

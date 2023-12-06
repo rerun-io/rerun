@@ -678,7 +678,7 @@ impl App {
 
                 crate::ui::mobile_warning_ui(&self.re_ui, ui);
 
-                crate::ui::top_panel(app_blueprint, store_context, ui, self, gpu_resource_stats);
+                crate::ui::top_panel(self, app_blueprint, store_context, gpu_resource_stats, ui);
 
                 self.memory_panel_ui(ui, gpu_resource_stats, store_stats);
 
@@ -731,10 +731,11 @@ impl App {
                         render_ctx.before_submit();
                     }
                 } else {
-                    // This is part of the loading vs. welcome screen UI logic. The loading screen
-                    // is displayed when no app ID is set. This is e.g. the initial state for the
-                    // web demos.
-                    crate::ui::loading_ui(ui, &self.rx);
+                    // There's nothing to show.
+                    // We get here when
+                    // A) there is nothing loaded
+                    // B) we decided not to show the welcome screen, presumably because data is expected at any time now.
+                    // The user can see the connection status in the top bar.
                 }
             });
     }
@@ -941,12 +942,13 @@ impl App {
         }
     }
 
-    /// This function will create an empty blueprint whenever the welcome screen should be
-    /// displayed.
-    ///
-    /// The welcome screen can be displayed only when a blueprint is available (and no recording is
-    /// loaded). This function implements the heuristic which determines when the welcome screen
+    /// This function implements a heuristic which determines when the welcome screen
     /// should show up.
+    ///
+    /// Why not always show it when no data is loaded?
+    /// Because sometimes we expect data to arrive at any moment,
+    /// and showing the wlecome screen for a few frames will just be an annoying flash
+    /// in the users face.
     fn should_show_welcome_screen(&mut self, store_hub: &StoreHub) -> bool {
         // Don't show the welcome screen if we have actual data to display.
         if store_hub.current_recording().is_some() || store_hub.selected_application_id().is_some()
