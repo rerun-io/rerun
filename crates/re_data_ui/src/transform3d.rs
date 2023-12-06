@@ -7,7 +7,7 @@ impl DataUi for re_types::components::Transform3D {
     #[allow(clippy::only_used_in_recursion)]
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -47,7 +47,7 @@ impl DataUi for re_types::components::OutOfTreeTransform3D {
     #[inline]
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -60,7 +60,7 @@ impl DataUi for Transform3D {
     #[allow(clippy::only_used_in_recursion)]
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -87,7 +87,7 @@ impl DataUi for Transform3D {
 impl DataUi for TranslationRotationScale3D {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -128,7 +128,7 @@ impl DataUi for TranslationRotationScale3D {
 impl DataUi for Scale3D {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -147,7 +147,7 @@ impl DataUi for Scale3D {
 impl DataUi for TranslationAndMat3x3 {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,

@@ -193,6 +193,7 @@ impl BarChart {
         }
     }
 
+    #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self

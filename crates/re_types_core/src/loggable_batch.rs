@@ -70,6 +70,7 @@ impl From<Box<dyn ComponentBatch>> for MaybeOwnedComponentBatch<'_> {
 }
 
 impl<'a> AsRef<dyn ComponentBatch + 'a> for MaybeOwnedComponentBatch<'a> {
+    #[inline]
     fn as_ref(&self) -> &(dyn ComponentBatch + 'a) {
         match self {
             MaybeOwnedComponentBatch::Owned(this) => &**this,
@@ -81,6 +82,7 @@ impl<'a> AsRef<dyn ComponentBatch + 'a> for MaybeOwnedComponentBatch<'a> {
 impl<'a> std::ops::Deref for MaybeOwnedComponentBatch<'a> {
     type Target = dyn ComponentBatch + 'a;
 
+    #[inline]
     fn deref(&self) -> &(dyn ComponentBatch + 'a) {
         match self {
             MaybeOwnedComponentBatch::Owned(this) => &**this,

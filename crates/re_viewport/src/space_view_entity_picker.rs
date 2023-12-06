@@ -25,7 +25,7 @@ impl SpaceViewEntityPicker {
     #[allow(clippy::unused_self)]
     pub fn ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &egui::Ui,
         space_view: &mut SpaceViewBlueprint,
     ) -> bool {
@@ -84,7 +84,7 @@ impl SpaceViewEntityPicker {
 }
 
 fn add_entities_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view: &mut SpaceViewBlueprint,
 ) {
@@ -119,7 +119,7 @@ fn add_entities_ui(
 
 #[allow(clippy::too_many_arguments)]
 fn add_entities_tree_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     name: &str,
     tree: &EntityTree,
@@ -189,7 +189,7 @@ fn add_entities_tree_ui(
 
 #[allow(clippy::too_many_arguments)]
 fn add_entities_line_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     name: &str,
     entity_tree: &EntityTree,

@@ -30,6 +30,7 @@ pub struct GpuBindGroup {
 impl std::ops::Deref for GpuBindGroup {
     type Target = wgpu::BindGroup;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.resource.inner
     }

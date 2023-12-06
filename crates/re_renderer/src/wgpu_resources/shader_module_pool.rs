@@ -59,7 +59,7 @@ impl ShaderModuleDesc {
     fn create_shader_module<Fs: FileSystem>(
         &self,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
         shader_text_workaround_replacements: &[(String, String)],
     ) -> wgpu::ShaderModule {
         let mut source_interpolated = resolver
@@ -114,9 +114,9 @@ pub struct GpuShaderModulePool {
 
 impl GpuShaderModulePool {
     pub fn get_or_create<Fs: FileSystem>(
-        &mut self,
+        &self,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
         desc: &ShaderModuleDesc,
     ) -> GpuShaderModuleHandle {
         self.pool.get_or_create(desc, |desc| {
@@ -127,7 +127,7 @@ impl GpuShaderModulePool {
     pub fn begin_frame<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
         frame_index: u64,
         updated_paths: &HashSet<PathBuf>,
     ) {

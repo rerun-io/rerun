@@ -304,21 +304,25 @@ impl TimeSeriesScalar {
         }
     }
 
+    #[inline]
     pub fn with_radius(mut self, radius: impl Into<crate::components::Radius>) -> Self {
         self.radius = Some(radius.into());
         self
     }
 
+    #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self
     }
 
+    #[inline]
     pub fn with_label(mut self, label: impl Into<crate::components::Text>) -> Self {
         self.label = Some(label.into());
         self
     }
 
+    #[inline]
     pub fn with_scattered(
         mut self,
         scattered: impl Into<crate::components::ScalarScattering>,

@@ -78,7 +78,7 @@ fn all_components() {
                 insert_table_with_retries(&mut store2, &table);
             }
 
-            let mut store = store2;
+            let store = store2;
             let timeline = Timeline::new("frame_nr", TimeType::Sequence);
 
             let components = store.all_components(&timeline, ent_path);
@@ -142,7 +142,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        sanity_unwrap(&mut store);
+        sanity_unwrap(&store);
     }
 
     // Tiny buckets, demonstrating the harder-to-reason-about cases.
@@ -202,7 +202,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        sanity_unwrap(&mut store);
+        sanity_unwrap(&store);
     }
 
     // Tiny buckets and tricky splits, demonstrating a case that is not only extremely hard to
@@ -272,7 +272,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        sanity_unwrap(&mut store);
+        sanity_unwrap(&store);
     }
 }
 
@@ -348,11 +348,11 @@ fn latest_at_impl(store: &mut DataStore) {
     for table in store.to_data_tables(None) {
         insert_table(&mut store2, &table);
     }
-    let mut store = store2;
+    let store = store2;
 
-    sanity_unwrap(&mut store);
+    sanity_unwrap(&store);
 
-    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
         let components_all = &[Color::name(), Position2D::name()];
 
@@ -497,7 +497,7 @@ fn range_impl(store: &mut DataStore) {
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
             }
-            let mut store = store2;
+            let store = store2;
 
             let mut expected_timeless = Vec::<DataFrame>::new();
             let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
@@ -1017,7 +1017,7 @@ fn protected_gc_impl(store: &mut DataStore) {
         time_budget: std::time::Duration::MAX,
     });
 
-    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
         let components_all = &[Color::name(), Position2D::name()];
 
@@ -1115,7 +1115,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         time_budget: std::time::Duration::MAX,
     });
 
-    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
         let components_all = &[Color::name(), Position2D::name()];
 

@@ -24,7 +24,7 @@ impl framework::Example for Render2D {
         "2D Rendering"
     }
 
-    fn new(re_ctx: &mut re_renderer::RenderContext) -> Self {
+    fn new(re_ctx: &re_renderer::RenderContext) -> Self {
         let rerun_logo =
             image::load_from_memory(include_bytes!("../../re_ui/data/logo_dark_mode.png")).unwrap();
 
@@ -53,7 +53,7 @@ impl framework::Example for Render2D {
 
     fn draw(
         &mut self,
-        re_ctx: &mut re_renderer::RenderContext,
+        re_ctx: &re_renderer::RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
         pixels_from_point: f32,

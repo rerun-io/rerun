@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
@@ -20,7 +20,7 @@ pub struct RenderContext {
     pub queue: Arc<wgpu::Queue>,
 
     pub(crate) shared_renderer_data: SharedRendererData,
-    pub(crate) renderers: RwLock<Renderers>,
+    renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
@@ -60,9 +60,9 @@ impl Renderers {
     pub fn get_or_create<Fs: FileSystem, R: 'static + Renderer + Send + Sync>(
         &mut self,
         shared_data: &SharedRendererData,
-        resource_pools: &mut WgpuResourcePools,
+        resource_pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> &R {
         self.renderers.entry().or_insert_with(|| {
             re_tracing::profile_scope!("create_renderer", std::any::type_name::<R>());
@@ -170,23 +170,22 @@ impl RenderContext {
             global_bindings,
         };
 
-        let mut resolver = crate::new_recommended_file_resolver();
+        let resolver = crate::new_recommended_file_resolver();
         let mut renderers = RwLock::new(Renderers {
             renderers: TypeMap::new(),
         });
 
         let mesh_manager = RwLock::new(MeshManager::new(renderers.get_mut().get_or_create(
             &shared_renderer_data,
-            &mut gpu_resources,
+            &gpu_resources,
             &device,
-            &mut resolver,
+            &resolver,
         )));
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &gpu_resources.textures);
 
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
-            per_frame_data_helper: TypeMap::new(),
             pinned_render_pipelines: None,
             frame_index: 0,
         };
@@ -312,7 +311,6 @@ impl RenderContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
             pinned_render_pipelines: None,
-            per_frame_data_helper: TypeMap::new(),
         };
         let frame_index = self.active_frame.frame_index;
 
@@ -325,7 +323,7 @@ impl RenderContext {
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.
-        let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut self.resolver));
+        let modified_paths = FileServer::get_mut(|fs| fs.collect(&self.resolver));
         if !modified_paths.is_empty() {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
@@ -348,12 +346,7 @@ impl RenderContext {
 
             // Shader module maintenance must come before render pipelines because render pipeline
             // recompilation picks up all shaders that have been recompiled this frame.
-            shader_modules.begin_frame(
-                &self.device,
-                &mut self.resolver,
-                frame_index,
-                &modified_paths,
-            );
+            shader_modules.begin_frame(&self.device, &self.resolver, frame_index, &modified_paths);
             render_pipelines.begin_frame(
                 &self.device,
                 frame_index,
@@ -399,6 +392,35 @@ impl RenderContext {
                 .push(self.queue.submit([command_buffer]));
         }
     }
+
+    /// Gets a renderer with the specified type, initializing it if necessary.
+    pub fn renderer<R: 'static + Renderer + Send + Sync>(&self) -> MappedRwLockReadGuard<'_, R> {
+        // Most likely we already have the renderer. Take a read lock and return it.
+        if let Ok(renderer) =
+            parking_lot::RwLockReadGuard::try_map(self.renderers.read(), |r| r.get::<R>())
+        {
+            return renderer;
+        }
+
+        // If it wasn't there we have to add it.
+        // This path is rare since it happens only once per renderer type in the lifetime of the ctx.
+        // (we don't discard renderers ever)
+        self.renderers.write().get_or_create::<_, R>(
+            &self.shared_renderer_data,
+            &self.gpu_resources,
+            &self.device,
+            &self.resolver,
+        );
+
+        // Release write lock again and only take a read lock.
+        // safe to unwrap since we just created it and nobody removes elements from the renderer.
+        parking_lot::RwLockReadGuard::map(self.renderers.read(), |r| r.get::<R>().unwrap())
+    }
+
+    /// Read access to renderers.
+    pub(crate) fn read_lock_renderers(&self) -> RwLockReadGuard<'_, Renderers> {
+        self.renderers.read()
+    }
 }
 
 pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);
@@ -437,9 +459,6 @@ pub struct ActiveFrameContext {
     /// This should be used for any gpu copy operation outside of a renderer or view builder.
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
     pub before_view_builder_encoder: Mutex<FrameGlobalCommandEncoder>,
-
-    /// Utility type map that will be cleared every frame.
-    pub per_frame_data_helper: TypeMap,
 
     /// Render pipelines that were moved out of the resource pool.
     ///

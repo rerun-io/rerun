@@ -197,7 +197,7 @@ impl OutlineMaskProcessor {
     }
 
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         config: &OutlineConfig,
         view_name: &DebugLabel,
         resolution_in_pixel: [u32; 2],
@@ -265,7 +265,7 @@ impl OutlineMaskProcessor {
         // ------------- Render Pipelines -------------
 
         let screen_triangle_vertex_shader =
-            screen_triangle_vertex_shader(&mut ctx.gpu_resources, &ctx.device, &mut ctx.resolver);
+            screen_triangle_vertex_shader(&ctx.gpu_resources, &ctx.device, &ctx.resolver);
         let jumpflooding_init_shader_module = if mask_sample_count == 1 {
             include_shader_module!("../../shader/outlines/jumpflooding_init.wgsl")
         } else {
@@ -286,7 +286,7 @@ impl OutlineMaskProcessor {
             fragment_entrypoint: "main".into(),
             fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
                 &ctx.device,
-                &mut ctx.resolver,
+                &ctx.resolver,
                 &jumpflooding_init_shader_module,
             ),
             vertex_buffers: smallvec![],
@@ -315,7 +315,7 @@ impl OutlineMaskProcessor {
                 ),
                 fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
                     &ctx.device,
-                    &mut ctx.resolver,
+                    &ctx.resolver,
                     &include_shader_module!("../../shader/outlines/jumpflooding_step.wgsl"),
                 ),
                 ..jumpflooding_init_desc
@@ -371,7 +371,7 @@ impl OutlineMaskProcessor {
     }
 
     pub fn compute_outlines(
-        self,
+        &self,
         pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), PoolError> {
@@ -402,7 +402,7 @@ impl OutlineMaskProcessor {
 
         // Perform jump flooding.
         let render_pipeline_step = pipelines.get(self.render_pipeline_jumpflooding_step)?;
-        for (i, bind_group) in self.bind_group_jumpflooding_steps.into_iter().enumerate() {
+        for (i, bind_group) in self.bind_group_jumpflooding_steps.iter().enumerate() {
             let mut jumpflooding_step = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{} - jumpflooding_step {i}", self.label)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -417,7 +417,7 @@ impl OutlineMaskProcessor {
             });
 
             jumpflooding_step.set_pipeline(render_pipeline_step);
-            jumpflooding_step.set_bind_group(0, &bind_group, &[]);
+            jumpflooding_step.set_bind_group(0, bind_group, &[]);
             jumpflooding_step.draw(0..3, 0..1);
         }
 

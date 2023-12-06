@@ -520,7 +520,7 @@ fn gc_correct() {
         }
     }
 
-    sanity_unwrap(&mut store);
+    sanity_unwrap(&store);
     check_still_readable(&store);
 
     let stats = DataStoreStats::from_store(&store);
@@ -538,7 +538,7 @@ fn gc_correct() {
     );
     assert_eq!(stats.temporal.num_rows, stats_diff.temporal.num_rows);
 
-    sanity_unwrap(&mut store);
+    sanity_unwrap(&store);
     check_still_readable(&store);
     for event in store_events {
         assert!(store.get_msg_metadata(&event.row_id).is_none());
@@ -548,7 +548,7 @@ fn gc_correct() {
     assert!(store_events.is_empty());
     assert_eq!(DataStoreStats::default(), stats_diff);
 
-    sanity_unwrap(&mut store);
+    sanity_unwrap(&store);
     check_still_readable(&store);
 }
 

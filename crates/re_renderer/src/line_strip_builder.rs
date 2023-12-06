@@ -95,7 +95,7 @@ impl LineStripSeriesBuilder {
     /// Finalizes the builder and returns a line draw data with all the lines added so far.
     pub fn into_draw_data(
         self,
-        ctx: &mut crate::context::RenderContext,
+        ctx: &crate::context::RenderContext,
     ) -> Result<LineDrawData, LineDrawDataError> {
         LineDrawData::new(ctx, self)
     }
@@ -157,6 +157,7 @@ impl<'a> LineBatchBuilder<'a> {
     }
 
     /// Sets the picking object id for every element in the batch.
+    #[inline]
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
         self.batch_mut().picking_object_id = picking_object_id;
         self
@@ -496,6 +497,7 @@ impl<'a> LineStripBuilder<'a> {
         self
     }
 
+    #[inline]
     pub fn picking_instance_id(mut self, instance_id: PickingLayerInstanceId) -> Self {
         self.picking_instance_id = instance_id;
         self

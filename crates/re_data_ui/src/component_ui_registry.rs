@@ -53,7 +53,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 }
 
 fn fallback_component_ui(
-    _ctx: &mut ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     _query: &LatestAtQuery,

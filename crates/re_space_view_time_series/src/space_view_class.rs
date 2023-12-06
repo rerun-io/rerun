@@ -96,7 +96,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         _space_origin: &EntityPath,
@@ -155,7 +155,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         root_entity_properties: &EntityProperties,

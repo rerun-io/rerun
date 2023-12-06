@@ -23,7 +23,7 @@ pub trait ViewContextSystem {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
-    fn execute(&mut self, ctx: &mut ViewerContext<'_>, query: &ViewQuery<'_>);
+    fn execute(&mut self, ctx: &ViewerContext<'_>, query: &ViewQuery<'_>);
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;

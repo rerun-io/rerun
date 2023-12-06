@@ -397,19 +397,10 @@ impl DrawData for RectangleDrawData {
 }
 
 impl RectangleDrawData {
-    pub fn new(
-        ctx: &mut RenderContext,
-        rectangles: &[TexturedRect],
-    ) -> Result<Self, RectangleError> {
+    pub fn new(ctx: &RenderContext, rectangles: &[TexturedRect]) -> Result<Self, RectangleError> {
         re_tracing::profile_function!();
 
-        let mut renderers = ctx.renderers.write();
-        let rectangle_renderer = renderers.get_or_create::<_, RectangleRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
+        let rectangle_renderer = ctx.renderer::<RectangleRenderer>();
 
         if rectangles.is_empty() {
             return Ok(RectangleDrawData {
@@ -507,9 +498,9 @@ impl Renderer for RectangleRenderer {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         re_tracing::profile_function!();
 

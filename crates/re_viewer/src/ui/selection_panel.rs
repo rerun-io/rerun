@@ -35,7 +35,7 @@ pub(crate) struct SelectionPanel {
 impl SelectionPanel {
     pub fn show_panel(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
         expanded: bool,
@@ -97,7 +97,7 @@ impl SelectionPanel {
     #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         viewport: &mut Viewport<'_, '_>,
     ) {
@@ -194,7 +194,7 @@ fn space_view_button(
 /// This includes a title bar and contextual information about there this item is located.
 fn what_is_selected_ui(
     ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     viewport: &mut ViewportBlueprint<'_>,
     item: &Item,
 ) {
@@ -330,7 +330,7 @@ fn item_title_ui(
 /// Display a list of all the space views an entity appears in.
 fn list_existing_data_blueprints(
     ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     entity_path: &EntityPath,
     blueprint: &ViewportBlueprint<'_>,
 ) {
@@ -364,7 +364,7 @@ fn list_existing_data_blueprints(
 /// shown at the very top.
 fn space_view_top_level_properties(
     ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     viewport: &mut ViewportBlueprint<'_>,
     space_view_id: &SpaceViewId,
 ) {
@@ -406,7 +406,7 @@ fn space_view_top_level_properties(
 
 fn container_top_level_properties(
     ui: &mut egui::Ui,
-    _ctx: &mut ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     viewport: &mut ViewportBlueprint<'_>,
     tile_id: &egui_tiles::TileId,
 ) {
@@ -498,7 +498,7 @@ fn has_blueprint_section(item: &Item) -> bool {
 /// What is the blueprint stuff for this item?
 fn blueprint_ui(
     ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     viewport: &mut Viewport<'_, '_>,
     item: &Item,
 ) {
@@ -707,7 +707,7 @@ fn blueprint_ui(
 }
 
 fn entity_props_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_class: &SpaceViewClassIdentifier,
     entity_path: Option<&EntityPath>,
@@ -744,7 +744,7 @@ fn entity_props_ui(
 }
 
 fn colormap_props_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_props: &mut EntityProperties,
 ) {
@@ -804,7 +804,7 @@ fn pinhole_props_ui(
 }
 
 fn depth_props_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_path: &EntityPath,
     entity_props: &mut EntityProperties,

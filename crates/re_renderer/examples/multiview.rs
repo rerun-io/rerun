@@ -21,7 +21,7 @@ use winit::event::{ElementState, VirtualKeyCode};
 mod framework;
 
 fn build_mesh_instances(
-    re_ctx: &mut RenderContext,
+    re_ctx: &RenderContext,
     model_mesh_instances: &[MeshInstance],
     mesh_instance_positions_and_colors: &[(glam::Vec3, Color32)],
     seconds_since_startup: f32,
@@ -80,7 +80,7 @@ fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
     .collect()
 }
 
-fn build_lines(re_ctx: &mut RenderContext, seconds_since_startup: f32) -> LineDrawData {
+fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawData {
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
 
@@ -211,7 +211,7 @@ fn handle_incoming_screenshots(re_ctx: &RenderContext) {
 impl Multiview {
     fn draw_view<D: 'static + re_renderer::renderer::DrawData + Sync + Send + Clone>(
         &mut self,
-        re_ctx: &mut RenderContext,
+        re_ctx: &RenderContext,
         target_cfg: TargetConfiguration,
         skybox: GenericSkyboxDrawData,
         draw_data: D,
@@ -244,7 +244,7 @@ impl Example for Multiview {
         "Multiple Views"
     }
 
-    fn new(re_ctx: &mut RenderContext) -> Self {
+    fn new(re_ctx: &RenderContext) -> Self {
         re_log::info!("Switch between orthographic & perspective by pressing 'O'");
         re_log::info!("Stop camera movement by pressing 'Space'");
 
@@ -298,7 +298,7 @@ impl Example for Multiview {
 
     fn draw(
         &mut self,
-        re_ctx: &mut RenderContext,
+        re_ctx: &RenderContext,
         resolution: [u32; 2],
         time: &framework::Time,
         pixels_from_point: f32,

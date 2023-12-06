@@ -170,11 +170,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         });
     }
 
-    pub fn on_frame_start(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-    ) {
+    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
         re_tracing::profile_function!();
 
         for space_view in self.blueprint.space_views.values_mut() {
@@ -459,7 +455,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 }
 
 fn space_view_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_blueprint: &mut SpaceViewBlueprint,
     space_view_state: &mut dyn SpaceViewState,

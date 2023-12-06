@@ -45,7 +45,7 @@ pub struct ViewerContext<'a> {
     pub re_ui: &'a re_ui::ReUi,
 
     /// The global `re_renderer` context, holds on to all GPU resources.
-    pub render_ctx: &'a mut re_renderer::RenderContext,
+    pub render_ctx: &'a re_renderer::RenderContext,
 
     /// Interface for sending commands back to the app
     pub command_sender: &'a CommandSender,

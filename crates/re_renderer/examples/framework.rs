@@ -26,11 +26,11 @@ pub struct ViewDrawResult {
 pub trait Example {
     fn title() -> &'static str;
 
-    fn new(re_ctx: &mut RenderContext) -> Self;
+    fn new(re_ctx: &RenderContext) -> Self;
 
     fn draw(
         &mut self,
-        re_ctx: &mut RenderContext,
+        re_ctx: &RenderContext,
         resolution: [u32; 2],
         time: &Time,
         pixels_from_point: f32,
@@ -160,7 +160,7 @@ impl<E: Example + 'static> Application<E> {
         };
         surface.configure(&device, &surface_config);
 
-        let mut re_ctx = RenderContext::new(
+        let re_ctx = RenderContext::new(
             &adapter,
             device,
             queue,
@@ -170,7 +170,7 @@ impl<E: Example + 'static> Application<E> {
             },
         );
 
-        let example = E::new(&mut re_ctx);
+        let example = E::new(&re_ctx);
 
         Ok(Self {
             event_loop,
@@ -263,7 +263,7 @@ impl<E: Example + 'static> Application<E> {
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
                     let draw_results = self.example.draw(
-                        &mut self.re_ctx,
+                        &self.re_ctx,
                         [self.surface_config.width, self.surface_config.height],
                         &self.time,
                         self.window.scale_factor() as f32,

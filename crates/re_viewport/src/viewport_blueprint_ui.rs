@@ -18,7 +18,7 @@ use crate::{
 
 impl ViewportBlueprint<'_> {
     /// Show the blueprint panel tree view.
-    pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn tree_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         re_tracing::profile_function!();
 
         egui::ScrollArea::both()
@@ -61,12 +61,7 @@ impl ViewportBlueprint<'_> {
         2 <= num_children && num_children <= 3
     }
 
-    fn tile_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
-    ) {
+    fn tile_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) {
         // Temporarily remove the tile so we don't get borrow-checker fights:
         let Some(mut tile) = self.tree.tiles.remove(tile_id) else {
             return;
@@ -87,7 +82,7 @@ impl ViewportBlueprint<'_> {
 
     fn container_tree_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         container: &egui_tiles::Container,
@@ -147,7 +142,7 @@ impl ViewportBlueprint<'_> {
 
     fn space_view_entry_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         space_view_id: &SpaceViewId,
@@ -231,7 +226,7 @@ impl ViewportBlueprint<'_> {
     }
 
     fn space_view_blueprint_ui(
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         query_result: &DataQueryResult,
         result_handle: DataResultHandle,

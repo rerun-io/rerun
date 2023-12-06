@@ -324,6 +324,7 @@ impl LineStrips2D {
         }
     }
 
+    #[inline]
     pub fn with_radii(
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
@@ -332,6 +333,7 @@ impl LineStrips2D {
         self
     }
 
+    #[inline]
     pub fn with_colors(
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
@@ -340,6 +342,7 @@ impl LineStrips2D {
         self
     }
 
+    #[inline]
     pub fn with_labels(
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
@@ -348,11 +351,13 @@ impl LineStrips2D {
         self
     }
 
+    #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self
     }
 
+    #[inline]
     pub fn with_class_ids(
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
@@ -361,6 +366,7 @@ impl LineStrips2D {
         self
     }
 
+    #[inline]
     pub fn with_instance_keys(
         mut self,
         instance_keys: impl IntoIterator<Item = impl Into<crate::components::InstanceKey>>,

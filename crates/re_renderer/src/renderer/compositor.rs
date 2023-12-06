@@ -49,18 +49,12 @@ impl DrawData for CompositorDrawData {
 
 impl CompositorDrawData {
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         color_texture: &GpuTexture,
         outline_final_voronoi: Option<&GpuTexture>,
         outline_config: &Option<OutlineConfig>,
     ) -> Self {
-        let mut renderers = ctx.renderers.write();
-        let compositor = renderers.get_or_create::<_, Compositor>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
+        let compositor = ctx.renderer::<Compositor>();
 
         let outline_config = outline_config.clone().unwrap_or(OutlineConfig {
             outline_radius_pixel: 0.0,
@@ -107,9 +101,9 @@ impl Renderer for Compositor {
 
     fn create_renderer<Fs: FileSystem>(
         shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
+        pools: &WgpuResourcePools,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
     ) -> Self {
         let bind_group_layout = pools.bind_group_layouts.get_or_create(
             device,

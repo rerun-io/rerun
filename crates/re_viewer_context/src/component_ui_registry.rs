@@ -34,7 +34,7 @@ pub enum UiVerbosity {
 
 type ComponentUiCallback = Box<
     dyn Fn(
-        &mut ViewerContext<'_>,
+        &ViewerContext<'_>,
         &mut egui::Ui,
         UiVerbosity,
         &LatestAtQuery,
@@ -70,7 +70,7 @@ impl ComponentUiRegistry {
     #[allow(clippy::too_many_arguments)]
     pub fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &LatestAtQuery,

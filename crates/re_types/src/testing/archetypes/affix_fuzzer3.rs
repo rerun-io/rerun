@@ -522,6 +522,7 @@ impl AffixFuzzer3 {
         }
     }
 
+    #[inline]
     pub fn with_fuzz2001(
         mut self,
         fuzz2001: impl Into<crate::testing::components::AffixFuzzer1>,
@@ -530,6 +531,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2002(
         mut self,
         fuzz2002: impl Into<crate::testing::components::AffixFuzzer2>,
@@ -538,6 +540,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2003(
         mut self,
         fuzz2003: impl Into<crate::testing::components::AffixFuzzer3>,
@@ -546,6 +549,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2004(
         mut self,
         fuzz2004: impl Into<crate::testing::components::AffixFuzzer4>,
@@ -554,6 +558,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2005(
         mut self,
         fuzz2005: impl Into<crate::testing::components::AffixFuzzer5>,
@@ -562,6 +567,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2006(
         mut self,
         fuzz2006: impl Into<crate::testing::components::AffixFuzzer6>,
@@ -570,6 +576,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2007(
         mut self,
         fuzz2007: impl Into<crate::testing::components::AffixFuzzer7>,
@@ -578,6 +585,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2008(
         mut self,
         fuzz2008: impl Into<crate::testing::components::AffixFuzzer8>,
@@ -586,6 +594,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2009(
         mut self,
         fuzz2009: impl Into<crate::testing::components::AffixFuzzer9>,
@@ -594,6 +603,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2010(
         mut self,
         fuzz2010: impl Into<crate::testing::components::AffixFuzzer10>,
@@ -602,6 +612,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2011(
         mut self,
         fuzz2011: impl Into<crate::testing::components::AffixFuzzer11>,
@@ -610,6 +621,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2012(
         mut self,
         fuzz2012: impl Into<crate::testing::components::AffixFuzzer12>,
@@ -618,6 +630,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2013(
         mut self,
         fuzz2013: impl Into<crate::testing::components::AffixFuzzer13>,
@@ -626,6 +639,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2014(
         mut self,
         fuzz2014: impl Into<crate::testing::components::AffixFuzzer14>,
@@ -634,6 +648,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2015(
         mut self,
         fuzz2015: impl Into<crate::testing::components::AffixFuzzer15>,
@@ -642,6 +657,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2016(
         mut self,
         fuzz2016: impl Into<crate::testing::components::AffixFuzzer16>,
@@ -650,6 +666,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2017(
         mut self,
         fuzz2017: impl Into<crate::testing::components::AffixFuzzer17>,
@@ -658,6 +675,7 @@ impl AffixFuzzer3 {
         self
     }
 
+    #[inline]
     pub fn with_fuzz2018(
         mut self,
         fuzz2018: impl Into<crate::testing::components::AffixFuzzer18>,
