@@ -69,7 +69,7 @@ fn loading_receivers_ui(
             | SmartChannelSource::Sdk
             | SmartChannelSource::WsClient { .. }
             | SmartChannelSource::TcpServer { .. } => {
-                // TODO(#3046): show these in status bar
+                // These show up in the top panel - see `top_panel.rs`.
                 continue;
             }
         };

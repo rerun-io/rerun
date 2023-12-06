@@ -1,6 +1,8 @@
 use egui::NumExt as _;
+use itertools::Itertools;
 use re_format::format_number;
 use re_renderer::WgpuResourcePoolStatistics;
+use re_smart_channel::{ReceiveSet, SmartChannelSource};
 use re_ui::UICommand;
 use re_viewer_context::StoreContext;
 
@@ -79,6 +81,8 @@ fn top_bar_ui(
 
         panel_buttons_r2l(app, app_blueprint, ui);
 
+        connection_status_ui(ui, app.msg_receive_set());
+
         if cfg!(debug_assertions) {
             ui.vertical_centered(|ui| {
                 ui.style_mut().wrap = Some(false);
@@ -87,6 +91,89 @@ fn top_bar_ui(
             });
         }
     });
+}
+
+fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>) {
+    let sources = rx
+        .sources()
+        .into_iter()
+        .filter(|source| {
+            match source.as_ref() {
+                SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => {
+                    false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
+                }
+
+                re_smart_channel::SmartChannelSource::RrdWebEventListener
+                | re_smart_channel::SmartChannelSource::Sdk
+                | re_smart_channel::SmartChannelSource::WsClient { .. }
+                | re_smart_channel::SmartChannelSource::TcpServer { .. } => true,
+            }
+        })
+        .collect_vec();
+
+    match sources.len() {
+        0 => return,
+        1 => {
+            source_label(ui, sources[0].as_ref());
+        }
+        n => {
+            // In practice we never get here
+            ui.label(format!("{n} sources connected"))
+                .on_hover_ui(|ui| {
+                    ui.vertical(|ui| {
+                        for source in &sources {
+                            source_label(ui, source.as_ref());
+                        }
+                    });
+                });
+        }
+    }
+
+    fn source_label(ui: &mut egui::Ui, source: &SmartChannelSource) -> egui::Response {
+        let response = ui.label(status_string(source));
+
+        let tooltip = match source {
+            SmartChannelSource::File(_)
+            | SmartChannelSource::RrdHttpStream { .. }
+            | SmartChannelSource::RrdWebEventListener
+            | SmartChannelSource::Sdk
+            | SmartChannelSource::WsClient { .. } => None,
+
+            SmartChannelSource::TcpServer { .. } => {
+                Some("Waiting for an SDK to connect".to_owned())
+            }
+        };
+
+        if let Some(tooltip) = tooltip {
+            response.on_hover_text(tooltip)
+        } else {
+            response
+        }
+    }
+
+    fn status_string(source: &SmartChannelSource) -> String {
+        match source {
+            re_smart_channel::SmartChannelSource::File(path) => {
+                format!("Loading {}…", path.display())
+            }
+            re_smart_channel::SmartChannelSource::RrdHttpStream { url } => {
+                format!("Loading {url}…")
+            }
+            re_smart_channel::SmartChannelSource::RrdWebEventListener => {
+                "Waiting for logging data…".to_owned()
+            }
+            re_smart_channel::SmartChannelSource::Sdk => {
+                "Waiting for logging data from SDK".to_owned()
+            }
+            re_smart_channel::SmartChannelSource::WsClient { ws_server_url } => {
+                // TODO(emilk): it would be even better to know whether or not we are connected, or are attempting to connect
+                format!("Waiting for data from {ws_server_url}")
+            }
+            re_smart_channel::SmartChannelSource::TcpServer { port } => {
+                format!("Listening on TCP port {port}")
+            }
+        }
+    }
 }
 
 /// Lay out the panel button right-to-left
