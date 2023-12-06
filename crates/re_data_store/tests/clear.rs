@@ -447,7 +447,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
     // Insert a component, then clear it, then GC.
     {
         // EntityTree is Empty when we start
-        assert_eq!(db.entity_db().tree.num_children_and_fields(), 0);
+        assert_eq!(db.tree().num_children_and_fields(), 0);
 
         let point = MyPoint::new(1.0, 2.0);
 
@@ -484,7 +484,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
         assert_eq!(stats.timeless.num_rows, 0);
 
         // EntityTree should be empty again when we end since everything was GC'd
-        assert_eq!(db.entity_db().tree.num_children_and_fields(), 0);
+        assert_eq!(db.tree().num_children_and_fields(), 0);
     }
 
     Ok(())

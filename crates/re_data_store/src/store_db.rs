@@ -324,6 +324,11 @@ impl StoreDb {
         &self.entity_db
     }
 
+    #[inline]
+    pub fn tree(&self) -> &crate::EntityTree {
+        &self.entity_db.tree
+    }
+
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
         self.set_store_info.as_ref()
     }
@@ -358,7 +363,7 @@ impl StoreDb {
     }
 
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
-        self.entity_db().tree.recursive_time_histogram.get(timeline)
+        self.tree().recursive_time_histogram.get(timeline)
     }
 
     pub fn num_timeless_messages(&self) -> u64 {
