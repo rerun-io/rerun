@@ -118,7 +118,7 @@ pub struct ViewQuery<'s> {
     /// All queried [`DataResult`]s.
     ///
     /// Contains also invisible objects, use `iter_entities` to iterate over visible ones.
-    pub per_system_data_results: &'s PerSystemDataResults<'s>,
+    pub per_system_data_results: PerSystemDataResults<'s>,
 
     /// The timeline we're on.
     pub timeline: Timeline,
