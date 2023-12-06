@@ -10,7 +10,7 @@ use crate::{
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
     wgpu_resources::{GpuRenderPipelinePoolMoveAccessor, WgpuResourcePools},
-    FileResolver, FileServer, FileSystem, RecommendedFileResolver,
+    FileServer, RecommendedFileResolver,
 };
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
@@ -19,7 +19,12 @@ pub struct RenderContext {
     pub device: Arc<wgpu::Device>,
     pub queue: Arc<wgpu::Queue>,
 
-    pub(crate) shared_renderer_data: SharedRendererData,
+    pub(crate) config: RenderContextConfig,
+
+    /// Global bindings, always bound to 0 bind group slot zero.
+    /// [`Renderer`] are not allowed to use bind group 0 themselves!
+    pub(crate) global_bindings: GlobalBindings,
+
     renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
@@ -41,15 +46,6 @@ pub struct RenderContext {
     pub gpu_resources: WgpuResourcePools, // Last due to drop order.
 }
 
-/// Immutable data that is shared between all [`Renderer`]
-pub struct SharedRendererData {
-    pub(crate) config: RenderContextConfig,
-
-    /// Global bindings, always bound to 0 bind group slot zero.
-    /// [`Renderer`] are not allowed to use bind group 0 themselves!
-    pub(crate) global_bindings: GlobalBindings,
-}
-
 /// Struct owning *all* [`Renderer`].
 /// [`Renderer`] are created lazily and stay around indefinitely.
 pub(crate) struct Renderers {
@@ -57,16 +53,13 @@ pub(crate) struct Renderers {
 }
 
 impl Renderers {
-    pub fn get_or_create<Fs: FileSystem, R: 'static + Renderer + Send + Sync>(
+    pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
         &mut self,
-        shared_data: &SharedRendererData,
-        resource_pools: &WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &FileResolver<Fs>,
+        ctx: &RenderContext,
     ) -> &R {
         self.renderers.entry().or_insert_with(|| {
             re_tracing::profile_scope!("create_renderer", std::any::type_name::<R>());
-            R::create_renderer(shared_data, resource_pools, device, resolver)
+            R::create_renderer(ctx)
         })
     }
 
@@ -165,22 +158,8 @@ impl RenderContext {
             err_tracker
         };
 
-        let shared_renderer_data = SharedRendererData {
-            config,
-            global_bindings,
-        };
-
         let resolver = crate::new_recommended_file_resolver();
-        let mut renderers = RwLock::new(Renderers {
-            renderers: TypeMap::new(),
-        });
-
-        let mesh_manager = RwLock::new(MeshManager::new(renderers.get_mut().get_or_create(
-            &shared_renderer_data,
-            &gpu_resources,
-            &device,
-            &resolver,
-        )));
+        let mesh_manager = RwLock::new(MeshManager::new());
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &gpu_resources.textures);
 
@@ -209,9 +188,12 @@ impl RenderContext {
             device,
             queue,
 
-            shared_renderer_data,
+            config,
+            global_bindings,
 
-            renderers,
+            renderers: RwLock::new(Renderers {
+                renderers: TypeMap::new(),
+            }),
 
             gpu_resources,
 
@@ -250,9 +232,7 @@ impl RenderContext {
         //          knowing that we're not _actually_ blocking.
         //
         //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
-        if cfg!(target_arch = "wasm32")
-            && self.shared_renderer_data.config.device_caps.tier == DeviceTier::Gles
-        {
+        if cfg!(target_arch = "wasm32") && self.config.device_caps.tier == DeviceTier::Gles {
             self.device.poll(wgpu::Maintain::Wait);
             return;
         }
@@ -405,12 +385,7 @@ impl RenderContext {
         // If it wasn't there we have to add it.
         // This path is rare since it happens only once per renderer type in the lifetime of the ctx.
         // (we don't discard renderers ever)
-        self.renderers.write().get_or_create::<_, R>(
-            &self.shared_renderer_data,
-            &self.gpu_resources,
-            &self.device,
-            &self.resolver,
-        );
+        self.renderers.write().get_or_create::<R>(self);
 
         // Release write lock again and only take a read lock.
         // safe to unwrap since we just created it and nobody removes elements from the renderer.

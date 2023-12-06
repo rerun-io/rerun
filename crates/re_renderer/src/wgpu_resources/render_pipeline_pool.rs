@@ -1,6 +1,6 @@
 use smallvec::SmallVec;
 
-use crate::debug_label::DebugLabel;
+use crate::{debug_label::DebugLabel, RenderContext};
 
 use super::{
     pipeline_layout_pool::{GpuPipelineLayoutHandle, GpuPipelineLayoutPool},
@@ -181,17 +181,19 @@ pub struct GpuRenderPipelinePool {
 impl GpuRenderPipelinePool {
     pub fn get_or_create(
         &self,
-        device: &wgpu::Device,
+        ctx: &RenderContext,
         desc: &RenderPipelineDesc,
-        pipeline_layout_pool: &GpuPipelineLayoutPool,
-        shader_module_pool: &GpuShaderModulePool,
     ) -> GpuRenderPipelineHandle {
         self.pool.get_or_create(desc, |desc| {
             sanity_check_vertex_buffers(&desc.vertex_buffers);
 
             // TODO(cmc): certainly not unwrapping here
-            desc.create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
-                .unwrap()
+            desc.create_render_pipeline(
+                &ctx.device,
+                &ctx.gpu_resources.pipeline_layouts,
+                &ctx.gpu_resources.shader_modules,
+            )
+            .unwrap()
         })
     }
 

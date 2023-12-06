@@ -1,18 +1,17 @@
 use smallvec::smallvec;
 
 use crate::{
-    context::SharedRendererData,
     draw_phases::DrawPhase,
     include_shader_module,
     renderer::screen_triangle_vertex_shader,
     view_builder::ViewBuilder,
     wgpu_resources::{
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
-        RenderPipelineDesc, WgpuResourcePools,
+        RenderPipelineDesc,
     },
 };
 
-use super::{DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{DrawData, DrawError, RenderContext, Renderer};
 
 /// Renders a generated skybox from a color gradient
 ///
@@ -39,34 +38,27 @@ impl GenericSkyboxDrawData {
 impl Renderer for GenericSkybox {
     type RendererDrawData = GenericSkyboxDrawData;
 
-    fn create_renderer<Fs: FileSystem>(
-        shared_data: &SharedRendererData,
-        pools: &WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &FileResolver<Fs>,
-    ) -> Self {
+    fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 
-        let vertex_handle = screen_triangle_vertex_shader(pools, device, resolver);
-        let render_pipeline = pools.render_pipelines.get_or_create(
-            device,
+        let vertex_handle = screen_triangle_vertex_shader(ctx);
+        let render_pipeline = ctx.gpu_resources.render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "GenericSkybox::render_pipeline".into(),
-                pipeline_layout: pools.pipeline_layouts.get_or_create(
-                    device,
+                pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
+                    ctx,
                     &PipelineLayoutDesc {
                         label: "GenericSkybox::render_pipeline".into(),
-                        entries: vec![shared_data.global_bindings.layout],
+                        entries: vec![ctx.global_bindings.layout],
                     },
-                    &pools.bind_group_layouts,
                 ),
 
                 vertex_entrypoint: "main".into(),
                 vertex_handle,
                 fragment_entrypoint: "main".into(),
-                fragment_handle: pools.shader_modules.get_or_create(
-                    device,
-                    resolver,
+                fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
+                    ctx,
                     &include_shader_module!("../../shader/generic_skybox.wgsl"),
                 ),
                 vertex_buffers: smallvec![],
@@ -83,8 +75,6 @@ impl Renderer for GenericSkybox {
                 }),
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
         GenericSkybox { render_pipeline }
     }
