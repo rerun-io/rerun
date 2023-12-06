@@ -79,7 +79,7 @@ fn top_bar_ui(
 
         panel_buttons_r2l(app, app_blueprint, ui);
 
-        if cfg!(debug_assertions) && app.app_options().show_metrics {
+        if cfg!(debug_assertions) {
             ui.vertical_centered(|ui| {
                 ui.style_mut().wrap = Some(false);
                 ui.add_space(6.0); // TODO(emilk): in egui, add a proper way of centering a single widget in a UI.
