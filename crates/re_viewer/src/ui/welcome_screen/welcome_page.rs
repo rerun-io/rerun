@@ -348,7 +348,7 @@ fn open_markdown_recording(
         .with_media_type(re_types::components::MediaType::markdown());
 
     let row = DataRow::from_archetype(
-        RowId::random(),
+        RowId::new(),
         TimePoint::timeless(),
         EntityPath::from(entity_path),
         &text_doc,

@@ -212,7 +212,7 @@ mod tests {
         let timeline_yet_another = Timeline::new_sequence("yet_another");
 
         let row = DataRow::from_component_batches(
-            RowId::random(),
+            RowId::new(),
             TimePoint::from_iter([
                 (timeline_frame, 42.into()),      //
                 (timeline_other, 666.into()),     //
@@ -231,7 +231,7 @@ mod tests {
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
             DataRow::from_component_batches(
-                RowId::random(),
+                RowId::new(),
                 TimePoint::from_iter([
                     (timeline_frame, 42.into()),      //
                     (timeline_yet_another, 1.into()), //
@@ -247,7 +247,7 @@ mod tests {
             let num_instances = 6;
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
             DataRow::from_component_batches(
-                RowId::random(),
+                RowId::new(),
                 TimePoint::timeless(),
                 "entity_b".into(),
                 [

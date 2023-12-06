@@ -588,7 +588,7 @@ impl RecordingStreamInner {
             );
             sink.send(
                 re_log_types::SetStoreInfo {
-                    row_id: re_log_types::RowId::random(),
+                    row_id: re_log_types::RowId::new(),
                     info: info.clone(),
                 }
                 .into(),
@@ -854,7 +854,7 @@ impl RecordingStream {
             None
         } else {
             Some(DataRow::from_cells(
-                RowId::random(),
+                RowId::new(),
                 timepoint.clone(),
                 ent_path.clone(),
                 num_instances as _,
@@ -868,7 +868,7 @@ impl RecordingStream {
         } else {
             splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
             Some(DataRow::from_cells(
-                RowId::random(),
+                RowId::new(),
                 timepoint,
                 ent_path,
                 1,
@@ -926,7 +926,7 @@ fn forwarding_thread(
                     );
                     new_sink.send(
                         re_log_types::SetStoreInfo {
-                            row_id: re_log_types::RowId::random(),
+                            row_id: re_log_types::RowId::new(),
                             info: info.clone(),
                         }
                         .into(),

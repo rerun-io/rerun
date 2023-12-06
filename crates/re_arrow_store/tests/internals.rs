@@ -53,7 +53,7 @@ fn pathological_bucket_topology() {
         let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
         for _ in 0..num {
             let row = DataRow::from_cells1_sized(
-                RowId::random(),
+                RowId::new(),
                 ent_path.clone(),
                 timepoint.clone(),
                 num_instances,
@@ -63,7 +63,7 @@ fn pathological_bucket_topology() {
             store_forward.insert_row(&row).unwrap();
 
             let row = DataRow::from_cells1_sized(
-                RowId::random(),
+                RowId::new(),
                 ent_path.clone(),
                 timepoint.clone(),
                 num_instances,
@@ -86,7 +86,7 @@ fn pathological_bucket_topology() {
             .map(|frame_nr| {
                 let timepoint = TimePoint::from([build_frame_nr(frame_nr.into())]);
                 DataRow::from_cells1_sized(
-                    RowId::random(),
+                    RowId::new(),
                     ent_path.clone(),
                     timepoint,
                     num_instances,

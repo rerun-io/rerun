@@ -66,7 +66,7 @@ pub fn build_data_row_from_components(
 
     let num_instances = cells.first().map_or(0, |cell| cell.num_instances());
     let row = DataRow::from_cells(
-        RowId::random(),
+        RowId::new(),
         time_point.clone(),
         entity_path.clone(),
         num_instances,

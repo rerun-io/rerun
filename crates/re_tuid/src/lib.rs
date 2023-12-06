@@ -47,8 +47,10 @@ impl Tuid {
         inc: u64::MAX,
     };
 
+    /// Create a new unique [`Tuid`] based on the current time.
+    #[allow(clippy::new_without_default)]
     #[inline]
-    pub fn random() -> Self {
+    pub fn new() -> Self {
         use std::cell::RefCell;
 
         thread_local! {
@@ -89,7 +91,7 @@ impl Tuid {
     /// Wraps the monotonically increasing back to zero on overflow.
     ///
     /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`Tuid::random`] when unsure.
+    /// Prefer [`Tuid::new`] when unsure.
     #[inline]
     pub fn next(&self) -> Self {
         let Self { time_ns, inc } = *self;
@@ -106,7 +108,7 @@ impl Tuid {
     /// Wraps the monotonically increasing back to zero on overflow.
     ///
     /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`Tuid::random`] when unsure.
+    /// Prefer [`Tuid::new`] when unsure.
     #[inline]
     pub fn increment(&self, n: u64) -> Self {
         let Self { time_ns, inc } = *self;
@@ -181,7 +183,7 @@ fn test_tuid() {
     }
 
     let num = 100_000;
-    let ids: Vec<Tuid> = (0..num).map(|_| Tuid::random()).collect();
+    let ids: Vec<Tuid> = (0..num).map(|_| Tuid::new()).collect();
     assert!(is_sorted(&ids));
     assert_eq!(ids.iter().cloned().collect::<HashSet::<Tuid>>().len(), num);
     assert_eq!(ids.iter().cloned().collect::<BTreeSet::<Tuid>>().len(), num);

@@ -55,7 +55,7 @@ fn load_and_send(
 
     // First, set a store info since this is the first thing the application expects.
     tx.send(LogMsg::SetStoreInfo(SetStoreInfo {
-        row_id: re_log_types::RowId::random(),
+        row_id: re_log_types::RowId::new(),
         info: re_log_types::StoreInfo {
             application_id: re_log_types::ApplicationId(file_contents.name.clone()),
             store_id: store_id.clone(),
@@ -89,15 +89,14 @@ fn log_msg_from_file_contents(
     let timepoint = re_log_types::TimePoint::default();
 
     let data_row = re_log_types::DataRow::from_cells(
-        re_log_types::RowId::random(),
+        re_log_types::RowId::new(),
         timepoint,
         entity_path,
         num_instances,
         cells,
     )?;
 
-    let data_table =
-        re_log_types::DataTable::from_rows(re_log_types::TableId::random(), [data_row]);
+    let data_table = re_log_types::DataTable::from_rows(re_log_types::TableId::new(), [data_row]);
     let arrow_msg = data_table.to_arrow_msg()?;
     Ok(LogMsg::ArrowMsg(store_id, arrow_msg))
 }

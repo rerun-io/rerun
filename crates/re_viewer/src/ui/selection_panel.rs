@@ -549,7 +549,7 @@ fn blueprint_ui(
                         };
 
                         let row = DataRow::from_cells1_sized(
-                            RowId::random(),
+                            RowId::new(),
                             query.id.as_entity_path(),
                             timepoint,
                             1,
