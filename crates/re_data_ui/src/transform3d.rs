@@ -16,11 +16,11 @@ impl DataUi for re_types::components::Transform3D {
             UiVerbosity::Small => {
                 // TODO(andreas): Preview some information instead of just a label with hover ui.
                 ui.label("3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::All, query);
+                    self.data_ui(ctx, ui, UiVerbosity::LimitHeight, query);
                 });
             }
 
-            UiVerbosity::All | UiVerbosity::Reduced => {
+            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
                 let from_parent = match &self.0 {
                     Transform3D::TranslationRotationScale(t) => t.from_parent,
                     Transform3D::TranslationAndMat3x3(t) => t.from_parent,
@@ -68,11 +68,11 @@ impl DataUi for Transform3D {
         match verbosity {
             UiVerbosity::Small => {
                 ui.label("3D transform").on_hover_ui(|ui| {
-                    self.data_ui(ctx, ui, UiVerbosity::All, query);
+                    self.data_ui(ctx, ui, UiVerbosity::LimitHeight, query);
                 });
             }
 
-            UiVerbosity::All | UiVerbosity::Reduced => match self {
+            UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => match self {
                 Transform3D::TranslationAndMat3x3(translation_matrix) => {
                     translation_matrix.data_ui(ctx, ui, verbosity, query);
                 }

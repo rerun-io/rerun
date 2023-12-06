@@ -170,7 +170,7 @@ fn tensor_ui(
             });
         }
 
-        UiVerbosity::All | UiVerbosity::Reduced => {
+        UiVerbosity::Full | UiVerbosity::LimitHeight | UiVerbosity::Reduced => {
             ui.vertical(|ui| {
                 ui.set_min_width(100.0);
                 tensor_summary_ui(
