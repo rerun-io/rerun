@@ -16,43 +16,6 @@ use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
-/// Stored entities with easy indexing of the paths.
-///
-/// NOTE: don't go mutating the contents of this. Use the public functions instead.
-struct EntityDb {
-    /// In many places we just store the hashes, so we need a way to translate back.
-    pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
-
-    /// The global-scope time tracker.
-    ///
-    /// For each timeline, keeps track of what times exist, recursively across all
-    /// entities/components.
-    ///
-    /// Used for time control.
-    pub times_per_timeline: TimesPerTimeline,
-
-    /// A tree-view (split on path components) of the entities.
-    pub tree: crate::EntityTree,
-
-    /// Stores all components for all entities for all timelines.
-    pub data_store: DataStore,
-}
-
-impl EntityDb {
-    fn new(store_id: StoreId) -> Self {
-        Self {
-            entity_path_from_hash: Default::default(),
-            times_per_timeline: Default::default(),
-            tree: crate::EntityTree::root(),
-            data_store: re_arrow_store::DataStore::new(
-                store_id,
-                InstanceKey::name(),
-                DataStoreConfig::default(),
-            ),
-        }
-    }
-}
-
 /// See [`insert_row_with_retries`].
 const MAX_INSERT_ROW_ATTEMPTS: usize = 1_000;
 
@@ -103,35 +66,27 @@ impl StoreDb {
     /// A sorted list of all the entity paths in this database.
     pub fn entity_paths(&self) -> Vec<&EntityPath> {
         use itertools::Itertools as _;
-        self.entity_db
-            .entity_path_from_hash
-            .values()
-            .sorted()
-            .collect()
+        self.entity_path_from_hash.values().sorted().collect()
     }
 
     #[inline]
     pub fn entity_path_from_hash(&self, entity_path_hash: &EntityPathHash) -> Option<&EntityPath> {
-        self.entity_db.entity_path_from_hash.get(entity_path_hash)
+        self.entity_path_from_hash.get(entity_path_hash)
     }
 
     /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
     pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
-        self.entity_db.tree.subtree(entity_path).is_some()
+        self.tree.subtree(entity_path).is_some()
     }
 
     /// If you log `world/points`, then that is a logged entity, but `world` is not,
     /// unless you log something to `world` too.
     #[inline]
     pub fn is_logged_entity(&self, entity_path: &EntityPath) -> bool {
-        self.entity_db
-            .entity_path_from_hash
-            .contains_key(&entity_path.hash())
+        self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
-}
 
-impl EntityDb {
     fn register_entity_path(&mut self, entity_path: &EntityPath) {
         self.entity_path_from_hash
             .entry(entity_path.hash())
@@ -141,7 +96,7 @@ impl EntityDb {
     /// Inserts a [`DataRow`] into the database.
     ///
     /// Updates the [`crate::EntityTree`] and applies [`ClearCascade`]s as needed.
-    fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
+    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
         re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
 
         self.register_entity_path(&row.entity_path);
@@ -259,6 +214,10 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         let Self {
+            store_id: _,
+            data_source: _,
+            set_store_info: _,
+            last_modified_at: _,
             entity_path_from_hash: _,
             times_per_timeline,
             tree,
@@ -288,11 +247,25 @@ pub struct StoreDb {
     /// Comes in a special message, [`LogMsg::SetStoreInfo`].
     set_store_info: Option<SetStoreInfo>,
 
-    /// Where we store the entities.
-    entity_db: EntityDb,
-
     /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
     last_modified_at: web_time::Instant,
+
+    /// In many places we just store the hashes, so we need a way to translate back.
+    entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
+
+    /// The global-scope time tracker.
+    ///
+    /// For each timeline, keeps track of what times exist, recursively across all
+    /// entities/components.
+    ///
+    /// Used for time control.
+    times_per_timeline: TimesPerTimeline,
+
+    /// A tree-view (split on path components) of the entities.
+    tree: crate::EntityTree,
+
+    /// Stores all components for all entities for all timelines.
+    data_store: DataStore,
 }
 
 impl StoreDb {
@@ -301,8 +274,15 @@ impl StoreDb {
             store_id: store_id.clone(),
             data_source: None,
             set_store_info: None,
-            entity_db: EntityDb::new(store_id),
             last_modified_at: web_time::Instant::now(),
+            entity_path_from_hash: Default::default(),
+            times_per_timeline: Default::default(),
+            tree: crate::EntityTree::root(),
+            data_store: re_arrow_store::DataStore::new(
+                store_id,
+                InstanceKey::name(),
+                DataStoreConfig::default(),
+            ),
         }
     }
 
@@ -329,12 +309,12 @@ impl StoreDb {
 
     #[inline]
     pub fn tree(&self) -> &crate::EntityTree {
-        &self.entity_db.tree
+        &self.tree
     }
 
     #[inline]
     pub fn data_store(&self) -> &DataStore {
-        &self.entity_db.data_store
+        &self.data_store
     }
 
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
@@ -351,7 +331,7 @@ impl StoreDb {
 
     #[inline]
     pub fn store(&self) -> &DataStore {
-        &self.entity_db.data_store
+        &self.data_store
     }
 
     pub fn store_kind(&self) -> StoreKind {
@@ -367,7 +347,7 @@ impl StoreDb {
     }
 
     pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.entity_db.times_per_timeline
+        &self.times_per_timeline
     }
 
     pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
@@ -375,18 +355,17 @@ impl StoreDb {
     }
 
     pub fn num_timeless_messages(&self) -> u64 {
-        self.entity_db.tree.num_timeless_messages()
+        self.tree.num_timeless_messages()
     }
 
     pub fn num_rows(&self) -> usize {
-        self.entity_db.data_store.num_timeless_rows() as usize
-            + self.entity_db.data_store.num_temporal_rows() as usize
+        self.data_store.num_timeless_rows() as usize + self.data_store.num_temporal_rows() as usize
     }
 
     /// Return the current `StoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
     pub fn generation(&self) -> re_arrow_store::StoreGeneration {
-        self.entity_db.data_store.generation()
+        self.data_store.generation()
     }
 
     pub fn last_modified_at(&self) -> web_time::Instant {
@@ -425,10 +404,6 @@ impl StoreDb {
         self.last_modified_at = web_time::Instant::now();
 
         Ok(())
-    }
-
-    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
-        self.entity_db.add_data_row(row).map(|_| ())
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
@@ -475,7 +450,7 @@ impl StoreDb {
     pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) {
         re_tracing::profile_function!();
 
-        let (store_events, stats_diff) = self.entity_db.data_store.gc(gc_options);
+        let (store_events, stats_diff) = self.data_store.gc(gc_options);
 
         re_log::trace!(
             num_row_ids_dropped = store_events.len(),
@@ -483,7 +458,7 @@ impl StoreDb {
             "purged datastore"
         );
 
-        self.entity_db.on_store_deletions(&store_events);
+        self.on_store_deletions(&store_events);
     }
 
     /// Key used for sorting recordings in the UI.
