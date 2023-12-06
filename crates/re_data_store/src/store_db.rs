@@ -39,7 +39,7 @@ struct EntityDb {
 }
 
 impl EntityDb {
-    pub fn new(store_id: StoreId) -> Self {
+    fn new(store_id: StoreId) -> Self {
         Self {
             entity_path_from_hash: Default::default(),
             times_per_timeline: Default::default(),
@@ -141,7 +141,7 @@ impl EntityDb {
     /// Inserts a [`DataRow`] into the database.
     ///
     /// Updates the [`crate::EntityTree`] and applies [`ClearCascade`]s as needed.
-    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
+    fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
         re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
 
         self.register_entity_path(&row.entity_path);
@@ -222,7 +222,7 @@ impl EntityDb {
                 // NOTE: It is important we insert all those empty components using a single row (id)!
                 // 1. It'll be much more efficient when querying that data back.
                 // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
-                //    these rows! This flaky ordering will in turn leak through the public
+                //    these rows! This flaky ordering will in turn leak through the lic
                 //    API (e.g. range queries)!
                 match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
                     Ok(row) => {
@@ -255,7 +255,7 @@ impl EntityDb {
         store_events
     }
 
-    pub fn on_store_deletions(&mut self, store_events: &[StoreEvent]) {
+    fn on_store_deletions(&mut self, store_events: &[StoreEvent]) {
         re_tracing::profile_function!();
 
         let Self {
