@@ -1,7 +1,6 @@
 use smallvec::smallvec;
 
 use crate::{
-    context::SharedRendererData,
     include_shader_module,
     view_builder::ViewBuilder,
     wgpu_resources::{GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc},
@@ -30,34 +29,27 @@ impl TestTriangleDrawData {
 impl Renderer for TestTriangle {
     type RendererDrawData = TestTriangleDrawData;
 
-    fn create_renderer<Fs: FileSystem>(
-        shared_data: &SharedRendererData,
-        pools: &WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &FileResolver<Fs>,
-    ) -> Self {
-        let render_pipeline = pools.render_pipelines.get_or_create(
-            device,
+    fn create_renderer(ctx: &RenderContext) -> Self {
+        let shader_modules = &ctx.gpu_resources.shader_modules;
+        let render_pipeline = ctx.gpu_resources.render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "TestTriangle::render_pipeline".into(),
-                pipeline_layout: pools.pipeline_layouts.get_or_create(
-                    device,
+                pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
+                    ctx,
                     &PipelineLayoutDesc {
                         label: "global only".into(),
-                        entries: vec![shared_data.global_bindings.layout],
+                        entries: vec![ctx.shared_renderer_data.global_bindings.layout],
                     },
-                    &pools.bind_group_layouts,
                 ),
                 vertex_entrypoint: "vs_main".into(),
-                vertex_handle: pools.shader_modules.get_or_create(
-                    device,
-                    resolver,
+                vertex_handle: shader_modules.get_or_create(
+                    ctx,
                     &include_shader_module!("../../shader/test_triangle.wgsl"),
                 ),
                 fragment_entrypoint: "fs_main".into(),
-                fragment_handle: pools.shader_modules.get_or_create(
-                    device,
-                    resolver,
+                fragment_handle: shader_modules.get_or_create(
+                    ctx,
                     &include_shader_module!("../../shader/test_triangle.wgsl"),
                 ),
                 vertex_buffers: smallvec![],
@@ -72,8 +64,6 @@ impl Renderer for TestTriangle {
                 }),
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
 
         TestTriangle { render_pipeline }

@@ -535,11 +535,11 @@ impl DepthReadbackWorkaround {
         );
 
         let render_pipeline = ctx.gpu_resources.render_pipelines.get_or_create(
-            &ctx.device,
+            ctx,
             &RenderPipelineDesc {
                 label: "DepthCopyWorkaround::render_pipeline".into(),
                 pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
-                    &ctx.device,
+                    ctx,
                     &PipelineLayoutDesc {
                         label: "DepthCopyWorkaround::render_pipeline".into(),
                         entries: vec![
@@ -547,18 +547,15 @@ impl DepthReadbackWorkaround {
                             bind_group_layout,
                         ],
                     },
-                    &ctx.gpu_resources.bind_group_layouts,
                 ),
                 vertex_entrypoint: "main".into(),
                 vertex_handle: ctx.gpu_resources.shader_modules.get_or_create(
-                    &ctx.device,
-                    &ctx.resolver,
+                    ctx,
                     &include_shader_module!("../../shader/screen_triangle.wgsl"),
                 ),
                 fragment_entrypoint: "main".into(),
                 fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
-                    &ctx.device,
-                    &ctx.resolver,
+                    ctx,
                     &include_shader_module!("../../shader/copy_texture.wgsl"),
                 ),
                 vertex_buffers: smallvec![],
@@ -571,8 +568,6 @@ impl DepthReadbackWorkaround {
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
             },
-            &ctx.gpu_resources.pipeline_layouts,
-            &ctx.gpu_resources.shader_modules,
         );
 
         Self {

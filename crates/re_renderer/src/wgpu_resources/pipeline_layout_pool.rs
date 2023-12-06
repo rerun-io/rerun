@@ -1,7 +1,7 @@
-use crate::debug_label::DebugLabel;
+use crate::{debug_label::DebugLabel, RenderContext};
 
 use super::{
-    bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
+    bind_group_layout_pool::GpuBindGroupLayoutHandle,
     static_resource_pool::{
         StaticResourcePool, StaticResourcePoolAccessor as _, StaticResourcePoolReadLockAccessor,
     },
@@ -25,24 +25,24 @@ pub struct GpuPipelineLayoutPool {
 impl GpuPipelineLayoutPool {
     pub fn get_or_create(
         &self,
-        device: &wgpu::Device,
+        ctx: &RenderContext,
         desc: &PipelineLayoutDesc,
-        bind_group_layout_pool: &GpuBindGroupLayoutPool,
     ) -> GpuPipelineLayoutHandle {
         self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
 
-            let bind_groups = bind_group_layout_pool.resources();
+            let bind_groups = ctx.gpu_resources.bind_group_layouts.resources();
 
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: desc.label.get(),
-                bind_group_layouts: &desc
-                    .entries
-                    .iter()
-                    .map(|handle| bind_groups.get(*handle).unwrap())
-                    .collect::<Vec<_>>(),
-                push_constant_ranges: &[], // Sadly not widely supported
-            })
+            ctx.device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: desc.label.get(),
+                    bind_group_layouts: &desc
+                        .entries
+                        .iter()
+                        .map(|handle| bind_groups.get(*handle).unwrap())
+                        .collect::<Vec<_>>(),
+                    push_constant_ranges: &[], // Sadly not widely supported
+                })
         })
     }
 

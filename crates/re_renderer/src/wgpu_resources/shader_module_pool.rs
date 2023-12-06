@@ -3,7 +3,7 @@ use std::{hash::Hash, path::PathBuf};
 use ahash::HashSet;
 use anyhow::Context as _;
 
-use crate::{debug_label::DebugLabel, FileResolver, FileSystem};
+use crate::{debug_label::DebugLabel, FileResolver, FileSystem, RenderContext};
 
 use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
 
@@ -113,14 +113,17 @@ pub struct GpuShaderModulePool {
 }
 
 impl GpuShaderModulePool {
-    pub fn get_or_create<Fs: FileSystem>(
+    pub fn get_or_create(
         &self,
-        device: &wgpu::Device,
-        resolver: &FileResolver<Fs>,
+        ctx: &RenderContext,
         desc: &ShaderModuleDesc,
     ) -> GpuShaderModuleHandle {
         self.pool.get_or_create(desc, |desc| {
-            desc.create_shader_module(device, resolver, &self.shader_text_workaround_replacements)
+            desc.create_shader_module(
+                &ctx.device,
+                &ctx.resolver,
+                &self.shader_text_workaround_replacements,
+            )
         })
     }
 

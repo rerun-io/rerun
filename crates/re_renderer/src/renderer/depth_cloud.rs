@@ -28,10 +28,7 @@ use crate::{
     Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
 };
 
-use super::{
-    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
-};
+use super::{DrawData, DrawError, RenderContext, Renderer};
 
 // ---
 
@@ -348,16 +345,13 @@ impl Renderer for DepthCloudRenderer {
         ]
     }
 
-    fn create_renderer<Fs: FileSystem>(
-        shared_data: &SharedRendererData,
-        pools: &WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &FileResolver<Fs>,
-    ) -> Self {
+    fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 
-        let bind_group_layout = pools.bind_group_layouts.get_or_create(
-            device,
+        let render_pipelines = &ctx.gpu_resources.render_pipelines;
+
+        let bind_group_layout = ctx.gpu_resources.bind_group_layouts.get_or_create(
+            &ctx.device,
             &BindGroupLayoutDesc {
                 label: "depth_cloud_bg_layout".into(),
                 entries: vec![
@@ -411,18 +405,19 @@ impl Renderer for DepthCloudRenderer {
             },
         );
 
-        let pipeline_layout = pools.pipeline_layouts.get_or_create(
-            device,
+        let pipeline_layout = ctx.gpu_resources.pipeline_layouts.get_or_create(
+            ctx,
             &PipelineLayoutDesc {
                 label: "depth_cloud_rp_layout".into(),
-                entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+                entries: vec![
+                    ctx.shared_renderer_data.global_bindings.layout,
+                    bind_group_layout,
+                ],
             },
-            &pools.bind_group_layouts,
         );
 
-        let shader_module = pools.shader_modules.get_or_create(
-            device,
-            resolver,
+        let shader_module = ctx.gpu_resources.shader_modules.get_or_create(
+            ctx,
             &include_shader_module!("../../shader/depth_cloud.wgsl"),
         );
 
@@ -447,14 +442,10 @@ impl Renderer for DepthCloudRenderer {
                 ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
             },
         };
-        let render_pipeline_color = pools.render_pipelines.get_or_create(
-            device,
-            &render_pipeline_desc_color,
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
-        );
-        let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
-            device,
+        let render_pipeline_color =
+            render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);
+        let render_pipeline_picking_layer = render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "DepthCloudRenderer::render_pipeline_picking_layer".into(),
                 fragment_entrypoint: "fs_main_picking_layer".into(),
@@ -463,11 +454,9 @@ impl Renderer for DepthCloudRenderer {
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
                 ..render_pipeline_desc_color.clone()
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
-        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
-            device,
+        let render_pipeline_outline_mask = render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "DepthCloudRenderer::render_pipeline_outline_mask".into(),
                 fragment_entrypoint: "fs_main_outline_mask".into(),
@@ -475,12 +464,10 @@ impl Renderer for DepthCloudRenderer {
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 // Alpha to coverage doesn't work with the mask integer target.
                 multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    &shared_data.config.device_caps,
+                    &ctx.shared_renderer_data.config.device_caps,
                 ),
                 ..render_pipeline_desc_color
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
 
         DepthCloudRenderer {
