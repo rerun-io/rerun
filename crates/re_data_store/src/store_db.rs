@@ -19,7 +19,7 @@ use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
 /// Stored entities with easy indexing of the paths.
 ///
 /// NOTE: don't go mutating the contents of this. Use the public functions instead.
-pub struct EntityDb {
+struct EntityDb {
     /// In many places we just store the hashes, so we need a way to translate back.
     pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
 
@@ -325,11 +325,6 @@ impl StoreDb {
         }
 
         Ok(store_db)
-    }
-
-    #[inline]
-    pub fn entity_db(&self) -> &EntityDb {
-        &self.entity_db
     }
 
     #[inline]
