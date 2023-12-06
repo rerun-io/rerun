@@ -90,7 +90,7 @@ impl DataResult {
         };
 
         let row = DataRow::from_cells1_sized(
-            RowId::random(),
+            RowId::new(),
             self.override_path.clone(),
             TimePoint::timeless(),
             1,

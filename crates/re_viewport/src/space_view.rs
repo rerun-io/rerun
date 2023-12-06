@@ -424,7 +424,7 @@ mod tests {
     fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
         let component = EntityPropertiesComponent { props };
         let row = DataRow::from_cells1_sized(
-            RowId::random(),
+            RowId::new(),
             path.clone(),
             TimePoint::timeless(),
             1,
@@ -447,9 +447,8 @@ mod tests {
             "parent/skip/child1".into(),
             "parent/skip/child2".into(),
         ] {
-            let row =
-                DataRow::from_archetype(RowId::random(), TimePoint::timeless(), path, &points)
-                    .unwrap();
+            let row = DataRow::from_archetype(RowId::new(), TimePoint::timeless(), path, &points)
+                .unwrap();
             recording.add_data_row(row).ok();
         }
 

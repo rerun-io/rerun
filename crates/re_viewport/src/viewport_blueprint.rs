@@ -333,7 +333,7 @@ fn add_delta_from_single_component<'a, C>(
     std::borrow::Cow<'a, C>: std::convert::From<C>,
 {
     let row = DataRow::from_cells1_sized(
-        RowId::random(),
+        RowId::new(),
         entity_path.clone(),
         timepoint.clone(),
         1,
@@ -464,7 +464,7 @@ pub fn clear_space_view(deltas: &mut Vec<DataRow>, space_view_id: &SpaceViewId) 
     let timepoint = TimePoint::timeless();
 
     if let Ok(row) = DataRow::from_component_batches(
-        RowId::random(),
+        RowId::new(),
         timepoint,
         space_view_id.as_entity_path(),
         Clear::recursive()

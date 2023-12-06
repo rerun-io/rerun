@@ -235,18 +235,18 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///     let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 ///     let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
-///     DataRow::from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))?
+///     DataRow::from_cells3(RowId::new(), "a", timepoint(1, 1), num_instances, (points, colors, labels))?
 /// };
 /// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
-///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)?
+///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), num_instances, colors)?
 /// };
 /// let row2 = {
 ///     let num_instances = 1;
 ///     let colors: &[_] = &[MyColor::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
-///     DataRow::from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))?
+///     DataRow::from_cells2(RowId::new(), "c", timepoint(2, 1), num_instances, (colors, labels))?
 /// };
 /// let table = DataTable::from_rows(table_id, [row0, row1, row2]);
 /// ```
@@ -291,7 +291,7 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///     let labels: &[MyLabel] = &[];
 ///
 ///     DataRow::from_cells3(
-///         RowId::random(),
+///         RowId::new(),
 ///         "a",
 ///         timepoint(1, 1),
 ///         num_instances,
@@ -303,7 +303,7 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
 ///
-///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors).unwrap()
+///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), num_instances, colors).unwrap()
 /// };
 ///
 /// let row2 = {
@@ -312,7 +312,7 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///     let labels: &[_] = &[MyLabel("hey".into())];
 ///
 ///     DataRow::from_cells2(
-///         RowId::random(),
+///         RowId::new(),
 ///         "c",
 ///         timepoint(2, 1),
 ///         num_instances,
@@ -1323,7 +1323,7 @@ impl DataTable {
             let labels: &[MyLabel] = &[];
 
             DataRow::from_cells3(
-                RowId::random(),
+                RowId::new(),
                 "a",
                 timepoint(1),
                 num_instances,
@@ -1336,7 +1336,7 @@ impl DataTable {
             let num_instances = 0;
             let colors: &[MyColor] = &[];
 
-            DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors).unwrap()
+            DataRow::from_cells1(RowId::new(), "b", timepoint(1), num_instances, colors).unwrap()
         };
 
         let row2 = {
@@ -1345,7 +1345,7 @@ impl DataTable {
             let labels: &[_] = &[MyLabel("hey".into())];
 
             DataRow::from_cells2(
-                RowId::random(),
+                RowId::new(),
                 "c",
                 timepoint(2),
                 num_instances,

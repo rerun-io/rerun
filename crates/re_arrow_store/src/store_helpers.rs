@@ -203,7 +203,7 @@ impl DataStore {
         re_tracing::profile_function!();
 
         let mut row = match DataRow::from_cells1(
-            RowId::random(),
+            RowId::new(),
             entity_path.clone(),
             timepoint.clone(),
             1,
@@ -243,7 +243,7 @@ impl DataStore {
             let cell = DataCell::from_arrow_empty(component, datatype.clone());
 
             let mut row = match DataRow::from_cells1(
-                RowId::random(),
+                RowId::new(),
                 entity_path.clone(),
                 timepoint.clone(),
                 cell.num_instances(),

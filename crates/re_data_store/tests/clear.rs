@@ -27,7 +27,7 @@ fn clears() -> anyhow::Result<()> {
     // * Insert a 2D point & color for 'parent' at frame #10.
     // * Query 'parent' at frame #11 and make sure we find everything back.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
         let point = MyPoint::new(1.0, 2.0);
         let color = MyColor::from(0xFF0000FF);
@@ -65,7 +65,7 @@ fn clears() -> anyhow::Result<()> {
     // * Insert a 2D point for 'child1' at frame #10.
     // * Query 'child1' at frame #11 and make sure we find everything back.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
         let point = MyPoint::new(42.0, 43.0);
         let row = DataRow::from_component_batches(
@@ -96,7 +96,7 @@ fn clears() -> anyhow::Result<()> {
     // * Insert a color for 'child2' at frame #10.
     // * Query 'child2' at frame #11 and make sure we find everything back.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
         let color = MyColor::from(0x00AA00DD);
         let row = DataRow::from_component_batches(
@@ -129,7 +129,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child1' at frame #11 and make sure we find everything back.
     // * Query 'child2' at frame #11 and make sure we find everything back.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
         let clear = Clear::flat();
         let row = DataRow::from_component_batches(
@@ -183,7 +183,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child1' at frame #11 and make sure we find nothing.
     // * Query 'child2' at frame #11 and make sure we find nothing.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 10.into())]);
         let clear = Clear::recursive();
         let row = DataRow::from_component_batches(
@@ -236,7 +236,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'parent' at frame #9 and make sure we find it back.
     // * Query 'parent' at frame #11 and make sure we do _not_ find it.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
         let instance_key = InstanceKey(0);
         let row = DataRow::from_component_batches(
@@ -280,7 +280,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child1' at frame #9 and make sure we find everything back.
     // * Query 'child1' at frame #11 and make sure we do _not_ find anything.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
         let point = MyPoint::new(42.0, 43.0);
         let color = MyColor::from(0xBBBBBBBB);
@@ -336,7 +336,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'child2' at frame #9 and make sure we find everything back.
     // * Query 'child2' at frame #11 and make sure we do _not_ find anything.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
         let color = MyColor::from(0x00AA00DD);
         let point = MyPoint::new(66.0, 666.0);
@@ -391,7 +391,7 @@ fn clears() -> anyhow::Result<()> {
     // * Query 'grandchild' at frame #9 and make sure we find everything back.
     // * Query 'grandchild' at frame #11 and make sure we do _not_ find anything.
     {
-        let row_id = RowId::random();
+        let row_id = RowId::new();
         let timepoint = TimePoint::from_iter([(timeline_frame, 9.into())]);
         let color = MyColor::from(0x00AA00DD);
         let row = DataRow::from_component_batches(
@@ -452,7 +452,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
         let point = MyPoint::new(1.0, 2.0);
 
         let row = DataRow::from_component_batches(
-            RowId::random(),
+            RowId::new(),
             timepoint.clone(),
             entity_path.clone(),
             [&[point] as _],
@@ -466,7 +466,7 @@ fn clear_and_gc() -> anyhow::Result<()> {
         assert_eq!(stats.timeless.num_rows, 1);
 
         let clear = DataRow::from_component_batches(
-            RowId::random(),
+            RowId::new(),
             timepoint.clone(),
             entity_path.clone(),
             Clear::recursive()

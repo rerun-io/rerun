@@ -576,7 +576,7 @@ impl StoreBundle {
             let mut blueprint_db = StoreDb::new(id.clone());
 
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
-                row_id: re_log_types::RowId::random(),
+                row_id: re_log_types::RowId::new(),
                 info: re_log_types::StoreInfo {
                     application_id: id.as_str().into(),
                     store_id: id.clone(),

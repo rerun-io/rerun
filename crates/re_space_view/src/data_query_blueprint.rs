@@ -113,7 +113,7 @@ impl DataQueryBlueprint {
         };
 
         let row = DataRow::from_cells1_sized(
-            RowId::random(),
+            RowId::new(),
             self.id.as_entity_path(),
             timepoint.clone(),
             1,
@@ -595,7 +595,7 @@ mod tests {
 
         // Set up a store DB with some entities
         for entity_path in ["parent", "parent/skipped/child1", "parent/skipped/child2"] {
-            let row_id = RowId::random();
+            let row_id = RowId::new();
             let point = MyPoint::new(1.0, 2.0);
             let row = DataRow::from_component_batches(
                 row_id,

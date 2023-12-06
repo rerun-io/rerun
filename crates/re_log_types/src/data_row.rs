@@ -156,15 +156,17 @@ impl std::fmt::Display for RowId {
 impl RowId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
 
+    /// Create a new unique [`RowId`] based on the current time.
+    #[allow(clippy::new_without_default)]
     #[inline]
-    pub fn random() -> Self {
+    pub fn new() -> Self {
         Self(re_tuid::Tuid::new())
     }
 
     /// Returns the next logical [`RowId`].
     ///
     /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`RowId::random`] when unsure.
+    /// Prefer [`RowId::new`] when unsure.
     #[inline]
     pub fn next(&self) -> Self {
         Self(self.0.next())
@@ -176,7 +178,7 @@ impl RowId {
     /// Wraps the monotonically increasing back to zero on overflow.
     ///
     /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`RowId::random`] when unsure.
+    /// Prefer [`RowId::new`] when unsure.
     #[inline]
     pub fn increment(&self, n: u64) -> Self {
         Self(self.0.increment(n))

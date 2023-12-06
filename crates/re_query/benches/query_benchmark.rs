@@ -195,7 +195,7 @@ fn build_points_rows(paths: &[EntityPath], num_points: usize) -> Vec<DataRow> {
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 let mut row = DataRow::from_cells2(
-                    RowId::random(),
+                    RowId::new(),
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     num_points as _,
@@ -221,7 +221,7 @@ fn build_strings_rows(paths: &[EntityPath], num_strings: usize) -> Vec<DataRow> 
         .flat_map(move |frame_idx| {
             paths.iter().map(move |path| {
                 let mut row = DataRow::from_cells2(
-                    RowId::random(),
+                    RowId::new(),
                     path.clone(),
                     [build_frame_nr((frame_idx as i64).into())],
                     num_strings as _,

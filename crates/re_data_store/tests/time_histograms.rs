@@ -34,7 +34,7 @@ fn time_histograms() -> anyhow::Result<()> {
     // Single top-level entity, explicitly logged `InstanceKey`s.
     {
         let row = DataRow::from_component_batches(
-            RowId::random(),
+            RowId::new(),
             TimePoint::from_iter([
                 (timeline_frame, 42.into()),      //
                 (timeline_other, 666.into()),     //
@@ -90,7 +90,7 @@ fn time_histograms() -> anyhow::Result<()> {
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
             DataRow::from_component_batches(
-                RowId::random(),
+                RowId::new(),
                 TimePoint::from_iter([
                     (timeline_frame, 42.into()),      //
                     (timeline_yet_another, 1.into()), //
@@ -241,7 +241,7 @@ fn time_histograms() -> anyhow::Result<()> {
             let num_instances = 6;
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];
             DataRow::from_component_batches(
-                RowId::random(),
+                RowId::new(),
                 TimePoint::timeless(),
                 "entity".into(),
                 [
@@ -331,7 +331,7 @@ fn time_histograms() -> anyhow::Result<()> {
                 .collect();
             let colors = vec![MyColor::from(0xFF0000FF)];
             DataRow::from_component_batches(
-                RowId::random(),
+                RowId::new(),
                 TimePoint::from_iter([
                     (timeline_frame, 1234.into()),       //
                     (timeline_other, 1235.into()),       //
@@ -457,7 +457,7 @@ fn time_histograms() -> anyhow::Result<()> {
     {
         let row = {
             DataRow::from_component_batches(
-                RowId::random(),
+                RowId::new(),
                 TimePoint::from_iter([
                     (timeline_frame, 1000.into()), //
                 ]),

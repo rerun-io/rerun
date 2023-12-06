@@ -649,7 +649,7 @@ fn rr_log_impl(
     }
 
     let data_row = DataRow::from_cells(
-        re_sdk::log::RowId::random(),
+        re_sdk::log::RowId::new(),
         TimePoint::default(), // we use the one in the recording stream for now
         entity_path,
         num_instances,

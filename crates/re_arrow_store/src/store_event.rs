@@ -295,7 +295,7 @@ mod tests {
         let timeline_other = Timeline::new_temporal("other");
         let timeline_yet_another = Timeline::new_sequence("yet_another");
 
-        let row_id1 = RowId::random();
+        let row_id1 = RowId::new();
         let timepoint1 = TimePoint::from_iter([
             (timeline_frame, 42.into()),      //
             (timeline_other, 666.into()),     //
@@ -337,7 +337,7 @@ mod tests {
             view,
         );
 
-        let row_id2 = RowId::random();
+        let row_id2 = RowId::new();
         let timepoint2 = TimePoint::from_iter([
             (timeline_frame, 42.into()),      //
             (timeline_yet_another, 1.into()), //
@@ -389,7 +389,7 @@ mod tests {
             view,
         );
 
-        let row_id3 = RowId::random();
+        let row_id3 = RowId::new();
         let timepoint3 = TimePoint::timeless();
         let row3 = {
             let num_instances = 6;
@@ -486,7 +486,7 @@ mod tests {
         let timeline_frame = Timeline::new_sequence("frame");
 
         let row1 = DataRow::from_component_batches(
-            RowId::random(),
+            RowId::new(),
             TimePoint::from_iter([(timeline_frame, 42.into())]),
             "entity_a".into(),
             [&InstanceKey::from_iter(0..10) as _],
@@ -503,7 +503,7 @@ mod tests {
         }
 
         let row2 = DataRow::from_component_batches(
-            RowId::random(),
+            RowId::new(),
             TimePoint::from_iter([(timeline_frame, 42.into())]),
             "entity_b".into(),
             [&[MyColor::from(0xAABBCCDD)] as _],
