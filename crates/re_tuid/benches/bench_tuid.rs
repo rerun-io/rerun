@@ -3,8 +3,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 fn bench_tuid(c: &mut Criterion) {
     let mut group = c.benchmark_group("tuid");
     group.throughput(criterion::Throughput::Elements(1));
-    group.bench_function("Tuid::random", |b| {
-        b.iter(|| criterion::black_box(re_tuid::Tuid::random()));
+    group.bench_function("Tuid::new", |b| {
+        b.iter(|| criterion::black_box(re_tuid::Tuid::new()));
     });
 }
 
@@ -18,7 +18,7 @@ fn bench_arrow(c: &mut Criterion) {
             let mut group = c.benchmark_group(format!("arrow/serialize/elem_count={elem_count}"));
             group.throughput(criterion::Throughput::Elements(elem_count));
 
-            let tuids = vec![re_tuid::Tuid::random(); elem_count as usize];
+            let tuids = vec![re_tuid::Tuid::new(); elem_count as usize];
 
             group.bench_function("arrow2", |b| {
                 b.iter(|| {
@@ -33,8 +33,7 @@ fn bench_arrow(c: &mut Criterion) {
             group.throughput(criterion::Throughput::Elements(elem_count));
 
             let data: Box<dyn Array> =
-                re_tuid::Tuid::to_arrow(vec![re_tuid::Tuid::random(); elem_count as usize])
-                    .unwrap();
+                re_tuid::Tuid::to_arrow(vec![re_tuid::Tuid::new(); elem_count as usize]).unwrap();
 
             group.bench_function("arrow2", |b| {
                 b.iter(|| {

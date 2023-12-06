@@ -147,7 +147,7 @@ impl TableId {
 
     #[inline]
     pub fn random() -> Self {
-        Self(re_tuid::Tuid::random())
+        Self(re_tuid::Tuid::new())
     }
 
     /// Returns the next logical [`TableId`].
