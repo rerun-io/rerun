@@ -88,7 +88,7 @@ fn add_entities_ui(
     ui: &mut egui::Ui,
     space_view: &mut SpaceViewBlueprint,
 ) {
-    let spaces_info = SpaceInfoCollection::new(ctx.store_db.entity_db());
+    let spaces_info = SpaceInfoCollection::new(ctx.store_db);
     let tree = &ctx.store_db.tree();
     let heuristic_context_per_entity = compute_heuristic_context_for_entities(ctx.store_db);
     // TODO(jleibs): Avoid clone
