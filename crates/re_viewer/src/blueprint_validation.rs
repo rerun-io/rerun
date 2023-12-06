@@ -27,7 +27,7 @@ fn validate_component<C: Component>(blueprint: &StoreDb) -> bool {
             // Otherwise, our usage of serde-fields means we still might have a problem
             // this can go away once we stop using serde-fields.
             // Walk the blueprint and see if any cells fail to deserialize for this component type.
-            for path in blueprint.entity_db().entity_paths() {
+            for path in blueprint.entity_paths() {
                 if let Some([Some(cell)]) = blueprint
                     .data_store()
                     .latest_at(&query, path, C::name(), &[C::name()])

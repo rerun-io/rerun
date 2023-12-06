@@ -99,31 +99,39 @@ fn insert_row_with_retries(
     Err(re_arrow_store::WriteError::ReusedRowId(row.row_id()))
 }
 
-impl EntityDb {
+impl StoreDb {
     /// A sorted list of all the entity paths in this database.
     pub fn entity_paths(&self) -> Vec<&EntityPath> {
         use itertools::Itertools as _;
-        self.entity_path_from_hash.values().sorted().collect()
+        self.entity_db
+            .entity_path_from_hash
+            .values()
+            .sorted()
+            .collect()
     }
 
     #[inline]
     pub fn entity_path_from_hash(&self, entity_path_hash: &EntityPathHash) -> Option<&EntityPath> {
-        self.entity_path_from_hash.get(entity_path_hash)
+        self.entity_db.entity_path_from_hash.get(entity_path_hash)
     }
 
     /// Returns `true` also for entities higher up in the hierarchy.
     #[inline]
     pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
-        self.tree.subtree(entity_path).is_some()
+        self.entity_db.tree.subtree(entity_path).is_some()
     }
 
     /// If you log `world/points`, then that is a logged entity, but `world` is not,
     /// unless you log something to `world` too.
     #[inline]
     pub fn is_logged_entity(&self, entity_path: &EntityPath) -> bool {
-        self.entity_path_from_hash.contains_key(&entity_path.hash())
+        self.entity_db
+            .entity_path_from_hash
+            .contains_key(&entity_path.hash())
     }
+}
 
+impl EntityDb {
     fn register_entity_path(&mut self, entity_path: &EntityPath) {
         self.entity_path_from_hash
             .entry(entity_path.hash())

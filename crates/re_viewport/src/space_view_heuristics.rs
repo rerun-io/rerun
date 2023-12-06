@@ -607,7 +607,7 @@ pub fn identify_entities_per_system_per_class(
 
     let heuristic_context = compute_heuristic_context_for_entities(store_db);
     let store = store_db.store();
-    for ent_path in store_db.entity_db().entity_paths() {
+    for ent_path in store_db.entity_paths() {
         let Some(components) = store.all_components(&re_log_types::Timeline::log_time(), ent_path)
         else {
             continue;
