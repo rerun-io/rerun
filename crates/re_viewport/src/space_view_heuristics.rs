@@ -538,7 +538,7 @@ pub fn compute_heuristic_context_for_entities(
     visit_children_recursively(
         false,
         tree,
-        &store_db.entity_db().data_store,
+        store_db.data_store(),
         &query,
         &mut heuristic_context,
     );

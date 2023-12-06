@@ -329,6 +329,11 @@ impl StoreDb {
         &self.entity_db.tree
     }
 
+    #[inline]
+    pub fn data_store(&self) -> &DataStore {
+        &self.entity_db.data_store
+    }
+
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
         self.set_store_info.as_ref()
     }
