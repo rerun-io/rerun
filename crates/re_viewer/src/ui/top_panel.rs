@@ -7,11 +7,11 @@ use re_viewer_context::StoreContext;
 use crate::{app_blueprint::AppBlueprint, App};
 
 pub fn top_panel(
+    app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
-    ui: &mut egui::Ui,
-    app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
+    ui: &mut egui::Ui,
 ) {
     re_tracing::profile_function!();
 
@@ -26,10 +26,11 @@ pub fn top_panel(
                 ui.set_height(top_bar_style.height);
                 ui.add_space(top_bar_style.indent);
 
-                top_bar_ui(app_blueprint, store_context, ui, app, gpu_resource_stats);
+                top_bar_ui(app, app_blueprint, store_context, ui, gpu_resource_stats);
             })
             .response;
 
+            // React to dragging and double-clicking the top bar:
             #[cfg(not(target_arch = "wasm32"))]
             if !re_ui::NATIVE_WINDOW_BAR {
                 let title_bar_response = _response.interact(egui::Sense::click());
@@ -45,10 +46,10 @@ pub fn top_panel(
 }
 
 fn top_bar_ui(
+    app: &mut App,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&StoreContext<'_>>,
     ui: &mut egui::Ui,
-    app: &mut App,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
     app.rerun_menu_button_ui(store_context, ui);
@@ -76,56 +77,7 @@ fn top_bar_ui(
             ui.add_space(extra_margin);
         }
 
-        let mut selection_panel_expanded = app_blueprint.selection_panel_expanded;
-        if app
-            .re_ui()
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::RIGHT_PANEL_TOGGLE,
-                &mut selection_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Selection View{}",
-                UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app_blueprint.toggle_selection_panel(&app.command_sender);
-        }
-
-        let mut time_panel_expanded = app_blueprint.time_panel_expanded;
-        if app
-            .re_ui()
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::BOTTOM_PANEL_TOGGLE,
-                &mut time_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Timeline View{}",
-                UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app_blueprint.toggle_time_panel(&app.command_sender);
-        }
-
-        let mut blueprint_panel_expanded = app_blueprint.blueprint_panel_expanded;
-        if app
-            .re_ui()
-            .medium_icon_toggle_button(
-                ui,
-                &re_ui::icons::LEFT_PANEL_TOGGLE,
-                &mut blueprint_panel_expanded,
-            )
-            .on_hover_text(format!(
-                "Toggle Blueprint View{}",
-                UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
-            ))
-            .clicked()
-        {
-            app_blueprint.toggle_blueprint_panel(&app.command_sender);
-        }
+        panel_buttons_r2l(app, app_blueprint, ui);
 
         if cfg!(debug_assertions) && app.app_options().show_metrics {
             ui.vertical_centered(|ui| {
@@ -135,6 +87,60 @@ fn top_bar_ui(
             });
         }
     });
+}
+
+/// Lay out the panel button right-to-left
+fn panel_buttons_r2l(app: &App, app_blueprint: &AppBlueprint<'_>, ui: &mut egui::Ui) {
+    let mut selection_panel_expanded = app_blueprint.selection_panel_expanded;
+    if app
+        .re_ui()
+        .medium_icon_toggle_button(
+            ui,
+            &re_ui::icons::RIGHT_PANEL_TOGGLE,
+            &mut selection_panel_expanded,
+        )
+        .on_hover_text(format!(
+            "Toggle Selection View{}",
+            UICommand::ToggleSelectionPanel.format_shortcut_tooltip_suffix(ui.ctx())
+        ))
+        .clicked()
+    {
+        app_blueprint.toggle_selection_panel(&app.command_sender);
+    }
+
+    let mut time_panel_expanded = app_blueprint.time_panel_expanded;
+    if app
+        .re_ui()
+        .medium_icon_toggle_button(
+            ui,
+            &re_ui::icons::BOTTOM_PANEL_TOGGLE,
+            &mut time_panel_expanded,
+        )
+        .on_hover_text(format!(
+            "Toggle Timeline View{}",
+            UICommand::ToggleTimePanel.format_shortcut_tooltip_suffix(ui.ctx())
+        ))
+        .clicked()
+    {
+        app_blueprint.toggle_time_panel(&app.command_sender);
+    }
+
+    let mut blueprint_panel_expanded = app_blueprint.blueprint_panel_expanded;
+    if app
+        .re_ui()
+        .medium_icon_toggle_button(
+            ui,
+            &re_ui::icons::LEFT_PANEL_TOGGLE,
+            &mut blueprint_panel_expanded,
+        )
+        .on_hover_text(format!(
+            "Toggle Blueprint View{}",
+            UICommand::ToggleBlueprintPanel.format_shortcut_tooltip_suffix(ui.ctx())
+        ))
+        .clicked()
+    {
+        app_blueprint.toggle_blueprint_panel(&app.command_sender);
+    }
 }
 
 /// Shows clickable website link as an image (text doesn't look as nice)
