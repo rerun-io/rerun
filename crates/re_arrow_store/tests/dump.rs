@@ -270,7 +270,7 @@ fn create_insert_table(ent_path: impl Into<EntityPath>) -> DataTable {
             build_frame_nr(frame4),
         ] => 5; [colors4]);
 
-    let mut table = DataTable::from_rows(TableId::random(), [row1, row2, row3, row4]);
+    let mut table = DataTable::from_rows(TableId::new(), [row1, row2, row3, row4]);
     table.compute_all_size_bytes();
 
     table
@@ -314,7 +314,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
         let row2 = test_row!(ent_path @ [
             build_frame_nr(frame2),
         ] => 3; [instances2, positions2]);
-        let mut table = DataTable::from_rows(TableId::random(), [row1, row2]);
+        let mut table = DataTable::from_rows(TableId::new(), [row1, row2]);
         table.compute_all_size_bytes();
         insert_table_with_retries(store, &table);
     }
@@ -325,7 +325,7 @@ fn data_store_dump_empty_column_impl(store: &mut DataStore) {
         let row3 = test_row!(ent_path @ [
                 build_frame_nr(frame3),
             ] => 3; [instances3, positions3]);
-        let mut table = DataTable::from_rows(TableId::random(), [row3]);
+        let mut table = DataTable::from_rows(TableId::new(), [row3]);
         table.compute_all_size_bytes();
         insert_table_with_retries(store, &table);
     }

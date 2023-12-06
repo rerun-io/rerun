@@ -411,7 +411,7 @@ impl DataRow {
     /// Turns the `DataRow` into a single-row [`DataTable`].
     #[inline]
     pub fn into_table(self) -> DataTable {
-        DataTable::from_rows(TableId::random(), [self])
+        DataTable::from_rows(TableId::new(), [self])
     }
 }
 

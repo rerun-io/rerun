@@ -145,15 +145,17 @@ impl std::fmt::Display for TableId {
 impl TableId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
 
+    /// Create a new unique [`TableId`] based on the current time.
+    #[allow(clippy::new_without_default)]
     #[inline]
-    pub fn random() -> Self {
+    pub fn new() -> Self {
         Self(re_tuid::Tuid::new())
     }
 
     /// Returns the next logical [`TableId`].
     ///
     /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`TableId::random`] when unsure.
+    /// Prefer [`TableId::new`] when unsure.
     #[inline]
     pub fn next(&self) -> Self {
         Self(self.0.next())
@@ -165,7 +167,7 @@ impl TableId {
     /// Wraps the monotonically increasing back to zero on overflow.
     ///
     /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`TableId::random`] when unsure.
+    /// Prefer [`TableId::new`] when unsure.
     #[inline]
     pub fn increment(&self, n: u64) -> Self {
         Self(self.0.increment(n))
@@ -275,7 +277,7 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// #     DataRow, DataTable, RowId, TableId, Timeline, TimePoint,
 /// # };
 /// #
-/// # let table_id = TableId::random();
+/// # let table_id = TableId::new();
 /// #
 /// # let timepoint = |frame_nr: i64, clock: i64| {
 /// #     TimePoint::from([
@@ -1299,7 +1301,7 @@ impl DataTable {
             Time,
         };
 
-        let table_id = TableId::random();
+        let table_id = TableId::new();
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {

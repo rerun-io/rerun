@@ -42,7 +42,7 @@ impl DataStore {
         rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
 
         Ok(re_log_types::DataTable::from_rows(
-            re_log_types::TableId::random(),
+            re_log_types::TableId::new(),
             rows,
         ))
     }
@@ -84,7 +84,7 @@ impl DataStore {
             } = inner;
 
             DataTable {
-                table_id: TableId::random(),
+                table_id: TableId::new(),
                 col_row_id: col_row_id.clone(),
                 col_timelines: Default::default(),
                 col_entity_path: std::iter::repeat_with(|| ent_path.clone())
@@ -124,7 +124,7 @@ impl DataStore {
                 } = &*inner.read();
 
                 DataTable {
-                    table_id: TableId::random(),
+                    table_id: TableId::new(),
                     col_row_id: col_row_id.clone(),
                     col_timelines: [(*timeline, col_time.iter().copied().map(Some).collect())]
                         .into(),
@@ -210,7 +210,7 @@ impl DataStore {
                     }
 
                     Some(DataTable {
-                        table_id: TableId::random(),
+                        table_id: TableId::new(),
                         col_row_id,
                         col_timelines,
                         col_entity_path,

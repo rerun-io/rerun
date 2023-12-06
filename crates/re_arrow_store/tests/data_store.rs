@@ -329,7 +329,7 @@ fn latest_at_impl(store: &mut DataStore) {
     insert_table(
         store,
         &DataTable::from_rows(
-            TableId::random(),
+            TableId::new(),
             [row1.clone(), row2.clone(), row3.clone(), row4.clone()],
         ),
     );
@@ -1000,10 +1000,8 @@ fn protected_gc_impl(store: &mut DataStore) {
     store.insert_row(&row4).unwrap();
 
     // Re-insert row1 and row2 as timeless data as well
-    let mut table_timeless = DataTable::from_rows(
-        TableId::random(),
-        [row1.clone().next(), row2.clone().next()],
-    );
+    let mut table_timeless =
+        DataTable::from_rows(TableId::new(), [row1.clone().next(), row2.clone().next()]);
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 
@@ -1098,10 +1096,8 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 0; [points4]);
 
     // Insert the 3 rows as timeless
-    let mut table_timeless = DataTable::from_rows(
-        TableId::random(),
-        [row1.clone(), row2.clone(), row3.clone()],
-    );
+    let mut table_timeless =
+        DataTable::from_rows(TableId::new(), [row1.clone(), row2.clone(), row3.clone()]);
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 
@@ -1145,7 +1141,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     assert_eq!(stats.timeless.num_rows, 2);
 
     // Now erase points and GC again
-    let mut table_timeless = DataTable::from_rows(TableId::random(), [row4]);
+    let mut table_timeless = DataTable::from_rows(TableId::new(), [row4]);
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 

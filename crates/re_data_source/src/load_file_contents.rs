@@ -96,8 +96,7 @@ fn log_msg_from_file_contents(
         cells,
     )?;
 
-    let data_table =
-        re_log_types::DataTable::from_rows(re_log_types::TableId::random(), [data_row]);
+    let data_table = re_log_types::DataTable::from_rows(re_log_types::TableId::new(), [data_row]);
     let arrow_msg = data_table.to_arrow_msg()?;
     Ok(LogMsg::ArrowMsg(store_id, arrow_msg))
 }
