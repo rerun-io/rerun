@@ -11,7 +11,8 @@ import argparse
 import os
 import re
 import sys
-from typing import Any, Iterator
+from pathlib import Path
+from typing import Any, Callable, Iterator
 
 import frontmatter
 from gitignore_parser import parse_gitignore
@@ -748,6 +749,23 @@ def lint_file(filepath: str, args: Any) -> int:
     return num_errors
 
 
+def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
+    """Make sure ARCHITECTURE.md talks about every single create we have."""
+
+    crates_dir = Path(__file__).parent.parent / "crates"
+    architecture_md_file = Path(__file__).parent.parent / "ARCHITECTURE.md"
+
+    architecture_md = architecture_md_file.read_text()
+
+    error_count = 0
+    for crate in crates_dir.iterdir():
+        if not should_ignore(crate) and crate.name not in architecture_md:
+            print(f"Missing documentation for crate {crate.name} in ARCHITECTURE.md")
+            error_count += 1
+
+    return error_count
+
+
 def main() -> None:
     # Make sure we are bug free before we run:
     test_lint_line()
@@ -831,6 +849,9 @@ def main() -> None:
                     if should_ignore(filepath) or filepath.startswith(exclude_paths):
                         continue
                     num_errors += lint_file(filepath, args)
+
+        # Since no files have been specified, we also run the global lints.
+        num_errors += lint_crate_docs(should_ignore)
 
     if num_errors == 0:
         print(f"{sys.argv[0]} finished without error")
