@@ -4862,11 +4862,11 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_renderer",
- "re_tensor_ops",
  "re_tracing",
  "re_types",
  "re_ui",
  "re_viewer_context",
+ "serde",
  "thiserror",
  "wgpu",
 ]
@@ -4935,16 +4935,6 @@ dependencies = [
  "nohash-hasher",
  "once_cell",
  "parking_lot 0.12.1",
- "serde",
-]
-
-[[package]]
-name = "re_tensor_ops"
-version = "0.12.0-alpha.1+dev"
-dependencies = [
- "ahash 0.8.6",
- "ndarray",
- "re_types",
  "serde",
 ]
 
