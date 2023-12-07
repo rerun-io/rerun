@@ -750,7 +750,7 @@ def lint_file(filepath: str, args: Any) -> int:
 
 
 def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
-    """Make sure ARCHITECTURE.md talks about every single create we have."""
+    """Make sure ARCHITECTURE.md talks about every single crate we have."""
 
     crates_dir = Path(__file__).parent.parent / "crates"
     architecture_md_file = Path(__file__).parent.parent / "ARCHITECTURE.md"
