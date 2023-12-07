@@ -105,7 +105,8 @@ def build_and_upload(
     # Repack wheel
     with tempfile.TemporaryDirectory() as tmpdir:
         print("Repacking wheel…")
-        run(f"wheel unpack {dist}/*.whl --dest {tmpdir}")
+        pkg = os.listdir(dist)[0]
+        run(f"wheel unpack {dist}/{pkg} --dest {tmpdir}")
         pkg_folder = os.listdir(tmpdir)[0]
         shutil.rmtree(dist, ignore_errors=True)
         os.makedirs(dist, exist_ok=True)
