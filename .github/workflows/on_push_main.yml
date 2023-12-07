@@ -182,42 +182,46 @@ jobs:
 
   build-wheel-linux:
     needs: [checks]
-    name: "Linux: Build Wheels"
-    uses: ./.github/workflows/reusable_build_wheels.yml
+    name: "Linux: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
       CONCURRENCY: push-linux-${{ github.ref_name }}
       PLATFORM: linux
       WHEEL_ARTIFACT_NAME: linux-wheel
+      MODE: "pypi"
     secrets: inherit
 
   build-wheel-windows:
     needs: [checks]
-    name: "Windows: Build Wheels"
-    uses: ./.github/workflows/reusable_build_wheels.yml
+    name: "Windows: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
       CONCURRENCY: push-windows-${{ github.ref_name }}
       PLATFORM: windows
       WHEEL_ARTIFACT_NAME: windows-wheel
+      MODE: "pypi"
     secrets: inherit
 
   build-wheel-macos-arm:
     needs: [checks]
-    name: "Macos-Arm: Build Wheels"
-    uses: ./.github/workflows/reusable_build_wheels.yml
+    name: "Macos-Arm: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
       CONCURRENCY: push-macos-arm-${{ github.ref_name }}
       PLATFORM: macos-arm
       WHEEL_ARTIFACT_NAME: macos-arm-wheel
+      MODE: "pypi"
     secrets: inherit
 
   build-wheel-macos-intel:
     needs: [checks]
-    name: "Macos-Intel: Build Wheels"
-    uses: ./.github/workflows/reusable_build_wheels.yml
+    name: "Macos-Intel: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
       CONCURRENCY: push-macos-intel-${{ github.ref_name }}
       PLATFORM: macos-intel
       WHEEL_ARTIFACT_NAME: "macos-intel-wheel"
+      MODE: "pypi"
     secrets: inherit
 
   test-wheel-linux:
@@ -240,52 +244,14 @@ jobs:
       WHEEL_ARTIFACT_NAME: windows-wheel
     secrets: inherit
 
-  # NOTE: We currently don't test wheels on macos-arm/macos-intel
-
-  upload-wheels-linux:
-    name: "Linux: Upload Wheels"
-    needs: [build-wheel-linux]
-    uses: ./.github/workflows/reusable_upload_wheels.yml
-    with:
-      CONCURRENCY: push-linux-${{ github.ref_name }}
-      WHEEL_ARTIFACT_NAME: linux-wheel
-    secrets: inherit
-
-  upload-wheels-windows:
-    name: "Windows: Upload Wheels"
-    needs: [build-wheel-windows]
-    uses: ./.github/workflows/reusable_upload_wheels.yml
-    with:
-      CONCURRENCY: push-windows-${{ github.ref_name }}
-      WHEEL_ARTIFACT_NAME: windows-wheel
-    secrets: inherit
-
-  upload-wheels-macos-arm:
-    name: "Macos-Arm: Upload Wheels"
-    needs: [build-wheel-macos-arm]
-    uses: ./.github/workflows/reusable_upload_wheels.yml
-    with:
-      CONCURRENCY: push-macos-arm-${{ github.ref_name }}
-      WHEEL_ARTIFACT_NAME: macos-arm-wheel
-    secrets: inherit
-
-  upload-wheels-macos-intel:
-    name: "Macos-Intel: Upload Wheels"
-    needs: [build-wheel-macos-intel]
-    uses: ./.github/workflows/reusable_upload_wheels.yml
-    with:
-      CONCURRENCY: push-macos-intel-${{ github.ref_name }}
-      WHEEL_ARTIFACT_NAME: macos-intel-wheel
-    secrets: inherit
-
   generate-pip-index:
     name: "Generate Pip Index"
     needs:
       [
-        upload-wheels-linux,
-        upload-wheels-windows,
-        upload-wheels-macos-arm,
-        upload-wheels-macos-intel,
+        build-wheel-linux,
+        build-wheel-windows,
+        build-wheel-macos-arm,
+        build-wheel-macos-intel,
       ]
     uses: ./.github/workflows/reusable_pip_index.yml
     with:

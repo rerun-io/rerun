@@ -6,10 +6,10 @@ on:
       CONCURRENCY:
         required: true
         type: string
-      MATURIN_FEATURE_FLAGS:
-        required: false
+      MODE:
+        description: "The build mode, either `pypi` or `pr`"
+        required: true
         type: string
-        default: "--no-default-features --features pypi"
       PLATFORM:
         required: true
         type: string
@@ -125,45 +125,31 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.4.1
-        with:
-          pixi-version: v0.6.0
-
       - name: Install dependencies
         shell: bash
         run: |
-          pixi run rustup target add ${{ needs.set-config.outputs.TARGET }}
-          pixi run pip install -r rerun_py/requirements-build.txt
+          rustup target add ${{ needs.set-config.outputs.TARGET }}
+          pip install -r rerun_py/requirements-build.txt
+          pip install google-cloud-storage==2.9.0
 
-      - name: Build web-viewer
-        # only build web-viewer when publishing to pypi
-        if: ${{ contains(inputs.MATURIN_FEATURE_FLAGS, 'pypi') }}
+      - name: Get sha
+        id: get-sha
         shell: bash
         run: |
-          pixi run cargo run --locked -p re_build_web_viewer -- --release
+          full_commit="${{ inputs.RELEASE_COMMIT || ((github.event_name == 'pull_request' && github.event.pull_request.head.ref) || github.sha) }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
 
-      # This does not run in the pixi environment, doing so
-      # causes it to select the wrong compiler on macos-arm
-      - name: Build Wheel
-        uses: PyO3/maturin-action@v1
-        env:
-          # this stops `re_web_viewer_server/build.rs` from running
-          RERUN_IS_PUBLISHING: true
-        with:
-          maturin-version: "0.14.17"
-          manylinux: manylinux_2_31
-          container: off
-          command: build
-          args: |
-            --manifest-path rerun_py/Cargo.toml
-            --release
-            --target ${{ needs.set-config.outputs.TARGET }}
-            ${{ inputs.MATURIN_FEATURE_FLAGS }}
-            --out dist
+      - name: Build
+        shell: bash
+        run: |
+          python scripts/ci/build_and_upload_wheels.py \
+            --mode ${{ inputs.MODE }} \
+            --target ${{ needs.set-config.outputs.TARGET }} \
+            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{inputs.WHEEL_ARTIFACT_NAME}}
-          path: dist
+          path: dist/${{ needs.set-config.outputs.TARGET }}
