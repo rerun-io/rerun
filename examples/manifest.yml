@@ -9,7 +9,9 @@
 #       python: string?
 #       # path to the rust example
 #       rust: string?
-#       # at least one of `python` or `rust` should be set
+#       # path to the cpp example
+#       cpp: string?
+#       # at least one of `python`, `rust`, or `cpp` should be set
 #     }
 #     OR
 #     {
@@ -25,6 +27,7 @@
 #           name: string
 #           python: string?
 #           rust: string?
+#           cpp: string?
 #         }
 #       ]
 #     }
