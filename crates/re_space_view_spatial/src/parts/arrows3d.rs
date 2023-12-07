@@ -7,8 +7,8 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartSystem, ViewQuery, ViewerContext,
+    IdentifiedViewSystem, ResolvedAnnotationInfos, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 use super::{picking_id_from_instance_key, process_annotations, SpatialViewPartData};
@@ -162,8 +162,8 @@ impl Arrows3DPart {
     }
 }
 
-impl NamedViewSystem for Arrows3DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for Arrows3DPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Arrows3D".into()
     }
 }
@@ -182,7 +182,7 @@ impl ViewPartSystem for Arrows3DPart {
 
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {

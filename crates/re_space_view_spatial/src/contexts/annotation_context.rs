@@ -1,11 +1,13 @@
 use re_types::{archetypes::AnnotationContext, Archetype, ComponentNameSet};
-use re_viewer_context::{AnnotationMap, NamedViewSystem, ViewContextSystem, ViewSystemName};
+use re_viewer_context::{
+    AnnotationMap, IdentifiedViewSystem, ViewContextSystem, ViewSystemIdentifier,
+};
 
 #[derive(Default)]
 pub struct AnnotationSceneContext(pub AnnotationMap);
 
-impl NamedViewSystem for AnnotationSceneContext {
-    fn name() -> ViewSystemName {
+impl IdentifiedViewSystem for AnnotationSceneContext {
+    fn identifier() -> ViewSystemIdentifier {
         "AnnotationSceneContext".into()
     }
 }
@@ -22,7 +24,7 @@ impl ViewContextSystem for AnnotationSceneContext {
 
     fn execute(
         &mut self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();

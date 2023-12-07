@@ -26,6 +26,7 @@
 -r rgbd/requirements.txt
 -r ros_node/requirements.txt
 -r segment_anything_model/requirements.txt
+-r shared_recording/requirements.txt
 -r signed_distance_fields/requirements.txt
 -r structure_from_motion/requirements.txt
 -r template/requirements.txt

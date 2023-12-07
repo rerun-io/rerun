@@ -1,9 +1,8 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use ahash::HashMap;
 use itertools::{izip, Itertools as _};
 use nohash_hasher::IntSet;
-use smallvec::SmallVec;
 
 use re_types_core::{ComponentName, Loggable, SizeBytes};
 
@@ -51,19 +50,19 @@ pub type DataTableResult<T> = ::std::result::Result<T, DataTableError>;
 
 // ---
 
-pub type RowIdVec = SmallVec<[RowId; 4]>;
+pub type RowIdVec = VecDeque<RowId>;
 
-pub type TimeOptVec = SmallVec<[Option<i64>; 4]>;
+pub type TimeOptVec = VecDeque<Option<i64>>;
 
-pub type TimePointVec = SmallVec<[TimePoint; 4]>;
+pub type TimePointVec = VecDeque<TimePoint>;
 
-pub type ErasedTimeVec = SmallVec<[i64; 4]>;
+pub type ErasedTimeVec = VecDeque<i64>;
 
-pub type EntityPathVec = SmallVec<[EntityPath; 4]>;
+pub type EntityPathVec = VecDeque<EntityPath>;
 
-pub type NumInstancesVec = SmallVec<[NumInstances; 4]>;
+pub type NumInstancesVec = VecDeque<NumInstances>;
 
-pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
+pub type DataCellOptVec = VecDeque<Option<DataCell>>;
 
 /// A column's worth of [`DataCell`]s: a sparse collection of [`DataCell`]s that share the same
 /// underlying type and likely point to shared, contiguous memory.
@@ -73,15 +72,13 @@ pub type DataCellOptVec = SmallVec<[Option<DataCell>; 4]>;
 pub struct DataCellColumn(pub DataCellOptVec);
 
 impl std::ops::Deref for DataCellColumn {
-    type Target = [Option<DataCell>];
+    type Target = VecDeque<Option<DataCell>>;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
-
-// TODO(cmc): Those Deref don't actually do their job most of the time for some reason…
 
 impl std::ops::DerefMut for DataCellColumn {
     #[inline]
@@ -109,7 +106,7 @@ impl std::ops::IndexMut<usize> for DataCellColumn {
 impl DataCellColumn {
     #[inline]
     pub fn empty(num_rows: usize) -> Self {
-        Self(smallvec::smallvec![None; num_rows])
+        Self(vec![None; num_rows].into())
     }
 
     /// Compute and cache the size of each individual underlying [`DataCell`].
@@ -148,15 +145,17 @@ impl std::fmt::Display for TableId {
 impl TableId {
     pub const ZERO: Self = Self(re_tuid::Tuid::ZERO);
 
+    /// Create a new unique [`TableId`] based on the current time.
+    #[allow(clippy::new_without_default)]
     #[inline]
-    pub fn random() -> Self {
-        Self(re_tuid::Tuid::random())
+    pub fn new() -> Self {
+        Self(re_tuid::Tuid::new())
     }
 
     /// Returns the next logical [`TableId`].
     ///
     /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`TableId::random`] when unsure.
+    /// Prefer [`TableId::new`] when unsure.
     #[inline]
     pub fn next(&self) -> Self {
         Self(self.0.next())
@@ -168,7 +167,7 @@ impl TableId {
     /// Wraps the monotonically increasing back to zero on overflow.
     ///
     /// Beware: wrong usage can easily lead to conflicts.
-    /// Prefer [`TableId::random`] when unsure.
+    /// Prefer [`TableId::new`] when unsure.
     #[inline]
     pub fn increment(&self, n: u64) -> Self {
         Self(self.0.increment(n))
@@ -238,18 +237,18 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///     let points: &[MyPoint] = &[[10.0, 10.0].into(), [20.0, 20.0].into()];
 ///     let colors: &[_] = &[MyColor::from_rgb(128, 128, 128)];
 ///     let labels: &[Label] = &[];
-///     DataRow::from_cells3(RowId::random(), "a", timepoint(1, 1), num_instances, (points, colors, labels))?
+///     DataRow::from_cells3(RowId::new(), "a", timepoint(1, 1), num_instances, (points, colors, labels))?
 /// };
 /// let row1 = {
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
-///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors)?
+///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), num_instances, colors)?
 /// };
 /// let row2 = {
 ///     let num_instances = 1;
 ///     let colors: &[_] = &[MyColor::from_rgb(255, 255, 255)];
 ///     let labels: &[_] = &[Label("hey".into())];
-///     DataRow::from_cells2(RowId::random(), "c", timepoint(2, 1), num_instances, (colors, labels))?
+///     DataRow::from_cells2(RowId::new(), "c", timepoint(2, 1), num_instances, (colors, labels))?
 /// };
 /// let table = DataTable::from_rows(table_id, [row0, row1, row2]);
 /// ```
@@ -278,7 +277,7 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 /// #     DataRow, DataTable, RowId, TableId, Timeline, TimePoint,
 /// # };
 /// #
-/// # let table_id = TableId::random();
+/// # let table_id = TableId::new();
 /// #
 /// # let timepoint = |frame_nr: i64, clock: i64| {
 /// #     TimePoint::from([
@@ -294,7 +293,7 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///     let labels: &[MyLabel] = &[];
 ///
 ///     DataRow::from_cells3(
-///         RowId::random(),
+///         RowId::new(),
 ///         "a",
 ///         timepoint(1, 1),
 ///         num_instances,
@@ -306,7 +305,7 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///     let num_instances = 0;
 ///     let colors: &[MyColor] = &[];
 ///
-///     DataRow::from_cells1(RowId::random(), "b", timepoint(1, 2), num_instances, colors).unwrap()
+///     DataRow::from_cells1(RowId::new(), "b", timepoint(1, 2), num_instances, colors).unwrap()
 /// };
 ///
 /// let row2 = {
@@ -315,7 +314,7 @@ re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 ///     let labels: &[_] = &[MyLabel("hey".into())];
 ///
 ///     DataRow::from_cells2(
-///         RowId::random(),
+///         RowId::new(),
 ///         "c",
 ///         timepoint(2, 1),
 ///         num_instances,
@@ -418,12 +417,12 @@ impl DataTable {
                 match col_timelines.entry(*timeline) {
                     std::collections::btree_map::Entry::Vacant(entry) => {
                         entry
-                            .insert(smallvec::smallvec![None; i])
-                            .push(Some(time.as_i64()));
+                            .insert(vec![None; i].into())
+                            .push_back(Some(time.as_i64()));
                     }
                     std::collections::btree_map::Entry::Occupied(mut entry) => {
                         let entry = entry.get_mut();
-                        entry.push(Some(time.as_i64()));
+                        entry.push_back(Some(time.as_i64()));
                     }
                 }
             }
@@ -431,7 +430,7 @@ impl DataTable {
             // handle potential sparseness
             for (timeline, col_time) in &mut col_timelines {
                 if timepoint.get(timeline).is_none() {
-                    col_time.push(None);
+                    col_time.push_back(None);
                 }
             }
         }
@@ -439,10 +438,7 @@ impl DataTable {
         // Pre-allocate all columns (one per component).
         let mut columns = BTreeMap::default();
         for component in components {
-            columns.insert(
-                component,
-                DataCellColumn(smallvec::smallvec![None; column.len()]),
-            );
+            columns.insert(component, DataCellColumn(vec![None; column.len()].into()));
         }
 
         // Fill all columns (where possible: data is likely sparse).
@@ -565,6 +561,7 @@ use arrow2::{
     chunk::Chunk,
     datatypes::{DataType, Field, Schema, TimeUnit},
     offset::Offsets,
+    types::NativeType,
 };
 
 pub const METADATA_KIND: &str = "rerun.kind";
@@ -624,7 +621,7 @@ impl DataTable {
             timeline: Timeline,
             times: &TimeOptVec,
         ) -> (Field, Box<dyn Array>) {
-            let data = PrimitiveArray::from(times.as_slice()).to(timeline.datatype());
+            let data = DataTable::serialize_primitive_deque_opt(times).to(timeline.datatype());
 
             let field = Field::new(timeline.name().as_str(), data.data_type().clone(), false)
                 .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_TIME.to_owned())].into());
@@ -694,7 +691,7 @@ impl DataTable {
 
     /// Serializes a single control column: an iterable of dense arrow-like data.
     pub fn serialize_control_column<'a, C: re_types_core::Component + 'a>(
-        values: &'a [C],
+        values: &'a VecDeque<C>,
     ) -> DataTableResult<(Field, Box<dyn Array>)>
     where
         std::borrow::Cow<'a, C>: std::convert::From<&'a C>,
@@ -720,12 +717,12 @@ impl DataTable {
     /// Serializes a single control column; optimized path for primitive datatypes.
     pub fn serialize_primitive_column<T: arrow2::types::NativeType>(
         name: &str,
-        values: &[T],
+        values: &VecDeque<T>,
         datatype: Option<DataType>,
     ) -> (Field, Box<dyn Array>) {
         re_tracing::profile_function!();
 
-        let data = PrimitiveArray::from_slice(values);
+        let data = DataTable::serialize_primitive_deque(values);
 
         let datatype = datatype.unwrap_or(data.data_type().clone());
         let data = data.to(datatype.clone()).boxed();
@@ -779,7 +776,7 @@ impl DataTable {
     /// Serializes a single data column.
     pub fn serialize_data_column(
         name: &str,
-        column: &[Option<DataCell>],
+        column: &VecDeque<Option<DataCell>>,
     ) -> DataTableResult<(Field, Box<dyn Array>)> {
         re_tracing::profile_function!();
 
@@ -788,7 +785,7 @@ impl DataTable {
         /// * Before: `[C, C, C, C, C, C, C, …]`
         /// * After: `ListArray[ [[C, C], [C, C, C], None, [C], [C], …] ]`
         fn data_to_lists(
-            column: &[Option<DataCell>],
+            column: &VecDeque<Option<DataCell>>,
             data: Box<dyn Array>,
             ext_name: Option<String>,
         ) -> Box<dyn Array> {
@@ -857,6 +854,28 @@ impl DataTable {
             .with_metadata([(METADATA_KIND.to_owned(), METADATA_KIND_DATA.to_owned())].into());
 
         Ok((field, data))
+    }
+
+    pub fn serialize_primitive_deque_opt<T: NativeType>(
+        data: &VecDeque<Option<T>>,
+    ) -> PrimitiveArray<T> {
+        let datatype = T::PRIMITIVE.into();
+        let values = data
+            .iter()
+            .copied()
+            .map(Option::unwrap_or_default)
+            .collect();
+        let validity = data
+            .iter()
+            .any(Option::is_none)
+            .then(|| data.iter().map(Option::is_some).collect());
+        PrimitiveArray::new(datatype, values, validity)
+    }
+
+    pub fn serialize_primitive_deque<T: NativeType>(data: &VecDeque<T>) -> PrimitiveArray<T> {
+        let datatype = T::PRIMITIVE.into();
+        let values = data.iter().copied().collect();
+        PrimitiveArray::new(datatype, values, None)
     }
 }
 
@@ -1282,7 +1301,7 @@ impl DataTable {
             Time,
         };
 
-        let table_id = TableId::random();
+        let table_id = TableId::new();
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
@@ -1306,7 +1325,7 @@ impl DataTable {
             let labels: &[MyLabel] = &[];
 
             DataRow::from_cells3(
-                RowId::random(),
+                RowId::new(),
                 "a",
                 timepoint(1),
                 num_instances,
@@ -1319,7 +1338,7 @@ impl DataTable {
             let num_instances = 0;
             let colors: &[MyColor] = &[];
 
-            DataRow::from_cells1(RowId::random(), "b", timepoint(1), num_instances, colors).unwrap()
+            DataRow::from_cells1(RowId::new(), "b", timepoint(1), num_instances, colors).unwrap()
         };
 
         let row2 = {
@@ -1328,7 +1347,7 @@ impl DataTable {
             let labels: &[_] = &[MyLabel("hey".into())];
 
             DataRow::from_cells2(
-                RowId::random(),
+                RowId::new(),
                 "c",
                 timepoint(2),
                 num_instances,

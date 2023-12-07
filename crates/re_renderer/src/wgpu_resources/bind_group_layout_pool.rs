@@ -1,6 +1,6 @@
 use crate::debug_label::DebugLabel;
 
-use super::{resource::PoolError, static_resource_pool::StaticResourcePool};
+use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
 
 slotmap::new_key_type! { pub struct GpuBindGroupLayoutHandle; }
 
@@ -18,7 +18,7 @@ pub struct GpuBindGroupLayoutPool {
 
 impl GpuBindGroupLayoutPool {
     pub fn get_or_create(
-        &mut self,
+        &self,
         device: &wgpu::Device,
         desc: &BindGroupLayoutDesc,
     ) -> GpuBindGroupLayoutHandle {
@@ -30,11 +30,14 @@ impl GpuBindGroupLayoutPool {
         })
     }
 
-    pub fn get_resource(
+    /// Locks the resource pool for resolving handles.
+    ///
+    /// While it is locked, no new resources can be added.
+    pub fn resources(
         &self,
-        handle: GpuBindGroupLayoutHandle,
-    ) -> Result<&wgpu::BindGroupLayout, PoolError> {
-        self.pool.get_resource(handle)
+    ) -> StaticResourcePoolReadLockAccessor<'_, GpuBindGroupLayoutHandle, wgpu::BindGroupLayout>
+    {
+        self.pool.resources()
     }
 
     pub fn begin_frame(&mut self, frame_index: u64) {

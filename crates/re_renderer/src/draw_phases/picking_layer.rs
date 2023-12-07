@@ -19,12 +19,13 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuRenderPipelineHandle,
-        GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
-        TextureDesc, WgpuResourcePools,
+        GpuRenderPipelinePoolAccessor, GpuTexture, GpuTextureHandle, PipelineLayoutDesc, PoolError,
+        RenderPipelineDesc, TextureDesc,
     },
     DebugLabel, GpuReadbackBuffer, GpuReadbackIdentifier, RectInt, RenderContext,
 };
 
+use parking_lot::Mutex;
 use smallvec::smallvec;
 
 /// GPU retrieved & processed picking data result.
@@ -141,7 +142,7 @@ pub enum PickingLayerError {
 pub struct PickingLayerProcessor {
     pub picking_target: GpuTexture,
     picking_depth_target: GpuTexture,
-    readback_buffer: GpuReadbackBuffer,
+    readback_buffer: Mutex<GpuReadbackBuffer>,
     bind_group_0: GpuBindGroup,
 
     depth_readback_workaround: Option<DepthReadbackWorkaround>,
@@ -174,7 +175,7 @@ impl PickingLayerProcessor {
     /// It allows to sample the picking layer texture in a shader.
     #[allow(clippy::too_many_arguments)]
     pub fn new<T: 'static + Send + Sync>(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         view_name: &DebugLabel,
         screen_resolution: glam::UVec2,
         picking_rect: RectInt,
@@ -203,11 +204,7 @@ impl PickingLayerProcessor {
             },
         );
 
-        let direct_depth_readback = ctx
-            .shared_renderer_data
-            .config
-            .device_caps
-            .support_depth_readback();
+        let direct_depth_readback = ctx.config.device_caps.support_depth_readback();
 
         let picking_depth_target = ctx.gpu_resources.textures.alloc(
             &ctx.device,
@@ -258,7 +255,7 @@ impl PickingLayerProcessor {
             frame_uniform_buffer_content,
         );
 
-        let bind_group_0 = ctx.shared_renderer_data.global_bindings.create_bind_group(
+        let bind_group_0 = ctx.global_bindings.create_bind_group(
             &ctx.gpu_resources,
             &ctx.device,
             frame_uniform_buffer,
@@ -285,7 +282,7 @@ impl PickingLayerProcessor {
         );
         let buffer_size = row_info_id.buffer_size_padded + row_info_depth.buffer_size_padded;
 
-        let readback_buffer = ctx.gpu_readback_belt.lock().allocate(
+        let readback_buffer = Mutex::new(ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
             buffer_size,
@@ -296,7 +293,7 @@ impl PickingLayerProcessor {
                 world_from_cropped_projection: cropped_projection_from_world.inverse(),
                 depth_readback_workaround_in_use: depth_readback_workaround.is_some(),
             }),
-        );
+        ));
 
         PickingLayerProcessor {
             bind_group_0,
@@ -321,17 +318,19 @@ impl PickingLayerProcessor {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: true, // Store for readback!
+                    store: wgpu::StoreOp::Store, // Store for readback!
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &self.picking_depth_target.default_view,
                 depth_ops: Some(wgpu::Operations {
                     load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
-                    store: true, // Store for readback!
+                    store: wgpu::StoreOp::Store, // Store for readback!
                 }),
                 stencil_ops: None,
             }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
         pass.set_bind_group(0, &self.bind_group_0, &[]);
@@ -340,24 +339,27 @@ impl PickingLayerProcessor {
     }
 
     pub fn end_render_pass(
-        self,
+        &self,
         encoder: &mut wgpu::CommandEncoder,
-        pools: &WgpuResourcePools,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
     ) -> Result<(), PickingLayerError> {
         let extent = glam::uvec2(
             self.picking_target.texture.width(),
             self.picking_target.texture.height(),
         );
 
-        let readable_depth_texture = if let Some(depth_copy_workaround) =
-            self.depth_readback_workaround.as_ref()
-        {
-            depth_copy_workaround.copy_to_readable_texture(encoder, pools, &self.bind_group_0)?
-        } else {
-            &self.picking_depth_target
-        };
+        let readable_depth_texture =
+            if let Some(depth_copy_workaround) = self.depth_readback_workaround.as_ref() {
+                depth_copy_workaround.copy_to_readable_texture(
+                    encoder,
+                    render_pipelines,
+                    &self.bind_group_0,
+                )?
+            } else {
+                &self.picking_depth_target
+            };
 
-        self.readback_buffer.read_multiple_texture2d(
+        self.readback_buffer.lock().read_multiple_texture2d(
             encoder,
             &[
                 (
@@ -480,7 +482,7 @@ impl DepthReadbackWorkaround {
     const READBACK_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Float;
 
     fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         extent: glam::UVec2,
         depth_target_handle: GpuTextureHandle,
     ) -> DepthReadbackWorkaround {
@@ -529,30 +531,24 @@ impl DepthReadbackWorkaround {
         );
 
         let render_pipeline = ctx.gpu_resources.render_pipelines.get_or_create(
-            &ctx.device,
+            ctx,
             &RenderPipelineDesc {
                 label: "DepthCopyWorkaround::render_pipeline".into(),
                 pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
-                    &ctx.device,
+                    ctx,
                     &PipelineLayoutDesc {
                         label: "DepthCopyWorkaround::render_pipeline".into(),
-                        entries: vec![
-                            ctx.shared_renderer_data.global_bindings.layout,
-                            bind_group_layout,
-                        ],
+                        entries: vec![ctx.global_bindings.layout, bind_group_layout],
                     },
-                    &ctx.gpu_resources.bind_group_layouts,
                 ),
                 vertex_entrypoint: "main".into(),
                 vertex_handle: ctx.gpu_resources.shader_modules.get_or_create(
-                    &ctx.device,
-                    &mut ctx.resolver,
+                    ctx,
                     &include_shader_module!("../../shader/screen_triangle.wgsl"),
                 ),
                 fragment_entrypoint: "main".into(),
                 fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
-                    &ctx.device,
-                    &mut ctx.resolver,
+                    ctx,
                     &include_shader_module!("../../shader/copy_texture.wgsl"),
                 ),
                 vertex_buffers: smallvec![],
@@ -565,8 +561,6 @@ impl DepthReadbackWorkaround {
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
             },
-            &ctx.gpu_resources.pipeline_layouts,
-            &ctx.gpu_resources.shader_modules,
         );
 
         Self {
@@ -579,7 +573,7 @@ impl DepthReadbackWorkaround {
     fn copy_to_readable_texture(
         &self,
         encoder: &mut wgpu::CommandEncoder,
-        pools: &WgpuResourcePools,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         global_binding_bind_group: &GpuBindGroup,
     ) -> Result<&GpuTexture, PoolError> {
         // Copy depth texture to a readable (color) texture with a screen filling triangle.
@@ -590,13 +584,15 @@ impl DepthReadbackWorkaround {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: true, // Store for readback!
+                    store: wgpu::StoreOp::Store, // Store for readback!
                 },
             })],
             depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline = render_pipelines.get(self.render_pipeline)?;
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, global_binding_bind_group, &[]);
         pass.set_bind_group(1, &self.bind_group, &[]);

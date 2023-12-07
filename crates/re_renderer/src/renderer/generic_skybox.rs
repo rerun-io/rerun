@@ -1,17 +1,17 @@
 use smallvec::smallvec;
 
 use crate::{
-    context::SharedRendererData,
     draw_phases::DrawPhase,
     include_shader_module,
     renderer::screen_triangle_vertex_shader,
     view_builder::ViewBuilder,
     wgpu_resources::{
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc, WgpuResourcePools,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
+        RenderPipelineDesc,
     },
 };
 
-use super::{DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{DrawData, DrawError, RenderContext, Renderer};
 
 /// Renders a generated skybox from a color gradient
 ///
@@ -29,14 +29,8 @@ impl DrawData for GenericSkyboxDrawData {
 }
 
 impl GenericSkyboxDrawData {
-    pub fn new(ctx: &mut RenderContext) -> Self {
-        ctx.renderers.write().get_or_create::<_, GenericSkybox>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
-
+    pub fn new(ctx: &RenderContext) -> Self {
+        let _ = ctx.renderer::<GenericSkybox>(); // TODO(andreas): This line ensures that the renderer exists. Currently this needs to be done ahead of time, but should be fully automatic!
         GenericSkyboxDrawData {}
     }
 }
@@ -44,34 +38,27 @@ impl GenericSkyboxDrawData {
 impl Renderer for GenericSkybox {
     type RendererDrawData = GenericSkyboxDrawData;
 
-    fn create_renderer<Fs: FileSystem>(
-        shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
-    ) -> Self {
+    fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 
-        let vertex_handle = screen_triangle_vertex_shader(pools, device, resolver);
-        let render_pipeline = pools.render_pipelines.get_or_create(
-            device,
+        let vertex_handle = screen_triangle_vertex_shader(ctx);
+        let render_pipeline = ctx.gpu_resources.render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "GenericSkybox::render_pipeline".into(),
-                pipeline_layout: pools.pipeline_layouts.get_or_create(
-                    device,
+                pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
+                    ctx,
                     &PipelineLayoutDesc {
                         label: "GenericSkybox::render_pipeline".into(),
-                        entries: vec![shared_data.global_bindings.layout],
+                        entries: vec![ctx.global_bindings.layout],
                     },
-                    &pools.bind_group_layouts,
                 ),
 
                 vertex_entrypoint: "main".into(),
                 vertex_handle,
                 fragment_entrypoint: "main".into(),
-                fragment_handle: pools.shader_modules.get_or_create(
-                    device,
-                    resolver,
+                fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
+                    ctx,
                     &include_shader_module!("../../shader/generic_skybox.wgsl"),
                 ),
                 vertex_buffers: smallvec![],
@@ -88,22 +75,20 @@ impl Renderer for GenericSkybox {
                 }),
                 multisample: ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE,
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
         GenericSkybox { render_pipeline }
     }
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         _draw_data: &GenericSkyboxDrawData,
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
 
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline = render_pipelines.get(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
         pass.draw(0..3, 0..1);

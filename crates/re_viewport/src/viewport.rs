@@ -6,10 +6,11 @@ use std::collections::BTreeMap;
 
 use ahash::HashMap;
 use egui_tiles::Behavior as _;
+use re_data_ui::item_ui;
 
 use re_ui::{Icon, ReUi};
 use re_viewer_context::{
-    CommandSender, Item, SpaceViewClassName, SpaceViewClassRegistry, SpaceViewHighlights,
+    CommandSender, Item, SpaceViewClassIdentifier, SpaceViewClassRegistry, SpaceViewHighlights,
     SpaceViewId, SpaceViewState, ViewerContext,
 };
 
@@ -34,7 +35,7 @@ impl ViewportState {
         &mut self,
         space_view_class_registry: &SpaceViewClassRegistry,
         space_view_id: SpaceViewId,
-        space_view_class: &SpaceViewClassName,
+        space_view_class: &SpaceViewClassIdentifier,
     ) -> &mut dyn SpaceViewState {
         self.space_view_states
             .entry(space_view_id)
@@ -127,7 +128,7 @@ impl<'a, 'b> Viewport<'a, 'b> {
         let tree = if let Some(space_view_id) = blueprint.maximized {
             let mut tiles = egui_tiles::Tiles::default();
             let root = tiles.insert_pane(space_view_id);
-            maximized_tree = egui_tiles::Tree::new(root, tiles);
+            maximized_tree = egui_tiles::Tree::new("viewport_tree", root, tiles);
             &mut maximized_tree
         } else {
             if blueprint.tree.is_empty() {
@@ -169,18 +170,14 @@ impl<'a, 'b> Viewport<'a, 'b> {
         });
     }
 
-    pub fn on_frame_start(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        spaces_info: &SpaceInfoCollection,
-    ) {
+    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, spaces_info: &SpaceInfoCollection) {
         re_tracing::profile_function!();
 
         for space_view in self.blueprint.space_views.values_mut() {
             let space_view_state = self.state.space_view_state_mut(
                 ctx.space_view_class_registry,
                 space_view.id,
-                space_view.class_name(),
+                space_view.class_identifier(),
             );
 
             space_view.on_frame_start(ctx, space_view_state);
@@ -263,7 +260,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         let space_view_state = self.viewport_state.space_view_state_mut(
             self.ctx.space_view_class_registry,
             space_view_blueprint.id,
-            space_view_blueprint.class_name(),
+            space_view_blueprint.class_identifier(),
         );
 
         space_view_ui(
@@ -326,7 +323,13 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             tab_widget.paint(ui);
         }
 
-        self.on_tab_button(tiles, tile_id, &response);
+        if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
+            item_ui::select_hovered_on_click(
+                self.ctx,
+                &response,
+                &[Item::SpaceView(*space_view_id)],
+            );
+        }
 
         response
     }
@@ -353,34 +356,17 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
         });
     }
 
-    fn on_tab_button(
-        &mut self,
-        tiles: &egui_tiles::Tiles<SpaceViewId>,
-        tile_id: egui_tiles::TileId,
-        button_response: &egui::Response,
-    ) {
-        if button_response.clicked() {
-            if let Some(egui_tiles::Tile::Pane(space_view_id)) = tiles.get(tile_id) {
-                self.ctx
-                    .set_single_selection(&Item::SpaceView(*space_view_id));
-            } else {
-                // Clicked a group tab - we don't support selecting that yet,
-                // so deselect whatever was selected to make it less confusing:
-                self.ctx.rec_cfg.selection_state.clear_current();
-            }
-        }
-    }
-
     fn retain_pane(&mut self, space_view_id: &SpaceViewId) -> bool {
         self.space_views.contains_key(space_view_id)
     }
 
-    fn top_bar_rtl_ui(
+    fn top_bar_right_ui(
         &mut self,
         tiles: &egui_tiles::Tiles<SpaceViewId>,
         ui: &mut egui::Ui,
         _tile_id: egui_tiles::TileId,
         tabs: &egui_tiles::Tabs,
+        _scroll_offset: &mut f32,
     ) {
         let Some(active) = tabs.active.and_then(|active| tiles.get(active)) else {
             return;
@@ -469,7 +455,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
 }
 
 fn space_view_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_blueprint: &mut SpaceViewBlueprint,
     space_view_state: &mut dyn SpaceViewState,
@@ -523,6 +509,13 @@ impl TabWidget {
                 .contains(&Item::SpaceView(space_view.id))
         });
 
+        let hovered = space_view.map_or(false, |space_view| {
+            tab_viewer
+                .ctx
+                .hovered()
+                .contains(&Item::SpaceView(space_view.id))
+        });
+
         // tab icon
         let icon_size = ReUi::small_icon_size();
         let icon_width_plus_padding = icon_size.x + ReUi::text_to_icon_padding();
@@ -553,6 +546,8 @@ impl TabWidget {
 
         let bg_color = if selected {
             ui.visuals().selection.bg_fill
+        } else if hovered {
+            ui.visuals().widgets.hovered.bg_fill
         } else {
             tab_viewer.tab_bar_color(ui.visuals())
         };
@@ -573,7 +568,7 @@ impl TabWidget {
         }
     }
 
-    fn paint(self, ui: &mut egui::Ui) {
+    fn paint(self, ui: &egui::Ui) {
         ui.painter()
             .rect(self.rect, 0.0, self.bg_color, egui::Stroke::NONE);
 

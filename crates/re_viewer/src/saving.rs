@@ -85,6 +85,8 @@ pub fn save_database_to_file(
 
     re_tracing::profile_function!();
 
+    store_db.store().sort_indices_if_needed();
+
     let set_store_info_msg = store_db
         .store_info_msg()
         .map(|msg| LogMsg::SetStoreInfo(msg.clone()));

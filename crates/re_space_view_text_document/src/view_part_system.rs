@@ -5,7 +5,7 @@ use re_types::{
     components, Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,
 };
 
@@ -23,8 +23,8 @@ pub struct TextDocumentSystem {
     pub text_entries: Vec<TextDocumentEntry>,
 }
 
-impl NamedViewSystem for TextDocumentSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for TextDocumentSystem {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "TextDocument".into()
     }
 }
@@ -43,7 +43,7 @@ impl ViewPartSystem for TextDocumentSystem {
 
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
@@ -51,7 +51,7 @@ impl ViewPartSystem for TextDocumentSystem {
 
         let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
-        for data_result in query.iter_visible_data_results(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             // TODO(jleibs): this match can go away once we resolve:
             // https://github.com/rerun-io/rerun/issues/3320
             match query_archetype::<archetypes::TextDocument>(

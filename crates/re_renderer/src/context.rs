@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use parking_lot::{Mutex, RwLock};
+use parking_lot::{MappedRwLockReadGuard, Mutex, RwLock, RwLockReadGuard};
 use type_map::concurrent::{self, TypeMap};
 
 use crate::{
@@ -9,8 +9,8 @@ use crate::{
     global_bindings::GlobalBindings,
     renderer::Renderer,
     resource_managers::{MeshManager, TextureManager2D},
-    wgpu_resources::WgpuResourcePools,
-    FileResolver, FileServer, FileSystem, RecommendedFileResolver,
+    wgpu_resources::{GpuRenderPipelinePoolMoveAccessor, WgpuResourcePools},
+    FileServer, RecommendedFileResolver,
 };
 
 /// Any resource involving wgpu rendering which can be re-used across different scenes.
@@ -19,8 +19,13 @@ pub struct RenderContext {
     pub device: Arc<wgpu::Device>,
     pub queue: Arc<wgpu::Queue>,
 
-    pub(crate) shared_renderer_data: SharedRendererData,
-    pub(crate) renderers: RwLock<Renderers>,
+    pub(crate) config: RenderContextConfig,
+
+    /// Global bindings, always bound to 0 bind group slot zero.
+    /// [`Renderer`] are not allowed to use bind group 0 themselves!
+    pub(crate) global_bindings: GlobalBindings,
+
+    renderers: RwLock<Renderers>,
     pub(crate) resolver: RecommendedFileResolver,
     #[cfg(all(not(target_arch = "wasm32"), debug_assertions))] // native debug build
     pub(crate) err_tracker: std::sync::Arc<crate::error_tracker::ErrorTracker>,
@@ -41,15 +46,6 @@ pub struct RenderContext {
     pub gpu_resources: WgpuResourcePools, // Last due to drop order.
 }
 
-/// Immutable data that is shared between all [`Renderer`]
-pub struct SharedRendererData {
-    pub(crate) config: RenderContextConfig,
-
-    /// Global bindings, always bound to 0 bind group slot zero.
-    /// [`Renderer`] are not allowed to use bind group 0 themselves!
-    pub(crate) global_bindings: GlobalBindings,
-}
-
 /// Struct owning *all* [`Renderer`].
 /// [`Renderer`] are created lazily and stay around indefinitely.
 pub(crate) struct Renderers {
@@ -57,16 +53,13 @@ pub(crate) struct Renderers {
 }
 
 impl Renderers {
-    pub fn get_or_create<Fs: FileSystem, R: 'static + Renderer + Send + Sync>(
+    pub fn get_or_create<R: 'static + Renderer + Send + Sync>(
         &mut self,
-        shared_data: &SharedRendererData,
-        resource_pools: &mut WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        ctx: &RenderContext,
     ) -> &R {
         self.renderers.entry().or_insert_with(|| {
             re_tracing::profile_scope!("create_renderer", std::any::type_name::<R>());
-            R::create_renderer(shared_data, resource_pools, device, resolver)
+            R::create_renderer(ctx)
         })
     }
 
@@ -113,8 +106,10 @@ impl RenderContext {
     ) -> Self {
         re_tracing::profile_function!();
 
+        log_adapter_info(&adapter.get_info());
+
         let mut gpu_resources = WgpuResourcePools::default();
-        let global_bindings = GlobalBindings::new(&mut gpu_resources, &device);
+        let global_bindings = GlobalBindings::new(&gpu_resources, &device);
 
         // Validate capabilities of the device.
         assert!(
@@ -163,28 +158,14 @@ impl RenderContext {
             err_tracker
         };
 
-        let shared_renderer_data = SharedRendererData {
-            config,
-            global_bindings,
-        };
-
-        let mut resolver = crate::new_recommended_file_resolver();
-        let mut renderers = RwLock::new(Renderers {
-            renderers: TypeMap::new(),
-        });
-
-        let mesh_manager = RwLock::new(MeshManager::new(renderers.get_mut().get_or_create(
-            &shared_renderer_data,
-            &mut gpu_resources,
-            &device,
-            &mut resolver,
-        )));
+        let resolver = crate::new_recommended_file_resolver();
+        let mesh_manager = RwLock::new(MeshManager::new());
         let texture_manager_2d =
             TextureManager2D::new(device.clone(), queue.clone(), &gpu_resources.textures);
 
         let active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&device)),
-            per_frame_data_helper: TypeMap::new(),
+            pinned_render_pipelines: None,
             frame_index: 0,
         };
 
@@ -207,9 +188,12 @@ impl RenderContext {
             device,
             queue,
 
-            shared_renderer_data,
+            config,
+            global_bindings,
 
-            renderers,
+            renderers: RwLock::new(Renderers {
+                renderers: TypeMap::new(),
+            }),
 
             gpu_resources,
 
@@ -248,9 +232,7 @@ impl RenderContext {
         //          knowing that we're not _actually_ blocking.
         //
         //          For more details check https://github.com/gfx-rs/wgpu/issues/3601
-        if cfg!(target_arch = "wasm32")
-            && self.shared_renderer_data.config.device_caps.tier == DeviceTier::Gles
-        {
+        if cfg!(target_arch = "wasm32") && self.config.device_caps.tier == DeviceTier::Gles {
             self.device.poll(wgpu::Maintain::Wait);
             return;
         }
@@ -297,10 +279,18 @@ impl RenderContext {
         // Map all read staging buffers.
         self.gpu_readback_belt.get_mut().after_queue_submit();
 
+        // Give back moved render pipelines to the pool if any were moved out.
+        if let Some(moved_render_pipelines) = self.active_frame.pinned_render_pipelines.take() {
+            self.gpu_resources
+                .render_pipelines
+                .return_resources(moved_render_pipelines);
+        }
+
+        // New active frame!
         self.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(&self.device)),
             frame_index: self.active_frame.frame_index + 1,
-            per_frame_data_helper: TypeMap::new(),
+            pinned_render_pipelines: None,
         };
         let frame_index = self.active_frame.frame_index;
 
@@ -313,7 +303,7 @@ impl RenderContext {
         // The set of files on disk that were modified in any way since last frame,
         // ignoring deletions.
         // Always an empty set in release builds.
-        let modified_paths = FileServer::get_mut(|fs| fs.collect(&mut self.resolver));
+        let modified_paths = FileServer::get_mut(|fs| fs.collect(&self.resolver));
         if !modified_paths.is_empty() {
             re_log::debug!(?modified_paths, "got some filesystem events");
         }
@@ -336,12 +326,7 @@ impl RenderContext {
 
             // Shader module maintenance must come before render pipelines because render pipeline
             // recompilation picks up all shaders that have been recompiled this frame.
-            shader_modules.begin_frame(
-                &self.device,
-                &mut self.resolver,
-                frame_index,
-                &modified_paths,
-            );
+            shader_modules.begin_frame(&self.device, &self.resolver, frame_index, &modified_paths);
             render_pipelines.begin_frame(
                 &self.device,
                 frame_index,
@@ -387,6 +372,30 @@ impl RenderContext {
                 .push(self.queue.submit([command_buffer]));
         }
     }
+
+    /// Gets a renderer with the specified type, initializing it if necessary.
+    pub fn renderer<R: 'static + Renderer + Send + Sync>(&self) -> MappedRwLockReadGuard<'_, R> {
+        // Most likely we already have the renderer. Take a read lock and return it.
+        if let Ok(renderer) =
+            parking_lot::RwLockReadGuard::try_map(self.renderers.read(), |r| r.get::<R>())
+        {
+            return renderer;
+        }
+
+        // If it wasn't there we have to add it.
+        // This path is rare since it happens only once per renderer type in the lifetime of the ctx.
+        // (we don't discard renderers ever)
+        self.renderers.write().get_or_create::<R>(self);
+
+        // Release write lock again and only take a read lock.
+        // safe to unwrap since we just created it and nobody removes elements from the renderer.
+        parking_lot::RwLockReadGuard::map(self.renderers.read(), |r| r.get::<R>().unwrap())
+    }
+
+    /// Read access to renderers.
+    pub(crate) fn read_lock_renderers(&self) -> RwLockReadGuard<'_, Renderers> {
+        self.renderers.read()
+    }
 }
 
 pub struct FrameGlobalCommandEncoder(Option<wgpu::CommandEncoder>);
@@ -426,9 +435,76 @@ pub struct ActiveFrameContext {
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
     pub before_view_builder_encoder: Mutex<FrameGlobalCommandEncoder>,
 
-    /// Utility type map that will be cleared every frame.
-    pub per_frame_data_helper: TypeMap,
+    /// Render pipelines that were moved out of the resource pool.
+    ///
+    /// Will be moved back to the resource pool at the start of the frame.
+    /// This is needed for accessing the render pipelines without keeping a reference
+    /// to the resource pool lock during the lifetime of a render pass.
+    pub pinned_render_pipelines: Option<GpuRenderPipelinePoolMoveAccessor>,
 
     /// Index of this frame. Is incremented for every render frame.
     frame_index: u64,
+}
+
+fn log_adapter_info(info: &wgpu::AdapterInfo) {
+    re_tracing::profile_function!();
+
+    let is_software_rasterizer_with_known_crashes = {
+        // See https://github.com/rerun-io/rerun/issues/3089
+        const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
+            "lavapipe", // Vulkan software rasterizer
+            "llvmpipe", // OpenGL software rasterizer
+        ];
+
+        // I'm not sure where the incriminating string will appear, so check all fields at once:
+        let info_string = format!("{info:?}").to_lowercase();
+
+        KNOWN_SOFTWARE_RASTERIZERS
+            .iter()
+            .any(|&software_rasterizer| info_string.contains(software_rasterizer))
+    };
+
+    let human_readable_summary = adapter_info_summary(info);
+
+    if is_software_rasterizer_with_known_crashes {
+        re_log::warn!("Software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("wgpu adapter {human_readable_summary}");
+    } else if info.device_type == wgpu::DeviceType::Cpu {
+        re_log::warn!("Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
+        re_log::info!("wgpu adapter {human_readable_summary}");
+    } else {
+        re_log::debug!("wgpu adapter {human_readable_summary}");
+    }
+}
+
+/// A human-readable summary about an adapter
+fn adapter_info_summary(info: &wgpu::AdapterInfo) -> String {
+    let wgpu::AdapterInfo {
+        name,
+        vendor: _, // skip integer id
+        device: _, // skip integer id
+        device_type,
+        driver,
+        driver_info,
+        backend,
+    } = &info;
+
+    // Example values:
+    // > name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
+    // > name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
+    // > name: "ANGLE (Apple, Apple M1 Pro, OpenGL 4.1)", device_type: IntegratedGpu, backend: Gl, driver: "", driver_info: ""
+
+    let mut summary = format!("backend: {backend:?}, device_type: {device_type:?}");
+
+    if !name.is_empty() {
+        summary += &format!(", name: {name:?}");
+    }
+    if !driver.is_empty() {
+        summary += &format!(", driver: {driver:?}");
+    }
+    if !driver_info.is_empty() {
+        summary += &format!(", driver_info: {driver_info:?}");
+    }
+
+    summary
 }

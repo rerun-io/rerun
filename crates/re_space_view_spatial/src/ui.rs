@@ -440,7 +440,7 @@ pub fn screenshot_context_menu(
 
 #[allow(clippy::too_many_arguments)] // TODO(andreas): Make this method sane.
 pub fn picking(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     mut response: egui::Response,
     space_from_ui: egui::emath::RectTransform,
     ui_clip_rect: egui::Rect,
@@ -666,7 +666,7 @@ pub fn picking(
 fn image_hover_ui(
     ui: &mut egui::Ui,
     instance_path: &re_data_store::InstancePath,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     tensor: TensorData,
     spatial_kind: SpatialSpaceViewKind,
     ui_clip_rect: egui::Rect,

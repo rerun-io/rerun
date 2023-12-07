@@ -214,6 +214,7 @@ impl SegmentationImage {
         }
     }
 
+    #[inline]
     pub fn with_draw_order(mut self, draw_order: impl Into<crate::components::DrawOrder>) -> Self {
         self.draw_order = Some(draw_order.into());
         self

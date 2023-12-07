@@ -7,14 +7,12 @@ use re_types::datatypes::{
 };
 use re_viewer_context::{auto_color, UiVerbosity, ViewerContext};
 
-use super::DataUi;
-
-const TABLE_SCROLL_AREA_HEIGHT: f32 = 500.0; // add scroll-bars when we get to this height
+use super::{table_for_verbosity, DataUi};
 
 impl crate::EntityDataUi for re_types::components::ClassId {
     fn entity_data_ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
@@ -41,12 +39,13 @@ impl crate::EntityDataUi for re_types::components::ClassId {
                         || !class.keypoint_annotations.is_empty()
                     {
                         response.response.on_hover_ui(|ui| {
-                            class_description_ui(ui, class, id);
+                            class_description_ui(ctx, ui, verbosity, class, id);
                         });
                     }
                 }
-                UiVerbosity::Reduced | UiVerbosity::All => {
-                    class_description_ui(ui, class, id);
+                UiVerbosity::Reduced | UiVerbosity::Full | UiVerbosity::LimitHeight => {
+                    ui.separator();
+                    class_description_ui(ctx, ui, verbosity, class, id);
                 }
             }
         } else {
@@ -58,7 +57,7 @@ impl crate::EntityDataUi for re_types::components::ClassId {
 impl crate::EntityDataUi for re_types::components::KeypointId {
     fn entity_data_ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: re_viewer_context::UiVerbosity,
         entity_path: &re_log_types::EntityPath,
@@ -97,7 +96,7 @@ fn annotation_info(
 impl DataUi for AnnotationContext {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,
@@ -111,22 +110,25 @@ impl DataUi for AnnotationContext {
                     ui.label(format!("AnnotationContext with {} classes", self.0.len()));
                 }
             }
-            UiVerbosity::All => {
+            UiVerbosity::LimitHeight | UiVerbosity::Full => {
                 ui.vertical(|ui| {
-                    annotation_info_table_ui(
-                        ui,
-                        self.0
-                            .iter()
-                            .map(|class| &class.class_description.info)
-                            .sorted_by_key(|info| info.id),
-                    );
+                    ctx.re_ui
+                        .maybe_collapsing_header(ui, true, "Classes", true, |ui| {
+                            let annotation_infos = self
+                                .0
+                                .iter()
+                                .map(|class| &class.class_description.info)
+                                .sorted_by_key(|info| info.id)
+                                .collect_vec();
+                            annotation_info_table_ui(ui, verbosity, &annotation_infos);
+                        });
 
                     for ClassDescriptionMapElem {
                         class_id,
                         class_description,
                     } in &self.0
                     {
-                        class_description_ui(ui, class_description, *class_id);
+                        class_description_ui(ctx, ui, verbosity, class_description, *class_id);
                     }
                 });
             }
@@ -135,7 +137,9 @@ impl DataUi for AnnotationContext {
 }
 
 fn class_description_ui(
+    ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
+    mut verbosity: UiVerbosity,
     class: &ClassDescription,
     id: re_types::datatypes::ClassId,
 ) {
@@ -143,97 +147,119 @@ fn class_description_ui(
         return;
     }
 
+    re_tracing::profile_function!();
+
+    let use_collapsible = verbosity == UiVerbosity::LimitHeight || verbosity == UiVerbosity::Full;
+
+    // We use collapsible header as a means for the user to limit the height, so the annotation info
+    // tables can be fully unrolled.
+    if verbosity == UiVerbosity::LimitHeight {
+        verbosity = UiVerbosity::Full;
+    }
+
     let row_height = re_ui::ReUi::table_line_height();
-    ui.separator();
-    ui.strong(format!("Keypoints for Class {}", id.0));
     if !class.keypoint_annotations.is_empty() {
-        ui.add_space(8.0);
-        ui.strong("Keypoints Annotations");
-        ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
-            annotation_info_table_ui(
-                ui,
-                class
+        ctx.re_ui.maybe_collapsing_header(
+            ui,
+            use_collapsible,
+            &format!("Keypoints Annotation for Class {}", id.0),
+            true,
+            |ui| {
+                let annotation_infos = class
                     .keypoint_annotations
                     .iter()
-                    .sorted_by_key(|annotation| annotation.id),
-            );
-        });
+                    .sorted_by_key(|annotation| annotation.id)
+                    .collect_vec();
+                ui.push_id(format!("keypoint_annotations_{}", id.0), |ui| {
+                    annotation_info_table_ui(ui, verbosity, &annotation_infos);
+                });
+            },
+        );
     }
 
     if !class.keypoint_connections.is_empty() {
-        ui.add_space(8.0);
-        ui.strong("Keypoint Connections");
-        ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
-            use egui_extras::{Column, TableBuilder};
+        ctx.re_ui.maybe_collapsing_header(
+            ui,
+            use_collapsible,
+            &format!("Keypoint Connections for Class {}", id.0),
+            true,
+            |ui| {
+                ui.push_id(format!("keypoints_connections_{}", id.0), |ui| {
+                    use egui_extras::Column;
 
-            let table = TableBuilder::new(ui)
-                .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
-                .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
-                .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Column::auto().clip(true).at_least(40.0))
-                .column(Column::auto().clip(true).at_least(40.0));
-            table
-                .header(re_ui::ReUi::table_header_height(), |mut header| {
-                    re_ui::ReUi::setup_table_header(&mut header);
-                    header.col(|ui| {
-                        ui.strong("From");
-                    });
-                    header.col(|ui| {
-                        ui.strong("To");
-                    });
-                })
-                .body(|mut body| {
-                    re_ui::ReUi::setup_table_body(&mut body);
+                    let table = table_for_verbosity(verbosity, ui)
+                        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                        .column(Column::auto().clip(true).at_least(40.0))
+                        .column(Column::auto().clip(true).at_least(40.0));
+                    table
+                        .header(re_ui::ReUi::table_header_height(), |mut header| {
+                            re_ui::ReUi::setup_table_header(&mut header);
+                            header.col(|ui| {
+                                ui.strong("From");
+                            });
+                            header.col(|ui| {
+                                ui.strong("To");
+                            });
+                        })
+                        .body(|mut body| {
+                            re_ui::ReUi::setup_table_body(&mut body);
 
-                    // TODO(jleibs): Helper to do this with caching somewhere
-                    let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
-                        re_tracing::profile_scope!("build_annotation_map");
-                        class
-                            .keypoint_annotations
-                            .iter()
-                            .map(|kp| (kp.id.into(), kp.clone()))
-                            .collect()
-                    };
+                            // TODO(jleibs): Helper to do this with caching somewhere
+                            let keypoint_map: ahash::HashMap<KeypointId, AnnotationInfo> = {
+                                re_tracing::profile_scope!("build_annotation_map");
+                                class
+                                    .keypoint_annotations
+                                    .iter()
+                                    .map(|kp| (kp.id.into(), kp.clone()))
+                                    .collect()
+                            };
 
-                    for KeypointPair {
-                        keypoint0: from,
-                        keypoint1: to,
-                    } in &class.keypoint_connections
-                    {
-                        body.row(row_height, |mut row| {
-                            for id in [from, to] {
-                                row.col(|ui| {
-                                    ui.label(
-                                        keypoint_map
-                                            .get(id)
-                                            .and_then(|info| info.label.as_ref())
-                                            .map_or_else(
-                                                || format!("id {}", id.0),
-                                                |label| label.to_string(),
-                                            ),
-                                    );
-                                });
-                            }
+                            body.rows(
+                                row_height,
+                                class.keypoint_connections.len(),
+                                |row_idx, mut row| {
+                                    let pair = &class.keypoint_connections[row_idx];
+                                    let KeypointPair {
+                                        keypoint0,
+                                        keypoint1,
+                                    } = pair;
+
+                                    for id in [keypoint0, keypoint1] {
+                                        row.col(|ui| {
+                                            ui.label(
+                                                keypoint_map
+                                                    .get(id)
+                                                    .and_then(|info| info.label.as_ref())
+                                                    .map_or_else(
+                                                        || format!("id {}", id.0),
+                                                        |label| label.to_string(),
+                                                    ),
+                                            );
+                                        });
+                                    }
+                                },
+                            );
                         });
-                    }
                 });
-        });
+            },
+        );
     }
 }
 
-fn annotation_info_table_ui<'a>(
+fn annotation_info_table_ui(
     ui: &mut egui::Ui,
-    annotation_infos: impl Iterator<Item = &'a AnnotationInfo>,
+    verbosity: UiVerbosity,
+    annotation_infos: &[&AnnotationInfo],
 ) {
+    re_tracing::profile_function!();
+
     let row_height = re_ui::ReUi::table_line_height();
 
     ui.spacing_mut().item_spacing.x = 20.0; // column spacing.
 
-    use egui_extras::{Column, TableBuilder};
+    use egui_extras::Column;
 
-    let table = TableBuilder::new(ui)
-        .min_scrolled_height(TABLE_SCROLL_AREA_HEIGHT)
-        .max_scroll_height(TABLE_SCROLL_AREA_HEIGHT)
+    let table = table_for_verbosity(verbosity, ui)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .column(Column::auto()) // id
         .column(Column::auto().clip(true).at_least(40.0)) // label
@@ -255,24 +281,23 @@ fn annotation_info_table_ui<'a>(
         .body(|mut body| {
             re_ui::ReUi::setup_table_body(&mut body);
 
-            for info in annotation_infos {
-                body.row(row_height, |mut row| {
-                    row.col(|ui| {
-                        ui.label(info.id.to_string());
-                    });
-                    row.col(|ui| {
-                        let label = if let Some(label) = &info.label {
-                            label.as_str()
-                        } else {
-                            ""
-                        };
-                        ui.label(label);
-                    });
-                    row.col(|ui| {
-                        color_ui(ui, info, Vec2::new(64.0, row_height));
-                    });
+            body.rows(row_height, annotation_infos.len(), |row_idx, mut row| {
+                let info = &annotation_infos[row_idx];
+                row.col(|ui| {
+                    ui.label(info.id.to_string());
                 });
-            }
+                row.col(|ui| {
+                    let label = if let Some(label) = &info.label {
+                        label.as_str()
+                    } else {
+                        ""
+                    };
+                    ui.label(label);
+                });
+                row.col(|ui| {
+                    color_ui(ui, info, Vec2::new(64.0, row_height));
+                });
+            });
         });
 }
 

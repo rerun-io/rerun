@@ -6,7 +6,7 @@ use re_log_types::{
 };
 
 use crate::{
-    store::{IndexedBucketInner, PersistentIndexedTable},
+    store::{IndexedBucketInner, PersistentIndexedTable, PersistentIndexedTableInner},
     DataStore, IndexedBucket,
 };
 
@@ -42,7 +42,7 @@ impl DataStore {
         rows.sort_by_key(|row| (row.timepoint.clone(), row.row_id));
 
         Ok(re_log_types::DataTable::from_rows(
-            re_log_types::TableId::random(),
+            re_log_types::TableId::new(),
             rows,
         ))
     }
@@ -71,18 +71,24 @@ impl DataStore {
             let PersistentIndexedTable {
                 ent_path,
                 cluster_key: _,
+                inner,
+            } = table;
+
+            let inner = &*inner.read();
+            let PersistentIndexedTableInner {
                 col_insert_id: _,
                 col_row_id,
                 col_num_instances,
                 columns,
-            } = table;
+                is_sorted: _,
+            } = inner;
 
             DataTable {
-                table_id: TableId::random(),
+                table_id: TableId::new(),
                 col_row_id: col_row_id.clone(),
                 col_timelines: Default::default(),
                 col_entity_path: std::iter::repeat_with(|| ent_path.clone())
-                    .take(table.num_rows() as _)
+                    .take(inner.num_rows() as _)
                     .collect(),
                 col_num_instances: col_num_instances.clone(),
                 columns: columns.clone().into_iter().collect(), // shallow
@@ -106,19 +112,19 @@ impl DataStore {
                 } = bucket;
 
                 let IndexedBucketInner {
-                    is_sorted,
+                    is_sorted: _,
                     time_range: _,
                     col_time,
                     col_insert_id: _,
                     col_row_id,
+                    max_row_id: _,
                     col_num_instances,
                     columns,
                     size_bytes: _,
                 } = &*inner.read();
-                debug_assert!(is_sorted);
 
                 DataTable {
-                    table_id: TableId::random(),
+                    table_id: TableId::new(),
                     col_row_id: col_row_id.clone(),
                     col_timelines: [(*timeline, col_time.iter().copied().map(Some).collect())]
                         .into(),
@@ -157,16 +163,16 @@ impl DataStore {
                     } = bucket;
 
                     let IndexedBucketInner {
-                        is_sorted,
+                        is_sorted: _,
                         time_range,
                         col_time,
                         col_insert_id: _,
                         col_row_id,
+                        max_row_id: _,
                         col_num_instances,
                         columns,
                         size_bytes: _,
                     } = &*inner.read();
-                    debug_assert!(is_sorted);
 
                     if !time_range.intersects(time_filter) {
                         return None;
@@ -204,7 +210,7 @@ impl DataStore {
                     }
 
                     Some(DataTable {
-                        table_id: TableId::random(),
+                        table_id: TableId::new(),
                         col_row_id,
                         col_timelines,
                         col_entity_path,

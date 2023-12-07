@@ -6,7 +6,7 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,
 };
 
@@ -117,8 +117,8 @@ impl Boxes3DPart {
     }
 }
 
-impl NamedViewSystem for Boxes3DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for Boxes3DPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Boxes3D".into()
     }
 }
@@ -137,7 +137,7 @@ impl ViewPartSystem for Boxes3DPart {
 
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {

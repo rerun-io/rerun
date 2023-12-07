@@ -1,7 +1,5 @@
 # C++ Quick Start
 
-${SAFARI_WARNING}
-
 ## Installing the Rerun viewer
 The Rerun C++ SDK works by connecting to an awaiting Rerun Viewer over TCP.
 

@@ -1,7 +1,7 @@
 use re_data_store::EntityProperties;
 use re_log_types::EntityPath;
 use re_viewer_context::{
-    AutoSpawnHeuristic, NamedViewSystem as _, PerSystemEntities, SpaceViewClass,
+    AutoSpawnHeuristic, IdentifiedViewSystem as _, PerSystemEntities, SpaceViewClass,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewPartCollection, ViewQuery, ViewerContext,
 };
@@ -20,7 +20,7 @@ pub struct SpatialSpaceView3D;
 impl SpaceViewClass for SpatialSpaceView3D {
     type State = SpatialSpaceViewState;
 
-    const NAME: &'static str = "3D";
+    const IDENTIFIER: &'static str = "3D";
     const DISPLAY_NAME: &'static str = "3D";
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -56,14 +56,14 @@ impl SpaceViewClass for SpatialSpaceView3D {
         per_system_entities: &PerSystemEntities,
     ) -> AutoSpawnHeuristic {
         let score = auto_spawn_heuristic(
-            &self.name(),
+            &self.identifier(),
             ctx,
             per_system_entities,
             SpatialSpaceViewKind::ThreeD,
         );
 
         if let AutoSpawnHeuristic::SpawnClassWithHighestScoreForRoot(mut score) = score {
-            if let Some(camera_paths) = per_system_entities.get(&CamerasPart::name()) {
+            if let Some(camera_paths) = per_system_entities.get(&CamerasPart::identifier()) {
                 // If there is a camera at the origin, this cannot be a 3D space -- it must be 2D
                 if camera_paths.contains(space_origin) {
                     return AutoSpawnHeuristic::NeverSpawn;
@@ -84,7 +84,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn on_frame_start(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         state: &Self::State,
         ent_paths: &PerSystemEntities,
         entity_properties: &mut re_data_store::EntityPropertyMap,
@@ -100,7 +100,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn selection_ui(
         &self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         space_origin: &EntityPath,
@@ -112,7 +112,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,

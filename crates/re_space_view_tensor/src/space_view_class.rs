@@ -87,7 +87,7 @@ impl PerTensorState {
         &self.color_mapping
     }
 
-    pub fn ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         let Some((tensor_data_row_id, tensor)) = &self.tensor else {
             ui.label("No Tensor shown in this Space View.");
             return;
@@ -136,7 +136,7 @@ impl PerTensorState {
 impl SpaceViewClass for TensorSpaceView {
     type State = ViewTensorState;
 
-    const NAME: &'static str = "Tensor";
+    const IDENTIFIER: &'static str = "Tensor";
     const DISPLAY_NAME: &'static str = "Tensor";
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -164,7 +164,7 @@ impl SpaceViewClass for TensorSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _space_origin: &EntityPath,
@@ -180,7 +180,7 @@ impl SpaceViewClass for TensorSpaceView {
 
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
@@ -234,7 +234,7 @@ impl SpaceViewClass for TensorSpaceView {
 }
 
 fn view_tensor(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut PerTensorState,
     tensor_data_row_id: RowId,
@@ -292,7 +292,7 @@ fn view_tensor(
 }
 
 fn tensor_slice_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &PerTensorState,
     tensor_data_row_id: RowId,
@@ -311,7 +311,7 @@ fn tensor_slice_ui(
 }
 
 fn paint_tensor_slice(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &PerTensorState,
     tensor_data_row_id: RowId,
@@ -384,7 +384,7 @@ impl Default for ColorMapping {
 impl ColorMapping {
     fn ui(
         &mut self,
-        render_ctx: &mut re_renderer::RenderContext,
+        render_ctx: &re_renderer::RenderContext,
         re_ui: &re_ui::ReUi,
         ui: &mut egui::Ui,
     ) {

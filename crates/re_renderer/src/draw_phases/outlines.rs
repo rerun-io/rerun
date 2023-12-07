@@ -51,8 +51,8 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, PoolError, RenderPipelineDesc,
-        SamplerDesc, WgpuResourcePools,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+        PoolError, RenderPipelineDesc, SamplerDesc,
     },
     DebugLabel, RenderContext,
 };
@@ -197,7 +197,7 @@ impl OutlineMaskProcessor {
     }
 
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         config: &OutlineConfig,
         view_name: &DebugLabel,
         resolution_in_pixel: [u32; 2],
@@ -208,8 +208,7 @@ impl OutlineMaskProcessor {
         // ------------- Textures -------------
         let texture_pool = &ctx.gpu_resources.textures;
 
-        let mask_sample_count =
-            Self::mask_sample_count(&ctx.shared_renderer_data.config.device_caps);
+        let mask_sample_count = Self::mask_sample_count(&ctx.config.device_caps);
         let mask_texture_desc = crate::wgpu_resources::TextureDesc {
             label: format!("{instance_label}::mask_texture").into(),
             size: wgpu::Extent3d {
@@ -264,8 +263,7 @@ impl OutlineMaskProcessor {
 
         // ------------- Render Pipelines -------------
 
-        let screen_triangle_vertex_shader =
-            screen_triangle_vertex_shader(&mut ctx.gpu_resources, &ctx.device, &mut ctx.resolver);
+        let screen_triangle_vertex_shader = screen_triangle_vertex_shader(ctx);
         let jumpflooding_init_shader_module = if mask_sample_count == 1 {
             include_shader_module!("../../shader/outlines/jumpflooding_init.wgsl")
         } else {
@@ -274,54 +272,46 @@ impl OutlineMaskProcessor {
         let jumpflooding_init_desc = RenderPipelineDesc {
             label: "OutlineMaskProcessor::jumpflooding_init".into(),
             pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
-                &ctx.device,
+                ctx,
                 &PipelineLayoutDesc {
                     label: "OutlineMaskProcessor::jumpflooding_init".into(),
                     entries: vec![bind_group_layout_jumpflooding_init],
                 },
-                &ctx.gpu_resources.bind_group_layouts,
             ),
             vertex_entrypoint: "main".into(),
             vertex_handle: screen_triangle_vertex_shader,
             fragment_entrypoint: "main".into(),
-            fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
-                &ctx.device,
-                &mut ctx.resolver,
-                &jumpflooding_init_shader_module,
-            ),
+            fragment_handle: ctx
+                .gpu_resources
+                .shader_modules
+                .get_or_create(ctx, &jumpflooding_init_shader_module),
             vertex_buffers: smallvec![],
             render_targets: smallvec![Some(Self::VORONOI_FORMAT.into())],
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
         };
-        let render_pipeline_jumpflooding_init = ctx.gpu_resources.render_pipelines.get_or_create(
-            &ctx.device,
-            &jumpflooding_init_desc,
-            &ctx.gpu_resources.pipeline_layouts,
-            &ctx.gpu_resources.shader_modules,
-        );
+        let render_pipeline_jumpflooding_init = ctx
+            .gpu_resources
+            .render_pipelines
+            .get_or_create(ctx, &jumpflooding_init_desc);
         let render_pipeline_jumpflooding_step = ctx.gpu_resources.render_pipelines.get_or_create(
-            &ctx.device,
+            ctx,
             &RenderPipelineDesc {
                 label: "OutlineMaskProcessor::jumpflooding_step".into(),
                 pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
-                    &ctx.device,
+                    ctx,
                     &PipelineLayoutDesc {
                         label: "OutlineMaskProcessor::jumpflooding_step".into(),
                         entries: vec![bind_group_layout_jumpflooding_step],
                     },
-                    &ctx.gpu_resources.bind_group_layouts,
                 ),
                 fragment_handle: ctx.gpu_resources.shader_modules.get_or_create(
-                    &ctx.device,
-                    &mut ctx.resolver,
+                    ctx,
                     &include_shader_module!("../../shader/outlines/jumpflooding_step.wgsl"),
                 ),
                 ..jumpflooding_init_desc
             },
-            &ctx.gpu_resources.pipeline_layouts,
-            &ctx.gpu_resources.shader_modules,
         );
 
         Self {
@@ -354,30 +344,30 @@ impl OutlineMaskProcessor {
                 resolve_target: None, // We're going to do a manual resolve.
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: true,
+                    store: wgpu::StoreOp::Store,
                 },
             })],
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                 view: &self.mask_depth.default_view,
                 depth_ops: Some(wgpu::Operations {
                     load: ViewBuilder::DEFAULT_DEPTH_CLEAR,
-                    store: false,
+                    store: wgpu::StoreOp::Discard,
                 }),
                 stencil_ops: None,
             }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
         })
     }
 
     pub fn compute_outlines(
-        self,
-        pools: &WgpuResourcePools,
+        &self,
+        pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), PoolError> {
-        let pipelines = &pools.render_pipelines;
-
         let ops = wgpu::Operations {
             load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT), // Clear is the closest to "don't care"
-            store: true,
+            store: wgpu::StoreOp::Store,
         };
 
         // Initialize the jump flooding into voronoi texture 0 by looking at the mask texture.
@@ -390,19 +380,19 @@ impl OutlineMaskProcessor {
                     ops,
                 })],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
-            let render_pipeline_init =
-                pipelines.get_resource(self.render_pipeline_jumpflooding_init)?;
+            let render_pipeline_init = pipelines.get(self.render_pipeline_jumpflooding_init)?;
             jumpflooding_init.set_bind_group(0, &self.bind_group_jumpflooding_init, &[]);
             jumpflooding_init.set_pipeline(render_pipeline_init);
             jumpflooding_init.draw(0..3, 0..1);
         }
 
         // Perform jump flooding.
-        let render_pipeline_step =
-            pipelines.get_resource(self.render_pipeline_jumpflooding_step)?;
-        for (i, bind_group) in self.bind_group_jumpflooding_steps.into_iter().enumerate() {
+        let render_pipeline_step = pipelines.get(self.render_pipeline_jumpflooding_step)?;
+        for (i, bind_group) in self.bind_group_jumpflooding_steps.iter().enumerate() {
             let mut jumpflooding_step = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: DebugLabel::from(format!("{} - jumpflooding_step {i}", self.label)).get(),
                 color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -412,10 +402,12 @@ impl OutlineMaskProcessor {
                     ops,
                 })],
                 depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
             });
 
             jumpflooding_step.set_pipeline(render_pipeline_step);
-            jumpflooding_step.set_bind_group(0, &bind_group, &[]);
+            jumpflooding_step.set_bind_group(0, bind_group, &[]);
             jumpflooding_step.draw(0..3, 0..1);
         }
 
@@ -423,7 +415,7 @@ impl OutlineMaskProcessor {
     }
 
     fn create_bind_group_jumpflooding_init(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         instance_label: &DebugLabel,
         mask_texture: &GpuTexture,
     ) -> (GpuBindGroup, GpuBindGroupLayoutHandle) {
@@ -460,7 +452,7 @@ impl OutlineMaskProcessor {
 
     fn create_bind_groups_for_jumpflooding_steps(
         config: &OutlineConfig,
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         instance_label: &DebugLabel,
         voronoi_textures: &[GpuTexture; 2],
     ) -> (Vec<GpuBindGroup>, GpuBindGroupLayoutHandle) {

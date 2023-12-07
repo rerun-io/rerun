@@ -16,7 +16,7 @@ use super::DataUi;
 //
 // Show a button to an [`Item`] with a given text.
 // pub fn item_button_to(
-//     ctx: &mut ViewerContext<'_>,
+//     ctx: &ViewerContext<'_>,
 //     ui: &mut egui::Ui,
 //     item: &Item,
 //     text: impl Into<egui::WidgetText>,
@@ -39,7 +39,7 @@ use super::DataUi;
 
 /// Show an entity path and make it selectable.
 pub fn entity_path_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
     entity_path: &EntityPath,
@@ -55,7 +55,7 @@ pub fn entity_path_button(
 
 /// Show an entity path and make it selectable.
 pub fn entity_path_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
     entity_path: &EntityPath,
@@ -72,7 +72,7 @@ pub fn entity_path_button_to(
 
 /// Show an instance id and make it selectable.
 pub fn instance_path_button(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
     instance_path: &InstancePath,
@@ -88,7 +88,7 @@ pub fn instance_path_button(
 
 /// Show an instance id and make it selectable.
 pub fn instance_path_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     space_view_id: Option<SpaceViewId>,
     instance_path: &InstancePath,
@@ -214,7 +214,7 @@ pub fn data_blueprint_group_button_to(
 }
 
 pub fn data_blueprint_button_to(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     text: impl Into<egui::WidgetText>,
     space_view_id: SpaceViewId,
@@ -326,11 +326,7 @@ pub fn select_hovered_on_click(ctx: &ViewerContext<'_>, response: &egui::Respons
 /// Displays the "hover card" (i.e. big tooltip) for an instance or an entity.
 ///
 /// The entity hover card is displayed the provided instance path is a splat.
-pub fn instance_hover_card_ui(
-    ui: &mut Ui,
-    ctx: &mut ViewerContext<'_>,
-    instance_path: &InstancePath,
-) {
+pub fn instance_hover_card_ui(ui: &mut Ui, ctx: &ViewerContext<'_>, instance_path: &InstancePath) {
     let subtype_string = if instance_path.instance_key.is_splat() {
         "Entity"
     } else {
@@ -355,11 +351,7 @@ pub fn instance_hover_card_ui(
 }
 
 /// Displays the "hover card" (i.e. big tooltip) for an entity.
-pub fn entity_hover_card_ui(
-    ui: &mut egui::Ui,
-    ctx: &mut ViewerContext<'_>,
-    entity_path: &EntityPath,
-) {
+pub fn entity_hover_card_ui(ui: &mut egui::Ui, ctx: &ViewerContext<'_>, entity_path: &EntityPath) {
     let instance_path = InstancePath::entity_splat(entity_path.clone());
     instance_hover_card_ui(ui, ctx, &instance_path);
 }

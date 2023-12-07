@@ -9,6 +9,7 @@ use super::{
     buffer_pool::{GpuBuffer, GpuBufferHandle, GpuBufferPool},
     dynamic_resource_pool::{DynamicResource, DynamicResourcePool, DynamicResourcesDesc},
     sampler_pool::{GpuSamplerHandle, GpuSamplerPool},
+    static_resource_pool::StaticResourcePoolAccessor as _,
     texture_pool::{GpuTexture, GpuTextureHandle, GpuTexturePool},
     WgpuResourcePools,
 };
@@ -29,6 +30,7 @@ pub struct GpuBindGroup {
 impl std::ops::Deref for GpuBindGroup {
     type Target = wgpu::BindGroup;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.resource.inner
     }
@@ -150,6 +152,8 @@ impl GpuBindGroupPool {
             let mut buffer_index = 0;
             let mut texture_index = 0;
 
+            let samplers = pools.samplers.resources();
+
             device.create_bind_group(&wgpu::BindGroupDescriptor {
                 label: desc.label.get(),
                 entries: &desc
@@ -180,15 +184,18 @@ impl GpuBindGroupPool {
                                 res
                             }
                             BindGroupEntry::Sampler(handle) => wgpu::BindingResource::Sampler(
-                                pools
-                                    .samplers
-                                    .get_resource(*handle)
+                                samplers
+                                    .get(*handle)
                                     .expect("BindGroupDesc had an sampler handle"),
                             ),
                         },
                     })
                     .collect::<Vec<_>>(),
-                layout: pools.bind_group_layouts.get_resource(desc.layout).unwrap(),
+                layout: pools
+                    .bind_group_layouts
+                    .resources()
+                    .get(desc.layout)
+                    .unwrap(),
             })
         });
 

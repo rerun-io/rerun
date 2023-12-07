@@ -7,7 +7,7 @@ use re_types::{
     components::{DisconnectedSpace, PinholeProjection, Transform3D, ViewCoordinates},
     ComponentNameSet, Loggable as _,
 };
-use re_viewer_context::{NamedViewSystem, ViewContextSystem};
+use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
 use crate::{
     parts::{image_view_coordinates, CamerasPart},
@@ -48,8 +48,8 @@ pub struct TransformContext {
     first_unreachable_parent: Option<(EntityPath, UnreachableTransformReason)>,
 }
 
-impl NamedViewSystem for TransformContext {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for TransformContext {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "TransformContext".into()
     }
 }
@@ -81,7 +81,7 @@ impl ViewContextSystem for TransformContext {
     /// entities are transformed relative to it.
     fn execute(
         &mut self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();
@@ -94,7 +94,7 @@ impl ViewContextSystem for TransformContext {
         // the image_depth_plane_distance property.
         let entity_prop_map: EntityPropertyMap = query
             .per_system_data_results
-            .get(&CamerasPart::name())
+            .get(&CamerasPart::identifier())
             .map(|results| {
                 results
                     .iter()

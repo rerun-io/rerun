@@ -78,7 +78,7 @@ fn all_components() {
                 insert_table_with_retries(&mut store2, &table);
             }
 
-            let mut store = store2;
+            let store = store2;
             let timeline = Timeline::new("frame_nr", TimeType::Sequence);
 
             let components = store.all_components(&timeline, ent_path);
@@ -142,7 +142,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        sanity_unwrap(&mut store);
+        sanity_unwrap(&store);
     }
 
     // Tiny buckets, demonstrating the harder-to-reason-about cases.
@@ -202,7 +202,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        sanity_unwrap(&mut store);
+        sanity_unwrap(&store);
     }
 
     // Tiny buckets and tricky splits, demonstrating a case that is not only extremely hard to
@@ -272,7 +272,7 @@ fn all_components() {
 
         assert_latest_components_at(&mut store, &ent_path, Some(components_b));
 
-        sanity_unwrap(&mut store);
+        sanity_unwrap(&store);
     }
 }
 
@@ -329,7 +329,7 @@ fn latest_at_impl(store: &mut DataStore) {
     insert_table(
         store,
         &DataTable::from_rows(
-            TableId::random(),
+            TableId::new(),
             [row1.clone(), row2.clone(), row3.clone(), row4.clone()],
         ),
     );
@@ -348,11 +348,11 @@ fn latest_at_impl(store: &mut DataStore) {
     for table in store.to_data_tables(None) {
         insert_table(&mut store2, &table);
     }
-    let mut store = store2;
+    let store = store2;
 
-    sanity_unwrap(&mut store);
+    sanity_unwrap(&store);
 
-    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
         let components_all = &[Color::name(), Position2D::name()];
 
@@ -497,7 +497,7 @@ fn range_impl(store: &mut DataStore) {
             for table in store.to_data_tables(None) {
                 insert_table_with_retries(&mut store2, &table);
             }
-            let mut store = store2;
+            let store = store2;
 
             let mut expected_timeless = Vec::<DataFrame>::new();
             let mut expected_at_times: IntMap<TimeInt, Vec<DataFrame>> = Default::default();
@@ -932,6 +932,8 @@ fn gc_impl(store: &mut DataStore) {
             protect_latest: 0,
             purge_empty_tables: false,
             dont_protect: Default::default(),
+            enable_batching: false,
+            time_budget: std::time::Duration::MAX,
         });
         for event in store_events {
             assert!(store.get_msg_metadata(&event.row_id).is_none());
@@ -998,10 +1000,8 @@ fn protected_gc_impl(store: &mut DataStore) {
     store.insert_row(&row4).unwrap();
 
     // Re-insert row1 and row2 as timeless data as well
-    let mut table_timeless = DataTable::from_rows(
-        TableId::random(),
-        [row1.clone().next(), row2.clone().next()],
-    );
+    let mut table_timeless =
+        DataTable::from_rows(TableId::new(), [row1.clone().next(), row2.clone().next()]);
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 
@@ -1011,9 +1011,11 @@ fn protected_gc_impl(store: &mut DataStore) {
         protect_latest: 1,
         purge_empty_tables: true,
         dont_protect: Default::default(),
+        enable_batching: false,
+        time_budget: std::time::Duration::MAX,
     });
 
-    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
         let components_all = &[Color::name(), Position2D::name()];
 
@@ -1094,10 +1096,8 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     let row4 = test_row!(ent_path @ [build_frame_nr(frame4)] => 0; [points4]);
 
     // Insert the 3 rows as timeless
-    let mut table_timeless = DataTable::from_rows(
-        TableId::random(),
-        [row1.clone(), row2.clone(), row3.clone()],
-    );
+    let mut table_timeless =
+        DataTable::from_rows(TableId::new(), [row1.clone(), row2.clone(), row3.clone()]);
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 
@@ -1107,9 +1107,11 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         protect_latest: 1,
         purge_empty_tables: true,
         dont_protect: Default::default(),
+        enable_batching: false,
+        time_budget: std::time::Duration::MAX,
     });
 
-    let mut assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
+    let assert_latest_components = |frame_nr: TimeInt, rows: &[(ComponentName, &DataRow)]| {
         let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
         let components_all = &[Color::name(), Position2D::name()];
 
@@ -1139,7 +1141,7 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
     assert_eq!(stats.timeless.num_rows, 2);
 
     // Now erase points and GC again
-    let mut table_timeless = DataTable::from_rows(TableId::random(), [row4]);
+    let mut table_timeless = DataTable::from_rows(TableId::new(), [row4]);
     table_timeless.col_timelines = Default::default();
     insert_table_with_retries(store, &table_timeless);
 
@@ -1149,6 +1151,8 @@ fn protected_gc_clear_impl(store: &mut DataStore) {
         protect_latest: 1,
         purge_empty_tables: true,
         dont_protect: Default::default(),
+        enable_batching: false,
+        time_budget: std::time::Duration::MAX,
     });
 
     // No rows should remain because the table should have been purged

@@ -325,6 +325,7 @@ impl Points3D {
         }
     }
 
+    #[inline]
     pub fn with_radii(
         mut self,
         radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
@@ -333,6 +334,7 @@ impl Points3D {
         self
     }
 
+    #[inline]
     pub fn with_colors(
         mut self,
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
@@ -341,6 +343,7 @@ impl Points3D {
         self
     }
 
+    #[inline]
     pub fn with_labels(
         mut self,
         labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
@@ -349,6 +352,7 @@ impl Points3D {
         self
     }
 
+    #[inline]
     pub fn with_class_ids(
         mut self,
         class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
@@ -357,6 +361,7 @@ impl Points3D {
         self
     }
 
+    #[inline]
     pub fn with_keypoint_ids(
         mut self,
         keypoint_ids: impl IntoIterator<Item = impl Into<crate::components::KeypointId>>,
@@ -365,6 +370,7 @@ impl Points3D {
         self
     }
 
+    #[inline]
     pub fn with_instance_keys(
         mut self,
         instance_keys: impl IntoIterator<Item = impl Into<crate::components::InstanceKey>>,

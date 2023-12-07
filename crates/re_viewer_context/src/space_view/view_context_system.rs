@@ -3,8 +3,8 @@ use ahash::HashMap;
 use re_types::ComponentNameSet;
 
 use crate::{
-    NamedViewSystem, SpaceViewClassName, SpaceViewSystemExecutionError, ViewQuery, ViewSystemName,
-    ViewerContext,
+    IdentifiedViewSystem, SpaceViewClassIdentifier, SpaceViewSystemExecutionError, ViewQuery,
+    ViewSystemIdentifier, ViewerContext,
 };
 
 /// View context that can be used by view parts and ui methods to retrieve information about the scene as a whole.
@@ -23,7 +23,7 @@ pub trait ViewContextSystem {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet>;
 
     /// Queries the data store and performs data conversions to make it ready for consumption by scene elements.
-    fn execute(&mut self, ctx: &mut ViewerContext<'_>, query: &ViewQuery<'_>);
+    fn execute(&mut self, ctx: &ViewerContext<'_>, query: &ViewQuery<'_>);
 
     /// Converts itself to a reference of [`std::any::Any`], which enables downcasting to concrete types.
     fn as_any(&self) -> &dyn std::any::Any;
@@ -31,27 +31,29 @@ pub trait ViewContextSystem {
 
 // TODO(jleibs): This probably needs a better name now that it includes class name
 pub struct ViewContextCollection {
-    pub(crate) systems: HashMap<ViewSystemName, Box<dyn ViewContextSystem>>,
-    pub(crate) space_view_class_name: SpaceViewClassName,
+    pub(crate) systems: HashMap<ViewSystemIdentifier, Box<dyn ViewContextSystem>>,
+    pub(crate) space_view_class_identifier: SpaceViewClassIdentifier,
 }
 
 impl ViewContextCollection {
-    pub fn get<T: ViewContextSystem + NamedViewSystem + 'static>(
+    pub fn get<T: ViewContextSystem + IdentifiedViewSystem + 'static>(
         &self,
     ) -> Result<&T, SpaceViewSystemExecutionError> {
         self.systems
-            .get(&T::name())
+            .get(&T::identifier())
             .and_then(|s| s.as_any().downcast_ref())
-            .ok_or_else(|| SpaceViewSystemExecutionError::ContextSystemNotFound(T::name().as_str()))
+            .ok_or_else(|| {
+                SpaceViewSystemExecutionError::ContextSystemNotFound(T::identifier().as_str())
+            })
     }
 
-    pub fn iter_with_names(
+    pub fn iter_with_identifiers(
         &self,
-    ) -> impl Iterator<Item = (ViewSystemName, &dyn ViewContextSystem)> {
+    ) -> impl Iterator<Item = (ViewSystemIdentifier, &dyn ViewContextSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
 
-    pub fn space_view_class_name(&self) -> SpaceViewClassName {
-        self.space_view_class_name
+    pub fn space_view_class_identifier(&self) -> SpaceViewClassIdentifier {
+        self.space_view_class_identifier
     }
 }

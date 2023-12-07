@@ -66,8 +66,8 @@ impl Transform3D {
 
     /// Indicate that this transform is from parent to child.
     /// This is the oppositve of the default, which is from child to parent.
-    #[inline]
     #[allow(clippy::wrong_self_convention)]
+    #[inline]
     pub fn from_parent(mut self) -> Self {
         self.0 = self.0.from_parent();
         self

@@ -36,11 +36,10 @@ mod debug_overlay;
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 
 use crate::{
-    context::{RenderContext, SharedRendererData},
+    context::RenderContext,
     draw_phases::DrawPhase,
     include_shader_module,
-    wgpu_resources::{PoolError, WgpuResourcePools},
-    FileResolver, FileSystem,
+    wgpu_resources::{GpuRenderPipelinePoolAccessor, PoolError},
 };
 
 /// GPU sided data used by a [`Renderer`] to draw things to the screen.
@@ -64,19 +63,14 @@ pub enum DrawError {
 pub trait Renderer {
     type RendererDrawData: DrawData;
 
-    fn create_renderer<Fs: FileSystem>(
-        shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
-    ) -> Self;
+    fn create_renderer(ctx: &RenderContext) -> Self;
 
     // TODO(andreas): Some Renderers need to create their own passes, need something like this for that.
 
     /// Called once per phase given by [`Renderer::participated_phases`].
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
@@ -87,14 +81,11 @@ pub trait Renderer {
 }
 
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.
-pub fn screen_triangle_vertex_shader<Fs: FileSystem>(
-    pools: &mut WgpuResourcePools,
-    device: &wgpu::Device,
-    resolver: &mut FileResolver<Fs>,
+pub fn screen_triangle_vertex_shader(
+    ctx: &RenderContext,
 ) -> crate::wgpu_resources::GpuShaderModuleHandle {
-    pools.shader_modules.get_or_create(
-        device,
-        resolver,
+    ctx.gpu_resources.shader_modules.get_or_create(
+        ctx,
         &include_shader_module!("../../shader/screen_triangle.wgsl"),
     )
 }

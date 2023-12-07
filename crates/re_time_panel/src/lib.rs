@@ -62,7 +62,7 @@ impl Default for TimePanel {
 impl TimePanel {
     pub fn show_panel(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_panel_expanded: bool,
     ) {
@@ -143,7 +143,7 @@ impl TimePanel {
                             ui.visuals().widgets.noninteractive.bg_stroke,
                         );
 
-                        ui.spacing_mut().scroll_bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
+                        ui.spacing_mut().scroll.bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
 
                         // Add extra margin on the left which was intentionally missing on the controls.
                         let mut streams_frame = egui::Frame::default();
@@ -211,7 +211,7 @@ impl TimePanel {
 
     fn expanded_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         time_ctrl: &mut TimeControl,
     ) {
@@ -238,7 +238,7 @@ impl TimePanel {
         let time_bg_x_range = Rangef::new(time_x_left, ui.max_rect().right());
         let time_fg_x_range = {
             // Painting to the right of the scroll bar (if any) looks bad:
-            let right = ui.max_rect().right() - ui.spacing_mut().scroll_bar_outer_margin;
+            let right = ui.max_rect().right() - ui.spacing_mut().scroll.bar_outer_margin;
             debug_assert!(time_x_left < right);
             Rangef::new(time_x_left, right)
         };
@@ -390,7 +390,7 @@ impl TimePanel {
     // All the entity rows and their data density graphs:
     fn tree_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
@@ -457,7 +457,7 @@ impl TimePanel {
     #[allow(clippy::too_many_arguments)]
     fn show_tree(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,
@@ -568,7 +568,7 @@ impl TimePanel {
     #[allow(clippy::too_many_arguments)]
     fn show_children(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         time_ctrl: &mut TimeControl,
         time_area_response: &egui::Response,
         time_area_painter: &egui::Painter,

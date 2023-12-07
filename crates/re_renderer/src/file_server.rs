@@ -183,7 +183,7 @@ mod file_server_impl {
         /// The given `path` is canonicalized.
         pub fn watch<Fs: FileSystem>(
             &mut self,
-            resolver: &mut FileResolver<Fs>,
+            resolver: &FileResolver<Fs>,
             path: impl AsRef<Path>,
             recursive: bool,
         ) -> anyhow::Result<PathBuf> {
@@ -248,10 +248,7 @@ mod file_server_impl {
 
         /// Coalesces all filesystem events since the last call to `collect`,
         /// and returns a set of all modified paths.
-        pub fn collect<Fs: FileSystem>(
-            &mut self,
-            resolver: &mut FileResolver<Fs>,
-        ) -> HashSet<PathBuf> {
+        pub fn collect<Fs: FileSystem>(&mut self, resolver: &FileResolver<Fs>) -> HashSet<PathBuf> {
             fn canonicalize_opt(path: impl AsRef<Path>) -> Option<PathBuf> {
                 let path = path.as_ref();
                 std::fs::canonicalize(path)
@@ -314,7 +311,7 @@ mod file_server_impl {
         #[allow(clippy::unused_self)]
         pub fn collect<Fs: FileSystem>(
             &mut self,
-            _resolver: &mut FileResolver<Fs>,
+            _resolver: &FileResolver<Fs>,
         ) -> HashSet<PathBuf> {
             Default::default()
         }

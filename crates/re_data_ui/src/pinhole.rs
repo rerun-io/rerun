@@ -6,7 +6,7 @@ use crate::DataUi;
 impl DataUi for PinholeProjection {
     fn data_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         verbosity: UiVerbosity,
         query: &re_arrow_store::LatestAtQuery,
@@ -35,7 +35,7 @@ impl DataUi for PinholeProjection {
 impl DataUi for Resolution {
     fn data_ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _verbosity: UiVerbosity,
         _query: &re_arrow_store::LatestAtQuery,

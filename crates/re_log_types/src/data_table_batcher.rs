@@ -415,7 +415,7 @@ fn batching_thread(
 
         re_log::trace!(reason, "flushing tables");
 
-        let table = DataTable::from_rows(TableId::random(), rows.drain(..));
+        let table = DataTable::from_rows(TableId::new(), rows.drain(..));
         // TODO(#1981): efficient table sorting here, following the same rules as the store's.
         // table.sort();
 

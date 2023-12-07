@@ -7,7 +7,7 @@ use crate::{DataStore, DataStoreConfig};
 macro_rules! test_row {
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr $(,)*]) => {{
         ::re_log_types::DataRow::from_cells1_sized(
-            ::re_log_types::RowId::random(),
+            ::re_log_types::RowId::new(),
             $entity.clone(),
             $frames,
             $n,
@@ -17,7 +17,7 @@ macro_rules! test_row {
     }};
     ($entity:ident @ $frames:tt => $n:expr; [$c0:expr, $c1:expr $(,)*]) => {{
         ::re_log_types::DataRow::from_cells2_sized(
-            ::re_log_types::RowId::random(),
+            ::re_log_types::RowId::new(),
             $entity.clone(),
             $frames,
             $n,
@@ -54,7 +54,7 @@ pub fn all_configs() -> impl Iterator<Item = DataStoreConfig> {
     })
 }
 
-pub fn sanity_unwrap(store: &mut DataStore) {
+pub fn sanity_unwrap(store: &DataStore) {
     if let err @ Err(_) = store.sanity_check() {
         store.sort_indices_if_needed();
         eprintln!("{store}");

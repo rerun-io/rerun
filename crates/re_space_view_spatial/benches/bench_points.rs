@@ -45,7 +45,7 @@ fn bench_points(c: &mut criterion::Criterion) {
         let mut timepoint = TimePoint::default();
         timepoint.insert(timeline, TimeInt::from_seconds(0));
         let data_row =
-            DataRow::from_archetype(RowId::random(), timepoint, ent_path.clone(), &points).unwrap();
+            DataRow::from_archetype(RowId::new(), timepoint, ent_path.clone(), &points).unwrap();
         store.insert_row(&data_row).unwrap();
         store
     };

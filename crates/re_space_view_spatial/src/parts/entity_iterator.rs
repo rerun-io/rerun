@@ -4,7 +4,7 @@ use re_query::{query_archetype_with_history, ArchetypeView, QueryError};
 use re_renderer::DepthOffset;
 use re_types::Archetype;
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
+    IdentifiedViewSystem, SpaceViewClass, SpaceViewSystemExecutionError, ViewContextCollection,
     ViewQuery, ViewerContext,
 };
 
@@ -21,8 +21,8 @@ use crate::{
 /// The callback passed in gets passed a long an [`SpatialSceneEntityContext`] which contains
 /// various useful information about an entity in the context of the current scene.
 #[allow(dead_code)]
-pub fn process_archetype_views<'a, System: NamedViewSystem, A, const N: usize, F>(
-    ctx: &mut ViewerContext<'_>,
+pub fn process_archetype_views<'a, System: IdentifiedViewSystem, A, const N: usize, F>(
+    ctx: &ViewerContext<'_>,
     query: &ViewQuery<'_>,
     view_ctx: &ViewContextCollection,
     default_depth_offset: DepthOffset,
@@ -31,7 +31,7 @@ pub fn process_archetype_views<'a, System: NamedViewSystem, A, const N: usize, F
 where
     A: Archetype + 'a,
     F: FnMut(
-        &mut ViewerContext<'_>,
+        &ViewerContext<'_>,
         &EntityPath,
         &EntityProperties,
         ArchetypeView<A>,
@@ -44,17 +44,18 @@ where
     let shared_render_builders = view_ctx.get::<SharedRenderBuilders>()?;
     let counter = view_ctx.get::<PrimitiveCounter>()?;
 
-    for data_result in query.iter_visible_data_results(System::name()) {
+    for data_result in query.iter_visible_data_results(System::identifier()) {
         // The transform that considers pinholes only makes sense if this is a 3D space-view
-        let world_from_entity = if view_ctx.space_view_class_name() == SpatialSpaceView3D.name() {
-            transforms.reference_from_entity(&data_result.entity_path)
-        } else {
-            transforms.reference_from_entity_ignoring_pinhole(
-                &data_result.entity_path,
-                ctx.store_db.store(),
-                &query.latest_at_query(),
-            )
-        };
+        let world_from_entity =
+            if view_ctx.space_view_class_identifier() == SpatialSpaceView3D.identifier() {
+                transforms.reference_from_entity(&data_result.entity_path)
+            } else {
+                transforms.reference_from_entity_ignoring_pinhole(
+                    &data_result.entity_path,
+                    ctx.store_db.store(),
+                    &query.latest_at_query(),
+                )
+            };
 
         let Some(world_from_entity) = world_from_entity else {
             continue;
@@ -70,7 +71,7 @@ where
             highlight: query
                 .highlights
                 .entity_outline_mask(data_result.entity_path.hash()),
-            space_view_class_name: view_ctx.space_view_class_name(),
+            space_view_class_identifier: view_ctx.space_view_class_identifier(),
         };
 
         match query_archetype_with_history::<A, N>(

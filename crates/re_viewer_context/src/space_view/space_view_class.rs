@@ -3,7 +3,7 @@ use re_log_types::EntityPath;
 use re_types::ComponentName;
 
 use crate::{
-    AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassName,
+    AutoSpawnHeuristic, DynSpaceViewClass, PerSystemEntities, SpaceViewClassIdentifier,
     SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewSystemExecutionError,
     SpaceViewSystemRegistry, ViewContextCollection, ViewPartCollection, ViewQuery, ViewerContext,
 };
@@ -20,7 +20,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Name for this space view class.
     ///
     /// Used as identifier.
-    const NAME: &'static str;
+    const IDENTIFIER: &'static str;
 
     /// User-facing name for this space view class
     const DISPLAY_NAME: &'static str;
@@ -28,8 +28,8 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Name of this space view class.
     ///
     /// Used for identification. Must be unique within a viewer session.
-    fn name(&self) -> SpaceViewClassName {
-        Self::NAME.into()
+    fn identifier(&self) -> SpaceViewClassIdentifier {
+        Self::IDENTIFIER.into()
     }
 
     /// User-facing name for this space view class.
@@ -88,7 +88,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// Passed entity properties are individual properties without propagated values.
     fn on_frame_start(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         _state: &Self::State,
         _ent_paths: &PerSystemEntities,
         _entity_properties: &mut re_data_store::EntityPropertyMap,
@@ -100,7 +100,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     /// TODO(andreas): Should this be instead implemented via a registered `data_ui` of all blueprint relevant types?
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         space_origin: &EntityPath,
@@ -122,7 +122,7 @@ pub trait SpaceViewClass: std::marker::Sized {
     #[allow(clippy::too_many_arguments)]
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         root_entity_properties: &EntityProperties,
@@ -135,8 +135,8 @@ pub trait SpaceViewClass: std::marker::Sized {
 
 impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
-    fn name(&self) -> SpaceViewClassName {
-        self.name()
+    fn identifier(&self) -> SpaceViewClassIdentifier {
+        self.identifier()
     }
 
     #[inline]
@@ -192,7 +192,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
 
     fn on_frame_start(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         state: &mut dyn SpaceViewState,
         ent_paths: &PerSystemEntities,
         entity_properties: &mut EntityPropertyMap,
@@ -205,7 +205,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[inline]
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         space_origin: &EntityPath,
@@ -227,7 +227,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
     #[allow(clippy::for_kv_map)]
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         root_entity_properties: &EntityProperties,
@@ -239,7 +239,7 @@ impl<T: SpaceViewClass + 'static> DynSpaceViewClass for T {
         // TODO(andreas): We should be able to parallelize both of these loops
         let view_ctx = {
             re_tracing::profile_scope!("ViewContextSystem::execute");
-            let mut view_ctx = systems.new_context_collection(self.name());
+            let mut view_ctx = systems.new_context_collection(self.identifier());
             for (_name, system) in &mut view_ctx.systems {
                 re_tracing::profile_scope!(_name.as_str());
                 system.execute(ctx, query);

@@ -1,16 +1,13 @@
-use crate::debug_label::DebugLabel;
+use crate::{debug_label::DebugLabel, RenderContext};
 
 use super::{
-    bind_group_layout_pool::{GpuBindGroupLayoutHandle, GpuBindGroupLayoutPool},
-    resource::PoolError,
-    static_resource_pool::StaticResourcePool,
+    bind_group_layout_pool::GpuBindGroupLayoutHandle,
+    static_resource_pool::{
+        StaticResourcePool, StaticResourcePoolAccessor as _, StaticResourcePoolReadLockAccessor,
+    },
 };
 
 slotmap::new_key_type! { pub struct GpuPipelineLayoutHandle; }
-
-pub struct GpuPipelineLayout {
-    pub layout: wgpu::PipelineLayout,
-}
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct PipelineLayoutDesc {
@@ -22,36 +19,40 @@ pub struct PipelineLayoutDesc {
 
 #[derive(Default)]
 pub struct GpuPipelineLayoutPool {
-    pool: StaticResourcePool<GpuPipelineLayoutHandle, PipelineLayoutDesc, GpuPipelineLayout>,
+    pool: StaticResourcePool<GpuPipelineLayoutHandle, PipelineLayoutDesc, wgpu::PipelineLayout>,
 }
 
 impl GpuPipelineLayoutPool {
     pub fn get_or_create(
-        &mut self,
-        device: &wgpu::Device,
+        &self,
+        ctx: &RenderContext,
         desc: &PipelineLayoutDesc,
-        bind_group_layout_pool: &GpuBindGroupLayoutPool,
     ) -> GpuPipelineLayoutHandle {
         self.pool.get_or_create(desc, |desc| {
             // TODO(andreas): error handling
-            let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: desc.label.get(),
-                bind_group_layouts: &desc
-                    .entries
-                    .iter()
-                    .map(|handle| bind_group_layout_pool.get_resource(*handle).unwrap())
-                    .collect::<Vec<_>>(),
-                push_constant_ranges: &[], // Sadly not widely supported
-            });
-            GpuPipelineLayout { layout }
+
+            let bind_groups = ctx.gpu_resources.bind_group_layouts.resources();
+
+            ctx.device
+                .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: desc.label.get(),
+                    bind_group_layouts: &desc
+                        .entries
+                        .iter()
+                        .map(|handle| bind_groups.get(*handle).unwrap())
+                        .collect::<Vec<_>>(),
+                    push_constant_ranges: &[], // Sadly not widely supported
+                })
         })
     }
 
-    pub fn get_resource(
+    /// Locks the resource pool for resolving handles.
+    ///
+    /// While it is locked, no new resources can be added.
+    pub fn resources(
         &self,
-        handle: GpuPipelineLayoutHandle,
-    ) -> Result<&GpuPipelineLayout, PoolError> {
-        self.pool.get_resource(handle)
+    ) -> StaticResourcePoolReadLockAccessor<'_, GpuPipelineLayoutHandle, wgpu::PipelineLayout> {
+        self.pool.resources()
     }
 
     pub fn begin_frame(&mut self, frame_index: u64) {

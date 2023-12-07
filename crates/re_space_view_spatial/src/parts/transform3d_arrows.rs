@@ -6,7 +6,7 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,
 };
 
@@ -25,8 +25,8 @@ impl Default for Transform3DArrowsPart {
     }
 }
 
-impl NamedViewSystem for Transform3DArrowsPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for Transform3DArrowsPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Transform3DArrows".into()
     }
 }
@@ -50,7 +50,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
 
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
@@ -59,7 +59,7 @@ impl ViewPartSystem for Transform3DArrowsPart {
 
         let store = ctx.store_db.store();
         let latest_at_query = re_arrow_store::LatestAtQuery::new(query.timeline, query.latest_at);
-        for data_result in query.iter_visible_data_results(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             if store
                 .query_latest_component::<Transform3D>(&data_result.entity_path, &latest_at_query)
                 .is_none()

@@ -367,7 +367,7 @@ fn smooth(density: &[f32]) -> Vec<f32> {
 #[allow(clippy::too_many_arguments)]
 pub fn data_density_graph_ui(
     data_dentity_graph_painter: &mut DataDensityGraphPainter,
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     time_ctrl: &mut TimeControl,
     time_area_response: &egui::Response,
     time_area_painter: &egui::Painter,
@@ -522,7 +522,7 @@ fn make_brighter(color: Color32) -> Color32 {
 }
 
 fn show_row_ids_tooltip(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     time_ctrl: &TimeControl,
     egui_ctx: &egui::Context,
     item: &Item,
@@ -547,7 +547,7 @@ fn show_row_ids_tooltip(
             Item::InstancePath(_, path) => {
                 item_ui::instance_path_button(ctx, ui, None, path);
             }
-            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) => {
+            Item::SpaceView(_) | Item::DataBlueprintGroup(_, _, _) | Item::Container(_) => {
                 // No extra info. This should never happen, but not worth printing a warning over.
                 // Even if it does go here, the ui after will still look ok.
             }

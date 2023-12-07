@@ -6,7 +6,7 @@ use re_types::{
     ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem,
+    default_heuristic_filter, HeuristicFilterContext, IdentifiedViewSystem,
     SpaceViewSystemExecutionError, TensorDecodeCache, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,
 };
@@ -16,8 +16,8 @@ pub struct TensorSystem {
     pub tensors: std::collections::BTreeMap<EntityPath, (RowId, DecodedTensor)>,
 }
 
-impl NamedViewSystem for TensorSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for TensorSystem {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Tensor".into()
     }
 }
@@ -58,14 +58,14 @@ impl ViewPartSystem for TensorSystem {
 
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let store = ctx.store_db.store();
-        for data_result in query.iter_visible_data_results(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
 
             if let Some(tensor) = store

@@ -42,7 +42,7 @@ pub struct TextSpaceView;
 impl SpaceViewClass for TextSpaceView {
     type State = TextSpaceViewState;
 
-    const NAME: &'static str = "TextLog";
+    const IDENTIFIER: &'static str = "TextLog";
     const DISPLAY_NAME: &'static str = "Text Log";
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -84,7 +84,7 @@ impl SpaceViewClass for TextSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _space_origin: &EntityPath,
@@ -132,7 +132,7 @@ impl SpaceViewClass for TextSpaceView {
 
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,
@@ -251,10 +251,10 @@ impl ViewTextFilters {
 // ---
 
 fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
-    if let Some(time_point) = ctx.store_db.store().get_msg_metadata(&entry.row_id) {
+    if let Some((time_point, _)) = ctx.store_db.store().get_msg_metadata(&entry.row_id) {
         Some(time_point.clone())
     } else {
-        re_log::warn_once!("Missing meta-data for {:?}", entry.entity_path);
+        re_log::warn_once!("Missing metadata for {:?}", entry.entity_path);
         None
     }
 }
@@ -263,7 +263,7 @@ fn get_time_point(ctx: &ViewerContext<'_>, entry: &Entry) -> Option<TimePoint> {
 /// as opposed to `scroll_to_offset` (computed below) which is how far down we want to
 /// scroll in terms of actual points.
 fn table_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &TextSpaceViewState,
     entries: &[&Entry],

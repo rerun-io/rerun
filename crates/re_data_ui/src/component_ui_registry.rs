@@ -53,7 +53,7 @@ pub fn create_component_ui_registry() -> ComponentUiRegistry {
 }
 
 fn fallback_component_ui(
-    _ctx: &mut ViewerContext<'_>,
+    _ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     verbosity: UiVerbosity,
     _query: &LatestAtQuery,
@@ -126,9 +126,12 @@ fn text_ui(string: &str, ui: &mut egui::Ui, verbosity: UiVerbosity) {
         UiVerbosity::Reduced => {
             layout_job.wrap.max_rows = 3;
         }
-        UiVerbosity::All => {
+        UiVerbosity::LimitHeight => {
             let num_newlines = string.chars().filter(|&c| c == '\n').count();
             needs_scroll_area = 10 < num_newlines || 300 < string.len();
+        }
+        UiVerbosity::Full => {
+            needs_scroll_area = false;
         }
     }
 

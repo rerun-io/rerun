@@ -1,3 +1,5 @@
+#![allow(clippy::mem_forget)] // False positives from #[wasm_bindgen] macro
+
 use eframe::wasm_bindgen::{self, prelude::*};
 
 use std::sync::Arc;
@@ -26,12 +28,14 @@ impl WebHandle {
         }
     }
 
-    /// The `url` is an optional URL to either an .rrd file over http, or a Rerun WebSocket server.
+    /// - `url` is an optional URL to either an .rrd file over http, or a Rerun WebSocket server.
+    /// - `manifest_url` is an optional URL to an `examples_manifest.json` file over http.
     #[wasm_bindgen]
     pub async fn start(
         &self,
         canvas_id: &str,
         url: Option<String>,
+        manifest_url: Option<String>,
     ) -> Result<(), wasm_bindgen::JsValue> {
         let web_options = eframe::WebOptions {
             follow_system_theme: false,
@@ -46,7 +50,7 @@ impl WebHandle {
                 canvas_id,
                 web_options,
                 Box::new(move |cc| {
-                    let app = create_app(cc, url.as_deref());
+                    let app = create_app(cc, &url, &manifest_url);
                     Box::new(app)
                 }),
             )
@@ -78,7 +82,11 @@ impl WebHandle {
     }
 }
 
-fn create_app(cc: &eframe::CreationContext<'_>, url: Option<&str>) -> crate::App {
+fn create_app(
+    cc: &eframe::CreationContext<'_>,
+    url: &Option<String>,
+    manifest_url: &Option<String>,
+) -> crate::App {
     let build_info = re_build_info::build_info!();
     let app_env = crate::AppEnvironment::Web;
     let startup_options = crate::StartupOptions {
@@ -102,15 +110,20 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<&str>) -> crate::App
 
     let mut app = crate::App::new(build_info, &app_env, startup_options, re_ui, cc.storage);
 
-    let url = match url {
-        Some(url) => Some(url),
-        None => cc
-            .integration_info
-            .web_info
-            .location
-            .query_map
-            .get("url")
-            .map(String::as_str),
+    let query_map = &cc.integration_info.web_info.location.query_map;
+
+    let manifest_url = match &manifest_url {
+        Some(url) => Some(url.as_str()),
+        None => query_map.get("manifest_url").map(String::as_str),
+    };
+    if let Some(url) = manifest_url {
+        app.set_examples_manifest_url(url.into());
+        re_log::info!("Using manifest_url={url:?}");
+    }
+
+    let url = match &url {
+        Some(url) => Some(url.as_str()),
+        None => query_map.get("url").map(String::as_str),
     };
     if let Some(url) = url {
         let rx = match categorize_uri(url) {
@@ -161,7 +174,7 @@ fn create_app(cc: &eframe::CreationContext<'_>, url: Option<&str>) -> crate::App
 /// in the same way as `rerun analytics email YOURNAME@rerun.io`.
 ///
 /// This one just panics when it fails, as it's only ever really run
-/// by rerun employees manually in `app.rerun.io` and `demo.rerun.io`.
+/// by rerun employees manually in `app.rerun.io`.
 #[cfg(feature = "analytics")]
 #[wasm_bindgen]
 pub fn set_email(email: String) {

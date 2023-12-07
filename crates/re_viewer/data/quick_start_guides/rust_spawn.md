@@ -1,7 +1,5 @@
 # Rust Quick Start
 
-${SAFARI_WARNING}
-
 ## Installing Rerun
 
 After you have [installed the viewer](https://www.rerun.io/docs/getting-started/installing-viewer) you can simply add [the rerun crate](https://crates.io/crates/rerun) to your project with `cargo add rerun`.

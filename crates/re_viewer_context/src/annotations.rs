@@ -1,7 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
-use lazy_static::lazy_static;
 use nohash_hasher::IntSet;
 
 use re_arrow_store::LatestAtQuery;
@@ -13,6 +12,8 @@ use re_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId}
 
 use super::{auto_color, ViewerContext};
 use crate::DefaultColor;
+
+const MISSING_ROW_ID: RowId = RowId::ZERO;
 
 #[derive(Clone, Debug)]
 pub struct Annotations {
@@ -27,6 +28,14 @@ impl Annotations {
             row_id: MISSING_ROW_ID,
             class_map: Default::default(),
         }
+    }
+
+    /// Fast access to an [`Arc`] sharing the same [`Annotations::missing`] instance.
+    pub fn missing_arc() -> Arc<Annotations> {
+        use std::sync::OnceLock;
+        static CELL: OnceLock<Arc<Annotations>> = OnceLock::new();
+        CELL.get_or_init(|| Arc::new(Annotations::missing()))
+            .clone()
     }
 
     pub fn try_from_view(view: &ArchetypeView<AnnotationContext>) -> Option<Self> {
@@ -273,7 +282,7 @@ impl AnnotationMap {
     }
 
     // Search through the all prefixes of this entity path until we find a
-    // matching annotation. If we find nothing return the default [`MISSING_ANNOTATIONS`].
+    // matching annotation. If we find nothing return the default [`Annotations::missing_arc`].
     pub fn find(&self, entity_path: &EntityPath) -> Arc<Annotations> {
         let mut next_parent = Some(entity_path.clone());
         while let Some(parent) = next_parent {
@@ -285,14 +294,6 @@ impl AnnotationMap {
         }
 
         // Otherwise return the missing legend
-        Arc::clone(&MISSING_ANNOTATIONS)
+        Annotations::missing_arc()
     }
-}
-
-// ---
-
-const MISSING_ROW_ID: RowId = RowId::ZERO;
-
-lazy_static! {
-    pub static ref MISSING_ANNOTATIONS: Arc<Annotations> = Arc::new(Annotations::missing());
 }

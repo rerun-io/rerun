@@ -227,11 +227,13 @@ impl TextLog {
         }
     }
 
+    #[inline]
     pub fn with_level(mut self, level: impl Into<crate::components::TextLogLevel>) -> Self {
         self.level = Some(level.into());
         self
     }
 
+    #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self

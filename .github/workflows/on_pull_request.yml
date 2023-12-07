@@ -120,15 +120,14 @@ jobs:
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
-  build-web-demo:
-    name: "Build Web Demo"
+  build-examples:
+    name: "Build Examples"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [min-wheel-build, build-web]
-    uses: ./.github/workflows/reusable_build_web_demo.yml
+    needs: [min-wheel-build]
+    uses: ./.github/workflows/reusable_build_examples.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       WHEEL_ARTIFACT_NAME: linux-wheel-fast
@@ -137,21 +136,20 @@ jobs:
   track-sizes:
     name: "Track Sizes"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [build-web-demo]
+    needs: [build-examples]
     uses: ./.github/workflows/reusable_track_size.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
-  upload-web-demo:
-    name: "Upload Web Demo"
+  upload-examples:
+    name: "Upload Examples"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    needs: [build-web-demo]
-    uses: ./.github/workflows/reusable_upload_web_demo.yml
+    needs: [build-examples]
+    uses: ./.github/workflows/reusable_upload_examples.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
@@ -163,7 +161,6 @@ jobs:
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
       WHEEL_ARTIFACT_NAME: linux-wheel-fast
-      UPLOAD_COMMIT_OVERRIDE: ${{ github.event.pull_request.head.sha }}
     secrets: inherit
 
   save-pr-summary:

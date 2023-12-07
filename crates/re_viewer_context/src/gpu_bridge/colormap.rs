@@ -2,7 +2,7 @@ use crate::gpu_bridge::{get_or_create_texture, render_image};
 
 /// Show the given colormap as a horizontal bar.
 fn colormap_preview_ui(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     colormap: re_renderer::Colormap,
 ) -> anyhow::Result<egui::Response> {
@@ -60,7 +60,7 @@ fn colormap_preview_ui(
 }
 
 pub fn colormap_dropdown_button_ui(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     ui: &mut egui::Ui,
     map: &mut re_renderer::Colormap,
 ) {

@@ -7,8 +7,9 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    default_heuristic_filter, HeuristicFilterContext, NamedViewSystem, ResolvedAnnotationInfos,
-    SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem, ViewQuery, ViewerContext,
+    default_heuristic_filter, HeuristicFilterContext, IdentifiedViewSystem,
+    ResolvedAnnotationInfos, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -160,8 +161,8 @@ impl Boxes2DPart {
     }
 }
 
-impl NamedViewSystem for Boxes2DPart {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for Boxes2DPart {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "Boxes2D".into()
     }
 }
@@ -203,7 +204,7 @@ impl ViewPartSystem for Boxes2DPart {
 
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {

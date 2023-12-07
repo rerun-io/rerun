@@ -49,7 +49,7 @@ pub struct TextDocumentSpaceView;
 impl SpaceViewClass for TextDocumentSpaceView {
     type State = TextDocumentSpaceViewState;
 
-    const NAME: &'static str = "Text Document";
+    const IDENTIFIER: &'static str = "Text Document";
     const DISPLAY_NAME: &'static str = "Text Document";
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -73,7 +73,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _space_origin: &EntityPath,
@@ -95,7 +95,7 @@ impl SpaceViewClass for TextDocumentSpaceView {
 
     fn ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         _root_entity_properties: &EntityProperties,

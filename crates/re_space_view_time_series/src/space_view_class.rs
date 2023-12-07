@@ -17,8 +17,14 @@ use crate::view_part_system::{PlotSeriesKind, TimeSeriesSystem};
 
 #[derive(Clone, Default)]
 pub struct TimeSeriesSpaceViewState {
-    /// track across frames when the user moves the time cursor
+    /// Is the user dragging the cursor this frame?
     is_dragging_time_cursor: bool,
+
+    /// Was the user dragging the cursor last frame?
+    was_dragging_time_cursor: bool,
+
+    /// State of egui_plot's auto bounds before the user started dragging the time cursor.
+    saved_auto_bounds: egui::Vec2b,
 }
 
 impl SpaceViewState for TimeSeriesSpaceViewState {
@@ -37,7 +43,7 @@ pub struct TimeSeriesSpaceView;
 impl SpaceViewClass for TimeSeriesSpaceView {
     type State = TimeSeriesSpaceViewState;
 
-    const NAME: &'static str = "Time Series";
+    const IDENTIFIER: &'static str = "Time Series";
     const DISPLAY_NAME: &'static str = "Time Series";
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -90,7 +96,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         _space_origin: &EntityPath,
@@ -149,7 +155,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
     fn ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut Self::State,
         root_entity_properties: &EntityProperties,
@@ -193,10 +199,7 @@ impl SpaceViewClass for TimeSeriesSpaceView {
 
         let time_zone_for_timestamps = ctx.app_options.time_zone_for_timestamps;
         let mut plot = Plot::new(plot_id_src)
-            .allow_zoom(egui_plot::AxisBools {
-                x: true,
-                y: zoom_both_axis,
-            })
+            .allow_zoom([true, zoom_both_axis])
             .x_axis_formatter(move |time, _, _| {
                 format_time(
                     time_type,
@@ -275,10 +278,17 @@ impl SpaceViewClass for TimeSeriesSpaceView {
             }
 
             if state.is_dragging_time_cursor {
+                if !state.was_dragging_time_cursor {
+                    state.saved_auto_bounds = plot_ui.auto_bounds();
+                }
                 // Freeze any change to the plot boundaries to avoid weird interaction with the time
                 // cursor.
                 plot_ui.set_plot_bounds(plot_ui.plot_bounds());
+            } else if state.was_dragging_time_cursor {
+                plot_ui.set_auto_bounds(state.saved_auto_bounds);
             }
+
+            state.was_dragging_time_cursor = state.is_dragging_time_cursor;
 
             // decide if the time cursor should be displayed, and if where
             current_time

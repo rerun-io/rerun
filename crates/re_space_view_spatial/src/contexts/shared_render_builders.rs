@@ -1,7 +1,7 @@
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use re_renderer::{LineStripSeriesBuilder, PointCloudBuilder, RenderContext};
 use re_types::ComponentNameSet;
-use re_viewer_context::{NamedViewSystem, ViewContextSystem};
+use re_viewer_context::{IdentifiedViewSystem, ViewContextSystem};
 
 use crate::parts::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
@@ -15,8 +15,8 @@ pub struct SharedRenderBuilders {
     pub points: Mutex<Option<PointCloudBuilder>>,
 }
 
-impl NamedViewSystem for SharedRenderBuilders {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for SharedRenderBuilders {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "SharedRenderBuilders".into()
     }
 }
@@ -32,7 +32,7 @@ impl SharedRenderBuilders {
 
     pub fn queuable_draw_data(
         &self,
-        render_ctx: &mut RenderContext,
+        render_ctx: &RenderContext,
     ) -> Vec<re_renderer::QueueableDrawData> {
         let mut result = Vec::new();
         result.extend(
@@ -70,7 +70,7 @@ impl ViewContextSystem for SharedRenderBuilders {
 
     fn execute(
         &mut self,
-        ctx: &mut re_viewer_context::ViewerContext<'_>,
+        ctx: &re_viewer_context::ViewerContext<'_>,
         _query: &re_viewer_context::ViewQuery<'_>,
     ) {
         re_tracing::profile_function!();

@@ -18,7 +18,9 @@ use std::{num::NonZeroU64, ops::Range};
 use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor, PickingLayerObjectId, PickingLayerProcessor},
-    include_shader_module, DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
+    include_shader_module,
+    wgpu_resources::GpuRenderPipelinePoolAccessor,
+    DebugLabel, DepthOffset, OutlineMaskPreference, PointCloudBuilder,
 };
 use bitflags::bitflags;
 use bytemuck::Zeroable as _;
@@ -34,10 +36,7 @@ use crate::{
     },
 };
 
-use super::{
-    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
-};
+use super::{DrawData, DrawError, RenderContext, Renderer};
 
 bitflags! {
     /// Property flags for a point batch
@@ -179,18 +178,12 @@ impl PointCloudDrawData {
     ///
     /// If no batches are passed, all points are assumed to be in a single batch with identity transform.
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         mut builder: PointCloudBuilder,
     ) -> Result<Self, PointCloudDrawDataError> {
         re_tracing::profile_function!();
 
-        let mut renderers = ctx.renderers.write();
-        let point_renderer = renderers.get_or_create::<_, PointCloudRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
+        let point_renderer = ctx.renderer::<PointCloudRenderer>();
 
         let vertices = builder.vertices.as_slice();
         let batches = builder.batches.as_slice();
@@ -537,16 +530,13 @@ impl Renderer for PointCloudRenderer {
         ]
     }
 
-    fn create_renderer<Fs: FileSystem>(
-        shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
-    ) -> Self {
+    fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 
-        let bind_group_layout_all_points = pools.bind_group_layouts.get_or_create(
-            device,
+        let render_pipelines = &ctx.gpu_resources.render_pipelines;
+
+        let bind_group_layout_all_points = ctx.gpu_resources.bind_group_layouts.get_or_create(
+            &ctx.device,
             &BindGroupLayoutDesc {
                 label: "PointCloudRenderer::bind_group_layout_all_points".into(),
                 entries: vec![
@@ -596,8 +586,8 @@ impl Renderer for PointCloudRenderer {
             },
         );
 
-        let bind_group_layout_batch = pools.bind_group_layouts.get_or_create(
-            device,
+        let bind_group_layout_batch = ctx.gpu_resources.bind_group_layouts.get_or_create(
+            &ctx.device,
             &BindGroupLayoutDesc {
                 label: "PointCloudRenderer::bind_group_layout_batch".into(),
                 entries: vec![wgpu::BindGroupLayoutEntry {
@@ -615,33 +605,32 @@ impl Renderer for PointCloudRenderer {
             },
         );
 
-        let pipeline_layout = pools.pipeline_layouts.get_or_create(
-            device,
+        let pipeline_layout = ctx.gpu_resources.pipeline_layouts.get_or_create(
+            ctx,
             &PipelineLayoutDesc {
                 label: "PointCloudRenderer::pipeline_layout".into(),
                 entries: vec![
-                    shared_data.global_bindings.layout,
+                    ctx.global_bindings.layout,
                     bind_group_layout_all_points,
                     bind_group_layout_batch,
                 ],
             },
-            &pools.bind_group_layouts,
         );
 
         let shader_module_desc = include_shader_module!("../../shader/point_cloud.wgsl");
-        let shader_module =
-            pools
-                .shader_modules
-                .get_or_create(device, resolver, &shader_module_desc);
+        let shader_module = ctx
+            .gpu_resources
+            .shader_modules
+            .get_or_create(ctx, &shader_module_desc);
 
         // WORKAROUND for https://github.com/gfx-rs/naga/issues/1743
         let mut shader_module_desc_vertex = shader_module_desc.clone();
         shader_module_desc_vertex.extra_workaround_replacements =
             vec![("fwidth(".to_owned(), "f32(".to_owned())];
-        let shader_module_vertex =
-            pools
-                .shader_modules
-                .get_or_create(device, resolver, &shader_module_desc_vertex);
+        let shader_module_vertex = ctx
+            .gpu_resources
+            .shader_modules
+            .get_or_create(ctx, &shader_module_desc_vertex);
 
         let render_pipeline_desc_color = RenderPipelineDesc {
             label: "PointCloudRenderer::render_pipeline_color".into(),
@@ -664,14 +653,10 @@ impl Renderer for PointCloudRenderer {
                 ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
             },
         };
-        let render_pipeline_color = pools.render_pipelines.get_or_create(
-            device,
-            &render_pipeline_desc_color,
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
-        );
-        let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
-            device,
+        let render_pipeline_color =
+            render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);
+        let render_pipeline_picking_layer = render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "PointCloudRenderer::render_pipeline_picking_layer".into(),
                 fragment_entrypoint: "fs_main_picking_layer".into(),
@@ -680,24 +665,18 @@ impl Renderer for PointCloudRenderer {
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
                 ..render_pipeline_desc_color.clone()
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
-        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
-            device,
+        let render_pipeline_outline_mask = render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "PointCloudRenderer::render_pipeline_outline_mask".into(),
                 fragment_entrypoint: "fs_main_outline_mask".into(),
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 // Alpha to coverage doesn't work with the mask integer target.
-                multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    &shared_data.config.device_caps,
-                ),
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(&ctx.config.device_caps),
                 ..render_pipeline_desc_color
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
 
         PointCloudRenderer {
@@ -711,7 +690,7 @@ impl Renderer for PointCloudRenderer {
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
@@ -731,7 +710,7 @@ impl Renderer for PointCloudRenderer {
         let Some(bind_group_all_points) = bind_group_all_points else {
             return Ok(()); // No points submitted.
         };
-        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+        let pipeline = render_pipelines.get(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
         pass.set_bind_group(1, bind_group_all_points, &[]);

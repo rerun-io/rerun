@@ -26,11 +26,11 @@ pub struct ViewDrawResult {
 pub trait Example {
     fn title() -> &'static str;
 
-    fn new(re_ctx: &mut RenderContext) -> Self;
+    fn new(re_ctx: &RenderContext) -> Self;
 
     fn draw(
         &mut self,
-        re_ctx: &mut RenderContext,
+        re_ctx: &RenderContext,
         resolution: [u32; 2],
         time: &Time,
         pixels_from_point: f32,
@@ -112,7 +112,9 @@ impl<E: Example + 'static> Application<E> {
         let size = window.inner_size();
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: supported_backends(),
+            flags: wgpu::InstanceFlags::default(),
             dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
+            gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
         });
         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
         let surface = unsafe { instance.create_surface(&window) }.unwrap();
@@ -158,7 +160,7 @@ impl<E: Example + 'static> Application<E> {
         };
         surface.configure(&device, &surface_config);
 
-        let mut re_ctx = RenderContext::new(
+        let re_ctx = RenderContext::new(
             &adapter,
             device,
             queue,
@@ -168,7 +170,7 @@ impl<E: Example + 'static> Application<E> {
             },
         );
 
-        let example = E::new(&mut re_ctx);
+        let example = E::new(&re_ctx);
 
         Ok(Self {
             event_loop,
@@ -261,7 +263,7 @@ impl<E: Example + 'static> Application<E> {
                         .create_view(&wgpu::TextureViewDescriptor::default());
 
                     let draw_results = self.example.draw(
-                        &mut self.re_ctx,
+                        &self.re_ctx,
                         [self.surface_config.width, self.surface_config.height],
                         &self.time,
                         self.window.scale_factor() as f32,
@@ -274,6 +276,10 @@ impl<E: Example + 'static> Application<E> {
                     );
 
                     {
+                        // Lock render pipelines for the lifetime of the composite pass.
+                        let render_pipelines =
+                            self.re_ctx.gpu_resources.render_pipelines.resources();
+
                         let mut composite_pass =
                             composite_cmd_encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                                 label: None,
@@ -282,15 +288,18 @@ impl<E: Example + 'static> Application<E> {
                                     resolve_target: None,
                                     ops: wgpu::Operations {
                                         load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                                        store: true,
+                                        store: wgpu::StoreOp::Store,
                                     },
                                 })],
                                 depth_stencil_attachment: None,
+                                timestamp_writes: None,
+                                occlusion_query_set: None,
                             });
 
                         for draw_result in &draw_results {
                             draw_result.view_builder.composite(
                                 &self.re_ctx,
+                                &render_pipelines,
                                 &mut composite_pass,
                                 draw_result.target_location,
                             );

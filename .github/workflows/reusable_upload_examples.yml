@@ -1,0 +1,115 @@
+name: Reusable Upload Examples
+
+on:
+  workflow_call:
+    inputs:
+      CONCURRENCY:
+        required: true
+        type: string
+      ADHOC_NAME:
+        type: string
+        required: false
+        default: ""
+      MARK_TAGGED_VERSION:
+        required: false
+        type: boolean
+        default: false
+      RELEASE_VERSION:
+        required: false
+        type: string
+        default: "prerelease"
+      PR_NUMBER:
+        type: string
+        default: ""
+
+concurrency:
+  group: ${{ inputs.CONCURRENCY }}-upload-examples
+  cancel-in-progress: true
+
+jobs:
+  upload-web:
+    name: Upload Examples to Google Cloud
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - name: Download assets
+        uses: actions/download-artifact@v3
+        with:
+          name: example_data
+          path: example_data
+
+      # Upload the wasm, html etc to a Google cloud bucket:
+      - id: "auth"
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: Get sha
+        id: get-sha
+        shell: bash
+        run: |
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: "Upload examples (commit)"
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "example_data"
+          destination: "rerun-web-viewer/commit/${{ steps.get-sha.outputs.sha }}/examples"
+          parent: false
+
+      - name: "Upload examples (tagged)"
+        if: inputs.MARK_TAGGED_VERSION
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "example_data"
+          destination: "rerun-web-viewer/version/${{ inputs.RELEASE_VERSION }}/examples"
+          parent: false
+
+      - name: "Upload examples (adhoc)"
+        if: ${{ inputs.ADHOC_NAME != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "example_data"
+          destination: "rerun-web-viewer/adhoc/${{ inputs.ADHOC_NAME }}/examples"
+          parent: false
+
+      - name: "Upload examples (prerelease)"
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "example_data"
+          destination: "rerun-web-viewer/prerelease/examples"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+
+      - name: "Upload examples (nightly)"
+        # TEMP: Tracking `main` until we can do actual nightly builds.
+        if: github.ref == 'refs/heads/main'
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "example_data"
+          destination: "rerun-web-viewer/version/nightly/examples"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0
+
+      - name: "Upload examples (pr)"
+        if: ${{ inputs.PR_NUMBER != '' }}
+        uses: google-github-actions/upload-cloud-storage@v1
+        with:
+          path: "example_data"
+          destination: "rerun-web-viewer/pr/${{ inputs.PR_NUMBER }}/examples"
+          parent: false
+          headers: |-
+            cache-control: no-cache, max-age=0

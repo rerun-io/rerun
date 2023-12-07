@@ -17,7 +17,7 @@ pub struct BarChartSpaceView;
 impl SpaceViewClass for BarChartSpaceView {
     type State = ();
 
-    const NAME: &'static str = "Bar Chart";
+    const IDENTIFIER: &'static str = "Bar Chart";
     const DISPLAY_NAME: &'static str = "Bar Chart";
 
     fn icon(&self) -> &'static re_ui::Icon {
@@ -66,7 +66,7 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         _space_origin: &EntityPath,
@@ -125,7 +125,7 @@ impl SpaceViewClass for BarChartSpaceView {
 
     fn ui(
         &self,
-        _ctx: &mut ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut Self::State,
         root_entity_properties: &EntityProperties,
@@ -141,13 +141,9 @@ impl SpaceViewClass for BarChartSpaceView {
         let zoom_both_axis = !ui.input(|i| i.modifiers.contains(controls::ASPECT_SCROLL_MODIFIER));
 
         ui.scope(|ui| {
-            let mut plot =
-                Plot::new("bar_chart_plot")
-                    .clamp_grid(true)
-                    .allow_zoom(egui_plot::AxisBools {
-                        x: true,
-                        y: zoom_both_axis,
-                    });
+            let mut plot = Plot::new("bar_chart_plot")
+                .clamp_grid(true)
+                .allow_zoom([true, zoom_both_axis]);
 
             if *root_entity_properties.show_legend {
                 plot = plot.legend(Legend {

@@ -10,6 +10,8 @@
 //! We could render the same image with subpixel moved camera in order to get super-sampling without hitting texture size limitations.
 //! Or alternatively try to render the images in several tiles 🤔. In any case this would greatly improve quality!
 
+use parking_lot::Mutex;
+
 use crate::{
     allocator::GpuReadbackError,
     texture_info::Texture2DBufferInfo,
@@ -25,7 +27,7 @@ struct ReadbackBeltMetadata<T: 'static + Send + Sync> {
 
 pub struct ScreenshotProcessor {
     screenshot_texture: GpuTexture,
-    screenshot_readback_buffer: GpuReadbackBuffer,
+    screenshot_readback_buffer: Mutex<GpuReadbackBuffer>,
 }
 
 impl ScreenshotProcessor {
@@ -40,7 +42,7 @@ impl ScreenshotProcessor {
         readback_user_data: T,
     ) -> Self {
         let buffer_info = Texture2DBufferInfo::new(Self::SCREENSHOT_COLOR_FORMAT, resolution);
-        let screenshot_readback_buffer = ctx.gpu_readback_belt.lock().allocate(
+        let screenshot_readback_buffer = Mutex::new(ctx.gpu_readback_belt.lock().allocate(
             &ctx.device,
             &ctx.gpu_resources.buffers,
             buffer_info.buffer_size_padded,
@@ -49,7 +51,7 @@ impl ScreenshotProcessor {
                 extent: resolution,
                 user_data: readback_user_data,
             }),
-        );
+        ));
 
         let screenshot_texture = ctx.gpu_resources.textures.alloc(
             &ctx.device,
@@ -88,20 +90,22 @@ impl ScreenshotProcessor {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-                    store: true,
+                    store: wgpu::StoreOp::Store,
                 },
             })],
             depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
         pass
     }
 
     pub fn end_render_pass(
-        self,
+        &self,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<(), GpuReadbackError> {
-        self.screenshot_readback_buffer.read_texture2d(
+        self.screenshot_readback_buffer.lock().read_texture2d(
             encoder,
             wgpu::ImageCopyTexture {
                 texture: &self.screenshot_texture.texture,

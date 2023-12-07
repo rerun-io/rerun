@@ -11,7 +11,7 @@ use re_viewer_context::{
 ///
 /// Returns `true` if any recordings were shown.
 pub fn recordings_panel_ui(
-    ctx: &mut ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
     rx: &ReceiveSet<LogMsg>,
     ui: &mut egui::Ui,
 ) -> bool {
@@ -69,7 +69,7 @@ fn loading_receivers_ui(
             | SmartChannelSource::Sdk
             | SmartChannelSource::WsClient { .. }
             | SmartChannelSource::TcpServer { .. } => {
-                // TODO(#3046): show these in status bar
+                // These show up in the top panel - see `top_panel.rs`.
                 continue;
             }
         };
@@ -105,7 +105,7 @@ fn loading_receivers_ui(
 /// Draw the recording list.
 ///
 /// Returns `true` if any recordings were shown.
-fn recording_list_ui(ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
+fn recording_list_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) -> bool {
     let ViewerContext {
         store_context,
         command_sender,

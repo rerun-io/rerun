@@ -109,7 +109,7 @@ fn log_messages() {
         let used_bytes_start = live_bytes();
         let table = Box::new(
             DataRow::from_cells1(
-                RowId::random(),
+                RowId::new(),
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 1,
@@ -136,7 +136,7 @@ fn log_messages() {
         let used_bytes_start = live_bytes();
         let table = Box::new(
             DataRow::from_cells1(
-                RowId::random(),
+                RowId::new(),
                 entity_path!("points"),
                 [build_frame_nr(0.into())],
                 NUM_POINTS as _,

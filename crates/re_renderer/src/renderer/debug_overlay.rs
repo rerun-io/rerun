@@ -1,17 +1,16 @@
 use crate::{
     allocator::create_and_fill_uniform_buffer,
-    context::SharedRendererData,
     draw_phases::DrawPhase,
     include_shader_module,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, GpuTexture, PipelineLayoutDesc, RenderPipelineDesc,
-        WgpuResourcePools,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, GpuTexture, PipelineLayoutDesc,
+        RenderPipelineDesc,
     },
     RectInt,
 };
 
-use super::{DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer};
+use super::{DrawData, DrawError, RenderContext, Renderer};
 
 use smallvec::smallvec;
 
@@ -72,18 +71,12 @@ impl DrawData for DebugOverlayDrawData {
 
 impl DebugOverlayDrawData {
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         debug_texture: &GpuTexture,
         screen_resolution: glam::UVec2,
         overlay_rect: RectInt,
     ) -> Result<Self, DebugOverlayError> {
-        let mut renderers = ctx.renderers.write();
-        let debug_overlay = renderers.get_or_create::<_, DebugOverlayRenderer>(
-            &ctx.shared_renderer_data,
-            &mut ctx.gpu_resources,
-            &ctx.device,
-            &mut ctx.resolver,
-        );
+        let debug_overlay = ctx.renderer::<DebugOverlayRenderer>();
 
         let mode = match debug_texture
             .texture
@@ -148,14 +141,11 @@ impl DebugOverlayDrawData {
 impl Renderer for DebugOverlayRenderer {
     type RendererDrawData = DebugOverlayDrawData;
 
-    fn create_renderer<Fs: FileSystem>(
-        shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
-    ) -> Self {
-        let bind_group_layout = pools.bind_group_layouts.get_or_create(
-            device,
+    fn create_renderer(ctx: &RenderContext) -> Self {
+        re_tracing::profile_function!();
+
+        let bind_group_layout = ctx.gpu_resources.bind_group_layouts.get_or_create(
+            &ctx.device,
             &BindGroupLayoutDesc {
                 label: "DebugOverlay::bind_group_layout".into(),
                 entries: vec![
@@ -197,29 +187,27 @@ impl Renderer for DebugOverlayRenderer {
             },
         );
 
-        let shader_module = pools.shader_modules.get_or_create(
-            device,
-            resolver,
+        let shader_module = ctx.gpu_resources.shader_modules.get_or_create(
+            ctx,
             &include_shader_module!("../../shader/debug_overlay.wgsl"),
         );
-        let render_pipeline = pools.render_pipelines.get_or_create(
-            device,
+        let render_pipeline = ctx.gpu_resources.render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "DebugOverlayDrawData::render_pipeline_regular".into(),
-                pipeline_layout: pools.pipeline_layouts.get_or_create(
-                    device,
+                pipeline_layout: ctx.gpu_resources.pipeline_layouts.get_or_create(
+                    ctx,
                     &PipelineLayoutDesc {
                         label: "DebugOverlay".into(),
-                        entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+                        entries: vec![ctx.global_bindings.layout, bind_group_layout],
                     },
-                    &pools.bind_group_layouts,
                 ),
                 vertex_entrypoint: "main_vs".into(),
                 vertex_handle: shader_module,
                 fragment_entrypoint: "main_fs".into(),
                 fragment_handle: shader_module,
                 vertex_buffers: smallvec![],
-                render_targets: smallvec![Some(shared_data.config.output_format_color.into())],
+                render_targets: smallvec![Some(ctx.config.output_format_color.into())],
                 primitive: wgpu::PrimitiveState {
                     topology: wgpu::PrimitiveTopology::TriangleStrip,
                     cull_mode: None,
@@ -228,8 +216,6 @@ impl Renderer for DebugOverlayRenderer {
                 depth_stencil: None,
                 multisample: wgpu::MultisampleState::default(),
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
         DebugOverlayRenderer {
             render_pipeline,
@@ -239,12 +225,12 @@ impl Renderer for DebugOverlayRenderer {
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         _phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a DebugOverlayDrawData,
     ) -> Result<(), DrawError> {
-        let pipeline = pools.render_pipelines.get_resource(self.render_pipeline)?;
+        let pipeline = render_pipelines.get(self.render_pipeline)?;
 
         pass.set_pipeline(pipeline);
         pass.set_bind_group(1, &draw_data.bind_group, &[]);

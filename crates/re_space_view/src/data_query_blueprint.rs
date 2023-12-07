@@ -6,8 +6,8 @@ use re_data_store::{
 use re_log_types::{DataRow, EntityPath, EntityPathExpr, RowId, TimePoint};
 use re_viewer_context::{
     DataQueryId, DataQueryResult, DataResult, DataResultHandle, DataResultNode, DataResultTree,
-    EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassName, SpaceViewId, StoreContext,
-    SystemCommand, SystemCommandSender as _, ViewerContext,
+    EntitiesPerSystem, EntitiesPerSystemPerClass, SpaceViewClassIdentifier, SpaceViewId,
+    StoreContext, SystemCommand, SystemCommandSender as _, ViewerContext,
 };
 use slotmap::SlotMap;
 use smallvec::SmallVec;
@@ -29,13 +29,14 @@ use crate::{blueprint::QueryExpressions, DataQuery, EntityOverrides, PropertyRes
 #[derive(Clone, PartialEq, Eq)]
 pub struct DataQueryBlueprint {
     pub id: DataQueryId,
-    pub space_view_class_name: SpaceViewClassName,
+    pub space_view_class_identifier: SpaceViewClassIdentifier,
     pub expressions: QueryExpressions,
 }
 
 impl DataQueryBlueprint {
     pub fn is_equivalent(&self, other: &DataQueryBlueprint) -> bool {
-        self.space_view_class_name.eq(&other.space_view_class_name)
+        self.space_view_class_identifier
+            .eq(&other.space_view_class_identifier)
             && self.expressions.eq(&other.expressions)
     }
 }
@@ -45,12 +46,12 @@ impl DataQueryBlueprint {
     pub const RECURSIVE_OVERRIDES_PREFIX: &'static str = "recursive_overrides";
 
     pub fn new<'a>(
-        space_view_class_name: SpaceViewClassName,
+        space_view_class_identifier: SpaceViewClassIdentifier,
         queries_entities: impl Iterator<Item = &'a EntityPathExpr>,
     ) -> Self {
         Self {
             id: DataQueryId::random(),
-            space_view_class_name,
+            space_view_class_identifier,
             expressions: QueryExpressions {
                 inclusions: queries_entities
                     .map(|exp| exp.to_string().into())
@@ -63,7 +64,7 @@ impl DataQueryBlueprint {
     pub fn try_from_db(
         path: &EntityPath,
         blueprint_db: &StoreDb,
-        space_view_class_name: SpaceViewClassName,
+        space_view_class_identifier: SpaceViewClassIdentifier,
     ) -> Option<Self> {
         let expressions = blueprint_db
             .store()
@@ -74,7 +75,7 @@ impl DataQueryBlueprint {
 
         Some(Self {
             id,
-            space_view_class_name,
+            space_view_class_identifier,
             expressions,
         })
     }
@@ -98,24 +99,62 @@ impl DataQueryBlueprint {
         }
     }
 
+    fn save_expressions(
+        &self,
+        ctx: &ViewerContext<'_>,
+        inclusions: &[EntityPathExpr],
+        exclusions: &[EntityPathExpr],
+    ) {
+        let timepoint = TimePoint::timeless();
+
+        let expressions_component = QueryExpressions {
+            inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
+            exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
+        };
+
+        let row = DataRow::from_cells1_sized(
+            RowId::new(),
+            self.id.as_entity_path(),
+            timepoint.clone(),
+            1,
+            [expressions_component],
+        )
+        .unwrap();
+
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                vec![row],
+            ));
+    }
+
     pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         let mut edited = false;
 
-        let mut inclusions: Vec<EntityPathExpr> = self
-            .expressions
-            .inclusions
-            .iter()
-            .filter(|exp| !exp.as_str().is_empty())
-            .map(|exp| EntityPathExpr::from(exp.as_str()))
-            .collect();
+        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
+        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
 
-        let mut exclusions: Vec<EntityPathExpr> = self
-            .expressions
-            .exclusions
-            .iter()
-            .filter(|exp| !exp.as_str().is_empty())
-            .map(|exp| EntityPathExpr::from(exp.as_str()))
-            .collect();
+        // This exclusion would cancel out any inclusions or exclusions that are descendants of it
+        // so clean them up.
+        if let Some(recursive_exclude) = expr.recursive_entity_path() {
+            inclusions.retain(|inc_expr| {
+                if inc_expr.entity_path().is_descendant_of(recursive_exclude) {
+                    edited = true;
+                    false
+                } else {
+                    true
+                }
+            });
+
+            exclusions.retain(|exc_expr| {
+                if exc_expr.entity_path().is_descendant_of(recursive_exclude) {
+                    edited = true;
+                    false
+                } else {
+                    true
+                }
+            });
+        }
 
         inclusions.retain(|inc_expr| {
             if inc_expr == &expr {
@@ -132,28 +171,78 @@ impl DataQueryBlueprint {
         }
 
         if edited {
-            let timepoint = TimePoint::timeless();
-
-            let expressions_component = QueryExpressions {
-                inclusions: inclusions.iter().map(|s| s.to_string().into()).collect(),
-                exclusions: exclusions.iter().map(|s| s.to_string().into()).collect(),
-            };
-
-            let row = DataRow::from_cells1_sized(
-                RowId::random(),
-                self.id.as_entity_path(),
-                timepoint.clone(),
-                1,
-                [expressions_component],
-            )
-            .unwrap();
-
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![row],
-                ));
+            self.save_expressions(ctx, &inclusions, &exclusions);
         }
+    }
+
+    pub fn add_entity_inclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+        let mut edited = false;
+
+        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
+        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
+
+        exclusions.retain(|exc_expr| {
+            if exc_expr == &expr {
+                edited = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        if !inclusions.iter().any(|inc_expr| inc_expr == &expr) {
+            edited = true;
+            inclusions.push(expr);
+        }
+
+        if edited {
+            self.save_expressions(ctx, &inclusions, &exclusions);
+        }
+    }
+
+    pub fn clear_entity_expression(&self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
+        let mut edited = false;
+
+        let mut inclusions: Vec<EntityPathExpr> = self.inclusions().collect();
+        let mut exclusions: Vec<EntityPathExpr> = self.exclusions().collect();
+
+        exclusions.retain(|exc_expr| {
+            if exc_expr == expr {
+                edited = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        inclusions.retain(|inc_expr| {
+            if inc_expr == expr {
+                edited = true;
+                false
+            } else {
+                true
+            }
+        });
+
+        if edited {
+            self.save_expressions(ctx, &inclusions, &exclusions);
+        }
+    }
+
+    pub fn inclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
+        self.expressions
+            .inclusions
+            .iter()
+            .filter(|exp| !exp.as_str().is_empty())
+            .map(|exp| EntityPathExpr::from(exp.as_str()))
+    }
+
+    pub fn exclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
+        self.expressions
+            .exclusions
+            .iter()
+            .filter(|exp| !exp.as_str().is_empty())
+            .map(|exp| EntityPathExpr::from(exp.as_str()))
     }
 }
 
@@ -173,7 +262,7 @@ impl DataQuery for DataQueryBlueprint {
         let overrides = property_resolver.resolve_entity_overrides(ctx);
 
         let per_system_entity_list = entities_per_system_per_class
-            .get(&self.space_view_class_name)
+            .get(&self.space_view_class_identifier)
             .unwrap_or(&EMPTY_ENTITY_LIST);
 
         let executor = QueryExpressionEvaluator::new(self, per_system_entity_list);
@@ -337,6 +426,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path: entity_path.clone(),
                     view_parts,
                     is_group: false,
+                    direct_included: any_match,
                     individual_properties: overrides.individual.get_opt(&entity_path).cloned(),
                     resolved_properties: leaf_resolved_properties,
                     override_path: individual_override_path,
@@ -376,6 +466,7 @@ impl<'a> QueryExpressionEvaluator<'a> {
                     entity_path,
                     view_parts: Default::default(),
                     is_group: true,
+                    direct_included: any_match,
                     individual_properties,
                     resolved_properties,
                     override_path: recursive_override_path,
@@ -504,7 +595,7 @@ mod tests {
 
         // Set up a store DB with some entities
         for entity_path in ["parent", "parent/skipped/child1", "parent/skipped/child2"] {
-            let row_id = RowId::random();
+            let row_id = RowId::new();
             let point = MyPoint::new(1.0, 2.0);
             let row = DataRow::from_component_batches(
                 row_id,
@@ -635,7 +726,7 @@ mod tests {
         {
             let query = DataQueryBlueprint {
                 id: DataQueryId::random(),
-                space_view_class_name: "3D".into(),
+                space_view_class_identifier: "3D".into(),
                 expressions: QueryExpressions {
                     inclusions: inclusions.into_iter().map(|s| s.into()).collect::<Vec<_>>(),
                     exclusions: exclusions.into_iter().map(|s| s.into()).collect::<Vec<_>>(),

@@ -17,5 +17,5 @@ pub use recordings_panel::recordings_panel_ui;
 
 pub(crate) use {
     self::mobile_warning_ui::mobile_warning_ui, self::top_panel::top_panel,
-    self::welcome_screen::loading_ui, self::welcome_screen::WelcomeScreen,
+    self::welcome_screen::WelcomeScreen,
 };

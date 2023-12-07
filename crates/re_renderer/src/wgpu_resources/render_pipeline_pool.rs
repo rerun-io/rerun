@@ -1,12 +1,15 @@
 use smallvec::SmallVec;
 
-use crate::debug_label::DebugLabel;
+use crate::{debug_label::DebugLabel, RenderContext};
 
 use super::{
     pipeline_layout_pool::{GpuPipelineLayoutHandle, GpuPipelineLayoutPool},
     resource::PoolError,
     shader_module_pool::{GpuShaderModuleHandle, GpuShaderModulePool},
-    static_resource_pool::StaticResourcePool,
+    static_resource_pool::{
+        StaticResourcePool, StaticResourcePoolAccessor, StaticResourcePoolMemMoveAccessor,
+        StaticResourcePoolReadLockAccessor,
+    },
 };
 
 slotmap::new_key_type! { pub struct GpuRenderPipelineHandle; }
@@ -120,10 +123,12 @@ impl RenderPipelineDesc {
         pipeline_layouts: &GpuPipelineLayoutPool,
         shader_modules: &GpuShaderModulePool,
     ) -> Result<wgpu::RenderPipeline, RenderPipelineCreationError> {
+        let pipeline_layouts = pipeline_layouts.resources();
         let pipeline_layout = pipeline_layouts
-            .get_resource(self.pipeline_layout)
+            .get(self.pipeline_layout)
             .map_err(RenderPipelineCreationError::PipelineLayout)?;
 
+        let shader_modules = shader_modules.resources();
         let vertex_shader_module = shader_modules
             .get(self.vertex_handle)
             .map_err(RenderPipelineCreationError::VertexShaderNotFound)?;
@@ -141,7 +146,7 @@ impl RenderPipelineDesc {
         Ok(
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: self.label.get(),
-                layout: Some(&pipeline_layout.layout),
+                layout: Some(pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: vertex_shader_module,
                     entry_point: &self.vertex_entrypoint,
@@ -162,6 +167,12 @@ impl RenderPipelineDesc {
     }
 }
 
+pub type GpuRenderPipelinePoolAccessor<'a> =
+    dyn StaticResourcePoolAccessor<GpuRenderPipelineHandle, wgpu::RenderPipeline> + 'a;
+
+pub type GpuRenderPipelinePoolMoveAccessor =
+    StaticResourcePoolMemMoveAccessor<GpuRenderPipelineHandle, wgpu::RenderPipeline>;
+
 #[derive(Default)]
 pub struct GpuRenderPipelinePool {
     pool: StaticResourcePool<GpuRenderPipelineHandle, RenderPipelineDesc, wgpu::RenderPipeline>,
@@ -169,18 +180,20 @@ pub struct GpuRenderPipelinePool {
 
 impl GpuRenderPipelinePool {
     pub fn get_or_create(
-        &mut self,
-        device: &wgpu::Device,
+        &self,
+        ctx: &RenderContext,
         desc: &RenderPipelineDesc,
-        pipeline_layout_pool: &GpuPipelineLayoutPool,
-        shader_module_pool: &GpuShaderModulePool,
     ) -> GpuRenderPipelineHandle {
         self.pool.get_or_create(desc, |desc| {
             sanity_check_vertex_buffers(&desc.vertex_buffers);
 
             // TODO(cmc): certainly not unwrapping here
-            desc.create_render_pipeline(device, pipeline_layout_pool, shader_module_pool)
-                .unwrap()
+            desc.create_render_pipeline(
+                &ctx.device,
+                &ctx.gpu_resources.pipeline_layouts,
+                &ctx.gpu_resources.shader_modules,
+            )
+            .unwrap()
         })
     }
 
@@ -197,6 +210,7 @@ impl GpuRenderPipelinePool {
         // Recompile render pipelines referencing shader modules that have been recompiled this frame.
         self.pool.recreate_resources(|desc| {
             let frame_created = {
+                let shader_modules = shader_modules.resources();
                 let vertex_created = shader_modules
                     .get_statistics(desc.vertex_handle)
                     .map(|sm| sm.frame_created)
@@ -230,11 +244,29 @@ impl GpuRenderPipelinePool {
         });
     }
 
-    pub fn get_resource(
+    /// Locks the resource pool for resolving handles.
+    ///
+    /// While it is locked, no new resources can be added.
+    pub fn resources(
         &self,
-        handle: GpuRenderPipelineHandle,
-    ) -> Result<&wgpu::RenderPipeline, PoolError> {
-        self.pool.get_resource(handle)
+    ) -> StaticResourcePoolReadLockAccessor<'_, GpuRenderPipelineHandle, wgpu::RenderPipeline> {
+        self.pool.resources()
+    }
+
+    /// Takes out all resources from the pool.
+    ///
+    /// This is useful when the existing resources need to be accessed without
+    /// taking a lock on the pool.
+    /// Resource can be put with `return_resources`.
+    pub fn take_resources(&mut self) -> GpuRenderPipelinePoolMoveAccessor {
+        self.pool.take_resources()
+    }
+
+    /// Counterpart to `take_resources`.
+    ///
+    /// Logs an error if resources were added to the pool since `take_resources` was called.
+    pub fn return_resources(&mut self, resources: GpuRenderPipelinePoolMoveAccessor) {
+        self.pool.return_resources(resources);
     }
 
     pub fn num_resources(&self) -> usize {

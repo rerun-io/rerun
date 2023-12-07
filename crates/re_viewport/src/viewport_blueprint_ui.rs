@@ -18,7 +18,7 @@ use crate::{
 
 impl ViewportBlueprint<'_> {
     /// Show the blueprint panel tree view.
-    pub fn tree_ui(&mut self, ctx: &mut ViewerContext<'_>, ui: &mut egui::Ui) {
+    pub fn tree_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
         re_tracing::profile_function!();
 
         egui::ScrollArea::both()
@@ -61,12 +61,7 @@ impl ViewportBlueprint<'_> {
         2 <= num_children && num_children <= 3
     }
 
-    fn tile_ui(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        ui: &mut egui::Ui,
-        tile_id: egui_tiles::TileId,
-    ) {
+    fn tile_ui(&mut self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, tile_id: egui_tiles::TileId) {
         // Temporarily remove the tile so we don't get borrow-checker fights:
         let Some(mut tile) = self.tree.tiles.remove(tile_id) else {
             return;
@@ -87,7 +82,7 @@ impl ViewportBlueprint<'_> {
 
     fn container_tree_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         container: &egui_tiles::Container,
@@ -101,14 +96,17 @@ impl ViewportBlueprint<'_> {
             return self.tile_ui(ctx, ui, child_id);
         }
 
+        let item = Item::Container(tile_id);
+
         let mut visibility_changed = false;
         let mut visible = self.tree.is_visible(tile_id);
         let mut remove = false;
 
         let default_open = true;
 
-        ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
+        let response = ListItem::new(ctx.re_ui, format!("{:?}", container.kind()))
             .subdued(true)
+            .selected(ctx.selection().contains(&item))
             .with_buttons(|re_ui, ui| {
                 let vis_response = visibility_button_ui(re_ui, ui, true, &mut visible);
                 visibility_changed = vis_response.changed();
@@ -122,7 +120,10 @@ impl ViewportBlueprint<'_> {
                 for &child in container.children() {
                     self.tile_ui(ctx, ui, child);
                 }
-            });
+            })
+            .item_response;
+
+        item_ui::select_hovered_on_click(ctx, &response, &[item]);
 
         if remove {
             self.mark_user_interaction();
@@ -141,7 +142,7 @@ impl ViewportBlueprint<'_> {
 
     fn space_view_entry_ui(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         tile_id: egui_tiles::TileId,
         space_view_id: &SpaceViewId,
@@ -225,7 +226,7 @@ impl ViewportBlueprint<'_> {
     }
 
     fn space_view_blueprint_ui(
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         query_result: &DataQueryResult,
         result_handle: DataResultHandle,
@@ -316,7 +317,6 @@ impl ViewportBlueprint<'_> {
                                 ctx,
                                 EntityPathExpr::Exact(entity_path.clone()),
                             );
-                            space_view.entities_determined_by_user = true;
                         }
 
                         response | vis_response
@@ -379,7 +379,6 @@ impl ViewportBlueprint<'_> {
                 if remove_group {
                     space_view
                         .add_entity_exclusion(ctx, EntityPathExpr::Recursive(entity_path.clone()));
-                    space_view.entities_determined_by_user = true;
                 }
 
                 response

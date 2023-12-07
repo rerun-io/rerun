@@ -11,7 +11,7 @@ use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::blueprint::SpaceViewComponent;
 use re_viewer_context::{
     DataQueryId, DataResult, DynSpaceViewClass, PerSystemDataResults, PerSystemEntities,
-    SpaceViewClass, SpaceViewClassName, SpaceViewHighlights, SpaceViewId, SpaceViewState,
+    SpaceViewClass, SpaceViewClassIdentifier, SpaceViewHighlights, SpaceViewId, SpaceViewState,
     SpaceViewSystemRegistry, StoreContext, ViewerContext,
 };
 
@@ -22,7 +22,7 @@ use re_viewer_context::{
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: String,
-    class_name: SpaceViewClassName,
+    class_identifier: SpaceViewClassIdentifier,
 
     /// The "anchor point" of this space view.
     /// The transform at this path forms the reference point for all scene->world transforms in this space view.
@@ -47,7 +47,7 @@ impl SpaceViewBlueprint {
         let Self {
             id,
             display_name,
-            class_name,
+            class_identifier,
             space_origin,
             queries,
             entities_determined_by_user,
@@ -56,7 +56,7 @@ impl SpaceViewBlueprint {
 
         id != &other.id
             || display_name != &other.display_name
-            || class_name != &other.class_name
+            || class_identifier != &other.class_identifier
             || space_origin != &other.space_origin
             || queries.iter().map(|q| q.id).collect::<HashSet<_>>()
                 != other.queries.iter().map(|q| q.id).collect::<HashSet<_>>()
@@ -66,7 +66,7 @@ impl SpaceViewBlueprint {
 
 impl SpaceViewBlueprint {
     pub fn new(
-        space_view_class: SpaceViewClassName,
+        space_view_class: SpaceViewClassIdentifier,
         space_view_class_display_name: &'static str,
         space_path: &EntityPath,
         query: DataQueryBlueprint,
@@ -86,7 +86,7 @@ impl SpaceViewBlueprint {
 
         Self {
             display_name,
-            class_name: space_view_class,
+            class_identifier: space_view_class,
             id,
             space_origin: space_path.clone(),
             queries: vec![query],
@@ -98,7 +98,7 @@ impl SpaceViewBlueprint {
     pub fn try_from_db(path: &EntityPath, blueprint_db: &StoreDb) -> Option<Self> {
         let SpaceViewComponent {
             display_name,
-            class_name,
+            class_identifier,
             space_origin,
             entities_determined_by_user,
             contents,
@@ -109,20 +109,24 @@ impl SpaceViewBlueprint {
 
         let id = SpaceViewId::from_entity_path(path);
 
-        let class_name = class_name.as_str().into();
+        let class_identifier = class_identifier.as_str().into();
 
         let queries = contents
             .into_iter()
             .map(DataQueryId::from)
             .filter_map(|id| {
-                DataQueryBlueprint::try_from_db(&id.as_entity_path(), blueprint_db, class_name)
+                DataQueryBlueprint::try_from_db(
+                    &id.as_entity_path(),
+                    blueprint_db,
+                    class_identifier,
+                )
             })
             .collect();
 
         Some(Self {
             id,
             display_name: display_name.to_string(),
-            class_name,
+            class_identifier,
             space_origin: space_origin.into(),
             queries,
             entities_determined_by_user,
@@ -130,29 +134,25 @@ impl SpaceViewBlueprint {
         })
     }
 
-    pub fn class_name(&self) -> &SpaceViewClassName {
-        &self.class_name
+    pub fn class_identifier(&self) -> &SpaceViewClassIdentifier {
+        &self.class_identifier
     }
 
     pub fn class<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     ) -> &'a dyn DynSpaceViewClass {
-        space_view_class_registry.get_class_or_log_error(&self.class_name)
+        space_view_class_registry.get_class_or_log_error(&self.class_identifier)
     }
 
     pub fn class_system_registry<'a>(
         &self,
         space_view_class_registry: &'a re_viewer_context::SpaceViewClassRegistry,
     ) -> &'a SpaceViewSystemRegistry {
-        space_view_class_registry.get_system_registry_or_log_error(&self.class_name)
+        space_view_class_registry.get_system_registry_or_log_error(&self.class_identifier)
     }
 
-    pub fn on_frame_start(
-        &mut self,
-        ctx: &mut ViewerContext<'_>,
-        view_state: &mut dyn SpaceViewState,
-    ) {
+    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>, view_state: &mut dyn SpaceViewState) {
         while ScreenshotProcessor::next_readback_result(
             ctx.render_ctx,
             self.id.gpu_readback_id(),
@@ -232,7 +232,7 @@ impl SpaceViewBlueprint {
     pub(crate) fn scene_ui(
         &mut self,
         view_state: &mut dyn SpaceViewState,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         latest_at: TimeInt,
         highlights: &SpaceViewHighlights,
@@ -313,7 +313,7 @@ impl SpaceViewBlueprint {
             let mut props = EntityProperties::default();
             // better defaults for the time series space view
             // TODO(#4194, jleibs, ab): Per-space-view-class property defaults should be factored in
-            if self.class_name == TimeSeriesSpaceView::NAME {
+            if self.class_identifier == TimeSeriesSpaceView::IDENTIFIER {
                 props.visible_history.nanos = VisibleHistory::ALL;
                 props.visible_history.sequences = VisibleHistory::ALL;
             }
@@ -324,16 +324,42 @@ impl SpaceViewBlueprint {
             entity_path: entity_path.clone(),
             view_parts: Default::default(),
             is_group: true,
+            direct_included: true,
             resolved_properties,
             individual_properties,
             override_path: entity_path,
         }
     }
 
-    pub fn add_entity_exclusion(&self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+    // TODO(jleibs): Get rid of mut by sending blueprint update
+    pub fn add_entity_exclusion(&mut self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
         if let Some(query) = self.queries.first() {
             query.add_entity_exclusion(ctx, expr);
         }
+        self.entities_determined_by_user = true;
+    }
+
+    // TODO(jleibs): Get rid of mut by sending blueprint update
+    pub fn add_entity_inclusion(&mut self, ctx: &ViewerContext<'_>, expr: EntityPathExpr) {
+        if let Some(query) = self.queries.first() {
+            query.add_entity_inclusion(ctx, expr);
+        }
+        self.entities_determined_by_user = true;
+    }
+
+    pub fn clear_entity_expression(&mut self, ctx: &ViewerContext<'_>, expr: &EntityPathExpr) {
+        if let Some(query) = self.queries.first() {
+            query.clear_entity_expression(ctx, expr);
+        }
+        self.entities_determined_by_user = true;
+    }
+
+    pub fn exclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
+        self.queries.iter().flat_map(|q| q.exclusions())
+    }
+
+    pub fn inclusions(&self) -> impl Iterator<Item = EntityPathExpr> + '_ {
+        self.queries.iter().flat_map(|q| q.inclusions())
     }
 }
 
@@ -398,7 +424,7 @@ mod tests {
     fn save_override(props: EntityProperties, path: &EntityPath, store: &mut StoreDb) {
         let component = EntityPropertiesComponent { props };
         let row = DataRow::from_cells1_sized(
-            RowId::random(),
+            RowId::new(),
             path.clone(),
             TimePoint::timeless(),
             1,
@@ -421,9 +447,8 @@ mod tests {
             "parent/skip/child1".into(),
             "parent/skip/child2".into(),
         ] {
-            let row =
-                DataRow::from_archetype(RowId::random(), TimePoint::timeless(), path, &points)
-                    .unwrap();
+            let row = DataRow::from_archetype(RowId::new(), TimePoint::timeless(), path, &points)
+                .unwrap();
             recording.add_data_row(row).ok();
         }
 

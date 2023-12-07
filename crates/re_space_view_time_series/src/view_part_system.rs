@@ -6,8 +6,8 @@ use re_types::{
     Archetype, ComponentNameSet,
 };
 use re_viewer_context::{
-    AnnotationMap, DefaultColor, NamedViewSystem, SpaceViewSystemExecutionError, ViewPartSystem,
-    ViewQuery, ViewerContext,
+    AnnotationMap, DefaultColor, IdentifiedViewSystem, SpaceViewSystemExecutionError,
+    ViewPartSystem, ViewQuery, ViewerContext,
 };
 
 #[derive(Clone, Debug)]
@@ -67,8 +67,8 @@ pub struct TimeSeriesSystem {
     pub min_time: Option<i64>,
 }
 
-impl NamedViewSystem for TimeSeriesSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for TimeSeriesSystem {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "TimeSeries".into()
     }
 }
@@ -87,7 +87,7 @@ impl ViewPartSystem for TimeSeriesSystem {
 
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         _context: &re_viewer_context::ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
@@ -97,7 +97,7 @@ impl ViewPartSystem for TimeSeriesSystem {
             ctx,
             &query.latest_at_query(),
             query
-                .iter_visible_data_results(Self::name())
+                .iter_visible_data_results(Self::identifier())
                 .map(|data| &data.entity_path),
         );
 
@@ -122,7 +122,7 @@ impl TimeSeriesSystem {
 
         let store = ctx.store_db.store();
 
-        for data_result in query.iter_visible_data_results(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             let mut points = Vec::new();
             let annotations = self.annotation_map.find(&data_result.entity_path);
             let annotation_info = annotations

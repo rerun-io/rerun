@@ -5,8 +5,8 @@ use re_log_types::EntityPath;
 use re_types::ComponentNameSet;
 
 use crate::{
-    NamedViewSystem, SpaceViewClassName, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewQuery, ViewSystemName, ViewerContext,
+    IdentifiedViewSystem, SpaceViewClassIdentifier, SpaceViewSystemExecutionError,
+    ViewContextCollection, ViewQuery, ViewSystemIdentifier, ViewerContext,
 };
 
 /// This is additional context made available to the `heuristic_filter`.
@@ -15,21 +15,21 @@ use crate::{
 /// each entity do their own tree-walk.
 #[derive(Clone, Copy, Debug)]
 pub struct HeuristicFilterContext {
-    pub class: SpaceViewClassName,
+    pub class: SpaceViewClassIdentifier,
     pub has_ancestor_pinhole: bool,
 }
 
 impl Default for HeuristicFilterContext {
     fn default() -> HeuristicFilterContext {
         Self {
-            class: SpaceViewClassName::invalid(),
+            class: SpaceViewClassIdentifier::invalid(),
             has_ancestor_pinhole: false,
         }
     }
 }
 
 impl HeuristicFilterContext {
-    pub fn with_class(&self, class: SpaceViewClassName) -> Self {
+    pub fn with_class(&self, class: SpaceViewClassIdentifier) -> Self {
         Self {
             class,
             has_ancestor_pinhole: self.has_ancestor_pinhole,
@@ -90,7 +90,7 @@ pub trait ViewPartSystem {
     /// to the `ViewPartSystemImpl` does the query and then passes an `ArchetypeQueryResult` into populate.
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError>;
@@ -127,24 +127,26 @@ pub fn default_heuristic_filter(
 }
 
 pub struct ViewPartCollection {
-    pub(crate) systems: HashMap<ViewSystemName, Box<dyn ViewPartSystem>>,
+    pub(crate) systems: HashMap<ViewSystemIdentifier, Box<dyn ViewPartSystem>>,
 }
 
 impl ViewPartCollection {
     #[inline]
-    pub fn get<T: ViewPartSystem + NamedViewSystem + 'static>(
+    pub fn get<T: ViewPartSystem + IdentifiedViewSystem + 'static>(
         &self,
     ) -> Result<&T, SpaceViewSystemExecutionError> {
         self.systems
-            .get(&T::name())
+            .get(&T::identifier())
             .and_then(|s| s.as_any().downcast_ref())
-            .ok_or_else(|| SpaceViewSystemExecutionError::PartSystemNotFound(T::name().as_str()))
+            .ok_or_else(|| {
+                SpaceViewSystemExecutionError::PartSystemNotFound(T::identifier().as_str())
+            })
     }
 
     #[inline]
-    pub fn get_by_name(
+    pub fn get_by_identifier(
         &self,
-        name: ViewSystemName,
+        name: ViewSystemIdentifier,
     ) -> Result<&dyn ViewPartSystem, SpaceViewSystemExecutionError> {
         self.systems
             .get(&name)
@@ -158,7 +160,9 @@ impl ViewPartCollection {
     }
 
     #[inline]
-    pub fn iter_with_names(&self) -> impl Iterator<Item = (ViewSystemName, &dyn ViewPartSystem)> {
+    pub fn iter_with_identifiers(
+        &self,
+    ) -> impl Iterator<Item = (ViewSystemIdentifier, &dyn ViewPartSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
     }
 }

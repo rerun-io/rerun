@@ -39,7 +39,7 @@ impl GpuReadbackBuffer {
     /// Does 2D-only entirely for convenience as it greatly simplifies the input parameters.
     /// Additionally, we assume as tightly as possible packed data as this is by far the most common use.
     pub fn read_texture2d(
-        self,
+        &mut self,
         encoder: &mut wgpu::CommandEncoder,
         source: wgpu::ImageCopyTexture<'_>,
         copy_extents: glam::UVec2,
@@ -58,7 +58,7 @@ impl GpuReadbackBuffer {
     /// This method will add the required padding between the texture copies if necessary.
     /// Panics if the buffer is too small.
     pub fn read_multiple_texture2d(
-        mut self,
+        &mut self,
         encoder: &mut wgpu::CommandEncoder,
         sources_and_extents: &[(wgpu::ImageCopyTexture<'_>, glam::UVec2)],
     ) -> Result<(), GpuReadbackError> {

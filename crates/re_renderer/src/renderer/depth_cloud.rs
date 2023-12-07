@@ -22,15 +22,13 @@ use crate::{
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
-        GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc,
+        GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
+        RenderPipelineDesc,
     },
     Colormap, OutlineMaskPreference, PickingLayerObjectId, PickingLayerProcessor,
 };
 
-use super::{
-    DrawData, DrawError, FileResolver, FileSystem, RenderContext, Renderer, SharedRendererData,
-    WgpuResourcePools,
-};
+use super::{DrawData, DrawError, RenderContext, Renderer};
 
 // ---
 
@@ -232,7 +230,7 @@ pub enum DepthCloudDrawDataError {
 
 impl DepthCloudDrawData {
     pub fn new(
-        ctx: &mut RenderContext,
+        ctx: &RenderContext,
         depth_clouds: &DepthClouds,
     ) -> Result<Self, DepthCloudDrawDataError> {
         re_tracing::profile_function!();
@@ -242,16 +240,8 @@ impl DepthCloudDrawData {
             radius_boost_in_ui_points_for_outlines,
         } = depth_clouds;
 
-        let bg_layout = ctx
-            .renderers
-            .write()
-            .get_or_create::<_, DepthCloudRenderer>(
-                &ctx.shared_renderer_data,
-                &mut ctx.gpu_resources,
-                &ctx.device,
-                &mut ctx.resolver,
-            )
-            .bind_group_layout;
+        let renderer = ctx.renderer::<DepthCloudRenderer>();
+        let bg_layout = renderer.bind_group_layout;
 
         if depth_clouds.is_empty() {
             return Ok(DepthCloudDrawData {
@@ -355,16 +345,13 @@ impl Renderer for DepthCloudRenderer {
         ]
     }
 
-    fn create_renderer<Fs: FileSystem>(
-        shared_data: &SharedRendererData,
-        pools: &mut WgpuResourcePools,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
-    ) -> Self {
+    fn create_renderer(ctx: &RenderContext) -> Self {
         re_tracing::profile_function!();
 
-        let bind_group_layout = pools.bind_group_layouts.get_or_create(
-            device,
+        let render_pipelines = &ctx.gpu_resources.render_pipelines;
+
+        let bind_group_layout = ctx.gpu_resources.bind_group_layouts.get_or_create(
+            &ctx.device,
             &BindGroupLayoutDesc {
                 label: "depth_cloud_bg_layout".into(),
                 entries: vec![
@@ -418,18 +405,16 @@ impl Renderer for DepthCloudRenderer {
             },
         );
 
-        let pipeline_layout = pools.pipeline_layouts.get_or_create(
-            device,
+        let pipeline_layout = ctx.gpu_resources.pipeline_layouts.get_or_create(
+            ctx,
             &PipelineLayoutDesc {
                 label: "depth_cloud_rp_layout".into(),
-                entries: vec![shared_data.global_bindings.layout, bind_group_layout],
+                entries: vec![ctx.global_bindings.layout, bind_group_layout],
             },
-            &pools.bind_group_layouts,
         );
 
-        let shader_module = pools.shader_modules.get_or_create(
-            device,
-            resolver,
+        let shader_module = ctx.gpu_resources.shader_modules.get_or_create(
+            ctx,
             &include_shader_module!("../../shader/depth_cloud.wgsl"),
         );
 
@@ -454,14 +439,10 @@ impl Renderer for DepthCloudRenderer {
                 ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
             },
         };
-        let render_pipeline_color = pools.render_pipelines.get_or_create(
-            device,
-            &render_pipeline_desc_color,
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
-        );
-        let render_pipeline_picking_layer = pools.render_pipelines.get_or_create(
-            device,
+        let render_pipeline_color =
+            render_pipelines.get_or_create(ctx, &render_pipeline_desc_color);
+        let render_pipeline_picking_layer = render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "DepthCloudRenderer::render_pipeline_picking_layer".into(),
                 fragment_entrypoint: "fs_main_picking_layer".into(),
@@ -470,24 +451,18 @@ impl Renderer for DepthCloudRenderer {
                 multisample: PickingLayerProcessor::PICKING_LAYER_MSAA_STATE,
                 ..render_pipeline_desc_color.clone()
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
-        let render_pipeline_outline_mask = pools.render_pipelines.get_or_create(
-            device,
+        let render_pipeline_outline_mask = render_pipelines.get_or_create(
+            ctx,
             &RenderPipelineDesc {
                 label: "DepthCloudRenderer::render_pipeline_outline_mask".into(),
                 fragment_entrypoint: "fs_main_outline_mask".into(),
                 render_targets: smallvec![Some(OutlineMaskProcessor::MASK_FORMAT.into())],
                 depth_stencil: OutlineMaskProcessor::MASK_DEPTH_STATE,
                 // Alpha to coverage doesn't work with the mask integer target.
-                multisample: OutlineMaskProcessor::mask_default_msaa_state(
-                    &shared_data.config.device_caps,
-                ),
+                multisample: OutlineMaskProcessor::mask_default_msaa_state(&ctx.config.device_caps),
                 ..render_pipeline_desc_color
             },
-            &pools.pipeline_layouts,
-            &pools.shader_modules,
         );
 
         DepthCloudRenderer {
@@ -500,7 +475,7 @@ impl Renderer for DepthCloudRenderer {
 
     fn draw<'a>(
         &self,
-        pools: &'a WgpuResourcePools,
+        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
         phase: DrawPhase,
         pass: &mut wgpu::RenderPass<'a>,
         draw_data: &'a Self::RendererDrawData,
@@ -516,7 +491,7 @@ impl Renderer for DepthCloudRenderer {
             DrawPhase::OutlineMask => self.render_pipeline_outline_mask,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };
-        let pipeline = pools.render_pipelines.get_resource(pipeline_handle)?;
+        let pipeline = render_pipelines.get(pipeline_handle)?;
 
         pass.set_pipeline(pipeline);
 

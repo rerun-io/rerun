@@ -3,12 +3,9 @@ use std::{hash::Hash, path::PathBuf};
 use ahash::HashSet;
 use anyhow::Context as _;
 
-use crate::{debug_label::DebugLabel, FileResolver, FileSystem};
+use crate::{debug_label::DebugLabel, FileResolver, FileSystem, RenderContext};
 
-use super::{
-    resource::{PoolError, ResourceStatistics},
-    static_resource_pool::StaticResourcePool,
-};
+use super::static_resource_pool::{StaticResourcePool, StaticResourcePoolReadLockAccessor};
 
 // ---
 
@@ -62,7 +59,7 @@ impl ShaderModuleDesc {
     fn create_shader_module<Fs: FileSystem>(
         &self,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
         shader_text_workaround_replacements: &[(String, String)],
     ) -> wgpu::ShaderModule {
         let mut source_interpolated = resolver
@@ -116,21 +113,24 @@ pub struct GpuShaderModulePool {
 }
 
 impl GpuShaderModulePool {
-    pub fn get_or_create<Fs: FileSystem>(
-        &mut self,
-        device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+    pub fn get_or_create(
+        &self,
+        ctx: &RenderContext,
         desc: &ShaderModuleDesc,
     ) -> GpuShaderModuleHandle {
         self.pool.get_or_create(desc, |desc| {
-            desc.create_shader_module(device, resolver, &self.shader_text_workaround_replacements)
+            desc.create_shader_module(
+                &ctx.device,
+                &ctx.resolver,
+                &self.shader_text_workaround_replacements,
+            )
         })
     }
 
     pub fn begin_frame<Fs: FileSystem>(
         &mut self,
         device: &wgpu::Device,
-        resolver: &mut FileResolver<Fs>,
+        resolver: &FileResolver<Fs>,
         frame_index: u64,
         updated_paths: &HashSet<PathBuf>,
     ) {
@@ -162,15 +162,13 @@ impl GpuShaderModulePool {
         });
     }
 
-    pub fn get(&self, handle: GpuShaderModuleHandle) -> Result<&wgpu::ShaderModule, PoolError> {
-        self.pool.get_resource(handle)
-    }
-
-    pub fn get_statistics(
+    /// Locks the resource pool for resolving handles.
+    ///
+    /// While it is locked, no new resources can be added.
+    pub fn resources(
         &self,
-        handle: GpuShaderModuleHandle,
-    ) -> Result<&ResourceStatistics, PoolError> {
-        self.pool.get_statistics(handle)
+    ) -> StaticResourcePoolReadLockAccessor<'_, GpuShaderModuleHandle, wgpu::ShaderModule> {
+        self.pool.resources()
     }
 
     pub fn num_resources(&self) -> usize {

@@ -118,7 +118,7 @@ pub fn get_or_create_texture<'a>(
 
 /// Render the given image, respecting the clip rectangle of the given painter.
 pub fn render_image(
-    render_ctx: &mut re_renderer::RenderContext,
+    render_ctx: &re_renderer::RenderContext,
     egui_painter: &egui::Painter,
     image_rect_on_screen: egui::Rect,
     colormapped_texture: ColormappedTexture,
@@ -196,7 +196,6 @@ pub fn render_image(
     )?);
 
     egui_painter.add(new_renderer_callback(
-        render_ctx,
         view_builder,
         viewport,
         re_renderer::Rgba::TRANSPARENT,

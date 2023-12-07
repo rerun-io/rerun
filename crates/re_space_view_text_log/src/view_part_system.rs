@@ -8,7 +8,7 @@ use re_types::{
     Archetype as _, ComponentNameSet,
 };
 use re_viewer_context::{
-    NamedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
+    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewPartSystem,
     ViewQuery, ViewerContext,
 };
 
@@ -35,8 +35,8 @@ pub struct TextLogSystem {
     pub entries: Vec<Entry>,
 }
 
-impl NamedViewSystem for TextLogSystem {
-    fn name() -> re_viewer_context::ViewSystemName {
+impl IdentifiedViewSystem for TextLogSystem {
+    fn identifier() -> re_viewer_context::ViewSystemIdentifier {
         "TextLog".into()
     }
 }
@@ -55,13 +55,13 @@ impl ViewPartSystem for TextLogSystem {
 
     fn execute(
         &mut self,
-        ctx: &mut ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         query: &ViewQuery<'_>,
         _view_ctx: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         let store = ctx.store_db.store();
 
-        for data_result in query.iter_visible_data_results(Self::name()) {
+        for data_result in query.iter_visible_data_results(Self::identifier()) {
             // We want everything, for all times:
             let timeline_query =
                 re_arrow_store::RangeQuery::new(query.timeline, TimeRange::EVERYTHING);

@@ -298,6 +298,7 @@ struct PyRecordingStream(RecordingStream);
 impl std::ops::Deref for PyRecordingStream {
     type Target = RecordingStream;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -747,7 +748,7 @@ fn set_panel(entity_path: &str, is_expanded: bool, blueprint: Option<&PyRecordin
     let panel_state = PanelView { is_expanded };
 
     let row = DataRow::from_cells1(
-        RowId::random(),
+        RowId::new(),
         entity_path,
         TimePoint::default(),
         1,
@@ -793,7 +794,7 @@ fn add_space_view(
     let space_view = SpaceViewComponent { space_view };
 
     let row = DataRow::from_cells1(
-        RowId::random(),
+        RowId::new(),
         entity_path,
         TimePoint::default(),
         1,
@@ -819,7 +820,7 @@ fn set_auto_space_views(enabled: bool, blueprint: Option<&PyRecordingStream>) {
     let enable_auto_space = AutoSpaceViews(enabled);
 
     let row = DataRow::from_cells1(
-        RowId::random(),
+        RowId::new(),
         VIEWPORT_PATH,
         TimePoint::default(),
         1,

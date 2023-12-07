@@ -15,86 +15,26 @@ pub fn run_native_app(app_creator: AppCreator) -> eframe::Result<()> {
         window_title,
         native_options,
         Box::new(move |cc| {
-            check_graphics_driver(cc.wgpu_render_state.as_ref());
             let re_ui = crate::customize_eframe(cc);
             app_creator(cc, re_ui)
         }),
     )
 }
 
-fn check_graphics_driver(wgpu_render_state: Option<&egui_wgpu::RenderState>) {
-    re_tracing::profile_function!();
-    let wgpu_render_state = wgpu_render_state.expect("Expected wgpu to be enabled");
-    let info = wgpu_render_state.adapter.get_info();
-
-    let human_readable_summary = {
-        let wgpu::AdapterInfo {
-            name,
-            vendor: _, // skip integer id
-            device: _, // skip integer id
-            device_type,
-            driver,
-            driver_info,
-            backend,
-        } = &info;
-
-        // Example outputs:
-        // > wgpu adapter name: "llvmpipe (LLVM 16.0.6, 256 bits)", device_type: Cpu, backend: Vulkan, driver: "llvmpipe", driver_info: "Mesa 23.1.6-arch1.4 (LLVM 16.0.6)"
-        // > wgpu adapter name: "Apple M1 Pro", device_type: IntegratedGpu, backend: Metal, driver: "", driver_info: ""
-
-        format!(
-            "wgpu adapter name: {name:?}, \
-             device_type: {device_type:?}, \
-             backend: {backend:?}, \
-             driver: {driver:?}, \
-             driver_info: {driver_info:?}"
-        )
-    };
-
-    let is_software_rasterizer_with_known_crashes = {
-        // See https://github.com/rerun-io/rerun/issues/3089
-        const KNOWN_SOFTWARE_RASTERIZERS: &[&str] = &[
-            "lavapipe", // Vulkan software rasterizer
-            "llvmpipe", // OpenGL software rasterizer
-        ];
-
-        // I'm not sure where the incriminating string will appear, so check all fields at once:
-        let info_string = format!("{info:?}").to_lowercase();
-
-        KNOWN_SOFTWARE_RASTERIZERS
-            .iter()
-            .any(|&software_rasterizer| info_string.contains(software_rasterizer))
-    };
-
-    if is_software_rasterizer_with_known_crashes {
-        re_log::warn!("Software rasterizer detected - expect poor performance and crashes. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
-        re_log::info!("{human_readable_summary}");
-    } else if info.device_type == wgpu::DeviceType::Cpu {
-        re_log::warn!("Software rasterizer detected - expect poor performance. See: https://www.rerun.io/docs/getting-started/troubleshooting#graphics-issues");
-        re_log::info!("{human_readable_summary}");
-    } else {
-        re_log::debug!("{human_readable_summary}");
-    }
-}
-
 pub fn eframe_options() -> eframe::NativeOptions {
     re_tracing::profile_function!();
     eframe::NativeOptions {
-        // Controls where on disk the app state is persisted.
-        app_id: Some(APP_ID.to_owned()),
-
-        initial_window_size: Some([1600.0, 1200.0].into()),
-        min_window_size: Some([320.0, 450.0].into()), // Should be high enough to fit the rerun menu
-
-        icon_data: icon_data(),
-
-        #[cfg(target_os = "macos")]
-        fullsize_content: re_ui::FULLSIZE_CONTENT,
-
-        // Maybe hide the OS-specific "chrome" around the window:
-        decorated: !re_ui::CUSTOM_WINDOW_DECORATIONS,
-        // To have rounded corners we need transparency:
-        transparent: re_ui::CUSTOM_WINDOW_DECORATIONS,
+        viewport: egui::ViewportBuilder::default()
+            .with_app_id(APP_ID) // Controls where on disk the app state is persisted
+            .with_decorations(!re_ui::CUSTOM_WINDOW_DECORATIONS) // Maybe hide the OS-specific "chrome" around the window
+            .with_fullsize_content_view(re_ui::FULLSIZE_CONTENT)
+            .with_icon(icon_data())
+            .with_inner_size([1600.0, 1200.0])
+            .with_min_inner_size([320.0, 450.0]) // Should be high enough to fit the rerun menu
+            .with_title_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_titlebar_buttons_shown(!re_ui::CUSTOM_WINDOW_DECORATIONS)
+            .with_titlebar_shown(!re_ui::FULLSIZE_CONTENT)
+            .with_transparent(re_ui::CUSTOM_WINDOW_DECORATIONS), // To have rounded corners without decorations we need transparency
 
         follow_system_theme: false,
         default_theme: eframe::Theme::Dark,
@@ -109,7 +49,7 @@ pub fn eframe_options() -> eframe::NativeOptions {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-fn icon_data() -> Option<eframe::IconData> {
+fn icon_data() -> egui::IconData {
     re_tracing::profile_function!();
 
     cfg_if::cfg_if! {
@@ -124,8 +64,8 @@ fn icon_data() -> Option<eframe::IconData> {
     };
 
     // We include the .png with `include_bytes`. If that fails, things are extremely broken.
-    match eframe::IconData::try_from_png_bytes(app_icon_png_bytes) {
-        Ok(icon_data) => Some(icon_data),
+    match eframe::icon_data::from_png_bytes(app_icon_png_bytes) {
+        Ok(icon_data) => icon_data,
         Err(err) => {
             #[cfg(debug_assertions)]
             panic!("Failed to load app icon: {err}");
@@ -133,7 +73,7 @@ fn icon_data() -> Option<eframe::IconData> {
             #[cfg(not(debug_assertions))]
             {
                 re_log::warn!("Failed to load app icon: {err}");
-                None
+                Default::default()
             }
         }
     }

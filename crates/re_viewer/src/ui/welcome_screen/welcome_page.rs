@@ -1,4 +1,4 @@
-use super::{large_text_button, status_strings, url_large_text_button, WelcomeScreenResponse};
+use super::{large_text_button, url_large_text_button, WelcomeScreenResponse};
 use egui::{NumExt, Ui};
 use re_data_store::StoreDb;
 use re_log_types::{
@@ -46,23 +46,7 @@ pub(super) fn welcome_page_ui(
 ) -> WelcomeScreenResponse {
     ui.vertical(|ui| {
         let accepts_connections = rx.accepts_tcp_connections();
-
-        let show_example = onboarding_content_ui(ui, command_sender, accepts_connections);
-
-        for status_strings in status_strings(rx) {
-            if status_strings.long_term {
-                ui.add_space(55.0);
-                ui.vertical_centered(|ui| {
-                    ui.label(status_strings.status);
-                    ui.label(
-                        egui::RichText::new(status_strings.source)
-                            .color(ui.visuals().weak_text_color()),
-                    );
-                });
-            }
-        }
-
-        show_example
+        onboarding_content_ui(ui, command_sender, accepts_connections)
     })
     .inner
 }
@@ -101,7 +85,6 @@ fn onboarding_content_ui(
                         [
                             ("EXAMPLE_CODE", code),
                             ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
-                            ("SAFARI_WARNING", safari_warning()),
                         ]
                         .into(),
                         "C++ Quick Start",
@@ -121,7 +104,6 @@ fn onboarding_content_ui(
                         [
                             ("EXAMPLE_CODE", code),
                             ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
-                            ("SAFARI_WARNING", safari_warning()),
                         ]
                         .into(),
                         "Python Quick Start",
@@ -141,7 +123,6 @@ fn onboarding_content_ui(
                         [
                             ("EXAMPLE_CODE", code),
                             ("HOW_DOES_IT_WORK", HOW_DOES_IT_WORK_MARKDOWN),
-                            ("SAFARI_WARNING", safari_warning()),
                         ]
                         .into(),
                         "Rust Quick Start",
@@ -351,7 +332,7 @@ fn open_markdown_recording(
         .with_media_type(re_types::components::MediaType::markdown());
 
     let row = DataRow::from_archetype(
-        RowId::random(),
+        RowId::new(),
         TimePoint::timeless(),
         EntityPath::from(entity_path),
         &text_doc,
@@ -370,36 +351,4 @@ fn open_markdown_recording(
     command_sender.send_system(SystemCommand::LoadStoreDb(store_db));
 
     Ok(())
-}
-
-/// The User-Agent of the user's browser.
-fn user_agent() -> Option<String> {
-    #[cfg(target_arch = "wasm32")]
-    return eframe::web::user_agent();
-
-    #[cfg(not(target_arch = "wasm32"))]
-    None
-}
-
-/// Are we running on Safari?
-fn safari_warning() -> &'static str {
-    // Note that this implementation is very naive and might return false positives. This is ok for
-    // the purpose of displaying a "can't copy" warning in the Quick Start guide, but this detection
-    // is likely not suitable for pretty much anything else.
-    //
-    // See this page for more information on User Agent sniffing (and why/how to avoid it):
-    // https://developer.mozilla.org/en-US/docs/Web/HTTP/Browser_detection_using_the_user_agent
-
-    let is_safari = user_agent().is_some_and(|user_agent| {
-        user_agent.contains("Safari")
-            && !user_agent.contains("Chrome")
-            && !user_agent.contains("Chromium")
-    });
-
-    if is_safari {
-        "**Note**: This browser appears to be Safari. If you are unable to copy the code, please \
-        try a different browser (see [this issue](https://github.com/emilk/egui/issues/3480))."
-    } else {
-        ""
-    }
 }

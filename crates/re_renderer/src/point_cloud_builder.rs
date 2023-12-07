@@ -106,7 +106,7 @@ impl PointCloudBuilder {
     /// Finalizes the builder and returns a point cloud draw data with all the points added so far.
     pub fn into_draw_data(
         self,
-        ctx: &mut crate::context::RenderContext,
+        ctx: &crate::context::RenderContext,
     ) -> Result<PointCloudDrawData, PointCloudDrawDataError> {
         PointCloudDrawData::new(ctx, self)
     }
@@ -266,12 +266,14 @@ impl<'a> PointCloudBatchBuilder<'a> {
     }
 
     /// Adds (!) flags for this batch.
+    #[inline]
     pub fn flags(mut self, flags: PointCloudBatchFlags) -> Self {
         self.batch_mut().flags |= flags;
         self
     }
 
     /// Sets the picking object id for the current batch.
+    #[inline]
     pub fn picking_object_id(mut self, picking_object_id: PickingLayerObjectId) -> Self {
         self.batch_mut().picking_object_id = picking_object_id;
         self
