@@ -62,176 +62,6 @@ fn insert_row_with_retries(
     Err(re_arrow_store::WriteError::ReusedRowId(row.row_id()))
 }
 
-impl StoreDb {
-    /// A sorted list of all the entity paths in this database.
-    pub fn entity_paths(&self) -> Vec<&EntityPath> {
-        use itertools::Itertools as _;
-        self.entity_path_from_hash.values().sorted().collect()
-    }
-
-    #[inline]
-    pub fn entity_path_from_hash(&self, entity_path_hash: &EntityPathHash) -> Option<&EntityPath> {
-        self.entity_path_from_hash.get(entity_path_hash)
-    }
-
-    /// Returns `true` also for entities higher up in the hierarchy.
-    #[inline]
-    pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
-        self.tree.subtree(entity_path).is_some()
-    }
-
-    /// If you log `world/points`, then that is a logged entity, but `world` is not,
-    /// unless you log something to `world` too.
-    #[inline]
-    pub fn is_logged_entity(&self, entity_path: &EntityPath) -> bool {
-        self.entity_path_from_hash.contains_key(&entity_path.hash())
-    }
-
-    fn register_entity_path(&mut self, entity_path: &EntityPath) {
-        self.entity_path_from_hash
-            .entry(entity_path.hash())
-            .or_insert_with(|| entity_path.clone());
-    }
-
-    /// Inserts a [`DataRow`] into the database.
-    ///
-    /// Updates the [`crate::EntityTree`] and applies [`ClearCascade`]s as needed.
-    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
-        re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
-
-        self.register_entity_path(&row.entity_path);
-
-        // ## RowId duplication
-        //
-        // We shouldn't be attempting to retry in this instance: a duplicated RowId at this stage
-        // is likely a user error.
-        //
-        // We only do so because, the way our 'save' feature is currently implemented in the
-        // viewer can result in a single row's worth of data to be split across several insertions
-        // when loading that data back (because we dump per-bucket, and RowIds get duplicated
-        // across buckets).
-        //
-        // TODO(#1894): Remove this once the save/load process becomes RowId-driven.
-        let store_event = insert_row_with_retries(
-            &mut self.data_store,
-            row,
-            MAX_INSERT_ROW_ATTEMPTS,
-            DEFAULT_INSERT_ROW_STEP_SIZE,
-        )?;
-
-        // First-pass: update our internal views by notifying them of resulting [`StoreEvent`]s.
-        //
-        // This might result in a [`ClearCascade`] if the events trigger one or more immediate
-        // and/or pending clears.
-        let store_events = &[store_event];
-        self.times_per_timeline.on_events(store_events);
-        let clear_cascade = self.tree.on_store_additions(store_events);
-
-        // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
-        //
-        // This will in turn generate new [`StoreEvent`]s that our internal views need to be
-        // notified of, again!
-        let store_events = self.on_clear_cascade(clear_cascade);
-        self.times_per_timeline.on_events(&store_events);
-        let clear_cascade = self.tree.on_store_additions(&store_events);
-
-        // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
-        // cascades, thus this whole process must stabilize after one iteration.
-        debug_assert!(clear_cascade.is_empty());
-
-        Ok(())
-    }
-
-    fn on_clear_cascade(&mut self, clear_cascade: ClearCascade) -> Vec<StoreEvent> {
-        let mut store_events = Vec::new();
-
-        // Create the empty cells to be inserted.
-        //
-        // Reminder: these are the [`RowId`]s of the `Clear` components that triggered the
-        // cascade, they are not unique and may be shared across many entity paths.
-        let mut to_be_inserted =
-            BTreeMap::<RowId, BTreeMap<EntityPath, (TimePoint, Vec<DataCell>)>>::default();
-        for (row_id, per_entity) in clear_cascade.to_be_cleared {
-            for (entity_path, (timepoint, component_paths)) in per_entity {
-                let per_entity = to_be_inserted.entry(row_id).or_default();
-                let (cur_timepoint, cells) = per_entity.entry(entity_path).or_default();
-
-                *cur_timepoint = timepoint.union_max(cur_timepoint);
-                for component_path in component_paths {
-                    if let Some(data_type) = self
-                        .data_store
-                        .lookup_datatype(&component_path.component_name)
-                    {
-                        cells.push(DataCell::from_arrow_empty(
-                            component_path.component_name,
-                            data_type.clone(),
-                        ));
-                    }
-                }
-            }
-        }
-
-        for (row_id, per_entity) in to_be_inserted {
-            let mut row_id = row_id;
-            for (entity_path, (timepoint, cells)) in per_entity {
-                // NOTE: It is important we insert all those empty components using a single row (id)!
-                // 1. It'll be much more efficient when querying that data back.
-                // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
-                //    these rows! This flaky ordering will in turn leak through the public
-                //    API (e.g. range queries)!
-                match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
-                    Ok(row) => {
-                        let res = insert_row_with_retries(
-                            &mut self.data_store,
-                            row,
-                            MAX_INSERT_ROW_ATTEMPTS,
-                            DEFAULT_INSERT_ROW_STEP_SIZE,
-                        );
-
-                        match res {
-                            Ok(store_event) => {
-                                row_id = store_event.row_id.next();
-                                store_events.push(store_event);
-                            }
-                            Err(err) => {
-                                re_log::error_once!(
-                                    "Failed to propagate EntityTree cascade: {err}"
-                                );
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        re_log::error_once!("Failed to propagate EntityTree cascade: {err}");
-                    }
-                }
-            }
-        }
-
-        store_events
-    }
-
-    fn on_store_deletions(&mut self, store_events: &[StoreEvent]) {
-        re_tracing::profile_function!();
-
-        let Self {
-            store_id: _,
-            data_source: _,
-            set_store_info: _,
-            last_modified_at: _,
-            entity_path_from_hash: _,
-            times_per_timeline,
-            tree,
-            data_store: _,
-        } = self;
-
-        times_per_timeline.on_events(store_events);
-
-        let store_events = store_events.iter().collect_vec();
-        let compacted = CompactedStoreEvents::new(&store_events);
-        tree.on_store_deletions(&store_events, &compacted);
-    }
-}
-
 // ----------------------------------------------------------------------------
 
 /// An in-memory database built from a stream of [`LogMsg`]es.
@@ -376,6 +206,30 @@ impl StoreDb {
         self.set_store_info.is_none() && self.num_rows() == 0
     }
 
+    /// A sorted list of all the entity paths in this database.
+    pub fn entity_paths(&self) -> Vec<&EntityPath> {
+        use itertools::Itertools as _;
+        self.entity_path_from_hash.values().sorted().collect()
+    }
+
+    #[inline]
+    pub fn entity_path_from_hash(&self, entity_path_hash: &EntityPathHash) -> Option<&EntityPath> {
+        self.entity_path_from_hash.get(entity_path_hash)
+    }
+
+    /// Returns `true` also for entities higher up in the hierarchy.
+    #[inline]
+    pub fn is_known_entity(&self, entity_path: &EntityPath) -> bool {
+        self.tree.subtree(entity_path).is_some()
+    }
+
+    /// If you log `world/points`, then that is a logged entity, but `world` is not,
+    /// unless you log something to `world` too.
+    #[inline]
+    pub fn is_logged_entity(&self, entity_path: &EntityPath) -> bool {
+        self.entity_path_from_hash.contains_key(&entity_path.hash())
+    }
+
     pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
         re_tracing::profile_function!();
 
@@ -404,6 +258,129 @@ impl StoreDb {
         self.last_modified_at = web_time::Instant::now();
 
         Ok(())
+    }
+
+    /// Inserts a [`DataRow`] into the database.
+    ///
+    /// Updates the [`crate::EntityTree`] and applies [`ClearCascade`]s as needed.
+    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
+        re_tracing::profile_function!(format!("num_cells={}", row.num_cells()));
+
+        self.register_entity_path(&row.entity_path);
+
+        // ## RowId duplication
+        //
+        // We shouldn't be attempting to retry in this instance: a duplicated RowId at this stage
+        // is likely a user error.
+        //
+        // We only do so because, the way our 'save' feature is currently implemented in the
+        // viewer can result in a single row's worth of data to be split across several insertions
+        // when loading that data back (because we dump per-bucket, and RowIds get duplicated
+        // across buckets).
+        //
+        // TODO(#1894): Remove this once the save/load process becomes RowId-driven.
+        let store_event = insert_row_with_retries(
+            &mut self.data_store,
+            row,
+            MAX_INSERT_ROW_ATTEMPTS,
+            DEFAULT_INSERT_ROW_STEP_SIZE,
+        )?;
+
+        // First-pass: update our internal views by notifying them of resulting [`StoreEvent`]s.
+        //
+        // This might result in a [`ClearCascade`] if the events trigger one or more immediate
+        // and/or pending clears.
+        let store_events = &[store_event];
+        self.times_per_timeline.on_events(store_events);
+        let clear_cascade = self.tree.on_store_additions(store_events);
+
+        // Second-pass: update the [`DataStore`] by applying the [`ClearCascade`].
+        //
+        // This will in turn generate new [`StoreEvent`]s that our internal views need to be
+        // notified of, again!
+        let store_events = self.on_clear_cascade(clear_cascade);
+        self.times_per_timeline.on_events(&store_events);
+        let clear_cascade = self.tree.on_store_additions(&store_events);
+
+        // Clears don't affect `Clear` components themselves, therefore we cannot have recursive
+        // cascades, thus this whole process must stabilize after one iteration.
+        debug_assert!(clear_cascade.is_empty());
+
+        Ok(())
+    }
+
+    fn on_clear_cascade(&mut self, clear_cascade: ClearCascade) -> Vec<StoreEvent> {
+        let mut store_events = Vec::new();
+
+        // Create the empty cells to be inserted.
+        //
+        // Reminder: these are the [`RowId`]s of the `Clear` components that triggered the
+        // cascade, they are not unique and may be shared across many entity paths.
+        let mut to_be_inserted =
+            BTreeMap::<RowId, BTreeMap<EntityPath, (TimePoint, Vec<DataCell>)>>::default();
+        for (row_id, per_entity) in clear_cascade.to_be_cleared {
+            for (entity_path, (timepoint, component_paths)) in per_entity {
+                let per_entity = to_be_inserted.entry(row_id).or_default();
+                let (cur_timepoint, cells) = per_entity.entry(entity_path).or_default();
+
+                *cur_timepoint = timepoint.union_max(cur_timepoint);
+                for component_path in component_paths {
+                    if let Some(data_type) = self
+                        .data_store
+                        .lookup_datatype(&component_path.component_name)
+                    {
+                        cells.push(DataCell::from_arrow_empty(
+                            component_path.component_name,
+                            data_type.clone(),
+                        ));
+                    }
+                }
+            }
+        }
+
+        for (row_id, per_entity) in to_be_inserted {
+            let mut row_id = row_id;
+            for (entity_path, (timepoint, cells)) in per_entity {
+                // NOTE: It is important we insert all those empty components using a single row (id)!
+                // 1. It'll be much more efficient when querying that data back.
+                // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
+                //    these rows! This flaky ordering will in turn leak through the public
+                //    API (e.g. range queries)!
+                match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
+                    Ok(row) => {
+                        let res = insert_row_with_retries(
+                            &mut self.data_store,
+                            row,
+                            MAX_INSERT_ROW_ATTEMPTS,
+                            DEFAULT_INSERT_ROW_STEP_SIZE,
+                        );
+
+                        match res {
+                            Ok(store_event) => {
+                                row_id = store_event.row_id.next();
+                                store_events.push(store_event);
+                            }
+                            Err(err) => {
+                                re_log::error_once!(
+                                    "Failed to propagate EntityTree cascade: {err}"
+                                );
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        re_log::error_once!("Failed to propagate EntityTree cascade: {err}");
+                    }
+                }
+            }
+        }
+
+        store_events
+    }
+
+    fn register_entity_path(&mut self, entity_path: &EntityPath) {
+        self.entity_path_from_hash
+            .entry(entity_path.hash())
+            .or_insert_with(|| entity_path.clone());
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
@@ -459,6 +436,27 @@ impl StoreDb {
         );
 
         self.on_store_deletions(&store_events);
+    }
+
+    fn on_store_deletions(&mut self, store_events: &[StoreEvent]) {
+        re_tracing::profile_function!();
+
+        let Self {
+            store_id: _,
+            data_source: _,
+            set_store_info: _,
+            last_modified_at: _,
+            entity_path_from_hash: _,
+            times_per_timeline,
+            tree,
+            data_store: _,
+        } = self;
+
+        times_per_timeline.on_events(store_events);
+
+        let store_events = store_events.iter().collect_vec();
+        let compacted = CompactedStoreEvents::new(&store_events);
+        tree.on_store_deletions(&store_events, &compacted);
     }
 
     /// Key used for sorting recordings in the UI.
