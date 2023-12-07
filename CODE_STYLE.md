@@ -1,7 +1,7 @@
 # Rerun code style
 
 ## See also
-* [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [Architecture](docs/content/architecture.md)
 * [`BUILD.md`](BUILD.md)
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
 * [`CONTRIBUTING.md`](CONTRIBUTING.md)

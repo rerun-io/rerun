@@ -3,7 +3,7 @@ This is written for anyone who wants to contribute to the Rerun repository.
 
 
 ## See also
-* [`ARCHITECTURE.md`](ARCHITECTURE.md)
+* [Architecture](docs/content/architecture.md)
 * [`BUILD.md`](BUILD.md)
 * [`rerun_py/README.md`](rerun_py/README.md) - build instructions for Python SDK
 * [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md)
@@ -105,6 +105,14 @@ To get an overview of the crates, read their documentation with:
 cargo doc --no-deps --open
 ```
 
+You can see how they connect by plotting their dependency tree with:
+
+```
+cargo install cargo-depgraph
+cargo depgraph --all-deps --workspace-only --all-features --dedup-transitive-deps | dot -Tpng > deps.png
+open deps.png
+```
+
 To learn about the viewer, run:
 
 ```
@@ -148,3 +156,17 @@ You can set up [`sccache`](https://github.com/mozilla/sccache) to speed up re-co
 
 ### Other
 You can view higher log levels with `export RUST_LOG=debug` or `export RUST_LOG=trace`.
+
+## Wasm
+Wasm (short for [WebAssembly](https://webassembly.org/)) is a binary instruction format supported by all major browser.
+The Rerun Viewer can be compiled to Wasm and run in a browser.
+
+Threading support in Wasm is nascent, so care must we taken that we don't spawn any threads when compiling for `wasm32`.
+
+Wasm has no access to the host system, except via JS calls (something that may change once [WASI](https://wasi.dev/) rolls out), so when compiling for `wasm32` you can NOT use the Rust standard library to:
+* Access files
+* Read environment variables
+* Get the current time (use [`instant`](https://crates.io/crates/instant) instead)
+* Use networking (use [`ehttp`](https://github.com/emilk/ehttp), [`reqwest`](https://github.com/seanmonstar/reqwest), or [`ewebsock`](https://github.com/rerun-io/ewebsock) instead)
+* etc
+
