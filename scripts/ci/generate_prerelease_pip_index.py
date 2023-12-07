@@ -20,23 +20,7 @@ from typing import Any
 
 from google.cloud import storage
 from jinja2 import Template
-
-
-def check_expected_wheels(wheels: list[str]) -> None:
-    missing = set(["windows", "macos_intel", "macos_arm", "linux"])
-
-    for wheel in wheels:
-        if "win_amd64" in wheel:
-            missing.remove("windows")
-        if "macosx" in wheel and "x86_64" in wheel:
-            missing.remove("macos_intel")
-        if "macosx" in wheel and "arm64" in wheel:
-            missing.remove("macos_arm")
-        if "manylinux" in wheel and "x86_64" in wheel:
-            missing.remove("linux")
-
-    if len(missing) != 0:
-        raise Exception(f"missing built wheels for the following platforms: {', '.join(missing)}")
+import wheel_utils
 
 
 def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
@@ -56,7 +40,7 @@ def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
     wheels = [blob.name.split("/")[-1] for blob in wheel_blobs if blob.name.endswith(".whl")]
 
     if check:
-        check_expected_wheels(wheels)
+        wheel_utils.check_expected_wheels(wheels)
 
     if len(wheels) > 0:
         print(f"Found wheels: {wheels}")
@@ -82,11 +66,9 @@ def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a minimal pip index")
     parser.add_argument("--title", required=True, help="Index title")
-    parser.add_argument("--dir", required=True, help="GCS directory to search in the given bucket")
+    parser.add_argument("--dir", required=True, help="GCS directory to search in rerun-builds")
     parser.add_argument("--upload", action="store_true", help="Upload the index to GCS")
-    parser.add_argument(
-        "--check", action="store_true", help="Check if all required builds are present in the given bucket directory"
-    )
+    parser.add_argument("--check", action="store_true", help="Check if all required builds are present")
     args = parser.parse_args()
 
     generate_pip_index(args.title, args.dir, args.upload, args.check)
