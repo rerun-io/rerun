@@ -687,8 +687,7 @@ fn assert_histogram_for_component<'a>(
 ) {
     for (timeline, expected_times) in expected {
         let histo = db
-            .entity_db()
-            .tree
+            .tree()
             .subtree(entity_path)
             .and_then(|tree| tree.time_histogram_for_component(timeline, component_name));
 
