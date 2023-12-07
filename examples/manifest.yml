@@ -111,7 +111,7 @@ root:
           python: python/structure_from_motion
 
         - name: vrs
-          python: cpp/vrs
+          cpp: cpp/vrs
 
     - name: artificial-data
       title: Examples with Artificial Data
@@ -136,7 +136,7 @@ root:
           rust: rust/clock
 
         - name: eigen-opencv
-          python: cpp/eigen_opencv
+          cpp: cpp/eigen_opencv
 
         - name: multithreading
           python: python/multithreading
