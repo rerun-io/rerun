@@ -27,29 +27,22 @@ pub fn create_and_run_space_view_systems(
     };
 
     re_tracing::profile_scope!("ViewPartSystem::execute");
-
     let mut view_systems = systems.new_part_collection();
-    let (draw_data_sender, draw_data_receiver) = std::sync::mpsc::channel();
-
-    view_systems
+    let draw_data = view_systems
         .systems
         .par_iter_mut()
-        .for_each(|(name, part)| {
+        .map(|(name, part)| {
             re_tracing::profile_scope!(name.as_str());
             match part.execute(ctx, query, &context_systems) {
-                Ok(part_draw_data) => {
-                    draw_data_sender.send(part_draw_data).ok();
-                }
+                Ok(part_draw_data) => part_draw_data,
                 Err(err) => {
                     re_log::error_once!("Error executing view part system {name:?}: {err}");
+                    Vec::new()
                 }
             }
-        });
-
-    let mut draw_data = Vec::new();
-    while let Ok(mut part_draw_data) = draw_data_receiver.try_recv() {
-        draw_data.append(&mut part_draw_data);
-    }
+        })
+        .flatten()
+        .collect();
 
     SystemExecutionOutput {
         view_systems,

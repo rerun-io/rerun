@@ -316,7 +316,7 @@ pub fn view_2d(
             ui_from_canvas,
             &eye,
             ui,
-            query.highlights,
+            &query.highlights,
             SpatialSpaceViewKind::TwoD,
         );
 

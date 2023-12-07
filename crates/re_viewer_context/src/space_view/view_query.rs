@@ -128,8 +128,8 @@ pub struct ViewQuery<'s> {
 
     /// Hover/select highlighting information for this space view.
     ///
-    /// TODO(andreas): This should be a [`crate::ViewContextSystem`] instead.
-    pub highlights: &'s SpaceViewHighlights,
+    /// TODO(andreas): This should be the result of a [`crate::ViewContextSystem`] instead?
+    pub highlights: SpaceViewHighlights,
 }
 
 impl<'s> ViewQuery<'s> {

@@ -319,7 +319,7 @@ pub fn view_3d(
 ) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
 
-    let highlights = query.highlights;
+    let highlights = &query.highlights;
     let space_cameras = &parts.get::<CamerasPart>()?.space_cameras;
     let view_coordinates = ctx
         .store_db

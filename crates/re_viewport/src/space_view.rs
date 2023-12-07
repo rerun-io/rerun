@@ -235,7 +235,7 @@ impl SpaceViewBlueprint {
         &'a self,
         ctx: &'a ViewerContext<'_>,
         latest_at: TimeInt,
-        highlights: &'a SpaceViewHighlights,
+        highlights: SpaceViewHighlights,
     ) -> (ViewQuery<'a>, SystemExecutionOutput) {
         re_tracing::profile_function!();
 
@@ -276,16 +276,14 @@ impl SpaceViewBlueprint {
     }
 
     pub(crate) fn scene_ui(
-        &mut self,
+        &self,
         view_state: &mut dyn SpaceViewState,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        latest_at: TimeInt,
-        highlights: &SpaceViewHighlights,
+        query: &ViewQuery<'_>,
+        system_output: SystemExecutionOutput,
     ) {
         re_tracing::profile_function!();
-
-        let (query, system_output) = self.execute_systems(ctx, latest_at, highlights);
 
         let class = self.class(ctx.space_view_class_registry);
 
@@ -296,7 +294,7 @@ impl SpaceViewBlueprint {
             .unwrap_or_default();
 
         ui.scope(|ui| {
-            class.ui(ctx, ui, view_state, &props, &query, system_output);
+            class.ui(ctx, ui, view_state, &props, query, system_output);
         });
     }
 
