@@ -18,9 +18,9 @@ import io
 import os
 from typing import Any
 
+import wheel_utils
 from google.cloud import storage
 from jinja2 import Template
-import wheel_utils
 
 
 def generate_pip_index(title: str, dir: str, upload: bool, check: bool) -> None:
