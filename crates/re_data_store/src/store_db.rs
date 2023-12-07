@@ -177,7 +177,7 @@ impl StoreDb {
                 // NOTE: It is important we insert all those empty components using a single row (id)!
                 // 1. It'll be much more efficient when querying that data back.
                 // 2. Otherwise we will end up with a flaky row ordering, as we have no way to tie-break
-                //    these rows! This flaky ordering will in turn leak through the lic
+                //    these rows! This flaky ordering will in turn leak through the public
                 //    API (e.g. range queries)!
                 match DataRow::from_cells(row_id, timepoint.clone(), entity_path, 0, cells) {
                     Ok(row) => {
