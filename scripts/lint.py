@@ -752,16 +752,36 @@ def lint_file(filepath: str, args: Any) -> int:
 def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
     """Make sure ARCHITECTURE.md talks about every single crate we have."""
 
-    crates_dir = Path(__file__).parent.parent / "crates"
-    architecture_md_file = Path(__file__).parent.parent / "ARCHITECTURE.md"
+    crates_dir = Path("crates")
+    architecture_md_file = Path("ARCHITECTURE.md")
 
     architecture_md = architecture_md_file.read_text()
 
+    # extract all crate names ("re_...") from ARCHITECTURE.md to ensure they actually exist
+    listed_crates: dict[str, int] = {}
+    for i, line in enumerate(architecture_md.split("\n"), start=1):
+        for crate_name in re.findall(r"\bre_\w+", line):
+            if crate_name not in listed_crates:
+                listed_crates[crate_name] = i
+
     error_count = 0
-    for crate in crates_dir.iterdir():
-        if not should_ignore(crate) and crate.name not in architecture_md:
-            print(f"Missing documentation for crate {crate.name} in ARCHITECTURE.md")
+    for cargo_toml in crates_dir.glob("**/Cargo.toml"):
+        crate = cargo_toml.parent
+        crate_name = crate.name
+
+        if crate_name in listed_crates:
+            del listed_crates[crate_name]
+
+        if should_ignore(crate):
+            continue
+
+        if not re.search(r"\b" + crate_name + r"\b", architecture_md):
+            print(f"{architecture_md_file}: missing documentation for crate {crate.name}")
             error_count += 1
+
+    for crate_name, line_nr in sorted(listed_crates.items(), key=lambda x: x[1]):
+        print(f"{architecture_md_file}:{line_nr}: crate name {crate_name} does not exist")
+        error_count += 1
 
     return error_count
 
