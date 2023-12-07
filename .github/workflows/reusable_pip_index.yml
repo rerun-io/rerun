@@ -54,6 +54,11 @@ jobs:
       - name: Render pip index and upload to gcloud
         shell: bash
         run: |
+          full_commit="${{ inputs.COMMIT || (github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha) }}"
+          commit=$(echo $full_commit | cut -c1-7)
+
           python scripts/ci/generate_prerelease_pip_index.py \
-          --commit ${{ github.sha }} \
-          --upload
+            --title "Commit: $commit" \
+            --dir "commit/$commit/wheels" \
+            --upload \
+            --check
