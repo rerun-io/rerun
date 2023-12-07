@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-Build and publish wheels.
+Build and upload wheels to GCS.
 
 Install dependencies:
     python3 -m pip install google-cloud-storage==2.9.0
@@ -21,11 +21,6 @@ from enum import Enum
 
 from google.cloud.storage import Bucket
 from google.cloud.storage import Client as Gcs
-
-# Build
-# Upload
-# Generate index
-# Publish
 
 
 def run(
@@ -80,7 +75,7 @@ def build_and_upload(
     target: str,
 ) -> None:
     if detect_pixi():
-        raise Exception("the publish script cannot be started in the pixi environment")
+        raise Exception("the build script cannot be started in the pixi environment")
 
     if mode is BuildMode.PYPI:
         # Only build web viewer when publishing to pypi
@@ -118,10 +113,6 @@ def build_and_upload(
     bucket.blob(f"{gcs_dir}/wheels/{pkg}").upload_from_filename(f"{dist}/{pkg}")
 
 
-def publish() -> None:
-    pass
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build and upload wheels to GCS")
     parser.add_argument(
@@ -137,8 +128,6 @@ def main() -> None:
         args.dir,
         args.target or detect_target(),
     )
-
-    pass
 
 
 if __name__ == "__main__":
