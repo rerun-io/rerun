@@ -139,6 +139,7 @@
     "icosphere",
     "imgmsg",
     "impls",
+    "interner",
     "intrinsics",
     "ipynb",
     "ipython",
