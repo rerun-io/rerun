@@ -49,6 +49,7 @@ example_data
 
 # Various builds
 dist
+wheels
 
 # Screenshot comparison build
 /compare_screenshot
