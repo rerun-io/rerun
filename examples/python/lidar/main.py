@@ -2,13 +2,18 @@
 from __future__ import annotations
 
 import argparse
+import os
 import pathlib
+from typing import Final
 
 import matplotlib
 import numpy as np
 import rerun as rr
 from download_dataset import MINISPLIT_SCENES, download_minisplit
 from nuscenes import nuscenes
+
+EXAMPLE_DIR: Final = pathlib.Path(os.path.dirname(__file__))
+DATASET_DIR: Final = EXAMPLE_DIR / "dataset"
 
 # currently need to calculate the color manually
 # see https://github.com/rerun-io/rerun/issues/4409
@@ -72,7 +77,7 @@ def main() -> None:
     parser.add_argument(
         "--root_dir",
         type=pathlib.Path,
-        default="dataset",
+        default=DATASET_DIR,
         help="Root directory of nuScenes dataset",
     )
     parser.add_argument(
