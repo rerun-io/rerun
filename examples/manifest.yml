@@ -136,7 +136,7 @@ root:
           rust: rust/clock
 
         - name: eigen-opencv
-          python: cpp/eigen_opencv
+          cpp: cpp/eigen_opencv
 
         - name: multithreading
           python: python/multithreading
