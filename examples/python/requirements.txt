@@ -9,6 +9,7 @@
 -r dna/requirements.txt
 -r face_tracking/requirements.txt
 -r human_pose_tracking/requirements.txt
+-r lidar/requirements.txt
 -r live_camera_edge_detection/requirements.txt
 -r live_depth_sensor/requirements.txt
 -r minimal/requirements.txt
@@ -16,6 +17,7 @@
 -r multiprocessing/requirements.txt
 -r multithreading/requirements.txt
 -r notebook/requirements.txt
+-r nuscenes/requirements.txt
 -r nv12/requirements.txt
 -r objectron/requirements.txt
 -r open_photogrammetry_format/requirements.txt
