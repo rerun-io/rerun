@@ -1,9 +1,14 @@
+use std::collections::BTreeMap;
+
+use ahash::HashMap;
 use rayon::prelude::*;
 
 use re_viewer_context::{
-    SpaceViewClassIdentifier, SpaceViewSystemRegistry, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    SpaceViewClassIdentifier, SpaceViewId, SpaceViewSystemRegistry, SystemExecutionOutput,
+    ViewQuery, ViewerContext,
 };
+
+use crate::{space_view_highlights::highlights_for_space_view, SpaceViewBlueprint};
 
 pub fn create_and_run_space_view_systems(
     ctx: &ViewerContext<'_>,
@@ -49,4 +54,30 @@ pub fn create_and_run_space_view_systems(
         context_systems,
         draw_data,
     }
+}
+
+pub fn execute_systems_for_space_views<'a>(
+    ctx: &'a ViewerContext<'a>,
+    mut space_views_to_execute: Vec<SpaceViewId>,
+    space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
+) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
+    re_tracing::profile_function!();
+
+    space_views_to_execute
+        .par_drain(..)
+        .filter_map(|space_view_id| {
+            let highlights =
+                highlights_for_space_view(ctx.selection_state(), space_view_id, space_views);
+            space_views.get(&space_view_id).map(|space_view_blueprint| {
+                (
+                    space_view_id,
+                    space_view_blueprint.execute_systems(
+                        ctx,
+                        ctx.rec_cfg.time_ctrl.read().time_int().unwrap(),
+                        highlights,
+                    ),
+                )
+            })
+        })
+        .collect::<HashMap<_, _>>()
 }

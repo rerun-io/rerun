@@ -5,7 +5,6 @@
 use std::collections::BTreeMap;
 
 use ahash::HashMap;
-use rayon::prelude::*;
 
 use egui_tiles::Behavior as _;
 use re_data_ui::item_ui;
@@ -19,7 +18,8 @@ use re_viewer_context::{
 use crate::{
     space_view_entity_picker::SpaceViewEntityPicker,
     space_view_heuristics::default_created_space_views,
-    space_view_highlights::highlights_for_space_view, viewport_blueprint::load_viewport_blueprint,
+    space_view_highlights::highlights_for_space_view,
+    system_execution::execute_systems_for_space_views, viewport_blueprint::load_viewport_blueprint,
     SpaceInfoCollection, SpaceViewBlueprint, ViewportBlueprint,
 };
 
@@ -32,6 +32,8 @@ pub struct ViewportState {
     space_view_states: HashMap<SpaceViewId, Box<dyn SpaceViewState>>,
 
     /// List of all space views that were visible *on screen* (excluding e.g. unselected tabs) the last frame.
+    ///
+    /// TODO(rerun-io/egui_tiles#34): This is needed because we don't know which space views will be visible until we have drawn them.
     space_views_displayed_last_frame: Vec<SpaceViewId>,
 }
 
@@ -145,34 +147,11 @@ impl<'a, 'b> Viewport<'a, 'b> {
             &mut blueprint.tree
         };
 
-        let executed_systems_per_space_view = {
-            re_tracing::profile_scope!("execute_systems_per_space_view");
-
-            state
-                .space_views_displayed_last_frame
-                .par_drain(..)
-                .filter_map(|space_view_id| {
-                    let highlights = highlights_for_space_view(
-                        ctx.selection_state(),
-                        space_view_id,
-                        &blueprint.space_views,
-                    );
-                    blueprint
-                        .space_views
-                        .get(&space_view_id)
-                        .map(|space_view_blueprint| {
-                            (
-                                space_view_id,
-                                space_view_blueprint.execute_systems(
-                                    ctx,
-                                    ctx.rec_cfg.time_ctrl.read().time_int().unwrap(),
-                                    highlights,
-                                ),
-                            )
-                        })
-                })
-                .collect::<HashMap<_, _>>()
-        };
+        let executed_systems_per_space_view = execute_systems_for_space_views(
+            ctx,
+            std::mem::take(&mut state.space_views_displayed_last_frame),
+            &blueprint.space_views,
+        );
 
         ui.scope(|ui| {
             ui.spacing_mut().item_spacing.x = re_ui::ReUi::view_padding();
@@ -276,9 +255,12 @@ struct TabViewer<'a, 'b> {
     space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
     maximized: &'a mut Option<SpaceViewId>,
 
+    /// List of query & system execution results for each space view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
 
     /// List of all space views drawn this frame.
+    ///
+    /// TODO(rerun-io/egui_tiles#34): It should be possible to predict which space views will be drawn.
     space_views_displayed_current_frame: Vec<SpaceViewId>,
 
     /// The user edited the tree.
@@ -310,7 +292,8 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
             return Default::default();
         };
 
-        // TODO: egui tiles should bludge. create feature request.
+        // TODO(rerun-io/egui_tiles#34): If we haven't executed the system yet ahead of time, we should do so now.
+        // This is needed because we merely "guess" which systems we are going to need.
         let (query, system_output) =
             if let Some(result) = self.executed_systems_per_space_view.remove(space_view_id) {
                 result
