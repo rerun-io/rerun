@@ -162,6 +162,10 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes) -> None:
         rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids))
         current_sample_token = sample["next"]
 
+    # skipping for now since labels take too much space in 3D view (see https://github.com/rerun-io/rerun/issues/4451)
+    # annotation_context = [(i, label) for label, i in label2id.items()]
+    # rr.log("world/anns", rr.AnnotationContext(annotation_context), timeless=True)
+
 
 def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes) -> None:
     """Log sensor calibration (pinhole camera, sensor poses, etc.)."""
