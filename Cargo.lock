@@ -1622,9 +1622,9 @@ dependencies = [
 
 [[package]]
 name = "egui_extras"
-version = "0.24.1"
+version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b880044250106e673610c9a15d62692ef8af396593058f334be6f2a4d9544a5"
+checksum = "97624eaf17a16058265d3a3e712e167798655baf7c8f693de25be75cdd6c57b5"
 dependencies = [
  "egui",
  "ehttp",
@@ -4179,7 +4179,7 @@ dependencies = [
  "indoc",
  "libc",
  "memoffset 0.9.0",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "pyo3-build-config",
  "pyo3-ffi",
  "pyo3-macros",
@@ -7080,7 +7080,7 @@ dependencies = [
  "js-sys",
  "log",
  "naga",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "raw-window-handle",
  "smallvec",
@@ -7105,7 +7105,7 @@ dependencies = [
  "codespan-reporting",
  "log",
  "naga",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "raw-window-handle",
  "rustc-hash",
@@ -7145,7 +7145,7 @@ dependencies = [
  "naga",
  "objc",
  "once_cell",
- "parking_lot 0.12.1",
+ "parking_lot 0.11.2",
  "profiling",
  "range-alloc",
  "raw-window-handle",
