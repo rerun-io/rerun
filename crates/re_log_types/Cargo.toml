@@ -34,7 +34,7 @@ testing = []
 [dependencies]
 
 # Rerun
-re_format.workspace = true
+re_format = { workspace = true, features = ["arrow"] }
 re_log.workspace = true
 re_string_interner.workspace = true
 re_tracing.workspace = true
