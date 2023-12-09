@@ -788,10 +788,6 @@ impl RecordingStream {
     /// internal clock.
     /// See `RecordingStream::set_time_*` family of methods for more information.
     ///
-    /// The number of instances will be determined by the longest batch in the bundle.
-    /// All of the batches should have the same number of instances, or length 1 if the component is
-    /// a splat, or 0 if the component is being cleared.
-    ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
@@ -835,55 +831,19 @@ impl RecordingStream {
             .collect();
         let cells = cells?;
 
-        let mut instanced: Vec<DataCell> = Vec::new();
-        let mut splatted: Vec<DataCell> = Vec::new();
-
-        for cell in cells {
-            if num_instances > 1 && cell.num_instances() == 1 {
-                splatted.push(cell);
-            } else {
-                instanced.push(cell);
-            }
-        }
-
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
         let timepoint = TimePoint::timeless();
 
-        let instanced = if instanced.is_empty() {
-            None
-        } else {
-            Some(DataRow::from_cells(
+        if !cells.is_empty() {
+            let row = DataRow::from_cells(
                 RowId::new(),
                 timepoint.clone(),
                 ent_path.clone(),
                 num_instances as _,
-                instanced,
-            )?)
-        };
-
-        // TODO(#1893): unsplit splats once new data cells are in
-        let splatted = if splatted.is_empty() {
-            None
-        } else {
-            splatted.push(DataCell::from_native([InstanceKey::SPLAT]));
-            Some(DataRow::from_cells(
-                RowId::new(),
-                timepoint,
-                ent_path,
-                1,
-                splatted,
-            )?)
-        };
-
-        if let Some(splatted) = splatted {
-            self.record_row(splatted, !timeless);
-        }
-
-        // Always the primary component last so range-based queries will include the other data.
-        // Since the primary component can't be splatted it must be in here, see(#1215).
-        if let Some(instanced) = instanced {
-            self.record_row(instanced, !timeless);
+                cells,
+            )?;
+            self.record_row(row, !timeless);
         }
 
         Ok(())

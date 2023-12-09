@@ -193,35 +193,13 @@ namespace rerun {
             num_instances_max = std::max(num_instances_max, batch.num_instances);
         }
 
-        std::vector<DataCell> instanced;
-        std::vector<DataCell> splatted;
-
-        for (const auto& batch : batches) {
-            if (num_instances_max > 1 && batch.num_instances == 1) {
-                splatted.push_back(std::move(batch));
-            } else {
-                instanced.push_back(std::move(batch));
-            }
-        }
-
         bool inject_time = !timeless;
-
-        if (!splatted.empty()) {
-            splatted.push_back(
-                std::move(DataCell::from_loggable<components::InstanceKey>(splat_key).value)
-            );
-            auto result =
-                try_log_data_row(entity_path, 1, splatted.size(), splatted.data(), inject_time);
-            if (result.is_err()) {
-                return result;
-            }
-        }
 
         return try_log_data_row(
             entity_path,
             num_instances_max,
-            instanced.size(),
-            instanced.data(),
+            batches.size(),
+            batches.data(),
             inject_time
         );
     }

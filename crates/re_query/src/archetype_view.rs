@@ -88,7 +88,8 @@ impl ComponentWithInstances {
             .values();
 
         // If the value is splatted, return the offset of the splat
-        let offset = if keys.len() == 1 && keys[0] == InstanceKey::SPLAT.0 {
+        let offset = if keys.len() == 1 {
+            // TODO: not sure this still has any meaning...?
             0
         } else {
             // Otherwise binary search to find the offset of the instance
@@ -118,6 +119,7 @@ impl ComponentWithInstances {
     }
 }
 
+// TODO: repeat semantics
 /// Iterator over a single [`Component`] joined onto a primary [`Component`]
 ///
 /// This is equivalent to a left join between one table made up of the

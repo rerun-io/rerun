@@ -161,6 +161,7 @@ def log(
     )
 
 
+# TODO: explain clamp-to-last semantics
 @catch_and_log_exceptions()
 def log_components(
     entity_path: str,
@@ -173,10 +174,6 @@ def log_components(
 ) -> None:
     """
     Log an entity from a collection of `ComponentBatchLike` objects.
-
-    All of the batches should have the same length as the value of
-    `num_instances`, or length 1 if the component is a splat., or 0 if the
-    component is being cleared.
 
     Parameters
     ----------

@@ -443,14 +443,12 @@ namespace rerun {
             return try_log_serialized_batches(entity_path, timeless, std::move(serialized_batches));
         }
 
+        // TODO: explain clamp-to-last semantics
+        //
         /// Logs several serialized batches batches, returning an error on failure.
         ///
         /// This is a more low-level API than `log`/`log_timeless\ and requires you to already serialize the data
         /// ahead of time.
-        ///
-        /// The number of instances in each batch must either be equal to the maximum or:
-        /// - zero instances - implies a clear
-        /// - single instance (but other instances have more) - causes a splat
         ///
         /// \param entity_path Path to the entity in the space hierarchy.
         /// \param timeless If true, the logged components will be timeless.

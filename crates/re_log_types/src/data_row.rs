@@ -350,9 +350,7 @@ impl DataRow {
 
     /// Builds a new `DataRow` from an iterable of [`DataCell`]s.
     ///
-    /// Fails if:
-    /// - one or more cell isn't 0, 1 or `num_instances` long,
-    /// - two or more cells share the same component type.
+    /// Fails if two or more cells share the same component type.
     pub fn from_cells(
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
@@ -374,19 +372,6 @@ impl DataRow {
                     entity_path,
                     component,
                 });
-            }
-
-            match cell.num_instances() {
-                0 | 1 => {}
-                n if n == num_instances => {}
-                n => {
-                    return Err(DataReadError::WrongNumberOfInstances {
-                        entity_path,
-                        component,
-                        expected_num_instances: num_instances,
-                        num_instances: n,
-                    })
-                }
             }
         }
 
