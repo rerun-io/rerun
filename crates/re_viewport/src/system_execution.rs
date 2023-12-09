@@ -63,6 +63,10 @@ pub fn execute_systems_for_space_views<'a>(
 ) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
     re_tracing::profile_function!();
 
+    let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
+        return HashMap::default();
+    };
+
     space_views_to_execute
         .par_drain(..)
         .filter_map(|space_view_id| {
@@ -71,11 +75,7 @@ pub fn execute_systems_for_space_views<'a>(
             space_views.get(&space_view_id).map(|space_view_blueprint| {
                 (
                     space_view_id,
-                    space_view_blueprint.execute_systems(
-                        ctx,
-                        ctx.rec_cfg.time_ctrl.read().time_int().unwrap(),
-                        highlights,
-                    ),
+                    space_view_blueprint.execute_systems(ctx, time_int, highlights),
                 )
             })
         })
