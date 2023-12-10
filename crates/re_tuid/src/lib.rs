@@ -87,7 +87,7 @@ impl Tuid {
         })
     }
 
-    /// Construct a [`Tuid`] from the upper and lower halfs of a u128-bit.
+    /// Construct a [`Tuid`] from the upper and lower halves of a u128-bit.
     /// The first should be nano-seconds since epoch.
     #[inline]
     pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
@@ -99,7 +99,7 @@ impl Tuid {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
 
-    /// Aproximate nanoseconds since unix epoch.
+    /// Approximate nanoseconds since unix epoch.
     ///
     /// The upper 64 bits of the [`Tuid`].
     #[inline]
