@@ -87,6 +87,8 @@ impl Tuid {
         })
     }
 
+    /// Construct a [`Tuid`] from the upper and lower halfs of a u128-bit.
+    /// The first should be nano-seconds since epoch.
     #[inline]
     pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
         Self { time_ns, inc }
@@ -97,12 +99,29 @@ impl Tuid {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
 
+    /// Aproximate nanoseconds since unix epoch.
+    ///
+    /// The upper 64 bits of the [`Tuid`].
+    #[inline]
+    pub fn nanoseconds_since_epoch(&self) -> u64 {
+        self.time_ns
+    }
+
+    /// The increment part of the [`Tuid`].
+    ///
+    /// The lower 64 bits of the [`Tuid`].
+    #[inline]
+    pub fn inc(&self) -> u64 {
+        self.inc
+    }
+
     /// Returns the next logical [`Tuid`].
     ///
     /// Wraps the monotonically increasing back to zero on overflow.
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`Tuid::new`] when unsure.
+    #[must_use]
     #[inline]
     pub fn next(&self) -> Self {
         let Self { time_ns, inc } = *self;
@@ -120,23 +139,14 @@ impl Tuid {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`Tuid::new`] when unsure.
+    #[must_use]
     #[inline]
-    pub fn increment(&self, n: u64) -> Self {
+    pub fn incremented_by(&self, n: u64) -> Self {
         let Self { time_ns, inc } = *self;
         Self {
             time_ns,
             inc: inc.wrapping_add(n),
         }
-    }
-
-    #[inline]
-    pub fn inc(&self) -> u64 {
-        self.inc
-    }
-
-    #[inline]
-    pub fn nanoseconds_since_epoch(&self) -> u64 {
-        self.time_ns
     }
 
     /// A shortened string representation of the `Tuid`.

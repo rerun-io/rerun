@@ -156,6 +156,7 @@ impl TableId {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`TableId::new`] when unsure.
+    #[must_use]
     #[inline]
     pub fn next(&self) -> Self {
         Self(self.0.next())
@@ -168,9 +169,10 @@ impl TableId {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`TableId::new`] when unsure.
+    #[must_use]
     #[inline]
-    pub fn increment(&self, n: u64) -> Self {
-        Self(self.0.increment(n))
+    pub fn incremented_by(&self, n: u64) -> Self {
+        Self(self.0.incremented_by(n))
     }
 }
 
