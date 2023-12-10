@@ -2,11 +2,9 @@
 title: "VRS Viewer"
 cpp: https://github.com/rerun-io/cpp-example-vrs
 tags: [2D, 3D, vrs, viewer, C++]
-thumbnail: https://static.rerun.io/cpp-example-vrs/c13ed42c13ecb65b0ef689533c0525ab97471e21/480w.png
-thumbnail_dimensions: [480, 405]
+thumbnail: https://static.rerun.io/cpp-example-vrs/c765460d4448da27bb9ee2a2a15f092f82a402d2/480w.png
+thumbnail_dimensions: [480, 286]
 ---
-
-# C++ Example: VRS Viewer
 
 This is an example that shows how to use [Rerun](https://github.com/rerun-io/rerun)'s C++ API to log and view [VRS](https://github.com/facebookresearch/vrs) files.
 
@@ -15,9 +13,8 @@ This is an example that shows how to use [Rerun](https://github.com/rerun-io/rer
 You can find the example at <https://github.com/rerun-io/cpp-example-vrs>.
 
 <picture>
-  <img src="https://static.rerun.io/cpp-example-vrs/c13ed42c13ecb65b0ef689533c0525ab97471e21/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/cpp-example-vrs/c13ed42c13ecb65b0ef689533c0525ab97471e21/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/cpp-example-vrs/c13ed42c13ecb65b0ef689533c0525ab97471e21/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cpp-example-vrs/c13ed42c13ecb65b0ef689533c0525ab97471e21/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/cpp-example-vrs/c13ed42c13ecb65b0ef689533c0525ab97471e21/1200w.png">
+  <img src="https://static.rerun.io/cpp-example-vrs/c765460d4448da27bb9ee2a2a15f092f82a402d2/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/cpp-example-vrs/c765460d4448da27bb9ee2a2a15f092f82a402d2/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/cpp-example-vrs/c765460d4448da27bb9ee2a2a15f092f82a402d2/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cpp-example-vrs/c765460d4448da27bb9ee2a2a15f092f82a402d2/1024w.png">
 </picture>
