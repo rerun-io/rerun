@@ -70,14 +70,11 @@ pub fn execute_systems_for_space_views<'a>(
     space_views_to_execute
         .par_drain(..)
         .filter_map(|space_view_id| {
+            let space_view_blueprint = space_views.get(&space_view_id)?;
             let highlights =
                 highlights_for_space_view(ctx.selection_state(), space_view_id, space_views);
-            space_views.get(&space_view_id).map(|space_view_blueprint| {
-                (
-                    space_view_id,
-                    space_view_blueprint.execute_systems(ctx, time_int, highlights),
-                )
-            })
+            let output = space_view_blueprint.execute_systems(ctx, time_int, highlights);
+            Some((space_view_id, output))
         })
         .collect::<HashMap<_, _>>()
 }
