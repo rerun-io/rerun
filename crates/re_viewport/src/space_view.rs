@@ -237,7 +237,7 @@ impl SpaceViewBlueprint {
         latest_at: TimeInt,
         highlights: SpaceViewHighlights,
     ) -> (ViewQuery<'a>, SystemExecutionOutput) {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(self.class_identifier.as_str());
 
         let class = self.class(ctx.space_view_class_registry);
 

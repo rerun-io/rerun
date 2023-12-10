@@ -16,7 +16,7 @@ pub fn create_and_run_space_view_systems(
     systems: &SpaceViewSystemRegistry,
     query: &ViewQuery<'_>,
 ) -> SystemExecutionOutput {
-    re_tracing::profile_function!();
+    re_tracing::profile_function!(space_view_identifier.as_str());
 
     let context_systems = {
         re_tracing::profile_wait!("ViewContextSystem::execute");
@@ -25,7 +25,7 @@ pub fn create_and_run_space_view_systems(
             .systems
             .par_iter_mut()
             .for_each(|(_name, system)| {
-                re_tracing::profile_scope!(_name.as_str());
+                re_tracing::profile_scope!("ViewContextSystem::execute", _name.as_str());
                 system.execute(ctx, query);
             });
         context_systems
@@ -37,7 +37,7 @@ pub fn create_and_run_space_view_systems(
         .systems
         .par_iter_mut()
         .map(|(name, part)| {
-            re_tracing::profile_scope!(name.as_str());
+            re_tracing::profile_scope!("ViewPartSystem::execute", name.as_str());
             match part.execute(ctx, query, &context_systems) {
                 Ok(part_draw_data) => part_draw_data,
                 Err(err) => {
