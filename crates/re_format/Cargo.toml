@@ -20,7 +20,7 @@ all-features = true
 default = []
 
 # Add support for formatting arrow tables.
-"arrow" = ["dep:arrow2", "dep:comfy-table", "dep:re_tuid"]
+"arrow" = ["dep:arrow2", "dep:comfy-table", "dep:re_tuid", "dep:re_types_core"]
 
 
 [dependencies]
