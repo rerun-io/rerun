@@ -4535,6 +4535,7 @@ dependencies = [
  "arrow2",
  "comfy-table",
  "re_tuid",
+ "re_types_core",
 ]
 
 [[package]]
@@ -4970,12 +4971,10 @@ dependencies = [
 name = "re_tuid"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
- "arrow2",
  "criterion",
  "document-features",
  "getrandom",
  "once_cell",
- "re_types_core",
  "serde",
  "web-time",
 ]
@@ -5047,11 +5046,13 @@ dependencies = [
  "anyhow",
  "arrow2",
  "backtrace",
+ "criterion",
  "document-features",
  "once_cell",
  "re_error",
  "re_string_interner",
  "re_tracing",
+ "re_tuid",
  "serde",
  "smallvec",
  "thiserror",

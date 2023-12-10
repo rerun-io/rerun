@@ -17,14 +17,6 @@ pub struct Tuid {
     inc: u64,
 }
 
-#[cfg(feature = "arrow")]
-pub mod arrow;
-
-pub mod external {
-    #[cfg(feature = "arrow")]
-    pub use re_types_core;
-}
-
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.as_u128())
@@ -34,6 +26,20 @@ impl std::fmt::Display for Tuid {
 impl std::fmt::Debug for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.as_u128())
+    }
+}
+
+impl<'a> From<Tuid> for std::borrow::Cow<'a, Tuid> {
+    #[inline]
+    fn from(value: Tuid) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Tuid> for std::borrow::Cow<'a, Tuid> {
+    #[inline]
+    fn from(value: &'a Tuid) -> Self {
+        std::borrow::Cow::Borrowed(value)
     }
 }
 
@@ -82,6 +88,11 @@ impl Tuid {
     }
 
     #[inline]
+    pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
+        Self { time_ns, inc }
+    }
+
+    #[inline]
     pub fn as_u128(&self) -> u128 {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
     }
@@ -116,6 +127,11 @@ impl Tuid {
             time_ns,
             inc: inc.wrapping_add(n),
         }
+    }
+
+    #[inline]
+    pub fn inc(&self) -> u64 {
+        self.inc
     }
 
     #[inline]

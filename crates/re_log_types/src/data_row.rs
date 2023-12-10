@@ -208,7 +208,7 @@ impl std::ops::DerefMut for RowId {
     }
 }
 
-re_tuid::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
+re_types_core::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 
 /// A row's worth of data, i.e. an event: a list of [`DataCell`]s associated with an auto-generated
 /// `RowId`, a user-specified [`TimePoint`] and [`EntityPath`], and an expected number of
