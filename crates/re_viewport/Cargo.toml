@@ -44,6 +44,4 @@ image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 nohash-hasher.workspace = true
 rmp-serde.workspace = true
-slotmap.workspace = true
-serde.workspace = true
 tinyvec.workspace = true

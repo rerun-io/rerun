@@ -21,7 +21,6 @@ default = []
 
 ## Enable (de)serialization using serde.
 serde = [
-  "dep:rmp-serde",
   "dep:serde",
   "dep:serde_bytes",
   "re_string_interner/serde",
@@ -70,7 +69,6 @@ web-time.workspace = true
 
 
 # Optional dependencies:
-rmp-serde = { workspace = true, optional = true }
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
 serde_bytes = { workspace = true, optional = true }
 
