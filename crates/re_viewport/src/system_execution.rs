@@ -19,7 +19,7 @@ pub fn create_and_run_space_view_systems(
     re_tracing::profile_function!();
 
     let context_systems = {
-        re_tracing::profile_scope!("ViewContextSystem::execute");
+        re_tracing::profile_wait!("ViewContextSystem::execute");
         let mut context_systems = systems.new_context_collection(space_view_identifier);
         context_systems
             .systems
@@ -31,7 +31,7 @@ pub fn create_and_run_space_view_systems(
         context_systems
     };
 
-    re_tracing::profile_scope!("ViewPartSystem::execute");
+    re_tracing::profile_wait!("ViewPartSystem::execute");
     let mut view_systems = systems.new_part_collection();
     let draw_data = view_systems
         .systems
@@ -61,11 +61,11 @@ pub fn execute_systems_for_space_views<'a>(
     mut space_views_to_execute: Vec<SpaceViewId>,
     space_views: &'a BTreeMap<SpaceViewId, SpaceViewBlueprint>,
 ) -> HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)> {
-    re_tracing::profile_function!();
-
     let Some(time_int) = ctx.rec_cfg.time_ctrl.read().time_int() else {
         return HashMap::default();
     };
+
+    re_tracing::profile_wait!("execute_systems");
 
     space_views_to_execute
         .par_drain(..)

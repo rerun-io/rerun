@@ -120,6 +120,7 @@ impl crate::CodeGenerator for CppCodeGenerator {
         objects: &Objects,
         _arrow_registry: &ArrowRegistry,
     ) -> GeneratedFiles {
+        re_tracing::profile_wait!("generate_folder");
         ObjectKind::ALL
             .par_iter()
             .flat_map(|object_kind| self.generate_folder(reporter, objects, *object_kind))

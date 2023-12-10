@@ -8,7 +8,7 @@ impl CodeFormatter for RustCodeFormatter {
     fn format(&mut self, _reporter: &crate::Reporter, files: &mut crate::GeneratedFiles) {
         use rayon::prelude::*;
 
-        re_tracing::profile_function!();
+        re_tracing::profile_wait!("format_code");
 
         files.par_iter_mut().for_each(|(filepath, contents)| {
             *contents = if matches!(filepath.extension(), Some("rs")) {
