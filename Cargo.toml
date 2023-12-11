@@ -51,7 +51,7 @@ re_sdk_comms = { path = "crates/re_sdk_comms", version = "=0.12.0-alpha.1", defa
 re_smart_channel = { path = "crates/re_smart_channel", version = "=0.12.0-alpha.1", default-features = false }
 re_space_view = { path = "crates/re_space_view", version = "=0.12.0-alpha.1", default-features = false }
 re_space_view_bar_chart = { path = "crates/re_space_view_bar_chart", version = "=0.12.0-alpha.1", default-features = false }
-re_space_view_data = { path = "crates/re_space_view_data", version = "=0.12.0-alpha.1", default-features = false }
+re_space_view_dataframe = { path = "crates/re_space_view_dataframe", version = "=0.12.0-alpha.1", default-features = false }
 re_space_view_spatial = { path = "crates/re_space_view_spatial", version = "=0.12.0-alpha.1", default-features = false }
 re_space_view_tensor = { path = "crates/re_space_view_tensor", version = "=0.12.0-alpha.1", default-features = false }
 re_space_view_text_log = { path = "crates/re_space_view_text_log", version = "=0.12.0-alpha.1", default-features = false }

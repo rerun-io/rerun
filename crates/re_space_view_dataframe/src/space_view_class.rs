@@ -11,13 +11,13 @@ use re_viewer_context::{
 };
 
 #[derive(Default)]
-pub struct DataSpaceView;
+pub struct DataframeSpaceView;
 
-impl SpaceViewClass for DataSpaceView {
+impl SpaceViewClass for DataframeSpaceView {
     type State = ();
 
-    const IDENTIFIER: &'static str = "Data";
-    const DISPLAY_NAME: &'static str = "Data";
+    const IDENTIFIER: &'static str = "Dataframe";
+    const DISPLAY_NAME: &'static str = "Dataframe";
 
     fn icon(&self) -> &'static re_ui::Icon {
         //TODO(ab): fix that icon

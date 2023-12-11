@@ -379,10 +379,11 @@ impl App {
             SystemCommand::EnableExperimentalDataframeSpaceView(enabled) => {
                 let result = if enabled {
                     self.space_view_class_registry
-                        .add_class::<re_space_view_data::DataSpaceView>()
+                        .add_class::<re_space_view_dataframe::DataframeSpaceView>()
                 } else {
-                    self.space_view_class_registry
-                        .remove_class(&re_space_view_data::DataSpaceView::IDENTIFIER.into())
+                    self.space_view_class_registry.remove_class(
+                        &re_space_view_dataframe::DataframeSpaceView::IDENTIFIER.into(),
+                    )
                 };
 
                 if let Err(err) = result {
@@ -1184,7 +1185,7 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
 
     if app_options.experimental_dataframe_space_view {
-        space_view_class_registry.add_class::<re_space_view_data::DataSpaceView>()?;
+        space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
     }
 
     Ok(())

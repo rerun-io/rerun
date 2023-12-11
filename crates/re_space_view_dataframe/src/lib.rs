@@ -5,4 +5,4 @@
 mod space_view_class;
 mod view_part_system;
 
-pub use space_view_class::DataSpaceView;
+pub use space_view_class::DataframeSpaceView;

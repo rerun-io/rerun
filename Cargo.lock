@@ -4811,7 +4811,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_space_view_data"
+name = "re_space_view_dataframe"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
  "egui",
@@ -5126,7 +5126,7 @@ dependencies = [
  "re_smart_channel",
  "re_space_view",
  "re_space_view_bar_chart",
- "re_space_view_data",
+ "re_space_view_dataframe",
  "re_space_view_spatial",
  "re_space_view_tensor",
  "re_space_view_text_document",
