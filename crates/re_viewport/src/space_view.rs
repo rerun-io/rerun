@@ -375,7 +375,7 @@ impl SpaceViewBlueprint {
         let mut prop_map = self.auto_properties.clone();
 
         let props_path = self.entity_path().join(prefix);
-        if let Some(tree) = blueprint.entity_db().tree.subtree(&props_path) {
+        if let Some(tree) = blueprint.tree().subtree(&props_path) {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
                     .store()

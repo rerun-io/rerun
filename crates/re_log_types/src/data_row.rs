@@ -167,6 +167,7 @@ impl RowId {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`RowId::new`] when unsure.
+    #[must_use]
     #[inline]
     pub fn next(&self) -> Self {
         Self(self.0.next())
@@ -179,9 +180,10 @@ impl RowId {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`RowId::new`] when unsure.
+    #[must_use]
     #[inline]
-    pub fn increment(&self, n: u64) -> Self {
-        Self(self.0.increment(n))
+    pub fn incremented_by(&self, n: u64) -> Self {
+        Self(self.0.incremented_by(n))
     }
 }
 
@@ -208,7 +210,7 @@ impl std::ops::DerefMut for RowId {
     }
 }
 
-re_tuid::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
+re_types_core::delegate_arrow_tuid!(RowId as "rerun.controls.RowId");
 
 /// A row's worth of data, i.e. an event: a list of [`DataCell`]s associated with an auto-generated
 /// `RowId`, a user-specified [`TimePoint`] and [`EntityPath`], and an expected number of

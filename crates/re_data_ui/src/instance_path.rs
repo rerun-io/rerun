@@ -20,11 +20,7 @@ impl DataUi for InstancePath {
         } = self;
 
         let store = if ctx.app_options.show_blueprint_in_timeline
-            && ctx
-                .store_context
-                .blueprint
-                .entity_db()
-                .is_logged_entity(entity_path)
+            && ctx.store_context.blueprint.is_logged_entity(entity_path)
         {
             ctx.store_context.blueprint.store()
         } else {
@@ -32,7 +28,7 @@ impl DataUi for InstancePath {
         };
 
         let Some(components) = store.all_components(&query.timeline, entity_path) else {
-            if ctx.store_db.entity_db().is_known_entity(entity_path) {
+            if ctx.store_db.is_known_entity(entity_path) {
                 ui.label(ctx.re_ui.warning_text(format!(
                     "No components logged on timeline {:?}",
                     query.timeline.name()

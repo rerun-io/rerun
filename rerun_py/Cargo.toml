@@ -48,8 +48,7 @@ rerun = { workspace = true, features = ["analytics", "server", "sdk"] }
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 
-# TODO(jleibs): This should go away as part of https://github.com/rerun-io/rerun/issues/2089
-re_viewer_context.workspace = true
+# TODO(jleibs): Dependency on re_viewer and re_viewport should go away as part of https://github.com/rerun-io/rerun/issues/2089
 re_viewer.workspace = true
 re_viewport.workspace = true
 

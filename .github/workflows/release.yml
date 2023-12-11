@@ -184,7 +184,10 @@ jobs:
           - Otherwise:
             - For any added commits, run the release workflow in 'rc' mode again
             - After testing, run the release workflow in 'release' mode
-            - Once the final release workflow finishes, [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+            - Once the final release workflow finishes,
+              - [ ] [create a GitHub release](https://github.com/rerun-io/rerun/releases/new)
+              - [ ] Make sure the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) gets
+              merged. This will be created by the `regro-cf-autotick-bot` once the GitHub release is created.
 
           - [ ] Tests
             - [ ] Windows

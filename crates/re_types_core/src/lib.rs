@@ -92,6 +92,7 @@ mod loggable;
 mod loggable_batch;
 mod result;
 mod size_bytes;
+mod tuid;
 
 pub use self::archetype::{
     Archetype, ArchetypeName, GenericIndicatorComponent, NamedIndicatorComponent,
@@ -143,4 +144,5 @@ pub mod macros {
 pub mod external {
     pub use anyhow;
     pub use arrow2;
+    pub use re_tuid;
 }

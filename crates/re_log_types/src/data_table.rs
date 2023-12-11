@@ -156,6 +156,7 @@ impl TableId {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`TableId::new`] when unsure.
+    #[must_use]
     #[inline]
     pub fn next(&self) -> Self {
         Self(self.0.next())
@@ -168,9 +169,10 @@ impl TableId {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`TableId::new`] when unsure.
+    #[must_use]
     #[inline]
-    pub fn increment(&self, n: u64) -> Self {
-        Self(self.0.increment(n))
+    pub fn incremented_by(&self, n: u64) -> Self {
+        Self(self.0.incremented_by(n))
     }
 }
 
@@ -197,7 +199,7 @@ impl std::ops::DerefMut for TableId {
     }
 }
 
-re_tuid::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
+re_types_core::delegate_arrow_tuid!(TableId as "rerun.controls.TableId");
 
 /// A sparse table's worth of data, i.e. a batch of events: a collection of [`DataRow`]s.
 /// This is the top-level layer in our data model.
