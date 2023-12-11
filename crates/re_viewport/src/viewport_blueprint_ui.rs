@@ -1,9 +1,9 @@
 use egui::{Response, Ui};
-use itertools::Itertools;
 
 use re_data_store::InstancePath;
 use re_data_ui::item_ui;
-use re_log_types::EntityPathExpr;
+use re_log_types::{EntityPath, EntityPathExpr};
+use re_space_view::DataQueryBlueprint;
 use re_ui::list_item::ListItem;
 use re_ui::ReUi;
 use re_viewer_context::{
@@ -395,8 +395,6 @@ impl ViewportBlueprint<'_> {
         ui: &mut egui::Ui,
         spaces_info: &SpaceInfoCollection,
     ) {
-        #![allow(clippy::collapsible_if)]
-
         ui.menu_image_button(
             re_ui::icons::ADD
                 .as_image()
@@ -404,29 +402,53 @@ impl ViewportBlueprint<'_> {
             |ui| {
                 ui.style_mut().wrap = Some(false);
 
-                for (space_view, _) in
-                    all_possible_space_views(ctx, spaces_info, ctx.entities_per_system_per_class)
-                        .into_iter()
-                        .sorted_by_key(|(space_view, _)| space_view.space_origin.to_string())
-                {
-                    if ctx
-                        .re_ui
-                        .selectable_label_with_icon(
-                            ui,
-                            space_view.class(ctx.space_view_class_registry).icon(),
-                            if space_view.space_origin.is_root() {
-                                space_view.display_name.clone()
-                            } else {
-                                space_view.space_origin.to_string()
-                            },
-                            false,
-                        )
-                        .clicked()
-                    {
-                        ui.close_menu();
-                        let new_space_view_id = self.add_space_view(space_view);
-                        ctx.set_single_selection(&Item::SpaceView(new_space_view_id));
-                    }
+                let mut add_space_view_item =
+                    |ui: &mut egui::Ui, space_view: SpaceViewBlueprint| {
+                        if ctx
+                            .re_ui
+                            .selectable_label_with_icon(
+                                ui,
+                                space_view.class(ctx.space_view_class_registry).icon(),
+                                if space_view.space_origin.is_root() {
+                                    space_view.display_name.clone()
+                                } else {
+                                    space_view.space_origin.to_string()
+                                },
+                                false,
+                            )
+                            .clicked()
+                        {
+                            ui.close_menu();
+                            let new_space_view_id = self.add_space_view(space_view);
+                            ctx.set_single_selection(&Item::SpaceView(new_space_view_id));
+                        }
+                    };
+
+                // Space view options proposed by heuristics
+                let mut possible_space_views =
+                    all_possible_space_views(ctx, spaces_info, ctx.entities_per_system_per_class);
+                possible_space_views
+                    .sort_by_key(|(space_view, _)| space_view.space_origin.to_string());
+
+                let has_possible_space_views = !possible_space_views.is_empty();
+                for (space_view, _) in possible_space_views {
+                    add_space_view_item(ui, space_view);
+                }
+
+                if has_possible_space_views {
+                    ui.separator();
+                }
+
+                // Empty space views of every available types
+                for space_view in ctx.space_view_class_registry.iter_classes().map(|class| {
+                    SpaceViewBlueprint::new(
+                        class.identifier(),
+                        &format!("empty {}", class.display_name()),
+                        &EntityPath::root(),
+                        DataQueryBlueprint::new(class.identifier(), std::iter::empty()),
+                    )
+                }) {
+                    add_space_view_item(ui, space_view);
                 }
             },
         )

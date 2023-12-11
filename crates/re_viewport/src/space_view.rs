@@ -67,7 +67,7 @@ impl SpaceViewBlueprint {
 impl SpaceViewBlueprint {
     pub fn new(
         space_view_class: SpaceViewClassIdentifier,
-        space_view_class_display_name: &'static str,
+        space_view_class_display_name: &str,
         space_path: &EntityPath,
         query: DataQueryBlueprint,
     ) -> Self {
