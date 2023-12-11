@@ -8,7 +8,8 @@ use arrow2::{
 };
 use comfy_table::{presets, Cell, Table};
 
-use re_tuid::{external::re_types_core::Loggable as _, Tuid};
+use re_tuid::Tuid;
+use re_types_core::Loggable as _;
 
 // ---
 

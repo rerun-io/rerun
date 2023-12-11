@@ -20,10 +20,11 @@ all-features = true
 default = []
 
 # Add support for formatting arrow tables.
-"arrow" = ["dep:arrow2", "dep:comfy-table", "dep:re_tuid"]
+"arrow" = ["dep:arrow2", "dep:comfy-table", "dep:re_tuid", "dep:re_types_core"]
 
 
 [dependencies]
 arrow2 = { workspace = true, optional = true }
 comfy-table = { workspace = true, optional = true }
-re_tuid = { workspace = true, optional = true, features = ["arrow"] }
+re_tuid = { workspace = true, optional = true }
+re_types_core = { workspace = true, optional = true } # tuid serialization

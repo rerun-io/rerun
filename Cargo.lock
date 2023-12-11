@@ -3055,7 +3055,6 @@ name = "log_benchmark"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
  "anyhow",
- "bytemuck",
  "clap",
  "glam",
  "re_tracing",
@@ -4390,7 +4389,6 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "serde",
- "serde_json",
  "serde_yaml",
 ]
 
@@ -4535,6 +4533,7 @@ dependencies = [
  "arrow2",
  "comfy-table",
  "re_tuid",
+ "re_types_core",
 ]
 
 [[package]]
@@ -4611,7 +4610,6 @@ dependencies = [
  "re_tracing",
  "re_tuid",
  "re_types_core",
- "rmp-serde",
  "serde",
  "serde_bytes",
  "similar-asserts",
@@ -4970,12 +4968,10 @@ dependencies = [
 name = "re_tuid"
 version = "0.12.0-alpha.1+dev"
 dependencies = [
- "arrow2",
  "criterion",
  "document-features",
  "getrandom",
  "once_cell",
- "re_types_core",
  "serde",
  "web-time",
 ]
@@ -5047,11 +5043,13 @@ dependencies = [
  "anyhow",
  "arrow2",
  "backtrace",
+ "criterion",
  "document-features",
  "once_cell",
  "re_error",
  "re_string_interner",
  "re_tracing",
+ "re_tuid",
  "serde",
  "smallvec",
  "thiserror",
@@ -5089,7 +5087,6 @@ dependencies = [
  "ehttp",
  "image",
  "itertools 0.11.0",
- "nohash-hasher",
  "once_cell",
  "poll-promise",
  "re_analytics",
@@ -5197,8 +5194,6 @@ dependencies = [
  "re_ui",
  "re_viewer_context",
  "rmp-serde",
- "serde",
- "slotmap",
  "tinyvec",
 ]
 
@@ -5381,7 +5376,6 @@ dependencies = [
  "re_log_types",
  "re_memory",
  "re_viewer",
- "re_viewer_context",
  "re_viewport",
  "re_web_viewer_server",
  "re_ws_comms",

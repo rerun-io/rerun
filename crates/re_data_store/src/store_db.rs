@@ -53,7 +53,7 @@ fn insert_row_with_retries(
             Ok(event) => return Ok(event),
             Err(re_arrow_store::WriteError::ReusedRowId(_)) => {
                 re_log::debug!(row_id = %row.row_id(), "Found duplicated RowId, retrying…");
-                row.row_id = row.row_id.increment(random_u64() % step_size + 1);
+                row.row_id = row.row_id.incremented_by(random_u64() % step_size + 1);
             }
             Err(err) => return Err(err),
         }
