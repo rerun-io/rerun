@@ -111,7 +111,7 @@ cargo-run-wasm = "0.3.2"
 cfg-if = "1.0"
 clap = "4.0"
 clean-path = "0.2"
-comfy-table = { version = "6.1", default-features = false }
+comfy-table = { version = "6.1", default-features = false }        # update of comfy-table blocked on old version used by arrow2
 console_error_panic_hook = "0.1.6"
 criterion = "0.5"
 crossbeam = "0.8"
@@ -120,7 +120,6 @@ document-features = "0.2"
 ehttp = "0.3.1"
 enumset = "1.0.12"
 env_logger = "0.10"
-epaint = "0.23.0"
 ewebsock = "0.4.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
@@ -245,7 +244,6 @@ debug = true
 # egui_extras = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" } # egui master 2023-11-23
 # egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }   # egui master 2023-11-23
 # emath = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }       # egui master 2023-11-23
-# epaint = { git = "https://github.com/emilk/egui.git", rev = "a2b15b23ad26f077e229d492cd1571d97217d570" }      # egui master 2023-11-23
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -254,4 +252,3 @@ debug = true
 # egui_extras = { path = "../../egui/crates/egui_extras" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
-# epaint = { path = "../../egui/crates/epaint" }
