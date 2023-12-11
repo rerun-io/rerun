@@ -213,7 +213,11 @@ impl CppCodeGenerator {
             let header_file_names = ordered_objects
                 .iter()
                 .filter(|obj| obj.is_testing() == testing)
-                .map(|obj| format!("{folder_name}/{}.hpp", obj.snake_case_name()));
+                .map(|obj| format!("{folder_name}/{}.hpp", obj.snake_case_name()))
+                .collect_vec();
+            if header_file_names.is_empty() {
+                continue;
+            }
             let tokens = quote! {
                 #pragma_once
                 #(#hash include #header_file_names "NEWLINE_TOKEN")*
@@ -223,10 +227,10 @@ impl CppCodeGenerator {
             } else {
                 &folder_path_sdk
             };
-            let filepath = folder_path
-                .parent()
-                .unwrap()
-                .join(format!("{folder_name}.hpp"));
+            let filepath = folder_path.parent().unwrap().join(format!(
+                "{}.hpp",
+                object_kind.plural_snake_case().to_owned()
+            ));
             let contents = string_from_token_stream(&tokens, None);
             files_to_write.insert(filepath, contents);
         }
