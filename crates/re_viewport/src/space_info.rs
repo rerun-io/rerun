@@ -3,7 +3,7 @@ use re_space_view::UnreachableTransformReason;
 use std::collections::BTreeMap;
 
 use re_arrow_store::{LatestAtQuery, TimeInt, Timeline};
-use re_data_store::{store_db::EntityDb, EntityPath, EntityTree};
+use re_data_store::{EntityPath, EntityTree, StoreDb};
 use re_types::{
     archetypes::Pinhole,
     components::{DisconnectedSpace, Transform3D},
@@ -123,29 +123,29 @@ pub struct SpaceInfoCollection {
 impl SpaceInfoCollection {
     /// Do a graph analysis of the transform hierarchy, and create cuts
     /// wherever we find a non-identity transform.
-    pub fn new(entity_db: &EntityDb) -> Self {
+    pub fn new(store_db: &StoreDb) -> Self {
         re_tracing::profile_function!();
 
         fn add_children(
-            entity_db: &EntityDb,
+            store_db: &StoreDb,
             spaces_info: &mut SpaceInfoCollection,
             parent_space: &mut SpaceInfo,
             tree: &EntityTree,
             query: &LatestAtQuery,
         ) {
             // Determine how the paths are connected.
-            let store = &entity_db.data_store;
-            let transform3d = store
+            let data_store = store_db.data_store();
+            let transform3d = data_store
                 .query_latest_component::<Transform3D>(&tree.path, query)
                 .map(|c| c.value);
-            let pinhole = query_pinhole(store, query, &tree.path);
+            let pinhole = query_pinhole(data_store, query, &tree.path);
 
             let connection = if transform3d.is_some() || pinhole.is_some() {
                 Some(SpaceInfoConnection::Connected {
                     transform3d,
                     pinhole,
                 })
-            } else if store
+            } else if data_store
                 .query_latest_component::<DisconnectedSpace>(&tree.path, query)
                 .map_or(false, |dp| dp.0)
             {
@@ -168,7 +168,7 @@ impl SpaceInfoCollection {
 
                 for child_tree in tree.children.values() {
                     add_children(
-                        entity_db,
+                        store_db,
                         spaces_info,
                         &mut child_space_info,
                         child_tree,
@@ -185,7 +185,7 @@ impl SpaceInfoCollection {
                     .insert(tree.path.clone()); // spaces includes self
 
                 for child_tree in tree.children.values() {
-                    add_children(entity_db, spaces_info, parent_space, child_tree, query);
+                    add_children(store_db, spaces_info, parent_space, child_tree, query);
                 }
             }
         }
@@ -198,8 +198,8 @@ impl SpaceInfoCollection {
         let mut spaces_info = Self::default();
 
         // Start at the root. The root is always part of the collection!
-        if entity_db
-            .data_store
+        if store_db
+            .data_store()
             .query_latest_component::<Transform3D>(&EntityPath::root(), &query)
             .is_some()
         {
@@ -207,10 +207,10 @@ impl SpaceInfoCollection {
         }
         let mut root_space_info = SpaceInfo::new(EntityPath::root());
         add_children(
-            entity_db,
+            store_db,
             &mut spaces_info,
             &mut root_space_info,
-            &entity_db.tree,
+            store_db.tree(),
             &query,
         );
         spaces_info

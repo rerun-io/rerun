@@ -24,5 +24,4 @@ anyhow.workspace = true
 indicatif.workspace = true
 rayon.workspace = true
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
 serde_yaml.workspace = true

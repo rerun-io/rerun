@@ -8,7 +8,7 @@ them side-by-side. It pulls from the following sources:
 
 - The screenshots listed in .fbs files (crates/re_types/definitions/rerun/**/*.fbs),
   and the corresponding code examples in the docs (docs/code-examples/*.rs)
-- The `demo.rerun.io` examples, as built by the `build_demo_app.py` script.
+- The `app.rerun.io` examples, as built by the `re_build_examples` script.
 
 The comparisons are generated in the `compare_screenshot` directory. Use the `--serve`
 option to show them in a browser.
@@ -146,34 +146,27 @@ def collect_code_examples() -> Iterable[Example]:
 # ====================================================================================================
 # DEMO EXAMPLES
 #
-# We run the `build_demo_app.py` script and scrap the output "web_demo" directory.
+# We run the `build_examples` script and scrap the output "example_data" directory.
 # ====================================================================================================
 
 
-BUILD_DEMO_APP_SCRIPT = RERUN_DIR / "scripts" / "ci" / "build_demo_app.py"
+def build_demo_examples() -> None:
+    cmd = ["cargo", "run", "--locked", "-p", "re_build_examples", "--", "example_data"]
+    run(cmd, cwd=RERUN_DIR)
 
-
-def build_demo_examples(skip_example_build: bool = False) -> None:
-    cmd = [
-        str(BUILD_DEMO_APP_SCRIPT),
-        "--skip-build",  # we handle that ourselves
-    ]
-
-    if skip_example_build:
-        cmd.append("--skip-example-build")
-
+    cmd = ["cargo", "run", "--locked", "-p", "re_build_examples_manifest", "--", "example_data/examples_manifest.json"]
     run(cmd, cwd=RERUN_DIR)
 
 
 def collect_demo_examples() -> Iterable[Example]:
-    web_demo_example_dir = SCRIPT_DIR_PATH.parent.parent / "web_demo" / "examples"
-    assert web_demo_example_dir.exists(), "Web demos have not been built yet."
+    example_dir = RERUN_DIR / "example_data"
+    assert example_dir.exists(), "Examples have not been built yet."
 
-    manifest = json.loads((web_demo_example_dir / "manifest.json").read_text())
+    manifest = json.loads((example_dir / "examples_manifest.json").read_text())
 
     for example in manifest:
         name = example["name"]
-        rrd = web_demo_example_dir / f"{name}" / "data.rrd"
+        rrd = example_dir / f"{name}.rrd"
         assert rrd.exists(), f"Missing {rrd} for {name}"
 
         yield Example(

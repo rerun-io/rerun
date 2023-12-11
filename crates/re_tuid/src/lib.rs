@@ -17,14 +17,6 @@ pub struct Tuid {
     inc: u64,
 }
 
-#[cfg(feature = "arrow")]
-pub mod arrow;
-
-pub mod external {
-    #[cfg(feature = "arrow")]
-    pub use re_types_core;
-}
-
 impl std::fmt::Display for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.as_u128())
@@ -34,6 +26,20 @@ impl std::fmt::Display for Tuid {
 impl std::fmt::Debug for Tuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:032X}", self.as_u128())
+    }
+}
+
+impl<'a> From<Tuid> for std::borrow::Cow<'a, Tuid> {
+    #[inline]
+    fn from(value: Tuid) -> Self {
+        std::borrow::Cow::Owned(value)
+    }
+}
+
+impl<'a> From<&'a Tuid> for std::borrow::Cow<'a, Tuid> {
+    #[inline]
+    fn from(value: &'a Tuid) -> Self {
+        std::borrow::Cow::Borrowed(value)
     }
 }
 
@@ -81,9 +87,32 @@ impl Tuid {
         })
     }
 
+    /// Construct a [`Tuid`] from the upper and lower halves of a u128-bit.
+    /// The first should be nano-seconds since epoch.
+    #[inline]
+    pub fn from_nanos_and_inc(time_ns: u64, inc: u64) -> Self {
+        Self { time_ns, inc }
+    }
+
     #[inline]
     pub fn as_u128(&self) -> u128 {
         ((self.time_ns as u128) << 64) | (self.inc as u128)
+    }
+
+    /// Approximate nanoseconds since unix epoch.
+    ///
+    /// The upper 64 bits of the [`Tuid`].
+    #[inline]
+    pub fn nanoseconds_since_epoch(&self) -> u64 {
+        self.time_ns
+    }
+
+    /// The increment part of the [`Tuid`].
+    ///
+    /// The lower 64 bits of the [`Tuid`].
+    #[inline]
+    pub fn inc(&self) -> u64 {
+        self.inc
     }
 
     /// Returns the next logical [`Tuid`].
@@ -92,6 +121,7 @@ impl Tuid {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`Tuid::new`] when unsure.
+    #[must_use]
     #[inline]
     pub fn next(&self) -> Self {
         let Self { time_ns, inc } = *self;
@@ -109,18 +139,14 @@ impl Tuid {
     ///
     /// Beware: wrong usage can easily lead to conflicts.
     /// Prefer [`Tuid::new`] when unsure.
+    #[must_use]
     #[inline]
-    pub fn increment(&self, n: u64) -> Self {
+    pub fn incremented_by(&self, n: u64) -> Self {
         let Self { time_ns, inc } = *self;
         Self {
             time_ns,
             inc: inc.wrapping_add(n),
         }
-    }
-
-    #[inline]
-    pub fn nanoseconds_since_epoch(&self) -> u64 {
-        self.time_ns
     }
 
     /// A shortened string representation of the `Tuid`.

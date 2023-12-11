@@ -124,7 +124,7 @@ fn store_db_ui(ui: &mut egui::Ui, store_db: &re_data_store::StoreDb) {
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
         .show(ui, |ui| {
-            for entity_path in store_db.entity_db().entity_paths() {
+            for entity_path in store_db.entity_paths() {
                 ui.collapsing(entity_path.to_string(), |ui| {
                     entity_ui(ui, store_db, timeline, entity_path);
                 });

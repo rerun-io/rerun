@@ -11,6 +11,5 @@ rerun = { path = "../../../crates/rerun" }
 re_tracing = { path = "../../../crates/re_tracing", features = ["server"] }
 
 anyhow.workspace = true
-bytemuck = { workspace = true, features = ["extern_crate_alloc"] }
 clap = { workspace = true, features = ["derive"] }
 glam.workspace = true

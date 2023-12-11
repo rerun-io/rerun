@@ -57,7 +57,6 @@ re_space_view_text_log = { path = "crates/re_space_view_text_log", version = "=0
 re_space_view_text_document = { path = "crates/re_space_view_text_document", version = "=0.12.0-alpha.1", default-features = false }
 re_space_view_time_series = { path = "crates/re_space_view_time_series", version = "=0.12.0-alpha.1", default-features = false }
 re_string_interner = { path = "crates/re_string_interner", version = "=0.12.0-alpha.1", default-features = false }
-re_tensor_ops = { path = "crates/re_tensor_ops", version = "=0.12.0-alpha.1", default-features = false }
 re_time_panel = { path = "crates/re_time_panel", version = "=0.12.0-alpha.1", default-features = false }
 re_tracing = { path = "crates/re_tracing", version = "=0.12.0-alpha.1", default-features = false }
 re_tuid = { path = "crates/re_tuid", version = "=0.12.0-alpha.1", default-features = false }

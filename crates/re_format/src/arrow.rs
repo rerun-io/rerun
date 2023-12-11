@@ -8,7 +8,8 @@ use arrow2::{
 };
 use comfy_table::{presets, Cell, Table};
 
-use re_tuid::{external::re_types_core::Loggable as _, Tuid};
+use re_tuid::Tuid;
+use re_types_core::Loggable as _;
 
 // ---
 
@@ -19,7 +20,7 @@ use re_tuid::{external::re_types_core::Loggable as _, Tuid};
 
 type CustomFormatter<'a, F> = Box<dyn Fn(&mut F, usize) -> std::fmt::Result + 'a>;
 
-pub fn get_custom_display<'a, F: std::fmt::Write + 'a>(
+fn get_custom_display<'a, F: std::fmt::Write + 'a>(
     _column_name: &'a str,
     array: &'a dyn Array,
     null: &'static str,
@@ -75,7 +76,7 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
 
 //TODO(john) move this and the Display impl upstream into arrow2
 #[repr(transparent)]
-pub struct DisplayTimeUnit(TimeUnit);
+struct DisplayTimeUnit(TimeUnit);
 
 impl std::fmt::Display for DisplayTimeUnit {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -91,7 +92,7 @@ impl std::fmt::Display for DisplayTimeUnit {
 
 //TODO(john) move this and the Display impl upstream into arrow2
 #[repr(transparent)]
-pub struct DisplayIntervalUnit(IntervalUnit);
+struct DisplayIntervalUnit(IntervalUnit);
 
 impl std::fmt::Display for DisplayIntervalUnit {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -106,7 +107,7 @@ impl std::fmt::Display for DisplayIntervalUnit {
 
 //TODO(john) move this and the Display impl upstream into arrow2
 #[repr(transparent)]
-pub struct DisplayDataType(DataType);
+struct DisplayDataType(DataType);
 
 impl std::fmt::Display for DisplayDataType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {

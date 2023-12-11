@@ -29,6 +29,7 @@ serde = ["dep:serde", "re_string_interner/serde"]
 re_error.workspace = true
 re_string_interner.workspace = true
 re_tracing.workspace = true
+re_tuid.workspace = true
 
 # External
 anyhow.workspace = true
@@ -45,3 +46,13 @@ thiserror.workspace = true
 
 # Optional dependencies
 serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "bench_tuid"
+harness = false

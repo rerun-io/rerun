@@ -4,10 +4,10 @@ use egui::{epaint::TextShape, Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_data_store::EntityProperties;
 
+use crate::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::{EntityPath, RowId};
 use re_renderer::Colormap;
-use re_tensor_ops::dimension_mapping::{DimensionMapping, DimensionSelector};
 use re_types::{
     datatypes::{TensorData, TensorDimension},
     tensor_data::{DecodedTensor, TensorDataMeaning},

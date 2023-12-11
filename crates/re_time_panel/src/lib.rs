@@ -423,7 +423,7 @@ impl TimePanel {
                         time_area_painter,
                         tree_max_y,
                         None,
-                        &ctx.store_db.entity_db().tree,
+                        ctx.store_db.tree(),
                         ui,
                         "/",
                     );
@@ -434,7 +434,7 @@ impl TimePanel {
                         time_area_response,
                         time_area_painter,
                         tree_max_y,
-                        &ctx.store_db.entity_db().tree,
+                        ctx.store_db.tree(),
                         ui,
                     );
                 }
@@ -446,7 +446,7 @@ impl TimePanel {
                         time_area_painter,
                         tree_max_y,
                         None,
-                        &ctx.store_context.blueprint.entity_db().tree,
+                        ctx.store_context.blueprint.tree(),
                         ui,
                         "/ (blueprint)",
                     );
@@ -874,12 +874,7 @@ fn is_time_safe_to_show(
         return true; // no timeless messages, no problem
     }
 
-    if let Some(times) = store_db
-        .entity_db()
-        .tree
-        .recursive_time_histogram
-        .get(timeline)
-    {
+    if let Some(times) = store_db.tree().recursive_time_histogram.get(timeline) {
         if let Some(first_time) = times.min_key() {
             let margin = match timeline.typ() {
                 re_arrow_store::TimeType::Time => TimeInt::from_seconds(10_000),

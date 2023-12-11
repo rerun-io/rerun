@@ -13,7 +13,7 @@ use crate::blueprint::PanelView;
 fn validate_component<C: Component>(blueprint: &StoreDb) -> bool {
     let query = LatestAtQuery::latest(Timeline::default());
 
-    if let Some(data_type) = blueprint.entity_db().data_store.lookup_datatype(&C::name()) {
+    if let Some(data_type) = blueprint.data_store().lookup_datatype(&C::name()) {
         if data_type != &C::arrow_datatype() {
             // If the schemas don't match, we definitely have a problem
             re_log::debug!(
@@ -27,10 +27,9 @@ fn validate_component<C: Component>(blueprint: &StoreDb) -> bool {
             // Otherwise, our usage of serde-fields means we still might have a problem
             // this can go away once we stop using serde-fields.
             // Walk the blueprint and see if any cells fail to deserialize for this component type.
-            for path in blueprint.entity_db().entity_paths() {
+            for path in blueprint.entity_paths() {
                 if let Some([Some(cell)]) = blueprint
-                    .entity_db()
-                    .data_store
+                    .data_store()
                     .latest_at(&query, path, C::name(), &[C::name()])
                     .map(|(_, cells)| cells)
                 {

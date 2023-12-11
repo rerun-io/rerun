@@ -19,11 +19,8 @@ all-features = true
 [features]
 default = []
 
-## Enable (de)serialization using Arrow.
-arrow = ["dep:re_types_core", "dep:arrow2"]
-
 ## Enable (de)serialization using serde.
-serde = ["dep:serde", "re_types_core?/serde"]
+serde = ["dep:serde"]
 
 
 [dependencies]
@@ -33,10 +30,6 @@ once_cell.workspace = true
 web-time.workspace = true
 
 # Optional dependencies
-
-re_types_core = { workspace = true, optional = true }
-
-arrow2 = { workspace = true, optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]

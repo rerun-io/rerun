@@ -16,43 +16,6 @@ use crate::{ClearCascade, CompactedStoreEvents, Error, TimesPerTimeline};
 
 // ----------------------------------------------------------------------------
 
-/// Stored entities with easy indexing of the paths.
-///
-/// NOTE: don't go mutating the contents of this. Use the public functions instead.
-pub struct EntityDb {
-    /// In many places we just store the hashes, so we need a way to translate back.
-    pub entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
-
-    /// The global-scope time tracker.
-    ///
-    /// For each timeline, keeps track of what times exist, recursively across all
-    /// entities/components.
-    ///
-    /// Used for time control.
-    pub times_per_timeline: TimesPerTimeline,
-
-    /// A tree-view (split on path components) of the entities.
-    pub tree: crate::EntityTree,
-
-    /// Stores all components for all entities for all timelines.
-    pub data_store: DataStore,
-}
-
-impl EntityDb {
-    pub fn new(store_id: StoreId) -> Self {
-        Self {
-            entity_path_from_hash: Default::default(),
-            times_per_timeline: Default::default(),
-            tree: crate::EntityTree::root(),
-            data_store: re_arrow_store::DataStore::new(
-                store_id,
-                InstanceKey::name(),
-                DataStoreConfig::default(),
-            ),
-        }
-    }
-}
-
 /// See [`insert_row_with_retries`].
 const MAX_INSERT_ROW_ATTEMPTS: usize = 1_000;
 
@@ -90,7 +53,7 @@ fn insert_row_with_retries(
             Ok(event) => return Ok(event),
             Err(re_arrow_store::WriteError::ReusedRowId(_)) => {
                 re_log::debug!(row_id = %row.row_id(), "Found duplicated RowId, retrying…");
-                row.row_id = row.row_id.increment(random_u64() % step_size + 1);
+                row.row_id = row.row_id.incremented_by(random_u64() % step_size + 1);
             }
             Err(err) => return Err(err),
         }
@@ -99,7 +62,150 @@ fn insert_row_with_retries(
     Err(re_arrow_store::WriteError::ReusedRowId(row.row_id()))
 }
 
-impl EntityDb {
+// ----------------------------------------------------------------------------
+
+/// An in-memory database built from a stream of [`LogMsg`]es.
+///
+/// NOTE: all mutation is to be done via public functions!
+pub struct StoreDb {
+    /// The [`StoreId`] for this log.
+    store_id: StoreId,
+
+    /// Set by whomever created this [`StoreDb`].
+    pub data_source: Option<re_smart_channel::SmartChannelSource>,
+
+    /// Comes in a special message, [`LogMsg::SetStoreInfo`].
+    set_store_info: Option<SetStoreInfo>,
+
+    /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
+    last_modified_at: web_time::Instant,
+
+    /// In many places we just store the hashes, so we need a way to translate back.
+    entity_path_from_hash: IntMap<EntityPathHash, EntityPath>,
+
+    /// The global-scope time tracker.
+    ///
+    /// For each timeline, keeps track of what times exist, recursively across all
+    /// entities/components.
+    ///
+    /// Used for time control.
+    times_per_timeline: TimesPerTimeline,
+
+    /// A tree-view (split on path components) of the entities.
+    tree: crate::EntityTree,
+
+    /// Stores all components for all entities for all timelines.
+    data_store: DataStore,
+}
+
+impl StoreDb {
+    pub fn new(store_id: StoreId) -> Self {
+        Self {
+            store_id: store_id.clone(),
+            data_source: None,
+            set_store_info: None,
+            last_modified_at: web_time::Instant::now(),
+            entity_path_from_hash: Default::default(),
+            times_per_timeline: Default::default(),
+            tree: crate::EntityTree::root(),
+            data_store: re_arrow_store::DataStore::new(
+                store_id,
+                InstanceKey::name(),
+                DataStoreConfig::default(),
+            ),
+        }
+    }
+
+    /// Helper function to create a recording from a [`StoreInfo`] and some [`DataRow`]s.
+    ///
+    /// This is useful to programmatically create recordings from within the viewer, which cannot
+    /// use the `re_sdk`, which is not Wasm-compatible.
+    pub fn from_info_and_rows(
+        store_info: StoreInfo,
+        rows: impl IntoIterator<Item = DataRow>,
+    ) -> Result<Self, Error> {
+        let mut store_db = StoreDb::new(store_info.store_id.clone());
+
+        store_db.set_store_info(SetStoreInfo {
+            row_id: RowId::new(),
+            info: store_info,
+        });
+        for row in rows {
+            store_db.add_data_row(row)?;
+        }
+
+        Ok(store_db)
+    }
+
+    #[inline]
+    pub fn tree(&self) -> &crate::EntityTree {
+        &self.tree
+    }
+
+    #[inline]
+    pub fn data_store(&self) -> &DataStore {
+        &self.data_store
+    }
+
+    pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
+        self.set_store_info.as_ref()
+    }
+
+    pub fn store_info(&self) -> Option<&StoreInfo> {
+        self.store_info_msg().map(|msg| &msg.info)
+    }
+
+    pub fn app_id(&self) -> Option<&ApplicationId> {
+        self.store_info().map(|ri| &ri.application_id)
+    }
+
+    #[inline]
+    pub fn store(&self) -> &DataStore {
+        &self.data_store
+    }
+
+    pub fn store_kind(&self) -> StoreKind {
+        self.store_id.kind
+    }
+
+    pub fn store_id(&self) -> &StoreId {
+        &self.store_id
+    }
+
+    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
+        self.times_per_timeline().keys()
+    }
+
+    pub fn times_per_timeline(&self) -> &TimesPerTimeline {
+        &self.times_per_timeline
+    }
+
+    pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
+        self.tree().recursive_time_histogram.get(timeline)
+    }
+
+    pub fn num_timeless_messages(&self) -> u64 {
+        self.tree.num_timeless_messages()
+    }
+
+    pub fn num_rows(&self) -> usize {
+        self.data_store.num_timeless_rows() as usize + self.data_store.num_temporal_rows() as usize
+    }
+
+    /// Return the current `StoreGeneration`. This can be used to determine whether the
+    /// database has been modified since the last time it was queried.
+    pub fn generation(&self) -> re_arrow_store::StoreGeneration {
+        self.data_store.generation()
+    }
+
+    pub fn last_modified_at(&self) -> web_time::Instant {
+        self.last_modified_at
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.set_store_info.is_none() && self.num_rows() == 0
+    }
+
     /// A sorted list of all the entity paths in this database.
     pub fn entity_paths(&self) -> Vec<&EntityPath> {
         use itertools::Itertools as _;
@@ -124,10 +230,34 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    fn register_entity_path(&mut self, entity_path: &EntityPath) {
-        self.entity_path_from_hash
-            .entry(entity_path.hash())
-            .or_insert_with(|| entity_path.clone());
+    pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
+        re_tracing::profile_function!();
+
+        debug_assert_eq!(msg.store_id(), self.store_id());
+
+        match &msg {
+            LogMsg::SetStoreInfo(msg) => self.set_store_info(msg.clone()),
+
+            LogMsg::ArrowMsg(_, arrow_msg) => {
+                let table = DataTable::from_arrow_msg(arrow_msg)?;
+                self.add_data_table(table)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn add_data_table(&mut self, mut table: DataTable) -> Result<(), Error> {
+        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
+        table.compute_all_size_bytes();
+
+        for row in table.to_rows() {
+            self.add_data_row(row?)?;
+        }
+
+        self.last_modified_at = web_time::Instant::now();
+
+        Ok(())
     }
 
     /// Inserts a [`DataRow`] into the database.
@@ -247,175 +377,10 @@ impl EntityDb {
         store_events
     }
 
-    pub fn on_store_deletions(&mut self, store_events: &[StoreEvent]) {
-        re_tracing::profile_function!();
-
-        let Self {
-            entity_path_from_hash: _,
-            times_per_timeline,
-            tree,
-            data_store: _,
-        } = self;
-
-        times_per_timeline.on_events(store_events);
-
-        let store_events = store_events.iter().collect_vec();
-        let compacted = CompactedStoreEvents::new(&store_events);
-        tree.on_store_deletions(&store_events, &compacted);
-    }
-}
-
-// ----------------------------------------------------------------------------
-
-/// An in-memory database built from a stream of [`LogMsg`]es.
-///
-/// NOTE: all mutation is to be done via public functions!
-pub struct StoreDb {
-    /// The [`StoreId`] for this log.
-    store_id: StoreId,
-
-    /// Set by whomever created this [`StoreDb`].
-    pub data_source: Option<re_smart_channel::SmartChannelSource>,
-
-    /// Comes in a special message, [`LogMsg::SetStoreInfo`].
-    set_store_info: Option<SetStoreInfo>,
-
-    /// Where we store the entities.
-    entity_db: EntityDb,
-
-    /// Keeps track of the last time data was inserted into this store (viewer wall-clock).
-    last_modified_at: web_time::Instant,
-}
-
-impl StoreDb {
-    pub fn new(store_id: StoreId) -> Self {
-        Self {
-            store_id: store_id.clone(),
-            data_source: None,
-            set_store_info: None,
-            entity_db: EntityDb::new(store_id),
-            last_modified_at: web_time::Instant::now(),
-        }
-    }
-
-    /// Helper function to create a recording from a [`StoreInfo`] and some [`DataRow`]s.
-    ///
-    /// This is useful to programmatically create recordings from within the viewer, which cannot
-    /// use the `re_sdk`, which is not Wasm-compatible.
-    pub fn from_info_and_rows(
-        store_info: StoreInfo,
-        rows: impl IntoIterator<Item = DataRow>,
-    ) -> Result<Self, Error> {
-        let mut store_db = StoreDb::new(store_info.store_id.clone());
-
-        store_db.set_store_info(SetStoreInfo {
-            row_id: RowId::new(),
-            info: store_info,
-        });
-        for row in rows {
-            store_db.add_data_row(row)?;
-        }
-
-        Ok(store_db)
-    }
-
-    #[inline]
-    pub fn entity_db(&self) -> &EntityDb {
-        &self.entity_db
-    }
-
-    pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
-        self.set_store_info.as_ref()
-    }
-
-    pub fn store_info(&self) -> Option<&StoreInfo> {
-        self.store_info_msg().map(|msg| &msg.info)
-    }
-
-    pub fn app_id(&self) -> Option<&ApplicationId> {
-        self.store_info().map(|ri| &ri.application_id)
-    }
-
-    #[inline]
-    pub fn store(&self) -> &DataStore {
-        &self.entity_db.data_store
-    }
-
-    pub fn store_kind(&self) -> StoreKind {
-        self.store_id.kind
-    }
-
-    pub fn store_id(&self) -> &StoreId {
-        &self.store_id
-    }
-
-    pub fn timelines(&self) -> impl ExactSizeIterator<Item = &Timeline> {
-        self.times_per_timeline().keys()
-    }
-
-    pub fn times_per_timeline(&self) -> &TimesPerTimeline {
-        &self.entity_db.times_per_timeline
-    }
-
-    pub fn time_histogram(&self, timeline: &Timeline) -> Option<&crate::TimeHistogram> {
-        self.entity_db().tree.recursive_time_histogram.get(timeline)
-    }
-
-    pub fn num_timeless_messages(&self) -> u64 {
-        self.entity_db.tree.num_timeless_messages()
-    }
-
-    pub fn num_rows(&self) -> usize {
-        self.entity_db.data_store.num_timeless_rows() as usize
-            + self.entity_db.data_store.num_temporal_rows() as usize
-    }
-
-    /// Return the current `StoreGeneration`. This can be used to determine whether the
-    /// database has been modified since the last time it was queried.
-    pub fn generation(&self) -> re_arrow_store::StoreGeneration {
-        self.entity_db.data_store.generation()
-    }
-
-    pub fn last_modified_at(&self) -> web_time::Instant {
-        self.last_modified_at
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.set_store_info.is_none() && self.num_rows() == 0
-    }
-
-    pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
-        re_tracing::profile_function!();
-
-        debug_assert_eq!(msg.store_id(), self.store_id());
-
-        match &msg {
-            LogMsg::SetStoreInfo(msg) => self.set_store_info(msg.clone()),
-
-            LogMsg::ArrowMsg(_, arrow_msg) => {
-                let table = DataTable::from_arrow_msg(arrow_msg)?;
-                self.add_data_table(table)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    pub fn add_data_table(&mut self, mut table: DataTable) -> Result<(), Error> {
-        // TODO(#1760): Compute the size of the datacells in the batching threads on the clients.
-        table.compute_all_size_bytes();
-
-        for row in table.to_rows() {
-            self.add_data_row(row?)?;
-        }
-
-        self.last_modified_at = web_time::Instant::now();
-
-        Ok(())
-    }
-
-    pub fn add_data_row(&mut self, row: DataRow) -> Result<(), Error> {
-        self.entity_db.add_data_row(row).map(|_| ())
+    fn register_entity_path(&mut self, entity_path: &EntityPath) {
+        self.entity_path_from_hash
+            .entry(entity_path.hash())
+            .or_insert_with(|| entity_path.clone());
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
@@ -462,7 +427,7 @@ impl StoreDb {
     pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) {
         re_tracing::profile_function!();
 
-        let (store_events, stats_diff) = self.entity_db.data_store.gc(gc_options);
+        let (store_events, stats_diff) = self.data_store.gc(gc_options);
 
         re_log::trace!(
             num_row_ids_dropped = store_events.len(),
@@ -470,7 +435,28 @@ impl StoreDb {
             "purged datastore"
         );
 
-        self.entity_db.on_store_deletions(&store_events);
+        self.on_store_deletions(&store_events);
+    }
+
+    fn on_store_deletions(&mut self, store_events: &[StoreEvent]) {
+        re_tracing::profile_function!();
+
+        let Self {
+            store_id: _,
+            data_source: _,
+            set_store_info: _,
+            last_modified_at: _,
+            entity_path_from_hash: _,
+            times_per_timeline,
+            tree,
+            data_store: _,
+        } = self;
+
+        times_per_timeline.on_events(store_events);
+
+        let store_events = store_events.iter().collect_vec();
+        let compacted = CompactedStoreEvents::new(&store_events);
+        tree.on_store_deletions(&store_events, &compacted);
     }
 
     /// Key used for sorting recordings in the UI.

@@ -269,7 +269,7 @@ impl DataQuery for DataQueryBlueprint {
 
         let root_handle = ctx.recording.and_then(|store| {
             executor.add_entity_tree_to_data_results_recursive(
-                &store.entity_db().tree,
+                store.tree(),
                 &overrides,
                 &overrides.root,
                 &mut data_results,
@@ -495,7 +495,7 @@ impl DataQueryPropertyResolver<'_> {
 
         let mut prop_map = self.auto_properties.clone();
 
-        if let Some(tree) = blueprint.entity_db().tree.subtree(props_path) {
+        if let Some(tree) = blueprint.tree().subtree(props_path) {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
                     .store()
@@ -533,11 +533,7 @@ impl<'a> PropertyResolver for DataQueryPropertyResolver<'a> {
 
         let mut individual = self.auto_properties.clone();
 
-        if let Some(tree) = blueprint
-            .entity_db()
-            .tree
-            .subtree(&self.individual_override_root)
-        {
+        if let Some(tree) = blueprint.tree().subtree(&self.individual_override_root) {
             tree.visit_children_recursively(&mut |path: &EntityPath| {
                 if let Some(props) = blueprint
                     .store()

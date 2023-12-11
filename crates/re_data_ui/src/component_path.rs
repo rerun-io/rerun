@@ -17,11 +17,7 @@ impl DataUi for ComponentPath {
         } = self;
 
         let store = if ctx.app_options.show_blueprint_in_timeline
-            && ctx
-                .store_context
-                .blueprint
-                .entity_db()
-                .is_logged_entity(entity_path)
+            && ctx.store_context.blueprint.is_logged_entity(entity_path)
         {
             ctx.store_context.blueprint.store()
         } else {
@@ -40,7 +36,7 @@ impl DataUi for ComponentPath {
                 component_data,
             }
             .data_ui(ctx, ui, verbosity, query);
-        } else if let Some(entity_tree) = ctx.store_db.entity_db().tree.subtree(entity_path) {
+        } else if let Some(entity_tree) = ctx.store_db.tree().subtree(entity_path) {
             if entity_tree
                 .time_histograms_per_component
                 .contains_key(component_name)

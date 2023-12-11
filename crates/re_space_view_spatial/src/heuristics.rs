@@ -209,7 +209,7 @@ fn update_transform3d_lines_heuristics(
                 return Some(ent_path);
             } else {
                 // Any direct child has a pinhole camera?
-                if let Some(child_tree) = ctx.store_db.entity_db().tree.subtree(ent_path) {
+                if let Some(child_tree) = ctx.store_db.tree().subtree(ent_path) {
                     for child in child_tree.children.values() {
                         if query_pinhole(store, &ctx.current_query(), &child.path).is_some() {
                             return Some(&child.path);

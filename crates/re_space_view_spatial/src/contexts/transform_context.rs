@@ -86,7 +86,8 @@ impl ViewContextSystem for TransformContext {
     ) {
         re_tracing::profile_function!();
 
-        let entity_db = ctx.store_db.entity_db();
+        let entity_tree = ctx.store_db.tree();
+        let data_store = ctx.store_db.data_store();
 
         // TODO(jleibs): The need to do this hints at a problem with how we think about
         // the interaction between properties and "context-systems".
@@ -106,7 +107,7 @@ impl ViewContextSystem for TransformContext {
         self.space_origin = query.space_origin.clone();
 
         // Find the entity path tree for the root.
-        let Some(mut current_tree) = &entity_db.tree.subtree(query.space_origin) else {
+        let Some(mut current_tree) = &entity_tree.subtree(query.space_origin) else {
             // It seems the space path is not part of the object tree!
             // This happens frequently when the viewer remembers space views from a previous run that weren't shown yet.
             // Naturally, in this case we don't have any transforms yet.
@@ -118,7 +119,7 @@ impl ViewContextSystem for TransformContext {
         // Child transforms of this space
         self.gather_descendants_transforms(
             current_tree,
-            &entity_db.data_store,
+            data_store,
             &time_query,
             &entity_prop_map,
             glam::Affine3A::IDENTITY,
@@ -129,7 +130,7 @@ impl ViewContextSystem for TransformContext {
         let mut encountered_pinhole = None;
         let mut reference_from_ancestor = glam::Affine3A::IDENTITY;
         while let Some(parent_path) = current_tree.path.parent() {
-            let Some(parent_tree) = &entity_db.tree.subtree(&parent_path) else {
+            let Some(parent_tree) = &entity_tree.subtree(&parent_path) else {
                 // Unlike not having the space path in the hierarchy, this should be impossible.
                 re_log::error_once!(
                     "Path {} is not part of the global Entity tree whereas its child {} is",
@@ -143,7 +144,7 @@ impl ViewContextSystem for TransformContext {
             // Generally, the transform _at_ a node isn't relevant to it's children, but only to get to its parent in turn!
             match transform_at(
                 &current_tree.path,
-                &entity_db.data_store,
+                data_store,
                 &time_query,
                 // TODO(#1025): See comment in transform_at. This is a workaround for precision issues
                 // and the fact that there is no meaningful image plane distance for 3D->2D views.
@@ -164,7 +165,7 @@ impl ViewContextSystem for TransformContext {
             // (skip over everything at and under `current_tree` automatically)
             self.gather_descendants_transforms(
                 parent_tree,
-                &entity_db.data_store,
+                data_store,
                 &time_query,
                 &entity_prop_map,
                 reference_from_ancestor,
