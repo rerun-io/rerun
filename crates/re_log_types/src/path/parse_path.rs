@@ -51,8 +51,8 @@ pub enum PathParseError {
     #[error("Found no component name")]
     MissingComponentName,
 
-    #[error("Found trailing dot (.)")]
-    TrailingDot,
+    #[error("Found trailing colon (:)")]
+    TrailingColon,
 }
 
 type Result<T, E = PathParseError> = std::result::Result<T, E>;
@@ -63,9 +63,9 @@ impl std::str::FromStr for DataPath {
     /// For instance:
     ///
     /// * `world/points`
-    /// * `world/points.Color`
+    /// * `world/points:Color`
     /// * `world/points[#42]`
-    /// * `world/points[#42].rerun.components.Color`
+    /// * `world/points[#42]:rerun.components.Color`
     fn from_str(path: &str) -> Result<Self, Self::Err> {
         if path.is_empty() {
             return Err(PathParseError::EmptyString);
@@ -78,21 +78,20 @@ impl std::str::FromStr for DataPath {
         let mut component_name = None;
         let mut instance_key = None;
 
-        // Parse `.rerun.components.Color` suffix:
-        if let Some(dot) = tokens.iter().position(|&token| token == ".") {
-            let component_tokens = &tokens[dot + 1..];
+        // Parse `:rerun.components.Color` suffix:
+        if let Some(colon) = tokens.iter().position(|&token| token == ":") {
+            let component_tokens = &tokens[colon + 1..];
 
             if component_tokens.is_empty() {
-                return Err(PathParseError::TrailingDot);
-            } else if component_tokens.len() == 1 {
-                component_name = Some(ComponentName::from(format!(
-                    "rerun.components.{}",
-                    join(component_tokens)
-                )));
+                return Err(PathParseError::TrailingColon);
             } else {
-                component_name = Some(ComponentName::from(join(component_tokens)));
+                let mut name = join(component_tokens);
+                if !name.contains('.') {
+                    name = format!("rerun.components.{name}");
+                }
+                component_name = Some(ComponentName::from(name));
             }
-            tokens.truncate(dot);
+            tokens.truncate(colon);
         }
 
         // Parse `[#1234]` suffix:
@@ -331,12 +330,12 @@ fn join(tokens: &[&str]) -> String {
 
 fn tokenize(path: &str) -> Result<Vec<&str>> {
     #![allow(clippy::unwrap_used)]
-    // We parse on bytes, and take care to only split on either side of a one-byte ASCI,
-    // making the `from_utf8(…)s below.u
+    // We parse on bytes, and take care to only split on either side of a one-byte ASCII,
+    // making the `from_utf8(…)`s below safe to unwrap.
     let mut bytes = path.as_bytes();
 
     fn is_special_character(c: u8) -> bool {
-        matches!(c, b'[' | b']' | b'.' | b'/')
+        matches!(c, b'[' | b']' | b':' | b'/')
     }
 
     let mut tokens = vec![];
@@ -533,7 +532,7 @@ fn test_parse_entity_path_strict() {
 
     assert_eq!(parse("foo/bar/"), Err(PathParseError::TrailingSlash));
     assert!(matches!(
-        parse(r#"entity.component"#),
+        parse(r#"entity:component"#),
         Err(PathParseError::UnexpectedComponentName { .. })
     ));
     assert!(matches!(
@@ -545,36 +544,36 @@ fn test_parse_entity_path_strict() {
 #[test]
 fn test_parse_component_path() {
     assert_eq!(
-        ComponentPath::from_str("world/points.rerun.components.Color"),
+        ComponentPath::from_str("world/points:rerun.components.Color"),
         Ok(ComponentPath {
             entity_path: EntityPath::from("world/points"),
             component_name: "rerun.components.Color".into(),
         })
     );
     assert_eq!(
-        ComponentPath::from_str("world/points.Color"),
+        ComponentPath::from_str("world/points:Color"),
         Ok(ComponentPath {
             entity_path: EntityPath::from("world/points"),
             component_name: "rerun.components.Color".into(),
         })
     );
     assert_eq!(
-        ComponentPath::from_str("world/points.my.custom.color"),
+        ComponentPath::from_str("world/points:my.custom.color"),
         Ok(ComponentPath {
             entity_path: EntityPath::from("world/points"),
             component_name: "my.custom.color".into(),
         })
     );
     assert_eq!(
-        ComponentPath::from_str("world/points."),
-        Err(PathParseError::TrailingDot)
+        ComponentPath::from_str("world/points:"),
+        Err(PathParseError::TrailingColon)
     );
     assert_eq!(
         ComponentPath::from_str("world/points"),
         Err(PathParseError::MissingComponentName)
     );
     assert_eq!(
-        ComponentPath::from_str("world/points[#42].rerun.components.Color"),
+        ComponentPath::from_str("world/points[#42]:rerun.components.Color"),
         Err(PathParseError::UnexpectedInstanceKey(InstanceKey(42)))
     );
 }
@@ -582,7 +581,7 @@ fn test_parse_component_path() {
 #[test]
 fn test_parse_data_path() {
     assert_eq!(
-        DataPath::from_str("world/points[#42].rerun.components.Color"),
+        DataPath::from_str("world/points[#42]:rerun.components.Color"),
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
             instance_key: Some(InstanceKey(42)),
@@ -590,7 +589,7 @@ fn test_parse_data_path() {
         })
     );
     assert_eq!(
-        DataPath::from_str("world/points.rerun.components.Color"),
+        DataPath::from_str("world/points:rerun.components.Color"),
         Ok(DataPath {
             entity_path: EntityPath::from("world/points"),
             instance_key: None,

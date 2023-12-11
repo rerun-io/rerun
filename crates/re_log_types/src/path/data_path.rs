@@ -10,9 +10,9 @@ use crate::EntityPath;
 /// For instance:
 ///
 /// * `points`
-/// * `points.Color`
+/// * `points:Color`
 /// * `points[#42]`
-/// * `points[#42].Color`
+/// * `points[#42]:Color`
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct DataPath {
     pub entity_path: EntityPath,
@@ -29,7 +29,7 @@ impl std::fmt::Display for DataPath {
             write!(f, "[#{}]", instance_key.0)?;
         }
         if let Some(component_name) = &self.component_name {
-            write!(f, ".{component_name:?}")?;
+            write!(f, ":{component_name:?}")?;
         }
         Ok(())
     }

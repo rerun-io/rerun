@@ -38,7 +38,7 @@ namespace rerun::archetypes {
     ///     rec.log(
     ///         "markdown",
     ///         rerun::TextDocument(R"#(# Hello Markdown!
-    /// [Click here to see the raw text](recording://markdown.Text).
+    /// [Click here to see the raw text](recording://markdown:Text).
     ///
     /// Basic formatting:
     ///
@@ -64,7 +64,7 @@ namespace rerun::archetypes {
     /// ## Links
     /// You can link to [an entity](recording://markdown),
     /// a [specific instance of an entity](recording://markdown[#0]),
-    /// or a [specific component](recording://markdown.Text).
+    /// or a [specific component](recording://markdown:Text).
     ///
     /// Of course you can also have [normal https links](https://github.com/rerun-io/rerun), e.g. <https://rerun.io>.
     ///
