@@ -11,6 +11,7 @@ mod data_path;
 mod entity_path;
 mod entity_path_expr;
 mod entity_path_impl;
+mod natural_ordering;
 mod parse_path;
 
 pub use component_path::ComponentPath;
@@ -25,7 +26,7 @@ pub use parse_path::PathParseError;
 /// The different parts that make up an [`EntityPath`].
 ///
 /// In the file system analogy, this is the name of a folder.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)] // TODO(#4464): ordering
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct EntityPathPart(
     // TODO(emilk): consider other string types; e.g. interned strings, `Arc<str>`, …
@@ -107,9 +108,25 @@ impl std::borrow::Borrow<str> for EntityPathPart {
 
 impl std::ops::Deref for EntityPathPart {
     type Target = str;
+
     #[inline]
     fn deref(&self) -> &str {
         self.as_str()
+    }
+}
+
+impl std::cmp::Ord for EntityPathPart {
+    #[inline]
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        // Use natural ordering of strings, so that "image2" comes before "image10".
+        natural_ordering::compare(self.as_str(), other.as_str())
+    }
+}
+
+impl std::cmp::PartialOrd for EntityPathPart {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
     }
 }
 
