@@ -6,7 +6,7 @@ To get a list of all examples run:
 cargo run -p re_renderer_examples --bin
 ```
 
-E.g. to run the `multiview`` example run 
+E.g. to run the `multiview`` example run
 ```
 cargo run -p re_renderer_examples --bin multiview
 ```
