@@ -189,7 +189,7 @@ time = { version = "0.3", default-features = false, features = [
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tokio = { version = "1.24", default-features = false }
 tokio-tungstenite = { version = "0.17.1", default-features = false }
-tracing = "0.1"
+tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.17", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
