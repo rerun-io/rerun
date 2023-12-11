@@ -166,14 +166,15 @@ impl CppCodeGenerator {
         let mut files_to_write = GeneratedFiles::default();
 
         // Generate folder contents:
-        let ordered_objects = objects.ordered_objects(object_kind.into());
+        let ordered_objects = objects
+            .ordered_objects(object_kind.into())
+            .into_iter()
+            .filter(|obj| &obj.scope() == scope)
+            .collect_vec();
         for &obj in &ordered_objects {
-            if &obj.scope() != scope {
-                continue;
-            }
             let filename_stem = obj.snake_case_name();
 
-            let mut hpp_includes = Includes::new(obj.fqname.clone());
+            let mut hpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
             hpp_includes.insert_system("cstdint"); // we use `uint32_t` etc everywhere.
             hpp_includes.insert_rerun("result.hpp"); // rerun result is used for serialization methods
 
@@ -378,7 +379,7 @@ impl QuotedObject {
         let type_ident = obj.ident();
         let quoted_docs = quote_obj_docs(obj);
 
-        let mut cpp_includes = Includes::new(obj.fqname.clone());
+        let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_rerun("indicator_component.hpp");
@@ -497,10 +498,17 @@ impl QuotedObject {
             });
         }
 
+        let quoted_namespace = if let Some(scope) = obj.scope() {
+            let scope = format_ident!("{}", scope);
+            quote! { #scope::archetypes }
+        } else {
+            quote! {archetypes}
+        };
+
         let serialize_method = archetype_serialize(&type_ident, obj, &mut hpp_includes);
         let serialize_hpp = serialize_method.to_hpp_tokens();
         let serialize_cpp =
-            serialize_method.to_cpp_tokens(&quote!(AsComponents<archetypes::#type_ident>));
+            serialize_method.to_cpp_tokens(&quote!(AsComponents<#quoted_namespace::#type_ident>));
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
         let methods_cpp = methods
@@ -515,7 +523,7 @@ impl QuotedObject {
         let hpp = quote! {
             #hpp_includes
 
-            namespace rerun::archetypes {
+            namespace rerun::#quoted_namespace {
                 #quoted_docs
                 struct #type_ident {
                     #(#field_declarations;)*
@@ -548,7 +556,7 @@ impl QuotedObject {
 
                 #doc_hide_comment
                 template<>
-                struct AsComponents<archetypes::#type_ident> {
+                struct AsComponents<#quoted_namespace::#type_ident> {
                     #serialize_hpp
                 };
             }
@@ -557,7 +565,7 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            namespace rerun::archetypes {
+            namespace rerun::#quoted_namespace {
                 #(#methods_cpp)*
             }
 
@@ -578,10 +586,18 @@ impl QuotedObject {
         hpp_type_extensions: &TokenStream,
     ) -> QuotedObject {
         let namespace_ident = obj.namespace_ident();
+
+        let quoted_namespace = if let Some(scope) = obj.scope() {
+            let scope = format_ident!("{}", scope);
+            quote! { #scope::#namespace_ident}
+        } else {
+            quote! {#namespace_ident}
+        };
+
         let type_ident = obj.ident();
         let quoted_docs = quote_obj_docs(obj);
 
-        let mut cpp_includes = Includes::new(obj.fqname.clone());
+        let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         let mut hpp_declarations = ForwardDecls::default();
 
         let field_declarations = obj
@@ -653,7 +669,7 @@ impl QuotedObject {
 
             #hpp_declarations
 
-            namespace rerun::#namespace_ident {
+            namespace rerun::#quoted_namespace {
                 #quoted_docs
                 struct #type_ident {
                     #(#field_declarations;)*
@@ -673,7 +689,7 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            namespace rerun::#namespace_ident {
+            namespace rerun::#quoted_namespace {
                 #(#methods_cpp)*
             }
 
@@ -714,6 +730,13 @@ impl QuotedObject {
             obj.fqname
         );
         let namespace_ident = obj.namespace_ident();
+        let quoted_namespace = if let Some(scope) = obj.scope() {
+            let scope = format_ident!("{}", scope);
+            quote! { #scope::#namespace_ident}
+        } else {
+            quote! {#namespace_ident}
+        };
+
         let pascal_case_name = &obj.name;
         let pascal_case_ident = obj.ident();
         let quoted_docs = quote_obj_docs(obj);
@@ -743,7 +766,7 @@ impl QuotedObject {
         hpp_includes.insert_system("utility"); // std::move
         hpp_includes.insert_system("cstring"); // std::memcpy
 
-        let mut cpp_includes = Includes::new(obj.fqname.clone());
+        let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         #[allow(unused)]
         let mut hpp_declarations = ForwardDecls::default();
 
@@ -972,7 +995,7 @@ impl QuotedObject {
 
             #hpp_declarations
 
-            namespace rerun::#namespace_ident {
+            namespace rerun::#quoted_namespace {
                 namespace detail {
                     #hide_from_docs_comment
                     enum class #tag_typename : uint8_t {
@@ -1064,7 +1087,7 @@ impl QuotedObject {
         let cpp = quote! {
             #cpp_includes
 
-            namespace rerun::#namespace_ident {
+            namespace rerun::#quoted_namespace {
                 #(#cpp_methods)*
             }
 
@@ -1213,6 +1236,12 @@ fn fill_arrow_array_builder_method(
 
     let type_ident = obj.ident();
     let namespace_ident = obj.namespace_ident();
+    let quoted_namespace = if let Some(scope) = obj.scope() {
+        let scope = format_ident!("{}", scope);
+        quote! { #scope::#namespace_ident}
+    } else {
+        quote! {#namespace_ident}
+    };
 
     Method {
         docs: "Fills an arrow array builder with an array of this type.".into(),
@@ -1221,7 +1250,7 @@ fn fill_arrow_array_builder_method(
             return_type: quote! { rerun::Error },
             // TODO(andreas): Pass in validity map.
             name_and_parameters: quote! {
-                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #namespace_ident::#type_ident* elements, size_t num_elements)
+                fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, const #quoted_namespace::#type_ident* elements, size_t num_elements)
             },
         },
         definition_body: quote! {
@@ -1252,17 +1281,23 @@ fn to_arrow_method(
 
     let type_ident = obj.ident();
     let namespace_ident = obj.namespace_ident();
+    let quoted_namespace = if let Some(scope) = obj.scope() {
+        let scope = format_ident!("{}", scope);
+        quote! { #scope::#namespace_ident}
+    } else {
+        quote! {#namespace_ident}
+    };
 
     Method {
         docs: format!(
-            "Serializes an array of `rerun::{namespace_ident}::{type_ident}` into an arrow array."
+            "Serializes an array of `rerun::{quoted_namespace}::{type_ident}` into an arrow array."
         )
         .into(),
         declaration: MethodDeclaration {
             is_static: true,
             return_type: quote! { Result<std::shared_ptr<arrow::Array>> },
             name_and_parameters: quote! {
-                to_arrow(const #namespace_ident::#type_ident* instances, size_t num_instances)
+                to_arrow(const #quoted_namespace::#type_ident* instances, size_t num_instances)
             },
         },
         definition_body: quote! {
@@ -1274,7 +1309,7 @@ fn to_arrow_method(
             #NEWLINE_TOKEN
             ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
             if (instances && num_instances > 0) {
-                RR_RETURN_NOT_OK(Loggable<#namespace_ident::#type_ident>::fill_arrow_array_builder(
+                RR_RETURN_NOT_OK(Loggable<#quoted_namespace::#type_ident>::fill_arrow_array_builder(
                     static_cast<arrow::#arrow_builder_type*>(builder.get()),
                     instances,
                     num_instances
@@ -1360,6 +1395,12 @@ fn quote_fill_arrow_array_builder(
 ) -> TokenStream {
     let type_ident = obj.ident();
     let namespace_ident = obj.namespace_ident();
+    let quoted_namespace = if let Some(scope) = obj.scope() {
+        let scope = format_ident!("{}", scope);
+        quote! { #scope::#namespace_ident}
+    } else {
+        quote! {#namespace_ident}
+    };
 
     let parameter_check = quote! {
         if (builder == nullptr) {
@@ -1388,7 +1429,7 @@ fn quote_fill_arrow_array_builder(
                 // Trivial forwarding to inner type.
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
                 quote! {
-                    static_assert(sizeof(#quoted_fqname) == sizeof(#namespace_ident::#type_ident));
+                    static_assert(sizeof(#quoted_fqname) == sizeof(#quoted_namespace::#type_ident));
                     RR_RETURN_NOT_OK(Loggable<#quoted_fqname>::fill_arrow_array_builder(
                         builder, reinterpret_cast<const #quoted_fqname*>(elements), num_elements
                     ));
@@ -1532,7 +1573,7 @@ fn quote_fill_arrow_array_builder(
                         #NEWLINE_TOKEN
                         #NEWLINE_TOKEN
 
-                        using TagType = #namespace_ident::detail::#tag_name;
+                        using TagType = #quoted_namespace::detail::#tag_name;
 
                         switch (union_instance.get_union_tag()) {
                             case TagType::None: {
@@ -2161,6 +2202,14 @@ fn quote_loggable_hpp_and_cpp(
 
     let namespace_ident = obj.namespace_ident();
     let type_ident = obj.ident();
+
+    let quoted_namespace = if let Some(scope) = obj.scope() {
+        let scope = format_ident!("{}", scope);
+        quote! { #scope::#namespace_ident }
+    } else {
+        quote! {#namespace_ident}
+    };
+
     let fqname = &obj.fqname;
 
     let methods = vec![
@@ -2169,7 +2218,7 @@ fn quote_loggable_hpp_and_cpp(
         to_arrow_method(obj, objects, hpp_includes, hpp_declarations),
     ];
 
-    let loggable_type_name = quote! { Loggable<#namespace_ident::#type_ident> };
+    let loggable_type_name = quote! { Loggable<#quoted_namespace::#type_ident> };
 
     let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens());
     let methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(&loggable_type_name));
