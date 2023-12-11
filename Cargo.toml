@@ -209,8 +209,8 @@ wgpu = { version = "0.18.0", features = ["fragile-send-sync-non-atomic-wasm"] }
 wgpu-core = "0.18.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false }
-zune-core = "0.2"
-zune-jpeg = "0.3"
+zune-core = "0.4"
+zune-jpeg = "0.4"
 
 
 [profile.dev]
