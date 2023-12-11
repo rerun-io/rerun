@@ -677,7 +677,11 @@ impl Object {
     //
     // NOTE: Might want a module override at some point.
     pub fn module_name(&self) -> String {
-        self.kind.plural_snake_case().to_owned()
+        if let Some(scope) = self.scope() {
+            format!("{}/{}", scope, self.kind.plural_snake_case())
+        } else {
+            self.kind.plural_snake_case().to_owned()
+        }
     }
 }
 

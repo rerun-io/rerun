@@ -3,6 +3,8 @@ mod forward_decl;
 mod includes;
 mod method;
 
+use std::collections::HashSet;
+
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
 use proc_macro2::{Ident, TokenStream};
@@ -121,9 +123,20 @@ impl crate::CodeGenerator for CppCodeGenerator {
         _arrow_registry: &ArrowRegistry,
     ) -> GeneratedFiles {
         re_tracing::profile_wait!("generate_folder");
+
+        let scopes = objects
+            .objects
+            .values()
+            .map(|obj| obj.scope())
+            .collect::<HashSet<_>>();
+
         ObjectKind::ALL
             .par_iter()
-            .flat_map(|object_kind| self.generate_folder(reporter, objects, *object_kind))
+            .flat_map(|object_kind| {
+                scopes
+                    .par_iter()
+                    .flat_map(|scope| self.generate_folder(reporter, objects, scope, *object_kind))
+            })
             .collect()
     }
 }
@@ -139,17 +152,25 @@ impl CppCodeGenerator {
         &self,
         _reporter: &Reporter,
         objects: &Objects,
+        scope: &Option<String>,
         object_kind: ObjectKind,
     ) -> GeneratedFiles {
-        let folder_name = object_kind.plural_snake_case();
-        let folder_path_sdk = self.output_path.join("src/rerun").join(folder_name);
-        let folder_path_testing = self.output_path.join("tests/generated").join(folder_name);
+        let folder_name = if let Some(scope) = scope {
+            format!("{}/{}", scope, object_kind.plural_snake_case())
+        } else {
+            object_kind.plural_snake_case().to_owned()
+        };
+        let folder_path_sdk = self.output_path.join("src/rerun").join(&folder_name);
+        let folder_path_testing = self.output_path.join("tests/generated").join(&folder_name);
 
         let mut files_to_write = GeneratedFiles::default();
 
         // Generate folder contents:
         let ordered_objects = objects.ordered_objects(object_kind.into());
         for &obj in &ordered_objects {
+            if &obj.scope() != scope {
+                continue;
+            }
             let filename_stem = obj.snake_case_name();
 
             let mut hpp_includes = Includes::new(obj.fqname.clone());
