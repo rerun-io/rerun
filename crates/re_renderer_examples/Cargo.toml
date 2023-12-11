@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+webgl = ["re_renderer/webgl"]
+
 
 [[bin]]
 name = "2d"
