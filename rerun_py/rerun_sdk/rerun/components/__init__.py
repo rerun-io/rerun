@@ -9,13 +9,6 @@ from .annotation_context import (
     AnnotationContextLike,
     AnnotationContextType,
 )
-from .auto_space_views import (
-    AutoSpaceViews,
-    AutoSpaceViewsArrayLike,
-    AutoSpaceViewsBatch,
-    AutoSpaceViewsLike,
-    AutoSpaceViewsType,
-)
 from .blob import Blob, BlobArrayLike, BlobBatch, BlobLike, BlobType
 from .class_id import ClassId, ClassIdBatch, ClassIdType
 from .clear_is_recursive import (
@@ -35,13 +28,6 @@ from .disconnected_space import (
     DisconnectedSpaceType,
 )
 from .draw_order import DrawOrder, DrawOrderArrayLike, DrawOrderBatch, DrawOrderLike, DrawOrderType
-from .entity_properties_component import (
-    EntityPropertiesComponent,
-    EntityPropertiesComponentArrayLike,
-    EntityPropertiesComponentBatch,
-    EntityPropertiesComponentLike,
-    EntityPropertiesComponentType,
-)
 from .half_sizes2d import HalfSizes2D, HalfSizes2DBatch, HalfSizes2DType
 from .half_sizes3d import HalfSizes3D, HalfSizes3DBatch, HalfSizes3DType
 from .instance_key import InstanceKey, InstanceKeyArrayLike, InstanceKeyBatch, InstanceKeyLike, InstanceKeyType
@@ -52,11 +38,9 @@ from .material import Material, MaterialBatch, MaterialType
 from .media_type import MediaType, MediaTypeBatch, MediaTypeType
 from .mesh_properties import MeshProperties, MeshPropertiesBatch, MeshPropertiesType
 from .out_of_tree_transform3d import OutOfTreeTransform3D, OutOfTreeTransform3DBatch, OutOfTreeTransform3DType
-from .panel_view import PanelView, PanelViewArrayLike, PanelViewBatch, PanelViewLike, PanelViewType
 from .pinhole_projection import PinholeProjection, PinholeProjectionBatch, PinholeProjectionType
 from .position2d import Position2D, Position2DBatch, Position2DType
 from .position3d import Position3D, Position3DBatch, Position3DType
-from .query_expressions import QueryExpressions, QueryExpressionsBatch, QueryExpressionsType
 from .radius import Radius, RadiusArrayLike, RadiusBatch, RadiusLike, RadiusType
 from .resolution import Resolution, ResolutionBatch, ResolutionType
 from .rotation3d import Rotation3D, Rotation3DBatch, Rotation3DType
@@ -67,14 +51,6 @@ from .scalar_scattering import (
     ScalarScatteringBatch,
     ScalarScatteringLike,
     ScalarScatteringType,
-)
-from .space_view_component import SpaceViewComponent, SpaceViewComponentBatch, SpaceViewComponentType
-from .space_view_maximized import (
-    SpaceViewMaximized,
-    SpaceViewMaximizedArrayLike,
-    SpaceViewMaximizedBatch,
-    SpaceViewMaximizedLike,
-    SpaceViewMaximizedType,
 )
 from .tensor_data import TensorData, TensorDataBatch, TensorDataType
 from .text import Text, TextBatch, TextType
@@ -88,7 +64,6 @@ from .view_coordinates import (
     ViewCoordinatesLike,
     ViewCoordinatesType,
 )
-from .viewport_layout import ViewportLayout, ViewportLayoutBatch, ViewportLayoutType
 
 __all__ = [
     "AnnotationContext",
@@ -96,11 +71,6 @@ __all__ = [
     "AnnotationContextBatch",
     "AnnotationContextLike",
     "AnnotationContextType",
-    "AutoSpaceViews",
-    "AutoSpaceViewsArrayLike",
-    "AutoSpaceViewsBatch",
-    "AutoSpaceViewsLike",
-    "AutoSpaceViewsType",
     "Blob",
     "BlobArrayLike",
     "BlobBatch",
@@ -132,11 +102,6 @@ __all__ = [
     "DrawOrderBatch",
     "DrawOrderLike",
     "DrawOrderType",
-    "EntityPropertiesComponent",
-    "EntityPropertiesComponentArrayLike",
-    "EntityPropertiesComponentBatch",
-    "EntityPropertiesComponentLike",
-    "EntityPropertiesComponentType",
     "HalfSizes2D",
     "HalfSizes2DBatch",
     "HalfSizes2DType",
@@ -173,11 +138,6 @@ __all__ = [
     "OutOfTreeTransform3D",
     "OutOfTreeTransform3DBatch",
     "OutOfTreeTransform3DType",
-    "PanelView",
-    "PanelViewArrayLike",
-    "PanelViewBatch",
-    "PanelViewLike",
-    "PanelViewType",
     "PinholeProjection",
     "PinholeProjectionBatch",
     "PinholeProjectionType",
@@ -187,9 +147,6 @@ __all__ = [
     "Position3D",
     "Position3DBatch",
     "Position3DType",
-    "QueryExpressions",
-    "QueryExpressionsBatch",
-    "QueryExpressionsType",
     "Radius",
     "RadiusArrayLike",
     "RadiusBatch",
@@ -211,14 +168,6 @@ __all__ = [
     "ScalarScatteringLike",
     "ScalarScatteringType",
     "ScalarType",
-    "SpaceViewComponent",
-    "SpaceViewComponentBatch",
-    "SpaceViewComponentType",
-    "SpaceViewMaximized",
-    "SpaceViewMaximizedArrayLike",
-    "SpaceViewMaximizedBatch",
-    "SpaceViewMaximizedLike",
-    "SpaceViewMaximizedType",
     "TensorData",
     "TensorDataBatch",
     "TensorDataType",
@@ -239,7 +188,4 @@ __all__ = [
     "ViewCoordinatesBatch",
     "ViewCoordinatesLike",
     "ViewCoordinatesType",
-    "ViewportLayout",
-    "ViewportLayoutBatch",
-    "ViewportLayoutType",
 ]

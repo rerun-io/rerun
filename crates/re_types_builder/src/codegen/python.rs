@@ -269,13 +269,12 @@ impl PythonCodeGenerator {
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
     ) {
-        let mut known_scopes = HashSet::<_>::default();
-
         let kind_path = self.pkg_path.join(object_kind.plural_snake_case());
         let test_kind_path = self.testing_pkg_path.join(object_kind.plural_snake_case());
 
         // (module_name, [object_name])
         let mut mods = BTreeMap::<String, Vec<String>>::new();
+        let mut scoped_mods = BTreeMap::<String, BTreeMap<String, Vec<String>>>::new();
         let mut test_mods = BTreeMap::<String, Vec<String>>::new();
 
         // Generate folder contents:
@@ -284,7 +283,6 @@ impl PythonCodeGenerator {
             let scope = obj.scope();
 
             let kind_path = if let Some(scope) = scope {
-                known_scopes.insert(scope.clone());
                 self.pkg_path
                     .join(scope)
                     .join(object_kind.plural_snake_case())
@@ -323,6 +321,8 @@ impl PythonCodeGenerator {
             // and archetypes separately (and even then it's a bit shady, eh).
             if obj.is_testing() {
                 &mut test_mods
+            } else if let Some(scope) = obj.scope() {
+                scoped_mods.entry(scope).or_default()
             } else {
                 &mut mods
             }
@@ -442,15 +442,15 @@ impl PythonCodeGenerator {
             files_to_write.insert(filepath.clone(), code);
         }
 
-        // rerun/{datatypes|components|archetypes}/__init__.py
+        // rerun/[{scope}]/{datatypes|components|archetypes}/__init__.py
         write_init_file(&kind_path, &mods, files_to_write);
         write_init_file(&test_kind_path, &test_mods, files_to_write);
-        for scope in known_scopes {
+        for (scope, mods) in scoped_mods {
             let scoped_kind_path = self
                 .pkg_path
                 .join(scope)
                 .join(object_kind.plural_snake_case());
-            write_init_file(&scoped_kind_path, &BTreeMap::new(), files_to_write);
+            write_init_file(&scoped_kind_path, &mods, files_to_write);
         }
     }
 }

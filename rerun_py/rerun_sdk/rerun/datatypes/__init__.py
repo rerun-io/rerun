@@ -40,13 +40,6 @@ from .mesh_properties import (
     MeshPropertiesType,
 )
 from .quaternion import Quaternion, QuaternionArrayLike, QuaternionBatch, QuaternionLike, QuaternionType
-from .query_expressions import (
-    QueryExpressions,
-    QueryExpressionsArrayLike,
-    QueryExpressionsBatch,
-    QueryExpressionsLike,
-    QueryExpressionsType,
-)
 from .rgba32 import Rgba32, Rgba32ArrayLike, Rgba32Batch, Rgba32Like, Rgba32Type
 from .rotation3d import Rotation3D, Rotation3DArrayLike, Rotation3DBatch, Rotation3DLike, Rotation3DType
 from .rotation_axis_angle import (
@@ -57,13 +50,6 @@ from .rotation_axis_angle import (
     RotationAxisAngleType,
 )
 from .scale3d import Scale3D, Scale3DArrayLike, Scale3DBatch, Scale3DLike, Scale3DType
-from .space_view_component import (
-    SpaceViewComponent,
-    SpaceViewComponentArrayLike,
-    SpaceViewComponentBatch,
-    SpaceViewComponentLike,
-    SpaceViewComponentType,
-)
 from .tensor_buffer import TensorBuffer, TensorBufferArrayLike, TensorBufferBatch, TensorBufferLike, TensorBufferType
 from .tensor_data import TensorData, TensorDataArrayLike, TensorDataBatch, TensorDataLike, TensorDataType
 from .tensor_dimension import (
@@ -97,13 +83,6 @@ from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike, UVec4DType
 from .vec2d import Vec2D, Vec2DArrayLike, Vec2DBatch, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
-from .viewport_layout import (
-    ViewportLayout,
-    ViewportLayoutArrayLike,
-    ViewportLayoutBatch,
-    ViewportLayoutLike,
-    ViewportLayoutType,
-)
 
 __all__ = [
     "Angle",
@@ -176,11 +155,6 @@ __all__ = [
     "QuaternionBatch",
     "QuaternionLike",
     "QuaternionType",
-    "QueryExpressions",
-    "QueryExpressionsArrayLike",
-    "QueryExpressionsBatch",
-    "QueryExpressionsLike",
-    "QueryExpressionsType",
     "Rgba32",
     "Rgba32ArrayLike",
     "Rgba32Batch",
@@ -201,11 +175,6 @@ __all__ = [
     "Scale3DBatch",
     "Scale3DLike",
     "Scale3DType",
-    "SpaceViewComponent",
-    "SpaceViewComponentArrayLike",
-    "SpaceViewComponentBatch",
-    "SpaceViewComponentLike",
-    "SpaceViewComponentType",
     "TensorBuffer",
     "TensorBufferArrayLike",
     "TensorBufferBatch",
@@ -281,9 +250,4 @@ __all__ = [
     "Vec4DBatch",
     "Vec4DLike",
     "Vec4DType",
-    "ViewportLayout",
-    "ViewportLayoutArrayLike",
-    "ViewportLayoutBatch",
-    "ViewportLayoutLike",
-    "ViewportLayoutType",
 ]
