@@ -9,8 +9,8 @@ use re_renderer::view_builder::{TargetConfiguration, ViewBuilder};
 use re_space_view::controls::{DRAG_PAN2D_BUTTON, RESET_VIEW_BUTTON_TEXT, ZOOM_SCROLL_MODIFIER};
 use re_types::{archetypes::Pinhole, components::ViewCoordinates};
 use re_viewer_context::{
-    gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, ViewContextCollection,
-    ViewPartCollection, ViewQuery, ViewerContext,
+    gpu_bridge, HoveredSpace, SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
 use super::{
@@ -228,12 +228,16 @@ pub fn view_2d(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     state: &mut SpatialSpaceViewState,
-    view_ctx: &ViewContextCollection,
-    parts: &ViewPartCollection,
     query: &ViewQuery<'_>,
-    mut draw_data: Vec<re_renderer::QueueableDrawData>,
+    system_output: re_viewer_context::SystemExecutionOutput,
 ) -> Result<(), SpaceViewSystemExecutionError> {
     re_tracing::profile_function!();
+
+    let SystemExecutionOutput {
+        view_systems: parts,
+        context_systems: view_ctx,
+        draw_data,
+    } = system_output;
 
     // Save off the available_size since this is used for some of the layout updates later
     let available_size = ui.available_size();
@@ -312,7 +316,7 @@ pub fn view_2d(
 
         // Create labels now since their shapes participate are added to scene.ui for picking.
         let (label_shapes, ui_rects) = create_labels(
-            &collect_ui_labels(parts),
+            &collect_ui_labels(&parts),
             ui_from_canvas,
             &eye,
             ui,
@@ -330,15 +334,15 @@ pub fn view_2d(
                 eye,
                 &mut view_builder,
                 state,
-                view_ctx,
-                parts,
+                &view_ctx,
+                &parts,
                 &ui_rects,
                 query,
                 SpatialSpaceViewKind::TwoD,
             )?;
         }
 
-        for draw_data in draw_data.drain(..) {
+        for draw_data in draw_data {
             view_builder.queue_draw(draw_data);
         }
         if let Ok(shared_render_builders) = view_ctx.get::<SharedRenderBuilders>() {

@@ -129,15 +129,6 @@ impl SpaceViewClass for SpatialSpaceView3D {
             .num_primitives
             .load(std::sync::atomic::Ordering::Relaxed);
 
-        // TODO(andreas): Pass on system_output.
-        crate::ui_3d::view_3d(
-            ctx,
-            ui,
-            state,
-            &system_output.context_systems,
-            &system_output.view_systems,
-            query,
-            system_output.draw_data,
-        )
+        crate::ui_3d::view_3d(ctx, ui, state, query, system_output)
     }
 }
