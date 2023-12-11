@@ -24,7 +24,7 @@ struct Picking {
 }
 
 fn random_color(rnd: &mut impl rand::Rng) -> Color32 {
-    ecolor::Hsva {
+    re_renderer::Hsva {
         h: rnd.gen::<f32>(),
         s: rnd.gen::<f32>() * 0.5 + 0.5,
         v: rnd.gen::<f32>() * 0.5 + 0.5,
@@ -192,7 +192,7 @@ impl framework::Example for Picking {
         view_builder.queue_draw(re_renderer::renderer::GenericSkyboxDrawData::new(re_ctx));
 
         let command_buffer = view_builder
-            .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
             .unwrap();
 
         vec![framework::ViewDrawResult {

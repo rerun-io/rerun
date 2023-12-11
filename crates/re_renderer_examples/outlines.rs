@@ -123,7 +123,7 @@ impl framework::Example for Outlines {
             .queue_draw(re_renderer::renderer::MeshDrawData::new(re_ctx, &instances).unwrap());
 
         let command_buffer = view_builder
-            .draw(re_ctx, ecolor::Rgba::TRANSPARENT)
+            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
             .unwrap();
 
         vec![framework::ViewDrawResult {
