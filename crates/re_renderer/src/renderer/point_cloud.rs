@@ -43,7 +43,7 @@ bitflags! {
     ///
     /// Needs to be kept in sync with `point_cloud.wgsl`
     #[repr(C)]
-    #[derive(Default, bytemuck::Pod, bytemuck::Zeroable)]
+    #[derive(Clone, Copy, Default, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct PointCloudBatchFlags : u32 {
         /// If true, we shade all points in the batch like spheres.
         const FLAG_ENABLE_SHADING = 0b0001;
@@ -391,7 +391,7 @@ impl PointCloudDrawData {
                     .iter()
                     .map(|batch_info| gpu_data::BatchUniformBuffer {
                         world_from_obj: batch_info.world_from_obj.into(),
-                        flags: batch_info.flags.bits,
+                        flags: batch_info.flags.bits(),
                         outline_mask_ids: batch_info
                             .overall_outline_mask_ids
                             .0
@@ -419,7 +419,7 @@ impl PointCloudDrawData {
                                 .iter()
                                 .map(|(_, mask)| gpu_data::BatchUniformBuffer {
                                     world_from_obj: batch_info.world_from_obj.into(),
-                                    flags: batch_info.flags.bits,
+                                    flags: batch_info.flags.bits(),
                                     outline_mask_ids: mask.0.unwrap_or_default().into(),
                                     picking_object_id: batch_info.picking_object_id,
                                     depth_offset: batch_info.depth_offset as f32,
