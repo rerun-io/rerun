@@ -124,7 +124,7 @@ ewebsock = "0.4.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
 getrandom = "0.2"
-glam = "0.22"
+glam = "0.22"                                                      # glam update blocked by macaw
 gltf = "1.1"
 half = "2.3.1"
 hyper = "0.14"
@@ -132,7 +132,7 @@ image = { version = "0.24", default-features = false }
 indent = "0.1"
 indicatif = "0.17.7"                                               # Progress bar
 infer = "0.15"                                                     # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
-itertools = "0.11"
+itertools = "0.11"                                                 # updating itertools is blocked on the next egui_tiles update
 js-sys = "0.3"
 # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 lz4_flex = "0.11"
